@@ -6,7 +6,7 @@ import numpy as np
 import numba
 
 import strax
-from .common import to_pe, pax_file, get_resource, get_elife
+from common import to_pe, pax_file, get_resource, get_elife
 export, __all__ = strax.exporter()
 
 
