@@ -10,6 +10,6 @@ This repository hosts the XENON-specific code for the data analysis framework st
 ### Installation
 
   * `git clone https://github.com/XENONnT/straxen`
-  * `pip install straxen` (frozen install) or `pip install -e straxen` (developer mode mode) 
+  * `pip install straxen` (frozen install) or `pip install -e straxen` (developer mode) 
 
 For more information, please see the [strax documentation](https://strax.readthedocs.io).

@@ -6,10 +6,7 @@ import pymongo
 
 import strax
 
-export, __all__ = strax.exporter()
 
-
-@export
 class RunDB(strax.StorageFrontend):
     """Frontend that searches RunDB MongoDB for data.
 
