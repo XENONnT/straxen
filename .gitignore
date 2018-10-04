@@ -2,7 +2,6 @@
 .ipynb_checkpoints
 
 # Data (temporary?)
-*.json
 *.bz2
 *.zstd
 *.npy

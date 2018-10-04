@@ -12,7 +12,12 @@ export, __all__ = strax.exporter()
 def pax_to_records(input_filename,
                    samples_per_record=strax.DEFAULT_RECORD_LENGTH,
                    events_per_chunk=10):
-    """Return pulse records array from pax zip input_filename"""
+    """Return pulse records array from pax zip input_filename
+
+    This only works if you have pax installed in your strax environment,
+    which is somewhat tricky: you'll have to make a custom pax version
+    and apply some undocumented hacks to make it work with python 3.6...
+    """
     from pax import core   # Pax is not a dependency
     mypax = core.Processor('XENON1T', config_dict=dict(
             pax=dict(
@@ -122,6 +127,6 @@ class RecordsFromPax(strax.Plugin):
             if (self.config['stop_after_zips']
                     and file_i >= self.config['stop_after_zips']):
                 break
-            yield from strax.xenon.pax_interface.pax_to_records(
+            yield from pax_to_records(
                 in_fn,
                 events_per_chunk=self.config['events_per_chunk'])
