@@ -1,3 +1,7 @@
+# XENON secrets: run database passwords, S3 keys, etc.
+# Though these are readonly, they should not be committed to a public repo.
+xenon_secrets.py
+
 # Jupyter
 .ipynb_checkpoints
 

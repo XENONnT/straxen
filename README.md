@@ -9,7 +9,14 @@ This repository hosts the XENON-specific code for the data analysis framework st
 
 ### Installation
 
-  * `git clone https://github.com/XENONnT/straxen`
-  * `pip install straxen` (frozen install) or `pip install -e straxen` (developer mode) 
+  1. `git clone https://github.com/XENONnT/straxen`
+  2. Optional: for access to the XENON runs data:
+     * Copy the file `/home/aalbers/xenon_secrets.py` from midway to  `./straxen/straxen/`, i.e. to the same directory as `xenon_context.py`.
+  3. `pip install -e straxen` (developer mode) or `pip install straxen` (frozen install)
+
+If you choose a frozen install, and you want access to the XENON data, you must do step 2 **before** step 3. (That's why it's labeled step 2.) 
+
+The demo notebook will run without the XENON secrets (step 2), though almost nothing else will. 
+
 
 For more information, please see the [strax documentation](https://strax.readthedocs.io).

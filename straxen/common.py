@@ -54,3 +54,26 @@ def get_elife(run_id):
     """Return electron lifetime for run_id in ns"""
     # TODO: Get/cache snapshot of needed values from run db valid for 1 hour
     return 642e3
+
+
+@export
+def get_secret(x):
+    """Return secret key x.
+        1) From an environment variable (uppercase version of x)
+        2) From xenon_secrets.py
+    """
+    env_name = x.upper()
+    if env_name in os.environ:
+        return os.environ(env_name)
+
+    message = (f"Secret {x} requested, but there is no environment "
+               f"variable {env_name}, ")
+    try:
+        from . import xenon_secrets
+    except ImportError:
+        raise ValueError(message +
+                         "nor was there a valid xenon_secrets.py "
+                         "included with your straxen installation.")
+    if hasattr(xenon_secrets, x):
+        return getattr(xenon_secrets, x)
+    raise ValueError(message + " and the secret is not in xenon_secrets.py")
