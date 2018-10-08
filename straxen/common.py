@@ -63,10 +63,11 @@ def get_elife(run_id):
 @export
 def get_secret(x):
     """Return secret key x. In order of priority, we search:
-     * Environment variable: uppercase version of x
-     * xenon_secrets.py (if included with your straxen installation)
-     * A standard xenon_secrets.py located on the midway analysis hub
-       (if you are running on midway)
+
+      * Environment variable: uppercase version of x
+      * xenon_secrets.py (if included with your straxen installation)
+      * A standard xenon_secrets.py located on the midway analysis hub
+        (if you are running on midway)
     """
     env_name = x.upper()
     if env_name in os.environ:

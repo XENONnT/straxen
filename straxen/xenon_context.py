@@ -45,10 +45,10 @@ class XENONContext(strax.Context):
         """Update and return self.runs with runs currently available
         in the runs db.
         :param check_available: Check whether these data types are available
-            Availability of xxx is stored as a boolean in the xxx_available
-            column.
+        Availability of xxx is stored as a boolean in the xxx_available
+        column.
         :param extra_fields: Additional fields from run doc to include
-         as rows in the dataframe.
+        as rows in the dataframe.
         """
         base_fields = ['name', 'number', 'reader.ini.name', 'tags.name',
                        'start', 'end', 'trigger.events_built', 'tags.name']
@@ -100,7 +100,7 @@ class XENONContext(strax.Context):
             Exclusion criteria  have higher priority than inclusion criteria.
         :param pattern_type: Type of pattern matching to use.
             Defaults to 'fnmatch', which means you can use
-            unix shell-style wildcards (?, *).
+            unix shell-style wildcards (`?`, `*`).
             The alternative is 're', which means you can use
             full python regular expressions.
         :param ignore_underscore: Ignore the underscore at the start of tags
@@ -112,9 +112,8 @@ class XENONContext(strax.Context):
          - `run_selection(include_tags='*blinded')`
             ... with blinded or _blinded, unblinded, blablinded, etc.
          - `run_selection(include_tags=['blinded', 'unblinded'])`
-           ... with blinded OR unblinded, but not blablinded.
-         - `run_selection(include_tags='blinded',
-                          exclude_tags=['bad', 'messy'])`
+            ... with blinded OR unblinded, but not blablinded.
+         - `run_selection(include_tags='blinded', exclude_tags=['bad', 'messy'])`
            select blinded dsatasets that aren't bad or messy
         """
         if self.runs is None:
@@ -191,7 +190,7 @@ class XENONContext(strax.Context):
             return np.concatenate(results)
 
 
-XENONContext.get_array.__doc__ = strax.Context.__doc__
+XENONContext.get_array.__doc__ = strax.Context.get_array.__doc__
 
 
 def _tags_match(dsets, patterns, pattern_type, ignore_underscore):

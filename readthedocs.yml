@@ -1,0 +1,13 @@
+# .readthedocs.yml
+
+build:
+    image: latest
+
+conda:
+    file: readthedocs_conda.yml
+
+python:
+    version: 3.6
+    pip_install: true
+    extra_requirements:
+          - docs
