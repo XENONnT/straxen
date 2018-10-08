@@ -1,6 +1,7 @@
 import concurrent.futures
 import fnmatch
 import re
+import typing
 
 from tqdm import tqdm
 import numpy as np
@@ -14,22 +15,19 @@ export, __all__ = strax.exporter()
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        'prescan_runs', default=False,
-         help="Query runs db on initialization to populate self.runs with "
-              "a dataframe of basic run info. If False (default),"
-              " will do this on the first call to run_selection."),
-)
 class XENONContext(strax.Context):
     """Strax context with extra methods appropriate to XENON analysis
-    (i.e. replacing functionality of hax)
+    (e.g. replacing functionality of hax)
     """
     rundb : pymongo.collection
-    runs: pd.DataFrame
+    runs: typing.Union[pd.DataFrame, type(None)]
+
+    std_dtypes = ('raw_records', 'records', 'peaks',
+                  'events', 'event_info')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.runs = None
 
         for st in self.storage:
             if isinstance(st, straxen.RunDB):
@@ -41,14 +39,16 @@ class XENONContext(strax.Context):
                 "functionality will be unavailable")
             self.rundb = None
 
-        if self.context_config['prescan_runs']:
-            self.scan_runs()
-
     def scan_runs(self,
+                  check_available=std_dtypes,
                   extra_fields=tuple()):
-        """Update self.runs with runs currently available in the runs db,
-        used for run_selection calls.
-        :param extra_fields: Additional fields from run doc to include.
+        """Update and return self.runs with runs currently available
+        in the runs db.
+        :param check_available: Check whether these data types are available
+            Availability of xxx is stored as a boolean in the xxx_available
+            column.
+        :param extra_fields: Additional fields from run doc to include
+         as rows in the dataframe.
         """
         base_fields = ['name', 'number', 'reader.ini.name', 'tags.name',
                        'start', 'end', 'trigger.events_built', 'tags.name']
@@ -60,7 +60,7 @@ class XENONContext(strax.Context):
         docs = []
         cursor = self.rundb.find(
             filter={},
-            projection=(base_fields + list(extra_fields)))
+            projection=(base_fields + list(strax.to_str_tuple(extra_fields))))
         for doc in tqdm(cursor, desc='Loading run info', total=cursor.count()):
             # TODO: Perhaps we should turn this query into an aggregation
             # to return also availability of key data types
@@ -72,22 +72,32 @@ class XENONContext(strax.Context):
                                     for t in doc.get('tags', [])])
             doc = straxen.flatten_dict(doc, separator='__')
             del doc['_id']  # Remove the Mongo document ID
-            doc = straxen.flatten_dict(doc, separator='__')
             docs.append(doc)
 
         self.runs = pd.DataFrame(docs)
 
+        for d in tqdm(check_available, desc='Checking data availability'):
+            self.runs[d + '_available'] = np.in1d(
+                self.runs.name.values,
+                self.list_available(d))
+
+        return self.runs
+
     def run_selection(self, run_mode=None,
                       include_tags=None, exclude_tags=None,
+                      available=tuple(),
                       pattern_type='fnmatch', ignore_underscore=True):
         """Return pandas.DataFrame with basic info from runs
         that match selection criteria.
-        :param include: String or list of strings of patterns
+        :param run_mode: Pattern to match run modes (reader.ini.name)
+        :param available: str or tuple of strs of data types for which data
+        must be available according to the runs DB.
+
+        :param include_tags: String or list of strings of patterns
             for required tags
-        :param exclude: String / list of strings of patterns
+        :param exclude_tags: String / list of strings of patterns
             for forbidden tags.
             Exclusion criteria  have higher priority than inclusion criteria.
-        :param run_mode: Pattern to match run modes (reader.ini.name)
         :param pattern_type: Type of pattern matching to use.
             Defaults to 'fnmatch', which means you can use
             unix shell-style wildcards (?, *).
@@ -136,6 +146,15 @@ class XENONContext(strax.Context):
                                              exclude_tags,
                                              pattern_type,
                                              ignore_underscore)]
+
+        have_available = strax.to_str_tuple(available)
+        for d in have_available:
+            if not d + '_available' in dsets.columns:
+                # Get extra availability info from the run db
+                self.runs[d + '_available'] = np.in1d(
+                    self.runs.name.values,
+                    self.list_available(d))
+            dsets = dsets[dsets[d + '_available']]
 
         return dsets
 

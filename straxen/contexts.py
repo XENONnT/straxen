@@ -19,4 +19,8 @@ def xenon1t_analysis():
     return straxen.XENONContext(
         storage=straxen.RunDB(),
         register=straxen.plugins.pax_interface.RecordsFromPax,
-        register_all=straxen.plugins.plugins)
+        register_all=straxen.plugins.plugins,
+        # When asking for runs that don't exist, throw an error rather than
+        # starting the pax converter
+        forbid_creation_of=('raw_records',),
+    )

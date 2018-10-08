@@ -70,29 +70,32 @@ class RunDB(strax.StorageFrontend):
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
-        self.available_query = [{'data.host': 'ceph-s3'}]
+        self.available_query = [{'host': 'ceph-s3'}]
         hostname = socket.getfqdn()
         for host_alias, regex in self.hosts.items():
             if re.match(regex, hostname):
-                self.available_query.append({'data.host': host_alias})
+                self.available_query.append({'host': host_alias})
+
+    def _data_query(self, key):
+        """Return MongoDB query for data field matching key"""
+        return {
+            'data': {
+                '$elemMatch': {
+                    'type': key.data_type,
+                    'meta.lineage': key.lineage,
+                    '$or': self.available_query}}}
 
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
 
+        dq = self._data_query(key)
         doc = self.collection.find_one(
-            filter={
-                'name': key.run_id,
-                'data.type': key.data_type,
-                '$or': self.available_query},
-            projection={
-                'data': {
-                    '$elemMatch': {
-                        'type': key.data_type,
-                        'meta.lineage': key.lineage}}})
+            filter={'name': key.run_id, **dq},
+            projection=dq)
 
-        if (doc is None) or ('data' not in doc) or (len(doc['data']) == 0):
+        if doc is None:
             # Data was not found
             if write:
                 # Return path where we could write it
@@ -107,9 +110,17 @@ class RunDB(strax.StorageFrontend):
 
         return datum['protocol'], datum['location']
 
+    def _list_available(self, key: strax.DataKey,
+              allow_incomplete, fuzzy_for, fuzzy_for_options):
+        if fuzzy_for or fuzzy_for_options:
+            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+
+        dq = self._data_query(key)
+        cursor = self.collection.find(dq, projection=['name'])
+        return [x['name'] for x in cursor]
+
     def run_metadata(self, run_id, projection=None):
         doc = self.collection.find_one({'name': run_id}, projection=projection)
         if doc is None:
             raise strax.DataNotAvailable
         return doc
-
