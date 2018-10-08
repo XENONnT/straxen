@@ -10,11 +10,11 @@ This repository hosts the XENON-specific code for the data analysis framework st
 ### Installation
 
   1. `git clone https://github.com/XENONnT/straxen`
-  2. Optional: for access to the XENON runs data:
+  2. **Optional**. If you want access to the XENON data but you are NOT on the UChicago Midway analysis center:
      * Copy the file `/home/aalbers/xenon_secrets.py` from midway to  `./straxen/straxen/`, i.e. to the same directory as `xenon_context.py`.
-  3. `pip install -e straxen` (developer mode) or `pip install straxen` (frozen install)
+  3. `pip install -e straxen`
 
-If you choose a frozen install, and you want access to the XENON data, you must do step 2 **before** step 3. (That's why it's labeled step 2.) 
+Instead of step 3, you can try a 'frozen install' with `pip install straxen`, but you are likely to encounter problems loading the test data (I've been too lazy to update the manifest). Moreover, in a frozen install outside midway, you must do step 2 before step 3, not afterwards. 
 
 The demo notebook will run without the XENON secrets (step 2), though almost nothing else will. 
 
