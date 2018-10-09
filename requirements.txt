@@ -1,4 +1,4 @@
-strax>=0.5.0
+strax>=0.6.0
 keras
 tensorflow
 scipy

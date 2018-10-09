@@ -12,6 +12,7 @@ import shutil
 
 import pandas as pd
 import graphviz
+import strax
 import straxen
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -98,7 +99,7 @@ def build_datastructure_doc():
 
     pd.set_option('display.max_colwidth', -1)
 
-    st = straxen.contexts.xenon1t_analysis()
+    st = strax.Context(register_all=straxen.plugins.plugins)
 
     # Too lazy to write proper graph sorter
     plugins_by_deps = defaultdict(list)

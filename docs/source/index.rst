@@ -4,8 +4,7 @@ Straxen
 
 Github page: https://github.com/XENONnT/straxen
 
-Strax is an analysis framework for pulse-only digitization data,
-specialized for live data processing at speeds of 50-100 MB(raw) / core / sec.
+Straxen is the analysis framework for XENONnT, built on top of the generic [strax framework](https://github.com/AxFoundation/strax). Currently it is configured for analyzing XENON1T data.
 
 
 .. toctree::
