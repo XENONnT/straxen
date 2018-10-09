@@ -1,7 +1,7 @@
 Setting up straxen
 ===================
 
-To install strax locally, follow these steps in a python 3.6 environment:
+To install straxen locally, follow these steps in a python 3.6 environment:
 
 1. `git clone https://github.com/XENONnT/straxen`
 2. **Optional**. If you want access to the XENON data, but you are NOT on the UChicago Midway analysis center, copy the file `/home/aalbers/xenon_secrets.py` from midway to  `./straxen/straxen/`, i.e. to the same directory as `xenon_context.py`.
