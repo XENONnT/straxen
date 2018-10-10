@@ -31,10 +31,13 @@ class RunDB(strax.StorageFrontend):
     def __init__(self,
                  mongo_url=None,
                  s3_kwargs=None,
+                 local_only=False,
                  new_data_path='./strax_data',
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
+        :param local_only: Do not show data as available if it would have to be
+        downloaded from a remote location.
         :param new_data_path: Path where new files are to be written
             defaults to './strax_data'
         :param s3_kwargs: Arguments to initialize S3 backend (including auth)
@@ -44,6 +47,8 @@ class RunDB(strax.StorageFrontend):
         TODO: disable S3 if secret keys not known
         """
         super().__init__(*args, **kwargs)
+        self.local_only = local_only
+        self.new_data_path = new_data_path
 
         if s3_kwargs is None:
             s3_kwargs = dict(
@@ -62,7 +67,6 @@ class RunDB(strax.StorageFrontend):
         self.client = pymongo.MongoClient(mongo_url)
         self.collection = self.client['xenon1t']['runs']
 
-        self.new_data_path = new_data_path
         self.backends = [
             strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
@@ -70,7 +74,10 @@ class RunDB(strax.StorageFrontend):
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
-        self.available_query = [{'host': 'ceph-s3'}]
+        self.available_query = []
+        if not self.local_only:
+            self.available_query.append({'host': 'ceph-s3'})
+            
         hostname = socket.getfqdn()
         for host_alias, regex in self.hosts.items():
             if re.match(regex, hostname):
