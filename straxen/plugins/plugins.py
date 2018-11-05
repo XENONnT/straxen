@@ -59,7 +59,7 @@ class DAQReader(strax.ParallelSourcePlugin):
         records = [strax.load_file(fn,
                                    compressor='blosc',
                                    dtype=strax.record_dtype())
-                   for fn in glob.glob(f'{path}/reader_*')]
+                   for fn in sorted(glob.glob(f'{path}/*'))]
         records = np.concatenate(records)
         records = strax.sort_by_time(records)
         if kind == 'central':

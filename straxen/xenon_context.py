@@ -66,6 +66,9 @@ class XENONContext(strax.Context):
             # to return also availability of key data types
             # (records, peaks, events?)
 
+            # If there is no name, make one from the number
+            doc.setdefault('name', str(doc['number']))
+
             # Process and flatten the doc
             # Convert tags to single string
             doc['tags'] = ','.join([t['name']
