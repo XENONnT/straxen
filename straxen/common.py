@@ -71,7 +71,7 @@ def get_secret(x):
     """
     env_name = x.upper()
     if env_name in os.environ:
-        return os.environ(env_name)
+        return os.environ[env_name]
 
     message = (f"Secret {x} requested, but there is no environment "
                f"variable {env_name}, ")
