@@ -49,8 +49,7 @@ class S2Width(strax.Plugin):
 
     def compute(self, events):
         arr = np.all([self.logpdf(events) >-14],axis=0)
-#        arr = self.logpdf(events)
-        return dict(s2width=arr)
+        return dict(S2width=arr)
 
 
 class S1SingleScatter(strax.Plugin):
@@ -69,33 +68,27 @@ class S1SingleScatter(strax.Plugin):
     """
     depends_on = 'event_info'
     provides = 'cut_S1SingleScatter'
-
+    
+    s2width= S2Width
     dtype = [('cut_S1SingleScatter', np.bool, 'S1 Single Scatter cut')]
     version = 1
 
 
     def compute(self, events):
 
-        mask = alt_s1_interaction_drift_time > self.S2width.DriftTimeFromGate
-        alt_n_electron = np.clip(events[mask]['s2_area'], 0, 5000) / self.S2width.scg
+        mask = alt_s1_interaction_drift_time > self.s2width.DriftTimeFromGate
+        alt_n_electron = np.clip(events[mask]['s2_area'], 0, 5000) / self.s2width.scg
 
         # Alternate S1 relative width
-        alt_rel_width = np.square(events[mask]['s2_range_50p_area'] / self.S2width.SigmaToR50)- np.square(self.S2width.scw)
-        alt_rel_width /= np.square(self.S2width.s2_width_model(self.S2width,
+        alt_rel_width = np.square(events[mask]['s2_range_50p_area'] / self.s2width.SigmaToR50)- np.square(self.s2width.scw)
+        alt_rel_width /= np.square(self.s2width.s2_width_model(self.s2width,
                                                                events[mask]['alt_s1_interaction_drift_time']))
 
         alt_interaction_passes = chi2.logpdf(alt_rel_width * (alt_n_electron - 1), alt_n_electron) > - 20
 
-#        arr = np.all([events[mask])
-        df.loc[mask, (self.name())] = True ^ alt_interaction_passes
+        arr = np.all([True ^ alt_interaction_passes], axis = 0)
 
-        return df
-
-    def compute(self, events):
-        arr = np.all([(-92.9 < events['z']), (-9 > events['z']),
-                      (36.94 > np.sqrt(events['x']**2 + events['y']**2))],
-                     axis=0)
-        return dict(cut_fiducial_cylinder=arr)
+        return dict(cut_S1SingleScatter = arr)
 
 
 
@@ -112,13 +105,6 @@ class S2SingleScatter(strax.Plugin):
     provides = 'cut_S2SingleScatter'
     dtype = [('cut_S2SingleScatter', np.bool, 'S2 Single Scatter cut')]
     version = 4
-    allowed_range = (0, np.inf)
-    variable = 'temp'
-
-
-    def name(self):
-        return 'Cut%s' % self.__class__.__name__
-
 
     @classmethod
     def other_s2_bound(cls, s2_area):
@@ -134,7 +120,7 @@ class S2SingleScatter(strax.Plugin):
         largest_other_s2_is_nan = np.isnan(events['s2_largest_other'])
         arr = np.all([largest_other_s2_is_nan | (events['s2_largest_other'] < self.other_s2_bound(events['s2_area']))],
                     axis=0)
-        return dict(cut_s2_singelscatter = arr)
+        return dict(cut_S2_singelscatter = arr)
 
 
 class S2Threshold(strax.Plugin):
@@ -150,7 +136,7 @@ class S2Threshold(strax.Plugin):
     def compute(self, events):
         arr = np.all([events['s2_area']>200],
                      axis=0)
-        return dict(cut_s2threshold=arr)
+        return dict(cut_S2threshold=arr)
 
 class S2AreaFractionTop(strax.Plugin):
     """Cuts events with an unusual fraction of S2 on top array.
