@@ -168,8 +168,10 @@ class PeakBasics(strax.Plugin):
         (('Length of the peak waveform in samples',
           'length'), np.int32),
         (('Time resolution of the peak waveform in ns',
-          'dt'), np.int16),
-    ]
+        'dt'), np.int16),
+        ]
+
+
 
     def compute(self, peaks):
         p = peaks
@@ -439,7 +441,7 @@ class Events(strax.OverlapWindowPlugin):
 
 @export
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.12'
     depends_on = ('events',
                   'peak_basics', 'peak_classification',
                   'peak_positions', 'n_competing')
@@ -464,6 +466,14 @@ class EventBasics(strax.LoopPlugin):
                    f'Main S2 reconstructed X position (cm), uncorrected',),
                   (f'y_s2', np.float32,
                    f'Main S2 reconstructed Y position (cm), uncorrected',)]
+        dtype += [(f's2_largest_other',np.float32,
+                   f'Largest other S2 area (PE) in event, uncorrected',),
+                   (f's1_largest_other',np.float32,
+                   f'Largest other S1 area (PE) in event, uncorrected',),
+                   (f'alt_s1_interaction_drift_time',np.float32,
+                   f'Drift time with alternative s1',)
+                    ]
+
         return dtype
 
     def compute_loop(self, event, peaks):
@@ -489,6 +499,15 @@ class EventBasics(strax.LoopPlugin):
                 continue
 
             main_i = np.argmax(ss['area'])
+            #Find largest other signals
+            if s_i == 2 and ss['n_competing'][main_i]>0 and len(ss['area'])>1:
+                s2_second_i = np.argsort(ss['area'])[-2]
+                result[f's2_largest_other'] = ss['area'][s2_second_i]
+
+            if s_i == 1 and ss['n_competing'][main_i]>0 and len(ss['area'])>1:
+                s1_second_i = np.argsort(ss['area'])[-2]
+                result[f's1_largest_other'] = ss['area'][s1_second_i]
+
             result[f's{s_i}_index'] = s_indices[main_i]
             s = main_s[s_i] = ss[main_i]
 
@@ -502,6 +521,9 @@ class EventBasics(strax.LoopPlugin):
         # Compute a drift time only if we have a valid S1-S2 pairs
         if len(main_s) == 2:
             result['drift_time'] = main_s[2]['time'] - main_s[1]['time']
+        #Compute alternative drift time
+            if 's1_second_i' in locals():
+                result['alt_s1_interaction_drift_time'] = main_s[2]['time'] - ss['time'][s1_second_i]
 
         return result
 
