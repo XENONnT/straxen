@@ -59,7 +59,7 @@ class DAQReader(strax.ParallelSourcePlugin):
         records = [strax.load_file(fn,
                                    compressor='blosc',
                                    dtype=strax.record_dtype())
-                   for fn in glob.glob(f'{path}/reader_*')]
+                   for fn in sorted(glob.glob(f'{path}/*'))]
         records = np.concatenate(records)
         records = strax.sort_by_time(records)
         if kind == 'central':
@@ -95,6 +95,8 @@ class DAQReader(strax.ParallelSourcePlugin):
 
 @export
 class Records(strax.Plugin):
+    __version__ = '0.0.1'
+
     depends_on = ('raw_records',)
     data_kind = 'records'   # TODO: indicate cuts have been done?
     compressor = 'zstd'
@@ -103,7 +105,10 @@ class Records(strax.Plugin):
     dtype = strax.record_dtype()
 
     def compute(self, raw_records):
-        r = strax.exclude_tails(raw_records, to_pe)
+        # Remove records from channels for which the gain is unknown
+        r = raw_records[raw_records['channel'] < len(to_pe)]
+
+        r = strax.exclude_tails(r, to_pe)
         hits = strax.find_hits(r)
         strax.cut_outside_hits(r, hits)
         return r
