@@ -253,6 +253,11 @@ class PeakPositions(strax.Plugin):
         peak_mask = peaks['area'] > self.config['min_reconstruction_area']
         x = peaks['area_per_channel'][peak_mask, :]
 
+        if len(x) == 0:
+            # Nothing to do, and .predict crashes on empty arrays
+            return dict(x=np.zeros(0, dtype=np.float32),
+                        y=np.zeros(0, dtype=np.float32))
+
         # Gain correction. This also changes int->float, so can't do *=
         x = x * to_pe.reshape(1, -1)
 
