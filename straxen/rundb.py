@@ -37,19 +37,17 @@ class RunDB(strax.StorageFrontend):
                  mongo_dbname=None,
                  mongo_collname=None,
                  runid_field='name',
-                 register_new=False,
                  s3_kwargs=None,
                  local_only=False,
-                 new_data_path='./strax_data',
+                 new_data_path=None,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
         :param local_only: Do not show data as available if it would have to be
         downloaded from a remote location.
         :param new_data_path: Path where new files are to be written.
-            Defaults to './strax_data'
-        :param register_new: Register data to the rundb as we START writing.
-            Default is False.
+            Defaults to None: do not write new data
+            New files will be registered in the runs db!
             TODO: register under hostname alias (e.g. 'dali')
         :param s3_kwargs: Arguments to initialize S3 backend (including auth)
         :param runid_field: Rundb field to which strax's run_id concept
@@ -64,7 +62,9 @@ class RunDB(strax.StorageFrontend):
         super().__init__(*args, **kwargs)
         self.local_only = local_only
         self.new_data_path = new_data_path
-        self.register_new = register_new
+        if self.new_data_path is None:
+            self.readonly = True
+        
         self.runid_field = runid_field
 
         if self.runid_field not in ['name', 'number']:
@@ -138,7 +138,7 @@ class RunDB(strax.StorageFrontend):
 
             output_path = os.path.join(self.new_data_path, str(key))
 
-            if self.register_new:
+            if self.new_data_path is not None:
                 doc = self.collection.find_one(run_query, projection={'_id'})
                 if not doc:
                     raise ValueError(f"Attempt to register new data for non-existing run {key.run_id}")   # noqa
