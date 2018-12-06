@@ -23,6 +23,7 @@ temp_processed
 custom_data
 test_input_data
 *.zip
+last_bootstrax_exception.txt
 
 # cProfile output
 *.prof

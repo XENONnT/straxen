@@ -1,0 +1,633 @@
+"""
+Bootstrax: XENONnT online processing manager
+=============================================
+First draft: Jelle Aalbers, 2018
+
+This script watches for new runs to appear from the DAQ, then starts a strax process to process them. If a run fails, it will retry it with exponential backoff.
+
+You can run more than one bootstrax instance, but only one per machine. If you start a second one on the same machine, it will try to kill the first one.
+
+
+Philosophy
+-------------
+Bootstrax has a crash-only / recovery first philosophy. Any error in the core code causes a crash; there is no nice exit or mandatory cleanup. Boostrax focuses on recovery after restarts: before starting work, we look for and fix any mess left by crashes.
+
+This ensures that hangs and hard crashes do not require expert tinkering to repair databases. Plus, you can just stop the program with ctrl-c (or, in principle, pulling the machine's power plug) at any time.
+
+Errors during run processing are assumed to be retry-able. We track the number of failures per run to decide how long to wait until we retry; only if a user marks a run as 'abandoned' (using an external system, e.g. the website) do we stop retrying.
+
+
+Mongo documents
+----------------
+Bootstrax records its status in a document in the 'bootstrax' collection in the runs db. These documents contain:
+  - **host**: socket.getfqdn()
+  - **time**: last time this bootstrax showed lifesigns
+  - **state**: one of the following:
+    - **busy**: doing something
+    - **idle**: NOT doing something; available for processing new runs
+
+Additionally, bootstrax tracks information with each run in the 'bootstrax' field of the run doc. We could also put this elsewhere, but it seemed convenient. This field contains the following subfields:
+  - **state**: one of the following:
+    - **considering**: a boostrax is deciding what to do with it
+    - **busy**: a strax process is working on it
+    - **failed**: something is wrong, but we will retry after some amount of time
+    - **abandoned**: bootstrax will ignore this run
+  - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Tracking failure history is really the DAQ log's reponsibility; this is only provided for convenience.
+   - **n_failures**: number of failures on this run, if there ever was one (otherwise this field does not exist).
+  - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
+"""
+
+import argparse
+from collections import Counter
+from datetime import datetime, timedelta
+import logging
+import multiprocessing
+import os
+import os.path as osp
+import signal
+import socket
+import shutil
+import time
+
+import pymongo
+from psutil import pid_exists
+import pytz
+import strax
+import straxen
+
+
+
+##
+# Configuration
+##
+mongo_url = 'mongodb://{username}:{password}@gw:27019/xenonnt'
+dbname = 'xenonnt'
+run_collname = 'run'
+
+# Folder to place new processed data in
+# TODO: Perhaps check that ssh mount exists?
+output_folder = '/data/xenon/raw/xenonnt_processed'
+
+# Timeouts in seconds
+timeouts = {
+    # Waiting between escalating SIGTERM -> SIGKILL -> crashing bootstrax
+    # when trying to kill another process (usually child strax)
+    'signal_escalate': 3,
+    # Minimum waiting time to retry a failed run
+    # Escalates exponentially on repeated failures: 1x, 5x, 25x, 125x, 125x, 125x, ...
+    'retry_run': 60,
+    # Maximum time for strax to complete a processing
+    # if exceeded, strax will be killed by bootstrax
+    'max_processing_time': 7200,
+    # Sleep between checking whether a strax process is alive
+    'check_on_strax': 10,
+    # Maximum time a run is in the 'busy' state
+    # if exceeded, will be labeled as an untracked failure
+    # Must be larger than max_processing_time!
+    'max_busy_time': 10000,
+    # Maximum time a run is in the 'considering' state
+    # if exceeded, will be labeled as an untracked failure
+    'max_considering_time': 60,
+    # Minimum time to wait between database cleanup operations
+    'cleanup_spacing': 60,
+    # Sleep time when there is nothing to do
+    'idle_nap': 10,
+    # If we don't hear from a bootstrax on another host for this long,
+    # remove its entry from the bootstrax status collection
+    # Must be much longer than idle_nap and check_on_strax!
+    'bootstrax_presumed_dead': 300
+}
+
+# Fields in the run docs that bootstrax uses
+bootstrax_projection = 'name number bootstrax data.host data.type data.location'.split()
+
+# Filename for temporary storage of the exception
+# This is used to communicate the exception from the strax child process
+# to the bootstrax main process
+exception_tempfile = 'last_bootstrax_exception.txt'
+
+##
+# Initialize globals (e.g. rundb connection)
+##
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
+    datefmt='%m-%d %H:%M')
+log = logging.getLogger()
+hostname = socket.getfqdn()
+state_doc_id = None   # Set in main loop
+
+
+def new_context():
+    """Create strax context that can access the runs db"""
+    # We use exactly the logic of straxen to access the runs DB;
+    # this avoids duplication, and ensures strax can access the runs DB iff we can
+    st = straxen.XENONContext(
+        storage=straxen.RunDB(
+            mongo_url=mongo_url,
+            mongo_collname=run_collname,
+            runid_field='number',
+            new_data_path=output_folder,
+            mongo_dbname=dbname),
+        register_all=straxen.plugins.plugins)
+    return st
+
+
+st = new_context()
+
+run_db = st.storage[0].client[dbname]
+run_coll = run_db[run_collname]
+bs_coll = run_db['bootstrax']
+log_coll = run_db['log']
+
+# Ping the databases to ensure the mongo connections are working
+run_db.command('ping')
+
+
+##
+# Main loop
+##
+
+def main():
+    """Main run loop of bootstrax"""
+    global state_doc_id
+    
+    # Ensure we're the only bootstrax on this host
+    any_running = list(bs_coll.find({'host': hostname}))
+    for x in any_running:
+        if pid_exists(x['pid']):
+            log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill it')
+            kill_process(x['pid'])
+        bs_coll.delete_one({'_id': x['_id']})
+    
+    # Register ourselves
+    state_doc_id = bs_coll.insert_one(dict(
+        host=hostname,
+        started=now(),
+        pid=os.getpid())).inserted_id
+    set_state('starting')
+
+    next_cleanup_time = now()
+    while True:
+        log.info("Looking for work")
+
+        set_state('busy')
+        # Check resources are still OK, otherwise crash / reboot program
+
+        # Process new runs
+        rd = consider_run({"bootstrax": {"$exists": False}})
+        if rd is not None:
+            process_run(rd)
+            continue
+
+        # Is another bootstrax instance idle? Then start riskier stuff.
+        # TODO: implement check, make optional
+
+        # Scan DB for runs with unusual problems
+        if now() > next_cleanup_time:
+            cleanup_db()
+            next_cleanup_time = now(plus=timeouts['cleanup_spacing'])
+
+        # Any failed runs to retry?
+        # Only try one run, we want to be back for new runs quickly
+        rd = consider_run({
+            "bootstrax.state": 'failed',
+            "bootstrax.next_retry": {
+                '$lt': now()}})
+        if rd is not None:
+            process_run(rd)
+            continue
+
+        log.info("Nothing to do, sleeping")
+        set_state('idle')
+        time.sleep(timeouts['idle_nap'])
+
+
+##
+# General helpers
+##
+
+def now(plus=0):
+    return datetime.now(pytz.utc) + timedelta(seconds=plus)
+
+
+def kill_process(pid, wait_time=None):
+    """Kill process pid, or raise RuntimeError if we cannot
+    :param wait_time: time to wait before escalating signal strength
+    """
+    if wait_time is None:
+        wait_time = timeouts['signal_escalate']
+    if not pid_exists(pid):
+        return
+
+    for sig in [signal.SIGTERM, signal.SIGKILL, 'die']:
+        time.sleep(wait_time)
+        if not pid_exists(pid):
+            return
+        if signal == 'die':
+            raise RuntimeError(f"Could not kill process {pid}")
+        os.kill(pid, sig)
+
+
+def set_state(state):
+    """Inform the bootstrax collection we're in a different state
+
+    if state is None, leave state unchanged, just update heartbeat time
+    """
+    if state_doc_id is None:
+        log.debug("Not updating bootstrax doc: none selected. "
+                  "You are probably running a rogue bootstrax operation...")
+        return
+    update = {'time': now()}
+    if state is not None:
+        update['state'] = state
+    bs_coll.update_one(
+        {'_id': state_doc_id},
+        {'$set': update})
+
+
+def send_heartbeat():
+    """Inform the bootstrax collection we're still here
+    Use during long-running tasks where state doesn't change
+    """
+    # Same as set_state, just don't change state
+    set_state(None)
+
+
+def log_warning(message, priority='warning'):
+    """Report a warning to the terminal (using the logging module)
+    and the DAQ log DB.
+    :param priority: severity of warning. Can be:
+        info: 1,
+        warning: 2,
+        <any other valid python logging level, e.g. error or fatal>: 3
+    """
+    getattr(log, priority)(message)
+    log_coll.insert_one({
+        'message': message,
+        'user': f'bootstrax_{hostname}',
+        'priority': dict(warning=2, info=1).get(priority, 3)})
+
+
+##
+# Run DB interaction
+##
+
+
+def get_run(*, mongo_id=None, number=None, full_doc=False):
+    """Find and return run doc matching mongo_id or number
+    The bootstrax state is left unchanged.
+
+    :param full_doc: If true (default is False), return the full run doc
+        rather than just fields used by bootstrax.
+    """
+    if number is not None:
+        query = {'number': number}
+    elif mongo_id is not None:
+        query = {'_id': mongo_id}
+    else:
+        raise ValueError("Please give mongo_id or number")
+
+    return run_coll.find_one(query,
+                             projection=None if full_doc else bootstrax_projection)
+
+
+def set_run_state(rd, state, return_new_doc=True, **kwargs):
+    """Set state of run doc rd to state
+    return_new_doc: if True (default), returns new document.
+        if False, instead returns the original (un-updated) doc.
+
+    Any additional kwargs will be added to the bootstrax field.
+    """
+    bd = rd['bootstrax']
+    bd.update({
+        'state': state,
+        'host': hostname,
+        'time': now(),
+        **kwargs})
+
+    if state == 'failed':
+        bd['n_failures'] = bd.get('n_failures', 0) + 1
+
+    return run_coll.find_one_and_update(
+        {'_id': rd['_id']},
+        {'$set': {'bootstrax': bd}},
+        return_document=return_new_doc,
+        projection=bootstrax_projection)
+
+
+def abandon(*, mongo_id=None, number=None):
+    """Mark a run as abandoned"""
+    set_run_state(
+        get_run(mongo_id=mongo_id, number=number),
+        'abandoned')
+
+
+def consider_run(query, return_new_doc=True):
+    """Return one run doc matching query, and simultaneously set its bootstraxstate to 'considering'"""
+    # We must first do an atomic find-and-update to set the run's state
+    # to "considering", to ensure the run doesn't get picked up by a
+    # bootstrax on another host.
+    rd = run_coll.find_one_and_update(
+        query,
+        {"$set": {'bootstrax.state': 'considering'}},
+        projection=bootstrax_projection,
+        return_document=True,
+        sort=[('start', pymongo.DESCENDING)])
+
+    # Next, we can update the bootstrax entry properly with set_run_state
+    # (preserving things like n_failures)
+    if rd is None:
+        return None
+    return set_run_state(rd, 'considering', return_new_doc=return_new_doc)
+
+
+def fail_run(rd, reason):
+    """Mark the run represented by run doc rd as failed with reason"""
+    if 'number' not in rd:
+        long_run_id = f"run <no run number!!?>:{rd['_id']}"
+    else:
+        long_run_id = f"run {rd['number']}:{rd['_id']}"
+
+    if 'n_failures' in rd['bootstrax']:
+        fail_name = 'Repeated failure'
+        failure_message_level = 'info'
+    else:
+        fail_name = 'New failure'
+        failure_message_level = 'warning'
+
+    # Cleanup any data associated with the run
+    clean_run(mongo_id=rd['_id'])
+
+    # Report to run db
+    # it's best to do this after everything is done;
+    # as it changes the run state back away from 'considering', so another
+    # bootstrax could conceivably pick it up again.
+    set_run_state(rd, 'failed',
+                  reason=reason,
+                  next_retry=(
+                      now(plus=timeouts['retry_run'] * 5**min(rd.get('n_failures', 0), 3))))
+
+    # Report to DAQ log and screen
+    log_warning(f"{fail_name} on run {long_run_id}: {reason}",
+                priority=failure_message_level)
+
+
+def manual_fail(*, mongo_id=None, number=None, reason=''):
+    """Manually mark a run as failed based on mongo_id or run number"""
+    rd = get_run(mongo_id=mongo_id, number=number)
+    fail_run(rd, "Manually set failed state. " + reason)
+
+
+##
+# Processing
+##
+
+def run_strax(run_id, input_dir):
+    try:
+        log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
+        st = new_context()
+        st.make(run_id, 'event_info',
+                config=dict(input_dir=input_dir),
+                max_workers=25)
+    except Exception as e:
+        exc_info = strax.formatted_exception()
+        with open(exception_tempfile, mode='w') as f:
+            f.write(exc_info)
+        raise
+
+
+def process_run(rd):
+    log.info(f"Starting processing of run {rd['number']}")
+    if rd is None:
+        raise RuntimeError("Pass a valid rundoc, not None!")
+
+    # Shortcuts for failing
+    class RunFailed(Exception):
+        pass
+    def fail(reason):
+        fail_run(rd, reason)
+        raise RunFailed
+
+    try:
+
+        try:
+            run_id = '%06d' % rd['number']
+        except Exception as e:
+            fail(f"Could not format run number: {str(e)}")
+
+        for dd in rd['data']:
+            if 'type' not in dd:
+                fail("Corrupted data doc, found entry without 'type' field")
+            if dd['type'] == 'live':
+                break
+            else:
+                fail("Non-live data already registered; untracked failure?")
+        else:
+            fail(f"No live data entry in rundoc")
+
+        if not osp.exists(dd['location']):
+            fail(f"No access to live data folder {dd['location']}")
+
+        loc = osp.join(dd['location'], run_id)
+        if not osp.exists(loc):
+            fail(f"No live data at claimed location {loc}")
+
+        # Remove any previous processed data
+        # If we do not do this, strax will just load this instead of
+        # starting a new processing
+        clean_run(mongo_id=rd['_id'])
+        
+        # Remove any temporary exception info from previous runs
+        if osp.exists(exception_tempfile):
+            os.remove(exception_tempfile)
+
+        strax_proc = multiprocessing.Process(
+            target=run_strax,
+            args=(run_id, loc))
+
+        t0 = now()
+        info = dict(started_processing=t0)
+        strax_proc.start()
+
+        while True:
+            send_heartbeat()
+
+            ec = strax_proc.exitcode
+            if ec is None:
+                if t0 < now(-timeouts['max_processing_time']):
+                    fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
+                    kill_process(strax_proc.pid)
+
+                # Still working, check in later
+                # TODO: check for hangs by looking for activity in output dir
+                log.info(f"Still processing run {run_id}")
+                set_run_state(rd, 'busy', **info)
+                time.sleep(timeouts['check_on_strax'])
+                continue
+
+            elif ec == 0:
+                log.info(f"Run {run_id} processed succesfully")
+                set_run_state(rd, 'done', **info)
+                break
+
+            else:
+                # 'fail' below will raise a warning, this is just an info that we're starting
+                # exception retrieval
+                log.info(f"Failure while procesing run {run_id}")   
+                if osp.exists(exception_tempfile):
+                   with open(exception_tempfile, mode='r') as f:
+                       exc_info = f.read()
+                   if not exc_info:
+                       exc_info = '[No exception info known, exception file was empty?!]'
+                else:
+                   exc_info = "[No exception info known, exception file not found?!]"
+                fail(f"Strax exited with exit code {ec}. Exception info: {exc_info}")
+
+            # TODO: Strax should update run db with metadata
+            # currently it doesn't, even if processing succeeds...
+
+    except RunFailed:
+        return
+
+##
+# Cleanup
+##
+
+
+def clean_run(*, mongo_id=None, number=None):
+    """Removes all data on this host associated with a run
+    that was previously registered in the run db.
+
+    Does NOT remove temporary folders,
+    nor data that isn't registered to the run db.
+    """
+    # We need to get the full data docs here, since I was too lazy to write
+    # a surgical update below
+    rd = get_run(mongo_id=mongo_id, number=number, full_doc=True)
+    new_data = []
+    for ddoc in rd['data']:
+        if 'host' in ddoc and ddoc['host'] == hostname:
+            loc = ddoc['location']
+            if os.path.exists(loc):
+                shutil.rmtree(loc)
+        else:
+            new_data.append(ddoc)
+    run_coll.find_one_and_update(
+        {'_id': rd['_id']},
+        {'$set': {
+            'data': new_data}})
+
+
+def cleanup_db():
+    """Find various pathological runs and clean them from the db
+
+    Also cleans the bootstrax collection for stale entries
+    """
+    log.info("Checking for bad stuff in database")
+
+    # Bootstrax instances that say they are active, but haven't reported in for a while
+    # (these are on other hosts, or we would have killed them already)
+    while True:
+        send_heartbeat()
+        bd = bs_coll.find_one_and_delete(
+            {'time':
+             {'$lt': now(-timeouts['bootstrax_presumed_dead'])}})
+        if bd is None:
+            break
+        log_warning("Bootstrax on host {bd['host']} presumed dead. Rest in peace")
+
+    # Runs that say they are 'considering' or 'busy' but nothing happened for a while
+    for state, timeout in [
+            ('considering', timeouts['max_considering_time']),
+            # TODO: This should be two hours in production
+            ('busy', timeouts['max_busy_time'])]:
+        while True:
+            send_heartbeat()
+            rd = consider_run(
+                {'bootstrax.state': state,
+                 'bootstrax.time': {'$lt': now(-timeout)}},
+                return_new_doc=False)
+            if rd is None:
+                break
+            fail_run(rd,
+                     f"Host {rd['bootstrax']['host']} said it was {state} "
+                     f"at {rd['bootstrax']['time']}, but then didn't get further; "
+                     f"perhaps it crashed on this run or is still stuck?")
+
+    # Runs for which, based on the run doc alone, we can tell they are in a bad state
+    # Mark them as failed.
+    failure_queries = [
+        ({'bootstrax.state': 'done',
+          'end': {
+              '$exists': False}},
+         'Bootstrax state was done, but run did not yet end'),
+
+        ({'bootstrax.state': 'done',
+          'data': {
+              '$not': {
+                  '$elemMatch': {
+                      "type": {
+                          '$ne': 'live'}}}}},
+         'Bootstrax state was done, but no processed data registered'),
+
+        #       Can't add this yet, since registering happens when processing starts at the moment...
+        #         ({'$not': {
+        #             'bootstrax.state': 'done'},
+        #           'data': {
+        #               '$not': {
+        #                   '$elemMatch': {
+        #                       "type": {
+        #                           '$ne': 'live'}}}}},
+        #          'Bootstrax state was NOT done, but live data has been registered'),
+
+        # For some reason this one doesn't work... probably I have my mongo query syntax confused
+        #         ({'$and': [
+        #             {'bootstrax.state': {
+        #                 '$exists': True}},
+        #             {'bootstrax.state': {
+        #                 '$nin': 'considering done failed abandoned'.split()}}]},
+        #          'Bootstrax state set to unrecognized state {bootstrax[state]}')
+    ]
+
+    for query, failure_message in failure_queries:
+        while True:
+            send_heartbeat()
+            rd = consider_run(query)
+            if rd is None:
+                break
+            fail_run(rd, failure_message.format(**rd))
+
+    # Find any duplicated run numbers
+    nos = [x['number']
+           for x in run_coll.find({}, projection=['number'])]
+    duplicate_numbers = [number
+                         for number, n_occ in Counter(nos).items()
+                         if n_occ > 1]
+
+    # Abandon runs which we already know are so bad that
+    # there is no point in retrying them
+    abandon_queries = [
+        ({'tags': {
+            '$elemMatch': {
+                'name': 'bad'}}},
+         "Run has a 'bad' tag"),
+
+        ({'number': {'$in': duplicate_numbers}},
+         "Run number is not unique")]
+
+    for query, failure_message in abandon_queries:
+        query['bootstrax.state'] = {'$ne': 'abandoned'}
+        failure_message += ' -- run has been abandoned'
+        while True:
+            send_heartbeat()
+            rd = consider_run(query)
+            if rd is None:
+                break
+            fail_run(rd, failure_message.format(**rd))
+            abandon(mongo_id=rd['_id'])
+
+
+if __name__ == '__main__':
+    main()

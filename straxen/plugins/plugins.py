@@ -21,6 +21,8 @@ first_sr1_run = 170118_1327
                       "in the datastream -- peaks will not span this."),
     strax.Option('input_dir', type=str, track=False,
                  help="Directory where readers put data"),
+    strax.Option('n_readers', type=int, default=7, track=False,
+                 help="Number of readers used. Needed for THE_END check"),
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"))
 class DAQReader(strax.ParallelSourcePlugin):
@@ -34,15 +36,25 @@ class DAQReader(strax.ParallelSourcePlugin):
 
     def _chunk_paths(self, chunk_i):
         """Return paths to previous, current and next chunk
-        If any of them does not exist, their path is replaced by False.
+        If any of them does not exist, or they are not yet populated
+        with data from all readers, their path is replaced by False.
         """
         p = self._path(chunk_i)
-        return tuple([
-            q if os.path.exists(q) else False
-            for q in [p + '_pre', p, p + '_post']])
+        result = []
+        for q in [p + '_pre', p, p + '_post']:
+            if (os.path.exists(q)
+                and len(os.listdir(q)) >= self.config['n_readers']):
+                result.append(q)
+            else:
+                result.append(False)
+        return tuple(result)
 
     def source_finished(self):
-        return os.path.exists(self.config["input_dir"] + f'/THE_END')
+        end_dir = self.config["input_dir"] + '/THE_END'
+        if not os.path.exists(end_dir):
+            return False
+        else:
+            return len(os.listdir(end_dir)) >= self.config['n_readers']
 
     def is_ready(self, chunk_i):
         ended = self.source_finished()
