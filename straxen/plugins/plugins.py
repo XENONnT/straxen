@@ -107,10 +107,13 @@ class DAQReader(strax.ParallelSourcePlugin):
         strax.baseline(records)
         strax.integrate(records)
 
-        timespan_sec = (records[-1]['time'] - records[0]['time']) / 1e9
-        print(f'{chunk_i}: read {records.nbytes/1e6:.2f} MB '
-              f'({len(records)} records, '
-              f'{timespan_sec:.2f} sec) from readers')
+        if len(records):
+            timespan_sec = (records[-1]['time'] - records[0]['time']) / 1e9
+            print(f'{chunk_i}: read {records.nbytes/1e6:.2f} MB '
+                  f'({len(records)} records, '
+                  f'{timespan_sec:.2f} sec) from readers')
+        else:
+            print(f'{chunk_i}: read an empty chunk!')
 
         return records
 
