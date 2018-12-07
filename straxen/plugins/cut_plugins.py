@@ -150,10 +150,17 @@ class S2AreaFractionTop(strax.Plugin):
     depends_on = ('event_info',)
     provides = 'cut_S2AreaFractionTop'
     dtype = [('cut_S2AreaFractionTop', np.bool, 'Cut on S2 AFT')]
+    
+    def upper_limit_s2_aft(s2):
+        return 0.6177399420527526 + 3.713166211522462e-08 * s2 + 0.5460484265254656 / np.log(s2)
 
+    def lower_limit_s2_aft(s2):
+        return 0.6648160611018054 - 2.590402853814859e-07 * s2 - 0.8531029789184852 / np.log(s2)
+    
+    
     def compute(self, events):
-        arr = np.all([events['s2_area_fraction_top']<upperlimit(events['s2_area_fraction_top']),
-                    events['s2_area_fraction_top']>lowerlimit(events['s2_area_fraction_top'])])
+        arr = np.all([events['s2_area_fraction_top']<self.upperlimit(events['s2_area_fraction_top']),
+                    events['s2_area_fraction_top']>self.lowerlimit(events['s2_area_fraction_top'])], axis = 0)
         return dict(cut_S2AreaFractionTop=arr)
 
 
