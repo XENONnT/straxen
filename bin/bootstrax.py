@@ -32,12 +32,11 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
     - **busy**: a strax process is working on it
     - **failed**: something is wrong, but we will retry after some amount of time
     - **abandoned**: bootstrax will ignore this run
-  - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Tracking failure history is really the DAQ log's reponsibility; this is only provided for convenience.
+  - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Thus, it's quite possible for this field to exist (and show an exception) when the state is 'done': that just means it failed at least once but succeeded later. Tracking failure history is primarily the DAQ log's reponsibility; this message is only provided for convenience.
    - **n_failures**: number of failures on this run, if there ever was one (otherwise this field does not exist).
   - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
 """
 
-import argparse
 from collections import Counter
 from datetime import datetime, timedelta
 import logging
@@ -48,13 +47,14 @@ import signal
 import socket
 import shutil
 import time
+import traceback
 
+import numpy as np
 import pymongo
 from psutil import pid_exists
 import pytz
 import strax
 import straxen
-
 
 
 ##
@@ -75,6 +75,7 @@ timeouts = {
     'signal_escalate': 3,
     # Minimum waiting time to retry a failed run
     # Escalates exponentially on repeated failures: 1x, 5x, 25x, 125x, 125x, 125x, ...
+    # Some jitter is applied: actual delays willrandomly be 0.5 - 1.5x as long
     'retry_run': 60,
     # Maximum time for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
@@ -99,7 +100,7 @@ timeouts = {
 }
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = 'name number bootstrax data.host data.type data.location'.split()
+bootstrax_projection = 'name number bootstrax data.host data.type data.location ini.processing_threads'.split()
 
 # Filename for temporary storage of the exception
 # This is used to communicate the exception from the strax child process
@@ -358,6 +359,9 @@ def fail_run(rd, reason):
         failure_message_level = 'warning'
 
     # Cleanup any data associated with the run
+    # TODO: This should become optional, or just not happen at all,
+    # after we're done testing (however, then we need some other
+    # pruning mechanism)
     clean_run(mongo_id=rd['_id'])
 
     # Report to run db
@@ -367,10 +371,14 @@ def fail_run(rd, reason):
     set_run_state(rd, 'failed',
                   reason=reason,
                   next_retry=(
-                      now(plus=timeouts['retry_run'] * 5**min(rd.get('n_failures', 0), 3))))
+                      now(plus=(timeouts['retry_run']
+                                * np.random.uniform(0.5, 1.5)
+                                # Exponential backoff with jitter
+                                * 5**min(rd['bootstrax'].get('n_failures', 0), 3)
+                                ))))
 
     # Report to DAQ log and screen
-    log_warning(f"{fail_name} on run {long_run_id}: {reason}",
+    log_warning(f"{fail_name} on {long_run_id}: {reason}",
                 priority=failure_message_level)
 
 
@@ -384,12 +392,14 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 # Processing
 ##
 
-def run_strax(run_id, input_dir):
+def run_strax(run_id, input_dir, n_readers, n_readout_threads):
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
         st = new_context()
         st.make(run_id, 'event_info',
-                config=dict(input_dir=input_dir),
+                config=dict(input_dir=input_dir,
+                            n_readers=n_readers,
+                            n_readout_threads=n_readout_threads),
                 max_workers=25)
     except Exception as e:
         exc_info = strax.formatted_exception()
@@ -430,6 +440,12 @@ def process_run(rd):
         if not osp.exists(dd['location']):
             fail(f"No access to live data folder {dd['location']}")
 
+        thread_info = rd.get('ini', dict()).get('processing_threads', dict())
+        n_readers = len(thread_info)
+        n_readout_threads = sum([v for v in thread_info.values()])
+        if not n_readers:
+            fail(f"Run doc for {run_id} has no processing thread info")
+
         loc = osp.join(dd['location'], run_id)
         if not osp.exists(loc):
             fail(f"No live data at claimed location {loc}")
@@ -445,7 +461,7 @@ def process_run(rd):
 
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc))
+            args=(run_id, loc, n_readers, n_readout_threads))
 
         t0 = now()
         info = dict(started_processing=t0)
@@ -468,6 +484,26 @@ def process_run(rd):
                 continue
 
             elif ec == 0:
+                log.info(f"Strax done on run {run_id}, performing basic data quality check")
+
+                try:
+                    st.get_meta(run_id, 'raw_records')
+                except Exception:
+                    fail("Processing succeeded, but metadata not readable: "
+                         + traceback.format_exc())
+
+                # Check that number of chunks matches expectation
+                # TODO: rather than getting this from the filesystem,
+                # it would be nice if the readout puts this in the run doc
+                n_chunks_readout = len([d 
+                                        for d in os.listdir(loc) 
+                                        if '_' not in d])
+                n_chunks_strax = len(st.get_meta(run_id, 'raw_records')['chunks'])
+                if n_chunks_readout != n_chunks_strax:
+                     fail(f"Strax produced {n_chunks_strax} chunks "
+                          f"but reader wrote {n_chunks_readout} chunk "
+                          f"folders in {loc}")
+                
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
                 break
@@ -536,7 +572,7 @@ def cleanup_db():
              {'$lt': now(-timeouts['bootstrax_presumed_dead'])}})
         if bd is None:
             break
-        log_warning("Bootstrax on host {bd['host']} presumed dead. Rest in peace")
+        log_warning(f"Bootstrax on host {bd['host']} presumed dead. Rest in peace")
 
     # Runs that say they are 'considering' or 'busy' but nothing happened for a while
     for state, timeout in [
@@ -613,6 +649,10 @@ def cleanup_db():
             '$elemMatch': {
                 'name': 'bad'}}},
          "Run has a 'bad' tag"),
+        
+        ({'ini.processing_threads': {
+            '$exists': False}},
+         "Old run doc format without processing thread info"),
 
         ({'number': {'$in': duplicate_numbers}},
          "Run number is not unique")]

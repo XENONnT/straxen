@@ -21,8 +21,10 @@ first_sr1_run = 170118_1327
                       "in the datastream -- peaks will not span this."),
     strax.Option('input_dir', type=str, track=False,
                  help="Directory where readers put data"),
-    strax.Option('n_readers', type=int, default=7, track=False,
+    strax.Option('n_readers', type=int, track=False,
                  help="Number of readers used. Needed for THE_END check"),
+    strax.Option('n_readout_threads', type=int, track=False,
+                 help="Number of readout threads producing strax data files"),
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"))
 class DAQReader(strax.ParallelSourcePlugin):
@@ -42,9 +44,14 @@ class DAQReader(strax.ParallelSourcePlugin):
         p = self._path(chunk_i)
         result = []
         for q in [p + '_pre', p, p + '_post']:
-            if (os.path.exists(q)
-                and len(os.listdir(q)) >= self.config['n_readers']):
-                result.append(q)
+            if os.path.exists(q):
+                n_files = len(os.listdir(q))
+                if n_files >= self.config['n_readout_threads']:
+                    result.append(q)
+                else:
+                    print(f"Found incomplete folder {q}: contains {n_files} files but "
+                          f"expected {self.config['n_readout_threads']}. Waiting for more data.")
+                    result.append(False)
             else:
                 result.append(False)
         return tuple(result)
@@ -88,6 +95,9 @@ class DAQReader(strax.ParallelSourcePlugin):
 
     def compute(self, chunk_i):
         pre, current, post = self._chunk_paths(chunk_i)
+        if chunk_i == 0 and pre:
+            pre = False
+            print(f"There should be no {pre} dir for chunk 0: ignored")
         records = np.concatenate(
             ([self._load_chunk(pre, kind='pre')] if pre else [])
             + [self._load_chunk(current)]
