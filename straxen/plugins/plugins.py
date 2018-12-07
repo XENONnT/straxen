@@ -117,7 +117,7 @@ class DAQReader(strax.ParallelSourcePlugin):
 
 @export
 class Records(strax.Plugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     depends_on = ('raw_records',)
     data_kind = 'records'   # TODO: indicate cuts have been done?
@@ -130,7 +130,11 @@ class Records(strax.Plugin):
         # Remove records from channels for which the gain is unknown
         r = raw_records[raw_records['channel'] < len(to_pe)]
 
-        r = strax.exclude_tails(r, to_pe)
+        # Experimental data reduction: disabled
+        # Seems to remove many S2s since it triggers on S1s!
+        # (perhaps due to larger amount of afterpuless
+        #r = strax.exclude_tails(r, to_pe)
+
         hits = strax.find_hits(r)
         strax.cut_outside_hits(r, hits)
         return r
