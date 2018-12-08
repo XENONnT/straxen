@@ -507,7 +507,7 @@ def process_run(rd, send_heartbeats=True):
 
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc, n_readers, n_readout_threads, args.debug))
+            args=(run_id, loc, n_readout_threads, args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)
