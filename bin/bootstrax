@@ -438,7 +438,7 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 # Processing
 ##
 
-def run_strax(run_id, input_dir, n_readers, n_readout_threads, debug=False):
+def run_strax(run_id, input_dir, n_readout_threads, debug=False):
     if debug:
         log.setLevel(logging.DEBUG)
     try:
@@ -446,7 +446,6 @@ def run_strax(run_id, input_dir, n_readers, n_readout_threads, debug=False):
         st = new_context()
         st.make(run_id, args.target,
                 config=dict(input_dir=input_dir,
-                            n_readers=n_readers,
                             n_readout_threads=n_readout_threads),
                 max_workers=args.cores)
     except Exception as e:
@@ -489,10 +488,9 @@ def process_run(rd, send_heartbeats=True):
             fail(f"No access to live data folder {dd['location']}")
 
         thread_info = rd.get('ini', dict()).get('processing_threads', dict())
-        n_readers = len(thread_info)
         n_readout_threads = sum([v for v in thread_info.values()])
-        if not n_readers:
-            fail(f"Run doc for {run_id} has no processing thread info")
+        if not n_readout_threads:
+            fail(f"Run doc for {run_id} has no readout thread count info")
 
         loc = osp.join(dd['location'], run_id)
         if not osp.exists(loc):

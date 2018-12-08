@@ -21,8 +21,6 @@ first_sr1_run = 170118_1327
                       "in the datastream -- peaks will not span this."),
     strax.Option('input_dir', type=str, track=False,
                  help="Directory where readers put data"),
-    strax.Option('n_readers', type=int, track=False,
-                 help="Number of readers used. Needed for THE_END check"),
     strax.Option('n_readout_threads', type=int, track=False,
                  help="Number of readout threads producing strax data files"),
     strax.Option('erase', default=False, track=False,
@@ -61,7 +59,7 @@ class DAQReader(strax.ParallelSourcePlugin):
         if not os.path.exists(end_dir):
             return False
         else:
-            return len(os.listdir(end_dir)) >= self.config['n_readers']
+            return len(os.listdir(end_dir)) >= self.config['n_readout_threads']
 
     def is_ready(self, chunk_i):
         ended = self.source_finished()
