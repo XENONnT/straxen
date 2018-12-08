@@ -545,12 +545,14 @@ def process_run(rd, send_heartbeats=True):
                                         for d in os.listdir(loc) 
                                         if '_' not in d])
                 n_chunks_strax = len(st.get_meta(run_id, 'raw_records')['chunks'])
-                # TODO: allow one messy chunk at the end.
-                # If this remains necessary, make a reader issue
-                if n_chunks_readout > n_chunks_strax + 1:
-                     fail(f"Strax produced {n_chunks_strax} chunks "
-                          f"but reader wrote {n_chunks_readout} chunk "
-                          f"folders in {loc}")
+                
+                if n_chunks_readout != n_chunks_strax:
+                    msg = (f"Strax produced {n_chunks_strax} chunks "
+                           f"but reader wrote {n_chunks_readout} chunk"
+                           f"folders in {loc}")
+                    if n_chunks_readout > n_chunks_strax + 2:
+                        fail(msg)
+                    log_warning("Messy run stop. " + msg)
                 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
