@@ -126,7 +126,7 @@ timeouts = {
 }
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = 'name number bootstrax data.host data.type data.location ini.processing_threads'.split()
+bootstrax_projection = 'name start end number bootstrax data.host data.type data.location ini.processing_threads'.split()
 
 # Filename for temporary storage of the exception
 # This is used to communicate the exception from the strax child process
@@ -536,26 +536,30 @@ def process_run(rd, send_heartbeats=True):
                 log.info(f"Strax done on run {run_id}, performing basic data quality check")
 
                 try:
-                    st.get_meta(run_id, 'raw_records')
+                    md = st.get_meta(run_id, 'raw_records')
                 except Exception:
                     fail("Processing succeeded, but metadata not readable: "
                          + traceback.format_exc())
+                if not len(md['chunks']):
+                    fail("Processing succeeded, but no chunks were written!")
+                         
+                rd = get_run(mongo_id=rd['_id'])
+                if not 'end' in rd:
+                    fail("Processing succeeded, but run hasn't yet ended!")
 
-                # Check that number of chunks matches expectation
-                # TODO: rather than getting this from the filesystem,
-                # it would be nice if the readout puts this in the run doc
-                n_chunks_readout = len([d 
-                                        for d in os.listdir(loc) 
-                                        if '_' not in d])
-                n_chunks_strax = len(st.get_meta(run_id, 'raw_records')['chunks'])
-                
-                if n_chunks_readout != n_chunks_strax:
-                    msg = (f"Strax produced {n_chunks_strax} chunks "
-                           f"but reader wrote {n_chunks_readout} chunk"
-                           f"folders in {loc}")
-                    if n_chunks_readout > n_chunks_strax + 2:
-                        fail(msg)
-                    log_warning("Messy run stop. " + msg)
+                # Check that the data written covers the run
+                # (at least up to some fudge factor)
+                # Since chunks can be empty, and we don't want to crash,
+                # this has to be done with some care...
+                t_covered = timedelta(seconds=(
+                    max([x.get('last_endtime', 0) 
+                         for x in md['chunks']])
+                    - min([x.get('first_time', float('inf')) 
+                           for x in md['chunks']])))
+                run_duration = rd['end'] - rd['start']
+                if run_duration > t_covered + timedelta(seconds=30):
+                    fail(f"Processing covered {t_covered}, "
+                         f"but run lasted {run_duration}!")
                 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
