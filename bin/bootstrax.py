@@ -37,6 +37,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
   - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
 """
 
+import argparse
 from collections import Counter
 from datetime import datetime, timedelta
 import logging
@@ -55,6 +56,21 @@ from psutil import pid_exists
 import pytz
 import strax
 import straxen
+
+parser = argparse.ArgumentParser(
+    description="XENONnT online processing manager")
+parser.add_argument('--debug', action='store_true',
+                    help="Start strax processes with debug logging.")
+actions = parser.add_mutually_exclusive_group()
+actions.add_argument('--process', type=int,
+                     help="Process a single run, regardless of its status.")
+actions.add_argument('--fail', nargs='+',
+                     help="Fail run number, optionally with reason")
+actions.add_argument('--abandon', nargs='+',
+                     help="Abandon run number, optionally with reason")
+actions.add_argument('--abandon', nargs='+',
+                     help="Abandon run number, optionally with reason")
+args = parser.parse_args()
 
 
 ##
@@ -146,14 +162,37 @@ log_coll = run_db['log']
 run_db.command('ping')
 
 
+def main():
+    if args.fail:
+        args.fail += ['']
+        manual_fail(number=int(args.fail[0]), reason=args.fail[1])
+
+    elif args.abandon:
+        number = int(args.abandon[0])
+        if len(args.abandon) > 1:
+            manual_fail(number=number, reason=args.abandon[1])
+        abandon(number=int(args.fail[0]))
+
+    elif args.process:
+        number = args.process
+        rd = run_coll.find_one({'number': number})
+        if rd is None:
+            raise ValueError(f"No run numbered {number} exists")
+        process_run(rd, send_heartbeats=False)
+
+    else:
+        # Start processing
+        main_loop()
+
+
 ##
 # Main loop
 ##
 
-def main():
-    """Main run loop of bootstrax"""
+def main_loop():
+    """Infinite loop looking for runs to process"""
     global state_doc_id
-    
+
     # Ensure we're the only bootstrax on this host
     any_running = list(bs_coll.find({'host': hostname}))
     for x in any_running:
@@ -161,7 +200,7 @@ def main():
             log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill it')
             kill_process(x['pid'])
         bs_coll.delete_one({'_id': x['_id']})
-    
+
     # Register ourselves
     state_doc_id = bs_coll.insert_one(dict(
         host=hostname,
@@ -182,9 +221,6 @@ def main():
             process_run(rd)
             continue
 
-        # Is another bootstrax instance idle? Then start riskier stuff.
-        # TODO: implement check, make optional
-
         # Scan DB for runs with unusual problems
         if now() > next_cleanup_time:
             cleanup_db()
@@ -200,7 +236,7 @@ def main():
             process_run(rd)
             continue
 
-        log.info("Nothing to do, sleeping")
+        log.info("No work to do, waiting for new runs or retry timers")
         set_state('idle')
         time.sleep(timeouts['idle_nap'])
 
@@ -392,7 +428,9 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 # Processing
 ##
 
-def run_strax(run_id, input_dir, n_readers, n_readout_threads):
+def run_strax(run_id, input_dir, n_readers, n_readout_threads, debug=False):
+    if debug:
+        log.setLevel(logging.DEBUG)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
         st = new_context()
@@ -408,7 +446,7 @@ def run_strax(run_id, input_dir, n_readers, n_readout_threads):
         raise
 
 
-def process_run(rd):
+def process_run(rd, send_heartbeats=True):
     log.info(f"Starting processing of run {rd['number']}")
     if rd is None:
         raise RuntimeError("Pass a valid rundoc, not None!")
@@ -461,14 +499,15 @@ def process_run(rd):
 
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc, n_readers, n_readout_threads))
+            args=(run_id, loc, n_readers, n_readout_threads, args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)
         strax_proc.start()
 
         while True:
-            send_heartbeat()
+            if send_heartbeats:
+                send_heartbeat()
 
             ec = strax_proc.exitcode
             if ec is None:
