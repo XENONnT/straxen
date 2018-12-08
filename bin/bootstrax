@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Bootstrax: XENONnT online processing manager
 =============================================
@@ -57,18 +58,24 @@ import pytz
 import strax
 import straxen
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
+
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
 parser.add_argument('--debug', action='store_true',
                     help="Start strax processes with debug logging.")
+parser.add_argument('--cores', type=int, default=25,
+                    help="Maximum number of workers to use in a strax process")
+                    
 actions = parser.add_mutually_exclusive_group()
-actions.add_argument('--process', type=int,
+actions.add_argument('--process', type=int, metavar='NUMBER',
                      help="Process a single run, regardless of its status.")
 actions.add_argument('--fail', nargs='+',
+                     metavar=('NUMBER', 'REASON'),
                      help="Fail run number, optionally with reason")
 actions.add_argument('--abandon', nargs='+',
-                     help="Abandon run number, optionally with reason")
-actions.add_argument('--abandon', nargs='+',
+                     metavar=('NUMBER', 'REASON'),
                      help="Abandon run number, optionally with reason")
 args = parser.parse_args()
 
@@ -438,7 +445,7 @@ def run_strax(run_id, input_dir, n_readers, n_readout_threads, debug=False):
                 config=dict(input_dir=input_dir,
                             n_readers=n_readers,
                             n_readout_threads=n_readout_threads),
-                max_workers=25)
+                max_workers=args.cores)
     except Exception as e:
         exc_info = strax.formatted_exception()
         with open(exception_tempfile, mode='w') as f:

@@ -16,12 +16,9 @@ setuptools.setup(name='straxen',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
-                 # setup_requires=['pytest-runner'],
                  install_requires=requires,
-                 # tests_require=requires + ['pytest',
-                 #                           'boltons',
-                 #                           'hypothesis'],
                  long_description=readme + '\n\n' + history,
+                 long_description_content_type="text/markdown",
                  python_requires=">=3.6",
                  extras_require={
                      'docs': ['sphinx',
@@ -30,7 +27,7 @@ setuptools.setup(name='straxen',
                               'recommonmark',
                               'graphviz']
                  },
-                 long_description_content_type="text/markdown",
+                 scripts=['bin/bootstrax'],
                  packages=setuptools.find_packages(),
                  classifiers=[
                      'Development Status :: 4 - Beta',
@@ -41,4 +38,4 @@ setuptools.setup(name='straxen',
                      'Programming Language :: Python :: Implementation :: CPython',
                      'Topic :: Scientific/Engineering :: Physics',
                  ],
-                 zip_safe = False)
+                 zip_safe=False)
