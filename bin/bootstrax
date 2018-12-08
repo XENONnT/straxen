@@ -545,7 +545,9 @@ def process_run(rd, send_heartbeats=True):
                                         for d in os.listdir(loc) 
                                         if '_' not in d])
                 n_chunks_strax = len(st.get_meta(run_id, 'raw_records')['chunks'])
-                if n_chunks_readout != n_chunks_strax:
+                # TODO: allow one messy chunk at the end.
+                # If this remains necessary, make a reader issue
+                if n_chunks_readout > n_chunks_strax + 1:
                      fail(f"Strax produced {n_chunks_strax} chunks "
                           f"but reader wrote {n_chunks_readout} chunk "
                           f"folders in {loc}")
