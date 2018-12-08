@@ -67,6 +67,8 @@ parser.add_argument('--debug', action='store_true',
                     help="Start strax processes with debug logging.")
 parser.add_argument('--cores', type=int, default=25,
                     help="Maximum number of workers to use in a strax process")
+parser.add_argument('--target', default='event_info',
+                    help="Strax data type name that should be produced")
                     
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
@@ -105,10 +107,11 @@ timeouts = {
     'max_processing_time': 7200,
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
-    # Maximum time a run is in the 'busy' state
-    # if exceeded, will be labeled as an untracked failure
-    # Must be larger than max_processing_time!
-    'max_busy_time': 10000,
+    # Maximum time a run is 'busy' without a further update from
+    # its responsible bootstrax. Bootstrax normally updates every 
+    # check_on_strax seconds, so make sure this is substantially
+    # larger than check_on_strax.
+    'max_busy_time': 120,
     # Maximum time a run is in the 'considering' state
     # if exceeded, will be labeled as an untracked failure
     'max_considering_time': 60,
@@ -441,7 +444,7 @@ def run_strax(run_id, input_dir, n_readers, n_readout_threads, debug=False):
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
         st = new_context()
-        st.make(run_id, 'event_info',
+        st.make(run_id, args.target,
                 config=dict(input_dir=input_dir,
                             n_readers=n_readers,
                             n_readout_threads=n_readout_threads),
@@ -627,7 +630,6 @@ def cleanup_db():
     # Runs that say they are 'considering' or 'busy' but nothing happened for a while
     for state, timeout in [
             ('considering', timeouts['max_considering_time']),
-            # TODO: This should be two hours in production
             ('busy', timeouts['max_busy_time'])]:
         while True:
             send_heartbeat()
