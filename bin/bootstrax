@@ -174,14 +174,14 @@ run_db.command('ping')
 
 def main():
     if args.fail:
-        args.fail += ['']
+        args.fail += ['']   # Provide empty reason if none specified
         manual_fail(number=int(args.fail[0]), reason=args.fail[1])
 
     elif args.abandon:
         number = int(args.abandon[0])
         if len(args.abandon) > 1:
             manual_fail(number=number, reason=args.abandon[1])
-        abandon(number=int(args.fail[0]))
+        abandon(number=number)
 
     elif args.process:
         number = args.process
@@ -384,7 +384,7 @@ def consider_run(query, return_new_doc=True):
         sort=[('start', pymongo.DESCENDING)])
 
     # Next, we can update the bootstrax entry properly with set_run_state
-    # (preserving things like n_failures)
+    # (adding hostname, time, etc.)
     if rd is None:
         return None
     return set_run_state(rd, 'considering', return_new_doc=return_new_doc)
@@ -411,7 +411,7 @@ def fail_run(rd, reason):
     clean_run(mongo_id=rd['_id'])
 
     # Report to run db
-    # it's best to do this after everything is done;
+    # It's best to do this after everything is done;
     # as it changes the run state back away from 'considering', so another
     # bootstrax could conceivably pick it up again.
     set_run_state(rd, 'failed',
@@ -449,6 +449,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
                             n_readout_threads=n_readout_threads),
                 max_workers=args.cores)
     except Exception as e:
+        # Write exception to file, so bootstrax can read it 
         exc_info = strax.formatted_exception()
         with open(exception_tempfile, mode='w') as f:
             f.write(exc_info)
@@ -529,7 +530,7 @@ def process_run(rd, send_heartbeats=True):
                     kill_process(strax_proc.pid)
 
                 # Still working, check in later
-                # TODO: check for hangs by looking for activity in output dir
+                # TODO: is there a good way to detect hangs, before max_processing_time expires?
                 log.info(f"Still processing run {run_id}")
                 set_run_state(rd, 'busy', **info)
                 time.sleep(timeouts['check_on_strax'])
@@ -560,7 +561,11 @@ def process_run(rd, send_heartbeats=True):
                     - min([x.get('first_time', float('inf')) 
                            for x in md['chunks']])))
                 run_duration = rd['end'] - rd['start']
-                if run_duration > t_covered + timedelta(seconds=30):
+                if not (0 < t_covered < float('inf')):
+                    fail(f"Processed data covers {t_covered} sec")
+                if not (timdelta(seconds=-30) 
+                        < (run_duration - t_covered) 
+                        < timedelta(seconds=30)):
                     fail(f"Processing covered {t_covered}, "
                          f"but run lasted {run_duration}!")
                 
@@ -569,8 +574,8 @@ def process_run(rd, send_heartbeats=True):
                 break
 
             else:
-                # 'fail' below will raise a warning, this is just an info that we're starting
-                # exception retrieval
+                # This is just the info that we're starting
+                # exception retrieval. The actual error comes later.
                 log.info(f"Failure while procesing run {run_id}")   
                 if osp.exists(exception_tempfile):
                    with open(exception_tempfile, mode='r') as f:
