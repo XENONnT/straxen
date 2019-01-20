@@ -9,7 +9,9 @@ def demo():
                      strax.DataDirectory(straxen.straxen_dir + '/data',
                                          readonly=True)],
             register=straxen.plugins.pax_interface.RecordsFromPax,
-            register_all=straxen.plugins.plugins)
+            register_all=straxen.plugins.plugins,
+            forbid_creation_of=('raw_records',),
+    )
 
 
 def xenon1t_analysis(local_only=False):
