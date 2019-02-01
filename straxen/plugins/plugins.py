@@ -341,7 +341,7 @@ class PeakClassification(strax.Plugin):
 
         return r
 
-
+@export
 @strax.takes_config(
     strax.Option('min_area_fraction', default=0.5,
                  help='The area of competing peaks must be at least '
