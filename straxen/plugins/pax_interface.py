@@ -18,7 +18,14 @@ def pax_to_records(input_filename,
     which is somewhat tricky: you'll have to make a custom pax version
     and apply some undocumented hacks to make it work with python 3.6...
     """
-    from pax import core   # Pax is not a dependency
+
+    # Monkeypatch matplotlib so pax is importable
+    # See https://github.com/XENON1T/pax/pull/734
+    import matplotlib
+    matplotlib._cntr = None
+
+    from pax import core  # Pax is not a dependency
+
     mypax = core.Processor('XENON1T', config_dict=dict(
             pax=dict(
                 look_for_config_in_runs_db=False,

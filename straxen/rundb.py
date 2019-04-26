@@ -2,8 +2,9 @@ import os
 import re
 import socket
 
-import pymongo
 import botocore.client
+from tqdm import tqdm
+import pymongo
 
 import strax
 import straxen
@@ -64,7 +65,7 @@ class RunDB(strax.StorageFrontend):
         self.new_data_path = new_data_path
         if self.new_data_path is None:
             self.readonly = True
-        
+
         self.runid_field = runid_field
 
         if self.runid_field not in ['name', 'number']:
@@ -103,7 +104,7 @@ class RunDB(strax.StorageFrontend):
         self.available_query = [{'host': self.hostname}]
         if not self.local_only:
             self.available_query.append({'host': 'ceph-s3'})
-            
+
         # Go through known host aliases
         for host_alias, regex in self.hosts.items():
             if re.match(regex, self.hostname):
@@ -173,6 +174,16 @@ class RunDB(strax.StorageFrontend):
             dq,
             projection=[self.runid_field])
         return [x[self.runid_field] for x in cursor]
+
+    def _scan_runs(self, store_fields):
+
+        cursor = self.collection.find(
+            filter={},
+            projection=strax.to_str_tuple(store_fields))
+        for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
+                        total=cursor.count()):
+            del doc['_id']  # Remove the Mongo document ID
+            yield doc
 
     def run_metadata(self, run_id, projection=None):
         doc = self.collection.find_one({'name': run_id}, projection=projection)
