@@ -3,14 +3,14 @@ import straxen
 
 
 common_opts = dict(
+    register_all=straxen.plugins.plugins,
     store_run_fields=(
         'name', 'number', 'reader.ini.name',
         'tags.name',
         'start', 'end', 'trigger.events_built',
         'tags.name'),
     check_available=('raw_records', 'records', 'peaks',
-                     'events', 'event_info'),
-    run_mode_field_name='reader__ini__name')
+                     'events', 'event_info'))
 
 
 def demo():
@@ -20,7 +20,6 @@ def demo():
                      strax.DataDirectory(straxen.straxen_dir + '/data',
                                          readonly=True)],
             register=straxen.plugins.pax_interface.RecordsFromPax,
-            register_all=straxen.plugins.plugins,
             forbid_creation_of=('raw_records',),
             **common_opts)
 
@@ -35,7 +34,6 @@ def xenon1t_analysis(local_only=False):
             strax.DataDirectory('./strax_data'),
         ],
         register=straxen.plugins.pax_interface.RecordsFromPax,
-        register_all=straxen.plugins.plugins,
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
         forbid_creation_of=('raw_records',),
@@ -53,5 +51,4 @@ def nt_daq_test_analysis(local_data_dir='./strax_data'):
                 mongo_dbname='xenonnt'),
             # TODO: can we avoid having to declare this as another frontend?
             strax.DataDirectory('./strax_data_jelle')],
-        register_all=straxen.plugins.plugins,
         **common_opts)
