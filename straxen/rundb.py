@@ -27,11 +27,12 @@ class RunDB(strax.StorageFrontend):
 
     Loads appropriate backends ranging from Files to S3.
     """
-
     # Dict of alias used in rundb: regex on hostname
     hosts = {
         'dali': r'^dali.*rcc.*',
     }
+
+    provide_run_metadata = True
 
     def __init__(self,
                  mongo_url=None,
