@@ -331,7 +331,7 @@ class PeakClassification(strax.Plugin):
         p = peaks
         r = np.zeros(len(p), dtype=self.dtype)
 
-        is_s1 = p['n_channels'] > self.config['s1_min_n_channels']
+        is_s1 = p['n_channels'] >= self.config['s1_min_n_channels']
         is_s1 &= p['range_50p_area'] < self.config['s1_max_width']
         r['type'][is_s1] = 1
 
