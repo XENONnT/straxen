@@ -117,27 +117,55 @@ class DAQReader(strax.ParallelSourcePlugin):
 
 
 @export
+@strax.takes_config(
+    strax.Option(
+        'filter',
+        default=None,
+        help='Linear filter to apply to pulses, will be normalized.'),
+    strax.Option(
+        's2_tail_veto',
+        default=False,
+        help="Remove pulses after high-energy S2s (experimental)"),
+    strax.Option(
+        'save_outside_hits',
+        default=(2, 15),
+        help='Save (left, right) samples besides hits; cut the rest'))
 class Records(strax.Plugin):
-    __version__ = '0.0.2'
+    __version__ = '0.1.0'
 
     depends_on = ('raw_records',)
     data_kind = 'records'   # TODO: indicate cuts have been done?
     compressor = 'zstd'
-    parallel = True
+    parallel = 'process'
     rechunk_on_save = False
     dtype = strax.record_dtype()
 
     def compute(self, raw_records):
-        # Remove records from channels for which the gain is unknown
+        # Remove records from funny channels (if present)
         r = raw_records[raw_records['channel'] < len(to_pe)]
 
-        # Experimental data reduction: disabled
-        # Seems to remove many S2s since it triggers on S1s!
-        # (perhaps due to larger amount of afterpuless
-        #r = strax.exclude_tails(r, to_pe)
+        # Do not trust in DAQ + strax.baseline to leave the
+        # out-of-bounds samples to zero.
+        strax.zero_out_of_bounds(r)
+
+        if self.config['s2_tail_veto']:
+            # Experimental data reduction
+            r = strax.exclude_tails(r, to_pe)
+
+        if self.config['filter']:
+            # Filter to concentrate the PMT pulses
+            strax.filter_records(
+                ws, np.array(self.config['filter']))
 
         hits = strax.find_hits(r)
-        strax.cut_outside_hits(r, hits)
+
+        le, re = self.config['save_outside_hits']
+        r = strax.cut_outside_hits(r, hits,
+                                   left_extension=le,
+                                   right_extension=re)
+
+        # Probably overkill, but just to be sure...
+        strax.zero_out_of_bounds(r)
         return r
 
 
@@ -148,7 +176,8 @@ class Records(strax.Plugin):
 class Peaks(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaks'
-    parallel = True
+    compressor = 'zstd'
+    parallel = 'process'
     rechunk_on_save = True
     dtype = strax.peak_dtype(n_channels=len(to_pe))
 
