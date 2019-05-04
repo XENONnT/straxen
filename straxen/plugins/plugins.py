@@ -120,21 +120,25 @@ class DAQReader(strax.ParallelSourcePlugin):
 @strax.takes_config(
     strax.Option(
         'filter',
-        default=None,
+        default=(0.012,-0.119, 
+                 2.435,-1.271, 0.357,-0.174,-0.   ,-0.036,
+                 -0.028,-0.019,-0.025,-0.013,-0.03 ,-0.039,
+                 -0.005,-0.019,-0.012,-0.015,-0.029, 0.024,
+                 -0.007, 0.007,-0.001, 0.005,-0.002, 0.004,-0.002),
         help='Linear filter to apply to pulses, will be normalized.'),
     strax.Option(
         's2_tail_veto',
-        default=False,
+        default=True,
         help="Remove pulses after high-energy S2s (experimental)"),
     strax.Option(
         'save_outside_hits',
-        default=(2, 15),
+        default=(2, 2),
         help='Save (left, right) samples besides hits; cut the rest'))
 class Records(strax.Plugin):
     __version__ = '0.1.0'
 
     depends_on = ('raw_records',)
-    data_kind = 'records'   # TODO: indicate cuts have been done?
+    data_kind = 'records'
     compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = False
@@ -155,7 +159,7 @@ class Records(strax.Plugin):
         if self.config['filter']:
             # Filter to concentrate the PMT pulses
             strax.filter_records(
-                ws, np.array(self.config['filter']))
+                r, np.array(self.config['filter']))
 
         hits = strax.find_hits(r)
 
@@ -176,7 +180,6 @@ class Records(strax.Plugin):
 class Peaks(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaks'
-    compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = True
     dtype = strax.peak_dtype(n_channels=len(to_pe))
@@ -292,16 +295,16 @@ class PeakPositions(strax.Plugin):
     def setup(self):
         import keras
         import tensorflow as tf
+        import tempfile
 
         self.pmt_mask = to_pe[:self.n_top_pmts] > 0
 
         nn = keras.models.model_from_json(
             get_resource(self.config['nn_architecture']))
-        temp_f = '_temp.h5'
-        with open(temp_f, mode='wb') as f:
+        with tempfile.NamedTemporaryFile() as f:
             f.write(get_resource(self.config['nn_weights'],
                                  binary=True))
-        nn.load_weights(temp_f)
+            nn.load_weights(f.name)
         self.nn = nn
 
         # Workaround for using keras/tensorflow in a threaded environment. See:
