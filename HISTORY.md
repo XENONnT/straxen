@@ -1,4 +1,4 @@
-0.2.0 / 2018-05-01
+0.2.0 / 2019-05-04
 ------------------
 - Update records plugin for new pulse processig (#7)
 - Move run selection base code into strax (#6)
