@@ -67,6 +67,10 @@ def strax_workshop_dali():
                 take_only='raw_records',
                 deep_scan=False,
                 readonly=True),
+            strax.DataDirectory(
+                '/dali/lgrandi/aalbers/strax_data',
+                readonly=True,
+                provide_run_metadata=False),
             strax.DataDirectory('./strax_data',
                                 provide_run_metadata=False)],
         register=straxen.plugins.pax_interface.RecordsFromPax,
