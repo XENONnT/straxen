@@ -31,6 +31,11 @@ def xenon1t_analysis(local_only=False):
     return strax.Context(
         storage=[
             straxen.RunDB(local_only=local_only),
+            strax.DataDirectory(
+                '/dali/lgrandi/aalbers/strax_data_raw',
+                take_only='raw_records',
+                deep_scan=False,
+                readonly=True),
             strax.DataDirectory('./strax_data'),
         ],
         register=straxen.plugins.pax_interface.RecordsFromPax,
@@ -52,3 +57,20 @@ def nt_daq_test_analysis(local_data_dir='./strax_data'):
             # TODO: can we avoid having to declare this as another frontend?
             strax.DataDirectory('./strax_data_jelle')],
         **common_opts)
+
+
+def strax_workshop_dali():
+    return strax.Context(
+        storage=[
+            strax.DataDirectory(
+                '/dali/lgrandi/aalbers/strax_data_raw',
+                take_only='raw_records',
+                deep_scan=False,
+                readonly=True),
+            strax.DataDirectory('./strax_data',
+                                provide_run_metadata=False)],
+        register=straxen.plugins.pax_interface.RecordsFromPax,
+        # When asking for runs that don't exist, throw an error rather than
+        # starting the pax converter
+        forbid_creation_of=('raw_records',),
+        **straxen.contexts.common_opts)

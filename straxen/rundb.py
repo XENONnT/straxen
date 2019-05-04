@@ -177,13 +177,16 @@ class RunDB(strax.StorageFrontend):
         return [x[self.runid_field] for x in cursor]
 
     def _scan_runs(self, store_fields):
-
         cursor = self.collection.find(
             filter={},
-            projection=strax.to_str_tuple(store_fields))
+            projection=strax.to_str_tuple(
+                list(store_fields) + ['reader.ini.name']))
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
                         total=cursor.count()):
-            del doc['_id']  # Remove the Mongo document ID
+             # Remove the Mongo document ID and add the run mode
+            del doc['_id']
+            doc.setdefault('mode',
+                           doc.get('reader', {}).get('ini', {}).get('name', ''))
             yield doc
 
     def run_metadata(self, run_id, projection=None):
