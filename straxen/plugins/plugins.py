@@ -132,10 +132,10 @@ class DAQReader(strax.ParallelSourcePlugin):
         help="Remove pulses after high-energy S2s (experimental)"),
     strax.Option(
         'save_outside_hits',
-        default=(2, 2),
+        default=(3, 3),
         help='Save (left, right) samples besides hits; cut the rest'))
 class Records(strax.Plugin):
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     depends_on = ('raw_records',)
     data_kind = 'records'
@@ -156,12 +156,13 @@ class Records(strax.Plugin):
             # Experimental data reduction
             r = strax.exclude_tails(r, to_pe)
 
+        # Find hits before filtering
+        hits = strax.find_hits(r)
+
         if self.config['filter']:
             # Filter to concentrate the PMT pulses
             strax.filter_records(
                 r, np.array(self.config['filter']))
-
-        hits = strax.find_hits(r)
 
         le, re = self.config['save_outside_hits']
         r = strax.cut_outside_hits(r, hits,
