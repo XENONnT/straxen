@@ -150,7 +150,7 @@ def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB iff we can
-    st = straxen.XENONContext(
+    st = strax.Context(
         storage=straxen.RunDB(
             mongo_url=mongo_url,
             mongo_collname=run_collname,
