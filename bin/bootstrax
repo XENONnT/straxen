@@ -531,6 +531,9 @@ def process_run(rd, send_heartbeats=True):
         info = dict(started_processing=t0)
         strax_proc.start()
         pid_process = Process(strax_proc.pid)
+        # Ignore first time of psutil.cpu_percent (returns 0), see documentation
+        pid_process.cpu_percent() 
+        cpu_percent()
 
         while True:
             if send_heartbeats:
