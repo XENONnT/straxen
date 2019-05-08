@@ -7,7 +7,7 @@ import numba
 
 import strax
 from straxen.itp_map import InterpolatingMap
-from straxen.common import to_pe, pax_file, get_resource, get_elife
+from straxen.common import get_to_pe, pax_file, get_resource, get_elife
 export, __all__ = strax.exporter()
 
 
@@ -144,9 +144,12 @@ class Records(strax.Plugin):
     rechunk_on_save = False
     dtype = strax.record_dtype()
 
+    def setup(self):
+        self.to_pe = get_to_pe(self.run_id)
+                          
     def compute(self, raw_records):
         # Remove records from funny channels (if present)
-        r = raw_records[raw_records['channel'] < len(to_pe)]
+        r = raw_records[raw_records['channel'] < len(self.to_pe)]
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
@@ -154,7 +157,7 @@ class Records(strax.Plugin):
 
         if self.config['s2_tail_veto']:
             # Experimental data reduction
-            r = strax.exclude_tails(r, to_pe)
+            r = strax.exclude_tails(r, self.to_pe)
 
         # Find hits before filtering
         hits = strax.find_hits(r)
@@ -183,18 +186,21 @@ class Peaks(strax.Plugin):
     data_kind = 'peaks'
     parallel = 'process'
     rechunk_on_save = True
-    dtype = strax.peak_dtype(n_channels=len(to_pe))
-
+      
+    def infer_dtype(self):
+        self.to_pe = get_to_pe(self.run_id)
+        return strax.peak_dtype(n_channels=len(self.to_pe)) 
+                          
     def compute(self, records):
         r = records
         hits = strax.find_hits(r)       # TODO: Duplicate work
         hits = strax.sort_by_time(hits)
 
-        peaks = strax.find_peaks(hits, to_pe,
+        peaks = strax.find_peaks(hits, self.to_pe,
                                  result_dtype=self.dtype)
-        strax.sum_waveform(peaks, r, to_pe)
+        strax.sum_waveform(peaks, r, self.to_pe)
 
-        peaks = strax.split_peaks(peaks, r, to_pe)
+        peaks = strax.split_peaks(peaks, r, self.to_pe)
 
         strax.compute_widths(peaks)
 
@@ -235,9 +241,10 @@ class PeakBasics(strax.Plugin):
         (('Time resolution of the peak waveform in ns',
         'dt'), np.int16),
         ]
-
-
-
+                          
+    def setup(self):
+        self.to_pe = get_to_pe(self.run_id)
+                          
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
@@ -251,7 +258,7 @@ class PeakBasics(strax.Plugin):
 
         # TODO: get n_top_pmts from config...
         area_top = (p['area_per_channel'][:, :127]
-                    * to_pe[:127].reshape(1, -1)).sum(axis=1)
+                    * self.to_pe[:127].reshape(1, -1)).sum(axis=1)
         # Negative-area peaks get 0 AFT - TODO why not NaN?
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
@@ -299,8 +306,9 @@ class PeakPositions(strax.Plugin):
         import keras
         import tensorflow as tf
         import tempfile
-
-        self.pmt_mask = to_pe[:self.n_top_pmts] > 0
+                          
+        self.to_pe = get_to_pe(self.run_id)
+        self.pmt_mask = self.to_pe[:self.n_top_pmts] > 0
 
         nn = keras.models.model_from_json(
             get_resource(self.config['nn_architecture']))
@@ -326,7 +334,7 @@ class PeakPositions(strax.Plugin):
                         y=np.zeros(0, dtype=np.float32))
 
         # Gain correction. This also changes int->float, so can't do *=
-        x = x * to_pe.reshape(1, -1)
+        x = x * self.to_pe.reshape(1, -1)
 
         # Keep good top PMTS
         x = x[:, :self.n_top_pmts][:, self.pmt_mask]
@@ -680,10 +688,6 @@ class EventPositions(strax.Plugin):
         default_by_run=[
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
-    strax.Option(
-        'electron_lifetime',
-        help="Electron lifetime (ns)",
-        default_by_run=get_elife)
 )
 class CorrectedAreas(strax.Plugin):
     depends_on = ['event_basics', 'event_positions']
@@ -695,12 +699,13 @@ class CorrectedAreas(strax.Plugin):
             get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
-
+        self.elife = get_elife(self.run_id)
+                          
     def compute(self, events):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
         s2_positions = np.vstack([events['x_s2'], events['y_s2']]).T
         lifetime_corr = np.exp(
-            events['drift_time'] / self.config['electron_lifetime'])
+            events['drift_time'] / self.elife)
 
         return dict(
             cs1=events['s1_area'] / self.s1_map(event_positions),
