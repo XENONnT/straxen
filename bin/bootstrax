@@ -53,7 +53,7 @@ import traceback
 
 import numpy as np
 import pymongo
-from psutil import pid_exists
+from psutil import pid_exists, Process, virtual_memory, cpu_percent
 import pytz
 import strax
 import straxen
@@ -69,7 +69,7 @@ parser.add_argument('--cores', type=int, default=25,
                     help="Maximum number of workers to use in a strax process")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
-
+                    
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
                      help="Process a single run, regardless of its status.")
@@ -108,7 +108,7 @@ timeouts = {
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
     # Maximum time a run is 'busy' without a further update from
-    # its responsible bootstrax. Bootstrax normally updates every
+    # its responsible bootstrax. Bootstrax normally updates every 
     # check_on_strax seconds, so make sure this is substantially
     # larger than check_on_strax.
     'max_busy_time': 120,
@@ -146,6 +146,7 @@ hostname = socket.getfqdn()
 state_doc_id = None   # Set in main loop
 
 
+
 def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
@@ -167,8 +168,7 @@ run_db = st.storage[0].client[dbname]
 run_coll = run_db[run_collname]
 bs_coll = run_db['bootstrax']
 log_coll = run_db['log']
-
-# Ping the databases to ensure the mongo connections are working
+usage_coll = run_db['usage']
 run_db.command('ping')
 
 
@@ -185,10 +185,11 @@ def main():
 
     elif args.process:
         number = args.process
-        rd = run_coll.find_one({'number': number})
+        # rd = run_coll.find_one({'number': number})
+        rd = consider_run({'number': number})
         if rd is None:
             raise ValueError(f"No run numbered {number} exists")
-        process_run(rd, send_heartbeats=False)
+        process_run(rd, send_heartbeats=True)
 
     else:
         # Start processing
@@ -277,18 +278,31 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def set_state(state):
+def set_state(state, pid_process = None):
     """Inform the bootstrax collection we're in a different state
 
     if state is None, leave state unchanged, just update heartbeat time
     """
+    if state_doc_id is not None and pid_process is not None:
+        cpu_pid = pid_process.cpu_percent()
+        mem_tot = virtual_memory()
+        usage = {'time':now(),
+                 'pid':pid_process.ppid(),
+                 'cpu_pid': cpu_pid,
+                 'cpu_tot': cpu_percent(),
+                 'mem_pid': pid_process.memory_percent(), 
+                 'mem_tot': mem_tot.used / mem_tot.available}
+        usage_coll.insert_one(usage)
+
     if state_doc_id is None:
         log.debug("Not updating bootstrax doc: none selected. "
                   "You are probably running a rogue bootstrax operation...")
         return
+
     update = {'time': now()}
     if state is not None:
         update['state'] = state
+
     bs_coll.update_one(
         {'_id': state_doc_id},
         {'$set': update})
@@ -449,7 +463,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
                             n_readout_threads=n_readout_threads),
                 max_workers=args.cores)
     except Exception as e:
-        # Write exception to file, so bootstrax can read it
+        # Write exception to file, so bootstrax can read it 
         exc_info = strax.formatted_exception()
         with open(exception_tempfile, mode='w') as f:
             f.write(exc_info)
@@ -501,11 +515,11 @@ def process_run(rd, send_heartbeats=True):
         # If we do not do this, strax will just load this instead of
         # starting a new processing
         clean_run(mongo_id=rd['_id'])
-
+        
         # Remove any temporary exception info from previous runs
         if osp.exists(exception_tempfile):
             os.remove(exception_tempfile)
-
+            
         target = args.target
         if rd['bootstrax'].get('n_failures', 0) > 1 and not args.process:
             # Failed before, and on autopilot: do just raw_records
@@ -514,14 +528,16 @@ def process_run(rd, send_heartbeats=True):
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, args.debug))
-
+           
         t0 = now()
         info = dict(started_processing=t0)
         strax_proc.start()
 
+        pid_process = Process(strax_proc.pid)
+
         while True:
             if send_heartbeats:
-                send_heartbeat()
+                set_state(None, pid_process = pid_process)
 
             ec = strax_proc.exitcode
             if ec is None:
@@ -546,7 +562,7 @@ def process_run(rd, send_heartbeats=True):
                          + traceback.format_exc())
                 if not len(md['chunks']):
                     fail("Processing succeeded, but no chunks were written!")
-
+                         
                 rd = get_run(mongo_id=rd['_id'])
                 if not 'end' in rd:
                     fail("Processing succeeded, but run hasn't yet ended!")
@@ -556,19 +572,19 @@ def process_run(rd, send_heartbeats=True):
                 # Since chunks can be empty, and we don't want to crash,
                 # this has to be done with some care...
                 t_covered = timedelta(seconds=(
-                    max([x.get('last_endtime', 0)
+                    max([x.get('last_endtime', 0) 
                          for x in md['chunks']])
-                    - min([x.get('first_time', float('inf'))
+                    - min([x.get('first_time', float('inf')) 
                            for x in md['chunks']])))
                 run_duration = rd['end'] - rd['start']
                 if not (0 < t_covered < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
-                if not (timdelta(seconds=-30)
-                        < (run_duration - t_covered)
+                if not (timdelta(seconds=-30) 
+                        < (run_duration - t_covered) 
                         < timedelta(seconds=30)):
                     fail(f"Processing covered {t_covered}, "
                          f"but run lasted {run_duration}!")
-
+                
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
                 break
@@ -576,7 +592,7 @@ def process_run(rd, send_heartbeats=True):
             else:
                 # This is just the info that we're starting
                 # exception retrieval. The actual error comes later.
-                log.info(f"Failure while procesing run {run_id}")
+                log.info(f"Failure while procesing run {run_id}")   
                 if osp.exists(exception_tempfile):
                    with open(exception_tempfile, mode='r') as f:
                        exc_info = f.read()
@@ -713,7 +729,7 @@ def cleanup_db():
             '$elemMatch': {
                 'name': 'bad'}}},
          "Run has a 'bad' tag"),
-
+        
         ({'ini.processing_threads': {
             '$exists': False}},
          "Old run doc format without processing thread info"),
