@@ -146,11 +146,10 @@ hostname = socket.getfqdn()
 state_doc_id = None   # Set in main loop
 
 
-
 def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
-    # this avoids duplication, and ensures strax can access the runs DB iff we can
+    # this avoids duplication, and ensures strax can access the runs DB if we can
     st = strax.Context(
         storage=straxen.RunDB(
             mongo_url=mongo_url,
@@ -169,6 +168,8 @@ run_coll = run_db[run_collname]
 bs_coll = run_db['bootstrax']
 log_coll = run_db['log']
 usage_coll = run_db['usage']
+
+# Ping the databases to ensure the mongo connections are working
 run_db.command('ping')
 
 
@@ -185,7 +186,6 @@ def main():
 
     elif args.process:
         number = args.process
-        # rd = run_coll.find_one({'number': number})
         rd = consider_run({'number': number})
         if rd is None:
             raise ValueError(f"No run numbered {number} exists")
@@ -298,11 +298,9 @@ def set_state(state, pid_process = None):
         log.debug("Not updating bootstrax doc: none selected. "
                   "You are probably running a rogue bootstrax operation...")
         return
-
     update = {'time': now()}
     if state is not None:
         update['state'] = state
-
     bs_coll.update_one(
         {'_id': state_doc_id},
         {'$set': update})
@@ -463,7 +461,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
                             n_readout_threads=n_readout_threads),
                 max_workers=args.cores)
     except Exception as e:
-        # Write exception to file, so bootstrax can read it 
+        # Write exception to file, so bootstrax can read it
         exc_info = strax.formatted_exception()
         with open(exception_tempfile, mode='w') as f:
             f.write(exc_info)
@@ -515,11 +513,11 @@ def process_run(rd, send_heartbeats=True):
         # If we do not do this, strax will just load this instead of
         # starting a new processing
         clean_run(mongo_id=rd['_id'])
-        
+
         # Remove any temporary exception info from previous runs
         if osp.exists(exception_tempfile):
             os.remove(exception_tempfile)
-            
+
         target = args.target
         if rd['bootstrax'].get('n_failures', 0) > 1 and not args.process:
             # Failed before, and on autopilot: do just raw_records
@@ -532,7 +530,6 @@ def process_run(rd, send_heartbeats=True):
         t0 = now()
         info = dict(started_processing=t0)
         strax_proc.start()
-
         pid_process = Process(strax_proc.pid)
 
         while True:
@@ -562,7 +559,7 @@ def process_run(rd, send_heartbeats=True):
                          + traceback.format_exc())
                 if not len(md['chunks']):
                     fail("Processing succeeded, but no chunks were written!")
-                         
+
                 rd = get_run(mongo_id=rd['_id'])
                 if not 'end' in rd:
                     fail("Processing succeeded, but run hasn't yet ended!")
@@ -580,11 +577,11 @@ def process_run(rd, send_heartbeats=True):
                 if not (0 < t_covered < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
                 if not (timdelta(seconds=-30) 
-                        < (run_duration - t_covered) 
+                        < (run_duration - t_covered)
                         < timedelta(seconds=30)):
                     fail(f"Processing covered {t_covered}, "
                          f"but run lasted {run_duration}!")
-                
+
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
                 break
@@ -592,7 +589,7 @@ def process_run(rd, send_heartbeats=True):
             else:
                 # This is just the info that we're starting
                 # exception retrieval. The actual error comes later.
-                log.info(f"Failure while procesing run {run_id}")   
+                log.info(f"Failure while procesing run {run_id}")
                 if osp.exists(exception_tempfile):
                    with open(exception_tempfile, mode='r') as f:
                        exc_info = f.read()
@@ -729,7 +726,7 @@ def cleanup_db():
             '$elemMatch': {
                 'name': 'bad'}}},
          "Run has a 'bad' tag"),
-        
+
         ({'ini.processing_threads': {
             '$exists': False}},
          "Old run doc format without processing thread info"),
