@@ -189,7 +189,7 @@ def main():
         rd = consider_run({'number': number})
         if rd is None:
             raise ValueError(f"No run numbered {number} exists")
-        process_run(rd, send_heartbeats=True)
+        process_run(rd)
 
     else:
         # Start processing
@@ -572,7 +572,7 @@ def process_run(rd, send_heartbeats=True):
                 # Since chunks can be empty, and we don't want to crash,
                 # this has to be done with some care...
                 t_covered = timedelta(seconds=(
-                    max([x.get('last_endtime', 0) 
+                    max([x.get('last_endtime', 0)
                          for x in md['chunks']])
                     - min([x.get('first_time', float('inf')) 
                            for x in md['chunks']])))
