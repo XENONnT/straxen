@@ -149,7 +149,7 @@ class Records(strax.Plugin):
     dtype = strax.record_dtype()
 
     def setup(self):
-        self.to_pe = get_to_pe(self.run_id,to_pe_file)
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
                           
     def compute(self, raw_records):
         # Remove records from funny channels (if present)
@@ -196,7 +196,7 @@ class Peaks(strax.Plugin):
     rechunk_on_save = True
       
     def infer_dtype(self):
-        self.to_pe = get_to_pe(self.run_id,to_pe_file)
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
         return strax.peak_dtype(n_channels=len(self.to_pe)) 
                           
     def compute(self, records):
@@ -222,7 +222,7 @@ class Peaks(strax.Plugin):
 
 
 @export
-@strax.takes.config(
+@strax.takes_config(
    strax.Option(
         'to_pe_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
@@ -256,7 +256,7 @@ class PeakBasics(strax.Plugin):
         ]
                           
     def setup(self):
-        self.to_pe = get_to_pe(self.run_id,to_pe_file)
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
                           
     def compute(self, peaks):
         p = peaks
@@ -323,7 +323,7 @@ class PeakPositions(strax.Plugin):
         import tensorflow as tf
         import tempfile
                           
-        self.to_pe = get_to_pe(self.run_id,to_pe_file)
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
         self.pmt_mask = self.to_pe[:self.n_top_pmts] > 0
 
         nn = keras.models.model_from_json(
@@ -718,7 +718,7 @@ class CorrectedAreas(strax.Plugin):
             get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
-        self.elife = get_elife(self.run_id,elife_file)
+        self.elife = get_elife(self.run_id,self.config['elife_file'])
                           
     def compute(self, events):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
