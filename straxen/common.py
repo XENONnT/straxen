@@ -72,8 +72,7 @@ def get_resource(x, fmt='text'):
 
 @export
 def get_elife(run_id,elife_file):
-    file = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy'
-    x = get_resource(file,fmt='npy')
+    x = get_resource(elife_file,fmt='npy')
     e = x[x['run_id']==int(run_id)]['e_life'][0]
     return e
 
