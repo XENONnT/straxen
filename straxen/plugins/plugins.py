@@ -314,7 +314,7 @@ class PeakPositions(strax.Plugin):
             get_resource(self.config['nn_architecture']))
         with tempfile.NamedTemporaryFile() as f:
             f.write(get_resource(self.config['nn_weights'],
-                                 binary=True))
+                                 fmt='binary'))
             nn.load_weights(f.name)
         self.nn = nn
 
@@ -645,7 +645,7 @@ class EventPositions(strax.Plugin):
 
     def setup(self):
         self.map = InterpolatingMap(
-            get_resource(self.config['fdc_map'], binary=True))
+            get_resource(self.config['fdc_map'], fmt='binary'))
 
     def compute(self, events):
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
