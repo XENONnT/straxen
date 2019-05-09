@@ -4,7 +4,6 @@ import os.path as osp
 import os
 import inspect
 import urllib.request
-import json
 
 import numpy as np
 
