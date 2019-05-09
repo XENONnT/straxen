@@ -133,7 +133,11 @@ class DAQReader(strax.ParallelSourcePlugin):
     strax.Option(
         'save_outside_hits',
         default=(3, 3),
-        help='Save (left, right) samples besides hits; cut the rest'))
+        help='Save (left, right) samples besides hits; cut the rest'),
+    strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class Records(strax.Plugin):
     __version__ = '0.1.1'
 
@@ -145,7 +149,7 @@ class Records(strax.Plugin):
     dtype = strax.record_dtype()
 
     def setup(self):
-        self.to_pe = get_to_pe(self.run_id)
+        self.to_pe = get_to_pe(self.run_id,to_pe_file)
                           
     def compute(self, raw_records):
         # Remove records from funny channels (if present)
@@ -180,7 +184,11 @@ class Records(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option('diagnose_sorting', track=False, default=False,
-                 help="Enable runtime checks for sorting and disjointness"))
+                 help="Enable runtime checks for sorting and disjointness"),
+    strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class Peaks(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaks'
@@ -188,7 +196,7 @@ class Peaks(strax.Plugin):
     rechunk_on_save = True
       
     def infer_dtype(self):
-        self.to_pe = get_to_pe(self.run_id)
+        self.to_pe = get_to_pe(self.run_id,to_pe_file)
         return strax.peak_dtype(n_channels=len(self.to_pe)) 
                           
     def compute(self, records):
@@ -214,6 +222,11 @@ class Peaks(strax.Plugin):
 
 
 @export
+@strax.takes.config(
+   strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class PeakBasics(strax.Plugin):
     __version__ = "0.0.1"
     parallel = True
@@ -243,7 +256,7 @@ class PeakBasics(strax.Plugin):
         ]
                           
     def setup(self):
-        self.to_pe = get_to_pe(self.run_id)
+        self.to_pe = get_to_pe(self.run_id,to_pe_file)
                           
     def compute(self, peaks):
         p = peaks
@@ -283,8 +296,11 @@ class PeakBasics(strax.Plugin):
 
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10)
-)
+                 default=10),
+    strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -307,7 +323,7 @@ class PeakPositions(strax.Plugin):
         import tensorflow as tf
         import tempfile
                           
-        self.to_pe = get_to_pe(self.run_id)
+        self.to_pe = get_to_pe(self.run_id,to_pe_file)
         self.pmt_mask = self.to_pe[:self.n_top_pmts] > 0
 
         nn = keras.models.model_from_json(
@@ -688,7 +704,10 @@ class EventPositions(strax.Plugin):
         default_by_run=[
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
-)
+   strax.Option(
+        'elife_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
+        help='link to the electron lifetime'))
 class CorrectedAreas(strax.Plugin):
     depends_on = ['event_basics', 'event_positions']
     dtype = [('cs1', np.float32, 'Corrected S1 area (PE)'),
@@ -699,7 +718,7 @@ class CorrectedAreas(strax.Plugin):
             get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
-        self.elife = get_elife(self.run_id)
+        self.elife = get_elife(self.run_id,elife_file)
                           
     def compute(self, events):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T

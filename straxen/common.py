@@ -15,8 +15,7 @@ straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
 @export
-def get_to_pe(run_id):
-    to_pe_file = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'
+def get_to_pe(run_id,to_pe_file):
     x = get_resource(to_pe_file,fmt='npy')
     to_pe = x[x['run_id']==int(run_id)]['to_pe'][0]
     return to_pe
@@ -72,7 +71,7 @@ def get_resource(x, fmt='text'):
     
 
 @export
-def get_elife(run_id):
+def get_elife(run_id),elife_file:
     file = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy'
     x = get_resource(file,fmt='npy')
     e = x[x['run_id']==int(run_id)]['e_life'][0]
