@@ -1,5 +1,7 @@
+import io
 import socket
 import sys
+import tarfile
 import os.path as osp
 import os
 import inspect
@@ -21,7 +23,7 @@ def get_to_pe(run_id,to_pe_file):
     run_index = np.where(x['run_id'] == int(run_id))[0]
     if not len(run_index):
         # Gains not known: using placeholders
-        run_index = -1
+        run_index = [-1]
     to_pe = x[run_index[0]]['to_pe']
     return to_pe
 
@@ -123,3 +125,13 @@ def get_secret(x):
     if hasattr(xenon_secrets, x):
         return getattr(xenon_secrets, x)
     raise ValueError(message + " and the secret is not in xenon_secrets.py")
+
+
+@export
+def download_test_data():
+    """Downloads strax test data to strax_test_data in the current directory"""
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/b65225d516ec1857c28746a26c8b73d53220764f/strax_test_data.tar',
+                        fmt='binary')
+    f = io.BytesIO(blob)
+    tf = tarfile.open(fileobj=f)
+    tf.extractall()

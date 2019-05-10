@@ -17,8 +17,7 @@ def demo():
     """Return strax context used in the straxen demo notebook"""
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
-                     strax.DataDirectory(straxen.straxen_dir + '/data',
-                                         readonly=True)],
+                     strax.DataDirectory('./strax_test_data')],
             register=straxen.plugins.pax_interface.RecordsFromPax,
             forbid_creation_of=('raw_records',),
             **common_opts)

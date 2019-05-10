@@ -121,7 +121,7 @@ class DAQReader(strax.ParallelSourcePlugin):
 @strax.takes_config(
     strax.Option(
         'filter',
-        default=(0.012,-0.119, 
+        default=(0.012,-0.119,
                  2.435,-1.271, 0.357,-0.174,-0.   ,-0.036,
                  -0.028,-0.019,-0.025,-0.013,-0.03 ,-0.039,
                  -0.005,-0.019,-0.012,-0.015,-0.029, 0.024,
@@ -151,7 +151,7 @@ class Records(strax.Plugin):
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
-                          
+
     def compute(self, raw_records):
         # Remove records from funny channels (if present)
         r = raw_records[raw_records['channel'] < len(self.to_pe)]
@@ -195,11 +195,11 @@ class Peaks(strax.Plugin):
     data_kind = 'peaks'
     parallel = 'process'
     rechunk_on_save = True
-      
+
     def infer_dtype(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
-        return strax.peak_dtype(n_channels=len(self.to_pe)) 
-                          
+        return strax.peak_dtype(n_channels=len(self.to_pe))
+
     def compute(self, records):
         r = records
         hits = strax.find_hits(r)       # TODO: Duplicate work
@@ -255,10 +255,10 @@ class PeakBasics(strax.Plugin):
         (('Time resolution of the peak waveform in ns',
         'dt'), np.int16),
         ]
-                          
+
     def setup(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
-                          
+
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
@@ -325,7 +325,7 @@ class PeakPositions(strax.Plugin):
         import keras
         import tensorflow as tf
         import tempfile
-                          
+
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
 
         nn_json = get_resource(self.config['nn_architecture'])
@@ -726,7 +726,7 @@ class CorrectedAreas(strax.Plugin):
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
         self.elife = get_elife(self.run_id,self.config['elife_file'])
-                          
+
     def compute(self, events):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
         s2_positions = np.vstack([events['x_s2'], events['y_s2']]).T
