@@ -53,7 +53,7 @@ import traceback
 
 import numpy as np
 import pymongo
-from psutil import pid_exists
+from psutil import pid_exists, Process, virtual_memory, cpu_percent
 import pytz
 import strax
 import straxen
@@ -69,7 +69,7 @@ parser.add_argument('--cores', type=int, default=25,
                     help="Maximum number of workers to use in a strax process")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
-
+                    
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
                      help="Process a single run, regardless of its status.")
@@ -108,7 +108,7 @@ timeouts = {
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
     # Maximum time a run is 'busy' without a further update from
-    # its responsible bootstrax. Bootstrax normally updates every
+    # its responsible bootstrax. Bootstrax normally updates every 
     # check_on_strax seconds, so make sure this is substantially
     # larger than check_on_strax.
     'max_busy_time': 120,
@@ -149,7 +149,7 @@ state_doc_id = None   # Set in main loop
 def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
-    # this avoids duplication, and ensures strax can access the runs DB iff we can
+    # this avoids duplication, and ensures strax can access the runs DB if we can
     st = strax.Context(
         storage=straxen.RunDB(
             mongo_url=mongo_url,
@@ -167,6 +167,7 @@ run_db = st.storage[0].client[dbname]
 run_coll = run_db[run_collname]
 bs_coll = run_db['bootstrax']
 log_coll = run_db['log']
+usage_coll = run_db['usage']
 
 # Ping the databases to ensure the mongo connections are working
 run_db.command('ping')
@@ -185,10 +186,10 @@ def main():
 
     elif args.process:
         number = args.process
-        rd = run_coll.find_one({'number': number})
+        rd = consider_run({'number': number})
         if rd is None:
             raise ValueError(f"No run numbered {number} exists")
-        process_run(rd, send_heartbeats=False)
+        process_run(rd)
 
     else:
         # Start processing
@@ -277,11 +278,24 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def set_state(state):
+def set_state(state, pid_process = None, run_number = None):
     """Inform the bootstrax collection we're in a different state
 
     if state is None, leave state unchanged, just update heartbeat time
+    if a pid_process and run_number are provided, update the 'usage' collection
     """
+    if state_doc_id is not None and pid_process is not None and run_number is not None:
+        cpu_pid = pid_process.cpu_percent()
+        mem_tot = virtual_memory()
+        usage = {'run':run_number,
+                 'time':now(),
+                 'pid':pid_process.ppid(),
+                 'cpu_pid': cpu_pid,
+                 'cpu_tot': cpu_percent(),
+                 'mem_pid': pid_process.memory_percent(), 
+                 'mem_tot': mem_tot.used / mem_tot.available}
+        usage_coll.insert_one(usage)
+
     if state_doc_id is None:
         log.debug("Not updating bootstrax doc: none selected. "
                   "You are probably running a rogue bootstrax operation...")
@@ -514,14 +528,18 @@ def process_run(rd, send_heartbeats=True):
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, args.debug))
-
+           
         t0 = now()
         info = dict(started_processing=t0)
         strax_proc.start()
+        pid_process = Process(strax_proc.pid)
+        # Ignore first time of psutil.cpu_percent (returns 0), see documentation
+        pid_process.cpu_percent() 
+        cpu_percent()
 
         while True:
             if send_heartbeats:
-                send_heartbeat()
+                set_state(None, pid_process = pid_process, run_number = run_id)
 
             ec = strax_proc.exitcode
             if ec is None:
@@ -558,12 +576,12 @@ def process_run(rd, send_heartbeats=True):
                 t_covered = timedelta(seconds=(
                     max([x.get('last_endtime', 0)
                          for x in md['chunks']])
-                    - min([x.get('first_time', float('inf'))
+                    - min([x.get('first_time', float('inf')) 
                            for x in md['chunks']])))
                 run_duration = rd['end'] - rd['start']
                 if not (0 < t_covered < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
-                if not (timdelta(seconds=-30)
+                if not (timdelta(seconds=-30) 
                         < (run_duration - t_covered)
                         < timedelta(seconds=30)):
                     fail(f"Processing covered {t_covered}, "
