@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import shutil
 
@@ -318,16 +319,22 @@ class PeakPositions(strax.Plugin):
 
     n_top_pmts = 127
 
+    __version__ = '0.0.1'
+
     def setup(self):
         import keras
         import tensorflow as tf
         import tempfile
                           
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
-        self.pmt_mask = self.to_pe[:self.n_top_pmts] > 0
 
-        nn = keras.models.model_from_json(
-            get_resource(self.config['nn_architecture']))
+        nn_json = get_resource(self.config['nn_architecture'])
+        nn = keras.models.model_from_json(nn_json)
+
+        bad_pmts = json.loads(nn_json)['badPMTList']
+        self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
+                                 bad_pmts)
+
         with tempfile.NamedTemporaryFile() as f:
             f.write(get_resource(self.config['nn_weights'],
                                  fmt='binary'))
