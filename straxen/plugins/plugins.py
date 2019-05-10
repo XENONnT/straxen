@@ -7,7 +7,7 @@ import numba
 
 import strax
 from straxen.itp_map import InterpolatingMap
-from straxen.common import to_pe, pax_file, get_resource, get_elife
+from straxen.common import get_to_pe, pax_file, get_resource, get_elife
 export, __all__ = strax.exporter()
 
 
@@ -133,7 +133,11 @@ class DAQReader(strax.ParallelSourcePlugin):
     strax.Option(
         'save_outside_hits',
         default=(3, 3),
-        help='Save (left, right) samples besides hits; cut the rest'))
+        help='Save (left, right) samples besides hits; cut the rest'),
+    strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class Records(strax.Plugin):
     __version__ = '0.1.1'
 
@@ -144,9 +148,12 @@ class Records(strax.Plugin):
     rechunk_on_save = False
     dtype = strax.record_dtype()
 
+    def setup(self):
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
+                          
     def compute(self, raw_records):
         # Remove records from funny channels (if present)
-        r = raw_records[raw_records['channel'] < len(to_pe)]
+        r = raw_records[raw_records['channel'] < len(self.to_pe)]
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
@@ -154,7 +161,7 @@ class Records(strax.Plugin):
 
         if self.config['s2_tail_veto']:
             # Experimental data reduction
-            r = strax.exclude_tails(r, to_pe)
+            r = strax.exclude_tails(r, self.to_pe)
 
         # Find hits before filtering
         hits = strax.find_hits(r)
@@ -177,24 +184,31 @@ class Records(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option('diagnose_sorting', track=False, default=False,
-                 help="Enable runtime checks for sorting and disjointness"))
+                 help="Enable runtime checks for sorting and disjointness"),
+    strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class Peaks(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaks'
     parallel = 'process'
     rechunk_on_save = True
-    dtype = strax.peak_dtype(n_channels=len(to_pe))
-
+      
+    def infer_dtype(self):
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
+        return strax.peak_dtype(n_channels=len(self.to_pe)) 
+                          
     def compute(self, records):
         r = records
         hits = strax.find_hits(r)       # TODO: Duplicate work
         hits = strax.sort_by_time(hits)
 
-        peaks = strax.find_peaks(hits, to_pe,
+        peaks = strax.find_peaks(hits, self.to_pe,
                                  result_dtype=self.dtype)
-        strax.sum_waveform(peaks, r, to_pe)
+        strax.sum_waveform(peaks, r, self.to_pe)
 
-        peaks = strax.split_peaks(peaks, r, to_pe)
+        peaks = strax.split_peaks(peaks, r, self.to_pe)
 
         strax.compute_widths(peaks)
 
@@ -208,6 +222,11 @@ class Peaks(strax.Plugin):
 
 
 @export
+@strax.takes_config(
+   strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class PeakBasics(strax.Plugin):
     __version__ = "0.0.1"
     parallel = True
@@ -233,9 +252,12 @@ class PeakBasics(strax.Plugin):
         (('Length of the peak waveform in samples',
           'length'), np.int32),
         (('Time resolution of the peak waveform in ns',
-          'dt'), np.int16),
-    ]
-
+        'dt'), np.int16),
+        ]
+                          
+    def setup(self):
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
+                          
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
@@ -249,7 +271,7 @@ class PeakBasics(strax.Plugin):
 
         # TODO: get n_top_pmts from config...
         area_top = (p['area_per_channel'][:, :127]
-                    * to_pe[:127].reshape(1, -1)).sum(axis=1)
+                    * self.to_pe[:127].reshape(1, -1)).sum(axis=1)
         # Negative-area peaks get 0 AFT - TODO why not NaN?
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
@@ -274,8 +296,11 @@ class PeakBasics(strax.Plugin):
 
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10)
-)
+                 default=10),
+    strax.Option(
+        'to_pe_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+        help='link to the to_pe conversion factors'))
 class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -297,14 +322,15 @@ class PeakPositions(strax.Plugin):
         import keras
         import tensorflow as tf
         import tempfile
-
-        self.pmt_mask = to_pe[:self.n_top_pmts] > 0
+                          
+        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
+        self.pmt_mask = self.to_pe[:self.n_top_pmts] > 0
 
         nn = keras.models.model_from_json(
             get_resource(self.config['nn_architecture']))
         with tempfile.NamedTemporaryFile() as f:
             f.write(get_resource(self.config['nn_weights'],
-                                 binary=True))
+                                 fmt='binary'))
             nn.load_weights(f.name)
         self.nn = nn
 
@@ -324,7 +350,7 @@ class PeakPositions(strax.Plugin):
                         y=np.zeros(0, dtype=np.float32))
 
         # Gain correction. This also changes int->float, so can't do *=
-        x = x * to_pe.reshape(1, -1)
+        x = x * self.to_pe.reshape(1, -1)
 
         # Keep good top PMTS
         x = x[:, :self.n_top_pmts][:, self.pmt_mask]
@@ -509,7 +535,7 @@ class Events(strax.OverlapWindowPlugin):
 
 @export
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.12'
     depends_on = ('events',
                   'peak_basics', 'peak_classification',
                   'peak_positions', 'n_competing')
@@ -534,6 +560,14 @@ class EventBasics(strax.LoopPlugin):
                    f'Main S2 reconstructed X position (cm), uncorrected',),
                   (f'y_s2', np.float32,
                    f'Main S2 reconstructed Y position (cm), uncorrected',)]
+        dtype += [(f's2_largest_other',np.float32,
+                   f'Largest other S2 area (PE) in event, uncorrected',),
+                   (f's1_largest_other',np.float32,
+                   f'Largest other S1 area (PE) in event, uncorrected',),
+                   (f'alt_s1_interaction_drift_time',np.float32,
+                   f'Drift time with alternative s1',)
+                    ]
+
         return dtype
 
     def compute_loop(self, event, peaks):
@@ -559,6 +593,15 @@ class EventBasics(strax.LoopPlugin):
                 continue
 
             main_i = np.argmax(ss['area'])
+            #Find largest other signals
+            if s_i == 2 and ss['n_competing'][main_i]>0 and len(ss['area'])>1:
+                s2_second_i = np.argsort(ss['area'])[-2]
+                result[f's2_largest_other'] = ss['area'][s2_second_i]
+
+            if s_i == 1 and ss['n_competing'][main_i]>0 and len(ss['area'])>1:
+                s1_second_i = np.argsort(ss['area'])[-2]
+                result[f's1_largest_other'] = ss['area'][s1_second_i]
+
             result[f's{s_i}_index'] = s_indices[main_i]
             s = main_s[s_i] = ss[main_i]
 
@@ -572,6 +615,9 @@ class EventBasics(strax.LoopPlugin):
         # Compute a drift time only if we have a valid S1-S2 pairs
         if len(main_s) == 2:
             result['drift_time'] = main_s[2]['time'] - main_s[1]['time']
+        #Compute alternative drift time
+            if 's1_second_i' in locals():
+                result['alt_s1_interaction_drift_time'] = main_s[2]['time'] - ss['time'][s1_second_i]
 
         return result
 
@@ -615,7 +661,7 @@ class EventPositions(strax.Plugin):
 
     def setup(self):
         self.map = InterpolatingMap(
-            get_resource(self.config['fdc_map'], binary=True))
+            get_resource(self.config['fdc_map'], fmt='binary'))
 
     def compute(self, events):
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
@@ -658,11 +704,10 @@ class EventPositions(strax.Plugin):
         default_by_run=[
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
-    strax.Option(
-        'electron_lifetime',
-        help="Electron lifetime (ns)",
-        default_by_run=get_elife)
-)
+   strax.Option(
+        'elife_file',
+        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
+        help='link to the electron lifetime'))
 class CorrectedAreas(strax.Plugin):
     depends_on = ['event_basics', 'event_positions']
     dtype = [('cs1', np.float32, 'Corrected S1 area (PE)'),
@@ -673,12 +718,13 @@ class CorrectedAreas(strax.Plugin):
             get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
-
+        self.elife = get_elife(self.run_id,self.config['elife_file'])
+                          
     def compute(self, events):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
         s2_positions = np.vstack([events['x_s2'], events['y_s2']]).T
         lifetime_corr = np.exp(
-            events['drift_time'] / self.config['electron_lifetime'])
+            events['drift_time'] / self.elife)
 
         return dict(
             cs1=events['s1_area'] / self.s1_map(event_positions),
