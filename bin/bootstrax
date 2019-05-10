@@ -278,16 +278,18 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def set_state(state, pid_process = None, run_number = None):
+def set_state(state, pid_process = None, run_number = None, hostname = None):
     """Inform the bootstrax collection we're in a different state
 
     if state is None, leave state unchanged, just update heartbeat time
     if a pid_process and run_number are provided, update the 'usage' collection
     """
-    if state_doc_id is not None and pid_process is not None and run_number is not None:
+    if (state_doc_id is not None and pid_process is not None and
+        run_number is not None and hostname is not None):
         cpu_pid = pid_process.cpu_percent()
         mem_tot = virtual_memory()
         usage = {'run':run_number,
+                 'host':hostname,
                  'time':now(),
                  'pid':pid_process.ppid(),
                  'cpu_pid': cpu_pid,
@@ -539,7 +541,8 @@ def process_run(rd, send_heartbeats=True):
 
         while True:
             if send_heartbeats:
-                set_state(None, pid_process = pid_process, run_number = run_id)
+                set_state(None, pid_process = pid_process,
+                          run_number = run_id, hostname = hostname)
 
             ec = strax_proc.exitcode
             if ec is None:
