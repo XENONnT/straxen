@@ -14,11 +14,17 @@ __all__ += ['straxen_dir']
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
+
 @export
 def get_to_pe(run_id,to_pe_file):
-    x = get_resource(to_pe_file,fmt='npy')
-    to_pe = x[x['run_id']==int(run_id)]['to_pe'][0]
+    x = get_resource(to_pe_file, fmt='npy')
+    run_index = np.where(x['run_id'] == int(run_id))[0]
+    if not len(run_index):
+        # Gains not known: using placeholders
+        run_index = -1
+    to_pe = x[run_index[0]]['to_pe']
     return to_pe
+
 
 @export
 def pax_file(x):
@@ -36,11 +42,11 @@ def get_resource(x, fmt='text'):
     :param binary: Resource is binary. Return bytes instead of a string.
     """
     is_binary = fmt != 'text'
-    
+
     # Try to retrieve from in-memory cache
     if x in cache_dict:
         return cache_dict[x]
-    
+
     if '://' in x:
         # Web resource. Use on-file cache to prevent
         # repeated downloads (in multiple strax sessions)
@@ -68,7 +74,7 @@ def get_resource(x, fmt='text'):
             result = f.read()
     cache_dict[x] = result
     return result
-    
+
 
 @export
 def get_elife(run_id,elife_file):
