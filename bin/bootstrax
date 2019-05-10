@@ -577,15 +577,15 @@ def process_run(rd, send_heartbeats=True):
                     max([x.get('last_endtime', 0)
                          for x in md['chunks']])
                     - min([x.get('first_time', float('inf')) 
-                           for x in md['chunks']])))
+                           for x in md['chunks']]))/1e9)
                 run_duration = rd['end'] - rd['start']
-                if not (0 < t_covered < float('inf')):
+                if not (0 < t_covered.seconds < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
-                if not (timdelta(seconds=-30) 
+                if not (timedelta(seconds=-30)
                         < (run_duration - t_covered)
                         < timedelta(seconds=30)):
-                    fail(f"Processing covered {t_covered}, "
-                         f"but run lasted {run_duration}!")
+                    fail(f"Processing covered {t_covered.seconds}, "
+                         f"but run lasted {run_duration.seconds}!")
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
