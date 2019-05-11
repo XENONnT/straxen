@@ -4,3 +4,4 @@ name: py36
 dependencies:
   - python=3.6
   - graphviz
+  - docutils
