@@ -25,6 +25,10 @@ setuptools.setup(name='straxen',
                               'sphinx_rtd_theme',
                               'nbsphinx',
                               'recommonmark',
+                              'graphviz'],
+                     'docs_rtd': [
+                              'nbsphinx',
+                              'recommonmark',
                               'graphviz']
                  },
                  scripts=['bin/bootstrax'],
