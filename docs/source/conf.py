@@ -45,6 +45,9 @@ extensions = [
     'nbsphinx',
 ]
 
+# ADDED MANUALLY
+autodoc_mock_imports = ["zstd", "blosc"]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
