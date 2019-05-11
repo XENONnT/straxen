@@ -34,7 +34,6 @@ def pax_file(x):
     return 'https://raw.githubusercontent.com/XENON1T/pax/master/pax/data/' + x
 
 
-cache_folder = './resource_cache'
 cache_dict = dict()
 
 # Placeholder for resource management system in the future?
@@ -50,22 +49,45 @@ def get_resource(x, fmt='text'):
         return cache_dict[x]
 
     if '://' in x:
-        # Web resource. Use on-file cache to prevent
-        # repeated downloads (in multiple strax sessions)
-        cache_f = os.path.join(cache_folder,
-                               strax.utils.deterministic_hash(x))
-        if not os.path.exists(cache_folder):
-            os.makedirs(cache_folder)
-        if not os.path.exists(cache_f):
-            y = urllib.request.urlopen(x).read()
-            with open(cache_f, mode='wb' if is_binary else 'w') as f:
-                if not is_binary:
-                    y = y.decode()
-                f.write(y)
-        # Now load it from the file cache
-        return get_resource(cache_f,fmt=fmt)
+        # Web resource; look first in on-disk cache
+        # to prevent repeated downloads.
+        cache_fn = strax.utils.deterministic_hash(x)
+        cache_folders = ['./resource_cache',
+                         '/dali/lgrandi/strax/resource_cache']
+        for cache_folder in cache_folders:
+            if not os.path.exists(cache_folder):
+                os.makedirs(cache_folder)
+            cf = osp.join(cache_folder, cache_fn)
+            if osp.exists(cf):
+                return get_resource(cf, fmt=fmt)
 
-    # File resource (possibly downloaded)
+        # Not found in any cache; download
+        result = urllib.request.urlopen(x).read()
+        if not is_binary:
+            result = result.decode()
+
+        # Store in as many caches as possible
+        m = 'wb' if is_binary else 'w'
+        available_cf = None
+        for cache_folder in cache_folders:
+            try:
+                cf = osp.join(cache_folder, cache_fn)
+                with open(cf, mode=m) as f:
+                    f.write(result)
+                available_cf = cf
+            except Exception:
+                # Too bad
+                pass
+        if available_cf is None:
+            raise RuntimeError(
+                f"Could not load {x},"
+                "none of the on-disk caches are writeable??")
+
+        # Retrieve result from file-cache
+        # (so we only need one format-parsing logic)
+        return get_resource(available_cf, fmt=fmt)
+
+    # File resource
     if fmt == 'npy':
         result = np.load(x)
     elif fmt == 'binary':
@@ -74,7 +96,10 @@ def get_resource(x, fmt='text'):
     elif fmt == 'text':
         with open(x, mode='r') as f:
             result = f.read()
+
+    # Store in in-memory cache
     cache_dict[x] = result
+
     return result
 
 
