@@ -21,15 +21,12 @@ setuptools.setup(name='straxen',
                  long_description_content_type="text/markdown",
                  python_requires=">=3.6",
                  extras_require={
-                     'docs': ['sphinx',
+                     'docs': ['docutils==0.14',
+                              'sphinx',
                               'sphinx_rtd_theme',
                               'nbsphinx',
                               'recommonmark',
                               'graphviz'],
-                     'docs_rtd': [
-                              'nbsphinx',
-                              'recommonmark',
-                              'graphviz']
                  },
                  scripts=['bin/bootstrax'],
                  packages=setuptools.find_packages(),
