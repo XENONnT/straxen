@@ -43,18 +43,18 @@ straxen.rundb module
     :undoc-members:
     :show-inheritance:
 
-straxen.utils module
+straxen.units module
 --------------------
 
-.. automodule:: straxen.utils
+.. automodule:: straxen.units
     :members:
     :undoc-members:
     :show-inheritance:
 
-straxen.xenon\_context module
------------------------------
+straxen.utils module
+--------------------
 
-.. automodule:: straxen.xenon_context
+.. automodule:: straxen.utils
     :members:
     :undoc-members:
     :show-inheritance:

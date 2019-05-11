@@ -55,8 +55,10 @@ def get_resource(x, fmt='text'):
         cache_folders = ['./resource_cache',
                          '/dali/lgrandi/strax/resource_cache']
         for cache_folder in cache_folders:
-            if not os.path.exists(cache_folder):
-                os.makedirs(cache_folder)
+            try:
+                os.makedirs(cache_folder, exist_ok=True)
+            except PermissionError:
+                continue
             cf = osp.join(cache_folder, cache_fn)
             if osp.exists(cf):
                 return get_resource(cf, fmt=fmt)
@@ -70,14 +72,16 @@ def get_resource(x, fmt='text'):
         m = 'wb' if is_binary else 'w'
         available_cf = None
         for cache_folder in cache_folders:
+            if not osp.exists(cache_folder):
+                continue
+            cf = osp.join(cache_folder, cache_fn)
             try:
-                cf = osp.join(cache_folder, cache_fn)
                 with open(cf, mode=m) as f:
                     f.write(result)
-                available_cf = cf
             except Exception:
-                # Too bad
                 pass
+            else:
+                available_cf = cf
         if available_cf is None:
             raise RuntimeError(
                 f"Could not load {x},"
