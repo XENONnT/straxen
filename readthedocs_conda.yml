@@ -10,3 +10,5 @@ dependencies:
   - sphinx_rtd_theme
   - nbsphinx
   - recommonmark
+  - pip:
+      - graphviz
