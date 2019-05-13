@@ -1,5 +1,5 @@
-strax>=0.6.0
+strax>=0.7.1
+tensorflow<2
 keras
-tensorflow
 scipy
 pymongo
