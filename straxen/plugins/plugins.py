@@ -229,7 +229,7 @@ class Peaks(strax.Plugin):
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
         help='link to the to_pe conversion factors'))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
     parallel = True
     depends_on = ('peaks',)
     dtype = [
@@ -268,7 +268,7 @@ class PeakBasics(strax.Plugin):
         r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
         r['range_50p_area'] = p['width'][:, 5]
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
-        r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
+        r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1) * self.to_pe[r['max_pmt']]
 
         # TODO: get n_top_pmts from config...
         area_top = (p['area_per_channel'][:, :127]
