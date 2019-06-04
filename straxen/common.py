@@ -57,7 +57,7 @@ def get_resource(x, fmt='text'):
         for cache_folder in cache_folders:
             try:
                 os.makedirs(cache_folder, exist_ok=True)
-            except PermissionError:
+            except (PermissionError, OSError):
                 continue
             cf = osp.join(cache_folder, cache_fn)
             if osp.exists(cf):
