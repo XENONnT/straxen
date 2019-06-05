@@ -50,7 +50,13 @@ class DAQReader(strax.ParallelSourcePlugin):
                 else:
                     print(f"Found incomplete folder {q}: contains {n_files} files but "
                           f"expected {self.config['n_readout_threads']}. Waiting for more data.")
-                    result.append(False)
+                    if self.source_finished():
+                        # For low rates, different threads might end in a different chunck at
+                        # the end of a run, still keep the results in this case.
+                        print(f"Run finished correctly nonetheless -> saving the results")
+                        result.append(q)
+                    else: 
+                        result.append(False)
             else:
                 result.append(False)
         return tuple(result)
