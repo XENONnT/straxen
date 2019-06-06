@@ -1,3 +1,11 @@
+0.2.1 / 2019-06-06
+------------------
+- Robustness to 0-gain channels, Peaks options available (#15)
+- Catch OSError for readonly cache dirs (#14)
+- Bootstrax updates (#12, #10)
+- Get to_pe and elife from github, add cut plugins (#9)
+
+
 0.2.0 / 2019-05-04
 ------------------
 - Update records plugin for new pulse processig (#7)
