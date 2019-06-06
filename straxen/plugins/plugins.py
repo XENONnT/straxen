@@ -528,11 +528,15 @@ class Events(strax.OverlapWindowPlugin):
         result['endtime'] = t1
         result['event_number'] = np.arange(len(result)) + self.events_seen
 
+        if not result.size > 0:
+            print("Found chunk without events?!")
+
         self.events_seen += len(result)
 
         return result
         # TODO: someday investigate if/why loopplugin doesn't give
         # anything if events do not contain peaks..
+        # Likely this has been resolved in 6a2cc6c
 
     @staticmethod
     def find_peak_groups(peaks, gap_threshold,
@@ -553,14 +557,15 @@ class Events(strax.OverlapWindowPlugin):
         # TODO: is there no cleaner way?
         fake_hits = np.zeros(len(peaks), dtype=strax.hit_dtype)
         fake_hits['dt'] = 1
+        fake_hits['area'] = 1
         fake_hits['time'] = peaks['time']
         # TODO: could this cause int overrun nonsense anywhere?
         fake_hits['length'] = peaks['endtime'] - peaks['time']
         fake_peaks = strax.find_peaks(
-            fake_hits, adc_to_pe=np.zeros(1),
+            fake_hits, adc_to_pe=np.ones(1),
             gap_threshold=gap_threshold,
             left_extension=left_extension, right_extension=right_extension,
-            min_hits=1, min_area=0,
+            min_channels=1, min_area=0,
             max_duration=max_duration)
         return fake_peaks['time'], strax.endtime(fake_peaks)
 
