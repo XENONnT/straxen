@@ -159,7 +159,7 @@ def get_secret(x):
 @export
 def download_test_data():
     """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/b65225d516ec1857c28746a26c8b73d53220764f/strax_test_data.tar',
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/8271dd11d647b01ea4bc587bd0af590e187ad199/strax_test_data.tar',
                         fmt='binary')
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
