@@ -278,24 +278,30 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def set_state(state, pid_process = None, run_number = None):
+def update_usage(pid_process, run_number):
+    """Save information on the usage of resources in the 'usage' collection. The
+    information contains percentages of CPU and Memory usage both for the 
+    sub-process (due to the multiprocessing) itself and on the host as a whole.
+    """
+    frac_to_percent = 100
+    mem_tot = virtual_memory()
+    usage = {'run':run_number,
+             'host':hostname,
+             'time':now(),
+             'pid':pid_process.ppid(),
+             'cpu_pid': pid_process.cpu_percent(),
+             'cpu_tot': cpu_percent(),
+             'mem_pid': pid_process.memory_percent(),
+             'mem_tot': frac_to_percent * mem_tot.used / mem_tot.available}
+    usage_coll.insert_one(usage)
+
+
+def set_state(state):
     """Inform the bootstrax collection we're in a different state
 
-    if state is None, leave state unchanged, just update heartbeat time
-    if a pid_process and run_number are provided, update the 'usage' collection
+    if state is None, leave state unchanged, just update heartbeat time    
     """
-    if state_doc_id is not None and pid_process is not None and run_number is not None:
-        cpu_pid = pid_process.cpu_percent()
-        mem_tot = virtual_memory()
-        usage = {'run':run_number,
-                 'time':now(),
-                 'pid':pid_process.ppid(),
-                 'cpu_pid': cpu_pid,
-                 'cpu_tot': cpu_percent(),
-                 'mem_pid': pid_process.memory_percent(), 
-                 'mem_tot': mem_tot.used / mem_tot.available}
-        usage_coll.insert_one(usage)
-
+    
     if state_doc_id is None:
         log.debug("Not updating bootstrax doc: none selected. "
                   "You are probably running a rogue bootstrax operation...")
@@ -539,8 +545,9 @@ def process_run(rd, send_heartbeats=True):
 
         while True:
             if send_heartbeats:
-                set_state(None, pid_process = pid_process, run_number = run_id)
-
+                update_usage(pid_process = pid_process, run_number = run_id)
+                send_heartbeat()
+                 
             ec = strax_proc.exitcode
             if ec is None:
                 if t0 < now(-timeouts['max_processing_time']):
@@ -577,15 +584,15 @@ def process_run(rd, send_heartbeats=True):
                     max([x.get('last_endtime', 0)
                          for x in md['chunks']])
                     - min([x.get('first_time', float('inf')) 
-                           for x in md['chunks']])))
+                           for x in md['chunks']]))/1e9)
                 run_duration = rd['end'] - rd['start']
-                if not (0 < t_covered < float('inf')):
+                if not (0 < t_covered.seconds < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
-                if not (timdelta(seconds=-30) 
+                if not (timedelta(seconds=-30)
                         < (run_duration - t_covered)
                         < timedelta(seconds=30)):
-                    fail(f"Processing covered {t_covered}, "
-                         f"but run lasted {run_duration}!")
+                    fail(f"Processing covered {t_covered.seconds}, "
+                         f"but run lasted {run_duration.seconds}!")
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)

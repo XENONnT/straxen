@@ -50,7 +50,13 @@ class DAQReader(strax.ParallelSourcePlugin):
                 else:
                     print(f"Found incomplete folder {q}: contains {n_files} files but "
                           f"expected {self.config['n_readout_threads']}. Waiting for more data.")
-                    result.append(False)
+                    if self.source_finished():
+                        # For low rates, different threads might end in a different chunck at
+                        # the end of a run, still keep the results in this case.
+                        print(f"Run finished correctly nonetheless -> saving the results")
+                        result.append(q)
+                    else: 
+                        result.append(False)
             else:
                 result.append(False)
         return tuple(result)
@@ -162,6 +168,7 @@ class Records(strax.Plugin):
 
         if self.config['s2_tail_veto']:
             # Experimental data reduction
+            # TODO: should make independent of to_pe!
             r = strax.exclude_tails(r, self.to_pe)
 
         # Find hits before filtering
@@ -184,17 +191,35 @@ class Records(strax.Plugin):
 
 @export
 @strax.takes_config(
+    strax.Option('peak_gap_threshold', default=300,
+                 help="No hits for this many ns triggers a new peak"),
+    strax.Option('peak_left_extension', default=30,
+                 help="Include this many ns left of hits in peaks"),
+    strax.Option('peak_right_extension', default=30,
+                 help="Include this many ns right of hits in peaks"),
+    strax.Option('peak_min_pmts', default=2,
+                 help="Minimum contributing PMTs needed to define a peak"),
+    strax.Option('single_channel_peaks', default=False,
+                 help='Whether single-channel peaks should be reported'),
+    strax.Option('peak_split_min_height', default=25,
+                 help="Minimum height in PE above a local sum waveform"
+                      "minimum, on either side, to trigger a split"),
+    strax.Option('peak_split_min_ratio', default=4,
+                 help="Minimum ratio between local sum waveform"
+                      "minimum and maxima on either side, to trigger a split"),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option(
         'to_pe_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-        help='link to the to_pe conversion factors'))
+        help='Link to the to_pe conversion factors'))
 class Peaks(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaks'
     parallel = 'process'
     rechunk_on_save = True
+
+    __version__ = '0.1.0'
 
     def infer_dtype(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
@@ -202,14 +227,28 @@ class Peaks(strax.Plugin):
 
     def compute(self, records):
         r = records
-        hits = strax.find_hits(r)       # TODO: Duplicate work
+
+        hits = strax.find_hits(r)
+
+        # Remove hits in zero-gain channels
+        # they should not affect the clustering!
+        hits = hits[self.to_pe[hits['channel']] != 0]
+
         hits = strax.sort_by_time(hits)
 
-        peaks = strax.find_peaks(hits, self.to_pe,
-                                 result_dtype=self.dtype)
+        peaks = strax.find_peaks(
+            hits, self.to_pe,
+            gap_threshold=self.config['peak_gap_threshold'],
+            left_extension=self.config['peak_left_extension'],
+            right_extension=self.config['peak_right_extension'],
+            min_channels=self.config['peak_min_pmts'],
+            result_dtype=self.dtype)
         strax.sum_waveform(peaks, r, self.to_pe)
 
-        peaks = strax.split_peaks(peaks, r, self.to_pe)
+        peaks = strax.split_peaks(
+            peaks, r, self.to_pe,
+            min_height=self.config['peak_split_min_height'],
+            min_ratio=self.config['peak_split_min_ratio'])
 
         strax.compute_widths(peaks)
 
@@ -224,10 +263,9 @@ class Peaks(strax.Plugin):
 
 @export
 @strax.takes_config(
-   strax.Option(
-        'to_pe_file',
-        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-        help='link to the to_pe conversion factors'))
+    strax.Option('n_top_pmts', default=127,
+                 help="Number of top PMTs")
+)
 class PeakBasics(strax.Plugin):
     __version__ = "0.0.1"
     parallel = True
@@ -253,11 +291,8 @@ class PeakBasics(strax.Plugin):
         (('Length of the peak waveform in samples',
           'length'), np.int32),
         (('Time resolution of the peak waveform in ns',
-        'dt'), np.int16),
+          'dt'), np.int16),
         ]
-
-    def setup(self):
-        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
 
     def compute(self, peaks):
         p = peaks
@@ -270,9 +305,8 @@ class PeakBasics(strax.Plugin):
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
 
-        # TODO: get n_top_pmts from config...
-        area_top = (p['area_per_channel'][:, :127]
-                    * self.to_pe[:127].reshape(1, -1)).sum(axis=1)
+        n_top = self.config['n_top_pmts']
+        area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Negative-area peaks get 0 AFT - TODO why not NaN?
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
@@ -297,11 +331,7 @@ class PeakBasics(strax.Plugin):
 
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10),
-    strax.Option(
-        'to_pe_file',
-        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-        help='link to the to_pe conversion factors'))
+                 default=10))
 class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -325,8 +355,6 @@ class PeakPositions(strax.Plugin):
         import keras
         import tensorflow as tf
         import tempfile
-
-        self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
 
         nn_json = get_resource(self.config['nn_architecture'])
         nn = keras.models.model_from_json(nn_json)
@@ -355,9 +383,6 @@ class PeakPositions(strax.Plugin):
             # Nothing to do, and .predict crashes on empty arrays
             return dict(x=np.zeros(0, dtype=np.float32),
                         y=np.zeros(0, dtype=np.float32))
-
-        # Gain correction. This also changes int->float, so can't do *=
-        x = x * self.to_pe.reshape(1, -1)
 
         # Keep good top PMTS
         x = x[:, :self.n_top_pmts][:, self.pmt_mask]
@@ -503,11 +528,15 @@ class Events(strax.OverlapWindowPlugin):
         result['endtime'] = t1
         result['event_number'] = np.arange(len(result)) + self.events_seen
 
+        if not result.size > 0:
+            print("Found chunk without events?!")
+
         self.events_seen += len(result)
 
         return result
         # TODO: someday investigate if/why loopplugin doesn't give
         # anything if events do not contain peaks..
+        # Likely this has been resolved in 6a2cc6c
 
     @staticmethod
     def find_peak_groups(peaks, gap_threshold,
@@ -528,14 +557,15 @@ class Events(strax.OverlapWindowPlugin):
         # TODO: is there no cleaner way?
         fake_hits = np.zeros(len(peaks), dtype=strax.hit_dtype)
         fake_hits['dt'] = 1
+        fake_hits['area'] = 1
         fake_hits['time'] = peaks['time']
         # TODO: could this cause int overrun nonsense anywhere?
         fake_hits['length'] = peaks['endtime'] - peaks['time']
         fake_peaks = strax.find_peaks(
-            fake_hits, to_pe=np.zeros(1),
+            fake_hits, adc_to_pe=np.ones(1),
             gap_threshold=gap_threshold,
             left_extension=left_extension, right_extension=right_extension,
-            min_hits=1, min_area=0,
+            min_channels=1, min_area=0,
             max_duration=max_duration)
         return fake_peaks['time'], strax.endtime(fake_peaks)
 
