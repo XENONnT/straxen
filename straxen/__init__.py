@@ -1,9 +1,10 @@
 __version__ = '0.2.1'
 
-from .utils import *
 from .common import *
-from .itp_map import InterpolatingMap
-from .rundb import RunDB
+from .itp_map import *
+from .rundb import *
 
 from . import plugins
+from .plugins import *
+
 from .contexts import *

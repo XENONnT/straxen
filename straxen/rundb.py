@@ -8,7 +8,6 @@ import pymongo
 
 import strax
 import straxen
-
 export, __all__ = strax.exporter()
 
 

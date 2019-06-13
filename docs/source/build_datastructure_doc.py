@@ -99,7 +99,7 @@ def build_datastructure_doc():
 
     pd.set_option('display.max_colwidth', -1)
 
-    st = strax.Context(register_all=straxen.plugins.plugins)
+    st = strax.Context(register_all=straxen.plugins.peak_processing)
 
     # Too lazy to write proper graph sorter
     plugins_by_deps = defaultdict(list)

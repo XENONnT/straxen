@@ -1,9 +1,10 @@
 import strax
-import straxen
+import straxen as sx
 
 
 common_opts = dict(
-    register_all=straxen.plugins.plugins,
+    register_all=[sx.daqreader, sx.pulse_processing,
+                  sx.peak_processing, sx.event_processing, sx.cuts],
     store_run_fields=(
         'name', 'number', 'reader.ini.name',
         'tags.name',
@@ -18,7 +19,7 @@ def demo():
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
                      strax.DataDirectory('./strax_test_data')],
-            register=straxen.plugins.pax_interface.RecordsFromPax,
+            register=sx.RecordsFromPax,
             forbid_creation_of=('raw_records',),
             **common_opts)
 
@@ -29,7 +30,7 @@ def xenon1t_analysis(local_only=False):
     """
     return strax.Context(
         storage=[
-            straxen.RunDB(local_only=local_only),
+            sx.RunDB(local_only=local_only),
             strax.DataDirectory(
                 '/dali/lgrandi/aalbers/strax_data_raw',
                 take_only='raw_records',
@@ -37,18 +38,18 @@ def xenon1t_analysis(local_only=False):
                 readonly=True),
             strax.DataDirectory('./strax_data'),
         ],
-        register=straxen.plugins.pax_interface.RecordsFromPax,
+        register=sx.RecordsFromPax,
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
         forbid_creation_of=('raw_records',),
         **common_opts)
 
 
-def nt_daq_test_analysis(local_data_dir='./strax_data'):
+def nt_daq_test_analysis():
     """Return strax test for analysis of the nT DAQ test data"""
     return strax.Context(
         storage = [
-            straxen.RunDB(
+            sx.RunDB(
                 mongo_url='mongodb://{username}:{password}@gw:27019/xenonnt',
                 mongo_collname='run',
                 runid_field='number',
@@ -72,8 +73,8 @@ def strax_workshop_dali():
                 provide_run_metadata=False),
             strax.DataDirectory('./strax_data',
                                 provide_run_metadata=False)],
-        register=straxen.plugins.pax_interface.RecordsFromPax,
+        register=sx.plugins.pax_interface.RecordsFromPax,
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
         forbid_creation_of=('raw_records',),
-        **straxen.contexts.common_opts)
+        **common_opts)
