@@ -369,11 +369,11 @@ def _count_pulses(records, n_channels, result):
             count[ch] += 1
 
             if (r['time'] > last_end_seen
-                    and r['time'] + r['length'] < next_start):
+                    and r['time'] + r['pulse_length'] < next_start):
                 lone_count[ch] += 1
 
         last_end_seen = max(last_end_seen,
-                            r['time'] + r['length'])
+                            r['time'] + r['pulse_length'])
 
     res = result[0]
     res['pulse_count'][:] = count[:]
