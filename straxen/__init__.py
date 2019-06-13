@@ -7,4 +7,6 @@ from .rundb import *
 from . import plugins
 from .plugins import *
 
-from .contexts import *
+# Do not make all contexts directly available under straxen.
+# Otherwise we have straxen.demo() etc.
+from . import contexts
