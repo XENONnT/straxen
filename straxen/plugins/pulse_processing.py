@@ -71,7 +71,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -337,9 +337,15 @@ def pulse_count_dtype(n_channels):
     return [
         (('Lowest start time observed in the chunk', 'time'), np.int64),
         (('Highest endt ime observed in the chunk', 'endtime'), np.int64),
-        (('Number of pulses', 'pulse_count'), (np.int64, n_channels)),
-        (
-        ('Number of lone pulses', 'lone_pulse_count'), (np.int64, n_channels))]
+        (('Number of pulses', 'pulse_count'),
+         (np.int64, n_channels)),
+        (('Number of lone pulses', 'lone_pulse_count'),
+         (np.int64, n_channels)),
+        (('Integral of all pulses in ADC_count x samples', 'pulse_area'),
+         (np.int64, n_channels)),
+        (('Integral of lone pulses in ADC_count x samples', 'lone_pulse_area'),
+         (np.int64, n_channels)),
+    ]
 
 
 def count_pulses(records, n_channels):
@@ -353,6 +359,8 @@ def count_pulses(records, n_channels):
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
     lone_count = np.zeros(n_channels, dtype=np.int64)
+    area = np.zeros(n_channels, dtype=np.int64)
+    lone_area = np.zeros(n_channels, dtype=np.int64)
 
     last_end_seen = 0
     next_start = 0
@@ -367,10 +375,12 @@ def _count_pulses(records, n_channels, result):
 
         if r['record_i'] == 0:
             count[ch] += 1
+            area[ch] += r['area']
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] < next_start):
                 lone_count[ch] += 1
+                lone_area[ch] += r['area']
 
         last_end_seen = max(last_end_seen,
                             r['time'] + r['pulse_length'])
@@ -378,6 +388,8 @@ def _count_pulses(records, n_channels, result):
     res = result[0]
     res['pulse_count'][:] = count[:]
     res['lone_pulse_count'][:] = lone_count[:]
+    res['pulse_area'][:] = area[:]
+    res['lone_pulse_area'][:] = lone_area[:]
     res['time'] = records[0]['time']
     res['endtime'] = last_end_seen
 
