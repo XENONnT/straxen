@@ -234,7 +234,8 @@ def software_he_veto(records, to_pe,
     regions['dt'] = veto_res
 
     if not len(regions):
-        return records, records[:0], regions
+        # No veto anywhere in this data
+        return records, records[:0], np.zeros(0, strax.hit_dtype)
 
     # 3. Find pass_veto regios with big peaks inside the veto regions.
     # For this we compute a rough sum waveform (at low resolution,
