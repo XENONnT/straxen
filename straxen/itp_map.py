@@ -6,7 +6,11 @@ import re
 import numpy as np
 from scipy.spatial import cKDTree
 
+import strax
+export, __all__ = strax.exporter()
 
+
+@export
 class InterpolateAndExtrapolate(object):
     """Linearly interpolate- and extrapolate using inverse-distance
     weighted averaging between nearby points.
@@ -39,6 +43,7 @@ class InterpolateAndExtrapolate(object):
         return result
 
 
+@export
 class InterpolatingMap(object):
     """Correction map that computes values using inverse-weighted distance
     interpolation.
