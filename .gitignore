@@ -12,6 +12,7 @@ xenon_secrets.py
 *.blosc
 *.h5
 strax_data
+strax_test_data
 from_fake_daq
 from_eb
 from_eb_finished
