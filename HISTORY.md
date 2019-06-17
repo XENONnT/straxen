@@ -1,3 +1,8 @@
+0.2.2 / 2019-06-17
+-------------------
+- Upgrade pulse processing and cleanup (#16)
+
+
 0.2.1 / 2019-06-06
 ------------------
 - Robustness to 0-gain channels, Peaks options available (#15)
@@ -12,6 +17,7 @@
 - Move run selection base code into strax (#6)
 - Bugfix in s1_min_channels (#5)
 - Fix missing export (#4)
+
 
 0.1.0 / 2018-10-04
 ------------------
