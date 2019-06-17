@@ -21,9 +21,6 @@ export, __all__ = strax.exporter()
     strax.Option('right_event_extension', default=int(1e6),
                  help='Extend events this many ns to the right from each '
                       'triggering peak'),
-    strax.Option('max_event_duration', default=int(1e7),
-                 help='Events longer than this are forcefully ended, '
-                      'triggers in the truncated part are lost!'),
 )
 class Events(strax.OverlapWindowPlugin):
     depends_on = ['peak_basics', 'n_competing']
@@ -47,12 +44,11 @@ class Events(strax.OverlapWindowPlugin):
             & (peaks['n_competing'] <= self.config['trigger_max_competing'])]
 
         # Join nearby triggers
-        t0, t1 = self.find_peak_groups(
+        t0, t1 = strax.find_peak_groups(
             triggers,
             gap_threshold=le + re + 1,
             left_extension=le,
-            right_extension=re,
-            max_duration=self.config['max_event_duration'])
+            right_extension=re)
 
         result = np.zeros(len(t0), self.dtype)
         result['time'] = t0
@@ -68,37 +64,6 @@ class Events(strax.OverlapWindowPlugin):
         # TODO: someday investigate if/why loopplugin doesn't give
         # anything if events do not contain peaks..
         # Likely this has been resolved in 6a2cc6c
-
-    @staticmethod
-    def find_peak_groups(peaks, gap_threshold,
-                         left_extension=0, right_extension=0,
-                         max_duration=int(1e9)):
-        """Return boundaries of groups of peaks separated by gap_threshold,
-        extended left and right.
-        :param peaks: Peaks to group
-        :param gap_threshold: Minimum gap between peaks
-        :param left_extension: Extend groups by this many ns left
-        :param right_extension: " " right
-        :param max_duration: Maximum group duration. See strax.find_peaks for
-        what happens if this is exceeded
-        :return: time, endtime arrays of group boundaries
-        """
-        # Mock up a "hits" array so we can just use the existing peakfinder
-        # It doesn't work on raw peaks, since they might have different dts
-        # TODO: is there no cleaner way?
-        fake_hits = np.zeros(len(peaks), dtype=strax.hit_dtype)
-        fake_hits['dt'] = 1
-        fake_hits['area'] = 1
-        fake_hits['time'] = peaks['time']
-        # TODO: could this cause int overrun nonsense anywhere?
-        fake_hits['length'] = peaks['endtime'] - peaks['time']
-        fake_peaks = strax.find_peaks(
-            fake_hits, adc_to_pe=np.ones(1),
-            gap_threshold=gap_threshold,
-            left_extension=left_extension, right_extension=right_extension,
-            min_channels=1, min_area=0,
-            max_duration=max_duration)
-        return fake_peaks['time'], strax.endtime(fake_peaks)
 
 
 @export

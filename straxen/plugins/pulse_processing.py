@@ -210,7 +210,7 @@ def software_he_veto(records, to_pe,
 
     # 2. Find initial veto regions around these peaks
     # (with a generous right extension)
-    veto_start, veto_end = find_peak_groups(
+    veto_start, veto_end = strax.find_peak_groups(
         peaks,
         gap_threshold=veto_length + 2 * veto_res,
         right_extension=veto_length,
@@ -255,39 +255,6 @@ def software_he_veto(records, to_pe,
     # 5. Apply the veto and return results
     veto_mask = strax.fully_contained_in(records, veto) == -1
     return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
-
-
-@export
-def find_peak_groups(peaks, gap_threshold,
-                     left_extension=0, right_extension=0,
-                     max_duration=int(1e9)):
-    """Return boundaries of groups of peaks separated by gap_threshold,
-    extended left and right.
-
-    :param peaks: Peaks to group
-    :param gap_threshold: Minimum gap between peaks
-    :param left_extension: Extend groups by this many ns left
-    :param right_extension: " " right
-    :param max_duration: Maximum group duration. See strax.find_peaks for
-    what happens if this is exceeded
-    :return: time, endtime arrays of group boundaries
-    """
-    # Mock up a "hits" array so we can just use the existing peakfinder
-    # It doesn't work on raw peaks, since they might have different dts
-    # TODO: is there no cleaner way?
-    fake_hits = np.zeros(len(peaks), dtype=strax.hit_dtype)
-    fake_hits['dt'] = 1
-    fake_hits['area'] = 1
-    fake_hits['time'] = peaks['time']
-    # TODO: could this cause int overrun nonsense anywhere?
-    fake_hits['length'] = strax.endtime(peaks) - peaks['time']
-    fake_peaks = strax.find_peaks(
-        fake_hits, adc_to_pe=np.ones(1),
-        gap_threshold=gap_threshold,
-        left_extension=left_extension, right_extension=right_extension,
-        min_channels=1, min_area=0,
-        max_duration=max_duration)
-    return fake_peaks['time'], strax.endtime(fake_peaks)
 
 
 @numba.njit
