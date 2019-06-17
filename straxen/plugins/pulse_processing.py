@@ -233,6 +233,9 @@ def software_he_veto(records, to_pe,
     regions['pulse_length'] = veto_length
     regions['dt'] = veto_res
 
+    if not len(regions):
+        return records, records[:0], regions
+
     # 3. Find pass_veto regios with big peaks inside the veto regions.
     # For this we compute a rough sum waveform (at low resolution,
     # without looping over the pulse data)
