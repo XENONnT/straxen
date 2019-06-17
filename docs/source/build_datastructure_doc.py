@@ -40,16 +40,9 @@ Description
 
 Provided by plugin: {p.__class__.__name__}
 
-Data kind: {p.data_kind}
+Data kind: {kind}
 
 {docstring}
-
-
-Dependencies
-~~~~~~~~~~~~~~~~~~~~~~
-.. raw:: html
-
-{svg}
 
 
 Columns provided
@@ -57,6 +50,13 @@ Columns provided
 .. raw:: html
 
 {columns}
+
+
+Dependencies
+~~~~~~~~~~~~~~~~~~~~~~
+.. raw:: html
+
+{svg}
 
 
 Configuration options
@@ -99,11 +99,14 @@ def build_datastructure_doc():
 
     pd.set_option('display.max_colwidth', -1)
 
-    st = strax.Context(register_all=straxen.plugins.peak_processing)
+    st = strax.Context(
+        register_all=[x
+                      for x in straxen.contexts.common_opts['register_all']
+                      if x != straxen.cuts])
 
     # Too lazy to write proper graph sorter
+    # Make dictionary {total number of dependencies below -> list of plugins}
     plugins_by_deps = defaultdict(list)
-
     for pn, p in st._plugin_class_registry.items():
         plugins = st._get_plugins((pn,), run_id='0')
         plugins_by_deps[len(plugins)].append(pn)
@@ -116,13 +119,15 @@ def build_datastructure_doc():
 
             # Create dependency graph
             g = graphviz.Digraph(format='svg')
+            # g.attr('graph', autosize='false', size="25.7,8.3!")
             for d, p in plugins.items():
                 g.node(d,
                        style='filled',
                        href='#' + d.replace('_', '-'),
-                       fillcolor=kind_colors[p.data_kind])
+                       fillcolor=kind_colors.get(p.data_kind_for(d), 'grey'))
                 for dep in p.depends_on:
                     g.edge(d, dep)
+
             fn = this_dir + '/graphs/' + data_type
             g.render(fn)
             with open(fn + '.svg', mode='r') as f:
@@ -145,6 +150,7 @@ def build_datastructure_doc():
                 columns=add_spaces(
                     st.data_info(data_type).to_html(index=False)
                 ),
+                kind=p.data_kind_for(data_type),
                 docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
                 config_options=add_spaces(
                     config_df.to_html(index=False))

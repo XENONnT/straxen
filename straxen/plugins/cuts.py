@@ -23,7 +23,7 @@ class S2Width(strax.Plugin):
     provides = 'cut_S2width'
     dtype = [('cut_S2width', np.bool, 'S2 Width cut')]
 
-    version = 1
+    __version__ = 1
 
     diffusion_constant = 29.35 * ((units.cm) ** 2) / units.s
     v_drift = 1.335 * (units.um) / units.ns
@@ -71,7 +71,7 @@ class S1SingleScatter(strax.Plugin):
 
     s2width = S2Width
     dtype = [('cut_S1SingleScatter', np.bool, 'S1 Single Scatter cut')]
-    version = 1
+    __version__ = 1
 
     def compute(self, events):
         mask = events['alt_s1_interaction_drift_time'] > self.s2width.DriftTimeFromGate
@@ -102,7 +102,7 @@ class S2SingleScatter(strax.Plugin):
     depends_on = 'event_info'
     provides = 'cut_S2SingleScatter'
     dtype = [('cut_S2SingleScatter', np.bool, 'S2 Single Scatter cut')]
-    version = 4
+    __version__ = 4
 
     @classmethod
     def other_s2_bound(cls, s2_area):
