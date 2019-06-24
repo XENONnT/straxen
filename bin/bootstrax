@@ -69,7 +69,7 @@ parser.add_argument('--cores', type=int, default=25,
                     help="Maximum number of workers to use in a strax process")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
-                    
+
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
                      help="Process a single run, regardless of its status.")
@@ -108,7 +108,7 @@ timeouts = {
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
     # Maximum time a run is 'busy' without a further update from
-    # its responsible bootstrax. Bootstrax normally updates every 
+    # its responsible bootstrax. Bootstrax normally updates every
     # check_on_strax seconds, so make sure this is substantially
     # larger than check_on_strax.
     'max_busy_time': 120,
@@ -157,7 +157,7 @@ def new_context():
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
-        register_all=straxen.plugins.plugins)
+        register_all=straxen.plugins.peak_processing)
     return st
 
 
@@ -280,7 +280,7 @@ def kill_process(pid, wait_time=None):
 
 def update_usage(pid_process, run_number):
     """Save information on the usage of resources in the 'usage' collection. The
-    information contains percentages of CPU and Memory usage both for the 
+    information contains percentages of CPU and Memory usage both for the
     sub-process (due to the multiprocessing) itself and on the host as a whole.
     """
     frac_to_percent = 100
@@ -299,9 +299,9 @@ def update_usage(pid_process, run_number):
 def set_state(state):
     """Inform the bootstrax collection we're in a different state
 
-    if state is None, leave state unchanged, just update heartbeat time    
+    if state is None, leave state unchanged, just update heartbeat time
     """
-    
+
     if state_doc_id is None:
         log.debug("Not updating bootstrax doc: none selected. "
                   "You are probably running a rogue bootstrax operation...")
@@ -534,20 +534,20 @@ def process_run(rd, send_heartbeats=True):
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, args.debug))
-           
+
         t0 = now()
         info = dict(started_processing=t0)
         strax_proc.start()
         pid_process = Process(strax_proc.pid)
         # Ignore first time of psutil.cpu_percent (returns 0), see documentation
-        pid_process.cpu_percent() 
+        pid_process.cpu_percent()
         cpu_percent()
 
         while True:
             if send_heartbeats:
                 update_usage(pid_process = pid_process, run_number = run_id)
                 send_heartbeat()
-                 
+
             ec = strax_proc.exitcode
             if ec is None:
                 if t0 < now(-timeouts['max_processing_time']):
@@ -583,7 +583,7 @@ def process_run(rd, send_heartbeats=True):
                 t_covered = timedelta(seconds=(
                     max([x.get('last_endtime', 0)
                          for x in md['chunks']])
-                    - min([x.get('first_time', float('inf')) 
+                    - min([x.get('first_time', float('inf'))
                            for x in md['chunks']]))/1e9)
                 run_duration = rd['end'] - rd['start']
                 if not (0 < t_covered.seconds < float('inf')):

@@ -1,9 +1,12 @@
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
-from .utils import *
 from .common import *
-from .itp_map import InterpolatingMap
-from .rundb import RunDB
+from .itp_map import *
+from .rundb import *
 
 from . import plugins
-from .contexts import *
+from .plugins import *
+
+# Do not make all contexts directly available under straxen.
+# Otherwise we have straxen.demo() etc.
+from . import contexts

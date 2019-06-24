@@ -4,10 +4,26 @@ straxen.plugins package
 Submodules
 ----------
 
-straxen.plugins.cut\_plugins module
------------------------------------
+straxen.plugins.cuts module
+---------------------------
 
-.. automodule:: straxen.plugins.cut_plugins
+.. automodule:: straxen.plugins.cuts
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+straxen.plugins.daqreader module
+--------------------------------
+
+.. automodule:: straxen.plugins.daqreader
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+straxen.plugins.event\_processing module
+----------------------------------------
+
+.. automodule:: straxen.plugins.event_processing
     :members:
     :undoc-members:
     :show-inheritance:
@@ -20,10 +36,18 @@ straxen.plugins.pax\_interface module
     :undoc-members:
     :show-inheritance:
 
-straxen.plugins.plugins module
-------------------------------
+straxen.plugins.peak\_processing module
+---------------------------------------
 
-.. automodule:: straxen.plugins.plugins
+.. automodule:: straxen.plugins.peak_processing
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+straxen.plugins.pulse\_processing module
+----------------------------------------
+
+.. automodule:: straxen.plugins.pulse_processing
     :members:
     :undoc-members:
     :show-inheritance:

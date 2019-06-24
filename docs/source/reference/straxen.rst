@@ -51,14 +51,6 @@ straxen.units module
     :undoc-members:
     :show-inheritance:
 
-straxen.utils module
---------------------
-
-.. automodule:: straxen.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 straxen.xenon\_secrets module
 -----------------------------
 

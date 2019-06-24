@@ -12,13 +12,15 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='0.2.1',
+                 version='0.2.2',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
-                 install_requires=requires,
                  long_description=readme + '\n\n' + history,
                  long_description_content_type="text/markdown",
+                 setup_requires=['pytest-runner'],
+                 install_requires=requires,
+                 tests_require=requires + ['pytest'],
                  python_requires=">=3.6",
                  extras_require={
                      'docs': ['sphinx',

@@ -11,11 +11,12 @@ import numpy as np
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir']
+__all__ += ['straxen_dir', 'first_sr1_run']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
+first_sr1_run = 170118_1327
 
 @export
 def get_to_pe(run_id,to_pe_file):
@@ -53,6 +54,7 @@ def get_resource(x, fmt='text'):
         # to prevent repeated downloads.
         cache_fn = strax.utils.deterministic_hash(x)
         cache_folders = ['./resource_cache',
+                         '/tmp/straxen_resource_cache',
                          '/dali/lgrandi/strax/resource_cache']
         for cache_folder in cache_folders:
             try:
@@ -109,9 +111,10 @@ def get_resource(x, fmt='text'):
 
 @export
 def get_elife(run_id,elife_file):
-    x = get_resource(elife_file,fmt='npy')
-    e = x[x['run_id']==int(run_id)]['e_life'][0]
+    x = get_resource(elife_file, fmt='npy')
+    e = x[x['run_id'] == int(run_id)]['e_life'][0]
     return e
+
 
 @export
 def get_secret(x):
@@ -159,7 +162,7 @@ def get_secret(x):
 @export
 def download_test_data():
     """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/8271dd11d647b01ea4bc587bd0af590e187ad199/strax_test_data.tar',
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/7dad0e1f35bb6f4e7174e259d8d73b806c5505dd/strax_test_data.tar',
                         fmt='binary')
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
