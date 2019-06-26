@@ -1,5 +1,6 @@
 import os
 import re
+import typing
 import socket
 
 import botocore.client
@@ -41,6 +42,7 @@ class RunDB(strax.StorageFrontend):
                  s3_kwargs=None,
                  local_only=False,
                  new_data_path=None,
+                 reader_ini_name_is_mode=True,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -55,6 +57,8 @@ class RunDB(strax.StorageFrontend):
             corresponds. Can be either
             - 'name': values must be strings, for XENON1T
             - 'number': values must be ints, for XENONnT DAQ tests
+        :param reader_ini_name_is_mode: If True, will overwrite the 'mode'
+        field with 'reader.ini.name'.
 
         Other (kw)args are passed to StorageFrontend.__init__
 
@@ -63,6 +67,7 @@ class RunDB(strax.StorageFrontend):
         super().__init__(*args, **kwargs)
         self.local_only = local_only
         self.new_data_path = new_data_path
+        self.reader_ini_name_is_mode = reader_ini_name_is_mode
         if self.new_data_path is None:
             self.readonly = True
 
@@ -163,6 +168,42 @@ class RunDB(strax.StorageFrontend):
             raise strax.DataExistsError(at=datum['location'])
 
         return datum['protocol'], datum['location']
+    def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
+        if kwargs['fuzzy_for'] or kwargs['fuzzy_for_options']:
+            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+        if not len(keys):
+            return []
+        if not len(set([k.lineage_hash for k in keys])) == 1:
+            raise ValueError("find_several keys must have same lineage")
+        if not len(set([k.data_type for k in keys])) == 1:
+            raise ValueError("find_several keys must have same data type")
+        keys = list(keys)   # Context used to pass a set
+
+        if self.runid_field == 'name':
+            run_query = {'name': {'$in': [key.run_id for key in keys]}}
+        else:
+            run_query = {'name': {'$in': [int(key.run_id) for key in keys]}}
+        dq = self._data_query(keys[0])
+
+        projection = dq.copy()
+        projection.update({
+            k: True
+            for k in 'name number data.protocol data.location'.split()})
+
+        results_dict = dict()
+        for doc in self.collection.find(
+                {**run_query, **dq}, projection=projection):
+            datum = doc['data'][0]
+
+            if self.runid_field == 'name':
+                dk = doc['name']
+            else:
+                dk = doc['number']
+            results_dict[dk] = datum['protocol'], datum['location']
+
+        return [
+            results_dict.get(k.run_id, False)
+            for k in keys]
 
     def _list_available(self, key: strax.DataKey,
               allow_incomplete, fuzzy_for, fuzzy_for_options):
@@ -182,14 +223,16 @@ class RunDB(strax.StorageFrontend):
                 list(store_fields) + ['reader.ini.name']))
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
                         total=cursor.count()):
-             # Remove the Mongo document ID and add the run mode
             del doc['_id']
-            doc.setdefault('mode',
-                           doc.get('reader', {}).get('ini', {}).get('name', ''))
+            if self.reader_ini_name_is_mode:
+                doc['mode'] = \
+                    doc.get('reader', {}).get('ini', {}).get('name', '')
             yield doc
 
     def run_metadata(self, run_id, projection=None):
         doc = self.collection.find_one({'name': run_id}, projection=projection)
+        if self.reader_ini_name_is_mode:
+            doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         if doc is None:
             raise strax.DataNotAvailable
         return doc

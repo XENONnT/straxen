@@ -29,7 +29,7 @@ setuptools.setup(name='straxen',
                               'recommonmark',
                               'graphviz'],
                  },
-                 scripts=['bin/bootstrax'],
+                 scripts=['bin/bootstrax', 'bin/straxer'],
                  packages=setuptools.find_packages(),
                  classifiers=[
                      'Development Status :: 4 - Beta',
