@@ -94,7 +94,7 @@ def get_resource(x, fmt='text'):
         # (so we only need one format-parsing logic)
         return get_resource(available_cf, fmt=fmt)
 
-   # File resource
+    # File resource
     if fmt == 'npy':
         result = np.load(x)
 
