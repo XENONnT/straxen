@@ -6,7 +6,8 @@ import os.path as osp
 import os
 import inspect
 import urllib.request
-
+import json
+import gzip
 import numpy as np
 
 import strax
@@ -93,9 +94,16 @@ def get_resource(x, fmt='text'):
         # (so we only need one format-parsing logic)
         return get_resource(available_cf, fmt=fmt)
 
-    # File resource
+   # File resource
     if fmt == 'npy':
         result = np.load(x)
+
+    elif fmt == 'json.gz':
+        with gzip.open(x, 'rb') as f:
+            result = json.load(f)
+    elif fmt == 'json':
+        with open(x, mode='rb') as f:
+            result = json.loads(f.read())
     elif fmt == 'binary':
         with open(x, mode='rb') as f:
             result = f.read()
