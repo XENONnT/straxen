@@ -16,6 +16,7 @@ common_opts = dict(
 
 def demo():
     """Return strax context used in the straxen demo notebook"""
+    sx.download_test_data()
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
                      strax.DataDirectory('./strax_test_data')],

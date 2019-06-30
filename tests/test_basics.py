@@ -12,7 +12,6 @@ def test_straxen():
         os.chdir(temp_dir)
 
         print("Downloading test data (if needed)")
-        straxen.download_test_data()
         st = straxen.contexts.demo()
 
         run_df = st.select_runs(available='raw_records')
