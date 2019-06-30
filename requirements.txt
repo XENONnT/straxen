@@ -3,3 +3,4 @@ tensorflow<2
 keras
 scipy
 pymongo
+holoviews
