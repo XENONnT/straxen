@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    straxen.analyses
     straxen.plugins
 
 Submodules
@@ -31,6 +32,14 @@ straxen.itp\_map module
 -----------------------
 
 .. automodule:: straxen.itp_map
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+straxen.mini\_analysis module
+-----------------------------
+
+.. automodule:: straxen.mini_analysis
     :members:
     :undoc-members:
     :show-inheritance:

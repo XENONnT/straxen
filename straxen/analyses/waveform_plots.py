@@ -190,7 +190,6 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
     hv_bokeh=True)
 def waveform_display(
         context, run_id, to_pe, time_range, t_reference, records, peaks,
-        time_selection='touching',
         width=600):
     """Plot a waveform overview display"
 
