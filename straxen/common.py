@@ -97,7 +97,8 @@ def get_resource(x, fmt='text'):
     # File resource
     if fmt == 'npy':
         result = np.load(x)
-
+    elif fmt == 'npy_pickle':
+        result = np.load(x, allow_pickle = True)
     elif fmt == 'json.gz':
         with gzip.open(x, 'rb') as f:
             result = json.load(f)
