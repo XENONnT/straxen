@@ -40,7 +40,7 @@ cache_dict = dict()
 
 # Placeholder for resource management system in the future?
 @export
-def get_resource(x, fmt='text', pickle = False):
+def get_resource(x, fmt='text'):
     """Return contents of file or URL x
     :param binary: Resource is binary. Return bytes instead of a string.
     """
@@ -96,10 +96,9 @@ def get_resource(x, fmt='text', pickle = False):
 
     # File resource
     if fmt == 'npy':
-        if pickle = True:
-            result = np.load(x, allow_pickle = pickle)
-        else:
-            result = np.load(x)
+        result = np.load(x)
+    elif fmt == 'npy_pickle':
+        result = np.load(x, allow_pickle = True)
     elif fmt == 'json.gz':
         with gzip.open(x, 'rb') as f:
             result = json.load(f)
