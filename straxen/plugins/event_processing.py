@@ -273,27 +273,33 @@ class CorrectedAreas(strax.Plugin):
     strax.Option(
         'g2',
         help="S2 gain in PE / electrons produced",
-        default_by_run=[(0, 11.52),
-                        (first_sr1_run, 11.55)]),
+        default_by_run=[(0, 11.52/(1 - 0.63)),
+                        (first_sr1_run, 11.55/(1 - 0.63))]),
     strax.Option(
         'lxe_w',
-        help="LXe work function in quanta/eV",
+        help="LXe work function in quanta/keV",
         default=13.7e-3),
 )
 class EnergyEstimates(strax.Plugin):
+    __version__ = '0.0.1'
     depends_on = ['corrected_areas']
     dtype = [
-        ('e_light', np.float32, 'Energy in light signal (keV)'),
-        ('e_charge', np.float32, 'Energy in charge signal (keV)'),
-        ('e_ces', np.float32, 'Energy estimate (keV_ee)')]
+        ('e_light', np.float32, 'Energy in light signal [keVee]'),
+        ('e_charge', np.float32, 'Energy in charge signal [keVee]'),
+        ('e_ces', np.float32, 'Energy estimate [keVee]')]
 
     def compute(self, events):
-        w = self.config['lxe_w']
-        el = w * events['cs1'] / self.config['g1']
-        ec = w * events['cs2'] / self.config['g2']
+        el = self.cs1_to_e(events['cs1'])
+        ec = self.cs2_to_e(events['cs2'])
         return dict(e_light=el,
-                    e_charge=ec)
+                    e_charge=ec,
+                    e_ces=el + ec)
 
+    def cs1_to_e(self, x):
+        return self.config['lxe_w'] * x / self.config['g1']
+
+    def cs2_to_e(self, x):
+        return self.config['lxe_w'] * x / self.config['g2']
 
 class EventInfo(strax.MergeOnlyPlugin):
     depends_on = ['events',

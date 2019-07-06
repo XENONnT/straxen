@@ -1,5 +1,8 @@
 strax>=0.7.4
 tensorflow<2
 keras
-scipy
-pymongo
+holoviews
+bokeh
+multihist
+matplotlib
+datashader

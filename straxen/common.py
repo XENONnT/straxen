@@ -1,3 +1,5 @@
+import ast
+import configparser
 import io
 import socket
 import sys
@@ -9,15 +11,37 @@ import urllib.request
 import json
 import gzip
 import numpy as np
+import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
 first_sr1_run = 170118_1327
+tpc_r = 47.9
+n_tpc_pmts = 248
+
+
+@export
+def pmt_positions():
+    """Return pandas dataframe with PMT positions
+    columns: array (top/bottom), i (PMT number), x, y
+    """
+    # Get PMT positions from the XENON1T config wihtout PAX
+    config = configparser.ConfigParser()
+    config.read_string(
+        get_resource('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
+    pmt_config = ast.literal_eval(config['DEFAULT']['pmts'])
+    return pd.DataFrame([
+        dict(x=q['position']['x'],
+             y=q['position']['y'],
+             i=q['pmt_position'],
+             array=q.get('array','other'))
+        for q in pmt_config[:248]])
+
 
 @export
 def get_to_pe(run_id,to_pe_file):
