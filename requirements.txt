@@ -5,3 +5,4 @@ holoviews
 bokeh
 multihist
 matplotlib
+datashader
