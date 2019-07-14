@@ -1,6 +1,5 @@
 strax>=0.7.4
-tensorflow<2
-keras
+tensorflow==2.0.0-beta1
 holoviews
 bokeh
 multihist

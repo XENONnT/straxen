@@ -1,4 +1,6 @@
 import json
+from packaging.version import parse as parse_version
+import tempfile
 
 import numpy as np
 import numba
@@ -170,9 +172,12 @@ class PeakPositions(strax.Plugin):
     __version__ = '0.0.1'
 
     def setup(self):
-        import keras
         import tensorflow as tf
-        import tempfile
+        self.has_tf2 = parse_version(tf.__version__) > parse_version('1.9.9')
+        if self.has_tf2:
+            keras = tf.keras
+        else:
+            import keras
 
         nn_json = get_resource(self.config['nn_architecture'])
         nn = keras.models.model_from_json(nn_json)
@@ -187,10 +192,12 @@ class PeakPositions(strax.Plugin):
             nn.load_weights(f.name)
         self.nn = nn
 
-        # Workaround for using keras/tensorflow in a threaded environment. See:
-        # https://github.com/keras-team/keras/issues/5640#issuecomment-345613052
-        self.nn._make_predict_function()
-        self.graph = tf.get_default_graph()
+        if not self.has_tf2:
+            # Workaround for using keras/tensorflow in a threaded environment.
+            # See: https://github.com/keras-team/keras/issues/
+            # 5640#issuecomment-345613052
+            self.nn._make_predict_function()
+            self.graph = tf.get_default_graph()
 
     def compute(self, peaks):
         # Keep large peaks only
@@ -210,8 +217,14 @@ class PeakPositions(strax.Plugin):
             x /= x.sum(axis=1).reshape(-1, 1)
 
         result = np.ones((len(peaks), 2), dtype=np.float32) * float('nan')
-        with self.graph.as_default():
-            result[peak_mask, :] = self.nn.predict(x)
+
+        if self.has_tf2:
+            y = self.nn.predict(x)
+        else:
+            with self.graph.as_default():
+                y = self.nn.predict(x)
+
+        result[peak_mask, :] = y
 
         # Convert from mm to cm... why why why
         result /= 10
