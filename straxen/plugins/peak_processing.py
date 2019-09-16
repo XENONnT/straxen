@@ -173,7 +173,7 @@ class PeakPositions(strax.Plugin):
 
     def setup(self):
         import tensorflow as tf
-        self.has_tf2 = parse_version(tf.__version__) > parse_version('1.9.9')
+        self.has_tf2 = parse_version(tf.__version__) > parse_version('2.0.a')
         if self.has_tf2:
             keras = tf.keras
         else:
