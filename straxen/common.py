@@ -1,15 +1,17 @@
 import ast
 import configparser
+import gzip
+import inspect
+import logging
 import io
+import json
+import os
+import os.path as osp
 import socket
 import sys
 import tarfile
-import os.path as osp
-import os
-import inspect
 import urllib.request
-import json
-import gzip
+
 import numpy as np
 import pandas as pd
 
@@ -23,6 +25,7 @@ straxen_dir = os.path.dirname(os.path.abspath(
 first_sr1_run = 170118_1327
 tpc_r = 47.9
 n_tpc_pmts = 248
+
 
 
 @export
@@ -44,7 +47,7 @@ def pmt_positions():
 
 
 @export
-def get_to_pe(run_id,to_pe_file):
+def get_to_pe(run_id, to_pe_file):
     x = get_resource(to_pe_file, fmt='npy')
     run_index = np.where(x['run_id'] == int(run_id))[0]
     if not len(run_index):
@@ -68,8 +71,6 @@ def get_resource(x, fmt='text'):
     """Return contents of file or URL x
     :param binary: Resource is binary. Return bytes instead of a string.
     """
-    is_binary = fmt != 'text'
-
     # Try to retrieve from in-memory cache
     if x in cache_dict:
         return cache_dict[x]
@@ -88,53 +89,56 @@ def get_resource(x, fmt='text'):
                 continue
             cf = osp.join(cache_folder, cache_fn)
             if osp.exists(cf):
-                return get_resource(cf, fmt=fmt)
+                result = get_resource(cf, fmt=fmt)
+                break
+        else:
+            print(f'Did not find {cache_fn} in cache, downloading {x}')
+            result = urllib.request.urlopen(x).read()
+            is_binary = fmt != 'text'
+            if not is_binary:
+                result = result.decode()
 
-        # Not found in any cache; download
-        result = urllib.request.urlopen(x).read()
-        if not is_binary:
-            result = result.decode()
+            # Store in as many caches as possible
+            m = 'wb' if is_binary else 'w'
+            available_cf = None
+            for cache_folder in cache_folders:
+                if not osp.exists(cache_folder):
+                    continue
+                cf = osp.join(cache_folder, cache_fn)
+                try:
+                    with open(cf, mode=m) as f:
+                        f.write(result)
+                except Exception:
+                    pass
+                else:
+                    available_cf = cf
+            if available_cf is None:
+                raise RuntimeError(
+                    f"Could not store {x} in on-disk cache,"
+                    "none of the cache directories are writeable??")
 
-        # Store in as many caches as possible
-        m = 'wb' if is_binary else 'w'
-        available_cf = None
-        for cache_folder in cache_folders:
-            if not osp.exists(cache_folder):
-                continue
-            cf = osp.join(cache_folder, cache_fn)
-            try:
-                with open(cf, mode=m) as f:
-                    f.write(result)
-            except Exception:
-                pass
-            else:
-                available_cf = cf
-        if available_cf is None:
-            raise RuntimeError(
-                f"Could not load {x},"
-                "none of the on-disk caches are writeable??")
+            # Retrieve result from file-cache
+            # (so we only need one format-parsing logic)
+            result = get_resource(available_cf, fmt=fmt)
 
-        # Retrieve result from file-cache
-        # (so we only need one format-parsing logic)
-        return get_resource(available_cf, fmt=fmt)
-
-    # File resource
-    if fmt == 'npy':
-        result = np.load(x)
-    elif fmt == 'npy_pickle':
-        result = np.load(x, allow_pickle = True)
-    elif fmt == 'json.gz':
-        with gzip.open(x, 'rb') as f:
-            result = json.load(f)
-    elif fmt == 'json':
-        with open(x, mode='rb') as f:
-            result = json.loads(f.read())
-    elif fmt == 'binary':
-        with open(x, mode='rb') as f:
-            result = f.read()
-    elif fmt == 'text':
-        with open(x, mode='r') as f:
-            result = f.read()
+    else:
+        # File resource
+        if fmt == 'npy':
+            result = np.load(x)
+        elif fmt == 'npy_pickle':
+            result = np.load(x, allow_pickle = True)
+        elif fmt == 'json.gz':
+            with gzip.open(x, 'rb') as f:
+                result = json.load(f)
+        elif fmt == 'json':
+            with open(x, mode='r') as f:
+                result = json.load(f)
+        elif fmt == 'binary':
+            with open(x, mode='rb') as f:
+                result = f.read()
+        elif fmt == 'text':
+            with open(x, mode='r') as f:
+                result = f.read()
 
     # Store in in-memory cache
     cache_dict[x] = result
