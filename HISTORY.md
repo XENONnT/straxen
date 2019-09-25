@@ -1,3 +1,8 @@
+0.3.1 / 2019-09-25
+------------------
+- Fix resource caching
+- Fix tensorflow2 checking (#23)
+
 0.3.0 / 2019-07-21
 -------------------
 - Mini-analyses, waveform display (#19)
