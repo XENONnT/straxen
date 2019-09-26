@@ -149,9 +149,12 @@ def get_resource(x, fmt='text'):
 @export
 def get_elife(run_id,elife_file):
     x = get_resource(elife_file, fmt='npy')
-    e = x[x['run_id'] == int(run_id)]['e_life'][0]
+    run_index = np.where(x['run_id'] == int(run_id))[0]
+    if not len(run_index):
+        # Gains not known: using placeholders
+        e = 623e3
+    else: e = x[run_index[0]]['e_life']
     return e
-
 
 @export
 def get_secret(x):
