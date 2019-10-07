@@ -157,7 +157,10 @@ def new_context():
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
-        register_all=straxen.plugins.peak_processing)
+        register_all=[straxen.plugins.daqreader,
+                      straxen.plugins.pulse_processing, 
+                      straxen.plugins.peak_processing,                       
+                      straxen.plugins.event_processing])
     return st
 
 
