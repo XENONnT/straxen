@@ -157,7 +157,7 @@ def new_context():
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
-        register_all=straxen.plugins.peak_processing)
+        **straxen.contexts.common_opts)
     return st
 
 
