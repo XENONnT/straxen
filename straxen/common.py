@@ -153,7 +153,8 @@ def get_elife(run_id,elife_file):
     if not len(run_index):
         # Gains not known: using placeholders
         e = 623e3
-    else: e = x[run_index[0]]['e_life']
+    else:
+        e = x[run_index[0]]['e_life']
     return e
 
 @export
