@@ -36,7 +36,15 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
   - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Thus, it's quite possible for this field to exist (and show an exception) when the state is 'done': that just means it failed at least once but succeeded later. Tracking failure history is primarily the DAQ log's reponsibility; this message is only provided for convenience.
    - **n_failures**: number of failures on this run, if there ever was one (otherwise this field does not exist).
   - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
-Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database in
+Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains the following fields:
+  - **run**: run number,
+  - **host**: the name of the eventbuilder,
+  - **time**: the time whereon the state was reported,
+  - **pid**: the pid of this bootstrax (sub)process,
+  - **cpu_pid**: cpu usage of the bootstrax subprocess (in percent),
+  - **cpu_tot**: cpu usage on the eventbuilder (in percent),
+  - **mem_pid**: memory used by this pid of boostrax (in percent),
+  - **mem_tot**': memory used on this eventbuilder (in percent)}
 """
 
 import argparse
@@ -86,6 +94,8 @@ args = parser.parse_args()
 ##
 # Configuration
 ##
+
+# TODO change this to the production database when DAQ commissioning is finished
 mongo_url = 'mongodb://{username}:{password}@gw:27019/xenonnt'
 dbname = 'xenonnt'
 run_collname = 'run'
