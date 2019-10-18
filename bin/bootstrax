@@ -36,6 +36,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
   - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Thus, it's quite possible for this field to exist (and show an exception) when the state is 'done': that just means it failed at least once but succeeded later. Tracking failure history is primarily the DAQ log's reponsibility; this message is only provided for convenience.
    - **n_failures**: number of failures on this run, if there ever was one (otherwise this field does not exist).
   - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
+Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database in
 """
 
 import argparse
@@ -126,7 +127,9 @@ timeouts = {
 }
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = 'name start end number bootstrax data.host data.type data.location ini.processing_threads'.split()
+bootstrax_projection = f"name start end number bootstrax " \
+                       f"data.host data.type data.location " \
+                       f"ini.processing_threads ini.compressor".split()
 
 # Filename for temporary storage of the exception
 # This is used to communicate the exception from the strax child process
@@ -454,11 +457,22 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
     fail_run(rd, "Manually set failed state. " + reason)
 
 
+def get_compressor(rd, default_compressor="blosc"):
+    """Read the compressor method from the run_doc. Return 'blosc' if no
+    information is specified in the run_doc"""
+    try:
+        return rd["ini"]["compressor"]
+    except KeyError:
+        log_warning(f"Bootstrax couldn't read the compressor form the run_doc. "
+                    f"Assuming 'blosc' for now")
+        return default_compressor
+
+
 ##
 # Processing
 ##
 
-def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
+def run_strax(run_id, input_dir, target, n_readout_threads, compressor, debug=False):
     if debug:
         log.setLevel(logging.DEBUG)
     try:
@@ -466,6 +480,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
         st = new_context()
         st.make(run_id, target,
                 config=dict(input_dir=input_dir,
+                            compressor=compressor,
                             n_readout_threads=n_readout_threads),
                 max_workers=args.cores)
     except Exception as e:
@@ -531,9 +546,11 @@ def process_run(rd, send_heartbeats=True):
             # Failed before, and on autopilot: do just raw_records
             target = 'raw_records'
 
+        compressor = get_compressor(rd)
+
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc, target, n_readout_threads, args.debug))
+            args=(run_id, loc, target, n_readout_threads,compressor, args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)
