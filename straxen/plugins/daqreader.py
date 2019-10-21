@@ -23,7 +23,7 @@ __all__ = ['DAQReader']
     strax.Option('compressor', default="blosc", track=False,
                  help="Algorithm used for (de)compressing the live data"),
     strax.Option('run_start_time', default=0., type=float, track=False,
-                 help="time of start run (ns since unix epoch)"))
+                 help="time of start run (s since unix epoch)"))
 class DAQReader(strax.Plugin):
     provides = 'raw_records'
     depends_on = tuple()
