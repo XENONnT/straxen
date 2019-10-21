@@ -20,7 +20,7 @@ __all__ = ['DAQReader']
                  help="Number of readout threads producing strax data files"),
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"),
-    strax.Option('compressor', default="blosc",
+    strax.Option('compressor', default="blosc", track=False,
                  help="Algorithm used for (de)compressing the live data"))
 class DAQReader(strax.Plugin):
     provides = 'raw_records'
