@@ -482,7 +482,8 @@ def get_compressor(rd, default_compressor="blosc"):
 # Processing
 ##
 
-def run_strax(run_id, input_dir, target, n_readout_threads, compressor, debug=False):
+def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
+              run_start_time, debug=False):
     if debug:
         log.setLevel(logging.DEBUG)
     try:
@@ -558,9 +559,15 @@ def process_run(rd, send_heartbeats=True):
 
         compressor = get_compressor(rd)
 
+        try:
+            run_start_time = rd['start'].timestamp()
+        except Exception as e:
+            fail(f"Could not find start in datetime.datetime object: {str(e)}")
+
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc, target, n_readout_threads,compressor, args.debug))
+            args=(run_id, loc, target, n_readout_threads, compressor,
+                  run_start_time,  args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)

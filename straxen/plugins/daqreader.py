@@ -21,7 +21,9 @@ __all__ = ['DAQReader']
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"),
     strax.Option('compressor', default="blosc", track=False,
-                 help="Algorithm used for (de)compressing the live data"))
+                 help="Algorithm used for (de)compressing the live data"),
+    strax.Option('run_start_time', default=0., type=float, track=False,
+                 help="time of start run (ns since unix epoch)"))
 class DAQReader(strax.Plugin):
     provides = 'raw_records'
     depends_on = tuple()
@@ -111,6 +113,9 @@ class DAQReader(strax.Plugin):
 
         strax.baseline(records)
         strax.integrate(records)
+
+        # convert time to time in ns since unix epoch
+        records["time"] = records["time"] + self.config["run_start_time"] * 1e9
 
         if len(records):
             timespan_sec = (records[-1]['time'] - records[0]['time']) / 1e9
