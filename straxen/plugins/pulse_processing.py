@@ -335,6 +335,8 @@ def _count_pulses(records, n_channels, result):
 
     last_end_seen = 0
     next_start = 0
+    previous_lone_fragment = np.zeros(n_channels)
+
     for r_i, r in enumerate(records):
         if r_i != len(records) - 1:
             next_start = records[r_i + 1]['time']
@@ -344,17 +346,24 @@ def _count_pulses(records, n_channels, result):
             print(ch)
             raise RuntimeError("Out of bounds channel in get_counts!")
 
+        area[ch] += r['area']  # <-- Summing total area in channel
+
         if r['record_i'] == 0:
             count[ch] += 1
-            area[ch] += r['area']
 
             if (r['time'] > last_end_seen
-                    and r['time'] + r['pulse_length'] < next_start):
+                    and r['time'] + r['pulse_length'] * r['dt'] < next_start):
                 lone_count[ch] += 1
-                lone_area[ch] += r['area']
+                previous_lone_fragment[ch] = 1  # <-- Lone pulse found, bool if there are more fragments
+                lone_area[ch] += r['area']  # <-- Sum total lone area
+            else:
+                previous_lone_fragment[ch] = 0  # <-- Reset in case of no lone hit
 
-        last_end_seen = max(last_end_seen,
-                            r['time'] + r['pulse_length'])
+            last_end_seen = max(last_end_seen,
+                                r['time'] + r['pulse_length'] * r['dt'])
+
+        elif previous_lone_fragment[ch]:  # <-- Previous lone hit and initial fragment
+            lone_area[ch] += r['area']  # <-- Sum total lone area
 
     res = result[0]
     res['pulse_count'][:] = count[:]
