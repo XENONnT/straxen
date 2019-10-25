@@ -1,4 +1,4 @@
-# straxen
+# nEXO_strax
 Streaming analysis for nEXO
 
 [![Readthedocs Badge](https://readthedocs.org/projects/straxen/badge/?version=latest)](https://straxen.readthedocs.io/en/latest/?badge=latest)
