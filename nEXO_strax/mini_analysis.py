@@ -5,13 +5,13 @@ import holoviews as hv
 import pandas as pd
 import strax
 from strax.context import select_docs
-import straxen
+import nEXO_strax
 
 
 export, __all__ = strax.exporter()
 
 ma_doc = """
-This is a straxen mini-analysis.
+This is a nEXO_strax mini-analysis.
 The method takes run_id as its only positional argument,
 and additional arguments through keywords only.
 
@@ -53,7 +53,7 @@ def mini_analysis(requires=tuple(), hv_bokeh=False):
             # TODO: This is a placeholder until the corrections system
             # is more fully developed
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
-                kwargs['to_pe'] = straxen.get_to_pe(
+                kwargs['to_pe'] = nEXO_strax.get_to_pe(
                     run_id,
                     'https://raw.githubusercontent.com/XENONnT/'
                     'strax_auxiliary_files/master/to_pe.npy')

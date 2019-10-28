@@ -16,5 +16,8 @@ from .peak_processing import *
 from . import event_processing
 from .event_processing import *
 
+from . import nEXO_MC_reader
+from .nEXO_MC_reader import *
+
 from . import cuts
 from .cuts import *

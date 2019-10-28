@@ -8,7 +8,7 @@ from tqdm import tqdm
 import pymongo
 
 import strax
-import straxen
+import nEXO_strax
 export, __all__ = strax.exporter()
 
 
@@ -78,8 +78,8 @@ class RunDB(strax.StorageFrontend):
 
         if s3_kwargs is None:
             s3_kwargs = dict(
-                aws_access_key_id=straxen.get_secret('s3_access_key_id'),
-                aws_secret_access_key=straxen.get_secret('s3_secret_access_key'),      # noqa
+                aws_access_key_id=nEXO_strax.get_secret('s3_access_key_id'),
+                aws_secret_access_key=nEXO_strax.get_secret('s3_secret_access_key'),      # noqa
                 endpoint_url='http://ceph-s3.mwt2.org',
                 service_name='s3',
                 config=botocore.client.Config(
@@ -89,8 +89,8 @@ class RunDB(strax.StorageFrontend):
         if mongo_url is None:
             mongo_url = default_mongo_url
         self.client = pymongo.MongoClient(mongo_url.format(
-            username=straxen.get_secret('rundb_username'),
-            password=straxen.get_secret('rundb_password')))
+            username=nEXO_strax.get_secret('rundb_username'),
+            password=nEXO_strax.get_secret('rundb_password')))
 
         if mongo_dbname is None:
             mongo_dbname = default_mongo_dbname

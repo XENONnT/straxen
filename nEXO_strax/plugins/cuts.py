@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import chi2
 import strax
 
-from straxen import units
+from nEXO_strax import units
 
 export, __all__ = strax.exporter()
 

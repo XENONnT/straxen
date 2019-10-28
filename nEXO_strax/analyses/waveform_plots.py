@@ -5,7 +5,7 @@ import holoviews.streams
 import numpy as np
 import pandas as pd
 
-import straxen
+import nEXO_strax
 
 
 def seconds_from(t, t_reference):
@@ -17,14 +17,14 @@ def x_zoom_wheel():
     return bokeh.models.WheelZoomTool(dimensions='width')
 
 
-@straxen.mini_analysis(requires=['records'], hv_bokeh=True)
+@nEXO_strax.mini_analysis(requires=['records'], hv_bokeh=True)
 def plot_pmt_pattern(*, records, to_pe, array='bottom'):
     """Plot a PMT array, with colors showing the intensity
     of light observed in the time range
 
     :param array: 'top' or 'bottom', array to show
     """
-    pmts = straxen.pmt_positions()
+    pmts = nEXO_strax.pmt_positions()
     areas = np.bincount(records['channel'],
                         weights=records['area'] * to_pe[records['channel']],
                         minlength=len(pmts))
@@ -39,10 +39,10 @@ def plot_pmt_pattern(*, records, to_pe, array='bottom'):
         pmts,
         kdims=[hv.Dimension('x',
                             unit='cm',
-                            range=(-straxen.tpc_r * f, straxen.tpc_r * f)),
+                            range=(-nEXO_strax.tpc_r * f, nEXO_strax.tpc_r * f)),
                hv.Dimension('y',
                             unit='cm',
-                            range=(-straxen.tpc_r * f, straxen.tpc_r * f)),
+                            range=(-nEXO_strax.tpc_r * f, nEXO_strax.tpc_r * f)),
                hv.Dimension('i', label='PMT number'),
                hv.Dimension('area', label='Area', unit='PE')])
     pmts = pmts.to(
@@ -77,14 +77,14 @@ def _records_to_points(*, records, to_pe, t_reference):
         kdims=[hv.Dimension('time', label='Time', unit='sec'),
                hv.Dimension('channel',
                             label='PMT number',
-                            range=(0, straxen.n_tpc_pmts))],
+                            range=(0, nEXO_strax.n_tpc_pmts))],
         vdims=[hv.Dimension('area', label='Area', unit='pe')])
 
     time_stream = hv.streams.RangeX(source=rec_points)
     return rec_points, time_stream
 
 
-@straxen.mini_analysis(requires=['records'])
+@nEXO_strax.mini_analysis(requires=['records'])
 def plot_records_2d(records, to_pe,
                     t_reference, width=600, time_stream=None):
     """Plot records in a dynamic 2D histogram of (time, pmt)
@@ -104,7 +104,7 @@ def plot_records_2d(records, to_pe,
     return datashader.dynspread(
             datashader.datashade(
                 records,
-                y_range=(0, straxen.n_tpc_pmts),
+                y_range=(0, nEXO_strax.n_tpc_pmts),
                 streams=[time_stream])).opts(
         plot=dict(width=width,
                   tools=[x_zoom_wheel(), 'xpan'],
@@ -112,7 +112,7 @@ def plot_records_2d(records, to_pe,
                   show_grid=False))
 
 
-@straxen.mini_analysis(
+@nEXO_strax.mini_analysis(
     requires=['peaks', 'peak_classification', 'peak_basics'],
     hv_bokeh=True)
 def plot_peak_waveforms(
@@ -185,7 +185,7 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
     return wrapped
 
 
-@straxen.mini_analysis(
+@nEXO_strax.mini_analysis(
     requires=['records', 'peaks', 'peak_basics', 'peak_classification'],
     hv_bokeh=True)
 def waveform_display(

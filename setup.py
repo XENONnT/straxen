@@ -11,11 +11,11 @@ with open('README.md') as file:
 with open('HISTORY.md') as file:
     history = file.read()
 
-setuptools.setup(name='straxen',
-                 version='0.3.1',
-                 description='Streaming analysis for XENON',
-                 author='Straxen contributors, the XENON collaboration',
-                 url='https://github.com/XENONnT/straxen',
+setuptools.setup(name='nEXO_strax',
+                 version='0.1.0',
+                 description='Streaming analysis for nEXO',
+                 author='The nEXO collaboration',
+                 url='https://github.com/nEXO-collaboration/nEXO_strax',
                  long_description=readme + '\n\n' + history,
                  long_description_content_type="text/markdown",
                  setup_requires=['pytest-runner'],

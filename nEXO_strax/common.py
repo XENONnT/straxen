@@ -162,7 +162,7 @@ def get_secret(x):
     """Return secret key x. In order of priority, we search:
 
       * Environment variable: uppercase version of x
-      * xenon_secrets.py (if included with your straxen installation)
+      * xenon_secrets.py (if included with your nEXO_strax installation)
       * A standard xenon_secrets.py located on the midway analysis hub
         (if you are running on midway)
     """
@@ -176,7 +176,7 @@ def get_secret(x):
         from . import xenon_secrets
     except ImportError:
         message += ("nor was there a valid xenon_secrets.py "
-                    "included with your straxen installation, ")
+                    "included with your nEXO_strax installation, ")
 
         # If on midway, try loading a standard secrets file instead
         if 'rcc' in socket.getfqdn():

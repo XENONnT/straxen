@@ -56,7 +56,7 @@ import pymongo
 from psutil import pid_exists, Process, virtual_memory, cpu_percent
 import pytz
 import strax
-import straxen
+import nEXO_strax
 
 logging.basicConfig(level=logging.INFO,
                     format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
@@ -148,16 +148,16 @@ state_doc_id = None   # Set in main loop
 
 def new_context():
     """Create strax context that can access the runs db"""
-    # We use exactly the logic of straxen to access the runs DB;
+    # We use exactly the logic of nEXO_strax to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
     st = strax.Context(
-        storage=straxen.RunDB(
+        storage=nEXO_strax.RunDB(
             mongo_url=mongo_url,
             mongo_collname=run_collname,
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
-        **straxen.contexts.common_opts)
+        **nEXO_strax.contexts.common_opts)
     return st
 
 

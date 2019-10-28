@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Process a single run with straxen
+"""Process a single run with nEXO_strax
 """
 import argparse
 import logging
@@ -10,7 +10,7 @@ import psutil
 
 
 parser = argparse.ArgumentParser(
-    description='Process a single run with straxen',
+    description='Process a single run with nEXO_strax',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(
     'run_id', 
@@ -20,7 +20,7 @@ parser.add_argument(
 parser.add_argument(
     '--context',
     default='strax_workshop_dali',
-    help="Name of straxen context to use")
+    help="Name of nEXO_strax context to use")
 parser.add_argument(
     '--target', 
     default='event_info',
@@ -59,10 +59,10 @@ logging.basicConfig(
 # These imports take a bit longer, so it's nicer
 # to do them after argparsing (so --help is fast)
 import strax
-import straxen
+import nEXO_strax
 
 strax.Mailbox.DEFAULT_MAX_MESSAGES = int(args.max_messages)
-st = getattr(straxen.contexts, args.context)()
+st = getattr(nEXO_strax.contexts, args.context)()
 if args.diagnose_sorting:
     st.set_config(dict(diagnose_sorting=True))
 st.context_config['allow_multiprocess'] = args.multiprocess

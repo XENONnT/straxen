@@ -2,7 +2,7 @@ import numba
 import numpy as np
 
 import strax
-from straxen import get_to_pe
+from nEXO_strax import get_to_pe
 export, __all__ = strax.exporter()
 
 # Number of TPC PMTs. Hardcoded for now...

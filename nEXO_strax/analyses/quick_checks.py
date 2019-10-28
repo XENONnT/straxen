@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import strax
-import straxen
+import nEXO_strax
 
 
-@straxen.mini_analysis(requires=('peak_basics',))
+@nEXO_strax.mini_analysis(requires=('peak_basics',))
 def plot_peaks_aft_histogram(
         context, run_id, peaks,
         pe_bins=np.logspace(0, 7, 120),
@@ -75,7 +75,7 @@ def plot_peaks_aft_histogram(
     plt.tight_layout()
 
 
-@straxen.mini_analysis(requires=['event_info'])
+@nEXO_strax.mini_analysis(requires=['event_info'])
 def event_scatter(context, run_id, events,
                   show_single=True,
                   s=10,

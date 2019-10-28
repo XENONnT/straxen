@@ -1,7 +1,7 @@
 import tempfile
 import os
 
-import straxen
+import nEXO_strax
 
 test_run_id = '180423_1021'
 
@@ -12,7 +12,7 @@ def test_straxen():
         os.chdir(temp_dir)
 
         print("Downloading test data (if needed)")
-        st = straxen.contexts.demo()
+        st = nEXO_strax.contexts.demo()
 
         run_df = st.select_runs(available='raw_records')
         run_id = run_df.iloc[0]['name']
@@ -28,7 +28,7 @@ def test_straxen():
         # surely pytest has common startup/cleanup?
 
         print("Test mini analysis")
-        @straxen.mini_analysis(requires=('raw_records',))
+        @nEXO_strax.mini_analysis(requires=('raw_records',))
         def count_rr(raw_records):
             return len(raw_records)
 

@@ -19,9 +19,9 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'straxen'
-copyright = '2018, straxen contributors and the XENON collaboration'
-author = 'straxen contributors and the XENON collaboration'
+project = 'nEXO_strax'
+copyright = '2018, nEXO_strax contributors and the XENON collaboration'
+author = 'nEXO_strax contributors and the XENON collaboration'
 
 # The short X.Y version
 version = '0.0.1'
@@ -150,8 +150,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'straxen.tex', 'straxen Documentation',
-     'straxen contributors and the XENON collaboration', 'manual'),
+    (master_doc, 'nEXO_strax.tex', 'nEXO_strax Documentation',
+     'nEXO_strax contributors and the XENON collaboration', 'manual'),
 ]
 
 
@@ -160,7 +160,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'straxen', 'straxen Documentation',
+    (master_doc, 'nEXO_strax', 'nEXO_strax Documentation',
      [author], 1)
 ]
 
@@ -171,8 +171,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'straxen', 'straxen Documentation',
-     author, 'straxen', 'One line description of project.',
+    (master_doc, 'nEXO_strax', 'nEXO_strax Documentation',
+     author, 'nEXO_strax', 'One line description of project.',
      'Miscellaneous'),
 ]
 

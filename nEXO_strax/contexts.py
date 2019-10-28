@@ -1,10 +1,10 @@
 import strax
-import straxen as sx
+import nEXO_strax as sx
 
 
 common_opts = dict(
     register_all=[sx.daqreader, sx.pulse_processing,
-                  sx.peak_processing, sx.event_processing, sx.cuts],
+                  sx.peak_processing, sx.event_processing, sx.cuts,],
     store_run_fields=(
         'name', 'number', 'reader.ini.name',
         'tags.name',
@@ -15,7 +15,7 @@ common_opts = dict(
 
 
 def demo():
-    """Return strax context used in the straxen demo notebook"""
+    """Return strax context used in the nEXO_strax demo notebook"""
     sx.download_test_data()
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
@@ -79,3 +79,10 @@ def strax_workshop_dali():
         # starting the pax converter
         forbid_creation_of=('raw_records',),
         **common_opts)
+
+def MC_test():
+    return strax.Context(
+        storage=[strax.DataDirectory('./strax_data'),],
+        # register=
+        register_all = [sx.nEXO_MC_reader,]
+    )

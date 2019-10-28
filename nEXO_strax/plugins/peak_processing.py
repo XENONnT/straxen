@@ -6,7 +6,7 @@ import numpy as np
 import numba
 
 import strax
-from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
+from nEXO_strax.common import get_to_pe, pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
 @export

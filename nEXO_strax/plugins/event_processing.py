@@ -2,8 +2,8 @@ import strax
 
 import numpy as np
 
-from straxen.common import pax_file, get_resource, get_elife, first_sr1_run
-from straxen.itp_map import InterpolatingMap
+from nEXO_strax.common import pax_file, get_resource, get_elife, first_sr1_run
+from nEXO_strax.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
 
