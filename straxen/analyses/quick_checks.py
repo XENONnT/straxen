@@ -144,7 +144,7 @@ def event_scatter(context, run_id, events,
 
     plt.sca(ax)
     if color_range[0] is None:
-        extend = None if color_range[1] is None else 'max'
+        extend = 'neither' if color_range[1] is None else 'max'
     else:
         extend = 'min' if color_range[1] is None else 'both'
     plt.colorbar(label="S1 area fraction top",

@@ -1,4 +1,5 @@
 import json
+import os
 from packaging.version import parse as parse_version
 import tempfile
 
@@ -186,10 +187,15 @@ class PeakPositions(strax.Plugin):
         self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
                                  bad_pmts)
 
-        with tempfile.NamedTemporaryFile() as f:
+        # Keras needs a file to load its weights. We can't put the load
+        # inside the context, then it would break on windows
+        # because there temporary files cannot be opened again.
+        with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(get_resource(self.config['nn_weights'],
                                  fmt='binary'))
-            nn.load_weights(f.name)
+            fname = f.name
+        nn.load_weights(fname)
+        os.remove(fname)
         self.nn = nn
 
         if not self.has_tf2:
