@@ -71,7 +71,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -322,7 +322,8 @@ def pulse_count_dtype(n_channels):
 def count_pulses(records, n_channels):
     """Return array with one element, with pulse count info from records"""
     result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
-    _count_pulses(records, n_channels, result)
+    if len(records):
+        _count_pulses(records, n_channels, result)
     return result
 
 
@@ -335,6 +336,11 @@ def _count_pulses(records, n_channels, result):
 
     last_end_seen = 0
     next_start = 0
+
+    # Array of booleans to track whether we are currently in a lone pulse
+    # in each channel
+    in_lone_pulse = np.zeros(n_channels, dtype=np.bool_)
+
     for r_i, r in enumerate(records):
         if r_i != len(records) - 1:
             next_start = records[r_i + 1]['time']
@@ -344,17 +350,26 @@ def _count_pulses(records, n_channels, result):
             print(ch)
             raise RuntimeError("Out of bounds channel in get_counts!")
 
+        area[ch] += r['area']  # <-- Summing total area in channel
+
         if r['record_i'] == 0:
             count[ch] += 1
-            area[ch] += r['area']
 
             if (r['time'] > last_end_seen
-                    and r['time'] + r['pulse_length'] < next_start):
+                    and r['time'] + r['pulse_length'] * r['dt'] < next_start):
+                # This is a lone pulse
                 lone_count[ch] += 1
+                in_lone_pulse[ch] = True
                 lone_area[ch] += r['area']
+            else:
+                in_lone_pulse[ch] = False
 
-        last_end_seen = max(last_end_seen,
-                            r['time'] + r['pulse_length'])
+            last_end_seen = max(last_end_seen,
+                                r['time'] + r['pulse_length'] * r['dt'])
+
+        elif in_lone_pulse[ch]:
+            # This is a subsequent fragment of a lone pulse
+            lone_area[ch] += r['area']
 
     res = result[0]
     res['pulse_count'][:] = count[:]
