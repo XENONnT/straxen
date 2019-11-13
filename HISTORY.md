@@ -1,3 +1,15 @@
+
+0.3.2 / 2019-11-13
+------------------
+- Pulse counting bugfixes (#30)
+- Bootstrax: 
+  - Setup fix (#27)
+  - Add correct (epoch-based) run start time (#29)
+  - Support compressor config (#29)
+- Avoid platform-specific tempfile things (#28)
+- Placeholder electron lifetime (#25)
+  
+
 0.3.1 / 2019-09-25
 ------------------
 - Fix resource caching
