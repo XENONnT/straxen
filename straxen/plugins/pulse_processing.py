@@ -322,7 +322,8 @@ def pulse_count_dtype(n_channels):
 def count_pulses(records, n_channels):
     """Return array with one element, with pulse count info from records"""
     result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
-    _count_pulses(records, n_channels, result)
+    if len(records):
+        _count_pulses(records, n_channels, result)
     return result
 
 
@@ -335,7 +336,10 @@ def _count_pulses(records, n_channels, result):
 
     last_end_seen = 0
     next_start = 0
-    previous_lone_fragment = np.zeros(n_channels)
+
+    # Array of booleans to track whether we are currently in a lone pulse
+    # in each channel
+    in_lone_pulse = np.zeros(n_channels, dtype=np.bool_)
 
     for r_i, r in enumerate(records):
         if r_i != len(records) - 1:
@@ -353,17 +357,19 @@ def _count_pulses(records, n_channels, result):
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] * r['dt'] < next_start):
+                # This is a lone pulse
                 lone_count[ch] += 1
-                previous_lone_fragment[ch] = 1  # <-- Lone pulse found, bool if there are more fragments
-                lone_area[ch] += r['area']  # <-- Sum total lone area
+                in_lone_pulse[ch] = True
+                lone_area[ch] += r['area']
             else:
-                previous_lone_fragment[ch] = 0  # <-- Reset in case of no lone hit
+                in_lone_pulse[ch] = False
 
             last_end_seen = max(last_end_seen,
                                 r['time'] + r['pulse_length'] * r['dt'])
 
-        elif previous_lone_fragment[ch]:  # <-- Previous lone hit and initial fragment
-            lone_area[ch] += r['area']  # <-- Sum total lone area
+        elif in_lone_pulse[ch]:
+            # This is a subsequent fragment of a lone pulse
+            lone_area[ch] += r['area']
 
     res = result[0]
     res['pulse_count'][:] = count[:]
