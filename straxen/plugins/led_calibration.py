@@ -9,10 +9,12 @@ from numba import njit
 export, __all__ = strax.exporter()
 
 
+@export
 @strax.takes_config(
     strax.Option('LED_window',
                  default=(125, 250),
-                 help="Window (samples) where we expect signal in LED calibration"))
+                 help="Window (samples) where we expect signal in LED calibration")
+)
 
 
 class LEDCalibration(strax.Plugin):
