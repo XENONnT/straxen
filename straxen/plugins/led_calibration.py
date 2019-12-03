@@ -81,15 +81,17 @@ def get_amplitude(raw_records, LED_window, noise_window):
     '''
     on = np.zeros(len(raw_records), dtype=[('amplitudeLED', '<i4')])
     off = np.zeros(len(raw_records), dtype=[('amplitudeNOISE', '<i4')])
-    on  = ((np.max(r['data'][LED_window[0]:LED_window[1]])) for r in raw_records)
-    off = ((np.max(r['data'][noise_window[0]:noise_window[1]])) for r in raw_records)
-    #for r in raw_records:
-    #    amp_LED = np.max(r['data'][LED_window[0]:LED_window[1]])
-    #    amp_NOISE = np.max(r['data'][noise_window[0]:noise_window[1]])
+    #on  = ((np.max(r['data'][LED_window[0]:LED_window[1]])) for r in raw_records)
+    #off = ((np.max(r['data'][noise_window[0]:noise_window[1]])) for r in raw_records)
+    i = 0
+    for r in raw_records:
+        on[i] = np.max(r['data'][LED_window[0]:LED_window[1]])
+        off[i] = np.max(r['data'][noise_window[0]:noise_window[1]])
+        i=i+1
     #    on.append(amp_LED)
     #    off.append(amp_NOISE)
     #on = np.array(on, dtype=[('amplitudeLED', '<i4')])
-    #voff = np.array(off, dtype=[('amplitudeNOISE', '<i4')])
+    #off = np.array(off, dtype=[('amplitudeNOISE', '<i4')])
     return on, off
 
 def get_area(raw_records, LED_window):
