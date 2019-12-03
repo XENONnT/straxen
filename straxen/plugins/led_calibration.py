@@ -18,6 +18,9 @@ from numba import njit
     strax.Option('LED_window',
                  default=(125, 250),
                  help="Window (samples) where we expect signal in LED calibration")
+    strax.Option('noise_window',
+                 default=(350, 475),
+                 help="Window (samples) to analysis the noise")
 )
 
 
@@ -32,7 +35,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     '''
     
-    __version__ = '0.0.6'
+    __version__ = '0.0.7'
     depends_on = ('raw_records',)
     # Options below copied from other plugins, need to be reviewed by an expert
     data_kind = 'led_cal_0' 
@@ -59,11 +62,11 @@ class LEDCalibration(strax.Plugin):
         temp['dt'] = r['dt']
         temp['length'] = r['length']
         
-        on, off = get_amplitude(r, self.config['LED_window'])
+        on, off = get_amplitude(r, self.config['LED_window'], self.config['noise_window'])
         temp['amplitudeLED'] = on
         temp['amplitudeNOISE'] = off
 
-        area = get_area(r, self.config['LED_window'])
+        area = get_area(r, self.config['LED_window'], self.config['noise_window'])
         temp['area'] = area['area']
         
         return temp
@@ -71,30 +74,30 @@ class LEDCalibration(strax.Plugin):
 # QUESTIONS: can some nice functions of numba.njit be used? What does @export mean?
 # ANSWERS: [fill in]
     
-def get_amplitude(raw_records, window):
+def get_amplitude(raw_records, LED_window, noise_window):
     '''
     Needed for the SPE computation.
     Take the maximum in two different regions, where there is the signal and where there is not.
     '''
-    on = []
-    off = []
+    on = np.zeros(len(raw_records))
+    off = np.zeros(len(raw_records))
     for r in raw_records:
-        amp_LED = np.max(r['data'][window[0]:window[1]])
-        amp_NOISE = np.max(r['data'][2*window[0]:2*window[1]])
+        amp_LED = np.max(r['data'][LED_window[0]:LED_window[1]])
+        amp_NOISE = np.max(r['data'][noise_window[0]:noise_window[1]])
         on.append(amp_LED)
         off.append(amp_NOISE)
     on = np.array(on, dtype=[('amplitudeLED', '<i4')])
     off = np.array(off, dtype=[('amplitudeNOISE', '<i4')])
     return on, off
 
-def get_area(raw_records, window):
+def get_area(raw_records, LED_window):
     '''
     Needed for the gain computation.
     Sum the data in the defined window to get the area.
     This is done in 6 integration window and it returns the average area.
     '''
-    left = window[0]
-    end_pos = [window[1]+2*i for i in range(6)]
+    left = LED_window[0]
+    end_pos = [LED_window[1]+2*i for i in range(6)]
     n_channel_s = np.arange(0, 249, 1) # TODO: to change during nT commissioning or add in configuration options
     Area = np.array(raw_records[['channel', 'area']],dtype=[('channel','int16'),('area','float32')])
     
