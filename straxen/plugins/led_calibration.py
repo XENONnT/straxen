@@ -17,7 +17,7 @@ from numba import njit
 @strax.takes_config(
     strax.Option('LED_window',
                  default=(125, 250),
-                 help="Window (samples) where we expect signal in LED calibration")
+                 help="Window (samples) where we expect signal in LED calibration"),
     strax.Option('noise_window',
                  default=(350, 475),
                  help="Window (samples) to analysis the noise")
