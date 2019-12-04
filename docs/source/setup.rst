@@ -4,7 +4,7 @@ Setting up straxen
 To install straxen locally, follow these steps in a python 3.6 environment:
 
 1. `git clone https://github.com/XENONnT/straxen`
-2. **Optional**. If you want access to the XENON data, but you are NOT on the UChicago Midway analysis center, copy the file `/home/aalbers/xenon_secrets.py` from midway to  `./straxen/straxen/`, i.e. to the same directory as `xenon_context.py`.
+2. **Optional**. If you are NOT on the UChicago Midway analysis center, copy the file `/home/aalbers/xenon_secrets.py` from midway to  `./straxen/straxen/`, i.e. to the same directory as `mini_analysis.py`. Even with this step, you will have very limited access to XENON data.
 3. `pip install -e ./straxen`
 
 The basic analysis tutorial will work outside midway even without step 2 -- we ship a tiny bit of test data with straxen for this purpose. Not much else will work, in particular, anything that requires the XENON runs database will fail.
