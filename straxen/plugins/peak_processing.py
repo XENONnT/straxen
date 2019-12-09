@@ -267,7 +267,7 @@ class PeakClassification(strax.Plugin):
     depends_on = ('peak_basics','tight_coincidence')
 
     # Numpy datatype of the output
-    dtype = straxen.PeakClassification.dtype
+    dtype = [('type', np.int8, 'Classification of the peak.')]
 
     # Version of the plugin. Increment this if you change the algorithm.
     __version__ = '0.0.2'
