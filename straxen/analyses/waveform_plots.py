@@ -84,7 +84,7 @@ def _records_to_points(*, records, to_pe, t_reference):
     return rec_points, time_stream
 
 
-@straxen.mini_analysis(requires=['records'])
+@straxen.mini_analysis(requires=['records'], hv_bokeh=True)
 def plot_records_2d(records, to_pe,
                     t_reference, width=600, time_stream=None):
     """Plot records in a dynamic 2D histogram of (time, pmt)
@@ -120,7 +120,7 @@ def plot_peak_waveforms(
         time_range,
         peaks,
         width=600,
-        show_largest=10,
+        show_largest=None,
         time_dim=None):
     """Plot the sum waveforms of peaks
     :param width: Plot width in pixels
@@ -190,7 +190,7 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
     hv_bokeh=True)
 def waveform_display(
         context, run_id, to_pe, time_range, t_reference, records, peaks,
-        width=600):
+        width=600, show_largest=None):
     """Plot a waveform overview display"
 
     :param width: Plot width in pixels
@@ -233,7 +233,8 @@ def waveform_display(
             t_reference=t_reference,
             time_selection='touching',
             time_dim=records_points.kdims[0],
-            peaks=peaks),
+            peaks=peaks,
+            show_largest=show_largest),
         streams=[time_stream])
 
     layout = (peak_wvs + array_plot['top']
