@@ -152,7 +152,10 @@ class PeakBasics(strax.Plugin):
 
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10))
+                 default=10),
+    strax.Option('n_top_pmts',
+                help='Number of pmts in the top array',
+                default=127)
 class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -168,7 +171,7 @@ class PeakPositions(strax.Plugin):
     # except for huge chunks
     parallel = False
 
-    n_top_pmts = 127
+    n_top_pmts = self.config['n_top_pmts']
 
     __version__ = '0.0.1'
 
