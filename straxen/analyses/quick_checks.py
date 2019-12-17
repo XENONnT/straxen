@@ -1,9 +1,19 @@
-from multihist import Histdd
 import numpy as np
+from multihist import Hist1d, Histdd
 import matplotlib.pyplot as plt
 
 import strax
 import straxen
+from .mpl_helpers import log_x
+
+
+def get_livetime_sec(context, run_id, things):
+    try:
+        md = context.run_metadata(run_id, projection=('start', 'end'))
+        livetime_sec = (md['end'] - md['start']).total_seconds()
+    except strax.RunMetadataNotAvailable:
+        livetime_sec = (strax.endtime(things[-1]) - things[0]['time']) / 1e9
+    return livetime_sec
 
 
 @straxen.mini_analysis(requires=('peak_basics',))
@@ -17,11 +27,7 @@ def plot_peaks_aft_histogram(
         figsize=(14, 5)):
     """Plot side-by-side (area, width) histograms of the peak rate
     and mean area fraction top."""
-    try:
-        md = context.run_metadata(run_id, projection=('start', 'end'))
-        livetime_sec = (md['end'] - md['start']).total_seconds()
-    except strax.RunMetadataNotAvailable:
-        livetime_sec = (strax.endtime(peaks)[-1] - peaks[0]['time']) / 1e9
+    livetime_sec = get_livetime_sec(context, run_id, peaks)
 
     mh = Histdd(peaks,
                 dimensions=(
@@ -150,3 +156,47 @@ def event_scatter(context, run_id, events,
     plt.colorbar(label="S1 area fraction top",
                  extend=extend,
                  ax=[ax, ax3])
+
+
+@straxen.mini_analysis(requires=('event_info',))
+def plot_energy_spectrum(
+        run_id, context, events,
+        color='b', label=None, error_alpha=0.5,
+        n_bins=100, min_energy=1, max_energy=100, geomspace=True):
+    livetime_sec = get_livetime_sec(context, run_id, events)
+
+    h = Hist1d(events['e_ces'],
+               bins=(np.geomspace if geomspace else np.linspace)(
+                   min_energy, max_energy, n_bins))
+    mean, std = h.histogram, h.histogram**0.5
+    scale = h.bin_volumes() * livetime_sec / (3600 * 24)
+    (h/scale).plot(linewidth=1, color=color, label=label)
+    plt.fill_between(h.bin_centers,
+                     (mean - std)/scale,
+                     (mean + std)/scale,
+                     color=color,
+                     step='mid', alpha=error_alpha)
+    plt.yscale('log')
+    if geomspace:
+        log_x(min_energy, max_energy, scalar_ticks=True)
+    else:
+        plt.xlim(min_energy, max_energy)
+    plt.ylabel("Events / (keV_ee * day)")
+    plt.xlabel("Energy [keV_ee], CES")
+
+
+@straxen.mini_analysis(requires=('peak_basics', 'peak_classification'))
+def plot_peak_classification(peaks, s=1):
+    for cl, color in enumerate('kbg'):
+        d = peaks[peaks['type'] == cl]
+        plt.scatter(d['area'], d['rise_time'], c=color,
+                    s=s, marker='.', edgecolors='none',
+                    label={0: 'Unknown', 1: 'S1', 2: 'S2'}[cl])
+    plt.legend(loc='lower right', markerscale=10)
+
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(1, 2e6)
+    plt.ylim(3, 1e4)
+    plt.xlabel("Area [PE]")
+    plt.ylabel("Rise time [ns]")
