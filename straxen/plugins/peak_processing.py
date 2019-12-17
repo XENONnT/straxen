@@ -243,6 +243,8 @@ class PeakPositions(strax.Plugin):
 
 @export
 @strax.takes_config(
+    strax.Option('s1_max_width', default=80,
+                 help="Maximum S1 50% area width [ns]"),
     strax.Option('s1_max_rise_time', default=70,
                  help="Maximum S1 rise time [ns]"),
     strax.Option('s1_min_coincidence', default=3,
@@ -255,13 +257,14 @@ class PeakClassification(strax.Plugin):
     provides = 'peak_classification'
     depends_on = ('peak_basics', 'tight_coincidence')
     dtype = [('type', np.int8, 'Classification of the peak.')]
-    __version__ = '0.0.4'
+    __version__ = '0.0.3'
 
     result = {}
     def compute(self, peaks):
         result = np.zeros(len(peaks), dtype=self.dtype)
 
         is_s1 = peaks['rise_time'] <= self.config['s1_max_rise_time']
+        is_s1 &= peaks['range_50p_area'] <= self.config['s1_max_width']
         is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
         result['type'][is_s1] = 1
 
@@ -325,7 +328,10 @@ class NCompeting(strax.OverlapWindowPlugin):
 class TightCoincidence(strax.LoopPlugin):
     """Calculates the tight coincidence
 
-    From Joey, May 2019 Chicago strax workshop
+    Defined by number of hits within a specified time range of the 
+    the peak's maximum amplitude.
+    Imitates tight_coincidence variable in pax:
+    github.com/XENON1T/pax/blob/master/pax/plugins/peak_processing/BasicProperties.py
     """
     __version__ = '0.0.3'
 
@@ -369,18 +375,18 @@ class TightCoincidence(strax.LoopPlugin):
             w = r['data'][h['left']:h['right']]
             result[i] = np.argmax(w)
         return result
-
+    
     def compute(self, records, peaks):
         r = records
         p = peaks
         hits = strax.find_hits(r)
 
         hit_max_times = np.sort(
-            hits['time']
+            hits['time'] 
             + hits['dt'] * self.hit_max_sample(records, hits))
 
         peak_max_times = (
-            peaks['time']
+            peaks['time'] 
             + np.argmax(peaks['data'], axis=1) * peaks['dt'])
 
         tight_coin = self.get_tight_coin(
