@@ -10,6 +10,7 @@ import strax
 from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
+
 @export
 @strax.takes_config(
     strax.Option('peak_gap_threshold', default=300,
@@ -85,11 +86,8 @@ class Peaks(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option('n_top_pmts', default=127,
-                 help="Number of top PMTs")
-)
+                 help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    #Last update: Adding Rise time and Range_90p_area variable
-    #necessary for the new peak classification
     __version__ = "0.0.2"
     parallel = True
     depends_on = ('peaks',)
@@ -118,8 +116,7 @@ class PeakBasics(strax.Plugin):
         (('Time resolution of the peak waveform in ns',
           'dt'), np.int16),
         (('rise time of the pulse [ns]',
-          'rise_time'), np.float32),
-        ]
+          'rise_time'), np.float32)]
 
     def compute(self, peaks):
         p = peaks
@@ -138,7 +135,7 @@ class PeakBasics(strax.Plugin):
         # Negative-area peaks get 0 AFT - TODO why not NaN?
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
-        r['rise_time'] = -p['area_decile_from_midpoint'][: ,1]
+        r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
         return r
 
 
@@ -150,14 +147,12 @@ class PeakBasics(strax.Plugin):
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr0.json')),
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr1.json'))]),   # noqa
-
     strax.Option(
         'nn_weights',
         help='Path to HDF5 of neural net weights',
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr0.h5')),
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
-
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
                  default=10))
@@ -245,45 +240,36 @@ class PeakPositions(strax.Plugin):
 
         return dict(x=result[:, 0], y=result[:, 1])
 
+
 @export
 @strax.takes_config(
-    strax.Option('s1_width_treshold', default=300,
-                 help="Maximum width necessary "),
-    strax.Option('s1_rise_time_treshold', default=70,
-                 help="Maximum rise time necessary to be a S1 "),
-    strax.Option('s2_min_channel', default=2,
-                 help="Minimum number of PMTs contributing to the peak "),
-    strax.Option('s1_tight_coincidence_treshold', default=1,
-                 help="Minimum number of PMTs contributing centered on the peak's sum waveform maximum "))
+    strax.Option('s1_max_width', default=300,
+                 help="Maximum S1 90% area width [ns]"),
+    strax.Option('s1_max_rise_time', default=70,
+                 help="Maximum S1 rise time [ns]"),
+    strax.Option('s1_min_coincidence', default=3,
+                 help="Minimum tight coincidence necessary to make an S1"),
+    strax.Option('s2_min_pmts', default=4,
+                 help="Minimum number of PMTs contributing to an S2"))
 class PeakClassification(strax.Plugin):
+    """Pax-like peak classification plugin"""
 
-    # Pax-like peak classification plugin
-    # Name of the data type this plugin provides
     provides = 'peak_classification'
-
-    # Data types this plugin requires. Note we don't specify
-    # what plugins should produce them: maybe the default PeakBasics
-    # has been replaced by another AdvancedExpertBlabla plugin?
-    depends_on = ('peak_basics','tight_coincidence')
-
-    # Numpy datatype of the output
+    depends_on = ('peak_basics', 'tight_coincidence')
     dtype = [('type', np.int8, 'Classification of the peak.')]
-
-    # Version of the plugin. Increment this if you change the algorithm.
     __version__ = '0.0.2'
 
     result = {}
     def compute(self, peaks):
         result = np.zeros(len(peaks), dtype=self.dtype)
 
-
-        is_s1 = (peaks['rise_time'] < self.config['s1_rise_time_treshold'])
-        is_s1 &= (peaks['range_90p_area'] < self.config['s1_width_treshold'])
-        is_s1 &= (peaks['tight_coincidence'] > self.config['s1_tight_coincidence_treshold'])
+        is_s1 = peaks['rise_time'] <= self.config['s1_max_rise_time']
+        is_s1 &= peaks['range_90p_area'] <= self.config['s1_max_width']
+        is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
         result['type'][is_s1] = 1
 
-        is_s2 = (peaks['n_channels']>self.config['s2_min_channel'])
-        is_s2 &= ((peaks['range_90p_area'] > self.config['s1_width_treshold']) | (peaks['rise_time'] > self.config['s1_rise_time_treshold']))
+        is_s2 = peaks['n_channels'] >= self.config['s2_min_pmts']
+        is_s2[is_s1] = False
         result['type'][is_s2] = 2
 
         return result
@@ -296,8 +282,7 @@ class PeakClassification(strax.Plugin):
                       'this fraction of that of the considered peak'),
     strax.Option('nearby_window', default=int(1e7),
                  help='Peaks starting within this time window (on either side)'
-                      'in ns count as nearby.'),
-)
+                      'in ns count as nearby.'))
 class NCompeting(strax.OverlapWindowPlugin):
     depends_on = ('peak_basics',)
     dtype = [
@@ -335,33 +320,23 @@ class NCompeting(strax.OverlapWindowPlugin):
 
 @strax.takes_config(
     strax.Option('tight_coincidence_window_left', default=50,
-                 help="Time range left of peak center to call a hit a tight coincidence (ns)"),
+                 help="Time range left of peak center to call "
+                      "a hit a tight coincidence (ns)"),
     strax.Option('tight_coincidence_window_right', default=50,
-                 help="Time range right of peak center to call a hit a tight coincidence (ns)"),
-)
+                 help="Time range right of peak center to call "
+                      "a hit a tight coincidence (ns)"),)
 class TightCoincidence(strax.LoopPlugin):
-    """Calculates the tight coincidence"""
-    #From Joey Chicago workshop
-
-    # Name of the data type this plugin provides
-    provides = 'tight_coincidence'
-    data_kind = 'peaks'
-
-    depends_on = ('records', 'peaks')
-
-    # Numpy datatype of the output
-    dtype = [
-        (('Hits within tight range of mean', 'tight_coincidence'), np.int16),
-    ]
-
-    # Version of the plugin. Increment this if you change the algorithm.
+    """Calculates the tight coincidence
+    From Joey, May 2019 Chicago strax workshop
+    """
     __version__ = '0.0.1'
 
-    #parallel = 'process'
-    #rechunk_on_save = True
-
-
-
+    provides = 'tight_coincidence'
+    data_kind = 'peaks'
+    depends_on = ('records', 'peaks')
+    dtype = [
+        (('Hits within tight range of mean', 'tight_coincidence'), np.int16)]
+    parallel = True
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
@@ -376,18 +351,15 @@ class TightCoincidence(strax.LoopPlugin):
             for left_hit_i in range(left_hit_i, len(hit_mean_times)):
 
                 # if the hit is in the window, its a tight coin
-                if (
-                    (p_t - hit_mean_times[left_hit_i] < left)
-                    & (hit_mean_times[left_hit_i] - p_t < right)
-                ):
+                d = hit_mean_times[left_hit_i] - p_t
+                if (-left < d) & (d < right):
                     n_coin[p_i] += 1
 
                 # stop the loop when we know we're outside the range
-                if (hit_mean_times[left_hit_i] - p_t > right):
+                if d > right:
                     break
 
         return n_coin
-
 
     def compute(self, records, peaks):
         r = records
@@ -402,7 +374,6 @@ class TightCoincidence(strax.LoopPlugin):
             hit_mean_times,
             peak_mean_times,
             self.config['tight_coincidence_window_left'],
-            self.config['tight_coincidence_window_right']
-        )
+            self.config['tight_coincidence_window_right'])
 
         return dict(tight_coincidence=tight_coin)
