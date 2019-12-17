@@ -88,7 +88,7 @@ class Peaks(strax.Plugin):
     strax.Option('n_top_pmts', default=127,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.2"
+    __version__ = "0.0.3"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -115,7 +115,7 @@ class PeakBasics(strax.Plugin):
           'length'), np.int32),
         (('Time resolution of the peak waveform in ns',
           'dt'), np.int16),
-        (('rise time of the pulse [ns]',
+        (('Time between 10% and 50% area quantiles [ns]',
           'rise_time'), np.float32)]
 
     def compute(self, peaks):
@@ -243,8 +243,8 @@ class PeakPositions(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_width', default=300,
-                 help="Maximum S1 90% area width [ns]"),
+    strax.Option('s1_max_width', default=80,
+                 help="Maximum S1 50% area width [ns]"),
     strax.Option('s1_max_rise_time', default=70,
                  help="Maximum S1 rise time [ns]"),
     strax.Option('s1_min_coincidence', default=3,
@@ -257,14 +257,14 @@ class PeakClassification(strax.Plugin):
     provides = 'peak_classification'
     depends_on = ('peak_basics', 'tight_coincidence')
     dtype = [('type', np.int8, 'Classification of the peak.')]
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     result = {}
     def compute(self, peaks):
         result = np.zeros(len(peaks), dtype=self.dtype)
 
         is_s1 = peaks['rise_time'] <= self.config['s1_max_rise_time']
-        is_s1 &= peaks['range_90p_area'] <= self.config['s1_max_width']
+        is_s1 &= peaks['range_50p_area'] <= self.config['s1_max_width']
         is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
         result['type'][is_s1] = 1
 
@@ -324,12 +324,13 @@ class NCompeting(strax.OverlapWindowPlugin):
                       "a hit a tight coincidence (ns)"),
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
-                      "a hit a tight coincidence (ns)"),)
+                      "a hit a tight coincidence (ns)"))
 class TightCoincidence(strax.LoopPlugin):
     """Calculates the tight coincidence
+
     From Joey, May 2019 Chicago strax workshop
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.3'
 
     provides = 'tight_coincidence'
     data_kind = 'peaks'
@@ -340,18 +341,18 @@ class TightCoincidence(strax.LoopPlugin):
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def get_tight_coin(hit_mean_times, peak_mean_times, left, right):
+    def get_tight_coin(hit_max_times, peak_max_times, left, right):
         left_hit_i = 0
-        n_coin = np.zeros(len(peak_mean_times), dtype=np.int16)
+        n_coin = np.zeros(len(peak_max_times), dtype=np.int16)
 
         # loop over peaks
-        for p_i, p_t in enumerate(peak_mean_times):
+        for p_i, p_t in enumerate(peak_max_times):
 
             # loop over hits starting from the last one we left at
-            for left_hit_i in range(left_hit_i, len(hit_mean_times)):
+            for left_hit_i in range(left_hit_i, len(hit_max_times)):
 
                 # if the hit is in the window, its a tight coin
-                d = hit_mean_times[left_hit_i] - p_t
+                d = hit_max_times[left_hit_i] - p_t
                 if (-left < d) & (d < right):
                     n_coin[p_i] += 1
 
@@ -361,18 +362,33 @@ class TightCoincidence(strax.LoopPlugin):
 
         return n_coin
 
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def hit_max_sample(records, hits):
+        """Return the index of the maximum sample for hits"""
+        result = np.zeros(len(hits), dtype=np.int16)
+        for i, h in enumerate(hits):
+            r = records[h['record_i']]
+            w = r['data'][h['left']:h['right']]
+            result[i] = np.argmax(w)
+        return result
+    
     def compute(self, records, peaks):
         r = records
         p = peaks
         hits = strax.find_hits(r)
-        hits = strax.sort_by_time(hits)
 
-        hit_mean_times = hits['time'] + (hits['length']/2.0)  # hit "mean" time
-        peak_mean_times = p['time'] + (p['length']/2.0)  # peak "mean" time
+        hit_max_times = np.sort(
+            hits['time'] 
+            + hits['dt'] * self.hit_max_sample(records, hits))
+
+        peak_max_times = (
+            peaks['time'] 
+            + np.argmax(peaks['data'], axis=1) * peaks['dt'])
 
         tight_coin = self.get_tight_coin(
-            hit_mean_times,
-            peak_mean_times,
+            hit_max_times,
+            peak_max_times,
             self.config['tight_coincidence_window_left'],
             self.config['tight_coincidence_window_right'])
 
