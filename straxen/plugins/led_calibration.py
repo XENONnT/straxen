@@ -36,6 +36,7 @@ class LEDCalibration(strax.Plugin):
     '''
     
     __version__ = '0.0.8'
+    print(__version__)
     depends_on = ('raw_records',)
     # Options below copied from other plugins, need to be reviewed by an expert
     data_kind = 'led_cal_0' 
