@@ -101,6 +101,7 @@ def get_area(raw_records, LED_window):
     Sum the data in the defined window to get the area.
     This is done in 6 integration window and it returns the average area.
     '''
+    print('modifica')
     left = LED_window[0]
     end_pos = [LED_window[1]+2*i for i in range(6)]
     n_channel_s = np.arange(0, 249, 1) # TODO: to change during nT commissioning or add in configuration options
