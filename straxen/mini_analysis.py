@@ -89,7 +89,11 @@ def mini_analysis(requires=tuple(), hv_bokeh=False):
                         dtypes,
                         selection_str=kwargs['selection_str'],
                         time_range=kwargs['time_range'],
-                        time_selection=kwargs['time_selection'])
+                        time_selection=kwargs['time_selection'],
+                        # Arguments for new context, if needed
+                        config=kwargs.get('config'),
+                        register=kwargs.get('register'),
+                        storage=kwargs.get('storage', tuple()))
 
             # If user did not give time kwargs, but the function expects
             # a time_range, add them based on the time range of the data
