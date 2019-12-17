@@ -110,7 +110,13 @@ def get_area(raw_records, LED_window):
         area = 0
         for right in end_pos:
             area += wf_tmp['data'][:,left:right].sum(axis=1)
+<<<<<<< HEAD
 
         mask = np.where(Area['channel'] == n_channel)[0]
         Area['area'][mask] = area.astype(np.float)/6.
+=======
+        mask = np.where(Area['channel'] == n_channel)[0]
+        Area['area'][mask] = area.astype(np.float)/6.
+        
+>>>>>>> 231f2645006365cb3a325d03335905ee95e2c2b4
     return Area
