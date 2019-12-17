@@ -35,7 +35,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     '''
     
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
     depends_on = ('raw_records',)
     # Options below copied from other plugins, need to be reviewed by an expert
     data_kind = 'led_cal_0' 
@@ -111,6 +111,6 @@ def get_area(raw_records, LED_window):
         for right in end_pos:
             area += wf_tmp['data'][:,left:right].sum(axis=1)
 
-    mask = np.where(Area['channel'] == n_channel)[0]
-    Area['area'][mask] = area.astype(np.float)/6.
+        mask = np.where(Area['channel'] == n_channel)[0]
+        Area['area'][mask] = area.astype(np.float)/6.
     return Area
