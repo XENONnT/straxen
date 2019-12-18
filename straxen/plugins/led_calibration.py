@@ -109,6 +109,6 @@ def get_area(raw_records, LED_window):
     for right in end_pos:
         Area['area'] += raw_records['data'][:, left:right].sum(axis=1)
     Area['channel'] = raw_records['channel']
-    Area['area'] = Area['area']/6.
+    Area['area'] = Area['area']/float(len(end_pos))
         
     return Area
