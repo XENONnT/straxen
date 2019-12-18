@@ -243,8 +243,10 @@ class PeakPositions(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_rise_time', default=70,
-                 help="Maximum S1 rise time [ns]"),
+    strax.Option('s1_max_rise_time', default=60,
+                 help="Maximum S1 rise time for < 100 PE [ns]"),
+    strax.Option('s1_max_rise_time_post100', default=150,
+                 help="Maximum S1 rise time for > 100 PE [ns]"),
     strax.Option('s1_min_coincidence', default=3,
                  help="Minimum tight coincidence necessary to make an S1"),
     strax.Option('s2_min_pmts', default=4,
@@ -255,13 +257,16 @@ class PeakClassification(strax.Plugin):
     provides = 'peak_classification'
     depends_on = ('peak_basics', 'tight_coincidence')
     dtype = [('type', np.int8, 'Classification of the peak.')]
-    __version__ = '0.0.4'
+    __version__ = '0.0.6'
 
     result = {}
     def compute(self, peaks):
         result = np.zeros(len(peaks), dtype=self.dtype)
 
-        is_s1 = peaks['rise_time'] <= self.config['s1_max_rise_time']
+        is_s1 = (
+           (peaks['rise_time'] <= self.config['s1_max_rise_time'])
+            | ((peaks['rise_time'] <= self.config['s1_max_rise_time_post100'])
+               & (peaks['area'] > 100)))
         is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
         result['type'][is_s1] = 1
 
