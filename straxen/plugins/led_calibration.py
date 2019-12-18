@@ -20,7 +20,10 @@ from numba import njit
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
                  default=(350, 475),
-                 help="Window (samples) to analysis the noise")
+                 help="Window (samples) to analysis the noise"),
+    strax.Option('light_level',
+                 default=(0,248),
+                 help="Three different light level for XENON1T: (0,36), (37,126), (127,248). Defalt value: all the PMTs")
 )
 
 
@@ -55,7 +58,8 @@ class LEDCalibration(strax.Plugin):
     
     def compute(self, raw_records):
         
-        r = raw_records[raw_records['channel'] < 248] # TODO: to change during nT commissioning or add in configuration options
+        r = raw_records[(raw_records['channel'] >= self.config['light_level'][0])&(raw_records['channel'] <= self.config['light_level'][1])]
+        # TODO: to change during nT commissioning or add in configuration options
         temp = np.zeros(len(r), dtype=self.dtype)
         
         temp['channel'] = r['channel']
@@ -64,11 +68,12 @@ class LEDCalibration(strax.Plugin):
         temp['length'] = r['length']
         
         on, off = get_amplitude(r, self.config['LED_window'], self.config['noise_window'])
-        temp['amplitudeLED'] = on
-        temp['amplitudeNOISE'] = off
+        temp['amplitudeLED'] = on['amplitudeLED']
+        temp['amplitudeNOISE'] = off['amplitudeNOISE']
 
         area = get_area(r, self.config['LED_window'])
         temp['area'] = area['area']
+
         
         return temp
 
@@ -80,19 +85,15 @@ def get_amplitude(raw_records, LED_window, noise_window):
     Needed for the SPE computation.
     Take the maximum in two different regions, where there is the signal and where there is not.
     '''
-    on = np.zeros(len(raw_records), dtype=[('amplitudeLED', '<i4')])
-    off = np.zeros(len(raw_records), dtype=[('amplitudeNOISE', '<i4')])
-    #on  = ((np.max(r['data'][LED_window[0]:LED_window[1]])) for r in raw_records)
-    #off = ((np.max(r['data'][noise_window[0]:noise_window[1]])) for r in raw_records)
+    on = np.zeros((len(raw_records)), dtype=[('channel','int16'),('amplitudeLED', '<i4')])
+    off = np.zeros((len(raw_records)), dtype=[('channel','int16'),('amplitudeNOISE', '<i4')])
     i = 0
     for r in raw_records:
-        on[i] = np.max(r['data'][LED_window[0]:LED_window[1]])
-        off[i] = np.max(r['data'][noise_window[0]:noise_window[1]])
+        on['amplitudeLED'][i] = np.max(r['data'][LED_window[0]:LED_window[1]])
+        on['channel'][i] = r['channel']
+        off['amplitudeNOISE'][i] = np.max(r['data'][noise_window[0]:noise_window[1]])
+        off['channel'][i] = r['channel']
         i=i+1
-    #    on.append(amp_LED)
-    #    off.append(amp_NOISE)
-    #on = np.array(on, dtype=[('amplitudeLED', '<i4')])
-    #off = np.array(off, dtype=[('amplitudeNOISE', '<i4')])
     return on, off
 
 def get_area(raw_records, LED_window):
@@ -101,19 +102,13 @@ def get_area(raw_records, LED_window):
     Sum the data in the defined window to get the area.
     This is done in 6 integration window and it returns the average area.
     '''
-    print('modifica')
     left = LED_window[0]
     end_pos = [LED_window[1]+2*i for i in range(6)]
-    n_channel_s = np.arange(0, 249, 1) # TODO: to change during nT commissioning or add in configuration options
-    Area = np.array(raw_records[['channel', 'area']],dtype=[('channel','int16'),('area','float32')])
-    
-    for n_channel in n_channel_s:
-        wf_tmp = raw_records[raw_records['channel'] == n_channel]
-        area = 0
-        for right in end_pos:
-            area += wf_tmp['data'][:,left:right].sum(axis=1)
 
-        mask = np.where(Area['channel'] == n_channel)[0]
-        Area['area'][mask] = area.astype(np.float)/6.
-
+    Area = np.zeros((len(raw_records)), dtype=[('channel','int16'),('area','float32')])
+    for right in end_pos:
+        Area['area'] += raw_records['data'][:, left:right].sum(axis=1)
+    Area['channel'] = raw_records['channel']
+    Area['area'] = Area['area']/6.
+        
     return Area
