@@ -6,10 +6,10 @@ common_opts = dict(
     register_all=[sx.daqreader, sx.pulse_processing,
                   sx.peak_processing, sx.event_processing, sx.cuts],
     store_run_fields=(
-        'name', 'number', 'reader.ini.name',
-        'tags.name',
-        'start', 'end', 'trigger.events_built',
-        'tags.name'),
+        'name', 'number',
+        'reader.ini.name', 'tags.name',
+        'start', 'end', 'livetime',
+        'trigger.events_built'),
     check_available=('raw_records', 'records', 'peaks',
                      'events', 'event_info'))
 
