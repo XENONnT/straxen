@@ -327,7 +327,7 @@ class NCompeting(strax.OverlapWindowPlugin):
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
                       "a hit a tight coincidence (ns)"))
-class TightCoincidence(strax.LoopPlugin):
+class TightCoincidence(strax.Plugin):
     """Calculates the tight coincidence
 
     Defined by number of hits within a specified time range of the 
@@ -335,7 +335,7 @@ class TightCoincidence(strax.LoopPlugin):
     Imitates tight_coincidence variable in pax:
     github.com/XENON1T/pax/blob/master/pax/plugins/peak_processing/BasicProperties.py
     """
-    __version__ = '0.0.3'
+    __version__ = '0.1.0'
 
     provides = 'tight_coincidence'
     data_kind = 'peaks'
@@ -380,7 +380,6 @@ class TightCoincidence(strax.LoopPlugin):
 
     def compute(self, records, peaks):
         r = records
-        p = peaks
         hits = strax.find_hits(r)
 
         hit_max_times = np.sort(
