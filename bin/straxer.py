@@ -73,15 +73,15 @@ logging.basicConfig(
     level=logging.DEBUG if args.debug else logging.INFO,
     format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
 
+print(f"Starting processing of run {args.run_id} until {args.target}")
+print(f"\tpython {platform.python_version()} at {sys.executable}")
+
 # These imports take a bit longer, so it's nicer
 # to do them after argparsing (so --help is fast)
 import strax
+print(f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}")
 import straxen
-
-print(f"Starting processing of run {args.run_id} until {args.target}\n"
-      f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}\n"
-      f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}\n"
-      f"\tpython {platform.python_version()} at {sys.executable}")
+print(f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}")
 
 strax.Mailbox.DEFAULT_MAX_MESSAGES = int(args.max_messages)
 strax.Mailbox.DEFAULT_TIMEOUT = int(args.timeout)
