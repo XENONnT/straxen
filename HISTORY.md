@@ -1,3 +1,8 @@
+0.3.5 / 2019-12-23
+------------------
+- Integrate peaks with tight_coincidence
+- `straxer` script upgrades
+
 0.3.4 / 2019-12-20
 -------------------
 - Classification tuning (#32)
@@ -8,7 +13,7 @@
 
 0.3.3 / 2019-12-13
 ------------------
- - Fix test data / demo notebook
+- Fix test data / demo notebook
 
 
 0.3.2 / 2019-11-13

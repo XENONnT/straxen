@@ -81,14 +81,10 @@ class Peaks(strax.Plugin):
         strax.compute_widths(peaks)
 
         # Compute tight coincidence level.
-        # This is probably nicer to have in a separate plugin, so the setting for
-        # this can be changed without going back to records.
-        # Unfortunately, that would mean
-        # (a) we have to repeat hitfinding, as hits are not stored
-        # (b) we get into memory / hang problems depending on max_messages
-        #     and other config options of tight coincidence.
-        # Perhaps we can revisit this once mailboxes have been replaced by a more
-        # robust system?
+        # Making this a separate plugin would
+        # (a) doing hitfinding yet again (or storing hits)
+        # (b) increase strax memory usage / max_messages,
+        #     possibly due to its currently primitive scheduling.
         hit_max_times = np.sort(
             hits['time']
             + hits['dt'] * hit_max_sample(records, hits))
