@@ -139,6 +139,12 @@ for i, d in enumerate(get_results()):
         clock_start = time.time()
         continue
 
+    mem_mb = process.memory_info().rss / 1e6
+
+    if not len(d):
+        print(f"Got chunk {i}, but it is empty! Using {mem_mb:.1f} MB RAM.")
+        continue
+
     # Compute detector/data time left
     t = d['time'].max() / 1e9
     dt = t - t_start
@@ -148,8 +154,6 @@ for i, d in enumerate(get_results()):
     clock = time.time()
     d_clock = clock - clock_start
     clock_time_left = time_left / (dt / d_clock)
-    
-    mem_mb = process.memory_info().rss / 1e6
     
     print(f"Got {len(d)} events. "
           f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "

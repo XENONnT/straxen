@@ -55,6 +55,8 @@ class Peaks(strax.Plugin):
 
     def compute(self, records):
         r = records
+        if not len(r):
+            return np.zeros(0, self.dtype_for('peaks'))
 
         hits = strax.find_hits(r)
 
