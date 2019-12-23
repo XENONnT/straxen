@@ -34,14 +34,20 @@ export, __all__ = strax.exporter()
     strax.Option(
         'to_pe_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-        help='Link to the to_pe conversion factors'))
+        help='Link to the to_pe conversion factors'),
+    strax.Option('tight_coincidence_window_left', default=50,
+                 help="Time range left of peak center to call "
+                      "a hit a tight coincidence (ns)"),
+    strax.Option('tight_coincidence_window_right', default=50,
+                 help="Time range right of peak center to call "
+                      "a hit a tight coincidence (ns)"))
 class Peaks(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaks'
     parallel = 'process'
     rechunk_on_save = True
 
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     def infer_dtype(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
@@ -74,6 +80,27 @@ class Peaks(strax.Plugin):
 
         strax.compute_widths(peaks)
 
+        # Compute tight coincidence level.
+        # This is probably nicer to have in a separate plugin, so the setting for
+        # this can be changed without going back to records.
+        # Unfortunately, that would mean
+        # (a) we have to repeat hitfinding, as hits are not stored
+        # (b) we get into memory / hang problems depending on max_messages
+        #     and other config options of tight coincidence.
+        # Perhaps we can revisit this once mailboxes have been replaced by a more
+        # robust system?
+        hit_max_times = np.sort(
+            hits['time']
+            + hits['dt'] * hit_max_sample(records, hits))
+        peak_max_times = (
+                peaks['time']
+                + np.argmax(peaks['data'], axis=1) * peaks['dt'])
+        peaks['tight_coincidence'] = get_tight_coin(
+            hit_max_times,
+            peak_max_times,
+            self.config['tight_coincidence_window_left'],
+            self.config['tight_coincidence_window_right'])
+
         if self.config['diagnose_sorting']:
             assert np.diff(r['time']).min() >= 0, "Records not sorted"
             assert np.diff(hits['time']).min() >= 0, "Hits not sorted"
@@ -88,7 +115,7 @@ class Peaks(strax.Plugin):
     strax.Option('n_top_pmts', default=127,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.3"
+    __version__ = "0.0.4"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -116,7 +143,10 @@ class PeakBasics(strax.Plugin):
         (('Time resolution of the peak waveform in ns',
           'dt'), np.int16),
         (('Time between 10% and 50% area quantiles [ns]',
-          'rise_time'), np.float32)]
+          'rise_time'), np.float32),
+        (('Hits within tight range of mean',
+          'tight_coincidence'), np.int16)
+    ]
 
     def compute(self, peaks):
         p = peaks
@@ -129,6 +159,7 @@ class PeakBasics(strax.Plugin):
         r['range_90p_area'] = p['width'][:, 9]
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
+        r['tight_coincidence'] = p['tight_coincidence']
 
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
@@ -255,7 +286,7 @@ class PeakClassification(strax.Plugin):
     """Pax-like peak classification plugin"""
 
     provides = 'peak_classification'
-    depends_on = ('peak_basics', 'tight_coincidence')
+    depends_on = ('peak_basics',)
     dtype = [('type', np.int8, 'Classification of the peak.')]
     __version__ = '0.0.6'
 
@@ -320,80 +351,41 @@ class NCompeting(strax.OverlapWindowPlugin):
         return results - 1
 
 
-@strax.takes_config(
-    strax.Option('tight_coincidence_window_left', default=50,
-                 help="Time range left of peak center to call "
-                      "a hit a tight coincidence (ns)"),
-    strax.Option('tight_coincidence_window_right', default=50,
-                 help="Time range right of peak center to call "
-                      "a hit a tight coincidence (ns)"))
-class TightCoincidence(strax.Plugin):
+@numba.jit(nopython=True, nogil=True, cache=True)
+def get_tight_coin(hit_max_times, peak_max_times, left, right):
     """Calculates the tight coincidence
 
-    Defined by number of hits within a specified time range of the 
+    Defined by number of hits within a specified time range of the
     the peak's maximum amplitude.
     Imitates tight_coincidence variable in pax:
     github.com/XENON1T/pax/blob/master/pax/plugins/peak_processing/BasicProperties.py
     """
-    __version__ = '0.1.0'
+    left_hit_i = 0
+    n_coin = np.zeros(len(peak_max_times), dtype=np.int16)
 
-    provides = 'tight_coincidence'
-    data_kind = 'peaks'
-    depends_on = ('records', 'peaks')
-    dtype = [
-        (('Hits within tight range of mean', 'tight_coincidence'), np.int16)]
-    parallel = True
+    # loop over peaks
+    for p_i, p_t in enumerate(peak_max_times):
 
-    @staticmethod
-    @numba.jit(nopython=True, nogil=True, cache=True)
-    def get_tight_coin(hit_max_times, peak_max_times, left, right):
-        left_hit_i = 0
-        n_coin = np.zeros(len(peak_max_times), dtype=np.int16)
+        # loop over hits starting from the last one we left at
+        for left_hit_i in range(left_hit_i, len(hit_max_times)):
 
-        # loop over peaks
-        for p_i, p_t in enumerate(peak_max_times):
+            # if the hit is in the window, its a tight coin
+            d = hit_max_times[left_hit_i] - p_t
+            if (-left < d) & (d < right):
+                n_coin[p_i] += 1
 
-            # loop over hits starting from the last one we left at
-            for left_hit_i in range(left_hit_i, len(hit_max_times)):
+            # stop the loop when we know we're outside the range
+            if d > right:
+                break
 
-                # if the hit is in the window, its a tight coin
-                d = hit_max_times[left_hit_i] - p_t
-                if (-left < d) & (d < right):
-                    n_coin[p_i] += 1
+    return n_coin
 
-                # stop the loop when we know we're outside the range
-                if d > right:
-                    break
-
-        return n_coin
-
-    @staticmethod
-    @numba.njit(cache=True, nogil=True)
-    def hit_max_sample(records, hits):
-        """Return the index of the maximum sample for hits"""
-        result = np.zeros(len(hits), dtype=np.int16)
-        for i, h in enumerate(hits):
-            r = records[h['record_i']]
-            w = r['data'][h['left']:h['right']]
-            result[i] = np.argmax(w)
-        return result
-
-    def compute(self, records, peaks):
-        r = records
-        hits = strax.find_hits(r)
-
-        hit_max_times = np.sort(
-            hits['time']
-            + hits['dt'] * self.hit_max_sample(records, hits))
-
-        peak_max_times = (
-            peaks['time']
-            + np.argmax(peaks['data'], axis=1) * peaks['dt'])
-
-        tight_coin = self.get_tight_coin(
-            hit_max_times,
-            peak_max_times,
-            self.config['tight_coincidence_window_left'],
-            self.config['tight_coincidence_window_right'])
-
-        return dict(tight_coincidence=tight_coin)
+@numba.njit(cache=True, nogil=True)
+def hit_max_sample(records, hits):
+    """Return the index of the maximum sample for hits"""
+    result = np.zeros(len(hits), dtype=np.int16)
+    for i, h in enumerate(hits):
+        r = records[h['record_i']]
+        w = r['data'][h['left']:h['right']]
+        result[i] = np.argmax(w)
+    return result
