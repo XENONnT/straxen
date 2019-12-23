@@ -31,10 +31,11 @@ parser.add_argument(
     '--from_scratch',
     action='store_true',
     help='Start processing at raw_records, regardless of what data is available. '
-         'Saving will ONLY occur to ./strax_data!')
+         'Saving will ONLY occur to ./strax_data! If you already have the target'
+         'data in ./strax_data, you need to delete it there first.')
 parser.add_argument(
     '--max_messages', 
-    default=2,
+    default=4,
     help=("Size of strax's internal mailbox buffers. "
           "Lower to reduce memory usage, at increasing risk of deadlocks."))
 parser.add_argument(
