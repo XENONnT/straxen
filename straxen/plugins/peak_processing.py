@@ -11,6 +11,233 @@ from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
 
+def get_merge_with_next(peaks, t0, t1):
+    # Takes peak(let)s, lists of interval start and end times
+    # and decides which will be merged with their followers
+    # to make one peak per interval
+    end_times = strax.endtime(peaks)
+    merge_with_next = np.zeros(len(peaks), dtype=np.int8)
+    for i in range(len(t0)):
+        merge_with_next[np.where((peaks['time'] >= t0[i]) & (end_times <= t1[i]))[0][:-1]] = 1
+    return merge_with_next
+
+
+def merge_peaks(peaks, merge_with_next):
+    # Find merge start / end peaks
+    end_merge = merge_with_next[:-1] & ~merge_with_next[1:]
+    start_merge = merge_with_next[1:] & ~merge_with_next[:-1]
+    start_merge[0] = merge_with_next[0]
+
+    end_merge_at = np.where(end_merge)[0] + 2
+    start_merge_at = np.where(start_merge)[0] + 1
+
+    assert len(start_merge_at) == len(end_merge_at)
+    new_peaks = np.zeros(len(start_merge_at), strax.peak_dtype(n_channels=len(peaks[0]['saturated_channel'])))
+
+    # Do the merging. Make sure to numbafy this when done
+    # TODO: find required buffer length
+    buffer = np.zeros(int(1e5), dtype=np.float32)
+
+    sum_wv_samples = len(peaks[0]['data'])  # TODO: what should this be?
+
+    for new_i, new_p in enumerate(new_peaks):
+
+        common_dt = 10   # TODO: pick least common denominator
+
+        old_peaks = peaks[start_merge_at[new_i]:end_merge_at[new_i]]
+        first_peak, last_peak = old_peaks[0], old_peaks[-1]
+        new_p['time'] = first_peak['time']
+        new_p['channel'] = first_peak['channel']
+
+        # re-zero relevant part of buffer (overkill? not sure if
+        # this saves much time)
+        buffer[:min(
+            int(
+                (
+                    last_peak['time']
+                    + (last_peak['length']*old_peaks['dt'].max())
+                    - first_peak['time'])/common_dt
+            ), 
+            len(buffer)
+        )] = 0
+
+        for p in old_peaks:
+            # Upsample the sum waveform into the buffer
+            upsample = p['dt'] // common_dt
+            n_after = p['length'] * upsample
+            i0 = (p['time'] - new_p['time']) // common_dt
+            buffer[i0 : i0 + n_after] = \
+                np.repeat(p['data'][:p['length']], upsample) / upsample
+
+            # Handle the other peak attributes
+            new_p['area'] += p['area']
+            new_p['area_per_channel'] += p['area_per_channel']
+            new_p['n_hits'] += p['n_hits']
+            new_p['saturated_channel'][p['saturated_channel']==1] = 1
+
+        new_p['dt'] = common_dt
+        new_p['length'] = (
+            last_peak['time']
+            + (last_peak['dt']*last_peak['length'])
+            - new_p['time']
+        ) / common_dt
+        new_p['n_saturated_channels'] = new_p['saturated_channel'].sum()
+
+        # Downsample the buffer into new_p['data']
+        new_p = strax.downsample(new_p, buffer, sum_wv_samples)
+    return new_peaks
+
+
+@export
+@strax.takes_config(
+    strax.Option('peaklet_gap_threshold', default=350,
+                 help="No hits for this many ns triggers a new peak"),
+    strax.Option('peak_left_extension', default=30,
+                 help="Include this many ns left of hits in peaks"),
+    strax.Option('peak_right_extension', default=30,
+                 help="Include this many ns right of hits in peaks"),
+    strax.Option('peak_min_pmts', default=2,
+                 help="Minimum contributing PMTs needed to define a peak"),
+    strax.Option('diagnose_sorting', track=False, default=False,
+                 help="Enable runtime checks for sorting and disjointness"),
+    strax.Option('to_pe_file',
+                default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+                help='Link to the to_pe conversion factors'))
+class Peaklets(strax.Plugin):
+    depends_on = ('records',)
+    data_kind = 'peaklets'
+    provides = 'peaklets'
+    parallel = 'process'
+    rechunk_on_save = True
+
+    __version__ = '0.1.0'
+
+    def infer_dtype(self):
+        # same dtype as peaks
+        self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
+        return strax.peak_dtype(n_channels=len(self.to_pe))
+    
+    def compute(self, records):
+        r = records
+
+        hits = strax.find_hits(r)
+
+        # Remove hits in zero-gain channels
+        # they should not affect the clustering!
+        hits = hits[self.to_pe[hits['channel']] != 0]
+
+        hits = strax.sort_by_time(hits)
+
+        # Use peaklet gap threshold for initial clustering
+        # based on gaps between hits
+        peaklets = strax.find_peaks(
+            hits, self.to_pe,
+            gap_threshold=self.config['peaklet_gap_threshold'],
+            left_extension=self.config['peak_left_extension'],
+            right_extension=self.config['peak_right_extension'],
+            min_channels=self.config['peak_min_pmts'],
+            result_dtype=self.dtype)
+
+        # need widths for pseudo-classification
+        strax.sum_waveform(peaklets, r, self.to_pe)
+        strax.compute_widths(peaklets)
+
+        if self.config['diagnose_sorting']:
+            assert np.diff(r['time']).min() >= 0, "Records not sorted"
+            assert np.diff(hits['time']).min() >= 0, "Hits not sorted"
+            assert np.all(peaklets['time'][1:]
+                          >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
+
+        return peaklets
+
+
+@export
+@strax.takes_config(
+    strax.Option('s1like_max_rise_time', default=70,
+                 help="Maximum S1 rise time [ns]"),
+    strax.Option('s1like_max_90p_width', default=300,
+                 help="Minimum tight coincidence necessary to make an S1"))
+class PeakletClassification(strax.Plugin):
+    depends_on = ('peaklets',)
+    data_kind = 'peaklets'
+    provides = 'peaklet_classification'
+    parallel = 'process'
+    rechunk_on_save = True
+    dtype = [('type', np.int8, 'Classification of the peaklet.')]
+
+    __version__ = '0.1.0'
+    
+    def compute(self, peaklets):
+        # Tag S1-like peaks based on rise time
+        # and 90p width. Return array of len(p)
+        # where 1s are S1-like and everything else is 0.
+        result = np.zeros(
+            len(peaklets),
+            dtype=self.dtype
+        )
+        # rise-time requirement
+        is_s1like = -peaklets['area_decile_from_midpoint'][:,1] <= self.config['s1like_max_rise_time']
+        # 90p width requirement
+        is_s1like &= peaklets['width'][:,9] <= self.config['s1like_max_90p_width']
+        result[is_s1like] = 1
+        return result
+
+
+@export
+@strax.takes_config(
+    strax.Option('peak_gap_threshold', default=3500,
+                 help="No hits for this many ns triggers a new peak"),
+    strax.Option('peak_left_extension', default=30,
+                 help="Include this many ns left of hits in peaks"),
+    strax.Option('peak_right_extension', default=30,
+                 help="Include this many ns right of hits in peaks"),
+    strax.Option('peak_min_pmts', default=2,
+                 help="Minimum contributing PMTs needed to define a peak"),
+    strax.Option('peak_split_min_height', default=25,
+                 help="Minimum height in PE above a local sum waveform"
+                      "minimum, on either side, to trigger a split"),
+    strax.Option('peak_split_min_ratio', default=4,
+                 help="Minimum ratio between local sum waveform"
+                      "minimum and maxima on either side, to trigger a split"),
+    strax.Option('diagnose_sorting', track=False, default=False,
+                 help="Enable runtime checks for sorting and disjointness"),
+    strax.Option('to_pe_file',
+                default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+                help='Link to the to_pe conversion factors'))
+class PeaksFromPeaklets(strax.Plugin):
+    depends_on = ('peaklets', 'peaklet_classification')
+    data_kind = 'peaks'
+    provides = 'peaks'
+    parallel = 'process'
+    rechunk_on_save = True
+
+    __version__ = '0.1.0'
+
+    def infer_dtype(self):
+        self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
+        return strax.peak_dtype(n_channels=len(self.to_pe))
+        
+    def compute(self, peaklets):
+        
+        # separate hits which are going to be merged
+        # only those which are not S1-like
+        t0, t1 = strax.find_peak_groups(
+            peaklets[peaklets['type']==0],
+            self.config['peak_gap_threshold']
+        )
+        
+        merge_with_next = get_merge_with_next(peaklets, t0, t1)
+        
+        peaks = merge_peaks(peaklets, merge_with_next)
+
+        strax.compute_widths(peaks)
+
+        if self.config['diagnose_sorting']:
+            assert np.all(peaks['time'][1:]
+                          >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
+        return peaks
+
+
 @export
 @strax.takes_config(
     strax.Option('peak_gap_threshold', default=300,
