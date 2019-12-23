@@ -5,8 +5,10 @@ import argparse
 import logging
 import time
 import os
-import sys
+import os.path as osp
+import platform
 import psutil
+import sys
 
 
 parser = argparse.ArgumentParser(
@@ -26,10 +28,19 @@ parser.add_argument(
     default='event_info',
     help='Target final data type to produce')
 parser.add_argument(
+    '--from_scratch',
+    action='store_true',
+    help='Start processing at raw_records, regardless of what data is available. '
+         'Saving will ONLY occur to ./strax_data!')
+parser.add_argument(
     '--max_messages', 
     default=2,
     help=("Size of strax's internal mailbox buffers. "
           "Lower to reduce memory usage, at increasing risk of deadlocks."))
+parser.add_argument(
+    '--timeout',
+    default=300,
+    help=("Strax' internal mailbox timeout in seconds"))
 parser.add_argument(
     '--workers',
     default=1,
@@ -44,6 +55,11 @@ parser.add_argument(
     action='store_true',
     help="Allow passing data via /dev/shm when multiprocessing.")
 parser.add_argument(
+    '--profile_to',
+    default='',
+    help="Filename to output profile information to. If ommitted,"
+         "no profiling will occur.")
+parser.add_argument(
     '--diagnose_sorting',
     action='store_true',
     help="Diagnose sorting problems during processing")
@@ -54,20 +70,36 @@ parser.add_argument(
 args = parser.parse_args()
 
 logging.basicConfig(
-    level=logging.DEBUG if args.debug else logging.INFO)
+    level=logging.DEBUG if args.debug else logging.INFO,
+    format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
 
 # These imports take a bit longer, so it's nicer
 # to do them after argparsing (so --help is fast)
 import strax
 import straxen
 
+print(f"Starting processing of run {args.run_id} until {args.target}\n"
+      f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}\n"
+      f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}\n"
+      f"\tpython {platform.python_version()} at {sys.executable}")
+
 strax.Mailbox.DEFAULT_MAX_MESSAGES = int(args.max_messages)
+strax.Mailbox.DEFAULT_TIMEOUT = int(args.timeout)
+
 st = getattr(straxen.contexts, args.context)()
 if args.diagnose_sorting:
     st.set_config(dict(diagnose_sorting=True))
 st.context_config['allow_multiprocess'] = args.multiprocess
 st.context_config['allow_shm'] = args.shm
-    
+
+if args.from_scratch:
+    for q in st.storage:
+        q.take_only = ('raw_records',)
+    st.storage.append(
+        strax.DataDirectory('./strax_data',
+                            overwrite='always',
+                            provide_run_metadata=False))
+
 if st.is_stored(args.run_id, args.target):
     print("This data is already available.")
     sys.exit(1)
@@ -77,10 +109,20 @@ t_end = md['end'].timestamp()
 
 process = psutil.Process(os.getpid())
 
-for i, d in enumerate(st.get_iter(
-        args.run_id, 
-        args.target,
-        max_workers=int(args.workers))):
+def get_results():
+    kwargs = dict(
+        run_id=args.run_id,
+        targets=args.target,
+        max_workers=int(args.workers))
+
+    if args.profile_to:
+        with strax.profile_threaded(args.profile_to):
+            yield from st.get_iter(**kwargs)
+    else:
+        yield from st.get_iter(**kwargs)
+
+
+for i, d in enumerate(get_results()):
     if i == 0:
         print(f"Received first result: {len(d)} events.", 
               flush=True)
