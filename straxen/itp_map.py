@@ -87,14 +87,24 @@ class InterpolatingMap:
                         'name', 'irregular']
 
     def __init__(self, data):
-        self.log = logging.getLogger('InterpolatingMap')
-
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
         if isinstance(data, (str, bytes)):
             data = json.loads(data)
         assert isinstance(data, dict), f"Expected dictionary data, got {type(data)}"
         self.data = data
+
+        # Decompress / dequantize the map
+        # TODO: support multiple map names
+        if 'compressed' in self.data:
+            compressor, dtype, shape = self.data['compressed']
+            self.data['map'] = np.frombuffer(
+                strax.io.COMPRESSORS[compressor]['decompress'](self.data['map']),
+                dtype=dtype).reshape(*shape)
+            del self.data['compressed']
+        if 'quantized' in self.data:
+            self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
+            del self.data['quantized']
 
         cs = self.data['coordinate_system']
         if not len(cs):
@@ -114,10 +124,12 @@ class InterpolatingMap:
         self.interpolators = {}
         self.map_names = sorted([k for k in self.data.keys()
                                  if k not in self.data_field_names])
-        self.log.debug('Map name: %s' % self.data['name'])
-        self.log.debug('Map description:\n    ' +
+
+        log = logging.getLogger('InterpolatingMap')
+        log.debug('Map name: %s' % self.data['name'])
+        log.debug('Map description:\n    ' +
                        re.sub(r'\n', r'\n    ', self.data['description']))
-        self.log.debug("Map names found: %s" % self.map_names)
+        log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
             map_data = np.array(self.data[map_name])
