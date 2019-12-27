@@ -140,7 +140,31 @@ class Peaklets(strax.Plugin):
 
         # need widths for pseudo-classification
         strax.sum_waveform(peaklets, r, self.to_pe)
+
+        # split based on local minima
+        peaklets = strax.split_peaks(
+            peaklets, r, self.to_pe,
+            min_height=self.config['peak_split_min_height'],
+            min_ratio=self.config['peak_split_min_ratio'])
+
         strax.compute_widths(peaklets)
+
+        # Compute tight coincidence level.
+        # Making this a separate plugin would
+        # (a) doing hitfinding yet again (or storing hits)
+        # (b) increase strax memory usage / max_messages,
+        #     possibly due to its currently primitive scheduling.
+        hit_max_times = np.sort(
+            hits['time']
+            + hits['dt'] * hit_max_sample(records, hits))
+        peaklet_max_times = (
+                peaklets['time']
+                + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
+        peaklets['tight_coincidence'] = get_tight_coin(
+            hit_max_times,
+            peaklet_max_times,
+            self.config['tight_coincidence_window_left'],
+            self.config['tight_coincidence_window_right'])
 
         if self.config['diagnose_sorting']:
             assert np.diff(r['time']).min() >= 0, "Records not sorted"
