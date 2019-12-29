@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -40,3 +42,9 @@ def logticks(tmin, tmax=None, tick_at=None):
         10.**np.arange(a, b)).ravel()))
     ticks = ticks[(tmin <= ticks) & (ticks <= tmax)]
     return ticks
+
+
+def quiet_tight_layout():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        plt.tight_layout()
