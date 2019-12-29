@@ -146,7 +146,8 @@ def seconds_range_xaxis(seconds_range):
     if print_ms:
         labels = [l + f'.{ms[i]:03}' for i, l in enumerate(labels)]
         if print_us:
-            labels = [l + f' \\textbf{{{us[i]:03}}}' for i, l in enumerate(labels)]
+            labels = [l + r' $\bf{' + f'{us[i]:03}' + '}$'
+                      for i, l in enumerate(labels)]
             if print_samples:
                 labels = [l + f' {samples[i]:02}' for i, l in enumerate(labels)]
 
