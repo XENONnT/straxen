@@ -9,7 +9,8 @@ from mpl_toolkits.axes_grid1 import inset_locator
 
 
 @straxen.mini_analysis()
-def plot_waveform(context, deep=False, show_largest=100, figsize=None, **kwargs):
+def plot_waveform(context, deep=False, show_largest=100, figsize=None,
+                  cbar_loc='upper right', **kwargs):
     """Plot the sum waveform and optionally per-PMT waveforms
 
     :param deep: If True, show per-PMT waveform matrix under sum waveform
@@ -17,13 +18,13 @@ def plot_waveform(context, deep=False, show_largest=100, figsize=None, **kwargs)
     :param figsize: Matplotlib figure size for the plot
     """
     if figsize is None:
-        figsize = (10, 8 if deep else 4)
+        figsize = (10, 6 if deep else 4)
 
     if not deep:
         context.plot_peaks(**kwargs, show_largest=show_largest, figsize=figsize)
 
     else:
-        f, axes = plt.subplots(2, 1, figsize=figsize)
+        f, axes = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': [1, 2]})
 
         plt.sca(axes[0])
         context.plot_peaks(**kwargs, show_largest=show_largest,
@@ -31,7 +32,9 @@ def plot_waveform(context, deep=False, show_largest=100, figsize=None, **kwargs)
                            xaxis=False)
 
         plt.sca(axes[1])
-        context.plot_records_matrix(**kwargs, single_figure=False)
+        context.plot_records_matrix(**kwargs,
+                                    cbar_loc=cbar_loc,
+                                    single_figure=False)
 
         quiet_tight_layout()
         plt.subplots_adjust(hspace=0)
@@ -149,6 +152,7 @@ def seconds_range_xaxis(seconds_range):
 
     plt.xticks(ticks=xticks, labels=labels, rotation=90)
     plt.xlim(*seconds_range)
+    plt.xlabel("Time since run start [sec]")
 
 
 def plot_peak(p, t0=None, **kwargs):
