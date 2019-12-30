@@ -26,6 +26,12 @@ def records_matrix(records, time_range, seconds_range, to_pe):
     else:
         dt = 10  # But it doesn't matter, nothing will be plotted anyway
 
+    for x in time_range:
+        # TODO: this check should probably move to strax!
+        if not isinstance(x, (int, np.integer)):
+            raise ValueError(f"Time range must consist of integers, "
+                             f"found a {type(x)}")
+
     wvm = _records_to_matrix(
         records,
         t0=time_range[0],
@@ -39,11 +45,18 @@ def records_matrix(records, time_range, seconds_range, to_pe):
     return wvm, ts, ys
 
 
+@straxen.mini_analysis(requires=('raw_records',),
+                       warn_beyond_sec=3e-3,
+                       default_time_selection='touching')
+def raw_records_matrix(context, run_id, raw_records, time_range):
+    return context.records_matrix(records=raw_records, time_range=time_range)
+
+
 @numba.njit
 def _records_to_matrix(records, t0, window, n_channels=straxen.n_tpc_pmts, dt=10):
     n_samples = window // dt
     y = np.zeros((n_samples, n_channels),
-                 dtype=np.int16)
+                 dtype=np.int32)
 
     for r in records:
         if r['channel'] > n_channels:

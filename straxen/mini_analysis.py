@@ -143,6 +143,8 @@ def mini_analysis(requires=tuple(),
                 # strax does not like that
                 if 'seconds_range' in to_pass and not 'seconds_range' in parameters:
                     del to_pass['seconds_range']
+                if 'time_within' in to_pass and not 'time_within' in parameters:
+                    del to_pass['time_within']
             else:
                 # Pass only arguments the function wants
                 to_pass = {k: v for k, v in kwargs.items()
