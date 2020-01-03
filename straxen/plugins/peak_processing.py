@@ -12,9 +12,17 @@ export, __all__ = strax.exporter()
 
 
 def get_merge_with_next(peaks, t0, t1):
-    # Takes peak(let)s, lists of interval start and end times
-    # and decides which will be merged with their followers
-    # to make one peak per interval
+    """Decide which peaks to merge with the following peak
+
+    :param peaks: Record array of peak dtype. Not modified.
+    :param t0: Numpy array of start times of new peak intervals.
+    :param t1: Numpy array of end times of new peak intervals.
+
+    For each interval containing n > 1 peaklets, the first n - 1
+    are assigned to be merged with their following peaks. A numpy
+    array with len(peaks) is returned with 1 at the indices of peaks
+    to be merged-with-next, and 0 elsewhere.
+    """
     end_times = strax.endtime(peaks)
     merge_with_next = np.zeros(len(peaks), dtype=np.int8)
     for i in range(len(t0)):
@@ -23,6 +31,17 @@ def get_merge_with_next(peaks, t0, t1):
 
 
 def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
+    """Merge specified peaks with their neighbors
+
+    :param peaks: Record array of strax peak dtype.
+    :param merge_with_next: Array where 1s indicate which peaks to merge
+    with their following neighbors.
+    :param max_buffer: Maximum number of samples in the sum_waveforms of
+    the resulting peaks (after merging).
+
+    Peaks must be constructed based on the properties of constituent peaks,
+    it being too time-consuming to revert to records/hits.
+    """
     # Find merge start / end peaks
     end_merge = merge_with_next[:-1] & ~merge_with_next[1:]
     start_merge = merge_with_next[1:] & ~merge_with_next[:-1]
