@@ -22,7 +22,7 @@ def get_merge_with_next(peaks, t0, t1):
     return merge_with_next
 
 
-def merge_peaks(peaks, merge_with_next):
+def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
     # Find merge start / end peaks
     end_merge = merge_with_next[:-1] & ~merge_with_next[1:]
     start_merge = merge_with_next[1:] & ~merge_with_next[:-1]
@@ -32,11 +32,11 @@ def merge_peaks(peaks, merge_with_next):
     start_merge_at = np.where(start_merge)[0] + 1
 
     assert len(start_merge_at) == len(end_merge_at)
-    new_peaks = np.zeros(len(start_merge_at), strax.peak_dtype(n_channels=len(peaks[0]['saturated_channel'])))
+    new_peaks = np.zeros(len(start_merge_at),
+        strax.peak_dtype(n_channels=len(peaks[0]['saturated_channel'])))
 
     # Do the merging. Make sure to numbafy this when done
-    # TODO: find required buffer length
-    buffer = np.zeros(int(1e5), dtype=np.float32)
+    buffer = np.zeros(max_buffer, dtype=np.float32)
 
     sum_wv_samples = len(peaks[0]['data'])  # TODO: what should this be?
 
@@ -249,10 +249,17 @@ class PeaksFromPeaklets(strax.Plugin):
             peaklets[peaklets['type']==0],
             self.config['peak_gap_threshold']
         )
+
+        # max samples is max-deltat / min-sample-dt
+        merged_peak_max_samples = int((t1 - t0).max() / peaklets['dt'].min())
         
         merge_with_next = get_merge_with_next(peaklets, t0, t1)
         
-        peaks = merge_peaks(peaklets, merge_with_next)
+        peaks = merge_peaks(
+            peaklets,
+            merge_with_next,
+            max_buffer=(2*merged_peak_max_samples)
+        )
 
         strax.compute_widths(peaks)
 
