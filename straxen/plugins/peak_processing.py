@@ -82,9 +82,12 @@ def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
             - new_p['time']
         ) / common_dt
         new_p['n_saturated_channels'] = new_p['saturated_channel'].sum()
+        new_p['tight_coincidence'] = old_peaks['tight_coincidence'][
+            old_peaks['data'].max(axis=1).argmax()
+        ]
 
         # Downsample the buffer into new_p['data']
-        new_p = strax.downsample(new_p, buffer, sum_wv_samples)
+        strax.store_downsampled_waveform(new_p, buffer)
     return new_peaks
 
 
@@ -98,11 +101,23 @@ def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
                  help="Include this many ns right of hits in peaks"),
     strax.Option('peak_min_pmts', default=2,
                  help="Minimum contributing PMTs needed to define a peak"),
+    strax.Option('peaklet_split_min_height', default=25,
+                 help="Minimum height in PE above a local sum waveform"
+                      "minimum, on either side, to trigger a split"),
+    strax.Option('peaklet_split_min_ratio', default=4,
+                 help="Minimum ratio between local sum waveform"
+                      "minimum and maxima on either side, to trigger a split"),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('to_pe_file',
                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-                help='Link to the to_pe conversion factors'))
+                help='Link to the to_pe conversion factors'),
+    strax.Option('tight_coincidence_window_left', default=50,
+                 help="Time range left of peak center to call "
+                      "a hit a tight coincidence (ns)"),
+    strax.Option('tight_coincidence_window_right', default=50,
+                 help="Time range right of peak center to call "
+                      "a hit a tight coincidence (ns)"))
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
     data_kind = 'peaklets'
@@ -144,8 +159,8 @@ class Peaklets(strax.Plugin):
         # split based on local minima
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
-            min_height=self.config['peak_split_min_height'],
-            min_ratio=self.config['peak_split_min_ratio'])
+            min_height=self.config['peaklet_split_min_height'],
+            min_ratio=self.config['peaklet_split_min_ratio'])
 
         strax.compute_widths(peaklets)
 
@@ -211,18 +226,6 @@ class PeakletClassification(strax.Plugin):
 @strax.takes_config(
     strax.Option('peak_gap_threshold', default=3500,
                  help="No hits for this many ns triggers a new peak"),
-    strax.Option('peak_left_extension', default=30,
-                 help="Include this many ns left of hits in peaks"),
-    strax.Option('peak_right_extension', default=30,
-                 help="Include this many ns right of hits in peaks"),
-    strax.Option('peak_min_pmts', default=2,
-                 help="Minimum contributing PMTs needed to define a peak"),
-    strax.Option('peak_split_min_height', default=25,
-                 help="Minimum height in PE above a local sum waveform"
-                      "minimum, on either side, to trigger a split"),
-    strax.Option('peak_split_min_ratio', default=4,
-                 help="Minimum ratio between local sum waveform"
-                      "minimum and maxima on either side, to trigger a split"),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('to_pe_file',
