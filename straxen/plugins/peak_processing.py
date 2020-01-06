@@ -107,7 +107,24 @@ def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
 
         # Downsample the buffer into new_p['data']
         strax.store_downsampled_waveform(new_p, buffer)
-    return new_peaks
+    
+    # find which peaklets now belong to a merged peak
+    merged_inds = merge_with_next | np.pad(
+        merge_with_next[:-1],
+        (1,0),
+        'constant',
+        constant_values=(0,0)
+    )
+    unmerged_peaks = peaks[merged_inds==0]
+    # No easy way to remove a column by name? Had to rebuild in order to
+    # hstack due to potentially different dtypes (additional column 'type')
+    remade_unmerged_peaks = np.zeros(len(unmerged_peaks),
+        strax.peak_dtype(n_channels=len(peaks[0]['saturated_channel'])))
+    for field in unmerged_peaks.dtype.names:
+        if field in remade_unmerged_peaks.dtype.names:
+            remade_unmerged_peaks[field] = unmerged_peaks[field]
+    all_peaks = np.hstack((new_peaks, remade_unmerged_peaks))
+    return strax.sort_by_time(all_peaks)
 
 
 @export
