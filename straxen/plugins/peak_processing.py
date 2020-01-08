@@ -11,6 +11,34 @@ from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
 
+@export
+def get_start_end(merge_with_next):
+    '''
+
+    :param merge_with_next: array of 0's and 1's. 1 indicates do merge with 
+    next peak, 0 the opposite.
+    :return: start_merge_at (array), end_merge_at (array); 
+        start_merge_at indicating index to start
+        end_merge_at indicating index to end (note that merge thus extends to 
+        the peak before these indices)
+    '''
+    assert merge_with_next[-1] != 1, "tying to merge last peak to a non-existing next peak"
+    if not len(merge_with_next) or len(merge_with_next) <= 1:
+        return [], []
+
+    end_merge = merge_with_next[:-1] & ~merge_with_next[1:]
+    start_merge = merge_with_next[1:] & ~merge_with_next[:-1]
+
+    if merge_with_next[0] == 1:
+        start_merge[0] = merge_with_next[0]
+
+    end_merge_at = np.where(end_merge)[0] + 2
+    start_merge_at = np.where(start_merge)[0] + 1
+    if merge_with_next[0] == 1 and start_merge_at[0] == 1:
+        start_merge_at[0] = 0
+
+    return start_merge_at, end_merge_at
+
 def get_merge_with_next(peaks, t0, t1):
     """Decide which peaks to merge with the following peak
 
@@ -43,12 +71,7 @@ def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
     it being too time-consuming to revert to records/hits.
     """
     # Find merge start / end peaks
-    end_merge = merge_with_next[:-1] & ~merge_with_next[1:]
-    start_merge = merge_with_next[1:] & ~merge_with_next[:-1]
-    start_merge[0] = merge_with_next[0]
-
-    end_merge_at = np.where(end_merge)[0] + 2
-    start_merge_at = np.where(start_merge)[0] + 1
+    start_merge_at, end_merge_at = get_start_end(merge_with_next)
 
     assert len(start_merge_at) == len(end_merge_at)
     new_peaks = np.zeros(len(start_merge_at),
