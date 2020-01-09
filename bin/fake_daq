@@ -21,6 +21,8 @@ parser.add_argument('--output', default='./from_fake_daq',
                     help='Output directory')
 parser.add_argument('--output_run', default=None,
                     help="Output run id to use. If omitted, use same as input")
+parser.add_argument('--compressor', default='lz4',
+                    help='Compressor to use for live records')
 parser.add_argument('--rate', default=0, type=int,
                     help='Output rate in MBraw/sec. '
                          'If omitted, emit data as fast as possible')
@@ -66,6 +68,7 @@ def main():
                          replace=True)
     run_md.setdefault('strax_defaults', dict())
     run_md['strax_defaults']['n_readout_threads'] = n_readout_threads
+    run_md['strax_defaults']['compressor'] = args.compressor
     st2.storage[0].write_run_metadata(output_run,run_md)
     del st2
 
@@ -105,7 +108,7 @@ def main():
             r = records[
                 (records['channel'] >= first_channel)
                 & (records['channel'] < first_channel + channels_per_reader)]
-            r = strax.io.COMPRESSORS['blosc']['compress'](r)
+            r = strax.io.COMPRESSORS[args.compressor]['compress'](r)
             result.append(r)
 
         if args.rate:

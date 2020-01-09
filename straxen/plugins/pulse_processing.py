@@ -75,7 +75,7 @@ class PulseProcessing(strax.Plugin):
 
     parallel = 'process'
     rechunk_on_save = False
-    compressor = 'zstd'
+    compressor = 'lz4'
 
     depends_on = 'raw_records'
 

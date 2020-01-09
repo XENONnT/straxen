@@ -159,3 +159,5 @@ for i, d in enumerate(get_results()):
           f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "
           f"ETA {clock_time_left:.2f} sec. Using {mem_mb:.1f} MB RAM.",
           flush=True)
+
+print(f"\nStraxer is done! We took {time.time() - clock_start:.1f} seconds")
