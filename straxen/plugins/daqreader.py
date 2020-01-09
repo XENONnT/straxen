@@ -114,10 +114,14 @@ class DAQReader(strax.Plugin):
         strax.baseline(records)
         strax.integrate(records)
 
-        # convert time to time in ns since unix epoch
-        records["time"] = records["time"] + self.config["run_start_time"] * 1e9
-
         if len(records):
+            # Convert time to time in ns since unix epoch.
+            # Ensure the offset is a whole digitizer sample
+            t0 = int(self.config["run_start_time"]) * int(1e9)
+            dt = records[0]['dt']
+            t0 = dt * (t0 // dt)
+            records["time"] += t0
+
             timespan_sec = (records[-1]['time'] - records[0]['time']) / 1e9
             print(f'{chunk_i}: read {records.nbytes/1e6:.2f} MB '
                   f'({len(records)} records, '
