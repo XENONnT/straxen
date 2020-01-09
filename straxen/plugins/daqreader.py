@@ -28,6 +28,7 @@ class DAQReader(strax.Plugin):
     provides = 'raw_records'
     depends_on = tuple()
     dtype = strax.record_dtype()
+    parallel = 'process'
     rechunk_on_save = False
 
     def _path(self, chunk_i):
