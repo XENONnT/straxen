@@ -117,7 +117,7 @@ class DAQReader(strax.Plugin):
         if len(records):
             # Convert time to time in ns since unix epoch.
             # Ensure the offset is a whole digitizer sample
-            t0 = int(self.config["run_start_time"]) * int(1e9)
+            t0 = int(self.config["run_start_time"] * int(1e9))
             dt = records[0]['dt']
             t0 = dt * (t0 // dt)
             records["time"] += t0
