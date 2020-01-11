@@ -2,8 +2,9 @@ import setuptools
 
 # Get requirements from requirements.txt, stripping the version tags
 with open('requirements.txt') as f:
-    requires = [x.strip().split('=')[0]
-                for x in f.readlines()]
+    requires = [
+        r.split('/')[-1] if r.startswith('git+') else r
+        for r in f.read().splitlines()]
 
 with open('README.md') as file:
     readme = file.read()
