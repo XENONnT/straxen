@@ -3,9 +3,13 @@ import straxen
 
 
 common_opts = dict(
-    register_all=[straxen.daqreader, straxen.pulse_processing,
-                  straxen.peak_processing, straxen.event_processing,
-                  straxen.cuts],
+    register_all=[
+        straxen.daqreader,
+        straxen.pulse_processing,
+        straxen.peaklet_processing,
+        straxen.peak_processing,
+        straxen.event_processing,
+        straxen.cuts],
     store_run_fields=(
         'name', 'number',
         'reader.ini.name', 'tags.name',
