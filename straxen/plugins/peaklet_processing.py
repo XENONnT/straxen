@@ -107,76 +107,165 @@ class Peaklets(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('s1like_max_rise_time', default=70,
-                 help="Maximum S1 rise time [ns]"),
-    strax.Option('s1like_max_90p_width', default=300,
-                 help="Minimum tight coincidence necessary to make an S1"))
+    strax.Option('s1_max_rise_time', default=60,
+                 help="Maximum S1 rise time for < 100 PE [ns]"),
+    strax.Option('s1_max_rise_time_post100', default=150,
+                 help="Maximum S1 rise time for > 100 PE [ns]"),
+    strax.Option('s1_min_coincidence', default=3,
+                 help="Minimum tight coincidence necessary to make an S1"),
+    strax.Option('s2_min_pmts', default=4,
+                 help="Minimum number of PMTs contributing to an S2"))
 class PeakletClassification(strax.Plugin):
-    depends_on = ('peaklets',)
-    data_kind = 'peaklets'
+    """Classify peaklets as unknown, S1, or S2."""
     provides = 'peaklet_classification'
-    parallel = 'process'
-    rechunk_on_save = True
-    dtype = [('type', np.int8, 'Classification of the peaklet.')]
-
+    depends_on = ('peaklets',)
+    parallel = True
+    dtype = [('type', np.int8, 'Classification of the peak(let)')]
     __version__ = '0.1.0'
 
     def compute(self, peaklets):
-        # Tag S1-like peaks based on rise time
-        # and 90p width. Return array of len(p)
-        # where 1s are S1-like and everything else is 0.
-        result = np.zeros(
-            len(peaklets),
-            dtype=self.dtype)
+        peaks = peaklets
 
-        # rise-time requirement
-        is_s1like = -peaklets['area_decile_from_midpoint'][:, 1] <= self.config['s1like_max_rise_time']
-        # 90p width requirement
-        is_s1like &= peaklets['width'][:, 9] <= self.config['s1like_max_90p_width']
-        result[is_s1like] = 1
-        return result
+        ptype = np.zeros(len(peaklets), dtype=np.int8)
+
+        # Properties needed for classification. Bit annoying these computations
+        # are duplicated in peak_basics curently...
+        rise_time = -peaks['area_decile_from_midpoint'][:, 1]
+        n_channels = (peaks['area_per_channel'] > 0).sum(axis=1)
+
+        is_s1 = (
+           (rise_time <= self.config['s1_max_rise_time'])
+            | ((rise_time <= self.config['s1_max_rise_time_post100'])
+               & (peaks['area'] > 100)))
+        is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
+        ptype[is_s1] = 1
+
+        is_s2 = n_channels >= self.config['s2_min_pmts']
+        is_s2[is_s1] = False
+        ptype[is_s2] = 2
+
+        return dict(type=ptype)
 
 
 @export
 @strax.takes_config(
-    strax.Option('peak_gap_threshold', default=3500,
-                 help="No hits for this many ns triggers a new peak"),
-    strax.Option('diagnose_sorting', track=False, default=False,
-                 help="Enable runtime checks for sorting and disjointness"),
-    strax.Option('to_pe_file',
-                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-                 help='Link to the to_pe conversion factors'))
-class PeaksFromPeaklets(strax.Plugin):
+    strax.Option('s2_merge_max_area', default=5000.,
+                 help="Merge peaklet cluster only if area < this [PE]"),
+    strax.Option('s2_merge_max_gap', default=3500,
+                 help="Maximum separation between peaklets to allow merging [ns]"),
+    strax.Option('s2_merge_max_duration', default=15_000,
+                 help="Do not merge peaklets at all if the result would be a peak "
+                      "longer than this [ns]"))
+class MergedS2s(strax.OverlapWindowPlugin):
+    """Return (time, endtime, type) of merged peaks from peaklets
+    Actual merged peaklets will be built later
+    """
     depends_on = ('peaklets', 'peaklet_classification')
+    data_kind = 'merged_s2s'
+    provides = 'merged_s2s'
+
+    def infer_dtype(self):
+        return self.deps['peaklets'].dtype_for('peaklets')
+
+    def get_window_size(self):
+        return 5 * (self.config['s2_merge_max_gap']
+                    + self.config['s2_merge_max_duration'])
+
+    def compute(self, peaklets):
+        # Find all groups of peaklets separated by < the gap
+        cluster_starts, cluster_stops = strax.find_peak_groups(
+            peaklets,
+            self.config['s2_merge_max_gap'])
+
+        start_merge_at, end_merge_at = self.get_merge_instructions(
+            peaklets['time'], strax.endtime(peaklets),
+            areas=peaklets['area'],
+            types=peaklets['type'],
+            cluster_starts=cluster_starts,
+            cluster_stops=cluster_stops,
+            max_duration=self.config['s2_merge_max_duration'],
+            max_area=self.config['s2_merge_max_area'])
+
+        merged_s2s = merge_peaks(
+            peaklets,
+            start_merge_at, end_merge_at,
+            max_buffer=int(self.config['s2_merge_max_duration']
+                           // peaklets['dt'].min()))
+        merged_s2s['type'] = 2
+        strax.compute_widths(merged_s2s)
+        return merged_s2s
+
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def get_merge_instructions(
+            peaklet_starts, peaklet_ends, areas, types,
+            cluster_starts, cluster_stops,
+            max_duration, max_area):
+        start_merge_at = np.zeros(len(cluster_starts), dtype=np.int32)
+        end_merge_at = np.zeros(len(cluster_starts), dtype=np.int32)
+        n_to_merge = 0
+        left_i = 0
+
+        for cluster_i, cluster_start in enumerate(cluster_starts):
+            cluster_stop = cluster_stops[cluster_i]
+
+            if cluster_stop - cluster_start > max_duration:
+                continue
+
+            # Recover start and (inclusive!) stop indices of the clusters.
+            while peaklet_starts[left_i] < cluster_start:
+                left_i += 1
+            right_i = left_i
+            while peaklet_ends[right_i] < cluster_stop:
+                right_i += 1
+
+            if left_i == right_i:
+                # One peak, nothing to merge
+                continue
+
+            if types[left_i] != 2:
+                # Doesn't start with S2: do not merge
+                continue
+
+            right_i += 1   # From here on, right_i is exclusive
+
+            if areas[left_i:right_i].sum() > max_area:
+                continue
+
+            start_merge_at[n_to_merge] = left_i
+            end_merge_at[n_to_merge] = right_i
+            n_to_merge += 1
+
+        return start_merge_at[:n_to_merge], end_merge_at[:n_to_merge]
+
+
+@export
+@strax.takes_config(
+    strax.Option('diagnose_sorting', track=False, default=False,
+                 help="Enable runtime checks for sorting and disjointness"))
+class Peaks(strax.Plugin):
+    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
-    parallel = 'process'
+    parallel = True
     rechunk_on_save = True
+    save_when = strax.SaveWhen.NEVER
 
     __version__ = '0.1.0'
 
     def infer_dtype(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
-        return strax.peak_dtype(n_channels=len(self.to_pe))
+        return self.deps['peaklets'].dtype_for('peaklets')
 
-    def compute(self, peaklets):
-        # Separate peaklets that are going to be merged:
-        # only those that are not S1-like
-        t0, t1 = strax.find_peak_groups(
-            peaklets[peaklets['type'] == 0],
-            self.config['peak_gap_threshold'])
+    def compute(self, peaklets, merged_s2s):
+        if not len(merged_s2s):
+            return peaklets
 
-        # max samples is max-deltat / min-sample-dt
-        merged_peak_max_samples = int((t1 - t0).max() / peaklets['dt'].min())
+        not_merged = strax.fully_contained_in(peaklets, merged_s2s) == -1
 
-        merge_with_next = get_merge_with_next(peaklets, t0, t1)
-
-        peaks = merge_peaks(
-            peaklets,
-            merge_with_next,
-            max_buffer=(2 * merged_peak_max_samples))
-
-        strax.compute_widths(peaks)
+        peaks = strax.sort_by_time(np.concatenate([
+            peaklets[not_merged],
+            merged_s2s
+        ]))
 
         if self.config['diagnose_sorting']:
             assert np.all(peaks['time'][1:]
@@ -225,73 +314,20 @@ def hit_max_sample(records, hits):
     return result
 
 
-@export
-def get_start_end(merge_with_next):
-    """Return (start, end) index arrays for peaks to be merged
-    :param merge_with_next: array of 0's and 1's. 1 indicates do merge with
-    next peak, 0 the opposite.
-    :return: start_merge_at (array), end_merge_at (array);
-        start_merge_at indicating index to start
-        end_merge_at indicating index to end (note that merge thus extends to
-        the peak before these indices)
-    """
-    if not len(merge_with_next) or len(merge_with_next) <= 1:
-        return np.zeros(0, dtype=np.int32), np.zeros(0, dtype=np.int32)
-    assert merge_with_next[-1] != 1, \
-        "Trying to merge last peak to a non-existing next peak"
-
-    end_merge = merge_with_next[:-1] & ~merge_with_next[1:]
-    start_merge = merge_with_next[1:] & ~merge_with_next[:-1]
-
-    if merge_with_next[0] == 1:
-        start_merge[0] = merge_with_next[0]
-
-    end_merge_at = np.where(end_merge)[0] + 2
-    start_merge_at = np.where(start_merge)[0] + 1
-    if merge_with_next[0] == 1 and start_merge_at[0] == 1:
-        start_merge_at[0] = 0
-
-    return start_merge_at, end_merge_at
-
-
-def get_merge_with_next(peaks, t0, t1):
-    """Decide which peaks to merge with the following peak
-
-    :param peaks: Record array of peak dtype. Not modified.
-    :param t0: Numpy array of start times of new peak intervals.
-    :param t1: Numpy array of end times of new peak intervals.
-
-    For each interval containing n > 1 peaklets, the first n - 1
-    are assigned to be merged with their following peaks. A numpy
-    array with len(peaks) is returned with 1 at the indices of peaks
-    to be merged-with-next, and 0 elsewhere.
-    """
-    end_times = strax.endtime(peaks)
-    merge_with_next = np.zeros(len(peaks), dtype=np.int8)
-    for i in range(len(t0)):
-        merge_with_next[np.where((peaks['time'] >= t0[i])
-                                 & (end_times <= t1[i]))[0][:-1]] = 1
-    return merge_with_next
-
-
-def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
-    """Merge specified peaks with their neighbors
+def merge_peaks(peaks, start_merge_at, end_merge_at, max_buffer=int(1e5)):
+    """Merge specified peaks with their neighbors, return merged peaks
 
     :param peaks: Record array of strax peak dtype.
-    :param merge_with_next: Array where 1s indicate which peaks to merge
-    with their following neighbors.
+    :param start_merge_at: Indices to start merge at
+    :param end_merge_at: EXCLUSIVE indices to end merge at
     :param max_buffer: Maximum number of samples in the sum_waveforms of
     the resulting peaks (after merging).
 
     Peaks must be constructed based on the properties of constituent peaks,
     it being too time-consuming to revert to records/hits.
     """
-    # Find merge start / end peaks
-    start_merge_at, end_merge_at = get_start_end(merge_with_next)
-
     assert len(start_merge_at) == len(end_merge_at)
-    new_peaks = np.zeros(len(start_merge_at),
-                         strax.peak_dtype(n_channels=len(peaks[0]['saturated_channel'])))
+    new_peaks = np.zeros(len(start_merge_at), dtype=peaks.dtype)
 
     # Do the merging. Make sure to numbafy this when done
     buffer = np.zeros(max_buffer, dtype=np.float32)
@@ -345,20 +381,4 @@ def merge_peaks(peaks, merge_with_next, max_buffer=int(1e5)):
         # Downsample the buffer into new_p['data']
         strax.store_downsampled_waveform(new_p, buffer)
 
-    # find which peaklets now belong to a merged peak
-    merged_inds = merge_with_next | np.pad(
-        merge_with_next[:-1],
-        (1, 0),
-        'constant',
-        constant_values=(0, 0)
-    )
-    unmerged_peaks = peaks[merged_inds == 0]
-    # No easy way to remove a column by name? Had to rebuild in order to
-    # hstack due to potentially different dtypes (additional column 'type')
-    remade_unmerged_peaks = np.zeros(len(unmerged_peaks),
-                                     strax.peak_dtype(n_channels=len(peaks[0]['saturated_channel'])))
-    for field in unmerged_peaks.dtype.names:
-        if field in remade_unmerged_peaks.dtype.names:
-            remade_unmerged_peaks[field] = unmerged_peaks[field]
-    all_peaks = np.hstack((new_peaks, remade_unmerged_peaks))
-    return strax.sort_by_time(all_peaks)
+    return new_peaks

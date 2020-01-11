@@ -70,8 +70,9 @@ class Events(strax.OverlapWindowPlugin):
 class EventBasics(strax.LoopPlugin):
     __version__ = '0.1.0'
     depends_on = ('events',
-                  'peak_basics', 'peak_classification',
-                  'peak_positions', 'n_competing')
+                  'peak_basics',
+                  'peak_positions',
+                  'n_competing')
 
     def infer_dtype(self):
         dtype = [(('Number of peaks in the event',

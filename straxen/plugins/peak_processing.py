@@ -46,13 +46,15 @@ class PeakBasics(strax.Plugin):
         (('Time between 10% and 50% area quantiles [ns]',
           'rise_time'), np.float32),
         (('Hits within tight range of mean',
-          'tight_coincidence'), np.int16)
+          'tight_coincidence'), np.int16),
+        (('Classification of the peak(let)',
+          'type'), np.int8)
     ]
 
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
-        for q in 'time length dt area'.split():
+        for q in 'time length dt area type'.split():
             r[q] = p[q]
         r['endtime'] = p['time'] + p['dt'] * p['length']
         r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
@@ -171,42 +173,6 @@ class PeakPositions(strax.Plugin):
         result /= 10
 
         return dict(x=result[:, 0], y=result[:, 1])
-
-
-@export
-@strax.takes_config(
-    strax.Option('s1_max_rise_time', default=60,
-                 help="Maximum S1 rise time for < 100 PE [ns]"),
-    strax.Option('s1_max_rise_time_post100', default=150,
-                 help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=3,
-                 help="Minimum tight coincidence necessary to make an S1"),
-    strax.Option('s2_min_pmts', default=4,
-                 help="Minimum number of PMTs contributing to an S2"))
-class PeakClassification(strax.Plugin):
-    """Pax-like peak classification plugin"""
-
-    provides = 'peak_classification'
-    depends_on = ('peak_basics',)
-    dtype = [('type', np.int8, 'Classification of the peak.')]
-    __version__ = '0.0.6'
-
-    result = {}
-    def compute(self, peaks):
-        result = np.zeros(len(peaks), dtype=self.dtype)
-
-        is_s1 = (
-           (peaks['rise_time'] <= self.config['s1_max_rise_time'])
-            | ((peaks['rise_time'] <= self.config['s1_max_rise_time_post100'])
-               & (peaks['area'] > 100)))
-        is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
-        result['type'][is_s1] = 1
-
-        is_s2 = peaks['n_channels'] >= self.config['s2_min_pmts']
-        is_s2[is_s1] = False
-        result['type'][is_s2] = 2
-
-        return result
 
 
 @export
