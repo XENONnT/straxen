@@ -212,10 +212,11 @@ class PeakPositions(strax.Plugin):
         else:
             import keras
 
-        nn_json = get_resource(self.config['nn_architecture'])
-        nn = keras.models.model_from_json(nn_json)
+        nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
+        bad_pmts = nn_conf['badPMTList']
+        del nn_conf['badPMTList']   # Keeping this in crashes tensorflow 2.1
+        nn = keras.models.model_from_json(json.dumps(nn_conf))
 
-        bad_pmts = json.loads(nn_json)['badPMTList']
         self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
                                  bad_pmts)
 
