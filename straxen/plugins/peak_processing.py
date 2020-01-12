@@ -7,6 +7,7 @@ import numpy as np
 import numba
 
 import strax
+import straxen
 from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
@@ -80,7 +81,7 @@ class PeakBasics(strax.Plugin):
         help='Path to JSON of neural net architecture',
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr0.json')),
-            (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr1.json'))]),   # noqa
+            (first_sr1_run, straxen.aux_repo + 'master/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json')]),   # noqa
     strax.Option(
         'nn_weights',
         help='Path to HDF5 of neural net weights',
@@ -117,10 +118,10 @@ class PeakPositions(strax.Plugin):
         else:
             import keras
 
-        nn_json = get_resource(self.config['nn_architecture'])
-        nn = keras.models.model_from_json(nn_json)
-
-        bad_pmts = json.loads(nn_json)['badPMTList']
+        nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
+        bad_pmts = nn_conf['badPMTList']
+        del nn_conf['badPMTList']   # Keeping this in might crash keras
+        nn = keras.models.model_from_json(json.dumps(nn_conf))
         self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
                                  bad_pmts)
 
