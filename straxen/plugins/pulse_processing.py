@@ -133,6 +133,13 @@ class PulseProcessing(strax.Plugin):
         else:
             veto_regions = np.zeros(0, dtype=strax.hit_dtype)
 
+        ##
+        # Saturation correction
+        ##
+        records_correction = np.zeros(len(r), dtype=np.dtype(rc_dtype))
+        correct_saturated_pulse(r, records_correction, to_pe=self.to_pe)
+        r = strax.merge_arrs([r, records_correction])
+
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
@@ -156,6 +163,264 @@ class PulseProcessing(strax.Plugin):
                     aqmon_records=aqmon_records,
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
+
+
+##
+# Software Saturation Correction
+##
+
+@export
+@numba.jit(nopython=True, nogil=True, cache=True)
+def get_full_pulse_record_index(records, i, gap_size=1100):
+    # Use gap_size to look up continues records of a channel
+    # Initiate result to return
+    res = index_full_pulse = [i]
+
+    # Initiate iterator, iteration direction
+    pre_j = j = i
+    increment = -1
+
+    # Exit when distance exceed 1 record length on both side
+    while True:
+        j += increment
+        # Flip around when got m records m=record_i
+        if j >= len(records):
+            return res
+        elif j < 0:
+            increment = 1
+            j = i
+        elif records[j]['channel'] == records[i]['channel']:
+            tdiff = (records[j]['time'] - records[pre_j]['time']) * increment
+            if tdiff <= gap_size:
+                if increment == -1:
+                    res.insert(0, j)
+                    pre_j = j
+                else:
+                    res.append(j)
+                    pre_j = j
+            else:
+                if increment == -1:
+                    increment = 1
+                    pre_j = j = i
+                else:
+                    return res
+    return res
+
+
+@export
+@numba.jit(nopython=True, nogil=True, cache=True)
+def get_saturate_pulses(records, flags, gap_size=1100):
+    res = []  # Result, non-overlapping indicies
+
+    for i in range(len(records)):
+        if records[i]['baseline'] - max(records[i]['data']) > 0:
+            continue  # Skip non saturated record
+        if flags[i]:
+            continue  # Record already in a known saturated pulse
+
+        ii = get_full_pulse_record_index(records, i, gap_size)
+        flags[np.array(ii)] = 1  # Update flags
+
+        res.append(ii)
+    return res
+
+
+@export
+@numba.jit(nopython=True, nogil=True, cache=True)
+def get_trough_with_smoothing(w):
+    neighborhood = 100  # neighboring sample [-100, 100]
+    x_zeroed = np.arange(-neighborhood, neighborhood+1)
+    weight = (1 - np.abs(x_zeroed/neighborhood)**3)**3
+    weight = weight/np.sum(weight)
+    # The two convolution here correspond to linear regression results
+    y, dy = np.convolve(weight, w), - np.convolve(weight *
+                                                  x_zeroed, w)/np.sum(weight*x_zeroed**2)
+    # Numba does not support convolution return same length
+    y = y[neighborhood:-neighborhood]
+    dy = dy[neighborhood:-neighborhood]
+
+    trough = []
+    dyi_0 = -np.inf
+    post_peak = False
+    res = None
+    for i in range(len(dy)):
+        # Peak finding, dy cross 0 from + to -, peak height > 10
+        if dy[i] <= 0 and dyi_0 > 0 and y[i] > 10:
+            if not post_peak:
+                post_peak = True
+            elif res:
+                trough.append(res)
+                res = None
+        # Trough finding, dy cross 0 from - to +, after an peak
+        if dy[i] >= 0 and dyi_0 < 0 and post_peak:
+            res = i
+
+        dyi_0 = dy[i]
+    return trough
+
+
+@export
+@numba.jit(nopython=True, nogil=True, cache=True)
+def correct_saturated_pulse(records, records_correction,
+                            to_pe,
+                            time_resolution=10,
+                            samples_per_record=110,
+                            samples_of_buff=21000,
+                            min_samples_of_ref=20,
+                            ):
+    """Saturation correction by non-sat channel"""
+    # Some constants and buffer
+    dt = time_resolution
+    spr = samples_per_record
+
+    blank_record = np.ones(spr)
+    buff_wf = np.zeros(samples_of_buff)
+    buff_l = buff_r = -1
+    pulse_wf = np.zeros(samples_of_buff)
+
+    # Split up as individual list of eash saturated pulse.
+    flags = np.zeros(len(records))  # Does the record contain saturated samples
+    pulses = get_saturate_pulses(records, flags, gap_size=spr*dt)
+
+    # Main loop doing wf correction
+    last_i = -1  # Last index of records belong to the same saturation section.
+    for i, pul in enumerate(pulses):
+
+        # If first index in pul <= last_i, build WF model in one go
+        # last_i get updated each time a 'pul' satisfies this condition
+        # Let's say those 'pul' are inside the same section
+        # The section boundries are buff_l, buff_r in #samples from epoch
+        if pul[0] > last_i:
+            last_i = pul[-1]
+            l, r = records['time'][-1], -1  # l, r still in ns
+
+            # Loop I checking all sat pulses
+            for j in range(i, len(pulses)):
+                if pulses[j][0] > last_i:
+                    break
+                last_i = max(last_i, pulses[j][-1])  # Update condition
+                l = min(records[pulses[j][0]]['time'], l)
+                r = max(records[pulses[j][-1]]['time'] +
+                        records[pulses[j][-1]]['length'] * dt, r)
+
+            buff_l = l // dt - spr
+            buff_r = r // dt + spr
+
+            assert (
+                buff_r - buff_l) < len(buff_wf), 'Pulse too long, not enough buffer'
+            assert (
+                buff_r - buff_l) > 0, 'Pulse have non-positive length, something went wrong'
+
+            # Loop II checking non sat pulses
+            # Superpositioning pulses
+            k = pul[0]
+            buff_wf[:] = 0
+
+            while records[k]['time'] > buff_l * dt and k >= 1:
+                k -= 1
+            while k < len(records) - 1:
+                k += 1
+                if flags[k] == 1:
+                    continue
+                rec_l = records[k]['time'] // dt
+                if rec_l >= buff_r:
+                    break
+                buff_wf[rec_l - buff_l: rec_l - buff_l + spr] \
+                    += records[k]['data'] * to_pe[records[k]['channel']]
+
+            # Finding trough if multiple peaks exist
+            trough = get_trough_with_smoothing(buff_wf[:buff_r - buff_l])
+
+        # First on the order back to this individual pulse
+        # Reconnect the records
+        pulse_wf[:] = 0
+        pulse_l = records[pul[0]]['time'] // dt
+        pulse_r = -1
+        for jx in pul:
+            rec_l = records[jx]['time'] // dt
+            rec_r = records[jx]['time'] // dt + records[jx]['length']
+            pulse_wf[rec_l - pulse_l:rec_r -
+                     pulse_l] = records[jx]['data'][:rec_r - rec_l]
+            pulse_r = max(pulse_r, rec_r)
+
+        # Define subsections by the troughs found in model WF
+        # Originally a special treatment targeting multiple scatters
+        # Turns out more commonly used then one might expect
+        subsections = [(pulse_l, pulse_l + len(pul) * spr)]
+        for tr in trough:
+            for j, (l, r) in enumerate(subsections):
+                if tr + buff_l > l and tr + buff_l < r:
+                    subsections[j] = (l, tr + buff_l)
+                    subsections.insert(j, (tr + buff_l, r))
+
+        # By subsections
+        # find reference region and correction boundries
+        # calculate scaling between model and current pulse
+        scale = 0  # Keep it here
+        corrections = []
+        for ssec_l, ssec_r in subsections:
+            satt_flags = (records[pul[0]]['baseline'] -
+                          pulse_wf[ssec_l - pulse_l: ssec_r - pulse_l] <= 0)
+
+            imax_satt = np.argmax(satt_flags)
+            if not satt_flags[imax_satt]:
+                continue
+            satt_l = imax_satt + ssec_l
+            satt_r = ssec_r
+
+            # Determine the length of reference region
+            cdf = np.cumsum(buff_wf[ssec_l - buff_l:satt_l - buff_l])
+            ref_len = min(np.sum(cdf/cdf[-1] > 0.02), spr)
+
+            # TODO should be a better way to filter s1 pulse out
+            if ref_len < min_samples_of_ref:  # Simple filter for s1
+                if len(corrections) > 0:  # When there's another S2 exteremly close to the first S2
+                    corrections.append((satt_l, satt_r, scale))
+                continue
+
+            pulse_slice = slice(satt_l - pulse_l - ref_len, satt_l - pulse_l)
+            buff_slice = slice(satt_l - buff_l - ref_len, satt_l - buff_l)
+
+            if np.sum(buff_wf[buff_slice]) == 0:
+                continue
+
+            scale = np.sum(pulse_wf[pulse_slice]) / np.sum(buff_wf[buff_slice])
+            corrections.append((satt_l, satt_r, scale))
+
+        # Fulfill the corrections
+        for cx in range(len(corrections)):
+            for jx in pul:
+                satt_l, satt_r, scale = corrections[cx]
+                rec = records[jx]
+                rec_l, rec_r = rec['time'] // dt, rec['time'] // dt + \
+                    rec['length']
+                if max(rec_l, satt_l) >= min(rec_r, satt_r):
+                    # No sample overlap with correction region
+                    continue
+
+                rec_slice = slice(max(rec_l, satt_l) - rec_l,
+                                  min(rec_r, satt_r) - rec_l)
+                buff_slice = slice(max(rec_l, satt_l) - buff_l,
+                                   min(rec_r, satt_r) - buff_l)
+
+                # Direct scaling might exceed int16 range, thus we need to bit shift the data a bit.
+                # This will probably affect peak reconstruction plugins
+                apax = scale * max(buff_wf[buff_slice])
+
+                records_correction[jx]['n_corrected'] = np.sum(
+                    blank_record[rec_slice])
+                if np.int32(apax) >= 2**15:  # int16(2**15) is -2**15
+                    bshift = int(np.floor(np.log2(apax) - 14))
+
+                    tmp = records[jx]['data'].astype(np.int32)
+                    tmp[rec_slice] = buff_wf[buff_slice] * scale
+
+                    records[jx]['area'] = np.sum(tmp)  # int64
+                    records[jx]['data'][:] = np.right_shift(tmp, bshift)
+                    records_correction[jx]['bit_shift'] += bshift
+                else:
+                    records[jx]['data'][rec_slice] = buff_wf[buff_slice] * scale
+                    records[jx]['area'] = np.sum(records[jx]['data'])
 
 
 ##
@@ -233,6 +498,7 @@ def software_he_veto(records, to_pe,
     regions['length'] = veto_length
     regions['pulse_length'] = veto_length
     regions['dt'] = veto_res
+    regions['bit_shift'] = 0
 
     if not len(regions):
         # No veto anywhere in this data
