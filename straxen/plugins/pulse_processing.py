@@ -97,6 +97,8 @@ class PulseProcessing(strax.Plugin):
         for p in self.provides:
             if p.endswith('records'):
                 dtype[p] = strax.record_dtype(record_length)
+            if p == 'records':
+                dtype[p].extend(rc_dtype)
 
         dtype['veto_regions'] = strax.hit_dtype
         dtype['pulse_counts'] = pulse_count_dtype(n_tpc)
