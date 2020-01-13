@@ -8,6 +8,11 @@ export, __all__ = strax.exporter()
 # Number of TPC PMTs. Hardcoded for now...
 n_tpc = 248
 
+# Fields added to saturation correction 
+rc_dtype = record_correction_dtype = [
+    (('Number of samples corrected', 'n_corrected'), np.uint16), \
+    (('Number of bits corrected data exceed int16 range', 'bit_shift'), np.uint16)]
+
 
 @export
 @strax.takes_config(
