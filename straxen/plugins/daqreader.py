@@ -19,11 +19,16 @@ __all__ = ['DAQReader']
     strax.Option('n_readout_threads', type=int, track=False,
                  help="Number of readout threads producing strax data files"),
     strax.Option('erase', default=False, track=False,
-                 help="Delete reader data after processing"))
+                 help="Delete reader data after processing"),
+    strax.Option('compressor', default="blosc", track=False,
+                 help="Algorithm used for (de)compressing the live data"),
+    strax.Option('run_start_time', default=0., type=float, track=False,
+                 help="time of start run (s since unix epoch)"))
 class DAQReader(strax.Plugin):
     provides = 'raw_records'
     depends_on = tuple()
     dtype = strax.record_dtype()
+    parallel = 'process'
     rechunk_on_save = False
 
     def _path(self, chunk_i):
@@ -79,7 +84,7 @@ class DAQReader(strax.Plugin):
 
     def _load_chunk(self, path, kind='central'):
         records = [strax.load_file(fn,
-                                   compressor='blosc',
+                                   compressor=self.config["compressor"],
                                    dtype=strax.record_dtype())
                    for fn in sorted(glob.glob(f'{path}/*'))]
         records = np.concatenate(records)
@@ -111,6 +116,13 @@ class DAQReader(strax.Plugin):
         strax.integrate(records)
 
         if len(records):
+            # Convert time to time in ns since unix epoch.
+            # Ensure the offset is a whole digitizer sample
+            t0 = int(self.config["run_start_time"] * int(1e9))
+            dt = records[0]['dt']
+            t0 = dt * (t0 // dt)
+            records["time"] += t0
+
             timespan_sec = (records[-1]['time'] - records[0]['time']) / 1e9
             print(f'{chunk_i}: read {records.nbytes/1e6:.2f} MB '
                   f'({len(records)} records, '

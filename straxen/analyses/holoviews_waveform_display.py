@@ -1,7 +1,9 @@
-import bokeh.models
-from holoviews.operation import datashader
-import holoviews as hv
-import holoviews.streams
+"""Dynamic holoviews-based waveform display
+
+Note imports are inside function, to keep 'import straxen'
+free of holoviews.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -14,16 +16,19 @@ def seconds_from(t, t_reference):
 
 # Custom wheel zoom tool that only zooms in one dimension
 def x_zoom_wheel():
+    import bokeh.models
     return bokeh.models.WheelZoomTool(dimensions='width')
 
 
 @straxen.mini_analysis(requires=['records'], hv_bokeh=True)
-def plot_pmt_pattern(*, records, to_pe, array='bottom'):
+def hvdisp_plot_pmt_pattern(*, records, to_pe, array='bottom'):
     """Plot a PMT array, with colors showing the intensity
     of light observed in the time range
 
     :param array: 'top' or 'bottom', array to show
     """
+    import holoviews as hv
+
     pmts = straxen.pmt_positions()
     areas = np.bincount(records['channel'],
                         weights=records['area'] * to_pe[records['channel']],
@@ -62,6 +67,8 @@ def plot_pmt_pattern(*, records, to_pe, array='bottom'):
 def _records_to_points(*, records, to_pe, t_reference):
     """Return (holoviews.Points, time_stream) corresponding to records
     """
+    import holoviews as hv
+
     areas_r = records['area'] * to_pe[records['channel']]
 
     # Create dataframe with record metadata
@@ -84,9 +91,9 @@ def _records_to_points(*, records, to_pe, t_reference):
     return rec_points, time_stream
 
 
-@straxen.mini_analysis(requires=['records'])
-def plot_records_2d(records, to_pe,
-                    t_reference, width=600, time_stream=None):
+@straxen.mini_analysis(requires=['records'], hv_bokeh=True)
+def hvdisp_plot_records_2d(records, to_pe,
+                           t_reference, width=600, time_stream=None):
     """Plot records in a dynamic 2D histogram of (time, pmt)
 
     :param width: Plot width in pixels
@@ -94,6 +101,9 @@ def plot_records_2d(records, to_pe,
     we assume records is already converted to points (which hopefully
     is what the stream is derived from)
     """
+    import holoviews as hv
+    import holoviews.operation.datashader
+
     if time_stream is None:
         # Records are still a dataframe, convert it to points
         records, time_stream = _records_to_points(
@@ -101,8 +111,8 @@ def plot_records_2d(records, to_pe,
 
     # TODO: weigh by area?
 
-    return datashader.dynspread(
-            datashader.datashade(
+    return hv.operation.datashader.dynspread(
+            hv.operation.datashader.datashade(
                 records,
                 y_range=(0, straxen.n_tpc_pmts),
                 streams=[time_stream])).opts(
@@ -115,12 +125,12 @@ def plot_records_2d(records, to_pe,
 @straxen.mini_analysis(
     requires=['peaks', 'peak_classification', 'peak_basics'],
     hv_bokeh=True)
-def plot_peak_waveforms(
+def hvdisp_plot_peak_waveforms(
         t_reference,
         time_range,
         peaks,
         width=600,
-        show_largest=10,
+        show_largest=None,
         time_dim=None):
     """Plot the sum waveforms of peaks
     :param width: Plot width in pixels
@@ -128,6 +138,8 @@ def plot_peak_waveforms(
     :param time_dim: Holoviews time dimension; will create new one
     if not provided.
     """
+    import holoviews as hv
+
     if show_largest is not None and len(peaks) > show_largest:
         show_i = np.argsort(peaks['area'])[-show_largest::]
         peaks = peaks[show_i]
@@ -190,16 +202,18 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
     hv_bokeh=True)
 def waveform_display(
         context, run_id, to_pe, time_range, t_reference, records, peaks,
-        width=600):
+        width=600, show_largest=None):
     """Plot a waveform overview display"
 
     :param width: Plot width in pixels
     """
+    import holoviews as hv
+
     records_points, time_stream = _records_to_points(records=records,
                                                      to_pe=to_pe,
                                                      t_reference=t_reference)
 
-    time_v_channel = context.plot_records_2d(
+    time_v_channel = context.hvdisp_plot_records_2d(
         run_id=run_id, to_pe=to_pe,
         records=records_points,
         width=width,
@@ -214,7 +228,7 @@ def waveform_display(
     array_plot = {
         array: hv.DynamicMap(
             _range_plot(
-                context.plot_pmt_pattern,
+                context.hvdisp_plot_pmt_pattern,
                 run_id=run_id, to_pe=to_pe,
                 records=records,
                 full_time_range=time_range,
@@ -226,14 +240,15 @@ def waveform_display(
 
     peak_wvs = hv.DynamicMap(
         _range_plot(
-            context.plot_peak_waveforms,
+            context.hvdisp_plot_peak_waveforms,
             run_id=run_id,
             width=width,
             full_time_range=time_range,
             t_reference=t_reference,
             time_selection='touching',
             time_dim=records_points.kdims[0],
-            peaks=peaks),
+            peaks=peaks,
+            show_largest=show_largest),
         streams=[time_stream])
 
     layout = (peak_wvs + array_plot['top']

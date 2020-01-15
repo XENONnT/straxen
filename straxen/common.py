@@ -2,11 +2,11 @@ import ast
 import configparser
 import gzip
 import inspect
-import logging
 import io
 import json
 import os
 import os.path as osp
+import pickle
 import socket
 import sys
 import tarfile
@@ -17,10 +17,12 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
+
+aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 first_sr1_run = 170118_1327
 tpc_r = 47.9
@@ -65,6 +67,11 @@ def pax_file(x):
 
 cache_dict = dict()
 
+
+# Formats for which the original file is text, not binary
+_text_formats = ['text', 'csv', 'json']
+
+
 # Placeholder for resource management system in the future?
 @export
 def get_resource(x, fmt='text'):
@@ -94,7 +101,7 @@ def get_resource(x, fmt='text'):
         else:
             print(f'Did not find {cache_fn} in cache, downloading {x}')
             result = urllib.request.urlopen(x).read()
-            is_binary = fmt != 'text'
+            is_binary = fmt not in _text_formats
             if not is_binary:
                 result = result.decode()
 
@@ -127,6 +134,12 @@ def get_resource(x, fmt='text'):
             result = np.load(x)
         elif fmt == 'npy_pickle':
             result = np.load(x, allow_pickle = True)
+        elif fmt == 'pkl':
+            with open(x, 'rb') as f:
+                result = pickle.load(f)
+        elif fmt == 'pkl.gz':
+            with gzip.open(x, 'rb') as f:
+                result = pickle.load(f)
         elif fmt == 'json.gz':
             with gzip.open(x, 'rb') as f:
                 result = json.load(f)
@@ -139,6 +152,10 @@ def get_resource(x, fmt='text'):
         elif fmt == 'text':
             with open(x, mode='r') as f:
                 result = f.read()
+        elif fmt == 'csv':
+            result = pd.read_csv(x)
+        else:
+            raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
     cache_dict[x] = result
@@ -203,7 +220,7 @@ def get_secret(x):
 @export
 def download_test_data():
     """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/7dad0e1f35bb6f4e7174e259d8d73b806c5505dd/strax_test_data.tar',
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f4ca5e41bb7060f8424e3a8e2d9214bd19934c53/strax_test_data.tar',
                         fmt='binary')
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)

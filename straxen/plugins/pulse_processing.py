@@ -75,7 +75,7 @@ class PulseProcessing(strax.Plugin):
 
     parallel = 'process'
     rechunk_on_save = False
-    compressor = 'zstd'
+    compressor = 'lz4'
 
     depends_on = 'raw_records'
 
@@ -133,22 +133,23 @@ class PulseProcessing(strax.Plugin):
         else:
             veto_regions = np.zeros(0, dtype=strax.hit_dtype)
 
-        # Find hits
-        # -- before filtering,since this messes with the with the S/N
-        hits = strax.find_hits(r, threshold=self.config['hit_threshold'])
+        if len(r):
+            # Find hits
+            # -- before filtering,since this messes with the with the S/N
+            hits = strax.find_hits(r, threshold=self.config['hit_threshold'])
 
-        if self.config['pmt_pulse_filter']:
-            # Filter to concentrate the PMT pulses
-            strax.filter_records(
-                r, np.array(self.config['pmt_pulse_filter']))
+            if self.config['pmt_pulse_filter']:
+                # Filter to concentrate the PMT pulses
+                strax.filter_records(
+                    r, np.array(self.config['pmt_pulse_filter']))
 
-        le, re = self.config['save_outside_hits']
-        r = strax.cut_outside_hits(r, hits,
-                                   left_extension=le,
-                                   right_extension=re)
+            le, re = self.config['save_outside_hits']
+            r = strax.cut_outside_hits(r, hits,
+                                       left_extension=le,
+                                       right_extension=re)
 
-        # Probably overkill, but just to be sure...
-        strax.zero_out_of_bounds(r)
+            # Probably overkill, but just to be sure...
+            strax.zero_out_of_bounds(r)
 
         return dict(records=r,
                     diagnostic_records=diagnostic_records,

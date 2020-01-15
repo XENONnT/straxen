@@ -1,5 +1,5 @@
-strax>=0.8.0
-tensorflow==2.0.0-beta1
+strax>=0.8.3
+tensorflow
 holoviews
 bokeh
 multihist

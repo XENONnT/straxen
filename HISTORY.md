@@ -1,7 +1,37 @@
+0.3.5 / 2019-12-23
+------------------
+- Integrate peaks with tight_coincidence
+- `straxer` script upgrades
+
+0.3.4 / 2019-12-20
+-------------------
+- Classification tuning (#32)
+- Tight coincidence (#32)
+- energy spectrum and classification check mini-analyses (#32)
+- Bootstrax updates (#33)
+
+
+0.3.3 / 2019-12-13
+------------------
+- Fix test data / demo notebook
+
+
+0.3.2 / 2019-11-13
+------------------
+- Pulse counting bugfixes (#30)
+- Bootstrax: 
+  - Setup fix (#27)
+  - Add correct (epoch-based) run start time (#29)
+  - Support compressor config (#29)
+- Avoid platform-specific tempfile things (#28)
+- Placeholder electron lifetime (#25)  
+
+
 0.3.1 / 2019-09-25
 ------------------
 - Fix resource caching
 - Fix tensorflow2 checking (#23)
+
 
 0.3.0 / 2019-07-21
 -------------------
@@ -9,6 +39,7 @@
 - straxer processing script
 - Upgrades to get_resource (#18, #20)
 - Require tensorflow2
+
 
 0.2.2 / 2019-06-17
 -------------------

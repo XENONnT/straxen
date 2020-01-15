@@ -36,6 +36,17 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
   - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Thus, it's quite possible for this field to exist (and show an exception) when the state is 'done': that just means it failed at least once but succeeded later. Tracking failure history is primarily the DAQ log's reponsibility; this message is only provided for convenience.
    - **n_failures**: number of failures on this run, if there ever was one (otherwise this field does not exist).
   - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
+Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains the following fields:
+  - **run**: run number,
+  - **host**: the name of the eventbuilder,
+  - **time**: the time whereon the state was reported,
+  - **pid**: the pid of this bootstrax (sub)process,
+  - **cpu_pid**: cpu usage of the bootstrax subprocess (in percent),
+  - **cpu_tot**: cpu usage on the eventbuilder (in percent),
+  - **mem_pid**: memory used by this pid of boostrax (in percent),
+  - **mem_tot**': memory used on this eventbuilder (in percent),
+  - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
+  - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
 
 import argparse
@@ -53,7 +64,7 @@ import traceback
 
 import numpy as np
 import pymongo
-from psutil import pid_exists, Process, virtual_memory, cpu_percent
+from psutil import pid_exists, Process, virtual_memory, cpu_percent, disk_usage
 import pytz
 import strax
 import straxen
@@ -66,7 +77,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--debug', action='store_true',
                     help="Start strax processes with debug logging.")
 parser.add_argument('--cores', type=int, default=25,
-                    help="Maximum number of workers to use in a strax process")
+                    help="Maximum number of workers to use in a strax process. "
+                         "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
 
@@ -85,13 +97,35 @@ args = parser.parse_args()
 ##
 # Configuration
 ##
-mongo_url = 'mongodb://{username}:{password}@gw:27019/xenonnt'
-dbname = 'xenonnt'
-run_collname = 'run'
 
-# Folder to place new processed data in
-# TODO: Perhaps check that ssh mount exists?
-output_folder = '/data/xenon/raw/xenonnt_processed'
+# TODO change this to the run database when DAQ commissioning is finished
+# mongo_url = 'mongodb://{username}:{password}@gw:27019/xenonnt'
+# dbname = 'xenonnt'
+# run_collname = 'run'
+
+# Test database
+db_password = os.environ['MONGO_TST_PASSWORD']
+db_username = os.environ['MONGO_TST_USERNAME']
+mongo_url = f"mongodb+srv://{db_username}:{db_password}@jorandb-z6nbo.mongodb.net/admin?retryWrites=true&w=majority"
+dbname = 'test_database'
+run_collname = 'runs'
+
+# DAQ database
+daq_db_name = 'daq'
+daq_db_password = os.environ['MONGO_DAQ_PASSWORD']
+daq_db_username = os.environ['MONGO_DAQ_USERNAME']
+daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27020,old-gw:27020/daq")
+daq_db = daq_client[daq_db_name]
+
+# The event builders write to different directories on the respective machines.
+eb_directories = {
+    'eb0.xenon.local': '/data2/xenonnt_processed/',
+    'eb1.xenon.local': '/data1/xenonnt_processed/',
+    'eb2.xenon.local': '/nfs/eb0_data1/xenonnt_processed/',
+    'eb3.xenon.local': '/data/xenonnt_processed/',
+    'eb4.xenon.local': '/data/xenonnt_processed/',
+    'eb5.xenon.local': '/data/xenonnt_processed/',
+}
 
 # Timeouts in seconds
 timeouts = {
@@ -126,7 +160,9 @@ timeouts = {
 }
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = 'name start end number bootstrax data.host data.type data.location ini.processing_threads'.split()
+bootstrax_projection = f"name start end number bootstrax " \
+                       f"data.host data.type data.location " \
+                       f"ini.processing_threads ini.compressor".split()
 
 # Filename for temporary storage of the exception
 # This is used to communicate the exception from the strax child process
@@ -145,6 +181,11 @@ log = logging.getLogger()
 hostname = socket.getfqdn()
 state_doc_id = None   # Set in main loop
 
+# Set the output folder
+output_folder = eb_directories[hostname]
+if os.access(output_folder, os.W_OK) is not True:
+    raise IOError(f'No writing access to {output_folder}')
+
 
 def new_context():
     """Create strax context that can access the runs db"""
@@ -158,6 +199,8 @@ def new_context():
             new_data_path=output_folder,
             mongo_dbname=dbname),
         **straxen.contexts.common_opts)
+    st.context_config['allow_multiprocess'] = True if args.cores > 1 else False
+    st.context_config['allow_shm'] = True
     return st
 
 
@@ -167,13 +210,20 @@ run_db = st.storage[0].client[dbname]
 run_coll = run_db[run_collname]
 bs_coll = run_db['bootstrax']
 log_coll = run_db['log']
-usage_coll = run_db['usage']
+# NB: the usage_coll is written to the DAQ database
+usage_coll = daq_db['eb_monitor']
 
 # Ping the databases to ensure the mongo connections are working
 run_db.command('ping')
+daq_db.command('ping')
 
 
 def main():
+    if args.cores == -1:
+        # Use all the available cores on this machine
+        args.cores = multiprocessing.cpu_count()
+        print(f'Set cores to n_tot, using {args.cores} cores')
+
     if args.fail:
         args.fail += ['']   # Provide empty reason if none specified
         manual_fail(number=int(args.fail[0]), reason=args.fail[1])
@@ -185,12 +235,13 @@ def main():
         abandon(number=number)
 
     elif args.process:
+        t_start = now()
         number = args.process
         rd = consider_run({'number': number})
         if rd is None:
             raise ValueError(f"No run numbered {number} exists")
         process_run(rd)
-
+        print(f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
     else:
         # Start processing
         main_loop()
@@ -218,9 +269,11 @@ def main_loop():
         started=now(),
         pid=os.getpid())).inserted_id
     set_state('starting')
+    t_start = now()
 
     next_cleanup_time = now()
     while True:
+        print(f'bootstrax running for {(now() - t_start).seconds} seconds')
         log.info("Looking for work")
 
         set_state('busy')
@@ -279,20 +332,26 @@ def kill_process(pid, wait_time=None):
 
 
 def update_usage(pid_process, run_number):
-    """Save information on the usage of resources in the 'usage' collection. The
-    information contains percentages of CPU and Memory usage both for the
+    """Save information on the usage of resources in the 'eb_monitor' collection.
+    The information contains percentages of CPU and Memory usage both for the
     sub-process (due to the multiprocessing) itself and on the host as a whole.
     """
     frac_to_percent = 100
     mem_tot = virtual_memory()
-    usage = {'run':run_number,
-             'host':hostname,
-             'time':now(),
-             'pid':pid_process.ppid(),
+    disk = disk_usage(output_folder)
+    terabyte_to_byte = 1024.0 ** 4
+#     current_process =  multiprocessing.current_process()
+    usage = {'run': int(run_number),
+             'host': hostname,
+             'time': now(),
+             'pid': pid_process.pid,
              'cpu_pid': pid_process.cpu_percent(),
              'cpu_tot': cpu_percent(),
              'mem_pid': pid_process.memory_percent(),
-             'mem_tot': frac_to_percent * mem_tot.used / mem_tot.available}
+             'mem_tot': frac_to_percent * mem_tot.used / mem_tot.available,
+             'disk_size': disk.total / terabyte_to_byte,
+             'disk_used': disk.percent
+             }
     usage_coll.insert_one(usage)
 
 
@@ -355,10 +414,16 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
         query = {'_id': mongo_id}
     else:
         raise ValueError("Please give mongo_id or number")
-
-    return run_coll.find_one(query,
+    try:
+        return run_coll.find_one(query,
                              projection=None if full_doc else bootstrax_projection)
-
+    except pymongo.errors.AutoReconnect as e:
+        # mongo-db seems to be overloaded, wait a second and try again
+        auto_reconnect_nap = 60
+        print(f'ran into {e}, take a nap for {auto_reconnect_nap} seconds and try again')
+        time.sleep(auto_reconnect_nap)
+        return run_coll.find_one(query,
+                                 projection=None if full_doc else bootstrax_projection)
 
 def set_run_state(rd, state, return_new_doc=True, **kwargs):
     """Set state of run doc rd to state
@@ -417,7 +482,12 @@ def fail_run(rd, reason):
     else:
         long_run_id = f"run {rd['number']}:{rd['_id']}"
 
-    if 'n_failures' in rd['bootstrax']:
+    # No bootstrax info is present when manually failing a run with arg.fail
+    if not 'bootstrax' in rd.keys():
+        rd['bootstrax'] = {}
+        rd['bootstrax']['n_failures'] = 0
+
+    if 'n_failures' in rd['bootstrax'] and rd['bootstrax']['n_failures'] > 0:
         fail_name = 'Repeated failure'
         failure_message_level = 'info'
     else:
@@ -454,11 +524,23 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
     fail_run(rd, "Manually set failed state. " + reason)
 
 
+def get_compressor(rd, default_compressor="blosc"):
+    """Read the compressor method from the run_doc. Return 'blosc' if no
+    information is specified in the run_doc"""
+    try:
+        return rd["ini"]["compressor"]
+    except KeyError:
+        log_warning(f"Bootstrax couldn't read the compressor form the run_doc. "
+                    f"Assuming 'blosc' for now")
+        return default_compressor
+
+
 ##
 # Processing
 ##
 
-def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
+def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
+              run_start_time, debug=False):
     if debug:
         log.setLevel(logging.DEBUG)
     try:
@@ -466,6 +548,8 @@ def run_strax(run_id, input_dir, target, n_readout_threads, debug=False):
         st = new_context()
         st.make(run_id, target,
                 config=dict(input_dir=input_dir,
+                            compressor=compressor,
+                            run_start_time=run_start_time,
                             n_readout_threads=n_readout_threads),
                 max_workers=args.cores)
     except Exception as e:
@@ -484,6 +568,7 @@ def process_run(rd, send_heartbeats=True):
     # Shortcuts for failing
     class RunFailed(Exception):
         pass
+
     def fail(reason):
         fail_run(rd, reason)
         raise RunFailed
@@ -510,6 +595,7 @@ def process_run(rd, send_heartbeats=True):
 
         thread_info = rd.get('ini', dict()).get('processing_threads', dict())
         n_readout_threads = sum([v for v in thread_info.values()])
+
         if not n_readout_threads:
             fail(f"Run doc for {run_id} has no readout thread count info")
 
@@ -531,9 +617,17 @@ def process_run(rd, send_heartbeats=True):
             # Failed before, and on autopilot: do just raw_records
             target = 'raw_records'
 
+        compressor = get_compressor(rd)
+
+        try:
+            run_start_time = rd['start'].timestamp()
+        except Exception as e:
+            fail(f"Could not find start in datetime.datetime object: {str(e)}")
+
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc, target, n_readout_threads, args.debug))
+            args=(run_id, loc, target, n_readout_threads, compressor,
+                  run_start_time, args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)
@@ -616,6 +710,7 @@ def process_run(rd, send_heartbeats=True):
 
     except RunFailed:
         return
+
 
 ##
 # Cleanup
