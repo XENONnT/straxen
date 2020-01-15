@@ -185,7 +185,7 @@ def plot_energy_spectrum(
     plt.xlabel("Energy [keV_ee], CES")
 
 
-@straxen.mini_analysis(requires=('peak_basics', 'peak_classification'))
+@straxen.mini_analysis(requires=('peak_basics',))
 def plot_peak_classification(peaks, s=1):
     for cl, color in enumerate('kbg'):
         d = peaks[peaks['type'] == cl]
