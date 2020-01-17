@@ -1,5 +1,6 @@
 import ast
 import configparser
+from copy import deepcopy
 import gzip
 import inspect
 import io
@@ -133,7 +134,7 @@ def get_resource(x, fmt='text'):
         if fmt == 'npy':
             result = np.load(x)
         elif fmt == 'npy_pickle':
-            result = np.load(x, allow_pickle = True)
+            result = np.load(x, allow_pickle=True)
         elif fmt == 'pkl':
             with open(x, 'rb') as f:
                 result = pickle.load(f)
@@ -157,8 +158,9 @@ def get_resource(x, fmt='text'):
         else:
             raise ValueError(f"Unsupported format {fmt}!")
 
-    # Store in in-memory cache
-    cache_dict[x] = result
+    # Store a copy in an in-memory cache.
+    # The copy is necessary because the caller might mutate it
+    cache_dict[x] = deepcopy(result)
 
     return result
 
