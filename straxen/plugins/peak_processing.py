@@ -183,37 +183,63 @@ class PeakPositions(strax.Plugin):
                       'this fraction of that of the considered peak'),
     strax.Option('nearby_window', default=int(1e7),
                  help='Peaks starting within this time window (on either side)'
-                      'in ns count as nearby.'))
-class NCompeting(strax.OverlapWindowPlugin):
+                      'in ns count as nearby.'),
+    strax.Option('peak_max_proximity_time', default=int(1e9),
+                 help='Maximum value for proximity values such as '
+                      't_to_next_peak [ns]'))
+class PeakProximity(strax.OverlapWindowPlugin):
     depends_on = ('peak_basics',)
     dtype = [
         ('n_competing', np.int32,
-            'Number of nearby larger or slightly smaller peaks')]
+         'Number of nearby larger or slightly smaller peaks'),
+        ('n_competing_left', np.int32,
+         'Number of larger or slightly smaller peaks left of the main peak'),
+        ('t_to_prev_peak', np.int64,
+         'Time between end of previous peak and start of this peak [ns]'),
+        ('t_to_next_peak', np.int64,
+         'Time between end of this peak and start of next peak [ns]'),
+        ('t_to_nearest_peak', np.int64,
+         'Smaller of t_to_prev_peak and t_to_next_peak [ns]')]
+
+    __version__ = '0.3.4'
 
     def get_window_size(self):
-        return 2 * self.config['nearby_window']
+        return self.config['peak_max_proximity_time']
 
     def compute(self, peaks):
-        return dict(n_competing=self.find_n_competing(
+        windows = strax.touching_windows(peaks, peaks,
+                                         window=self.config['nearby_window'])
+        n_left, n_tot = self.find_n_competing(
             peaks,
-            window=self.config['nearby_window'],
-            fraction=self.config['min_area_fraction']))
+            windows,
+            fraction=self.config['min_area_fraction'])
+
+        t_to_prev_peak = (
+                np.ones(len(peaks), dtype=np.int64)
+                * self.config['peak_max_proximity_time'])
+        t_to_prev_peak[1:] = peaks['time'][1:] - peaks['endtime'][:-1]
+
+        t_to_next_peak = t_to_prev_peak.copy()
+        t_to_next_peak[:-1] = peaks['time'][1:] - peaks['endtime'][:-1]
+
+        return dict(
+            n_competing=n_tot,
+            n_competing_left=n_left,
+            t_to_prev_peak=t_to_prev_peak,
+            t_to_next_peak=t_to_next_peak,
+            t_to_nearest_peak=np.minimum(t_to_prev_peak, t_to_next_peak))
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def find_n_competing(peaks, window, fraction):
-        n = len(peaks)
-        t = peaks['time']
-        a = peaks['area']
-        results = np.zeros(n, dtype=np.int32)
+    def find_n_competing(peaks, windows, fraction):
+        n_left = np.zeros(len(peaks), dtype=np.int32)
+        n_tot = n_left.copy()
+        areas = peaks['area']
 
-        left_i = 0
-        right_i = 0
         for i, peak in enumerate(peaks):
-            while t[left_i] + window < t[i] and left_i < n - 1:
-                left_i += 1
-            while t[right_i] - window < t[i] and right_i < n - 1:
-                right_i += 1
-            results[i] = np.sum(a[left_i:right_i + 1] > a[i] * fraction)
+            left_i, right_i = windows[i]
+            threshold = areas[i] * fraction
+            n_left[i] = np.sum(areas[left_i:i] > threshold)
+            n_tot[i] = n_left[i] + np.sum(areas[i + 1:right_i] > threshold)
 
-        return results - 1
+        return n_left, n_tot
