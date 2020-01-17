@@ -1,3 +1,12 @@
+0.4.0 / 2020-01-17
+-------------------
+- Peak merging / Two-step clustering (#36)
+- Fake DAQ resurrection (#37)
+- Matplotlib waveform plotter (#35)
+- Updates to get_resource and itp_map from WFsim
+- Rename sX_largest_other -> alt_sX_area
+- DAQReader fixes (use lz4, time conversion)
+
 0.3.5 / 2019-12-23
 ------------------
 - Integrate peaks with tight_coincidence
