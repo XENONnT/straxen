@@ -95,7 +95,7 @@ def plot_records_matrix(context, run_id,
 
     f = context.raw_records_matrix if raw else context.records_matrix
 
-    wvm, ts, ys = context.records_matrix(run_id, **kwargs)
+    wvm, ts, ys = f(run_id, **kwargs)
 
     plt.pcolormesh(
         ts, ys, wvm.T,
