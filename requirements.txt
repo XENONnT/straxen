@@ -1,7 +1,8 @@
-git+git://github.com/AxFoundation/strax
+strax
 # tensorflow    # Optional, to (re)do posrec
 # holoviews     # Optional, to enable wf display
 # bokeh         # Optional, to enable wf display
 # datashader    # Optional, to enable wf display
 multihist
 matplotlib
+packaging

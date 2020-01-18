@@ -1,4 +1,4 @@
-# ..readthedocs.yml
+# .readthedocs.yml
 
 build:
     image: latest
