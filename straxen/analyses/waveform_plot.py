@@ -51,7 +51,7 @@ def plot_waveform(context, deep=False, show_largest=100, figsize=None,
 
 
 @straxen.mini_analysis(
-    requires=('peaks', 'peak_classification'),
+    requires=('peaks', 'peak_basics'),
     default_time_selection='touching',
     warn_beyond_sec=60)
 def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
