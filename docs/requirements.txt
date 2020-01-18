@@ -1,1 +1,7 @@
+git+git://github.com/AxFoundation/strax
 multihist
+matplotlib
+datashader
+graphviz
+recommonmark
+sphinx_rtd_theme
