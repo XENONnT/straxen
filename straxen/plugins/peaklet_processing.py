@@ -195,7 +195,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_duration=self.config['s2_merge_max_duration'],
                 max_area=self.config['s2_merge_max_area'])
 
-            merged_s2s = merge_peaks(
+            merged_s2s = strax.merge_peaks(
                 peaklets,
                 start_merge_at, end_merge_at,
                 max_buffer=int(self.config['s2_merge_max_duration']
@@ -281,59 +281,14 @@ class Peaks(strax.Plugin):
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s['type'] != FAKE_MERGED_S2_TYPE]
-        if not len(merged_s2s):
-            return peaklets
 
-        skip_windows = strax.touching_windows(peaklets, merged_s2s)
-        skip_n = np.diff(skip_windows, axis=1).sum()
-        peaks = np.zeros(len(peaklets) - skip_n + len(merged_s2s),
-                         dtype=self.dtype_for('peaks'))
-
-        self.fill_peaks(peaks, peaklets, merged_s2s, skip_windows)
+        peaks = strax.replace_merged(peaklets, merged_s2s)
 
         if self.config['diagnose_sorting']:
             assert np.all(peaks['time'][1:]
                           >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
         return peaks
 
-    @staticmethod
-    @numba.njit(nogil=True, cache=True)
-    def fill_peaks(peaks, peaklets, merged_s2s, skip_windows):
-        # TODO: this could use some tests!
-        result_i = window_i = 0
-        skip_start, skip_end = skip_windows[0]
-        n_peaklets = len(peaklets)
-
-        n_skipped = 0
-
-        for peaklet_i in range(n_peaklets):
-            if peaklet_i == skip_end:
-                peaks[result_i] = merged_s2s[window_i]
-                result_i += 1
-
-                window_i += 1
-                if window_i == len(skip_windows):
-                    skip_start = skip_end = n_peaklets + 100
-                else:
-                    skip_start, skip_end = skip_windows[window_i]
-
-            if peaklet_i >= skip_start:
-                n_skipped += 1
-                continue
-
-            peaks[result_i] = peaklets[peaklet_i]
-            result_i += 1
-
-        if skip_end == n_peaklets:
-            # Still have to insert the last merged S2
-            # since peaklet_i == skip_end is never met
-            peaks[result_i] = merged_s2s[window_i]
-            result_i += 1
-            window_i += 1
-
-        assert result_i == len(peaks)
-        assert window_i == len(skip_windows)
-        return peaks
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
@@ -375,77 +330,3 @@ def hit_max_sample(records, hits):
         w = r['data'][h['left']:h['right']]
         result[i] = np.argmax(w)
     return result
-
-
-def merge_peaks(peaks, start_merge_at, end_merge_at, max_buffer=int(1e5)):
-    """Merge specified peaks with their neighbors, return merged peaks
-
-    :param peaks: Record array of strax peak dtype.
-    :param start_merge_at: Indices to start merge at
-    :param end_merge_at: EXCLUSIVE indices to end merge at
-    :param max_buffer: Maximum number of samples in the sum_waveforms of
-    the resulting peaks (after merging).
-
-    Peaks must be constructed based on the properties of constituent peaks,
-    it being too time-consuming to revert to records/hits.
-    """
-    assert len(start_merge_at) == len(end_merge_at)
-    new_peaks = np.zeros(len(start_merge_at), dtype=peaks.dtype)
-
-    # Do the merging. Make sure to numbafy this when done
-    buffer = np.zeros(max_buffer, dtype=np.float32)
-
-    for new_i, new_p in enumerate(new_peaks):
-
-        common_dt = 10  # TODO: pick least common denominator
-
-        old_peaks = peaks[start_merge_at[new_i]:end_merge_at[new_i]]
-        first_peak, last_peak = old_peaks[0], old_peaks[-1]
-        new_p['time'] = first_peak['time']
-        new_p['channel'] = first_peak['channel']
-
-        # re-zero relevant part of buffer (overkill? not sure if
-        # this saves much time)
-        buffer[:min(
-            int(
-                (
-                        last_peak['time']
-                        + (last_peak['length'] * old_peaks['dt'].max())
-                        - first_peak['time']) / common_dt
-            ),
-            len(buffer)
-        )] = 0
-
-        for p in old_peaks:
-            # Upsample the sum waveform into the buffer
-            upsample = p['dt'] // common_dt
-            n_after = p['length'] * upsample
-            i0 = (p['time'] - new_p['time']) // common_dt
-            buffer[i0: i0 + n_after] = \
-                np.repeat(p['data'][:p['length']], upsample) / upsample
-
-            # Handle the other peak attributes
-            new_p['area'] += p['area']
-            new_p['area_per_channel'] += p['area_per_channel']
-            new_p['n_hits'] += p['n_hits']
-            new_p['saturated_channel'][p['saturated_channel'] == 1] = 1
-
-        new_p['dt'] = common_dt
-        # endtime = (last_peak['time']
-        #            + last_peak['dt'] * last_peak['length'])
-        # # The new endtime must be at or before the last peak endtime
-        # # to avoid possibly overlapping peakes
-        new_p['length'] = (
-                                  last_peak['time']
-                                  + (last_peak['dt'] * last_peak['length'])
-                                  - new_p['time']
-                          ) / common_dt
-        new_p['n_saturated_channels'] = new_p['saturated_channel'].sum()
-        new_p['tight_coincidence'] = old_peaks['tight_coincidence'][
-            old_peaks['data'].max(axis=1).argmax()
-        ]
-
-        # Downsample the buffer into new_p['data']
-        strax.store_downsampled_waveform(new_p, buffer)
-
-    return new_peaks
