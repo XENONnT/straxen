@@ -1,5 +1,11 @@
 # .readthedocs.yml
 
+# Required
+version: 2
+
+sphinx:
+  configuration: docs/source/conf.py
+
 build:
     image: latest
 
