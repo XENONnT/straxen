@@ -4,11 +4,16 @@ name: py36
 channels:
   - conda-forge
 dependencies:
-  - python=3.6
+  - python=3.7
   - graphviz
   - sphinx
-  - sphinx_rtd_theme
+  - pandas
+  - matplotlib
   - nbsphinx
   - recommonmark
+  - sphinx_rtd_theme
+  - pip
   - pip:
       - graphviz
+      - strax
+      - multihist

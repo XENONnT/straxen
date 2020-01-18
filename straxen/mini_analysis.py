@@ -1,7 +1,6 @@
 import inspect
 import textwrap
 
-import holoviews as hv
 import pandas as pd
 import strax
 from strax.context import select_docs
@@ -50,7 +49,8 @@ def mini_analysis(requires=tuple(),
             if hv_bokeh:
                 global _hv_bokeh_initialized
                 if not _hv_bokeh_initialized:
-                    hv.extension('bokeh')
+                    import holoviews
+                    holoviews.extension('bokeh')
                     _hv_bokeh_initialized = True
 
             # TODO: This is a placeholder until the corrections system
