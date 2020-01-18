@@ -5,3 +5,4 @@ datashader
 graphviz
 recommonmark
 sphinx_rtd_theme
+nbsphinx
