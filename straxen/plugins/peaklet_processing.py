@@ -159,12 +159,16 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Return (time, endtime, type) of merged peaks from peaklets
-    Actual merged peaklets will be built later
+    """Merge together peaklets if we believe they form a single peak instead
     """
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
+
+    # Keep chunk mapping the same as peaks
+    # If we make one huge chunk, peak building
+    # will be very RAM_intensive
+    rechunk_on_save = False
 
     def infer_dtype(self):
         return self.deps['peaklets'].dtype_for('peaklets')
@@ -267,7 +271,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
-    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
+    # NB: merged_s2s must come first, otherwise a chunk could end
+    # in the middle of a merged peak -> bad stuff
+    depends_on = ('merged_s2s', 'peaklets', 'peaklet_classification')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
@@ -285,6 +291,7 @@ class Peaks(strax.Plugin):
         peaks = strax.replace_merged(peaklets, merged_s2s)
 
         if self.config['diagnose_sorting']:
+            assert np.all(np.diff(peaks['time']) >= 0), "Peaks not sorted"
             assert np.all(peaks['time'][1:]
                           >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
         return peaks
