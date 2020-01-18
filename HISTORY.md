@@ -1,3 +1,9 @@
+0.4.1 / 2020-01-18
+-------------------
+- Fix peak duplication
+- Move peak merging code into strax
+- Fix documentation build
+
 0.4.0 / 2020-01-17
 -------------------
 - Peak merging / Two-step clustering (#36)
