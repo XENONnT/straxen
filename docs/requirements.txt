@@ -1,4 +1,0 @@
-strax
-multihist
-matplotlib
-pandas
