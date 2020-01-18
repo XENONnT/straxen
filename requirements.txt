@@ -1,7 +1,7 @@
 git+git://github.com/AxFoundation/strax
 tensorflow
-holoviews
-bokeh
+# holoviews     # Optional, to enable wf display
+# bokeh         # Optional, to enable wf display
 multihist
 matplotlib
 datashader
