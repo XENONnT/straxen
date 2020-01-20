@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 import strax
 import straxen
-from .mpl_helpers import log_x
 
 
 def get_livetime_sec(context, run_id, things):
@@ -178,7 +177,7 @@ def plot_energy_spectrum(
                      step='mid', alpha=error_alpha)
     plt.yscale('log')
     if geomspace:
-        log_x(min_energy, max_energy, scalar_ticks=True)
+        straxen.log_x(min_energy, max_energy, scalar_ticks=True)
     else:
         plt.xlim(min_energy, max_energy)
     plt.ylabel("Events / (keV_ee * day)")
