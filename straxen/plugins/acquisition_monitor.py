@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
                  help="time of start run (s since unix epoch)"))
 
 
-class DeadtimeMonitor(strax.Plugin):
+class VetoTimesRecorder(strax.Plugin):
     """
     Puts the aqmon times for busy on/off into a dict to be further put
     into MongoDB and used by the deadtime monitor in NODIAQ
@@ -23,34 +23,36 @@ class DeadtimeMonitor(strax.Plugin):
     rechunk_on_save = False
     parallel ='process'
 
-    dtype = [
-            (('Start time of high E ch. busy (ns since unix epoch)','busy_start'), np.int64,),
-            (('Stop time of high E ch. busy (ns since unix epoch)','busy_stop'), np.int64),
-            (('Start time of HEV (ns since unix epoch)','hev_start'), np.int64),
-            (('Stop time of HEV (ns since unix epoch)','hev_stop'), np.int64)]
+    veto_signals = [(('Start time of high E ch. busy (ns since unix epoch)','busy_start'), np.int64),
+                    (('Stop time of high E ch. busy (ns since unix epoch)','busy_stop'), np.int64),
+                    (('Start time of HEV (ns since unix epoch)','hev_start'), np.int64),
+                    (('Stop time of HEV (ns since unix epoch)','hev_stop'), np.int64)]
 
     depends_on = ('aqmon_records')
-    provides = 'veto_times'
-    veto_modes = ('busy_start', 'busy_stop', 'hev_start', 'hev_stop')
-    data_kind = provides 
+    provides = ('busy_start', 'busy_stop', 'hev_start', 'hev_stop')
+    data_kind = {k: k for k in provides}
 
     # TODO: Include also the the n_veto busy_start/stop signals
-    # TODO: in XENONnT acq_mon channels will be different, get them from config
+    # TODO: XENONnT acq_mon channels will be different, get them from config
     veto_channels = list(range(255,258+1))
-    ch_map = dict(zip(veto_modes,veto_channels))
+    ch_map = dict(zip(provides,veto_channels))
     
-
+    
+    def infer_dtype(self):
+        dtype = dict()
+        for i, p in enumerate(self.provides):
+            dtype[p] = self.veto_signals[i]   
+        return dtype
+    
     def compute(self, aqmon_records):
         veto_times = dict()
         
         raw = aqmon_records
         r = raw[(raw['channel'] >= min(self.veto_channels)) & (raw['channel'] <= max(self.veto_channels)+1)]
-        
-        for ind, v in enumerate(self.veto_modes):
-            veto_times[v] = channel_select(r, self.ch_map[v])['time']- self.config['run_start_time']    
-        
+        for ind, v in enumerate(self.provides):
+            veto_times[v] = channel_select(r, self.ch_map[v])['time'] - self.config['run_start_time']    
+       
         return dict(veto_times = veto_times)
-    
     
 @numba.njit
 def _mask(x, mask):
