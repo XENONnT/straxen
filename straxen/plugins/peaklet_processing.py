@@ -36,16 +36,19 @@ export, __all__ = strax.exporter()
                       "a hit a tight coincidence (ns)"))
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
-    data_kind = 'peaklets'
-    provides = 'peaklets'
+    provides = ('peaklets', 'lone_hits')
+    data_kind = dict(peaklets='peaklets',
+                     lone_hits='lone_hits')
     parallel = 'process'
+    compressor = 'zstd'
     rechunk_on_save = True
 
-    __version__ = '0.1.1'
+    __version__ = '0.2.1'
 
     def infer_dtype(self):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
-        return strax.peak_dtype(n_channels=len(self.to_pe))
+        return dict(peaklets=strax.peak_dtype(n_channels=len(self.to_pe)),
+                    lone_hits=strax.hit_dtype)
 
     def compute(self, records):
         r = records
@@ -66,11 +69,16 @@ class Peaklets(strax.Plugin):
             left_extension=self.config['peak_left_extension'],
             right_extension=self.config['peak_right_extension'],
             min_channels=self.config['peak_min_pmts'],
-            result_dtype=self.dtype)
+            result_dtype=self.dtype_for('peaklets'))
+
+        # Get hits outside peaklets, and store them separately.
+        # fully_contained is OK provided gap_threshold > extension,
+        # which is asserted inside strax.find_peaks.
+        lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
 
         strax.sum_waveform(peaklets, r, self.to_pe)
 
-        # split based on local minima
+        # Split peaks based on local minima
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
             min_height=self.config['peaklet_split_min_height'],
@@ -102,7 +110,8 @@ class Peaklets(strax.Plugin):
             assert np.all(peaklets['time'][1:]
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
 
-        return peaklets
+        return dict(peaklets=peaklets,
+                    lone_hits=lone_hits)
 
 
 @export
