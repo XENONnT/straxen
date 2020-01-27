@@ -23,7 +23,7 @@ export, __all__ = strax.exporter()
                       'triggering peak'),
 )
 class Events(strax.OverlapWindowPlugin):
-    depends_on = ['peak_basics', 'n_competing']
+    depends_on = ['peak_basics', 'peak_proximity']
     data_kind = 'events'
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
@@ -72,7 +72,7 @@ class EventBasics(strax.LoopPlugin):
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
-                  'n_competing')
+                  'peak_proximity')
 
     def infer_dtype(self):
         dtype = [(('Number of peaks in the event',
