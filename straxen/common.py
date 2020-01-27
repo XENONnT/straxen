@@ -132,10 +132,14 @@ def get_resource(x, fmt='text'):
 
     else:
         # File resource
-        if fmt == 'npy':
-            result = np.load(x)
-        elif fmt == 'npy_pickle':
-            result = np.load(x, allow_pickle=True)
+        if fmt in ['npy', 'npy_pickle']:
+            result = np.load(x, allow_pickle=fmt == 'npy_pickle')
+            if isinstance(result, np.lib.npyio.NpzFile):
+                # Slurp the arrays in the file, so the result can be copied,
+                # then close the file so its descriptors does not leak.
+                result_slurped = {k: v[:] for k, v in result.items()}
+                result.close()
+                result = result_slurped
         elif fmt == 'pkl':
             with open(x, 'rb') as f:
                 result = pickle.load(f)
