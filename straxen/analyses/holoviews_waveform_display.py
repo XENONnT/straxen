@@ -123,7 +123,7 @@ def hvdisp_plot_records_2d(records, to_pe,
 
 
 @straxen.mini_analysis(
-    requires=['peaks', 'peak_classification', 'peak_basics'],
+    requires=['peaks', 'peak_basics'],
     hv_bokeh=True)
 def hvdisp_plot_peak_waveforms(
         t_reference,
@@ -198,7 +198,7 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
 
 
 @straxen.mini_analysis(
-    requires=['records', 'peaks', 'peak_basics', 'peak_classification'],
+    requires=['records', 'peaks', 'peak_basics'],
     hv_bokeh=True)
 def waveform_display(
         context, run_id, to_pe, time_range, t_reference, records, peaks,

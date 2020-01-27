@@ -1,37 +1,54 @@
 import numpy as np
 from multihist import Hist1d, Histdd
 import matplotlib.pyplot as plt
+from scipy import stats
 
 import strax
 import straxen
 
 
 def get_livetime_sec(context, run_id, things):
+    """Get the livetime of a run in seconds. If it is not in the run metadata,
+    estimate it from the data-level metadata of the data things.
+    """
     try:
-        md = context.run_metadata(run_id, projection=('start', 'end'))
-        livetime_sec = (md['end'] - md['start']).total_seconds()
+        md = context.run_metadata(run_id,
+                                  projection=('start', 'end', 'livetime'))
     except strax.RunMetadataNotAvailable:
-        livetime_sec = (strax.endtime(things[-1]) - things[0]['time']) / 1e9
-    return livetime_sec
+        return (strax.endtime(things[-1]) - things[0]['time']) / 1e9
+    else:
+        if 'livetime' in md:
+            return md['livetime']
+        else:
+            return (md['end'] - md['start']).total_seconds()
 
 
 @straxen.mini_analysis(requires=('peak_basics',))
 def plot_peaks_aft_histogram(
         context, run_id, peaks,
         pe_bins=np.logspace(0, 7, 120),
-        width_bins=np.geomspace(2, 1e5, 120),
+        rt_bins=np.geomspace(2, 1e5, 120),
         extra_labels=tuple(),
         rate_range=(1e-4, 1),
         aft_range=(0, .85),
         figsize=(14, 5)):
     """Plot side-by-side (area, width) histograms of the peak rate
-    and mean area fraction top."""
+    and mean area fraction top.
+
+    :param pe_bins: Array of bin edges for the peak area dimension [PE]
+    :param rt_bins: array of bin edges for the rise time dimension [ns]
+    :param extra_labels: List of (area, risetime, text, color) extra labels
+    to put on the plot
+    :param rate_range: Range of rates to show [peaks/(bin*s)]
+    :param aft_range: Range of mean S1 area fraction top / bin to show
+    :param figsize: Figure size to use
+    """
     livetime_sec = get_livetime_sec(context, run_id, peaks)
 
     mh = Histdd(peaks,
                 dimensions=(
                     ('area', pe_bins),
-                    ('range_50p_area', width_bins),
+                    ('range_50p_area', rt_bins),
                     ('area_fraction_top', np.linspace(0, 1, 100))
                 ))
 
@@ -67,7 +84,7 @@ def plot_peaks_aft_histogram(
         log_scale=True,
         vmin=rate_range[0], vmax=rate_range[1],
         colorbar_kwargs=dict(extend='both'),
-        cblabel='Peaks / (bin * hour)')
+        cblabel='Peaks / (bin * s)')
     std_axes()
 
     plt.sca(axes[1])
@@ -86,7 +103,7 @@ def event_scatter(context, run_id, events,
                   s=10,
                   color_range=(None, None),
                   color_dim='s1_area_fraction_top',
-                  figsize=(7,5)):
+                  figsize=(7, 5)):
     """Plot a (cS1, cS2) event scatter plot
 
     :param show_single: Show events with only S1s or only S2s just besides
@@ -139,8 +156,8 @@ def event_scatter(context, run_id, events,
     x = np.geomspace(*el_lim, num=1000)
     e_label = 1.2e-3
     for e_const, label in [
-        (0.1, ''), (1, '1\nkeV'), (10, '10\nkeV'), (100, '100\nkeV'),
-        (1e3, '1\nMeV'), (1e4, '')]:
+            (0.1, ''), (1, '1\nkeV'), (10, '10\nkeV'),
+            (100, '100\nkeV'), (1e3, '1\nMeV'), (1e4, '')]:
         plt.plot(x, e_const - x, c='k', alpha=0.2)
         plt.text(e_const - e_label, e_label, label,
                  bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'),
@@ -160,21 +177,31 @@ def event_scatter(context, run_id, events,
 @straxen.mini_analysis(requires=('event_info',))
 def plot_energy_spectrum(
         run_id, context, events,
-        color='b', label=None, error_alpha=0.5,
-        n_bins=100, min_energy=1, max_energy=100, geomspace=True):
+        color='b', label=None,
+        error_alpha=0.5, errors='fc',
+        n_bins=100, min_energy=1, max_energy=100, geomspace=True,
+        **kwargs):
+    """Plot an energy spectrum histogram, with 1 sigma
+    Poisson confidence intervals around it.
+
+    :param min_energy: Minimum energy of the histogram
+    :param max_energy: Maximum energy of the histogram
+    :param geomspace: If True, will use a logarithmic energy binning.
+    Otherwise will use a linear scale.
+    :param n_bins: Number of energy bins to use
+    :param color: Color to plot in
+    :param label: Label for the line
+    :param error_alpha: Alpha value for the statistical error band
+    :param errors: Type of errors to draw, passed to 'errors'
+    argument of Hist1d.plot.
+    """
     livetime_sec = get_livetime_sec(context, run_id, events)
 
     h = Hist1d(events['e_ces'],
                bins=(np.geomspace if geomspace else np.linspace)(
                    min_energy, max_energy, n_bins))
-    mean, std = h.histogram, h.histogram**0.5
-    scale = h.bin_volumes() * livetime_sec / (3600 * 24)
-    (h/scale).plot(linewidth=1, color=color, label=label)
-    plt.fill_between(h.bin_centers,
-                     (mean - std)/scale,
-                     (mean + std)/scale,
-                     color=color,
-                     step='mid', alpha=error_alpha)
+
+    h.plot(errors=errors, errorstyle='band', color=color, label=label)
     plt.yscale('log')
     if geomspace:
         straxen.log_x(min_energy, max_energy, scalar_ticks=True)
@@ -186,6 +213,9 @@ def plot_energy_spectrum(
 
 @straxen.mini_analysis(requires=('peak_basics',))
 def plot_peak_classification(peaks, s=1):
+    """Make an (area, rise_time) scatter plot of peaks
+    :param s: Size of dot for each peak
+    """
     for cl, color in enumerate('kbg'):
         d = peaks[peaks['type'] == cl]
         plt.scatter(d['area'], d['rise_time'], c=color,
