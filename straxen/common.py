@@ -12,6 +12,7 @@ import socket
 import sys
 import tarfile
 import urllib.request
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -158,9 +159,15 @@ def get_resource(x, fmt='text'):
         else:
             raise ValueError(f"Unsupported format {fmt}!")
 
-    # Store a copy in an in-memory cache.
-    # The copy is necessary because the caller might mutate it
-    cache_dict[x] = deepcopy(result)
+    try:
+        # Store a copy in in-memory cache
+        # Copying is necessary since original result might get mutated
+        cache_dict[x] = deepcopy(result)
+    except Exception:
+        warnings.warn(
+            f"Could not copy resource {x} for in-memory caching: "
+            f"using on-disk cache only.",
+            UserWarning)
 
     return result
 
