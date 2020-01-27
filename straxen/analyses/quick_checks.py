@@ -1,26 +1,8 @@
 import numpy as np
 from multihist import Hist1d, Histdd
 import matplotlib.pyplot as plt
-from scipy import stats
 
-import strax
 import straxen
-
-
-def get_livetime_sec(context, run_id, things):
-    """Get the livetime of a run in seconds. If it is not in the run metadata,
-    estimate it from the data-level metadata of the data things.
-    """
-    try:
-        md = context.run_metadata(run_id,
-                                  projection=('start', 'end', 'livetime'))
-    except strax.RunMetadataNotAvailable:
-        return (strax.endtime(things[-1]) - things[0]['time']) / 1e9
-    else:
-        if 'livetime' in md:
-            return md['livetime']
-        else:
-            return (md['end'] - md['start']).total_seconds()
 
 
 @straxen.mini_analysis(requires=('peak_basics',))
@@ -43,7 +25,7 @@ def plot_peaks_aft_histogram(
     :param aft_range: Range of mean S1 area fraction top / bin to show
     :param figsize: Figure size to use
     """
-    livetime_sec = get_livetime_sec(context, run_id, peaks)
+    livetime_sec = straxen.get_livetime_sec(context, run_id, peaks)
 
     mh = Histdd(peaks,
                 dimensions=(
@@ -176,7 +158,7 @@ def event_scatter(context, run_id, events,
 
 @straxen.mini_analysis(requires=('event_info',))
 def plot_energy_spectrum(
-        run_id, context, events,
+        events,
         color='b', label=None,
         error_alpha=0.5, errors='fc',
         n_bins=100, min_energy=1, max_energy=100, geomspace=True,
@@ -195,13 +177,16 @@ def plot_energy_spectrum(
     :param errors: Type of errors to draw, passed to 'errors'
     argument of Hist1d.plot.
     """
-    livetime_sec = get_livetime_sec(context, run_id, events)
-
     h = Hist1d(events['e_ces'],
                bins=(np.geomspace if geomspace else np.linspace)(
                    min_energy, max_energy, n_bins))
 
-    h.plot(errors=errors, errorstyle='band', color=color, label=label)
+    h.plot(errors=errors,
+           errorstyle='band',
+           color=color,
+           label=label,
+           error_alpha=error_alpha,
+           **kwargs)
     plt.yscale('log')
     if geomspace:
         straxen.log_x(min_energy, max_energy, scalar_ticks=True)

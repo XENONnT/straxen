@@ -227,3 +227,22 @@ def download_test_data():
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
     tf.extractall()
+
+
+@export
+def get_livetime_sec(context, run_id, things=None):
+    """Get the livetime of a run in seconds. If it is not in the run metadata,
+    estimate it from the data-level metadata of the data things.
+    """
+    try:
+        md = context.run_metadata(run_id,
+                                  projection=('start', 'end', 'livetime'))
+    except strax.RunMetadataNotAvailable:
+        if things is None:
+            raise
+        return (strax.endtime(things[-1]) - things[0]['time']) / 1e9
+    else:
+        if 'livetime' in md:
+            return md['livetime']
+        else:
+            return (md['end'] - md['start']).total_seconds()
