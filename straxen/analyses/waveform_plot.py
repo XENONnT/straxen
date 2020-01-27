@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 import strax
 import straxen
-from .mpl_helpers import quiet_tight_layout
 from mpl_toolkits.axes_grid1 import inset_locator
 
 
@@ -46,7 +45,7 @@ def plot_waveform(context, deep=False, show_largest=100, figsize=None,
                                     raw=deep == 'raw',
                                     single_figure=False)
 
-        quiet_tight_layout()
+        straxen.quiet_tight_layout()
         plt.subplots_adjust(hspace=0)
 
 
