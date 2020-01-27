@@ -161,8 +161,7 @@ def plot_energy_spectrum(
         events,
         color='b', label=None,
         error_alpha=0.5, errors='fc',
-        n_bins=100, min_energy=1, max_energy=100, geomspace=True,
-        **kwargs):
+        n_bins=100, min_energy=1, max_energy=100, geomspace=True):
     """Plot an energy spectrum histogram, with 1 sigma
     Poisson confidence intervals around it.
 
@@ -182,11 +181,11 @@ def plot_energy_spectrum(
                    min_energy, max_energy, n_bins))
 
     h.plot(errors=errors,
-           errorstyle='band',
+           error_style='band',
            color=color,
            label=label,
-           error_alpha=error_alpha,
-           **kwargs)
+           linewidth=1,
+           error_alpha=error_alpha)
     plt.yscale('log')
     if geomspace:
         straxen.log_x(min_energy, max_energy, scalar_ticks=True)
