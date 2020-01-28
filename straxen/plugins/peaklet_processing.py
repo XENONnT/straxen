@@ -96,7 +96,6 @@ class Peaklets(strax.Plugin):
             threshold=self.natural_breaks_threshold,
             split_low=True,
             filter_wing_width=self.config['peak_split_filter_wing_width'],
-            min_ratio=self.config['peak_split_min_ratio'],
             min_area=self.config['peak_split_min_area'],
             do_iterations=self.config['peak_split_iterations'])
 
