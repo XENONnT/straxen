@@ -56,7 +56,9 @@ n_tpc = 248
     strax.Option(
         'hit_threshold',
         default=15,
-        help='Hitfinder threshold in ADC counts above baseline')
+        help='Hitfinder threshold in ADC counts above baseline'),
+    strax.Option('r_max_messages', default=None, track=False,
+             help="Maximum number of output messages for records.")
 )
 class PulseProcessing(strax.Plugin):
     """
@@ -100,6 +102,7 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.max_messages = self.config['r_max_messages']
 
     def compute(self, raw_records):
         # Do not trust in DAQ + strax.baseline to leave the

@@ -78,9 +78,9 @@ parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
 parser.add_argument('--debug', action='store_true',
                     help="Start strax processes with debug logging.")
-parser.add_argument('--profile', type=str, default = 'false',
+parser.add_argument('--profile', type=str, default='false',
                     help="Option to run strax in profiling mode. "
-                    "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
+                         "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
 parser.add_argument('--cores', type=int, default=25,
                     help="Maximum number of workers to use in a strax process. "
                          "Set to -1 for all available cores")
@@ -90,6 +90,12 @@ parser.add_argument('--delete_live', type=str,
                     # TODO -> set this to yes after testing
                     default='no',
                     help="Delete live_data after succesful processing of the run [yes/no]")
+parser.add_argument('--max_messages_records', type=int,
+                    default=None,
+                    help="list of maximum number of records for records")
+parser.add_argument('--max_messages_raw_records', type=int,
+                    default=None,
+                    help="list of maximum number of records for raw_records")
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
@@ -107,7 +113,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.1.8\n---')
+print(f'---\nTEST VERSION 0.2.2\n---')
 
 # Runs database
 run_db_username = os.environ['MONGO_RDB_USERNAME']
@@ -172,12 +178,14 @@ timeouts = {
 # be written to datamanager at some point. This may clean up data on the disk,
 # hence, we can check if there is sufficient diskspace and if not, wait a while.
 # Below are the max number of times and number of seconds bootstrax will wait.
-wait_diskspace_min_space = 500 # GB
-wait_diskspace_n_max = 100 # times
-wait_diskspace_dt = 60 # seconds
+wait_diskspace_min_space = 500  # GB
+wait_diskspace_n_max = 100  # times
+wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
-
+# Check the input of max_messages_recs:
+for n_max in [args.max_messages_records, args.max_messages_raw_records]:
+    assert n_max == None or type(n_max) == int, "--max_messages_recs: items of list should be int or None"
 # Fields in the run docs that bootstrax uses
 bootstrax_projection = f"name start end number bootstrax " \
                        f"data.host data.type data.location " \
@@ -198,7 +206,7 @@ logging.basicConfig(
     datefmt='%m-%d %H:%M')
 log = logging.getLogger()
 hostname = socket.getfqdn()
-state_doc_id = None   # Set in main loop
+state_doc_id = None  # Set in main loop
 
 # Set the output folder
 output_folder = eb_directories[hostname]
@@ -210,6 +218,7 @@ if args.delete_live.lower() in ['y', 'yes', 'true']:
 else:
     delete_live = False
     print(f'Not deleting live data because --delete_live = {args.delete_live}')
+
 
 def new_context():
     """Create strax context that can access the runs db"""
@@ -249,7 +258,7 @@ def main():
         print(f'Set cores to n_tot, using {args.cores} cores')
 
     if args.fail:
-        args.fail += ['']   # Provide empty reason if none specified
+        args.fail += ['']  # Provide empty reason if none specified
         manual_fail(number=int(args.fail[0]), reason=args.fail[1])
 
     elif args.abandon:
@@ -365,7 +374,7 @@ def update_usage(pid_process, run_number):
     mem_tot = virtual_memory()
     disk = disk_usage(output_folder)
     terabyte_to_byte = 1024.0 ** 4
-#     current_process =  multiprocessing.current_process()
+#   current_process =  multiprocessing.current_process()
     usage = {'run': int(run_number),
              'host': hostname,
              'time': now(),
@@ -428,7 +437,7 @@ def sufficient_diskspace():
     disk_free = disk.free / gigabyte_to_byte
     print(f'Check diskspace. {int(disk_free)} GB free')
     for i in range(wait_diskspace_min_space):
-        if  disk_free > wait_diskspace_min_space:
+        if disk_free > wait_diskspace_min_space:
             # Good we can write, lets continue
             return
         else:
@@ -437,6 +446,7 @@ def sufficient_diskspace():
             time.sleep(wait_diskspace_dt)
             send_heartbeat()
     assert False, "No diskspace to write to"
+
 
 ##
 # Run DB interaction
@@ -458,7 +468,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
         raise ValueError("Please give mongo_id or number")
     try:
         return run_coll.find_one(query,
-                             projection=None if full_doc else bootstrax_projection)
+                                 projection=None if full_doc else bootstrax_projection)
     except pymongo.errors.AutoReconnect as e:
         # mongo-db seems to be overloaded, wait a second and try again
         auto_reconnect_nap = 60
@@ -466,6 +476,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
         time.sleep(auto_reconnect_nap)
         return run_coll.find_one(query,
                                  projection=None if full_doc else bootstrax_projection)
+
 
 def set_run_state(rd, state, return_new_doc=True, **kwargs):
     """Set state of run doc rd to state
@@ -580,15 +591,17 @@ def get_compressor(rd, default_compressor="blosc"):
 def delete_live_data(live_data_path):
     '''After completing the processing and updating the runsDB, remove the
     live_data'''
+
     if os.path.exists(live_data_path) and delete_live:
-         print(f'Deleteing data at {live_data_path}')
-         shutil.rmtree(live_data_path)
-         if os.path.exists(live_data_path):
-             assert False, "we wanted to delete this path!"
+        print(f'Deleteing data at {live_data_path}')
+        shutil.rmtree(live_data_path)
+        if os.path.exists(live_data_path):
+            assert False, "we wanted to delete this path!"
     else:
-         raise FileNotFoundError(f'Something is off, no folder found '
-                                 f'at {live_data_path} but there was '
-                                 f'an attempt to delete data here')
+        raise FileNotFoundError(f'Something is off, no folder found '
+                                f'at {live_data_path} but there was '
+                                f'an attempt to delete data here')
+
 
 ##
 # Processing
@@ -604,25 +617,29 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
         st = new_context()
-        if args.profile.lower() == 'false':
+
+        # Make a function for running strax, call the function to process the run
+        # This way, it can also be run inside a wrapper to profile strax
+        def st_make():
+            '''Run strax'''
             st.make(run_id, target,
-                config=dict(input_dir=input_dir,
-                            compressor=compressor,
-                            run_start_time=run_start_time,
-                            n_readout_threads=n_readout_threads),
-                max_workers=args.cores)
+                    config=dict(input_dir=input_dir,
+                                compressor=compressor,
+                                run_start_time=run_start_time,
+                                n_readout_threads=n_readout_threads,
+                                rr_max_messages=args.max_messages_raw_records,
+                                r_max_messages=args.max_messages_records),
+                    max_workers=args.cores)
+
+        if args.profile.lower() == 'false':
+            st_make()
         else:
             prof_file = f'run{run_id}_{args.profile}'
             if not '.prof' in prof_file:
                 prof_file += '.prof'
             print(f'starting with profiler, saving as {prof_file}')
             with strax.profile_threaded(prof_file):
-                st.make(run_id, target,
-                    config=dict(input_dir=input_dir,
-                            compressor=compressor,
-                            run_start_time=run_start_time,
-                            n_readout_threads=n_readout_threads),
-                max_workers=args.cores)
+                st_make()
     except Exception as e:
         # Write exception to file, so bootstrax can read it
         exc_info = strax.formatted_exception()
