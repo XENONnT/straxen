@@ -8,7 +8,7 @@ import numba
 
 import strax
 import straxen
-from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
 
@@ -119,9 +119,15 @@ class PeakPositions(strax.Plugin):
             import keras
 
         nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
+        # badPMTList was inserted by a very clever person into the keras json
+        # file. Let's delete it to prevent future keras versions from crashing.
+        # Do NOT try `del nn_conf['badPMTList']`! See get_resource docstring
+        # for the gruesome details.
         bad_pmts = nn_conf['badPMTList']
-        del nn_conf['badPMTList']   # Keeping this in might crash keras
-        nn = keras.models.model_from_json(json.dumps(nn_conf))
+        nn = keras.models.model_from_json(json.dumps({
+            k: v
+            for k, v in nn_conf.items()
+            if k != 'badPMTList'}))
         self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
                                  bad_pmts)
 

@@ -78,10 +78,15 @@ _text_formats = ['text', 'csv', 'json']
 @export
 def get_resource(x, fmt='text'):
     """Return contents of file or URL x
-    :param binary: Resource is binary. Return bytes instead of a string.
+    :param fmt: Format to parse contents into
+
+    Do NOT mutate the result you get. Make a copy if you're not sure.
+    If you mutate resources it will corrupt the cache, cause terrible bugs in
+    unrelated code, tears unnumbered ye shall shed, not even the echo of
+    your lamentations shall pass over the mountains, etc.
     """
-    # Try to retrieve from in-memory cache
     if x in cache_dict:
+        # Retrieve from in-memory cache
         return cache_dict[x]
 
     if '://' in x:
@@ -163,15 +168,8 @@ def get_resource(x, fmt='text'):
         else:
             raise ValueError(f"Unsupported format {fmt}!")
 
-    try:
-        # Store a copy in in-memory cache
-        # Copying is necessary since original result might get mutated
-        cache_dict[x] = deepcopy(result)
-    except Exception:
-        warnings.warn(
-            f"Could not copy resource {x} for in-memory caching: "
-            f"using on-disk cache only.",
-            UserWarning)
+    # Store in in-memory cache
+    cache_dict[x] = result
 
     return result
 
