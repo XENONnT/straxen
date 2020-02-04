@@ -90,12 +90,6 @@ parser.add_argument('--delete_live', type=str,
                     # TODO -> set this to yes after testing
                     default='no',
                     help="Delete live_data after succesful processing of the run [yes/no]")
-parser.add_argument('--max_messages_records', type=int,
-                    default=None,
-                    help="list of maximum number of records for records")
-parser.add_argument('--max_messages_raw_records', type=int,
-                    default=None,
-                    help="list of maximum number of records for raw_records")
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
@@ -113,7 +107,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.2.2\n---')
+print(f'---\nTEST VERSION 0.2.3\n---')
 
 # Runs database
 run_db_username = os.environ['MONGO_RDB_USERNAME']
@@ -183,9 +177,6 @@ wait_diskspace_n_max = 100  # times
 wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
-# Check the input of max_messages_recs:
-for n_max in [args.max_messages_records, args.max_messages_raw_records]:
-    assert n_max == None or type(n_max) == int, "--max_messages_recs: items of list should be int or None"
 # Fields in the run docs that bootstrax uses
 bootstrax_projection = f"name start end number bootstrax " \
                        f"data.host data.type data.location " \
