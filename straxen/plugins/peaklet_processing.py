@@ -59,9 +59,11 @@ class Peaklets(strax.Plugin):
     __version__ = '0.3.0'
 
     def infer_dtype(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
-        return dict(peaklets=strax.peak_dtype(n_channels=len(self.to_pe)),
+        return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
                     lone_hits=strax.hit_dtype)
+
+    def setup(self):
+        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, records):
         r = records
