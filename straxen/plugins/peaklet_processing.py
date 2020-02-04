@@ -16,13 +16,26 @@ export, __all__ = strax.exporter()
     strax.Option('peak_right_extension', default=30,
                  help="Include this many ns right of hits in peaks"),
     strax.Option('peak_min_pmts', default=2,
-                 help="Minimum contributing PMTs needed to define a peak"),
-    strax.Option('peaklet_split_min_height', default=25,
-                 help="Minimum height in PE above a local sum waveform"
-                      "minimum, on either side, to trigger a split"),
-    strax.Option('peaklet_split_min_ratio', default=4,
-                 help="Minimum ratio between local sum waveform"
-                      "minimum and maxima on either side, to trigger a split"),
+                 help="Minifnmum contributing PMTs needed to define a peak"),
+    strax.Option('peak_split_gof_threshold',
+                 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
+                 # xenon:xenonnt:analysis:strax_clustering_classification
+                 # #natural_breaks_splitting
+                 # for more information
+                 default=(
+                     None,  # Reserved
+                     ((0.5, 1), (3.5, 0.25)),
+                     ((2, 1), (4.5, 0.4))),
+                 help='Natural breaks goodness of fit/split threshold to split '
+                      'a peak. Specify as tuples of (log10(area), threshold).'),
+    strax.Option('peak_split_filter_wing_width', default=70,
+                 help='Wing width of moving average filter for '
+                      'low-split natural breaks'),
+    strax.Option('peak_split_min_area', default=40.,
+                 help='Minimum area to evaluate natural breaks criterion. '
+                      'Smaller peaks are not split.'),
+    strax.Option('peak_split_iterations', default=20,
+                 help='Maximum number of recursive peak splits to do.'),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('to_pe_file',
@@ -43,7 +56,7 @@ class Peaklets(strax.Plugin):
     compressor = 'zstd'
     rechunk_on_save = True
 
-    __version__ = '0.2.1'
+    __version__ = '0.3.0'
 
     def infer_dtype(self):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
@@ -76,16 +89,21 @@ class Peaklets(strax.Plugin):
         # which is asserted inside strax.find_peaks.
         lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
 
+        # Compute basic peak properties -- needed before natural breaks
         strax.sum_waveform(peaklets, r, self.to_pe)
+        strax.compute_widths(peaklets)
 
-        # Split peaks based on local minima
+        # Split peaks using low-split natural breaks;
+        # see https://github.com/XENONnT/straxen/pull/45
+        # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
-            min_height=self.config['peaklet_split_min_height'],
-            min_ratio=self.config['peaklet_split_min_ratio'])
-
-        # Need widths for pseudo-classification
-        strax.compute_widths(peaklets)
+            algorithm='natural_breaks',
+            threshold=self.natural_breaks_threshold,
+            split_low=True,
+            filter_wing_width=self.config['peak_split_filter_wing_width'],
+            min_area=self.config['peak_split_min_area'],
+            do_iterations=self.config['peak_split_iterations'])
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -112,6 +130,25 @@ class Peaklets(strax.Plugin):
 
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits)
+
+    def natural_breaks_threshold(self, peaks):
+        # TODO avoid duplication with PeakBasics somehow?
+        rise_time = -peaks['area_decile_from_midpoint'][:, 1]
+
+        # This is ~1 for an clean S2, ~0 for a clean S1,
+        # and transitions gradually in between.
+        f_s2 = 8 * np.log10(rise_time.clip(1, 1e5) / 100)
+        f_s2 = 1 / (1 + np.exp(-f_s2))
+
+        log_area = np.log10(peaks['area'].clip(1, 1e7))
+        thresholds = self.config['peak_split_gof_threshold']
+        return (
+            f_s2 * np.interp(
+                log_area,
+                *np.transpose(thresholds[2]))
+            + (1 - f_s2) * np.interp(
+                log_area,
+                *np.transpose(thresholds[1])))
 
 
 @export

@@ -15,7 +15,7 @@ common_opts = dict(
         'reader.ini.name', 'tags.name',
         'start', 'end', 'livetime',
         'trigger.events_built'),
-    check_available=('raw_records', 'records', 'peaks',
+    check_available=('raw_records', 'records', 'peaklets',
                      'events', 'event_info'))
 
 
