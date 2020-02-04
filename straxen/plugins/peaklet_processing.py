@@ -16,8 +16,12 @@ export, __all__ = strax.exporter()
     strax.Option('peak_right_extension', default=30,
                  help="Include this many ns right of hits in peaks"),
     strax.Option('peak_min_pmts', default=2,
-                 help="Minimum contributing PMTs needed to define a peak"),
+                 help="Minifnmum contributing PMTs needed to define a peak"),
     strax.Option('peak_split_gof_threshold',
+                 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
+                 # xenon:xenonnt:analysis:strax_clustering_classification
+                 # #natural_breaks_splitting
+                 # for more information
                  default=(
                      None,  # Reserved
                      ((0.5, 1), (3.5, 0.25)),
@@ -89,7 +93,9 @@ class Peaklets(strax.Plugin):
         strax.sum_waveform(peaklets, r, self.to_pe)
         strax.compute_widths(peaklets)
 
-        # Split peaks using natural breaks
+        # Split peaks using low-split natural breaks;
+        # see https://github.com/XENONnT/straxen/pull/45
+        # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
             algorithm='natural_breaks',
