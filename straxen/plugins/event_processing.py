@@ -23,7 +23,7 @@ export, __all__ = strax.exporter()
                       'triggering peak'),
 )
 class Events(strax.OverlapWindowPlugin):
-    depends_on = ['peak_basics', 'n_competing']
+    depends_on = ['peak_basics', 'peak_proximity']
     data_kind = 'events'
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
@@ -68,10 +68,11 @@ class Events(strax.OverlapWindowPlugin):
 
 @export
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.0.12'
+    __version__ = '0.1.0'
     depends_on = ('events',
-                  'peak_basics', 'peak_classification',
-                  'peak_positions', 'n_competing')
+                  'peak_basics',
+                  'peak_positions',
+                  'peak_proximity')
 
     def infer_dtype(self):
         dtype = [(('Number of peaks in the event',
@@ -79,27 +80,29 @@ class EventBasics(strax.LoopPlugin):
                  (('Drift time between main S1 and S2 in ns',
                    'drift_time'), np.int64)]
         for i in [1, 2]:
-            dtype += [((f'Main S{i} peak index',
-                        f's{i}_index'), np.int32),
-                      ((f'Main S{i} area (PE), uncorrected',
-                        f's{i}_area'), np.float32),
-                      ((f'Main S{i} area fraction top',
-                        f's{i}_area_fraction_top'), np.float32),
-                      ((f'Main S{i} width (ns, 50% area)',
-                        f's{i}_range_50p_area'), np.float32),
-                      ((f'Main S{i} number of competing peaks',
-                        f's{i}_n_competing'), np.int32)]
-        dtype += [(f'x_s2', np.float32,
-                   f'Main S2 reconstructed X position (cm), uncorrected',),
-                  (f'y_s2', np.float32,
-                   f'Main S2 reconstructed Y position (cm), uncorrected',)]
-        dtype += [(f's2_largest_other',np.float32,
-                   f'Largest other S2 area (PE) in event, uncorrected',),
-                   (f's1_largest_other',np.float32,
-                   f'Largest other S1 area (PE) in event, uncorrected',),
-                   (f'alt_s1_interaction_drift_time',np.float32,
-                   f'Drift time with alternative s1',)
-                    ]
+            dtype += [
+                ((f'Main S{i} peak index',
+                  f's{i}_index'), np.int32),
+                ((f'Main S{i} time since unix epoch [ns]',
+                  f's{i}_time'), np.int64),
+                ((f'Alternate S{i} time since unix epoch [ns]',
+                  f'alt_s{i}_time'), np.int64),
+                ((f'Main S{i} area, uncorrected [PE]',
+                  f's{i}_area'), np.float32),
+                ((f'Main S{i} area fraction top',
+                  f's{i}_area_fraction_top'), np.float32),
+                ((f'Main S{i} width, 50% area [ns]',
+                  f's{i}_range_50p_area'), np.float32),
+                ((f'Main S{i} number of competing peaks',
+                  f's{i}_n_competing'), np.int32),
+                ((f'Area of alternate S{i} in event [PE]',
+                  f'alt_s{i}_area'), np.float32),
+                ((f'Drift time using alternate S{i} [ns]',
+                  f'alt_s{i}_interaction_drift_time'), np.float32)]
+        dtype += [('x_s2', np.float32,
+                   'Main S2 reconstructed X position, uncorrected [cm]',),
+                  ('y_s2', np.float32,
+                   'Main S2 reconstructed Y position, uncorrected [cm]',)]
 
         return dtype
 
@@ -109,12 +112,14 @@ class EventBasics(strax.LoopPlugin):
             return result
 
         main_s = dict()
+        secondary_s = dict()
         for s_i in [2, 1]:
             s_mask = peaks['type'] == s_i
 
-            # For determining the main S1, remove all peaks
-            # after the main S2 (if there was one)
-            # This is why S2 finding happened first
+            # For determining the main / alternate S1s,
+            # remove all peaks after the main S2 (if there was one)
+            # since these cannot be related to the main S2.
+            # This is why S2 finding happened first.
             if s_i == 1 and result[f's2_index'] != -1:
                 s_mask &= peaks['time'] < main_s[2]['time']
 
@@ -126,19 +131,16 @@ class EventBasics(strax.LoopPlugin):
                 continue
 
             main_i = np.argmax(ss['area'])
-            #Find largest other signals
-            if s_i == 2 and ss['n_competing'][main_i]>0 and len(ss['area'])>1:
-                s2_second_i = np.argsort(ss['area'])[-2]
-                result[f's2_largest_other'] = ss['area'][s2_second_i]
-
-            if s_i == 1 and ss['n_competing'][main_i]>0 and len(ss['area'])>1:
-                s1_second_i = np.argsort(ss['area'])[-2]
-                result[f's1_largest_other'] = ss['area'][s1_second_i]
-
             result[f's{s_i}_index'] = s_indices[main_i]
-            s = main_s[s_i] = ss[main_i]
 
-            for prop in ['area', 'area_fraction_top',
+            if ss['n_competing'][main_i] > 0 and len(ss['area']) > 1:
+                # Find second largest S..
+                secondary_s[s_i] = x = ss[np.argsort(ss['area'])[-2]]
+                result[f'alt_s{s_i}_area'] = x['area']
+                result[f'alt_s{s_i}_time'] = x['time']
+
+            s = main_s[s_i] = ss[main_i]
+            for prop in ['area', 'area_fraction_top', 'time',
                          'range_50p_area', 'n_competing']:
                 result[f's{s_i}_{prop}'] = s[prop]
             if s_i == 2:
@@ -148,9 +150,10 @@ class EventBasics(strax.LoopPlugin):
         # Compute a drift time only if we have a valid S1-S2 pairs
         if len(main_s) == 2:
             result['drift_time'] = main_s[2]['time'] - main_s[1]['time']
-        #Compute alternative drift time
-            if 's1_second_i' in locals():
-                result['alt_s1_interaction_drift_time'] = main_s[2]['time'] - ss['time'][s1_second_i]
+            if 1 in secondary_s:
+                result['alt_s1_interaction_drift_time'] = main_s[2]['time'] - secondary_s[1]['time']
+            if 2 in secondary_s:
+                result['alt_s2_interaction_drift_time'] = secondary_s[2]['time'] - main_s[1]['time']
 
         return result
 
@@ -300,6 +303,7 @@ class EnergyEstimates(strax.Plugin):
 
     def cs2_to_e(self, x):
         return self.config['lxe_w'] * x / self.config['g2']
+
 
 class EventInfo(strax.MergeOnlyPlugin):
     depends_on = ['events',

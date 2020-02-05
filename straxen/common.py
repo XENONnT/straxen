@@ -1,26 +1,30 @@
 import ast
 import configparser
+from copy import deepcopy
 import gzip
 import inspect
-import logging
 import io
 import json
 import os
 import os.path as osp
+import pickle
 import socket
 import sys
 import tarfile
 import urllib.request
+import warnings
 
 import numpy as np
 import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
+
+aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 first_sr1_run = 170118_1327
 tpc_r = 47.9
@@ -65,14 +69,24 @@ def pax_file(x):
 
 cache_dict = dict()
 
+
+# Formats for which the original file is text, not binary
+_text_formats = ['text', 'csv', 'json']
+
+
 # Placeholder for resource management system in the future?
 @export
 def get_resource(x, fmt='text'):
     """Return contents of file or URL x
-    :param binary: Resource is binary. Return bytes instead of a string.
+    :param fmt: Format to parse contents into
+
+    Do NOT mutate the result you get. Make a copy if you're not sure.
+    If you mutate resources it will corrupt the cache, cause terrible bugs in
+    unrelated code, tears unnumbered ye shall shed, not even the echo of
+    your lamentations shall pass over the mountains, etc.
     """
-    # Try to retrieve from in-memory cache
     if x in cache_dict:
+        # Retrieve from in-memory cache
         return cache_dict[x]
 
     if '://' in x:
@@ -94,7 +108,7 @@ def get_resource(x, fmt='text'):
         else:
             print(f'Did not find {cache_fn} in cache, downloading {x}')
             result = urllib.request.urlopen(x).read()
-            is_binary = fmt != 'text'
+            is_binary = fmt not in _text_formats
             if not is_binary:
                 result = result.decode()
 
@@ -123,10 +137,20 @@ def get_resource(x, fmt='text'):
 
     else:
         # File resource
-        if fmt == 'npy':
-            result = np.load(x)
-        elif fmt == 'npy_pickle':
-            result = np.load(x, allow_pickle = True)
+        if fmt in ['npy', 'npy_pickle']:
+            result = np.load(x, allow_pickle=fmt == 'npy_pickle')
+            if isinstance(result, np.lib.npyio.NpzFile):
+                # Slurp the arrays in the file, so the result can be copied,
+                # then close the file so its descriptors does not leak.
+                result_slurped = {k: v[:] for k, v in result.items()}
+                result.close()
+                result = result_slurped
+        elif fmt == 'pkl':
+            with open(x, 'rb') as f:
+                result = pickle.load(f)
+        elif fmt == 'pkl.gz':
+            with gzip.open(x, 'rb') as f:
+                result = pickle.load(f)
         elif fmt == 'json.gz':
             with gzip.open(x, 'rb') as f:
                 result = json.load(f)
@@ -139,6 +163,10 @@ def get_resource(x, fmt='text'):
         elif fmt == 'text':
             with open(x, mode='r') as f:
                 result = f.read()
+        elif fmt == 'csv':
+            result = pd.read_csv(x)
+        else:
+            raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
     cache_dict[x] = result
@@ -203,8 +231,27 @@ def get_secret(x):
 @export
 def download_test_data():
     """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/7dad0e1f35bb6f4e7174e259d8d73b806c5505dd/strax_test_data.tar',
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f4ca5e41bb7060f8424e3a8e2d9214bd19934c53/strax_test_data.tar',
                         fmt='binary')
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
     tf.extractall()
+
+
+@export
+def get_livetime_sec(context, run_id, things=None):
+    """Get the livetime of a run in seconds. If it is not in the run metadata,
+    estimate it from the data-level metadata of the data things.
+    """
+    try:
+        md = context.run_metadata(run_id,
+                                  projection=('start', 'end', 'livetime'))
+    except strax.RunMetadataNotAvailable:
+        if things is None:
+            raise
+        return (strax.endtime(things[-1]) - things[0]['time']) / 1e9
+    else:
+        if 'livetime' in md:
+            return md['livetime']
+        else:
+            return (md['end'] - md['start']).total_seconds()

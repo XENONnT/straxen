@@ -2,8 +2,9 @@ import setuptools
 
 # Get requirements from requirements.txt, stripping the version tags
 with open('requirements.txt') as f:
-    requires = [x.strip().split('=')[0]
-                for x in f.readlines()]
+    requires = [
+        r.split('/')[-1] if r.startswith('git+') else r
+        for r in f.read().splitlines()]
 
 with open('README.md') as file:
     readme = file.read()
@@ -12,7 +13,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='0.3.2',
+                 version='0.5.0',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
@@ -20,7 +21,8 @@ setuptools.setup(name='straxen',
                  long_description_content_type="text/markdown",
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
-                 tests_require=requires + ['pytest', 'hypothesis', 'boltons'],
+                 tests_require=requires + [
+                     'tensorflow', 'pytest', 'hypothesis', 'boltons'],
                  python_requires=">=3.6",
                  extras_require={
                      'docs': ['sphinx',
@@ -29,7 +31,7 @@ setuptools.setup(name='straxen',
                               'recommonmark',
                               'graphviz'],
                  },
-                 scripts=['bin/bootstrax', 'bin/straxer'],
+                 scripts=['bin/bootstrax', 'bin/straxer', 'bin/fake_daq'],
                  packages=setuptools.find_packages(),
                  classifiers=[
                      'Development Status :: 4 - Beta',

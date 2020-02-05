@@ -168,6 +168,7 @@ class RunDB(strax.StorageFrontend):
             raise strax.DataExistsError(at=datum['location'])
 
         return datum['protocol'], datum['location']
+
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
         if kwargs['fuzzy_for'] or kwargs['fuzzy_for_options']:
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
@@ -209,6 +210,8 @@ class RunDB(strax.StorageFrontend):
               allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+        if allow_incomplete:
+            raise NotImplementedError("Can't allow_incomplete with RunDB yet")
 
         dq = self._data_query(key)
         cursor = self.collection.find(
@@ -231,8 +234,8 @@ class RunDB(strax.StorageFrontend):
 
     def run_metadata(self, run_id, projection=None):
         doc = self.collection.find_one({'name': run_id}, projection=projection)
-        if self.reader_ini_name_is_mode:
-            doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         if doc is None:
             raise strax.DataNotAvailable
+        if self.reader_ini_name_is_mode:
+            doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         return doc

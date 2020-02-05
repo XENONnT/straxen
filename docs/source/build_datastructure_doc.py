@@ -97,7 +97,7 @@ def add_spaces(x):
 def build_datastructure_doc():
     out = page_header
 
-    pd.set_option('display.max_colwidth', -1)
+    pd.set_option('display.max_colwidth', None)
 
     st = strax.Context(
         register_all=[x

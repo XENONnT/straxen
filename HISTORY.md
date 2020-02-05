@@ -1,3 +1,48 @@
+0.5.0 / 2020-02-05
+-------------------
+- Natural breaks clustering (#45)
+- Save lone hits (#40)
+- Store proximity to nearby peaks (#41)
+- Add PMT array plot, fixes to mini analysis (#44)
+- Bootstrax updates (#47)
+- Assume resources are not mutated (do not copy internally)
+
+
+0.4.1 / 2020-01-18
+-------------------
+- Fix peak duplication
+- Move peak merging code into strax
+- Fix documentation build
+
+
+0.4.0 / 2020-01-17
+-------------------
+- Peak merging / Two-step clustering (#36)
+- Fake DAQ resurrection (#37)
+- Matplotlib waveform plotter (#35)
+- Updates to get_resource and itp_map from WFsim
+- Rename sX_largest_other -> alt_sX_area
+- DAQReader fixes (use lz4, time conversion)
+
+
+0.3.5 / 2019-12-23
+------------------
+- Integrate peaks with tight_coincidence
+- `straxer` script upgrades
+
+
+0.3.4 / 2019-12-20
+-------------------
+- Classification tuning (#32)
+- Tight coincidence (#32)
+- energy spectrum and classification check mini-analyses (#32)
+- Bootstrax updates (#33)
+
+
+0.3.3 / 2019-12-13
+------------------
+- Fix test data / demo notebook
+
 
 0.3.2 / 2019-11-13
 ------------------
@@ -7,13 +52,14 @@
   - Add correct (epoch-based) run start time (#29)
   - Support compressor config (#29)
 - Avoid platform-specific tempfile things (#28)
-- Placeholder electron lifetime (#25)
-  
+- Placeholder electron lifetime (#25)  
+
 
 0.3.1 / 2019-09-25
 ------------------
 - Fix resource caching
 - Fix tensorflow2 checking (#23)
+
 
 0.3.0 / 2019-07-21
 -------------------
@@ -21,6 +67,7 @@
 - straxer processing script
 - Upgrades to get_resource (#18, #20)
 - Require tensorflow2
+
 
 0.2.2 / 2019-06-17
 -------------------

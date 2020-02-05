@@ -1,7 +1,6 @@
 import inspect
 import textwrap
 
-import holoviews as hv
 import pandas as pd
 import strax
 from strax.context import select_docs
@@ -25,8 +24,10 @@ The function takes the same selection arguments as context.get_array:
 _hv_bokeh_initialized = False
 
 @export
-def mini_analysis(requires=tuple(), hv_bokeh=False):
-
+def mini_analysis(requires=tuple(),
+                  hv_bokeh=False,
+                  warn_beyond_sec=None,
+                  default_time_selection='touching'):
     def decorator(f):
         parameters = inspect.signature(f).parameters
 
@@ -34,6 +35,7 @@ def mini_analysis(requires=tuple(), hv_bokeh=False):
             # Validate arguments
             known_kwargs = (
                 'time_range seconds_range time_within time_selection '
+                'ignore_time_warning '
                 'selection_str t_reference to_pe config').split()
             for k in kwargs:
                 if k not in known_kwargs and k not in parameters:
@@ -47,7 +49,8 @@ def mini_analysis(requires=tuple(), hv_bokeh=False):
             if hv_bokeh:
                 global _hv_bokeh_initialized
                 if not _hv_bokeh_initialized:
-                    hv.extension('bokeh')
+                    import holoviews
+                    holoviews.extension('bokeh')
                     _hv_bokeh_initialized = True
 
             # TODO: This is a placeholder until the corrections system
@@ -64,55 +67,88 @@ def mini_analysis(requires=tuple(), hv_bokeh=False):
                 targets=requires,
                 **{k: kwargs.get(k)
                    for k in ('time_range seconds_range time_within'.split())})
-            kwargs.setdefault('time_selection', 'fully_contained')
+            kwargs.setdefault('time_selection', default_time_selection)
             kwargs.setdefault('selection_str', None)
 
-            if ('t_reference' in parameters
-                    and kwargs.get('t_reference') is None):
-                kwargs['t_reference'] = context.estimate_run_start(
-                    run_id, requires)
+            kwargs['t_reference'] = context.estimate_run_start(
+                run_id, requires)
 
-            # Load required data
-            deps_by_kind = strax.group_by_kind(
-                requires, context=context, require_time=False)
-            for dkind, dtypes in deps_by_kind.items():
-                if dkind in kwargs:
-                    # Already have data, just apply cuts
-                    kwargs[dkind] = context.apply_selection(
-                        kwargs[dkind],
-                        selection_str=kwargs['selection_str'],
-                        time_range=kwargs['time_range'],
-                        time_selection=kwargs['time_selection'])
+            if warn_beyond_sec is not None and not kwargs.get('ignore_time_warning'):
+                tr = kwargs['time_range']
+                if tr is None:
+                    sec_requested = float('inf')
                 else:
-                    kwargs[dkind] = context.get_array(
-                        run_id,
-                        dtypes,
-                        selection_str=kwargs['selection_str'],
-                        time_range=kwargs['time_range'],
-                        time_selection=kwargs['time_selection'])
+                    sec_requested = (tr[1] - tr[0]) / int(1e9)
+                if sec_requested > warn_beyond_sec:
+                    tr_str = "the entire run" if tr is None else f"{sec_requested} seconds"
+                    raise ValueError(
+                        f"The author of this mini analysis recommends "
+                        f"not requesting more than {warn_beyond_sec} seconds. "
+                        f"You are requesting {tr_str}. If you wish to proceed, "
+                        "pass ignore_time_warning = True.")
 
-            # If user did not give time kwargs, but the function expects
-            # a time_range, add them based on the time range of the data
-            # (if there is no data, otherwise give (NaN, NaN))
-            if kwargs.get('time_range') is None:
+            # Load required data, if any
+            if len(requires):
+                deps_by_kind = strax.group_by_kind(
+                    requires, context=context, require_time=False)
+                for dkind, dtypes in deps_by_kind.items():
+                    if dkind in kwargs:
+                        # Already have data, just apply cuts
+                        kwargs[dkind] = context.apply_selection(
+                            kwargs[dkind],
+                            selection_str=kwargs['selection_str'],
+                            time_range=kwargs['time_range'],
+                            time_selection=kwargs['time_selection'])
+                    else:
+                        kwargs[dkind] = context.get_array(
+                            run_id,
+                            dtypes,
+                            selection_str=kwargs['selection_str'],
+                            time_range=kwargs['time_range'],
+                            time_selection=kwargs['time_selection'],
+                            # Arguments for new context, if needed
+                            config=kwargs.get('config'),
+                            register=kwargs.get('register'),
+                            storage=kwargs.get('storage', tuple()))
+
+                # If user did not give time kwargs, but the function expects
+                # a time_range, try to add one based on the time range of the data
                 base_dkind = list(deps_by_kind.keys())[0]
                 x = kwargs[base_dkind]
-                x0 = x.iloc[0] if isinstance(x, pd.DataFrame) else x[0]
-                kwargs['time_range'] = (
-                    (x0['time'], strax.endtime(x).max()) if len(x)
-                    else (float('nan'), float('nan')))
+                if len(x) and kwargs.get('time_range') is None:
+                    x0 = x.iloc[0] if isinstance(x, pd.DataFrame) else x[0]
+                    try:
+                        kwargs.setdefault('time_range', (x0['time'],
+                                                         strax.endtime(x).max()))
 
-            # Pass only the arguments the function wants
-            to_pass = dict()
-            for k in parameters:
-                if k == 'run_id':
-                    to_pass['run_id'] = run_id
-                elif k == 'context':
-                    to_pass['context'] = context
-                elif k in kwargs:
-                    to_pass[k] = kwargs[k]
-                # If we get here, let's hope the function defines a default...
+                    except AttributeError:
+                        # If x is a holoviews dataset, this will fail.
+                        pass
 
+            if 'seconds_range' in parameters:
+                if kwargs.get('time_range') is None:
+                    scr = None
+                else:
+                    scr = tuple([(t - kwargs['t_reference']) / int(1e9)
+                                 for t in kwargs['time_range']])
+                kwargs.setdefault('seconds_range', scr)
+
+            kwargs.setdefault('run_id', run_id)
+            kwargs.setdefault('context', context)
+
+            if 'kwargs' in parameters:
+                # Likely this will be passed to another mini-analysis
+                to_pass = kwargs
+                # Do not pass time_range and seconds_range both (unless explicitly requested)
+                # strax does not like that
+                if 'seconds_range' in to_pass and not 'seconds_range' in parameters:
+                    del to_pass['seconds_range']
+                if 'time_within' in to_pass and not 'time_within' in parameters:
+                    del to_pass['time_within']
+            else:
+                # Pass only arguments the function wants
+                to_pass = {k: v for k, v in kwargs.items()
+                           if k in parameters}
             return f(**to_pass)
 
         wrapped_f.__name__ = f.__name__
