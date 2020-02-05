@@ -1,8 +1,19 @@
+0.5.0 / 2020-02-05
+-------------------
+- Natural breaks clustering (#45)
+- Save lone hits (#40)
+- Store proximity to nearby peaks (#41)
+- Add PMT array plot, fixes to mini analysis (#44)
+- Bootstrax updates (#47)
+- Assume resources are not mutated (do not copy internally)
+
+
 0.4.1 / 2020-01-18
 -------------------
 - Fix peak duplication
 - Move peak merging code into strax
 - Fix documentation build
+
 
 0.4.0 / 2020-01-17
 -------------------
@@ -13,10 +24,12 @@
 - Rename sX_largest_other -> alt_sX_area
 - DAQReader fixes (use lz4, time conversion)
 
+
 0.3.5 / 2019-12-23
 ------------------
 - Integrate peaks with tight_coincidence
 - `straxer` script upgrades
+
 
 0.3.4 / 2019-12-20
 -------------------
