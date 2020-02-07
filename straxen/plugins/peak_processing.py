@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=127,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.4"
+    __version__ = "0.0.5"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -26,6 +26,8 @@ class PeakBasics(strax.Plugin):
           'time'), np.int64),
         (('End time of the peak (ns since unix epoch)',
           'endtime'), np.int64),
+        (('Weighted center time of the peak (ns since unix epoch)',
+          'center_time'), np.int64),
         (('Peak integral in PE',
             'area'), np.float32),
         (('Number of PMTs contributing to the peak',
@@ -65,6 +67,8 @@ class PeakBasics(strax.Plugin):
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
 
+        r['center_time'] = p['time'] + self.compute_center_times(peaks)
+
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Negative-area peaks get 0 AFT - TODO why not NaN?
@@ -72,6 +76,17 @@ class PeakBasics(strax.Plugin):
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
         r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
         return r
+
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def compute_center_times(peaks):
+        result = np.zeros(len(peaks), dtype=np.int32)
+        for p_i, p in enumerate(peaks):
+            t = 0
+            for t_i, weight in enumerate(p['data']):
+                t += t_i * p['dt'] * weight
+            result[p_i] = t / p['area']
+        return result
 
 
 @export
