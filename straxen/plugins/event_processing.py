@@ -68,7 +68,7 @@ class Events(strax.OverlapWindowPlugin):
 
 @export
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
@@ -153,11 +153,14 @@ class EventBasics(strax.LoopPlugin):
 
         # Compute a drift time only if we have a valid S1-S2 pairs
         if len(main_s) == 2:
-            result['drift_time'] = main_s[2]['time'] - main_s[1]['time']
+            result['drift_time'] = \
+                main_s[2]['center_time'] - main_s[1]['center_time']
             if 1 in secondary_s:
-                result['alt_s1_interaction_drift_time'] = main_s[2]['time'] - secondary_s[1]['time']
+                result['alt_s1_interaction_drift_time'] = \
+                    main_s[2]['center_time'] - secondary_s[1]['center_time']
             if 2 in secondary_s:
-                result['alt_s2_interaction_drift_time'] = secondary_s[2]['time'] - main_s[1]['time']
+                result['alt_s2_interaction_drift_time'] = \
+                    secondary_s[2]['center_time'] - main_s[1]['center_time']
 
         return result
 
