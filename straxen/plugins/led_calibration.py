@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import numba
+import resource
 from numba import njit
 
 #export, __all__ = strax.exporter()
@@ -56,7 +57,7 @@ class LEDCalibration(strax.Plugin):
             ]
     
     def compute(self, raw_records):
-        
+        #print('gigabytes: ', (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)/1000000)
         r = raw_records[(raw_records['channel'] >= self.config['channel_list'][0])&(raw_records['channel'] <= self.config['channel_list'][1])]
         # TODO: to change during nT commissioning or add in configuration options
         temp = np.zeros(len(r), dtype=self.dtype)

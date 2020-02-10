@@ -19,6 +19,23 @@ common_opts = dict(
                      'events', 'event_info'))
 
 
+SPE_opts = dict(
+    register_all=[
+        straxen.daqreader,
+        straxen.pulse_processing,
+        straxen.peaklet_processing,
+        straxen.peak_processing,
+        straxen.event_processing,
+        straxen.cuts,
+        straxen.led_calibration
+        ],
+    store_run_fields=(
+        'name', 'number',
+        'reader.ini.name', 'tags.name',
+        'start', 'end', 'livetime',
+        'trigger.events_built'),
+    check_available=('raw_records', 'event_info'))
+
 def demo():
     """Return strax context used in the straxen demo notebook"""
     straxen.download_test_data()
@@ -61,3 +78,20 @@ def fake_daq():
                                      readonly=True)],
         config=dict(input_dir='./from_fake_daq'),
         **common_opts)
+
+
+def strax_SPE():
+    """Context for processing raw data for SPE Acceptance"""
+    return strax.Context(
+        storage=[strax.DataDirectory('/dali/lgrandi/aalbers/strax_data_raw',
+                                     take_only='raw_records',
+                                     deep_scan=False,readonly=True),
+                 strax.DataDirectory('/dali/lgrandi/aalbers/strax_data',
+                                     readonly=True,
+                                     provide_run_metadata=False),
+                 strax.DataDirectory('/dali/lgrandi/giovo/XENONnT/strax_data',
+                                     provide_run_metadata=False)],
+        allow_multiprocess=True, 
+        forbid_creation_of=('raw_records',),
+        register=straxen.plugins.pax_interface.RecordsFromPax,
+        **SPE_opts)
