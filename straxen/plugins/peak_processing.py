@@ -105,7 +105,10 @@ class PeakBasics(strax.Plugin):
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10))
+                 default=10),
+    strax.Option('n_top_pmts', default=127,
+                 help="Number of top PMTs")
+)
 class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -120,8 +123,6 @@ class PeakPositions(strax.Plugin):
     # in each process, which probably negates the benefits,
     # except for huge chunks
     parallel = False
-
-    n_top_pmts = 127
 
     __version__ = '0.0.1'
 
@@ -143,7 +144,7 @@ class PeakPositions(strax.Plugin):
             k: v
             for k, v in nn_conf.items()
             if k != 'badPMTList'}))
-        self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
+        self.pmt_mask = ~np.in1d(np.arange(self.config['n_top_pmts']),
                                  bad_pmts)
 
         # Keras needs a file to load its weights. We can't put the load
@@ -175,7 +176,7 @@ class PeakPositions(strax.Plugin):
                         y=np.zeros(0, dtype=np.float32))
 
         # Keep good top PMTS
-        x = x[:, :self.n_top_pmts][:, self.pmt_mask]
+        x = x[:, :self.config['n_top_pmts']][:, self.pmt_mask]
 
         # Normalize
         with np.errstate(divide='ignore', invalid='ignore'):
