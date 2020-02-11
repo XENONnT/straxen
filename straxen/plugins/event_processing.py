@@ -68,7 +68,7 @@ class Events(strax.OverlapWindowPlugin):
 
 @export
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.1.0'
+    __version__ = '0.1.2'
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
@@ -85,8 +85,12 @@ class EventBasics(strax.LoopPlugin):
                   f's{i}_index'), np.int32),
                 ((f'Main S{i} time since unix epoch [ns]',
                   f's{i}_time'), np.int64),
+                ((f'Main S{i} weighted center time since unix epoch [ns]',
+                  f's{i}_center_time'), np.int64),
                 ((f'Alternate S{i} time since unix epoch [ns]',
                   f'alt_s{i}_time'), np.int64),
+                ((f'Alternate S{i} weighted center time since unix epoch [ns]',
+                  f'alt_s{i}_center_time'), np.int64),
                 ((f'Main S{i} area, uncorrected [PE]',
                   f's{i}_area'), np.float32),
                 ((f'Main S{i} area fraction top',
@@ -136,11 +140,11 @@ class EventBasics(strax.LoopPlugin):
             if ss['n_competing'][main_i] > 0 and len(ss['area']) > 1:
                 # Find second largest S..
                 secondary_s[s_i] = x = ss[np.argsort(ss['area'])[-2]]
-                result[f'alt_s{s_i}_area'] = x['area']
-                result[f'alt_s{s_i}_time'] = x['time']
+                for prop in ['area', 'time', 'center_time']:
+                    result[f'alt_s{s_i}_{prop}'] = x[prop]
 
             s = main_s[s_i] = ss[main_i]
-            for prop in ['area', 'area_fraction_top', 'time',
+            for prop in ['area', 'area_fraction_top', 'time', 'center_time',
                          'range_50p_area', 'n_competing']:
                 result[f's{s_i}_{prop}'] = s[prop]
             if s_i == 2:
@@ -149,11 +153,14 @@ class EventBasics(strax.LoopPlugin):
 
         # Compute a drift time only if we have a valid S1-S2 pairs
         if len(main_s) == 2:
-            result['drift_time'] = main_s[2]['time'] - main_s[1]['time']
+            result['drift_time'] = \
+                main_s[2]['center_time'] - main_s[1]['center_time']
             if 1 in secondary_s:
-                result['alt_s1_interaction_drift_time'] = main_s[2]['time'] - secondary_s[1]['time']
+                result['alt_s1_interaction_drift_time'] = \
+                    main_s[2]['center_time'] - secondary_s[1]['center_time']
             if 2 in secondary_s:
-                result['alt_s2_interaction_drift_time'] = secondary_s[2]['time'] - main_s[1]['time']
+                result['alt_s2_interaction_drift_time'] = \
+                    secondary_s[2]['center_time'] - main_s[1]['center_time']
 
         return result
 
