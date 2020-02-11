@@ -138,7 +138,7 @@ class InterpolatingMap:
                 # 0 D -- placeholder maps which take no arguments
                 # and always return a single value
                 def itp_fun(positions):
-                    return map_data * np.ones_like(positions)
+                    return np.array([map_data])
             else:
                 if array_valued:
                     map_data = map_data.reshape((-1, map_data.shape[-1]))
