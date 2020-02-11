@@ -213,7 +213,7 @@ class FiducialEvents(strax.Plugin):
     data_kind = 'fiducial_events'
 
     def infer_dtype(self):
-        return strax.merged_dtype([self.deps[d].dtype
+        return strax.merged_dtype([self.deps[d].dtype_for(d)
                                    for d in self.depends_on])
 
     def compute(self, events):
