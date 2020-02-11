@@ -3,88 +3,193 @@ import numpy as np
 from scipy.ndimage import convolve1d
 
 import strax
+import straxen
+from straxen.plugins.pulse_processing import _mask_and_not, channel_split
+from strax.processing.pulse_processing import _baseline_rms
+
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETOrecorder']
+__all__ = ['nVETORecorder']
 
 
 @strax.takes_config(
     strax.Option('coincidence_level', type=int, default=4,
                  help="Required coincidence level."),
-    strax.Option('resolving_time', type=int, default=302,
-                 help="Resolving time of the coincidence in ns.")
-)
+    strax.Option('resolving_time', type=int, default=300,
+                 help="Resolving time of the coincidence in ns."),
+    strax.Option('nbaseline', type=int, default=10,
+                 help="Number of samples used in baseline rms calculation"),
+    strax.Option('n_lone_hits', type=int, default=1,
+                 help="Number of lone hits to be stored per channel for diagnostic reasons."))
 class nVETORecorder(strax.Plugin):
     __version__ = '0.0.1'
     parallel = 'process'
 
+    # TODO: Check the following two parameters in strax:
     rechunk_on_save = False  # same as in tpc pulse_processing
     compressor = 'zstd'  # same as in tpc pulse_processing
 
-    depends_on = 'nveto_raw_records'
+    depends_on = 'raw_records'
 
-    provides = ('nveto_records', 'nveto_diagnostic_records' 'nveto_lone_record_count')
+    provides = ('nveto_records', 'nveto_diagnostic_records', 'nveto_lone_record_count')
 
-    #     dtype =
-    #     data_kind =
+    data_kind = {key: key for key in provides}
+
+    def infer_dtype(self):
+        nveto_records_dtype = strax.record_dtype(straxen.nVETO_record_length)
+        nveto_diagnostic_records_dtype = strax.record_dtype(straxen.nVETO_record_length)
+        nveto_lone_record_count_dtype = lone_record_count_dtype(len(straxen.n_nVETO_pmts))
+
+        dtypes = [nveto_records_dtype,
+                  nveto_diagnostic_records_dtype,
+                  nveto_lone_record_count_dtype]
+
+        return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records):
-        # First we have to split rr into records r which we would like to store and
-        # lone records which we will delet:
-        # TODO: Implement sugguestion of Chris Tunnell and save every XX lone hit for
-        # DR checks etc.
-        r, lr = tight_coincidence(raw_records,
-                                  self.config['coincidence_level'],
-                                  self.config['resolving_time'])
+        # raise NotImplementedError
+        records = raw_records[:2]
+        rd = raw_records[:2]
+        lrc = np.zeros(1, lone_record_count_dtype(len(straxen.n_nVETO_pmts)))
 
-        # Getting some information about the lr which we will trash:
+        # As long as we are working with TPC data we have to split of the diagnostic stuff:
+        # raw_records, o = channel_split(raw_records, straxen.n_tpc_pmts)
+        #
+        # # First we have to split rr into records and lone hits:
+        # intervals = coincidence(raw_records, self.config['coincidence_level'], self.config['resolving_time'])
+        # mask = rr_in_interval(raw_records, *intervals.T)
+        # mask = mask.astype(bool)
+        # records, lone_records = _mask_and_not(raw_records, mask)
+        #
+        # # Compute some properties of the lone_records:
+        # # lrc = compute_lone_records(lone_records, straxen.n_nVETO_pmts, self.config['nbaseline'])
+        #
+        # # Store some of the lone_records for diagnostic purposes:
+        # rd = get_n_lone_records(lone_records, self.config['n_lone_hits'], straxen.n_nVETO_pmts)
 
-        # number of lr fragments per channel
-        # number of higher order lr fragments
-        # total lr area per channel
-        # average lr baseline per channel
-        # spread of lr baseline per channel
+        return {'nveto_records': records,
+                'nveto_diagnostic_records': rd,
+                'nveto_lone_record_count': lrc}
 
-        return {'nveto_records': r,
-                'nveto_lone_record_count:' lc}
+def lone_record_count_dtype(n_channels):
+    return [
+        (('Lowest start time observed in the chunk', 'time'), np.int64),
+        (('Highest end time observed in the chunk', 'endtime'), np.int64),
+        (('Channel of the lone record', 'channel'),
+         (np.int32, n_channels)),
+        (('Number of lone record fragments', 'nfragments'),
+         (np.int32, n_channels)),
+        (('Number of higher order lone fragments', 'nhigherfragments'),
+         (np.int64, n_channels)),
+        (('Integral of all lone records in ADC_count x samples', 'lone_record_area'),
+         (np.int64, n_channels)),
+        (('Integral of higher fragment lone records in ADC_count x samples', 'higher_lone_record_area'),
+         (np.int64, n_channels)),
+        (('Baseline mean of lone records in ADC_count', 'baseline_mean'),
+         (np.float64, n_channels)),
+        (('Baseline spread of lone records in ADC_count', 'baseline_rms'),
+         (np.float64, n_channels))
+    ]
 
-
-def count_lone_records(lonerecord):
+def compute_lone_records(lone_record, channels, nbaseline=10):
     """
-    Function which estimates some basic properties of the lone
-    nveto_records which will not be saved.
+    Function which estimates for each chunk some basic properties of the lone nveto_records.
+
+    Args:
+        lone_record (raw_records): raw_records which are flagged as lone "hits"
+        channels (np.array): List of PMT channels
+
+    Keyword Args:
+        nbaseline (int): number of samples which is used to compute the baseline rms.
+
+    Returns:
+        np.array. Structured array of the lone_record_count_dtype.
+
+    TODO: Merge with get_n_lone_records
     """
-    length = len(lonerecord)
+    nchannels = len(channels)
+    sc = channels[0]
+    res = np.zeros(1, dtype=lone_record_count_dtype(nchannels))
+    _compute_lone_records(lone_record, res[0], nchannels, sc, nbaseline)
 
-    for lr in lonerecord:
+    return res
 
+
+@numba.njit(nogil=True, cache=True)
+def _compute_lone_records(lone_record, res, nchannels, sc, nbaseline):
+    # getting start and end time:
+    res['time'] = lone_record[0]['time']
+    res['endtime'] = lone_record[-1]['time']
+
+    for lr in lone_record:
         ch = lr['channel']
-        area_per_channel[ch] += lr['area']
-        n_lr[ch] += 1
+        res['channel'][ch - sc] = ch
+        res['lone_record_area'][ch - sc] += lr['area']
+        res['nfragments'][ch - sc] += 1
         if lr['record_i'] >= 1:
-            n_lr_higher_order[ch] += 1
-            area_per_channel_higher_order += lr['area']
+            res['nhigherfragments'][ch - sc] += 1
+            res['higher_lone_record_area'][ch - sc] += lr['area']
+        else:
+            res['baseline_rms'][ch - sc] += _baseline_rms(lr, nbaseline)
+            res['baseline_mean'][ch - sc] += lr['baseline']
 
-    return lc
+    for ind in range(nchannels):
+        if res['nfragments'][ind]:
+                res['baseline_rms'][ind] = (res['baseline_rms'][ind] /
+                                            (res['nfragments'][ind] - res['nhigherfragments'][ind]))
+                res['baseline_mean'][ind] = (res['baseline_mean'][ind] /
+                                             (res['nfragments'][ind] - res['nhigherfragments'][ind]))
 
 
 def lone_record_count_dtype(n_channels):
     return [
         (('Lowest start time observed in the chunk', 'time'), np.int64),
-        (('Highest endt ime observed in the chunk', 'endtime'), np.int64),
-        (('Number of lone records', 'nfragments'),
-         (np.int64, n_channels)),
+        (('Highest end time observed in the chunk', 'endtime'), np.int64),
+        (('Channel of the lone record', 'channel'),
+         (np.int32, n_channels)),
+        (('Number of lone record fragments', 'nfragments'),
+         (np.int32, n_channels)),
         (('Number of higher order lone fragments', 'nhigherfragments'),
          (np.int64, n_channels)),
-        (('Integral of all records in ADC_count x samples', 'lone_record_area'),
+        (('Integral of all lone records in ADC_count x samples', 'lone_record_area'),
          (np.int64, n_channels)),
-        (('Integral of lone records in ADC_count x samples', 'lone_pulse_area'),
+        (('Integral of higher fragment lone records in ADC_count x samples', 'higher_lone_record_area'),
          (np.int64, n_channels)),
-        (('Baseline mean of lone records in ADC_count', 'mean_baseline'),
-         (np.int64, n_channels)),
-        (('Baseline spread of lone records in ADC_count', 'std_baseline'),
-         (np.int64, n_channels))
+        (('Baseline mean of lone records in ADC_count', 'baseline_mean'),
+         (np.float64, n_channels)),
+        (('Baseline spread of lone records in ADC_count', 'baseline_rms'),
+         (np.float64, n_channels))
     ]
+
+
+@numba.njit(nogil=True, cache=True)
+def get_n_lone_records(lone_records, n, channels=straxen.n_nVETO_pmts):
+    """
+    Function which returns the first n raw_records per channel.
+
+    Args:
+        lone_records (raw_records): Any data kind containing channel as parameter.
+        n (int): Number of records per channel which shall be returned.
+
+    Returns:
+        np.array: Structured array of the dtype of lone_records input.
+    """
+    nchannel = len(channels)
+    start_ch = channels[0]
+
+    lone_ids = np.ones((nchannel, n), dtype=np.int32) * -1
+    nids = np.zeros(nchannel, dtype=np.int32)
+
+    for ind, lr in enumerate(lone_records):
+        ch = lr['channel'] - start_ch
+
+        if nids[ch] < n:
+            lone_ids[ch, nids[ch]] = ind
+            nids[ch] += 1
+
+    lone_ids = lone_ids.flatten()
+    lone_ids = lone_ids[lone_ids >= 0]
+    return lone_records[lone_ids]
 
 
 # ---------------------
@@ -92,10 +197,8 @@ def lone_record_count_dtype(n_channels):
 # Maybe these function might be useful for other
 # plugins as well.
 # ----------------------
-
-
-@numba.njit(nogil=True, cache=True)
-def _rr_in_interval(rr, start_times, end_times):
+@numba.njit
+def rr_in_interval(rr, start_times, end_times):
     """
     Function which tests if a raw record is one of the "to be stored"
     intervals.
@@ -106,22 +209,26 @@ def _rr_in_interval(rr, start_times, end_times):
         end_times (np.array): end of the time interval
     """
     in_window = np.zeros(len(rr), dtype=np.int8)
-    indicies = np.arange(len(rr))
-
-    # 2. Now looping over rr and check if they are in the windows:
+    index_interval = np.arange(0, len(start_times), 1)
+    # Looping over rr and check if they are in the windows:
     for i, r in enumerate(rr):
 
+        t = r['time']
         # check if raw record is in any interval
-        which_interval = (start_times <= r['time']) & (r['time'] <= end_times)
+        which_interval = (start_times <= t) & (t < end_times)
         if np.any(which_interval):
+            # Get index of the interval
+            index = index_interval[which_interval]
             # tag as to be stored:
             in_window[i] = 1
 
-            # now we have to check if higher fragments exceeds the interval
+            # We have to check if higher fragments of the event would be outside of theinterval
             # if yes extend interval accordingly:
-    #             end_times[which_interval] = np.max([end_times[which_interval],
-    #                                                 r['time'] + int(r['length'] * r['dt'])
-    #                                                ])
+            # Note: When extending the window it may happen, that two intervals start to overlap
+            # again. Since we only care if an event falls into any interval we only have to make sure
+            # that the highest order interval would be extended if needed.
+            t = t + np.int64(r['pulse_length'] * r['dt'])
+            end_times[index] = max([end_times[index][-1], t])
 
     return in_window
 
@@ -132,7 +239,7 @@ def coincidence(hits, nfold=4, resolving_time=300):
     the specified resolving time.
 
     Args:
-        hits (strax.interval): Can be anything which is of the dtype strax.interval_dtype e.g. records, hits, peaks...
+        hits (hits): Can be anything which is of the dtype strax.interval_dtype e.g. records, hits, peaks...
         nfold (int): coincidence level.
         resolving_time (int): Time window of the coincidence [ns].
 
@@ -154,33 +261,19 @@ def coincidence(hits, nfold=4, resolving_time=300):
     return intervals
 
 
-def tight_coincidence(data, coincidence_level, resolving_time):
+def _coincidence(rr, nfold=4, resolving_time=300):
     """
-    Tight coincidence for any data_kind which has a 'time' parameter.
-
-    Args:
-
-
-    returns:
-        in_coincidence:
-        other:
-    """
-    intervals = coincidence_intervals(data,
-                                      nfold=coincidence_level,
-                                      resolving_time=resolving_time)
-
-    mask_in_interval = _rr_in_interval(data, *intervals.T)
-
-    return data[mask_in_interval.astype(bool)], data[np.invert(mask_in_interval.astype(bool))]
-
-
-def _coincidence(hits, nfold=4, resolving_time=300):
-    '''
     Function which checks if n-neighboring events are less apart from each other then
     the specified resolving time.
 
+    Note:
+        1.) For the nVETO recorder we treat every fragment as a single signal.
+        2.) The coincidence window in here is not self extending.
+        3.) By default we store the last nfold - 1 hits, since there might be an overlap to the
+            next chunk.
+
     Args:
-        hits (strax.hits): Found hits, but could be peaks as well.
+        rr (raw_records): raw_records
         nfold (int): coincidence level.
         resolving_time (int): Time window of the coincidence [ns].
 
@@ -189,29 +282,21 @@ def _coincidence(hits, nfold=4, resolving_time=300):
 
     returns:
         np.array: array containing the start times of the n-fold coincidence intervals
-    '''
-    # 1. estimate time difference between leading fragments:
-    mask_ri = hits['record_i'] == 0
-    start_times = hits[mask_ri]['time']
-    pulse_lengths = hits[mask_ri]['length']
-    dt = hits['dt'][0]
-    # Note sure if dts can be different, but should maybe add a raise here...
-    # TODO: Add error condition
-    #     if np.sum(hits['dt'] = dt) != len(hits):
-    #         raise
-
+    """
+    # 1. estimate time difference between fragments:
+    start_times = rr['time']
     t_diff = diff(start_times)
 
     # 2. Now we have to check if n-events are within resolving time:
-    #   -> use moving average with size n to accumaulate time between n-pulses
+    #   -> use moving average with size n to accumulate time between n-pulses
     #   -> check if accumulated time is bellow resolving time
 
-    # generate kernal:
-    kernal = np.zeros(nfold)
-    kernal[:(nfold - 1)] = 1  # weight last seen by t_diff must be zero since
+    # generate kernel:
+    kernel = np.zeros(nfold)
+    kernel[:(nfold - 1)] = 1  # weight last seen by t_diff must be zero since
     # starting time point e.g. n=4: [0,1,1,1] --> [f1, f2, f3, f4, ..., fn]
 
-    t_cum = convolve1d(t_diff, kernal, mode='constant', origin=(nfold - 1) // 2)
+    t_cum = convolve1d(t_diff, kernel, mode='constant', origin=(nfold - 1) // 2)
     t_cum = t_cum[:-(nfold - 1)]  # do not have to check for last < nfold hits
 
     return start_times[:-(nfold - 1)][t_cum <= resolving_time]
@@ -222,8 +307,6 @@ def _merge_intervals(start_time, resolving_time):
     """
     Function which merges overlapping time intervals into a single one.
 
-    While it is not strictly required, it makes the live easier when saving the raw_records of a higher fragment order.
-
     Args:
         start_time (np.array): Start time of the different intervals
         resolving_time (int): Coincidence window in ns
@@ -231,25 +314,24 @@ def _merge_intervals(start_time, resolving_time):
     Returns:
         np.array: merged unique time intervals.
     """
-    index = np.arange(0, len(start_time), 1)
-
-    # check for gaps larger than 300:
+    # check for gaps larger than resolving_time:
+    # The gaps will indicate the starts of new intervals
     gaps = diff(start_time) > resolving_time
-    gaps[0] = True  # We always need to have index 0
-    index = index[gaps]
+    interval_starts = np.arange(0, len(gaps), 1)
+    interval_starts = interval_starts[gaps]
 
     # Creating output
-    # There are as many gaps as intervals due to gaps[0] = True
-    intervals = np.zeros((np.sum(gaps), 2), dtype=np.int64)
+    # There is one more interval than gaps
+    intervals = np.zeros((np.sum(gaps) + 1, 2), dtype=np.int64)
 
     # Looping over all intervals, except for the last one:
-    for ind, ci in enumerate(index[1:]):
-        end_i = ci - 1
-        start_i = index[ind]
-        intervals[ind] = [start_time[start_i], start_time[end_i] + resolving_time]
+    for ind, csi in enumerate(interval_starts[:-1]):
+        nsi = interval_starts[ind + 1]
+        intervals[ind + 1] = [start_time[csi], start_time[nsi - 1] + resolving_time]
 
-    # Now doing the last one:
-    intervals[-1] = [start_time[index[-1]], start_time[len(start_time) - 1] + 300]
+    # Now doing the first and last one:
+    intervals[0] = [start_time[0], start_time[interval_starts[0] - 1] + resolving_time]
+    intervals[-1] = [start_time[interval_starts[-1]], start_time[-1] + resolving_time]
 
     return intervals
 
@@ -261,6 +343,9 @@ def diff(array):
     in an array.
 
     The output array has the same shape as the input array.
+
+    Note:
+        The input is expected to be sorted.
 
     Args:
         array (np.array): array of size n
