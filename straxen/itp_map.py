@@ -139,11 +139,12 @@ class InterpolatingMap:
                 # and always return a single value
                 def itp_fun(positions):
                     return map_data * np.ones_like(positions)
-            if array_valued:
-                map_data = map_data.reshape((-1, map_data.shape[-1]))
-            itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
-                                                values=np.array(map_data),
-                                                array_valued=array_valued)
+            else:
+                if array_valued:
+                    map_data = map_data.reshape((-1, map_data.shape[-1]))
+                itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
+                                                    values=np.array(map_data),
+                                                    array_valued=array_valued)
 
             self.interpolators[map_name] = itp_fun
 
