@@ -62,7 +62,7 @@ class nVETORecorder(strax.Plugin):
         # records, lone_records = _mask_and_not(raw_records, mask)
         #
         # # Compute some properties of the lone_records:
-        # # lrc = compute_lone_records(lone_records, straxen.n_nVETO_pmts, self.config['nbaseline'])
+        # # lrc, rd = compute_lone_records(lone_records, straxen.n_nVETO_pmts, self.config['nbaseline'])
         #
         # # Store some of the lone_records for diagnostic purposes:
         # rd = get_n_lone_records(lone_records, self.config['n_lone_hits'], straxen.n_nVETO_pmts)
@@ -70,6 +70,7 @@ class nVETORecorder(strax.Plugin):
         return {'nveto_records': records,
                 'nveto_diagnostic_records': rd,
                 'nveto_lone_record_count': lrc}
+
 
 def lone_record_count_dtype(n_channels):
     return [
@@ -91,7 +92,8 @@ def lone_record_count_dtype(n_channels):
          (np.float64, n_channels))
     ]
 
-def compute_lone_records(lone_record, channels, nbaseline=10):
+
+def compute_lone_records(lone_record, channels, n, nbaseline=10):
     """
     Function which estimates for each chunk some basic properties of the lone nveto_records.
 
@@ -109,20 +111,38 @@ def compute_lone_records(lone_record, channels, nbaseline=10):
     """
     nchannels = len(channels)
     sc = channels[0]
-    res = np.zeros(1, dtype=lone_record_count_dtype(nchannels))
-    _compute_lone_records(lone_record, res[0], nchannels, sc, nbaseline)
 
-    return res
+    # Results computation of lone records:
+    res = np.zeros(1, dtype=lone_record_count_dtype(nchannels))
+
+    # lone_records ot be stored:
+    if n:
+        lone_ids = np.ones((nchannels, n), dtype=np.int32) * -1
+
+    _compute_lone_records(lone_record, res[0], lone_ids. n, nchannels, sc, nbaseline)
+
+    lone_ids = lone_ids.flatten()
+    lone_ids = lone_ids[lone_ids >= 0]
+
+    return res, lone_record[lone_ids]
 
 
 @numba.njit(nogil=True, cache=True)
-def _compute_lone_records(lone_record, res, nchannels, sc, nbaseline):
+def _compute_lone_records(lone_record, res, lone_ids, n,  nchannels, sc, nbaseline):
     # getting start and end time:
     res['time'] = lone_record[0]['time']
     res['endtime'] = lone_record[-1]['time']
 
+    nids = np.zeros(nchannel, dtype=np.int32)
     for lr in lone_record:
         ch = lr['channel']
+
+        if nids[ch-sc] < n:
+            lone_ids[ch-sc, nids[ch]] = ind
+            nids[ch-sc] += 1
+            continue
+
+        # Computing properties of lone records which will be deleted:
         res['channel'][ch - sc] = ch
         res['lone_record_area'][ch - sc] += lr['area']
         res['nfragments'][ch - sc] += 1
@@ -162,34 +182,34 @@ def lone_record_count_dtype(n_channels):
     ]
 
 
-@numba.njit(nogil=True, cache=True)
-def get_n_lone_records(lone_records, n, channels=straxen.n_nVETO_pmts):
-    """
-    Function which returns the first n raw_records per channel.
-
-    Args:
-        lone_records (raw_records): Any data kind containing channel as parameter.
-        n (int): Number of records per channel which shall be returned.
-
-    Returns:
-        np.array: Structured array of the dtype of lone_records input.
-    """
-    nchannel = len(channels)
-    start_ch = channels[0]
-
-    lone_ids = np.ones((nchannel, n), dtype=np.int32) * -1
-    nids = np.zeros(nchannel, dtype=np.int32)
-
-    for ind, lr in enumerate(lone_records):
-        ch = lr['channel'] - start_ch
-
-        if nids[ch] < n:
-            lone_ids[ch, nids[ch]] = ind
-            nids[ch] += 1
-
-    lone_ids = lone_ids.flatten()
-    lone_ids = lone_ids[lone_ids >= 0]
-    return lone_records[lone_ids]
+# @numba.njit(nogil=True, cache=True)
+# def get_n_lone_records(lone_records, n, channels=straxen.n_nVETO_pmts):
+#     """
+#     Function which returns the first n raw_records per channel.
+#
+#     Args:
+#         lone_records (raw_records): Any data kind containing channel as parameter.
+#         n (int): Number of records per channel which shall be returned.
+#
+#     Returns:
+#         np.array: Structured array of the dtype of lone_records input.
+#     """
+#     nchannel = len(channels)
+#     start_ch = channels[0]
+#
+#     lone_ids = np.ones((nchannel, n), dtype=np.int32) * -1
+#     nids = np.zeros(nchannel, dtype=np.int32)
+#
+#     for ind, lr in enumerate(lone_records):
+#         ch = lr['channel'] - start_ch
+#
+#         if nids[ch] < n:
+#             lone_ids[ch, nids[ch]] = ind
+#             nids[ch] += 1
+#
+#     lone_ids = lone_ids.flatten()
+#     lone_ids = lone_ids[lone_ids >= 0]
+#     return lone_records[lone_ids]
 
 
 # ---------------------
