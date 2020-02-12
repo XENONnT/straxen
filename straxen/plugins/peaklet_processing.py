@@ -213,11 +213,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
 
-    # Keep chunk mapping the same as peaks
-    # If we make one huge chunk, peak building
-    # will be very RAM_intensive
-    rechunk_on_save = False
-
     def infer_dtype(self):
         return self.deps['peaklets'].dtype_for('peaklets')
 
