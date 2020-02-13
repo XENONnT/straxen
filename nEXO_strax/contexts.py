@@ -84,5 +84,5 @@ def MC_test():
     return strax.Context(
         storage=[strax.DataDirectory('./strax_data'),],
         # register=
-        register_all = [sx.nEXO_MC_reader,]
+        # register_all = [sx.nEXO_MC_reader,]
     )
