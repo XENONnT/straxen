@@ -21,7 +21,7 @@ def get_from_path(path,arrays):
     return uproot.iterate(all_files,
                             b'nEXOevents',
                             arrays,
-                            entrysteps=1,
+                            entrysteps=3,
                             # entrysteps='500 MB'
     )
 
@@ -69,14 +69,14 @@ class MCreader(strax.Plugin):
 
     def compute(self,chunk_i):
         g4_chunk = next(self.data_iterator)
-        evttimes = np.random.exponential(1/self.config[f'rate_{self.sourcename}'],(g4_chunk[b'OPTime'].size,)).cumsum()*-1+self.time
+        evttimes = np.random.exponential(1/self.config[f'rate_{self.sourcename}'],(g4_chunk[b'OPTime'].size,)).cumsum()+self.time
         self.time = evttimes[-1] #increment for next round
         n_photons = len(g4_chunk[b'OPTime'].flatten())
         n_hits = len(g4_chunk[b'NESTHitT'].flatten())
         photon_records = np.zeros(n_photons, dtype=self.dtype[f'photons_{self.sourcename}'])
-        photon_records['energy'] = (g4_chunk[b'OPEnergy']+evttimes).flatten()
+        photon_records['energy'] = (g4_chunk[b'OPEnergy']).flatten()
         photon_records['type'] = g4_chunk[b'OPType'].flatten()
-        photon_records['time'] = g4_chunk[b'OPTime'].flatten()
+        photon_records['time'] = (g4_chunk[b'OPTime']-g4_chunk[b'OPTime']+evttimes).flatten()
         photon_records['endtime'] = photon_records['time']
         photon_records['x'] = g4_chunk[b'OPX'].flatten()
         photon_records['y'] = g4_chunk[b'OPY'].flatten()
@@ -93,6 +93,7 @@ class MCreader(strax.Plugin):
         hits['n_photons'] = g4_chunk[b'NESTHitNOP'].flatten()
         hits['n_electrons'] = g4_chunk[b'NESTHitNTE'].flatten()
 
+        print(f"Loaded source from {self.config[f'input_dir_{self.sourcename}']} chunk {chunk_i} time {self.time} name {self.sourcename}")
         return {f'photons_{self.sourcename}': photon_records, f'nest_hits_{self.sourcename}': hits}
 
 import numba
@@ -140,7 +141,7 @@ class MCreader_factory(object):
             provides = ['photons','nest_hits']
             data_kind = {k: k for k in provides}
             dtype = MCreader.dtype_original
-
+            rechunk_on_save = False
             def compute(self, **kwargs):
                 output_dict = {}
                 for dtype_name, dtype_val in self.dtype.items():
@@ -148,6 +149,8 @@ class MCreader_factory(object):
                     input_arrays = np.concatenate([arg[1] for arg in type_args])
                     output = sort_by_time(input_arrays)
                     output_dict[dtype_name] = output
+                    print(f'merged time {output["time"] }')
+
                 return output_dict
         return MCmerger
 
