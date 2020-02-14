@@ -20,7 +20,7 @@ __all__ = ['nVETORecorder']
     strax.Option('nbaseline', type=int, default=10,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_hits', type=int, default=1,
-                 help="Number of lone hits to be stored per channel for diagnostic reasons."))
+                 help="Number of lone hits to be stored per channel for diagnostic reasons. CANNOT BE BELOW 1!"))
 class nVETORecorder(strax.Plugin):
     __version__ = '0.0.1'
     parallel = 'process'
@@ -48,24 +48,23 @@ class nVETORecorder(strax.Plugin):
 
     def compute(self, raw_records):
         # raise NotImplementedError
-        records = raw_records[:2]
-        rd = raw_records[:2]
-        lrc = np.zeros(1, lone_record_count_dtype(len(straxen.n_nVETO_pmts)))
+        # records = raw_records[:2]
+        # rd = raw_records[:2]
+        # lrc = np.zeros(1, lone_record_count_dtype(len(straxen.n_nVETO_pmts)))
 
         # As long as we are working with TPC data we have to split of the diagnostic stuff:
-        # raw_records, o = channel_split(raw_records, straxen.n_tpc_pmts)
-        #
-        # # First we have to split rr into records and lone hits:
-        # intervals = coincidence(raw_records, self.config['coincidence_level'], self.config['resolving_time'])
-        # mask = rr_in_interval(raw_records, *intervals.T)
-        # mask = mask.astype(bool)
-        # records, lone_records = _mask_and_not(raw_records, mask)
-        #
-        # # Compute some properties of the lone_records:
-        # # lrc, rd = compute_lone_records(lone_records, straxen.n_nVETO_pmts, self.config['nbaseline'])
-        #
-        # # Store some of the lone_records for diagnostic purposes:
-        # rd = get_n_lone_records(lone_records, self.config['n_lone_hits'], straxen.n_nVETO_pmts)
+        raw_records, o = channel_split(raw_records, straxen.n_tpc_pmts)
+
+        # First we have to split rr into records and lone hits:
+        intervals = coincidence(raw_records, self.config['coincidence_level'], self.config['resolving_time'])
+        mask = rr_in_interval(raw_records, *intervals.T)
+        mask = mask.astype(bool)
+        records, lone_records = _mask_and_not(raw_records, mask)
+
+        # Compute some properties of the lone_records:
+        lrc, rd = compute_lone_records(lone_records, straxen.n_nVETO_pmts,
+                                       self.config['n_lone_hits'],
+                                       self.config['nbaseline'])
 
         return {'nveto_records': records,
                 'nveto_diagnostic_records': rd,
@@ -100,60 +99,70 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10):
     Args:
         lone_record (raw_records): raw_records which are flagged as lone "hits"
         channels (np.array): List of PMT channels
+        n (int): Number of lone records which should be stored per data chunk.
 
     Keyword Args:
         nbaseline (int): number of samples which is used to compute the baseline rms.
 
     Returns:
-        np.array. Structured array of the lone_record_count_dtype.
+        np.array: Structured array of the lone_record_count_dtype containing some
+            properties of the lone records which will be deleted.
+        np.array: Lone records which should be saved for diagnostic purposes. The array shape is of
+            the raw_records dtype.
 
-    TODO: Merge with get_n_lone_records
+
+    TODO: Merge with get_n_lone_records (Done) update onyl docstring
     """
     nchannels = len(channels)
-    sc = channels[0]
 
     # Results computation of lone records:
     res = np.zeros(1, dtype=lone_record_count_dtype(nchannels))
 
-    # lone_records ot be stored:
-    if n:
-        lone_ids = np.ones((nchannels, n), dtype=np.int32) * -1
+    # buffer for lone_records to be stored:
+    max_nfrag = np.max(lone_record['record_i'])  # We do not know the number of fragments a priori...
+    lone_ids = np.ones((nchannels, n * max_nfrag), dtype=np.int32) * -1
 
-    _compute_lone_records(lone_record, res[0], lone_ids. n, nchannels, sc, nbaseline)
-
+    _compute_lone_records(lone_record, res[0], lone_ids, n, channels, nbaseline,
+                          default_length=straxen.nVETO_record_length)
     lone_ids = lone_ids.flatten()
     lone_ids = lone_ids[lone_ids >= 0]
 
     return res, lone_record[lone_ids]
 
 
+
 @numba.njit(nogil=True, cache=True)
-def _compute_lone_records(lone_record, res, lone_ids, n,  nchannels, sc, nbaseline):
+def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, default_length=110):
     # getting start and end time:
     res['time'] = lone_record[0]['time']
     res['endtime'] = lone_record[-1]['time']
 
-    nids = np.zeros(nchannel, dtype=np.int32)
-    for lr in lone_record:
-        ch = lr['channel']
+    channel_index = np.arange(0, len(channels), 1, dtype=np.int16)
+    nids = np.zeros(len(channels), dtype=np.int32)
 
-        if nids[ch-sc] < n:
-            lone_ids[ch-sc, nids[ch]] = ind
-            nids[ch-sc] += 1
-            continue
+    for ind, lr in enumerate(lone_record):
+        ch = lr['channel']
+        mask_ch = channels == ch
+        ch_i = channel_index[mask_ch][0]
+
+        if nids[ch_i] < n:
+            lone_ids[ch_i][nids[ch_i]] = ind  # add event index
+            # Check if the event consist out of more fragments:
+            n_frag = lr['pulse_length']//default_length
+            nids[ch_i] += 1 - n_frag  # If yes we also have to store them
 
         # Computing properties of lone records which will be deleted:
-        res['channel'][ch - sc] = ch
-        res['lone_record_area'][ch - sc] += lr['area']
-        res['nfragments'][ch - sc] += 1
+        res['channel'][ch_i] = ch
+        res['lone_record_area'][ch_i] += lr['area']
+        res['nfragments'][ch_i] += 1
         if lr['record_i'] >= 1:
-            res['nhigherfragments'][ch - sc] += 1
-            res['higher_lone_record_area'][ch - sc] += lr['area']
+            res['nhigherfragments'][ch_i] += 1
+            res['higher_lone_record_area'][ch_i] += lr['area']
         else:
-            res['baseline_rms'][ch - sc] += _baseline_rms(lr, nbaseline)
-            res['baseline_mean'][ch - sc] += lr['baseline']
+            res['baseline_rms'][ch_i] += _baseline_rms(lr, nbaseline)
+            res['baseline_mean'][ch_i] += lr['baseline']
 
-    for ind in range(nchannels):
+    for ind in range(len(channels)):
         if res['nfragments'][ind]:
                 res['baseline_rms'][ind] = (res['baseline_rms'][ind] /
                                             (res['nfragments'][ind] - res['nhigherfragments'][ind]))
@@ -378,6 +387,6 @@ def diff(array):
     length = len(array)
     res = np.ones(length, dtype=np.int64) * -1
     res[0] = 0
-    for i in numba.prange(length):
+    for i in range(length):
         res[i + 1] = array[i + 1] - array[i]
     return res
