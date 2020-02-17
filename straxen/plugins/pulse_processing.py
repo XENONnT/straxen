@@ -15,7 +15,10 @@ n_tpc = 248
         'to_pe_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',    # noqa
         help='URL of the to_pe conversion factors'),
-
+    strax.Option(
+        'adc_thresholds',
+        default='',
+        help='File containing the channel individual hit_finder thresholds.'),
     # Tail veto options
     strax.Option(
         'tail_veto_threshold',
@@ -52,11 +55,6 @@ n_tpc = 248
         'save_outside_hits',
         default=(3, 3),
         help='Save (left, right) samples besides hits; cut the rest'),
-
-    strax.Option(
-        'hit_threshold',
-        default=15,
-        help='Hitfinder threshold in ADC counts above baseline')
 )
 class PulseProcessing(strax.Plugin):
     """
@@ -71,7 +69,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -100,6 +98,7 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
 
     def compute(self, raw_records):
         # Do not trust in DAQ + strax.baseline to leave the
@@ -119,7 +118,7 @@ class PulseProcessing(strax.Plugin):
         ##
         if self.config['tail_veto_threshold'] and len(r):
             r, r_vetoed, veto_regions = software_he_veto(
-                r, self.to_pe,
+                r, self.to_pe, self.hit_thresholds
                 area_threshold=self.config['tail_veto_threshold'],
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
@@ -136,7 +135,7 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(r, threshold=self.config['hit_threshold'])
+            hits = strax.find_hits(r, threshold=self.hit_thresholds)
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
@@ -163,7 +162,7 @@ class PulseProcessing(strax.Plugin):
 ##
 
 @export
-def software_he_veto(records, to_pe,
+def software_he_veto(records, to_pe, thresholds,
                      area_threshold=int(1e5),
                      veto_length=int(3e6),
                      veto_res=int(1e3), pass_veto_fraction=0.01,
@@ -180,6 +179,7 @@ def software_he_veto(records, to_pe,
 
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
+    :param thresholds: Thresholds used in find_hits.
     :param area_threshold: Minimum peak area to trigger the veto.
     Note we use a much rougher clustering than in later processing.
     :param veto_length: Time in ns to veto after the peak
@@ -243,7 +243,9 @@ def software_he_veto(records, to_pe,
     # without looping over the pulse data)
     rough_sum(regions, records, to_pe, veto_n, veto_res)
     regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
-    pass_veto = strax.find_hits(regions, threshold=pass_veto_fraction)
+
+    thresholds['absolute_adc_counts_threshold'] = pass_veto_fraction
+    pass_veto = strax.find_hits(regions, threshold=thresholds)
 
     # 4. Extend these by a few samples and inverse to find veto regions
     regions['data'] = 1
@@ -253,7 +255,9 @@ def software_he_veto(records, to_pe,
         left_extension=pass_veto_extend,
         right_extension=pass_veto_extend)
     regions['data'] = 1 - regions['data']
-    veto = strax.find_hits(regions, threshold=0.5)
+
+    thresholds['absolute_adc_counts_threshold'] = 0.5
+    veto = strax.find_hits(regions, threshold=thresholds)
     # Do not remove very tiny regions
     veto = veto[veto['length'] > 2 * pass_veto_extend]
 

@@ -36,6 +36,10 @@ export, __all__ = strax.exporter()
         'to_pe_file',
         default=straxen.aux_repo + 'master/to_pe.npy',
         help='Link to the to_pe conversion factors'),
+    strax.Option(
+        'adc_thresholds',
+        default='',
+        help='File containing the channel individual hit_finder thresholds.'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
@@ -52,6 +56,7 @@ class Peaks(strax.Plugin):
 
     def infer_dtype(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
+        self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
         return strax.peak_dtype(n_channels=len(self.to_pe))
 
     def compute(self, records):
@@ -59,7 +64,7 @@ class Peaks(strax.Plugin):
         if not len(r):
             return np.zeros(0, self.dtype_for('peaks'))
 
-        hits = strax.find_hits(r)
+        hits = strax.find_hits(r, threshold=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
