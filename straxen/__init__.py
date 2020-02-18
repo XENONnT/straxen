@@ -1,8 +1,9 @@
-__version__ = '0.3.5'
+__version__ = '0.5.0'
 
 from .common import *
 from .itp_map import *
 from .rundb import *
+from .matplotlib_utils import *
 from .mini_analysis import *
 
 from . import plugins

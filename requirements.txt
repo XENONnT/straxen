@@ -1,7 +1,8 @@
-strax>=0.8.3
-tensorflow
-holoviews
-bokeh
-multihist
+strax
+# tensorflow    # Optional, to (re)do posrec
+# holoviews     # Optional, to enable wf display
+# bokeh         # Optional, to enable wf display
+# datashader    # Optional, to enable wf display
+multihist>=0.6.3
 matplotlib
-datashader
+packaging

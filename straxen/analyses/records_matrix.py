@@ -49,7 +49,7 @@ def records_matrix(records, time_range, seconds_range, to_pe):
                        warn_beyond_sec=3e-3,
                        default_time_selection='touching')
 def raw_records_matrix(context, run_id, raw_records, time_range):
-    return context.records_matrix(records=raw_records, time_range=time_range)
+    return context.records_matrix(run_id=run_id, records=raw_records, time_range=time_range)
 
 
 @numba.njit
