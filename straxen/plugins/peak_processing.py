@@ -52,7 +52,7 @@ class Peaks(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = True
 
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     def infer_dtype(self):
         self.to_pe = get_to_pe(self.run_id,self.config['to_pe_file'])
