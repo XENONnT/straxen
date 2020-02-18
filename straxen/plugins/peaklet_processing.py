@@ -59,7 +59,7 @@ class Peaklets(strax.Plugin):
     compressor = 'zstd'
     rechunk_on_save = True
 
-    __version__ = '0.3.0'
+    __version__ = '0.3.1'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
