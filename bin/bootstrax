@@ -3,6 +3,7 @@
 Bootstrax: XENONnT online processing manager
 =============================================
 First draft: Jelle Aalbers, 2018
+With additional input from: Joran Angevaare, 2020
 
 This script watches for new runs to appear from the DAQ, then starts a strax process to process them. If a run fails, it will retry it with exponential backoff.
 
@@ -54,6 +55,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 import logging
 import multiprocessing
+import npshmex
 import os
 import os.path as osp
 import signal
@@ -76,11 +78,18 @@ parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
 parser.add_argument('--debug', action='store_true',
                     help="Start strax processes with debug logging.")
+parser.add_argument('--profile', type=str, default='false',
+                    help="Option to run strax in profiling mode. "
+                         "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
 parser.add_argument('--cores', type=int, default=25,
                     help="Maximum number of workers to use in a strax process. "
                          "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
+parser.add_argument('--delete_live', type=str,
+                    # TODO -> set this to yes after testing
+                    default='no',
+                    help="Delete live_data after succesful processing of the run [yes/no]")
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument('--process', type=int, metavar='NUMBER',
@@ -91,23 +100,21 @@ actions.add_argument('--fail', nargs='+',
 actions.add_argument('--abandon', nargs='+',
                      metavar=('NUMBER', 'REASON'),
                      help="Abandon run number, optionally with reason")
-args = parser.parse_args()
 
+args = parser.parse_args()
 
 ##
 # Configuration
 ##
 
-# TODO change this to the run database when DAQ commissioning is finished
-# mongo_url = 'mongodb://{username}:{password}@gw:27019/xenonnt'
-# dbname = 'xenonnt'
-# run_collname = 'run'
+print(f'---\nTEST VERSION 0.2.3\n---')
 
-# Test database
-db_password = os.environ['MONGO_TST_PASSWORD']
-db_username = os.environ['MONGO_TST_USERNAME']
-mongo_url = f"mongodb+srv://{db_username}:{db_password}@jorandb-z6nbo.mongodb.net/admin?retryWrites=true&w=majority"
-dbname = 'test_database'
+# Runs database
+run_db_username = os.environ['MONGO_RDB_USERNAME']
+run_db_password = os.environ['MONGO_RDB_PASSWORD']
+# run_client = pymongo.MongoClient(f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin")
+mongo_url = f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin"
+dbname = 'run'
 run_collname = 'runs'
 
 # DAQ database
@@ -138,6 +145,8 @@ timeouts = {
     'retry_run': 60,
     # Maximum time for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
+    # TODO
+    #  Do we want to have a higer number for e.g. calibration more runs?
     'max_processing_time': 7200,
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
@@ -159,6 +168,15 @@ timeouts = {
     'bootstrax_presumed_dead': 300
 }
 
+# The disk that the eb is writing to may fill up at some point. The data should
+# be written to datamanager at some point. This may clean up data on the disk,
+# hence, we can check if there is sufficient diskspace and if not, wait a while.
+# Below are the max number of times and number of seconds bootstrax will wait.
+wait_diskspace_min_space = 500  # GB
+wait_diskspace_n_max = 100  # times
+wait_diskspace_dt = 60  # seconds
+assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
+
 # Fields in the run docs that bootstrax uses
 bootstrax_projection = f"name start end number bootstrax " \
                        f"data.host data.type data.location " \
@@ -179,12 +197,18 @@ logging.basicConfig(
     datefmt='%m-%d %H:%M')
 log = logging.getLogger()
 hostname = socket.getfqdn()
-state_doc_id = None   # Set in main loop
+state_doc_id = None  # Set in main loop
 
 # Set the output folder
 output_folder = eb_directories[hostname]
 if os.access(output_folder, os.W_OK) is not True:
     raise IOError(f'No writing access to {output_folder}')
+
+if args.delete_live.lower() in ['y', 'yes', 'true']:
+    delete_live = True
+else:
+    delete_live = False
+    print(f'Not deleting live data because --delete_live = {args.delete_live}')
 
 
 def new_context():
@@ -200,7 +224,7 @@ def new_context():
             mongo_dbname=dbname),
         **straxen.contexts.common_opts)
     st.context_config['allow_multiprocess'] = True if args.cores > 1 else False
-    st.context_config['allow_shm'] = True
+    st.context_config['allow_shm'] = True if args.cores > 1 else False
     return st
 
 
@@ -220,12 +244,12 @@ daq_db.command('ping')
 
 def main():
     if args.cores == -1:
-        # Use all the available cores on this machine
+        # Use all of the available cores on this machine
         args.cores = multiprocessing.cpu_count()
         print(f'Set cores to n_tot, using {args.cores} cores')
 
     if args.fail:
-        args.fail += ['']   # Provide empty reason if none specified
+        args.fail += ['']  # Provide empty reason if none specified
         manual_fail(number=int(args.fail[0]), reason=args.fail[1])
 
     elif args.abandon:
@@ -274,6 +298,7 @@ def main_loop():
     next_cleanup_time = now()
     while True:
         print(f'bootstrax running for {(now() - t_start).seconds} seconds')
+        sufficient_diskspace()
         log.info("Looking for work")
 
         set_state('busy')
@@ -340,7 +365,7 @@ def update_usage(pid_process, run_number):
     mem_tot = virtual_memory()
     disk = disk_usage(output_folder)
     terabyte_to_byte = 1024.0 ** 4
-#     current_process =  multiprocessing.current_process()
+#   current_process =  multiprocessing.current_process()
     usage = {'run': int(run_number),
              'host': hostname,
              'time': now(),
@@ -348,7 +373,7 @@ def update_usage(pid_process, run_number):
              'cpu_pid': pid_process.cpu_percent(),
              'cpu_tot': cpu_percent(),
              'mem_pid': pid_process.memory_percent(),
-             'mem_tot': frac_to_percent * mem_tot.used / mem_tot.available,
+             'mem_tot': frac_to_percent * mem_tot.used / mem_tot.total,
              'disk_size': disk.total / terabyte_to_byte,
              'disk_used': disk.percent
              }
@@ -396,6 +421,24 @@ def log_warning(message, priority='warning'):
         'priority': dict(warning=2, info=1).get(priority, 3)})
 
 
+def sufficient_diskspace():
+    '''Check if there is sufficient space available on the local disk to write to'''
+    disk = disk_usage(output_folder)
+    gigabyte_to_byte = 1024.0 ** 3
+    disk_free = disk.free / gigabyte_to_byte
+    print(f'Check diskspace. {int(disk_free)} GB free')
+    for i in range(wait_diskspace_min_space):
+        if disk_free > wait_diskspace_min_space:
+            # Good we can write, lets continue
+            return
+        else:
+            print(f'Insufficient free disk space ({disk.disk_free} GB)'
+                  f'on {hostname}. Waiting {wait_diskspace_dt} s ({i}th iteration')
+            time.sleep(wait_diskspace_dt)
+            send_heartbeat()
+    assert False, "No diskspace to write to"
+
+
 ##
 # Run DB interaction
 ##
@@ -416,7 +459,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
         raise ValueError("Please give mongo_id or number")
     try:
         return run_coll.find_one(query,
-                             projection=None if full_doc else bootstrax_projection)
+                                 projection=None if full_doc else bootstrax_projection)
     except pymongo.errors.AutoReconnect as e:
         # mongo-db seems to be overloaded, wait a second and try again
         auto_reconnect_nap = 60
@@ -424,6 +467,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
         time.sleep(auto_reconnect_nap)
         return run_coll.find_one(query,
                                  projection=None if full_doc else bootstrax_projection)
+
 
 def set_run_state(rd, state, return_new_doc=True, **kwargs):
     """Set state of run doc rd to state
@@ -535,23 +579,58 @@ def get_compressor(rd, default_compressor="blosc"):
         return default_compressor
 
 
+def delete_live_data(live_data_path):
+    '''After completing the processing and updating the runsDB, remove the
+    live_data'''
+
+    if os.path.exists(live_data_path) and delete_live:
+        print(f'Deleteing data at {live_data_path}')
+        shutil.rmtree(live_data_path)
+        if os.path.exists(live_data_path):
+            assert False, "we wanted to delete this path!"
+    else:
+        raise FileNotFoundError(f'Something is off, no folder found '
+                                f'at {live_data_path} but there was '
+                                f'an attempt to delete data here')
+
+
 ##
 # Processing
 ##
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
               run_start_time, debug=False):
+    if args.cores > 1:
+        # Clear the swap memory used by npshmmex
+        npshmex.shm_clear()
     if debug:
         log.setLevel(logging.DEBUG)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
         st = new_context()
-        st.make(run_id, target,
-                config=dict(input_dir=input_dir,
-                            compressor=compressor,
-                            run_start_time=run_start_time,
-                            n_readout_threads=n_readout_threads),
-                max_workers=args.cores)
+
+        # Make a function for running strax, call the function to process the run
+        # This way, it can also be run inside a wrapper to profile strax
+        def st_make():
+            '''Run strax'''
+            st.make(run_id, target,
+                    config=dict(input_dir=input_dir,
+                                compressor=compressor,
+                                run_start_time=run_start_time,
+                                n_readout_threads=n_readout_threads,
+                                rr_max_messages=args.max_messages_raw_records,
+                                r_max_messages=args.max_messages_records),
+                    max_workers=args.cores)
+
+        if args.profile.lower() == 'false':
+            st_make()
+        else:
+            prof_file = f'run{run_id}_{args.profile}'
+            if not '.prof' in prof_file:
+                prof_file += '.prof'
+            print(f'starting with profiler, saving as {prof_file}')
+            with strax.profile_threaded(prof_file):
+                st_make()
     except Exception as e:
         # Write exception to file, so bootstrax can read it
         exc_info = strax.formatted_exception()
@@ -690,6 +769,8 @@ def process_run(rd, send_heartbeats=True):
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
+                if delete_live:
+                    delete_live_data(loc)
                 break
 
             else:

@@ -30,6 +30,7 @@ class DAQReader(strax.Plugin):
     dtype = strax.record_dtype()
     parallel = 'process'
     rechunk_on_save = False
+    compressor = 'lz4'
 
     def _path(self, chunk_i):
         return self.config["input_dir"] + f'/{chunk_i:06d}'
