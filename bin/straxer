@@ -35,16 +35,16 @@ parser.add_argument(
          'data in ./strax_data, you need to delete it there first.')
 parser.add_argument(
     '--max_messages', 
-    default=4,
+    default=4, type=int,
     help=("Size of strax's internal mailbox buffers. "
           "Lower to reduce memory usage, at increasing risk of deadlocks."))
 parser.add_argument(
     '--timeout',
-    default=300,
+    default=300, type=int,
     help=("Strax' internal mailbox timeout in seconds"))
 parser.add_argument(
     '--workers',
-    default=1,
+    default=1, type=int,
     help=("Number of worker threads/processes. "
           "Strax will multithread (1/plugin) even if you set this to 1."))
 parser.add_argument(
@@ -84,14 +84,13 @@ print(f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}")
 import straxen
 print(f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}")
 
-strax.Mailbox.DEFAULT_MAX_MESSAGES = int(args.max_messages)
-strax.Mailbox.DEFAULT_TIMEOUT = int(args.timeout)
-
 st = getattr(straxen.contexts, args.context)()
 if args.diagnose_sorting:
     st.set_config(dict(diagnose_sorting=True))
 st.context_config['allow_multiprocess'] = args.multiprocess
 st.context_config['allow_shm'] = args.shm
+st.context_config['timeout'] = args.timeout
+st.context_config['max_messages'] = args.max_messages
 
 if args.from_scratch:
     for q in st.storage:

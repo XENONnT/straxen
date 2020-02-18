@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 import strax
 import straxen
-from .mpl_helpers import quiet_tight_layout
 from mpl_toolkits.axes_grid1 import inset_locator
 
 
@@ -46,12 +45,12 @@ def plot_waveform(context, deep=False, show_largest=100, figsize=None,
                                     raw=deep == 'raw',
                                     single_figure=False)
 
-        quiet_tight_layout()
+        straxen.quiet_tight_layout()
         plt.subplots_adjust(hspace=0)
 
 
 @straxen.mini_analysis(
-    requires=('peaks', 'peak_classification'),
+    requires=('peaks', 'peak_basics'),
     default_time_selection='touching',
     warn_beyond_sec=60)
 def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
@@ -95,7 +94,7 @@ def plot_records_matrix(context, run_id,
 
     f = context.raw_records_matrix if raw else context.records_matrix
 
-    wvm, ts, ys = context.records_matrix(run_id, **kwargs)
+    wvm, ts, ys = f(run_id, **kwargs)
 
     plt.pcolormesh(
         ts, ys, wvm.T,
@@ -132,7 +131,7 @@ def plot_records_matrix(context, run_id,
     plt.sca(ax)
 
     if single_figure:
-        quiet_tight_layout()
+        straxen.quiet_tight_layout()
 
 
 def seconds_range_xaxis(seconds_range):

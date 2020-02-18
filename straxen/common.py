@@ -1,5 +1,6 @@
 import ast
 import configparser
+from copy import deepcopy
 import gzip
 import inspect
 import io
@@ -11,6 +12,7 @@ import socket
 import sys
 import tarfile
 import urllib.request
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -77,10 +79,15 @@ _text_formats = ['text', 'csv', 'json']
 @export
 def get_resource(x, fmt='text'):
     """Return contents of file or URL x
-    :param binary: Resource is binary. Return bytes instead of a string.
+    :param fmt: Format to parse contents into
+
+    Do NOT mutate the result you get. Make a copy if you're not sure.
+    If you mutate resources it will corrupt the cache, cause terrible bugs in
+    unrelated code, tears unnumbered ye shall shed, not even the echo of
+    your lamentations shall pass over the mountains, etc.
     """
-    # Try to retrieve from in-memory cache
     if x in cache_dict:
+        # Retrieve from in-memory cache
         return cache_dict[x]
 
     if '://' in x:
@@ -131,10 +138,14 @@ def get_resource(x, fmt='text'):
 
     else:
         # File resource
-        if fmt == 'npy':
-            result = np.load(x)
-        elif fmt == 'npy_pickle':
-            result = np.load(x, allow_pickle = True)
+        if fmt in ['npy', 'npy_pickle']:
+            result = np.load(x, allow_pickle=fmt == 'npy_pickle')
+            if isinstance(result, np.lib.npyio.NpzFile):
+                # Slurp the arrays in the file, so the result can be copied,
+                # then close the file so its descriptors does not leak.
+                result_slurped = {k: v[:] for k, v in result.items()}
+                result.close()
+                result = result_slurped
         elif fmt == 'pkl':
             with open(x, 'rb') as f:
                 result = pickle.load(f)
@@ -226,3 +237,22 @@ def download_test_data():
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
     tf.extractall()
+
+
+@export
+def get_livetime_sec(context, run_id, things=None):
+    """Get the livetime of a run in seconds. If it is not in the run metadata,
+    estimate it from the data-level metadata of the data things.
+    """
+    try:
+        md = context.run_metadata(run_id,
+                                  projection=('start', 'end', 'livetime'))
+    except strax.RunMetadataNotAvailable:
+        if things is None:
+            raise
+        return (strax.endtime(things[-1]) - things[0]['time']) / 1e9
+    else:
+        if 'livetime' in md:
+            return md['livetime']
+        else:
+            return (md['end'] - md['start']).total_seconds()
