@@ -5,6 +5,7 @@ import shutil
 import numpy as np
 
 import strax
+import straxen
 
 __all__ = ['nVETODAQReader']
 
@@ -23,10 +24,11 @@ __all__ = ['nVETODAQReader']
                  help="Number of samples which are used for the baseline"
                       "calculations at a start of a pulse."))
 
+
 class nVETODAQReader(strax.Plugin):
     provides = 'nveto_raw_records'
     depends_on = tuple()
-    dtype = strax.record_dtype()
+    dtype = strax.record_dtype(straxen.nVETO_record_length)
 
     rechunk_on_save = False
 
