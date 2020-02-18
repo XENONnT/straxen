@@ -17,7 +17,7 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo', 'n_nVETO_pmts', 'nVETO_record_length']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
