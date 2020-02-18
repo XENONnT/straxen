@@ -67,6 +67,7 @@ class Peaklets(strax.Plugin):
 
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
 
     def compute(self, records):
         r = records
