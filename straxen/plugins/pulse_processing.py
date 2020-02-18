@@ -118,7 +118,8 @@ class PulseProcessing(strax.Plugin):
         ##
         if self.config['tail_veto_threshold'] and len(r):
             r, r_vetoed, veto_regions = software_he_veto(
-                r, self.to_pe, self.hit_thresholds,
+                r, self.to_pe,
+                self.hit_thresholds,
                 area_threshold=self.config['tail_veto_threshold'],
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
