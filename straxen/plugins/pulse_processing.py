@@ -3,6 +3,8 @@ import numpy as np
 
 import strax
 from straxen import get_to_pe
+from straxen import get_resource
+
 export, __all__ = strax.exporter()
 
 # Number of TPC PMTs. Hardcoded for now...
@@ -17,7 +19,7 @@ n_tpc = 248
         help='URL of the to_pe conversion factors'),
     strax.Option(
         'adc_thresholds',
-        default='',
+        default='/home/dwenz/python_scripts/XENONnT/analysiscode/PMTs/HitFinder/Threshold/find_hits_thresholds.npy',
         help='File containing the channel individual hit_finder thresholds.'),
     # Tail veto options
     strax.Option(
@@ -98,7 +100,7 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
-        self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
+        self.hit_thresholds = get_resource(self.config['adc_thresholds'], fmt='npy')
 
     def compute(self, raw_records):
         # Do not trust in DAQ + strax.baseline to leave the
