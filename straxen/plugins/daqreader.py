@@ -20,14 +20,14 @@ __all__ = ['DAQReader']
                  help="Number of readout threads producing strax data files"),
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"),
-    strax.Option('compressor', default="blosc", track=False,
+    strax.Option('compressor', default="lz4", track=False,
                  help="Algorithm used for (de)compressing the live data"),
     strax.Option('run_start_time', default=0., type=float, track=False,
                  help="time of start run (s since unix epoch)"))
 class DAQReader(strax.Plugin):
     provides = 'raw_records'
     depends_on = tuple()
-    dtype = strax.record_dtype()
+    dtype = strax.raw_record_dtype()
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'lz4'
@@ -86,7 +86,7 @@ class DAQReader(strax.Plugin):
     def _load_chunk(self, path, kind='central'):
         records = [strax.load_file(fn,
                                    compressor=self.config["compressor"],
-                                   dtype=strax.record_dtype())
+                                   dtype=strax.raw_record_dtype())
                    for fn in sorted(glob.glob(f'{path}/*'))]
         records = np.concatenate(records)
         records = strax.sort_by_time(records)

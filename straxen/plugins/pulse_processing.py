@@ -3,6 +3,7 @@ import numpy as np
 
 import strax
 from straxen import get_to_pe
+from straxen import get_resource
 export, __all__ = strax.exporter()
 
 # Number of TPC PMTs. Hardcoded for now...
@@ -17,7 +18,7 @@ n_tpc = 248
         help='URL of the to_pe conversion factors'),
     strax.Option(
         'adc_thresholds',
-        default='',
+        default='/home/dwenz/python_scripts/XENONnT/analysiscode/PMTs/HitFinder/Threshold/find_hits_thresholds.npy',
         help='File containing the channel individual hit_finder thresholds.'),
     # Tail veto options
     strax.Option(
@@ -84,12 +85,12 @@ class PulseProcessing(strax.Plugin):
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records
         rr_dtype = self.deps['raw_records'].dtype_for('raw_records')
-        record_length = len(np.zeros(1, rr_dtype)[0]['data'])
+        self.record_length = len(np.zeros(1, rr_dtype)[0]['data'])
 
         dtype = dict()
         for p in self.provides:
             if p.endswith('records'):
-                dtype[p] = strax.record_dtype(record_length)
+                dtype[p] = strax.record_dtype(self.record_length)
 
         dtype['veto_regions'] = strax.hit_dtype
         dtype['pulse_counts'] = pulse_count_dtype(n_tpc)
@@ -98,20 +99,31 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
-        self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
+        if self.config['adc_thresholds']:
+            self.hit_thresholds = get_resource(self.config['adc_thresholds'], fmt='npy')
 
     def compute(self, raw_records):
+        print('Start')
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
         strax.zero_out_of_bounds(raw_records)
 
+        # Have to switch dtype from raw_records into records:
+        records = np.zeros(len(raw_records), dtype=strax.record_dtype(self.record_length))
+        for name in raw_records.dtype.names:
+            records[name] = raw_records[name]
         ##
         # Split off non-TPC records and count TPC pulses
         # (perhaps we should migrate this to DAQRreader in the future)
         ##
-        r, other = channel_split(raw_records, n_tpc)
+        r, other = channel_split(records, n_tpc)
         pulse_counts = count_pulses(r, n_tpc)
         diagnostic_records, aqmon_records = channel_split(other, 254)
+
+        ##
+        # Compute baseline RMS:
+        ##
+        r['rms'] = strax.baseline_rms(r, 26)
 
         ##
         # Process the TPC records
@@ -133,7 +145,7 @@ class PulseProcessing(strax.Plugin):
         else:
             veto_regions = np.zeros(0, dtype=strax.hit_dtype)
 
-        if len(r):
+        if len(r) & self.config['adc_thresholds']:
             # Find hits
             # -- before filtering,since this messes with the with the S/N
             hits = strax.find_hits(r, threshold=self.hit_thresholds)
@@ -150,7 +162,7 @@ class PulseProcessing(strax.Plugin):
 
             # Probably overkill, but just to be sure...
             strax.zero_out_of_bounds(r)
-
+        print('End')
         return dict(records=r,
                     diagnostic_records=diagnostic_records,
                     aqmon_records=aqmon_records,
