@@ -103,7 +103,6 @@ class PulseProcessing(strax.Plugin):
             self.hit_thresholds = get_resource(self.config['adc_thresholds'], fmt='npy')
 
     def compute(self, raw_records):
-        print('Start')
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
         strax.zero_out_of_bounds(raw_records)
@@ -145,7 +144,7 @@ class PulseProcessing(strax.Plugin):
         else:
             veto_regions = np.zeros(0, dtype=strax.hit_dtype)
 
-        if len(r) & self.config['adc_thresholds']:
+        if len(r) & len(self.hit_thresholds):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
             hits = strax.find_hits(r, threshold=self.hit_thresholds)
@@ -162,7 +161,6 @@ class PulseProcessing(strax.Plugin):
 
             # Probably overkill, but just to be sure...
             strax.zero_out_of_bounds(r)
-        print('End')
         return dict(records=r,
                     diagnostic_records=diagnostic_records,
                     aqmon_records=aqmon_records,
