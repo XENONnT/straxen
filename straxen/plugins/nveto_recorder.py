@@ -29,7 +29,7 @@ class nVETORecorder(strax.Plugin):
     rechunk_on_save = False  # same as in tpc pulse_processing
     compressor = 'zstd'  # same as in tpc pulse_processing
 
-    depends_on = 'raw_records'
+    depends_on = 'raw_records'    # <--- change this to nveto_raw_records
 
     provides = ('nveto_records', 'nveto_diagnostic_records', 'nveto_lone_record_count')
 
@@ -47,10 +47,7 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records):
-        # raise NotImplementedError
-        # records = raw_records[:2]
-        # rd = raw_records[:2]
-        # lrc = np.zeros(1, lone_record_count_dtype(len(straxen.n_nVETO_pmts)))
+        strax.zero_out_of_bounds(raw_records)
 
         # As long as we are working with TPC data we have to split of the diagnostic stuff:
         raw_records, o = channel_split(raw_records, straxen.n_tpc_pmts)
