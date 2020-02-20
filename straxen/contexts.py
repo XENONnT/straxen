@@ -51,6 +51,22 @@ def strax_workshop_dali():
         **common_opts)
 
 
+def strax_pmt_calibration():
+    return strax.Context(
+        storage=[
+            strax.DataDirectory(
+                '/dali/lgrandi/wenz/strax_data/run_180219_1049/strax_data_raw',
+                take_only='raw_records',
+                deep_scan=False,
+                readonly=True),
+            strax.DataDirectory(
+                '/dali/lgrandi/wenz/strax_data/run_180219_1049/strax_data',
+                readonly=False,
+                provide_run_metadata=False)],
+        config=dict(tail_veto_threshold=0, pmt_pulse_filter=0, adc_thresholds=0),
+        **common_opts)
+
+
 def fake_daq():
     """Context for processing fake DAQ data in the current directory"""
     return strax.Context(
