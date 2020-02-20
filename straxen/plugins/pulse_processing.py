@@ -241,6 +241,7 @@ def software_he_veto(records, to_pe, thresholds,
             ("reduction_level", np.int64),
             ("record_i", np.int64),
             ("pulse_length", np.int64),
+            ("rms", np.float32)
         ])
     regions['time'] = veto_start
     regions['length'] = veto_length
