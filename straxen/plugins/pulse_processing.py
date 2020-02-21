@@ -150,6 +150,9 @@ class PulseProcessing(strax.Plugin):
 
             # Probably overkill, but just to be sure...
             strax.zero_out_of_bounds(r)
+            
+            # Deleting fragments which contain zero data:
+            r = _del_empty(r, 1)
 
         return dict(records=r,
                     diagnostic_records=diagnostic_records,
@@ -395,3 +398,20 @@ def _mask_and_not(x, mask):
 def channel_split(rr, first_other_ch):
     """Return """
     return _mask_and_not(rr, rr['channel'] < first_other_ch)
+
+
+@numba.njit(cache=True, nogil=True)
+def _del_empty(records, order=1):
+    """
+    Function which deletes empty records. Empty means data is completely zero.
+
+    :param records: Records which shall be checked.
+    :param order: Fragment order. Cut will only applied to the specified order and
+        higher fragments.
+    :return: non-empty records
+    """
+    mask = np.ones(len(records), dtype=np.bool_)
+    for ind, r in enumerate(records):
+        if r['record_i'] >= order and np.all(r['data'] == 0):
+            mask[ind] = False
+    return records[mask]
