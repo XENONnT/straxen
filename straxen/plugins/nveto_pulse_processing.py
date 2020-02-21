@@ -21,6 +21,10 @@ export, __all__ = strax.exporter()
 class nVETOPulseProcessing(strax.Plugin):
     """
     nVETO equivalent of pulse processing.
+
+    Note:
+        I shamelessly copied almost the entire code from the TPC pulse processing. So credit to the
+        author of pulse_processing.
     """
     __version__ = '0.0.1'
 
@@ -31,7 +35,7 @@ class nVETOPulseProcessing(strax.Plugin):
     depends_on = 'nveto_records'
 
     provides = 'nveto_pulses'
-    dtype = nveto_pulses_dtype
+    dtype = nveto_pulses_dtype  # Might be the same as records.
 
     def setup(self):
         self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
@@ -44,12 +48,14 @@ class nVETOPulseProcessing(strax.Plugin):
         hits = strax.find_hits(nveto_records, threshold=self.hit_thresholds)
 
         le, re = self.config['nveto_save_outside_hits']
-        np = strax.cut_outside_hits(nveto_records, hits, left_extension=le, right_extension=re)
+        nveto_pulses = strax.cut_outside_hits(nveto_records, hits, left_extension=le, right_extension=re)
 
         # Probably overkill, but just to be sure...
-        strax.zero_out_of_bounds(np)
+        strax.zero_out_of_bounds(nveto_pulses)
 
-        return dict(nveto_pulses=np)
+        # Deleting empty data:
+        nveto_pulses = _del_empty(nveto_pulses, 1)
+        return dict(nveto_pulses=nveto_pulses)
 
 
 
@@ -100,9 +106,7 @@ class nVETOPulseBasics(strax.Plugin):
 
         # Comupte basic properties of the PMT pulses:
 
-
-
-        return dict(nveto_pulses=np)
+        return dict(nveto_pulse_basics=npb)
 
 
 def nveto_pulse_basic_dtype(n_widths=11):
@@ -114,3 +118,18 @@ def nveto_pulse_basic_dtype(n_widths=11):
         (('End time of the interval', 'end_time'), np.float64),
         (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.float64),
     ]
+
+@numba.njit(cache=True, nogil=True)
+def _del_empty(records, order=1):
+    """
+    Function which deletes empty records. Empty means data is completely zero.
+    :param records: Records which shall be checked.
+    :param order: Fragment order. Cut will only applied to the specified order and
+        higher fragments.
+    :return: non-empty records
+    """
+    mask = np.ones(len(records), dtype=np.bool_)
+    for ind, r in enumerate(records):
+        if r['record_i'] >= order and np.all(r['data'] == 0):
+            mask[ind] = False
+    return records[mask]
