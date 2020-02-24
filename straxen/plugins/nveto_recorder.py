@@ -26,12 +26,13 @@ class nVETORecorder(strax.Plugin):
     parallel = 'process'
 
     # TODO: Check the following two parameters in strax:
+    # TODO: In the current version it could be, that fragment 0 gets cut by the coincidence.
     rechunk_on_save = False  # same as in tpc pulse_processing
     compressor = 'zstd'  # same as in tpc pulse_processing
 
-    depends_on = 'raw_records'    # <--- change this to nveto_raw_records
+    depends_on = 'raw_records'    # <--- change this to nveto_pre_raw_records
 
-    provides = ('nveto_records', 'nveto_diagnostic_records', 'nveto_lone_record_count')
+    provides = ('nveto_raw_records', 'nveto_diagnostic_pre_records', 'nveto_lone_raw_record_count')
 
     data_kind = {key: key for key in provides}
 
@@ -63,8 +64,8 @@ class nVETORecorder(strax.Plugin):
                                        self.config['n_lone_hits'],
                                        self.config['nbaseline'])
 
-        return {'nveto_records': records,
-                'nveto_diagnostic_records': rd,
+        return {'nveto_raw_records': records,
+                'nveto_diagnostic_raw_records': rd,
                 'nveto_lone_record_count': lrc}
 
 
@@ -115,12 +116,11 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10):
     lone_ids = np.ones((nchannels, n * max_nfrag), dtype=np.int32) * -1
 
     _compute_lone_records(lone_record, res[0], lone_ids, n, channels, nbaseline,
-                          default_length=straxen.nVETO_record_length)
+                          default_length=straxen.NVETO_RECORD_LENGTH)
     lone_ids = lone_ids.flatten()
     lone_ids = lone_ids[lone_ids >= 0]
 
     return res, lone_record[lone_ids]
-
 
 
 @numba.njit(nogil=True, cache=True)
@@ -193,32 +193,30 @@ def rr_in_interval(rr, start_times, end_times):
     """
     Function which tests if a raw record is one of the "to be stored"
     intervals.
+
     Args:
         rr (np.array): raw records
         start_times (np.array): start of the time interval
         end_times (np.array): end of the time interval
+
+    Note:
+        Since it might happen that the start_time is defined by a fragment of higher order
+        we will also check if the pulse_end is in the to be stored interval.
+        We will do the same for higher fragments which may be outside the window. If the start time
+        of the very first fragment falls into the window.
     """
     in_window = np.zeros(len(rr), dtype=np.int8)
-    index_interval = np.arange(0, len(start_times), 1)
+
     # Looping over rr and check if they are in the windows:
     for i, r in enumerate(rr):
+        st = r['time'] - int(r['record_i'] * straxen.NVETO_RECORD_LENGTH * r['dt'])
+        et = r['time'] + int(r['pulse_length'] * r['dt'])
 
-        t = r['time']
         # check if raw record is in any interval
-        which_interval = (start_times <= t) & (t < end_times)
+        which_interval = (start_times <= st) & (st < end_times) | (start_times <= et) & (et < end_times)
         if np.any(which_interval):
-            # Get index of the interval
-            index = index_interval[which_interval]
             # tag as to be stored:
             in_window[i] = 1
-
-            # We have to check if higher fragments of the event would be outside of theinterval
-            # if yes extend interval accordingly:
-            # Note: When extending the window it may happen, that two intervals start to overlap
-            # again. Since we only care if an event falls into any interval we only have to make sure
-            # that the highest order interval would be extended if needed.
-            t = t + np.int64(r['pulse_length'] * r['dt'])
-            end_times[index] = max([end_times[index][-1], t])
 
     return in_window
 
