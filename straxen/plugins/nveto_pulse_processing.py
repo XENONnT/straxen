@@ -32,30 +32,30 @@ class nVETOPulseProcessing(strax.Plugin):
     rechunk_on_save = False
     compressor = 'lz4'
 
-    depends_on = 'nveto_records'
+    depends_on = 'nveto_raw_records'
 
-    provides = 'nveto_pulses'
+    provides = 'nveto_records'
     dtype = nveto_pulses_dtype  # Might be the same as records.
 
     def setup(self):
         self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
 
-    def compute(self, nveto_records):
+    def compute(self, nveto_raw_records):
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
-        strax.zero_out_of_bounds(nveto_records)
+        strax.zero_out_of_bounds(nveto_raw_records)
 
-        hits = strax.find_hits(nveto_records, threshold=self.hit_thresholds)
+        hits = strax.find_hits(nveto_raw_records, threshold=self.hit_thresholds)
 
         le, re = self.config['nveto_save_outside_hits']
-        nveto_pulses = strax.cut_outside_hits(nveto_records, hits, left_extension=le, right_extension=re)
+        nveto_records = strax.cut_outside_hits(nveto_raw_records, hits, left_extension=le, right_extension=re)
 
         # Probably overkill, but just to be sure...
-        strax.zero_out_of_bounds(nveto_pulses)
+        strax.zero_out_of_bounds(nveto_records)
 
         # Deleting empty data:
-        nveto_pulses = _del_empty(nveto_pulses, 1)
-        return dict(nveto_pulses=nveto_pulses)
+        nveto_records = _del_empty(nveto_records, 1)
+        return dict(nveto_records=nveto_records)
 
 
 
@@ -96,7 +96,8 @@ class nVETOPulseBasics(strax.Plugin):
 
     def compute(self, nveto_pulses):
 
-        # 1. Checking for htis again:
+
+
         hits = strax.find_hits(nveto_pulses, threshold=self.hit_thresholds)
 
         # 2. Getting the record data of each hit:

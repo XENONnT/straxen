@@ -33,7 +33,6 @@ n_tpc_pmts = 248
 NVETO_RECORD_LENGTH = 150
 
 
-
 @export
 def pmt_positions():
     """Return pandas dataframe with PMT positions
