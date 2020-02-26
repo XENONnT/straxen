@@ -1,6 +1,6 @@
 '''
 Dear nT analyser, 
-if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch
+if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
 '''
 
 import strax
@@ -17,7 +17,7 @@ from numba import njit
 
 @strax.takes_config(
     strax.Option('led_window',
-                 default=(150, 275),
+                 default=(130, 175),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
                  default=(0, 125),
@@ -39,7 +39,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     '''
     
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
     depends_on = ('raw_records',)
     # Options below copied from other plugins, need to be reviewed by an expert
     data_kind = 'led_cal' 
@@ -47,7 +47,7 @@ class LEDCalibration(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = False
     
-    dtype = [('area', np.int32, 'Area averaged in integration windows'),
+    dtype = [('area', np.float64, 'Area averaged in integration windows'),
              ('amplitude_led', np.int32, 'Amplitude in LED window'),
              ('amplitude_noise', np.int32, 'Amplitude in off LED window'),
              ('channel', np.int16, 'Channel'),
@@ -71,7 +71,7 @@ class LEDCalibration(strax.Plugin):
         temp['amplitude_led'] = on['amplitude_led']
         temp['amplitude_noise'] = off['amplitude_noise']
 
-        area = get_area(r, self.config['led_window'])
+        area = get_area(r, self.config['led_window'], self.config['noise_window'])
         temp['area'] = area['area']
 
         
@@ -95,7 +95,7 @@ def get_amplitude(raw_records, led_window, noise_window):
         off['channel'][i] = r['channel']
     return on, off
 
-def get_area(raw_records, led_window):
+def get_area(raw_records, led_window, noise_window):
     '''
     Needed for the gain computation.
     Sum the data in the defined window to get the area.
@@ -104,9 +104,13 @@ def get_area(raw_records, led_window):
     left = led_window[0]
     end_pos = [led_window[1]+2*i for i in range(6)]
 
-    Area = np.zeros((len(raw_records)), dtype=[('channel','int16'),('area','float32')])
+    left_noise  = noise_window[0]
+    right_noise = noise_window[-1]
+    
+    Area = np.zeros((len(raw_records)), dtype=[('channel','int16'),('area','float64')])
     for right in end_pos:
         Area['area'] += raw_records['data'][:, left:right].sum(axis=1)
+        Area['area'] -= float(right-left)*raw_records['data'][:, left_noise:right_noise].sum(axis=1)/(right_noise-left_noise)
     Area['channel'] = raw_records['channel']
     Area['area'] = Area['area']/float(len(end_pos))
         
