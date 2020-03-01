@@ -31,11 +31,11 @@ parser.add_argument('--realtime', action='store_true',
 parser.add_argument('--shm', action='store_true',
                     help='Operate in /dev/shm')
 parser.add_argument('--chunk_duration', default=2., type=float,
-                    help='Chunk size in sec')
+                    help='Chunk size in sec (not ns)')
 parser.add_argument('--stop_after', default=float('inf'), type=float,
                     help='Stop after this much MB written/loaded in')
 parser.add_argument('--sync_chunk_duration', default=0.2, type=float,
-                    help='Synchronization chunk size in sec')
+                    help='Synchronization chunk size in sec (not ns)')
 args = parser.parse_args()
 
 n_readout_threads = 8
@@ -69,8 +69,10 @@ def main():
     run_md.setdefault('strax_defaults', dict())
     run_md['strax_defaults']['n_readout_threads'] = n_readout_threads
     run_md['strax_defaults']['compressor'] = args.compressor
-    st2.storage[0].write_run_metadata(output_run,run_md)
+    st2.storage[0].write_run_metadata(output_run, run_md)
     del st2
+
+    run_start = int(int(1e9) * int(run_md['start'].timestamp()))
 
     if args.rate:
         print("Preparing payload data: slurping into memory")
@@ -80,25 +82,38 @@ def main():
     time_offset = int(time.time()) * int(1e9)
     time_offset = 10 * (time_offset // 10)   # Start on an whole sample
 
-    for chunk_i, records in enumerate(
-            strax.alternating_duration_chunks(
-                st.get_iter(args.input_run, 'raw_records'),
-                args.chunk_duration * int(1e9),
-                args.sync_chunk_duration * int(1e9))):
+    source = st.get_iter(args.input_run, 'raw_records')
+    buffer: strax.Chunk = next(source)
+    payload_t_start = payload_t_end = buffer.start
+    input_exhausted = False
+
+    chunk_i = -1
+    while len(buffer) or not input_exhausted:
+        chunk_i += 1
+        desired_end = (
+            payload_t_end   # endtime of last chunk
+            + int(int(1e9) * (args.sync_chunk_duration if chunk_i % 2
+                              else args.chunk_duration)))
+        while buffer.end < desired_end:
+            try:
+                buffer = strax.Chunk.concatenate([buffer, next(source)])
+            except StopIteration:
+                input_exhausted = True
+                break
         t_0 = time.time()
 
-        if chunk_i == 0:
-            payload_t_start = records[0]['time']
-        payload_t_end = records[-1]['time']
+        # NB: this is not a regular strax chunk split!
+        keep = buffer.data['time'] < desired_end
+        records = buffer.data[keep]
+        buffer.data = buffer.data[~keep]
+        buffer.start = 0  # We don't use buffer.start anymore, fortunately
+        payload_t_end = desired_end
 
         # Restore baseline, clear metadata, fix time
+        # We have to copy the array to avoid readonly errors
+        # (not sure why?)
         restore_baseline(records)
-        records['baseline'] = 0
-        records['area'] = 0
-        if args.realtime:
-            # Simulate live DAQ
-            records['time'] += time_offset - payload_t_start
-
+        records['time'] = records['time'] - run_start
         assert np.all(records['time'] % 10 == 0)
 
         chunk_sizes.append(records.nbytes)
