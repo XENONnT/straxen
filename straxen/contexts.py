@@ -24,7 +24,7 @@ def demo():
     straxen.download_test_data()
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
-                     strax.DataDirectory('./strax_test_data')],
+                     strax.DataDirectory('./strax_test_data', readonly=True)],
             register=straxen.RecordsFromPax,
             forbid_creation_of=('raw_records',),
             **common_opts)
@@ -59,5 +59,7 @@ def fake_daq():
                  # Fake DAQ puts run doc JSON in same folder:
                  strax.DataDirectory('./from_fake_daq',
                                      readonly=True)],
-        config=dict(input_dir='./from_fake_daq'),
+        config=dict(daq_input_dir='./from_fake_daq',
+                    daq_chunk_duration=int(2e9),
+                    daq_overlap_chunk_duration=int(2e8)),
         **common_opts)

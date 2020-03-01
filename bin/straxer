@@ -105,9 +105,15 @@ if st.is_stored(args.run_id, args.target):
     sys.exit(1)
     
 md = st.run_metadata(args.run_id)
+t_start = md['start'].timestamp()
 t_end = md['end'].timestamp()
+run_duration = t_end - t_start
+clock_start = time.time()
+
+st.config['run_start_time'] = md['start'].timestamp()
 
 process = psutil.Process(os.getpid())
+
 
 def get_results():
     kwargs = dict(
@@ -123,21 +129,6 @@ def get_results():
 
 
 for i, d in enumerate(get_results()):
-    if i == 0:
-        print(f"Received first result: {len(d)} events.", 
-              flush=True)
-        
-        # Compute remaining run duration
-        if len(d):
-            t_start = d['time'].max() / 1e9
-        else:
-            t_start = md['start'].timestamp()
-        run_duration = t_end - t_start
-        
-        # Start the clock for ETA measurements
-        clock_start = time.time()
-        continue
-
     mem_mb = process.memory_info().rss / 1e6
 
     if not len(d):
@@ -145,7 +136,7 @@ for i, d in enumerate(get_results()):
         continue
 
     # Compute detector/data time left
-    t = d['time'].max() / 1e9
+    t = d.end / 1e9
     dt = t - t_start
     time_left = t_end - t
     
