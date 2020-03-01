@@ -113,7 +113,8 @@ class EventBasics(strax.LoopPlugin):
 
     def compute_loop(self, event, peaks):
         result = dict(n_peaks=len(peaks),
-                      time=event['time'])
+                      time=event['time'],
+                      endtime=strax.endtime(event))
         if not len(peaks):
             return result
 

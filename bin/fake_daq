@@ -79,8 +79,6 @@ def main():
 
     chunk_sizes = []
     chunk_data_compressed = []
-    time_offset = int(time.time()) * int(1e9)
-    time_offset = 10 * (time_offset // 10)   # Start on an whole sample
 
     source = st.get_iter(args.input_run, 'raw_records')
     buffer: strax.Chunk = next(source)
