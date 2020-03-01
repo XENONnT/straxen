@@ -21,18 +21,27 @@ def main():
         default='.',
         help="Folder with raw_records folders.")
     parser.add_argument(
+        '--xnt',
+        action='store_true',
+        help="Set if records came from the DAQReader, not RecordsFromPax")
+    parser.add_argument(
         'run_id',
         help="run_id to convert")
     args = parser.parse_args()
     run_id = args.run_id
     parent_folder = args.parent_folder
 
-    st = straxen.contexts.demo()
-    st.storage = [strax.DataDirectory(
-        parent_folder,
-        # We WILL overwrite your data
-        # just not through the usual means:
-        readonly=True)]
+    st = strax.Context(
+        storage=[strax.DataDirectory(
+            parent_folder,
+            # We WILL overwrite your data
+            # just not through the usual means:
+            readonly=True)],
+        **straxen.contexts.common_opts)
+    if args.xnt:
+        st.register(straxen.DAQReader)
+    else:
+        st.register(straxen.RecordsFromPax)
 
     # Get all metadata
     run_md = st.run_metadata(run_id)
@@ -90,8 +99,14 @@ def main():
             filename,
             dtype=dtype, 
             compressor=md['compressor'])
+
         new_rr = np.zeros(len(rr), dtype=strax.raw_record_dtype(record_length))
         strax.copy_raw_records(rr, new_rr)
+        if 'baseline' in rr.dtype.fields:
+            # Undo baselining
+            new_rr['data'] = rr['baseline'][:, np.newaxis] - rr['data']
+            strax.zero_out_of_bounds(new_rr)
+
         c['nbytes'] = new_rr.nbytes
         c['filesize'] = strax.save_file(
             filename,

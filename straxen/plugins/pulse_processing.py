@@ -2,11 +2,8 @@ import numba
 import numpy as np
 
 import strax
-from straxen import get_to_pe
+import straxen
 export, __all__ = strax.exporter()
-
-# Number of TPC PMTs. Hardcoded for now...
-n_tpc = 248
 
 
 @export
@@ -15,6 +12,11 @@ n_tpc = 248
         'to_pe_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',    # noqa
         help='URL of the to_pe conversion factors'),
+    strax.Option(
+        'baseline_samples',
+        default=40,
+        help='Number of samples to use at the start of the pulse to determine '
+             'the baseline'),
 
     # Tail veto options
     strax.Option(
@@ -56,7 +58,17 @@ n_tpc = 248
     strax.Option(
         'hit_threshold',
         default=15,
-        help='Hitfinder threshold in ADC counts above baseline')
+        help='Hitfinder threshold in ADC counts above baseline'),
+
+    strax.Option(
+        'n_tpc_pmts',
+        default=straxen.n_tpc_pmts,
+        help='Number of TPC PMTs'),
+    strax.Option(
+        'n_diagnostic_pmts',
+        default=254 - 248,
+        help='Number of diagnostic PMTs'),
+
 )
 class PulseProcessing(strax.Plugin):
     """
@@ -64,14 +76,13 @@ class PulseProcessing(strax.Plugin):
      - tpc_records
      - diagnostic_records
      - aqmon_records
-    Perhaps this should be done by DAQreader in the future
 
     For TPC records, apply basic processing:
-
+    1. Flip, baseline, and integrate the waveform
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.1.0'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -85,38 +96,45 @@ class PulseProcessing(strax.Plugin):
 
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records
-        rr_dtype = self.deps['raw_records'].dtype_for('raw_records')
-        record_length = len(np.zeros(1, rr_dtype)[0]['data'])
+        self.record_length = strax.record_length_from_dtype(
+            self.deps['raw_records'].dtype_for('raw_records'))
 
         dtype = dict()
         for p in self.provides:
-            if p.endswith('records'):
-                dtype[p] = strax.record_dtype(record_length)
-
+            if p.endswith('_records'):
+                dtype[p] = strax.raw_record_dtype(self.record_length)
+        dtype['records'] = strax.record_dtype(self.record_length)
         dtype['veto_regions'] = strax.hit_dtype
-        dtype['pulse_counts'] = pulse_count_dtype(n_tpc)
+        dtype['pulse_counts'] = pulse_count_dtype(self.config['n_tpc_pmts'])
 
         return dtype
 
     def setup(self):
-        self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, raw_records):
+        # Split off non-TPC records
+        r, other = channel_split(raw_records, self.config['n_tpc_pmts'])
+        diagnostic_records, aqmon_records = channel_split(
+            other,
+            self.config['n_tpc_pmts'] + self.config['n_diagnostic_pmts'])
+        # From here on we only work on TPC records
+
+        r = strax.raw_to_records(r)
+
+        strax.baseline(r,
+                       baseline_samples=self.config['baseline_samples'],
+                       flip=True)
+
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
+        # TODO: better to throw an error if something is nonzero
         strax.zero_out_of_bounds(raw_records)
 
-        ##
-        # Split off non-TPC records and count TPC pulses
-        # (perhaps we should migrate this to DAQRreader in the future)
-        ##
-        r, other = channel_split(raw_records, n_tpc)
-        pulse_counts = count_pulses(r, n_tpc)
-        diagnostic_records, aqmon_records = channel_split(other, 254)
+        strax.integrate(r)
 
-        ##
-        # Process the TPC records
-        ##
+        pulse_counts = count_pulses(r, self.config['n_tpc_pmts'])
+
         if self.config['tail_veto_threshold'] and len(r):
             r, r_vetoed, veto_regions = software_he_veto(
                 r, self.to_pe,
