@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+
+import argparse
+from ast import literal_eval
+import json
+import os
+import os.path as osp
+
+import numpy as np
+from tqdm import tqdm
+
+import strax
+import straxen
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Refresh strax raw_records created with < v0.9.0')
+    parser.add_argument(
+        '--parent_folder',
+        default='.',
+        help="Folder with raw_records folders.")
+    parser.add_argument(
+        'run_id',
+        help="run_id to convert")
+    args = parser.parse_args()
+    run_id = args.run_id
+    parent_folder = args.parent_folder
+
+    st = straxen.contexts.demo()
+    st.storage = [strax.DataDirectory(
+        parent_folder,
+        # We WILL overwrite your data
+        # just not through the usual means:
+        readonly=True)]
+
+    # Get all metadata
+    run_md = st.run_metadata(run_id)
+    folder = st.storage[0].find(st.key_for(run_id, 'raw_records'),
+                                fuzzy_for='raw_records')[1]
+    md = st.get_metadata(run_id, 'raw_records')
+    metadata_fn = os.path.join(
+        folder,
+        strax.dirname_to_prefix(folder) + '-metadata.json')
+    assert osp.exists(metadata_fn)
+
+    dtype = np.dtype(literal_eval(md['dtype']))
+    record_length = strax.record_length_from_dtype(dtype)
+    run_start, run_end = [
+        int(x.timestamp()) * int(1e9)
+        for x in [run_md['start'], run_md['end']]]
+
+    ##
+    # Compute chunk start and end times
+    ##
+    if not len(md['chunks']):
+        raise ValueError("Cannot convert data: no chunks!")
+    if 'start' in md['chunks'][0]:
+        print("This data already has chunk start/end times")
+        starts, ends = np.array([[c['start'], c['end']]
+                                 for c in md['chunks']]).T
+
+    else:
+        print("Estimating chunk start / end times from data")
+        starts, ends = np.array([[c['first_time'], c['last_endtime']]
+                                 for c in md['chunks']]).T
+
+        # Start of next chunk >= stop of previous chunk
+        if np.any(starts[1:] < ends[:-1]):
+            raise ValueError("Cannot convert data: chunk boundaries overlap")
+
+        if starts[0] < run_start:
+            raise ValueError("Cannot convert data: data starts earlier than run")
+
+        if ends[-1] > run_end:
+            raise ValueError("Cannot convert data: data ends later than run")
+
+        midpoints = (ends[:-1] + starts[1:])//2
+
+        starts = np.concatenate([[run_start], midpoints])
+        ends = np.concatenate([midpoints, [run_end]])
+
+    ## 
+    # Do actual conversion
+    ##
+    for i, c in enumerate(tqdm(md['chunks'], 
+                               desc=f'Converting raw_records for {run_id}')):
+        filename = osp.join(folder, c['filename'])
+        rr = strax.load_file(
+            filename,
+            dtype=dtype, 
+            compressor=md['compressor'])
+        new_rr = np.zeros(len(rr), dtype=strax.raw_record_dtype(record_length))
+        strax.copy_raw_records(rr, new_rr)
+        c['nbytes'] = new_rr.nbytes
+        c['filesize'] = strax.save_file(
+            filename,
+            new_rr,
+            compressor=md['compressor'])
+
+    ##
+    # Set and write out new metadata
+    ##
+    for i, c in enumerate(md['chunks']):
+        c['start'] = starts[i]
+        c['end'] = ends[i]
+        c['run_id'] = run_id
+
+    md['start'] = starts[0]
+    md['end'] = ends[0]
+    md['data_kind'] = 'raw_records'
+    md['converted_from_old_strax'] = md['strax_version']
+    md['strax_version'] = strax.__version__
+    md['dtype'] = np.dtype(strax.raw_record_dtype(record_length)).descr.__repr__()
+
+    with open(metadata_fn, mode='w') as f:
+        f.write(json.dumps(md, 
+                           sort_keys=True, 
+                           indent=4, 
+                           cls=strax.NumpyJSONEncoder))
+
+
+if __name__ == '__main__':
+    main()
