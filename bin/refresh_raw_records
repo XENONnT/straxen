@@ -21,6 +21,11 @@ def main():
         default='.',
         help="Folder with raw_records folders.")
     parser.add_argument(
+        '--no_run_metadata',
+        action='store_true',
+        help='Refresh even if you have lost the run metadata. '
+             'Some useful sanity checks will be disabled.')
+    parser.add_argument(
         '--xnt',
         action='store_true',
         help="Set if records came from the DAQReader, not RecordsFromPax")
@@ -44,7 +49,6 @@ def main():
         st.register(straxen.RecordsFromPax)
 
     # Get all metadata
-    run_md = st.run_metadata(run_id)
     folder = st.storage[0].find(st.key_for(run_id, 'raw_records'),
                                 fuzzy_for='raw_records')[1]
     md = st.get_metadata(run_id, 'raw_records')
@@ -52,12 +56,16 @@ def main():
         folder,
         strax.dirname_to_prefix(folder) + '-metadata.json')
     assert osp.exists(metadata_fn)
-
     dtype = np.dtype(literal_eval(md['dtype']))
     record_length = strax.record_length_from_dtype(dtype)
-    run_start, run_end = [
-        int(x.timestamp()) * int(1e9)
-        for x in [run_md['start'], run_md['end']]]
+
+    if not args.no_run_metadata:
+        run_md = st.run_metadata(run_id)
+        run_start, run_end = [
+            int(x.timestamp()) * int(1e9)
+            for x in [run_md['start'], run_md['end']]]
+    else:
+        run_start, run_end = None, None
 
     ##
     # Compute chunk start and end times
@@ -78,11 +86,16 @@ def main():
         if np.any(starts[1:] < ends[:-1]):
             raise ValueError("Cannot convert data: chunk boundaries overlap")
 
-        if starts[0] < run_start:
-            raise ValueError("Cannot convert data: data starts earlier than run")
+        if args.no_run_metadata:
+            # Hack to allow conversion even without run metadata
+            run_start = starts[0]
+            run_end = ends[-1]
 
-        if ends[-1] > run_end:
-            raise ValueError("Cannot convert data: data ends later than run")
+        else:
+            if starts[0] < run_start:
+                raise ValueError("Cannot convert data: data starts earlier than run")
+            if ends[-1] > run_end:
+                raise ValueError("Cannot convert data: data ends later than run")
 
         midpoints = (ends[:-1] + starts[1:])//2
 
@@ -123,6 +136,7 @@ def main():
 
     md['start'] = starts[0]
     md['end'] = ends[0]
+    md['run_id'] = run_id
     md['data_kind'] = 'raw_records'
     md['converted_from_old_strax'] = md['strax_version']
     md['strax_version'] = strax.__version__
