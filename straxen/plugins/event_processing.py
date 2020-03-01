@@ -68,7 +68,7 @@ class Events(strax.OverlapWindowPlugin):
 
 @export
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.1.2'
+    __version__ = '0.3.0'
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
@@ -107,11 +107,13 @@ class EventBasics(strax.LoopPlugin):
                    'Main S2 reconstructed X position, uncorrected [cm]',),
                   ('y_s2', np.float32,
                    'Main S2 reconstructed Y position, uncorrected [cm]',)]
+        dtype += strax.time_fields
 
         return dtype
 
     def compute_loop(self, event, peaks):
-        result = dict(n_peaks=len(peaks))
+        result = dict(n_peaks=len(peaks),
+                      time=event['time'])
         if not len(peaks):
             return result
 
@@ -183,6 +185,8 @@ class EventBasics(strax.LoopPlugin):
             (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
 )
 class EventPositions(strax.Plugin):
+    __version__ = '0.1.0'
+
     depends_on = ('event_basics',)
     dtype = [
         ('x', np.float32,
@@ -200,7 +204,8 @@ class EventPositions(strax.Plugin):
         ('r_field_distortion_correction', np.float32,
          'Correction added to r_naive for field distortion (cm)'),
         ('theta', np.float32,
-         'Interaction angular position (radians)')]
+         'Interaction angular position (radians)')
+    ] + strax.time_fields
 
     def setup(self):
         self.map = InterpolatingMap(
@@ -217,7 +222,9 @@ class EventPositions(strax.Plugin):
             r_cor = r_obs + delta_r
             scale = r_cor / r_obs
 
-        result = dict(x=orig_pos[:, 0] * scale,
+        result = dict(time=events['time'],
+                      endtime=strax.endtime(events),
+                      x=orig_pos[:, 0] * scale,
                       y=orig_pos[:, 1] * scale,
                       r=r_cor,
                       z_naive=z_obs,
@@ -252,9 +259,12 @@ class EventPositions(strax.Plugin):
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
         help='link to the electron lifetime'))
 class CorrectedAreas(strax.Plugin):
+    __version__ = '0.1.0'
+
     depends_on = ['event_basics', 'event_positions']
     dtype = [('cs1', np.float32, 'Corrected S1 area (PE)'),
-             ('cs2', np.float32, 'Corrected S2 area (PE)')]
+             ('cs2', np.float32, 'Corrected S2 area (PE)')
+             ] + strax.time_fields
 
     def setup(self):
         self.s1_map = InterpolatingMap(
@@ -270,6 +280,8 @@ class CorrectedAreas(strax.Plugin):
             events['drift_time'] / self.elife)
 
         return dict(
+            time=events['time'],
+            endtime=strax.endtime(events),
             cs1=events['s1_area'] / self.s1_map(event_positions),
             cs2=events['s2_area'] * lifetime_corr / self.s2_map(s2_positions))
 
@@ -291,19 +303,22 @@ class CorrectedAreas(strax.Plugin):
         default=13.7e-3),
 )
 class EnergyEstimates(strax.Plugin):
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
     depends_on = ['corrected_areas']
     dtype = [
         ('e_light', np.float32, 'Energy in light signal [keVee]'),
         ('e_charge', np.float32, 'Energy in charge signal [keVee]'),
-        ('e_ces', np.float32, 'Energy estimate [keVee]')]
+        ('e_ces', np.float32, 'Energy estimate [keVee]')
+    ] + strax.time_fields
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])
         ec = self.cs2_to_e(events['cs2'])
         return dict(e_light=el,
                     e_charge=ec,
-                    e_ces=el + ec)
+                    e_ces=el + ec,
+                    time=events['time'],
+                    endtime=strax.endtime(events))
 
     def cs1_to_e(self, x):
         return self.config['lxe_w'] * x / self.config['g1']
