@@ -60,7 +60,7 @@ class DAQReader(strax.Plugin):
 
 
     def infer_dtype(self):
-        return strax.record_dtype(
+        return strax.raw_record_dtype(
             samples_per_record=self.config["record_length"])
 
     def setup(self):
