@@ -22,7 +22,10 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + [
-                     'tensorflow', 'pytest', 'hypothesis', 'boltons'],
+                     'tensorflow>=2.1',
+                     'pytest',
+                     'hypothesis',
+                     'boltons'],
                  python_requires=">=3.6",
                  extras_require={
                      'docs': ['sphinx',
