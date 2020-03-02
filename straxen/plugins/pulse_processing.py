@@ -56,9 +56,9 @@ export, __all__ = strax.exporter()
         help='Save (left, right) samples besides hits; cut the rest'),
 
     strax.Option(
-        'hit_threshold',
+        'hit_min_amplitude',
         default=15,
-        help='Hitfinder threshold in ADC counts above baseline'),
+        help='Minimum hit amplitude in ADC counts above baseline'),
 
     strax.Option(
         'n_tpc_pmts',
@@ -154,7 +154,9 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(r, threshold=self.config['hit_threshold'])
+            hits = strax.find_hits(
+                r,
+                min_amplitude=self.config['hit_min_amplitude'])
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
@@ -235,7 +237,6 @@ def software_he_veto(records, to_pe,
         right_extension=veto_length,
         left_extension=veto_res)
     veto_end = veto_end.clip(0, strax.endtime(records[-1]))
-    veto_length = veto_end - veto_start
     # dtype is like record (since we want to use hitfiding etc)
     # but with float32 waveform
     regions = np.zeros(
@@ -243,13 +244,14 @@ def software_he_veto(records, to_pe,
         dtype=strax.interval_dtype + [
             ("data", (np.float32, veto_n)),
             ("baseline", np.float32),
+            ("baseline_rms", np.float32),
             ("reduction_level", np.int64),
             ("record_i", np.int64),
             ("pulse_length", np.int64),
         ])
     regions['time'] = veto_start
-    regions['length'] = veto_length
-    regions['pulse_length'] = veto_length
+    regions['length'] = veto_n
+    regions['pulse_length'] = veto_n
     regions['dt'] = veto_res
 
     if not len(regions):
@@ -261,7 +263,8 @@ def software_he_veto(records, to_pe,
     # without looping over the pulse data)
     rough_sum(regions, records, to_pe, veto_n, veto_res)
     regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
-    pass_veto = strax.find_hits(regions, threshold=pass_veto_fraction)
+
+    pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
 
     # 4. Extend these by a few samples and inverse to find veto regions
     regions['data'] = 1
@@ -271,7 +274,7 @@ def software_he_veto(records, to_pe,
         left_extension=pass_veto_extend,
         right_extension=pass_veto_extend)
     regions['data'] = 1 - regions['data']
-    veto = strax.find_hits(regions, threshold=0.5)
+    veto = strax.find_hits(regions, min_amplitude=1)
     # Do not remove very tiny regions
     veto = veto[veto['length'] > 2 * pass_veto_extend]
 
