@@ -168,8 +168,10 @@ class PeakletClassification(strax.Plugin):
     provides = 'peaklet_classification'
     depends_on = ('peaklets',)
     parallel = True
-    dtype = [('type', np.int8, 'Classification of the peak(let)')]
-    __version__ = '0.1.0'
+    dtype = (
+        strax.interval_dtype +
+        [('type', np.int8, 'Classification of the peak(let)'),])
+    __version__ = '0.2.0'
 
     def compute(self, peaklets):
         peaks = peaklets
@@ -192,7 +194,15 @@ class PeakletClassification(strax.Plugin):
         is_s2[is_s1] = False
         ptype[is_s2] = 2
 
-        return dict(type=ptype)
+        return dict(type=ptype,
+                    time=peaklets['time'],
+                    dt=peaklets['dt'],
+                    # Channel is added so the field order of the merger of
+                    # peaklet_classification and peaklets matches that
+                    # of peaklets.
+                    # This way S2 merging works on arrays of the same dtype.
+                    channel=-1,
+                    length=peaklets['length'])
 
 
 FAKE_MERGED_S2_TYPE = -42
@@ -214,7 +224,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     provides = 'merged_s2s'
 
     def infer_dtype(self):
-        return self.deps['peaklets'].dtype_for('peaklets')
+        return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
         return 5 * (self.config['s2_merge_max_gap']
@@ -250,18 +260,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s['type'] = 2
             strax.compute_widths(merged_s2s)
 
-        if len(merged_s2s) == 0:
-            # Strax does not handle the case of no merged S2s well
-            # If there are none in the entire dataset, it will just keep
-            # waiting in Peaks forever.
-            # Thus, this ugly hack of passing a single fake merged S2
-            # in the middle of the chunk, which is removed later
-            merged_s2s = np.zeros(1, merged_s2s.dtype)
-            q = merged_s2s[0]
-            q['type'] = FAKE_MERGED_S2_TYPE
-            q['time'] = (peaklets[0]['time']
-                         + strax.endtime(peaklets[0])) / 2
-            q['dt'] = 1
         return merged_s2s
 
     @staticmethod

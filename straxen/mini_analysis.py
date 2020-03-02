@@ -90,7 +90,7 @@ def mini_analysis(requires=tuple(),
             # Load required data, if any
             if len(requires):
                 deps_by_kind = strax.group_by_kind(
-                    requires, context=context, require_time=False)
+                    requires, context=context)
                 for dkind, dtypes in deps_by_kind.items():
                     if dkind in kwargs:
                         # Already have data, just apply cuts
