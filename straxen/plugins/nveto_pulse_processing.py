@@ -124,17 +124,19 @@ class nVETOPulseEdges(strax.Plugin):
         return dict(nveto_pulses=nveto_pulses)
 
 
-@export
-def nveto_pulses_dtype(n_widths=11):
+def nveto_pulses_dtype():
     return [
         (('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
         (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
         (('Channel/PMT number', 'channel'), np.int16),
         (('Time resolution in ns', 'dt'), np.int16),
-        (('Area of the PMT pulse in pe', 'area'), np.float64),
-        (('Maximum of the PMT pulse in pe/sample', 'height'), np.float64),
-        (('Position of the maximum in (ns since unix epoch)', 'amp_time'), np.float64),
-        (('Width of the PMT pulse in ns', 'width'), np.float64),
+        (('Area of the PMT pulse in pe', 'area'), np.float32),
+        (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
+        (('Position of the maximum in (ns since unix epoch)', 'amp_time'), np.int64),
+        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
+        (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
+        (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
+        (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
         (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int8),
     ]
 
