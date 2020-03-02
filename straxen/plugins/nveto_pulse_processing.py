@@ -134,8 +134,8 @@ def nveto_pulses_dtype(n_widths=11):
         (('Area of the PMT pulse in pe', 'area'), np.float64),
         (('Maximum of the PMT pulse in pe/sample', 'height'), np.float64),
         (('Position of the maximum in (ns since unix epoch)', 'amp_time'), np.float64),
-        (('Width of the PMT pulse in ns', 'width'), np.float64, n_widths),
-        (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int16),
+        (('Width of the PMT pulse in ns', 'width'), np.float64),
+        (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int8),
     ]
 
 
@@ -229,6 +229,9 @@ def get_pulse_data(nveto_records, hit, start_index=0):
     Searches in a given nveto_record data_chunk for the data a
     specified hit.
 
+    The function will set all samples for which no data can be found
+    to -42000..
+
     Args:
         nveto_records (np.array): Array of the nveto_record_dtype
         hit (np.array): Hit from which the data shall be returned.
@@ -242,6 +245,7 @@ def get_pulse_data(nveto_records, hit, start_index=0):
     Returns:
         np.array: Data of the corresponding hit.
         int: Next start index.
+        float: Float part of the baseline for the given event.
 
     Notes:
         For the usage of start_index function assumes nveto_records are
@@ -258,10 +262,11 @@ def get_pulse_data(nveto_records, hit, start_index=0):
 
     # Init a buffer containing the data:
     nsamples = (hit_end_time - hit_start_time) // nveto_records[0]['dt']
-    res = np.zeros(nsamples, dtype=np.int16)
+    res = np.zeros(nsamples, dtype=np.float32)
 
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
         nvr_start_time = nvr['time']
+        nvr_baseline = nvr['baseline'] % 1
         nvr_length_time = int(nvr['length'] * nvr['dt'])
         nvr_end_time = nvr_start_time + nvr_length_time
         dt = (hit_start_time - nvr_start_time)
@@ -276,11 +281,11 @@ def get_pulse_data(nveto_records, hit, start_index=0):
         # We found the start of our event:
         if dt <= nvr_length_time:
             if dt < 0:
-                # If this happend our hit should have been in an earlier
+                # If this happens our data or parts of it should have been in an earlier
                 # record.
-                # TODO: should we through an error here?
-                res[:] = -42
-                return res, 0
+                # TODO: should we throw an error here?
+                res[:] = -42000.
+                return res, 0, 0.
 
             found_start = True
             start_sample = (hit_start_time - nvr_start_time) // nvr['dt']
@@ -297,7 +302,7 @@ def get_pulse_data(nveto_records, hit, start_index=0):
             hit_start_time = nvr_end_time
 
         if res_start == nsamples:
-            return res, start_index
+            return res, start_index, nvr_baseline
 
 
 @strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
@@ -338,6 +343,7 @@ def split_pulses(records, pulses, min_height=25, min_ratio=0, _result_buffer=Non
             res['time'] = edges_times[ind]
             res['endtime'] = edges_times[ind + 1]
             res['channel'] = pulse['channel']
+            # TODO: split_i is wrong.
             if nedges:
                 res['split_i'] = ind + 1
             else:
@@ -348,7 +354,7 @@ def split_pulses(records, pulses, min_height=25, min_ratio=0, _result_buffer=Non
     yield offset
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def _split_pulse(data, edges, min_height=25, min_ratio=0):
     """
     Function which splits the PMT pulses if necessary.
@@ -427,14 +433,6 @@ def find_split_points(w, min_height=0, min_ratio=0):
         'nveto_to_pe_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',    # noqa
         help='URL of the to_pe conversion factors'),
-    strax.Option(
-        'nveto_adc_thresholds',
-        default='',
-        help='File containing the channel individual hit_finder thresholds.'),
-    strax.Option(
-        'nveto_save_outside_hits',
-        default=(3, 15),
-        help='Save (left, right) samples besides hits; cut the rest'),
 )
 class nVETOPulseBasics(strax.Plugin):
     """
@@ -446,27 +444,15 @@ class nVETOPulseBasics(strax.Plugin):
     rechunk_on_save = False
     compressor = 'lz4'
 
-    depends_on = 'nveto_pulses'
+    depends_on = ('nveto_pulses', 'nveto_records')
 
     provides = 'nveto_pulse_basics'
-    dtype = nveto_pulse_basic_dtype
+    dtype = straxen.nveto_pulses()
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
-        self.hit_thresholds = strax.get_resource(self.config['adc_thresholds'], fmt='npy')
-
 
     def compute(self, nveto_pulses):
 
-
-
-        hits = strax.find_hits(nveto_pulses, threshold=self.hit_thresholds)
-
-        # 2. Getting the record data of each hit:
-
-
-        # Check if hits can be split:
-
-        # Comupte basic properties of the PMT pulses:
 
         return dict(nveto_pulse_basics=npb)
