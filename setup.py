@@ -22,7 +22,7 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + [
-                     'tensorflow>=2.1',
+                     'tensorflow',
                      'pytest',
                      'hypothesis',
                      'boltons'],
