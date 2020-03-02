@@ -46,7 +46,12 @@ export, __all__ = strax.exporter()
                       "a hit a tight coincidence (ns)"),
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
-                      "a hit a tight coincidence (ns)"))
+                      "a hit a tight coincidence (ns)"),
+    strax.Option(
+        'hit_min_amplitude',
+        default=straxen.adc_thresholds(),
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number.'))
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
@@ -68,7 +73,8 @@ class Peaklets(strax.Plugin):
     def compute(self, records):
         r = records
 
-        hits = strax.find_hits(r)
+        hits = strax.find_hits(r,
+                               min_amplitude=self.config['hit_min_amplitude'])
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!

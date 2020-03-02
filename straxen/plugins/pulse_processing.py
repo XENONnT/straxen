@@ -57,8 +57,9 @@ export, __all__ = strax.exporter()
 
     strax.Option(
         'hit_min_amplitude',
-        default=15,
-        help='Minimum hit amplitude in ADC counts above baseline'),
+        default=straxen.adc_thresholds(),
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number.'),
 
     strax.Option(
         'n_tpc_pmts',
