@@ -26,7 +26,6 @@ class nVETORecorder(strax.Plugin):
     parallel = 'process'
 
     # TODO: Check the following two parameters in strax:
-    # TODO: In the current version it could be, that fragment 0 gets cut by the coincidence.
     rechunk_on_save = False  # same as in tpc pulse_processing
     compressor = 'zstd'  # same as in tpc pulse_processing
 
@@ -257,9 +256,8 @@ def _coincidence(rr, nfold=4, resolving_time=300):
         rr (raw_records): raw_records
         nfold (int): coincidence level.
         resolving_time (int): Time window of the coincidence [ns].
-    TODO:
-        raise an error if dt is not the same among all channels
-    returns:
+
+    Returns:
         np.array: array containing the start times of the n-fold coincidence intervals
     """
     # 1. estimate time difference between fragments:
