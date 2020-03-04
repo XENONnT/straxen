@@ -230,16 +230,19 @@ def software_he_veto(records, to_pe,
         result_dtype=strax.peak_dtype(n_channels=len(to_pe),
                                       n_sum_wv_samples=veto_n))
 
-    # 2. Find initial veto regions around these peaks
-    # (with a generous right extension)
-    veto_start, veto_end = strax.find_peak_groups(
-        peaks,
-        gap_threshold=veto_length + 2 * veto_res,
-        right_extension=veto_length,
-        left_extension=veto_res)
-    veto_end = veto_end.clip(0, strax.endtime(records[-1]))
-    # dtype is like record (since we want to use hitfiding etc)
-    # but with float32 waveform
+    # 2a. Set 'candidate regions' at these peaks. These should:
+    #  - Have a fixed maximum length (else we can't use the strax hitfinder on them)
+    #  - Never extend beyond the current chunk
+    #  - Do not overlap
+    # TODO: pass the chunk endtime! For now we just use the last record endtime
+    veto_start = peaks['time']
+    veto_end = np.clip(peaks['time'] + veto_length,
+                       None,
+                       strax.endtime(records[-1]))
+    veto_end[:-1] = np.clip(veto_end[:-1], None, veto_start[1:])
+
+    # 2b. Convert these into strax record-like objects
+    # Note the waveform is float32 though (it's a summed waveform)
     regions = np.zeros(
         len(veto_start),
         dtype=strax.interval_dtype + [
@@ -251,7 +254,7 @@ def software_he_veto(records, to_pe,
             ("pulse_length", np.int64),
         ])
     regions['time'] = veto_start
-    regions['length'] = veto_n
+    regions['length'] = (veto_end - veto_start) // veto_n
     regions['pulse_length'] = veto_n
     regions['dt'] = veto_res
 
