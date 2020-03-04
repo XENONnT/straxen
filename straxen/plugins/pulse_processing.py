@@ -83,7 +83,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -102,9 +102,8 @@ class PulseProcessing(strax.Plugin):
 
         dtype = dict()
         for p in self.provides:
-            if p.endswith('_records'):
-                dtype[p] = strax.raw_record_dtype(self.record_length)
-        dtype['records'] = strax.record_dtype(self.record_length)
+            if 'records' in p:
+                dtype[p] = strax.record_dtype(self.record_length)
         dtype['veto_regions'] = strax.hit_dtype
         dtype['pulse_counts'] = pulse_count_dtype(self.config['n_tpc_pmts'])
 
@@ -114,23 +113,27 @@ class PulseProcessing(strax.Plugin):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, raw_records):
+        # Convert everything to the records data type -- adds extra fields.
+        records = strax.raw_to_records(raw_records)
+        del raw_records
+
         # Split off non-TPC records
-        r, other = channel_split(raw_records, self.config['n_tpc_pmts'])
+        r, other = channel_split(records, self.config['n_tpc_pmts'])
         diagnostic_records, aqmon_records = channel_split(
             other,
             self.config['n_tpc_pmts'] + self.config['n_diagnostic_pmts'])
-        # From here on we only work on TPC records
+        del records
 
-        r = strax.raw_to_records(r)
-
-        strax.baseline(r,
-                       baseline_samples=self.config['baseline_samples'],
-                       flip=True)
+        # From here on we only work on TPC records, stored in r
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
         # TODO: better to throw an error if something is nonzero
-        strax.zero_out_of_bounds(raw_records)
+        strax.zero_out_of_bounds(r)
+
+        strax.baseline(r,
+                       baseline_samples=self.config['baseline_samples'],
+                       flip=True)
 
         strax.integrate(r)
 
@@ -287,7 +290,7 @@ def software_he_veto(records, to_pe,
     return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def rough_sum(regions, records, to_pe, n, dt):
     """Compute ultra-rough sum waveforms for regions, assuming:
      - every record is a single peak at its first sample
@@ -353,7 +356,7 @@ def count_pulses(records, n_channels):
     return result
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
     lone_count = np.zeros(n_channels, dtype=np.int64)
@@ -410,13 +413,13 @@ def _count_pulses(records, n_channels, result):
 # Misc
 ##
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def _mask_and_not(x, mask):
     return x[mask], x[~mask]
 
 
 @export
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def channel_split(rr, first_other_ch):
     """Return """
     return _mask_and_not(rr, rr['channel'] < first_other_ch)
