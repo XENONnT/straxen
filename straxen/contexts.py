@@ -1,3 +1,5 @@
+import warnings
+
 import strax
 import straxen
 
@@ -31,15 +33,25 @@ def demo():
 
 
 def strax_workshop_dali():
+    warnings.warn(
+        "The strax_workshop_dali context is deprecated and will "
+        "be removed in April 2020. Please use "
+        "straxen.contexts.xenon1t_dali() instead.",
+        DeprecationWarning)
+    return xenon1t_dali()
+
+
+def xenon1t_dali():
     return strax.Context(
         storage=[
             strax.DataDirectory(
-                '/dali/lgrandi/aalbers/strax_data_raw',
+                '/dali/lgrandi/xenon1t/strax_converted/raw',
                 take_only='raw_records',
+                provide_run_metadata=True,
                 deep_scan=False,
                 readonly=True),
             strax.DataDirectory(
-                '/dali/lgrandi/aalbers/strax_data',
+                '/dali/lgrandi/xenon1t/strax_converted/processed',
                 readonly=True,
                 provide_run_metadata=False),
             strax.DataDirectory('./strax_data',
