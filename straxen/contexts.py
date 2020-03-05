@@ -61,3 +61,37 @@ def fake_daq():
                                      readonly=True)],
         config=dict(input_dir='./from_fake_daq'),
         **common_opts)
+
+
+nveto_common_opts = dict(
+    register_all=[
+        straxen.nveto_daqreader,
+        straxen.nveto_recorder,
+        straxen.nveto_pulse_processing],
+    store_run_fields=(
+        'name', 'number',
+        'reader.ini.name', 'tags.name',
+        'start', 'end', 'livetime',
+        'trigger.events_built'),
+    check_available=('nveto_pre_raw_records',
+                     'nveto_raw_records',
+                     'nveto_diagnostic_lone_records',
+                     'nveto_lone_records_count',
+                     'nveto_records',
+                     'nveto_pulses',
+                     'nveto_pulse_basics',
+                     ))
+
+
+def strax_nveto_hdm_test():
+    return strax.Context(
+        storage=[
+            strax.DataDirectory(
+                '/dali/lgrandi/hiraide/data/nveto/DaqTestHdM',
+                take_only='nveto_pre_raw_records',
+                deep_scan=False,
+                readonly=True),
+            strax.DataDirectory(
+                '/dali/lgrandi/wenz/strax_data/HdMtest',
+                provide_run_metadata=False)],
+        **nveto_common_opts)
