@@ -72,7 +72,7 @@ export, __all__ = strax.exporter()
 
     strax.Option(
         'check_raw_record_overlaps',
-        default=True,
+        default=True, track=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
 
