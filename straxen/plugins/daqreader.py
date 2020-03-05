@@ -32,7 +32,7 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="Directory where readers put data"),
     strax.Option('n_readout_threads', type=int, track=False,
                  help="Number of readout threads producing strax data files"),
-    strax.Option('safe_break_in_pulses', default=1000,
+    strax.Option('safe_break_in_pulses', default=1000, track=False,
                  help="Time (ns) between pulses indicating a safe break "
                       "in the datastream -- gaps of this size cannot be "
                       "interior to peaklets."),
@@ -57,7 +57,6 @@ class DAQReader(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'lz4'
-
 
     def infer_dtype(self):
         return strax.raw_record_dtype(

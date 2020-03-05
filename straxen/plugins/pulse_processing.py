@@ -70,6 +70,12 @@ export, __all__ = strax.exporter()
         default=254 - 248,
         help='Number of diagnostic PMTs'),
 
+    strax.Option(
+        'check_raw_record_overlaps',
+        default=True,
+        help='Crash if any of the pulses in raw_records overlap with others '
+             'in the same channel'),
+
 )
 class PulseProcessing(strax.Plugin):
     """
@@ -113,6 +119,9 @@ class PulseProcessing(strax.Plugin):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, raw_records):
+        if self.config['check_raw_record_overlaps']:
+            check_overlaps(raw_records, n_channels=3000)
+
         # Convert everything to the records data type -- adds extra fields.
         records = strax.raw_to_records(raw_records)
         del raw_records
@@ -423,3 +432,27 @@ def _mask_and_not(x, mask):
 def channel_split(rr, first_other_ch):
     """Return """
     return _mask_and_not(rr, rr['channel'] < first_other_ch)
+
+
+@export
+def check_overlaps(records, n_channels):
+    """Raise a ValueError if any of the pulses in records overlap
+
+    Assumes records is already sorted by time.
+    """
+    last_end = np.zeros(n_channels, dtype=np.int64)
+    channel, time = _check_overlaps(records, last_end)
+    if channel != -9999:
+        raise ValueError(
+            f"Bad data! In channel {channel}, a pulse starts at {time}, "
+            f"BEFORE the previous pulse in that same channel ended "
+            f"(at {last_end[channel]})")
+
+
+@numba.njit(cache=True, nogil=True)
+def _check_overlaps(records, last_end):
+    for r in records:
+        if r['time'] < last_end[r['channel']]:
+            return r['channel'], r['time']
+        last_end[r['channel']] = strax.endtime(r)
+    return -9999, -9999

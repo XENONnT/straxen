@@ -29,6 +29,7 @@ def demo():
                      strax.DataDirectory('./strax_test_data', readonly=True)],
             register=straxen.RecordsFromPax,
             forbid_creation_of=('raw_records',),
+            config=dict(check_raw_record_overlaps=False),
             **common_opts)
 
 
@@ -57,6 +58,7 @@ def xenon1t_dali():
             strax.DataDirectory('./strax_data',
                                 provide_run_metadata=False)],
         register=straxen.plugins.pax_interface.RecordsFromPax,
+        config=dict(check_raw_record_overlaps=False),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
         forbid_creation_of=('raw_records',),
