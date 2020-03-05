@@ -108,7 +108,6 @@ md = st.run_metadata(args.run_id)
 t_start = md['start'].timestamp()
 t_end = md['end'].timestamp()
 run_duration = t_end - t_start
-clock_start = time.time()
 
 # TODO: this gives a warning if the raw_record creator plugin doesn't need this
 st.config['run_start_time'] = md['start'].timestamp()
@@ -129,6 +128,7 @@ def get_results():
         yield from st.get_iter(**kwargs)
 
 
+clock_start = None
 for i, d in enumerate(get_results()):
     mem_mb = process.memory_info().rss / 1e6
 
@@ -140,15 +140,18 @@ for i, d in enumerate(get_results()):
     t = d.end / 1e9
     dt = t - t_start
     time_left = t_end - t
-    
-    # Compute processing job clock time left
-    clock = time.time()
-    d_clock = clock - clock_start
-    clock_time_left = time_left / (dt / d_clock)
-    
-    print(f"Got {len(d)} items. "
-          f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "
-          f"ETA {clock_time_left:.2f} sec. Using {mem_mb:.1f} MB RAM.",
-          flush=True)
+
+    msg = (f"Got {len(d)} items. "
+           f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "
+           f"Using {mem_mb:.1f} MB RAM. ")
+    if clock_start is not None:
+        # Compute processing job clock time left
+        d_clock = time.time() - clock_start
+        clock_time_left = time_left / (dt / d_clock)
+        msg += f"ETA {clock_time_left:.2f} sec."
+    else:
+        clock_start = time.time()
+
+    print(msg, flush=True)
 
 print(f"\nStraxer is done! We took {time.time() - clock_start:.1f} seconds")

@@ -75,5 +75,6 @@ def fake_daq():
                                      readonly=True)],
         config=dict(daq_input_dir='./from_fake_daq',
                     daq_chunk_duration=int(2e9),
+                    n_readout_threads=8,
                     daq_overlap_chunk_duration=int(2e8)),
         **common_opts)
