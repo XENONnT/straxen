@@ -19,7 +19,7 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo', 'NVETO_RECORD_LENGTH']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo', 'NVETO_RECORD_LENGTH', 'n_nVETO_pmts', 'N_PMTS_NVETO']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -30,8 +30,10 @@ first_sr1_run = 170118_1327
 tpc_r = 47.9
 n_tpc_pmts = 248
 
-NVETO_RECORD_LENGTH = 80
-
+# TODO: change nVETO pmts thingy
+NVETO_RECORD_LENGTH = 110
+N_PMTS_NVETO = 14
+n_nVETO_pmts = np.arange(0, N_PMTS_NVETO, dtype=np.int16)
 
 @export
 def pmt_positions():
