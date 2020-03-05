@@ -6,11 +6,12 @@ import numpy as np
 
 import strax
 
+
 __all__ = ['nVETODAQReader']
 
 
 @strax.takes_config(
-    strax.Option('safe_break_in_pulses', default=300,  # <-- twice our data save window
+    strax.Option('safe_break_in_pulses', default=310,
                  help="Time (ns) between pulse starts indicating a safe break "
                       "in the datastream -- peaks will not span this."),
     strax.Option('input_dir', type=str, track=False,
@@ -19,16 +20,20 @@ __all__ = ['nVETODAQReader']
                  help="Number of readout threads producing strax data files"),
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"),
-    strax.Option('nbaseline', default=40,   # <--- Would be better to read from db
-                 help="Number of samples which are used for the baseline"
-                      "calculations at a start of a pulse."))
-
+    strax.Option('compressor', default="lz4", track=False,
+                 help="Algorithm used for (de)compressing the live data"),
+    strax.Option('run_start_time', default=0., type=float, track=False,
+                 help="time of start run (s since unix epoch)"),
+    strax.Option('nbaseline', default=20., type=float, track=False,
+                 help="Number of samples used for computing the baseline"),
+)
 class nVETODAQReader(strax.Plugin):
-    provides = 'nveto_raw_records'
+    provides = 'nveto_pre_raw_records'
     depends_on = tuple()
-    dtype = strax.record_dtype()
-
+    dtype = strax.raw_record_dtype()
+    parallel = 'process'
     rechunk_on_save = False
+    compressor = 'lz4'
 
     def _path(self, chunk_i):
         return self.config["input_dir"] + f'/{chunk_i:06d}'
@@ -84,7 +89,7 @@ class nVETODAQReader(strax.Plugin):
     def _load_chunk(self, path, kind='central'):
         records = [strax.load_file(fn,
                                    compressor='blosc',
-                                   dtype=strax.record_dtype())
+                                   dtype=strax.raw_record_dtype())
                    for fn in sorted(glob.glob(f'{path}/*'))]
         records = np.concatenate(records)
         records = strax.sort_by_time(records)
@@ -111,7 +116,8 @@ class nVETODAQReader(strax.Plugin):
             + ([self._load_chunk(post, kind='post')] if post else [])
         )
 
-        strax.baseline(records, self.config['nbaseline'])
+        if self.config['nbaseline']:
+            strax.baseline(records, self.config['nbaseline'])
         strax.integrate(records)
 
         if len(records):
