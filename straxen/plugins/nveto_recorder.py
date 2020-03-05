@@ -27,47 +27,56 @@ class nVETORecorder(strax.Plugin):
 
     # TODO: Check the following two parameters in strax:
     rechunk_on_save = False  # same as in tpc pulse_processing
-    compressor = 'zstd'  # same as in tpc pulse_processing
+    compressor = 'lz4'  # same as in tpc pulse_processing
 
-    depends_on = 'raw_records'    # <--- change this to nveto_pre_raw_records
+    depends_on = 'nveto_pre_raw_records'    # <--- change this to nveto_pre_raw_records
 
-    provides = ('nveto_raw_records', 'nveto_diagnostic_pre_records', 'nveto_lone_raw_record_count')
+    provides = ('nveto_raw_records', 'nveto_diagnostic_lone_records', 'nveto_lone_records_count')
 
     data_kind = {key: key for key in provides}
 
     def infer_dtype(self):
-        nveto_records_dtype = strax.record_dtype(straxen.nVETO_record_length)
-        nveto_diagnostic_records_dtype = strax.record_dtype(straxen.nVETO_record_length)
-        nveto_lone_record_count_dtype = lone_record_count_dtype(len(straxen.n_nVETO_pmts))
+        nveto_records_dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)
+        nveto_diagnostic_lone_records_dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)
+        nveto_lone_records_count_dtype = lone_record_count_dtype(len(straxen.n_nVETO_pmts))
 
         dtypes = [nveto_records_dtype,
-                  nveto_diagnostic_records_dtype,
-                  nveto_lone_record_count_dtype]
+                  nveto_diagnostic_lone_records_dtype,
+                  nveto_lone_records_count_dtype]
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
-    def compute(self, raw_records):
-        strax.zero_out_of_bounds(raw_records)
+    def compute(self, nveto_pre_raw_records):
+        strax.zero_out_of_bounds(nveto_pre_raw_records)
 
         # As long as we are working with TPC data we have to split of the diagnostic stuff:
-        raw_records, o = channel_split(raw_records, straxen.n_tpc_pmts)
+        nveto_pre_raw_records, o = channel_split(nveto_pre_raw_records, straxen.N_PMTS_NVETO)
 
         # First we have to split rr into records and lone hits:
-        intervals = coincidence(raw_records, self.config['coincidence_level'], self.config['resolving_time'])
-        mask = rr_in_interval(raw_records, *intervals.T)
+        intervals = coincidence(nveto_pre_raw_records, self.config['coincidence_level'], self.config['resolving_time'])
+        mask = rr_in_interval(nveto_pre_raw_records, *intervals.T)
         mask = mask.astype(bool)
-        records, lone_records = _mask_and_not(raw_records, mask)
+        raw_records, lone_records = _mask_and_not(nveto_pre_raw_records, mask)
 
         # Compute some properties of the lone_records:
-        lrc, rd = compute_lone_records(lone_records, straxen.n_nVETO_pmts,
-                                       self.config['n_lone_hits'],
-                                       self.config['nbaseline'])
+        lrc, diagnostic_raw_records = compute_lone_records(lone_records, straxen.n_nVETO_pmts,
+                                                           self.config['n_lone_hits'],
+                                                           self.config['nbaseline'])
 
-        return {'nveto_raw_records': records,
-                'nveto_diagnostic_raw_records': rd,
-                'nveto_lone_record_count': lrc}
+        rr = np.zeros(len(raw_records), dtype=strax.record_dtype(straxen.NVETO_RECORD_LENGTH))
+        for name in raw_records.dtype.names:
+            rr[name][:] = raw_records[name]
+
+        rd = np.zeros(len(diagnostic_raw_records), dtype=strax.record_dtype(straxen.NVETO_RECORD_LENGTH))
+        for name in diagnostic_raw_records.dtype.names:
+            rd[name][:] = diagnostic_raw_records[name]
+
+        return {'nveto_raw_records': rr,
+                'nveto_diagnostic_lone_records': rd,
+                'nveto_lone_records_count': lrc}
 
 
+@export
 def lone_record_count_dtype(n_channels):
     return [
         (('Lowest start time observed in the chunk', 'time'), np.int64),
@@ -124,6 +133,8 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10):
 
 @numba.njit(nogil=True, cache=True)
 def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, default_length=110):
+    #TODO: Change boolean indexing into normal indexing, means also change channels argument!
+
     # getting start and end time:
     res['time'] = lone_record[0]['time']
     res['endtime'] = lone_record[-1]['time']
@@ -150,7 +161,7 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, d
             res['nhigherfragments'][ch_i] += 1
             res['higher_lone_record_area'][ch_i] += lr['area']
         else:
-            res['baseline_rms'][ch_i] += _baseline_rms(lr, nbaseline)
+            res['baseline_rms'][ch_i] += _baseline_rms(lr['data'], nbaseline)
             res['baseline_mean'][ch_i] += lr['baseline']
 
     for ind in range(len(channels)):
@@ -159,27 +170,6 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, d
                                             (res['nfragments'][ind] - res['nhigherfragments'][ind]))
                 res['baseline_mean'][ind] = (res['baseline_mean'][ind] /
                                              (res['nfragments'][ind] - res['nhigherfragments'][ind]))
-
-
-def lone_record_count_dtype(n_channels):
-    return [
-        (('Lowest start time observed in the chunk', 'time'), np.int64),
-        (('Highest end time observed in the chunk', 'endtime'), np.int64),
-        (('Channel of the lone record', 'channel'),
-         (np.int32, n_channels)),
-        (('Number of lone record fragments', 'nfragments'),
-         (np.int32, n_channels)),
-        (('Number of higher order lone fragments', 'nhigherfragments'),
-         (np.int64, n_channels)),
-        (('Integral of all lone records in ADC_count x samples', 'lone_record_area'),
-         (np.int64, n_channels)),
-        (('Integral of higher fragment lone records in ADC_count x samples', 'higher_lone_record_area'),
-         (np.int64, n_channels)),
-        (('Baseline mean of lone records in ADC_count', 'baseline_mean'),
-         (np.float64, n_channels)),
-        (('Baseline spread of lone records in ADC_count', 'baseline_rms'),
-         (np.float64, n_channels))
-    ]
 
 
 # ---------------------
