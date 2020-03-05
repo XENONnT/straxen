@@ -359,10 +359,11 @@ def pulse_count_dtype(n_channels):
 
 def count_pulses(records, n_channels):
     """Return array with one element, with pulse count info from records"""
-    result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
     if len(records):
+        result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
         _count_pulses(records, n_channels, result)
-    return result
+        return result
+    return np.zeros(0, dtype=pulse_count_dtype)
 
 
 @numba.njit(cache=True, nogil=True)
