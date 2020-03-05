@@ -7,12 +7,31 @@ from straxen import get_to_pe
 from straxen import get_resource
 export, __all__ = strax.exporter()
 
+__all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges', 'nVETOPulseBasics']
+
+
+@export
+def nveto_pulses_dtype():
+    return [
+        (('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
+        (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
+        (('Channel/PMT number', 'channel'), np.int16),
+        (('Area of the PMT pulse in pe', 'area'), np.float32),
+        (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
+        (('Position of the maximum in (ns since unix epoch)', 'amp_time'), np.int64),
+        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
+        (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
+        (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
+        (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
+        (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int8),
+    ]
+
 
 @export
 @strax.takes_config(
     strax.Option(
         'nveto_adc_thresholds',
-        default='',
+        default='/dali/lgrandi/wenz/strax_data/HdMtest/find_hits_thresholds.npy',
         help='File containing the channel individual hit_finder thresholds.'),
     strax.Option(
         'nveto_save_outside_hits',
@@ -34,12 +53,15 @@ class nVETOPulseProcessing(strax.Plugin):
     compressor = 'lz4'
 
     depends_on = 'nveto_raw_records'
-
     provides = 'nveto_records'
-    dtype = straxen.nveto_pulses_dtype()  # Might be the same as records.
+    data_kind = 'nveto_records'
+
+    dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)  # Might be the same as records.
+
+
 
     def setup(self):
-        self.hit_thresholds = get_resource(self.config['adc_thresholds'], fmt='npy')
+        self.hit_thresholds = get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
 
     def compute(self, nveto_raw_records):
         # Do not trust in DAQ + strax.baseline to leave the
@@ -56,7 +78,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
         # Deleting empty data:
         nveto_records = _del_empty(nveto_records, 1)
-        return dict(nveto_records=nveto_records)
+        return nveto_records
 
 
 @numba.njit(cache=True, nogil=True)
@@ -67,6 +89,7 @@ def _del_empty(records, order=1):
     :param order: Fragment order. Cut will only applied to the specified order and
         higher fragments.
     :return: non-empty records
+    TODO: Keep track of version in straxen.pulse_processing master
     """
     mask = np.ones(len(records), dtype=np.bool_)
     for ind, r in enumerate(records):
@@ -79,7 +102,7 @@ def _del_empty(records, order=1):
 @strax.takes_config(
     strax.Option(
         'nveto_adc_thresholds',
-        default='',
+        default='/dali/lgrandi/wenz/strax_data/HdMtest/find_hits_thresholds.npy',
         help='File containing the channel individual hit_finder thresholds.'),
     strax.Option(
         'nveto_save_outside_hits',
@@ -97,12 +120,13 @@ class nVETOPulseEdges(strax.Plugin):
     compressor = 'lz4'
 
     depends_on = 'nveto_records'
-
     provides = 'nveto_pulses'
-    dtype = straxen.nveto_pulses_dtype()
+    data_kind = 'nveto_pulses'
+
+    dtype = nveto_pulses_dtype()
 
     def setup(self):
-        self.hit_thresholds = get_resource(self.config['adc_thresholds'], fmt='npy')
+        self.hit_thresholds = get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
 
     def compute(self, nveto_records):
         # Search again for hits in records:
@@ -113,31 +137,14 @@ class nVETOPulseEdges(strax.Plugin):
         last_hit_in_channel = np.zeros(max_channel,
                                        dtype=[(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
                                               (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
-                                              (('Channel/PMT number', 'channel'), np.int16),
-                                              (('Time resolution in ns', 'dt'), np.int16)])
+                                              (('Channel/PMT number', 'channel'), np.int16)])
         nveto_pulses = concat_overlapping_hits(hits, self.config['nveto_save_outside_hits'], last_hit_in_channel)
         nveto_pulses = strax.sort_by_time(nveto_pulses)
 
+        print('length', len(nveto_pulses), len(nveto_records))
         # Check if hits can be split:
-        nveto_pulses = split_pulses(nveto_records, nveto_pulses)
-
-        return dict(nveto_pulses=nveto_pulses)
-
-@export
-def nveto_pulses_dtype():
-    return [
-        (('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
-        (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
-        (('Channel/PMT number', 'channel'), np.int16),
-        (('Area of the PMT pulse in pe', 'area'), np.float32),
-        (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
-        (('Position of the maximum in (ns since unix epoch)', 'amp_time'), np.int64),
-        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
-        (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
-        (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
-        (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
-        (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int8),
-    ]
+        nvp = split_pulses(nveto_records, nveto_pulses)
+        return nvp
 
 
 @strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
@@ -172,9 +179,6 @@ def concat_overlapping_hits(hits,
 
     le, re = extensions
 
-    # Assuming all hits have the same dt:
-    last_hit_in_channel['dt'][:] = hits['dt'][0]
-
     for h in hits:
         st = h['time'] - int(le * h['dt'])
         et = h['time'] + int((h['length'] + re) * h['dt'])
@@ -198,7 +202,6 @@ def concat_overlapping_hits(hits,
                 res['time'] = lhc['time']
                 res['endtime'] = lhc['endtime']
                 res['channel'] = lhc['channel']
-                res['dt'] = lhc['dt']
                 offset += 1
                 if offset == len(buffer):
                     yield offset
@@ -216,7 +219,6 @@ def concat_overlapping_hits(hits,
         res['time'] = lhc['time']
         res['endtime'] = lhc['endtime']
         res['channel'] = lhc['channel']
-        res['dt'] = lhc['dt']
         offset += 1
         if offset == len(buffer):
             yield offset
@@ -259,7 +261,6 @@ def get_pulse_data(nveto_records, hit, start_index=0):
     # In case the pulse spans over multiple records we need:
     res_start = 0
     update = True
-    found_start = False
 
     # Init a buffer containing the data:
     nsamples = (hit_end_time - hit_start_time) // nveto_records[0]['dt']
@@ -282,13 +283,12 @@ def get_pulse_data(nveto_records, hit, start_index=0):
         # We found the start of our event:
         if dt <= nvr_length_time:
             if dt < 0:
-                # If this happens our data or parts of it should have been in an earlier
+                # If this happend our data or parts of it should have been in an earlier
                 # record.
                 # TODO: should we throw an error here?
                 res[:] = -42000.
                 return res, 0, 0.
 
-            found_start = True
             start_sample = (hit_start_time - nvr_start_time) // nvr['dt']
 
             # Start storing the data:
@@ -303,12 +303,19 @@ def get_pulse_data(nveto_records, hit, start_index=0):
             hit_start_time = nvr_end_time
 
         if res_start == nsamples:
+            print('')
+            print(res_start, nsamples)
+            print('')
+            if np.any(res == -42000.):
+                print('Nope')
             return res, start_index, nvr_baseline
+        else:
+            print('WTF', res_start, nsamples)
 
 
 @strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
 @numba.njit(cache=True, nogil=True)
-def split_pulses(records, pulses, min_height=25, min_ratio=0, _result_buffer=None):
+def split_pulses(records, pulses, _result_buffer=None):
     """
     Function which checks for a given pulse if the pulse should be
     split.
@@ -324,19 +331,25 @@ def split_pulses(records, pulses, min_height=25, min_ratio=0, _result_buffer=Non
 
     Returns:
         np.array
+
+    Notes:
+        Function assumes same dt for all channels.
     """
     buffer = _result_buffer
     offset = 0
     record_offset = 0
+    dt = records[0]['dt']
+
     for pulse in pulses:
         # Get data and split pulses:
-        data, record_offset = get_pulse_data(records, pulse, record_offset)
-        edges = _split_pulse(data, (0, len(data)),  min_height=min_height, min_ratio=min_ratio)
+        print('RO:', record_offset, 'Ch:', pulse['channel'], 'Time:', pulse['time'], 'EndTime:', pulse['endtime'])
+        data, record_offset, _ = get_pulse_data(records, pulse, record_offset)
+        edges = _split_pulse(data, (0, len(data)))
         edges = edges[edges >= 0]
 
         # Convert edges into times:
         start_time = pulse['time']
-        edges_times = edges * pulse['dt'] + start_time
+        edges_times = edges * dt + start_time
         # Loop over edges and store them:
         nedges = len(edges_times) - 1
         for ind in range(nedges):
@@ -344,8 +357,7 @@ def split_pulses(records, pulses, min_height=25, min_ratio=0, _result_buffer=Non
             res['time'] = edges_times[ind]
             res['endtime'] = edges_times[ind + 1]
             res['channel'] = pulse['channel']
-            # TODO: split_i is wrong.
-            if nedges:
+            if nedges - 1:
                 res['split_i'] = ind + 1
             else:
                 res['split_i'] = ind  # 0 is reserved for events which were not split.
@@ -358,20 +370,20 @@ def split_pulses(records, pulses, min_height=25, min_ratio=0, _result_buffer=Non
 @numba.njit(cache=True, nogil=True)
 def _split_pulse(data, edges, min_height=25, min_ratio=0):
     """
-    Function which splits the PMT pulses if necessary.
+    Function which splits the PMT pulses if ncessary.
 
     Args:
         data (np.array):
-        edges (tuble):
+        edegs (tuble):
 
     Keyword Args:
         min_height (int):
         min_ratio (float):
 
     Returns:
-        np.array: Array containing the indices of the pulses. The
+        np.array: Array containing the indicies of the pulses. The
             rest is set to -1. The array has the same length as
-            np.diff(edges), since we do not know apriori the number
+            np.diff(edges), since we do not know apprioir the number
             of pulses.
     """
     d = data[edges[0]:edges[1]]
@@ -446,16 +458,15 @@ class nVETOPulseBasics(strax.Plugin):
     compressor = 'lz4'
 
     depends_on = ('nveto_pulses', 'nveto_records')
-
     provides = 'nveto_pulse_basics'
-    dtype = straxen.nveto_pulses_dtype()
+    dtype = nveto_pulses_dtype()
 
     def setup(self):
         self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, nveto_pulses, nveto_records):
         npb = compute_properties(nveto_pulses, nveto_records, self.to_pe)
-        return dict(nveto_pulse_basics=npb)
+        return npb
 
 
 @numba.njit(cache=True, nogil=True)
@@ -483,6 +494,7 @@ def compute_properties(nveto_pulses, nveto_records, to_pe):
         # parameters to be store:
         area = 0
         height = 0
+        amp_ind = 0
 
         # Getting data and baseline of the event:
         data, rind, b = get_pulse_data(nveto_records, pulse, start_index=rind)
