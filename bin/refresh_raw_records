@@ -101,7 +101,7 @@ def main():
         if rr[0]['time'] < last_endtime:
             if args.procrustean:
                 to_cut = rr['time'] < last_endtime
-                print(f"[!!] Removing {len(to_cut)} records "
+                print(f"[!!] Removing {to_cut.sum()} records "
                       f"from chunk {i} to remove overlaps!")
                 rr = rr[~to_cut]
             else:
@@ -132,6 +132,13 @@ def main():
             filename,
             new_rr,
             compressor=md['compressor'])
+        # We must rewrite these too, the chunk count could have changed
+        # if args.procrustean
+        c['n'] = len(rr)
+        c['first_time'] = rr[0]['time']
+        c['first_endtime'] = strax.endtime(rr[0])
+        c['last_time'] = rr[-1]['time']
+        c['last_endtime'] = strax.endtime(rr[-1])
 
     if run_start is None:
         run_start = md['chunks'][0]['start']
