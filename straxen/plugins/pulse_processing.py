@@ -363,7 +363,7 @@ def count_pulses(records, n_channels):
         result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
         _count_pulses(records, n_channels, result)
         return result
-    return np.zeros(0, dtype=pulse_count_dtype)
+    return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
 @numba.njit(cache=True, nogil=True)
