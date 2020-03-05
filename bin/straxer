@@ -110,6 +110,7 @@ t_end = md['end'].timestamp()
 run_duration = t_end - t_start
 clock_start = time.time()
 
+# TODO: this gives a warning if the raw_record creator plugin doesn't need this
 st.config['run_start_time'] = md['start'].timestamp()
 
 process = psutil.Process(os.getpid())
@@ -145,7 +146,7 @@ for i, d in enumerate(get_results()):
     d_clock = clock - clock_start
     clock_time_left = time_left / (dt / d_clock)
     
-    print(f"Got {len(d)} events. "
+    print(f"Got {len(d)} items. "
           f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "
           f"ETA {clock_time_left:.2f} sec. Using {mem_mb:.1f} MB RAM.",
           flush=True)

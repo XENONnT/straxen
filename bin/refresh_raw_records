@@ -26,6 +26,12 @@ def main():
         help='Refresh even if you have lost the run metadata. '
              'Some useful sanity checks will be disabled.')
     parser.add_argument(
+        '--procrustean',
+        action='store_true',
+        help='Delete records that fall across chunk boundaries. '
+             'Use as a last resort for triggerless data you do not want '
+             'to reconvert from pax properly.')
+    parser.add_argument(
         '--xnt',
         action='store_true',
         help="Set if records came from the DAQReader, not RecordsFromPax")
@@ -36,6 +42,9 @@ def main():
     run_id = args.run_id
     parent_folder = args.parent_folder
 
+    ##
+    # Prepare context
+    ##
     st = strax.Context(
         storage=[strax.DataDirectory(
             parent_folder,
@@ -48,7 +57,9 @@ def main():
     else:
         st.register(straxen.RecordsFromPax)
 
-    # Get all metadata
+    ##
+    # Get metadata
+    ##
     folder = st.storage[0].find(st.key_for(run_id, 'raw_records'),
                                 fuzzy_for='raw_records')[1]
     md = st.get_metadata(run_id, 'raw_records')
@@ -67,44 +78,15 @@ def main():
     else:
         run_start, run_end = None, None
 
-    ##
-    # Compute chunk start and end times
-    ##
     if not len(md['chunks']):
         raise ValueError("Cannot convert data: no chunks!")
     if 'start' in md['chunks'][0]:
-        print("This data already has chunk start/end times")
-        starts, ends = np.array([[c['start'], c['end']]
-                                 for c in md['chunks']]).T
-
-    else:
-        print("Estimating chunk start / end times from data")
-        starts, ends = np.array([[c['first_time'], c['last_endtime']]
-                                 for c in md['chunks']]).T
-
-        # Start of next chunk >= stop of previous chunk
-        if np.any(starts[1:] < ends[:-1]):
-            raise ValueError("Cannot convert data: chunk boundaries overlap")
-
-        if args.no_run_metadata:
-            # Hack to allow conversion even without run metadata
-            run_start = starts[0]
-            run_end = ends[-1]
-
-        else:
-            if starts[0] < run_start:
-                raise ValueError("Cannot convert data: data starts earlier than run")
-            if ends[-1] > run_end:
-                raise ValueError("Cannot convert data: data ends later than run")
-
-        midpoints = (ends[:-1] + starts[1:])//2
-
-        starts = np.concatenate([[run_start], midpoints])
-        ends = np.concatenate([midpoints, [run_end]])
+        raise ValueError("This data was already converted")
 
     ## 
-    # Do actual conversion
+    # Convert data
     ##
+    last_endtime = 0
     for i, c in enumerate(tqdm(md['chunks'], 
                                desc=f'Converting raw_records for {run_id}')):
         filename = osp.join(folder, c['filename'])
@@ -113,6 +95,30 @@ def main():
             dtype=dtype, 
             compressor=md['compressor'])
 
+        if not len(rr):
+            raise ValueError("Cannot convert data with empty chunks")
+
+        if rr[0]['time'] < last_endtime:
+            if args.procrustean:
+                to_cut = rr['time'] < last_endtime
+                print(f"[!!] Removing {len(to_cut)} records "
+                      f"from chunk {i} to remove overlaps!")
+                rr = rr[~to_cut]
+            else:
+                raise ValueError(
+                    f"Cannot convert data: chunk {i}'s data starts "
+                    f"at {rr[0]['time']} while the previous chunk's data "
+                    f"ended at {last_endtime}")
+
+        if i == 0:
+            if run_start is not None:
+                c['start'] = run_start
+            else:
+                c['start'] = rr[0]['time']
+        else:
+            c['start'] = last_endtime
+        c['end'] = last_endtime = strax.endtime(rr).max()
+
         new_rr = np.zeros(len(rr), dtype=strax.raw_record_dtype(record_length))
         strax.copy_raw_records(rr, new_rr)
         if 'baseline' in rr.dtype.fields:
@@ -120,22 +126,22 @@ def main():
             new_rr['data'] = rr['baseline'][:, np.newaxis] - rr['data']
             strax.zero_out_of_bounds(new_rr)
 
+        c['run_id'] = run_id
         c['nbytes'] = new_rr.nbytes
         c['filesize'] = strax.save_file(
             filename,
             new_rr,
             compressor=md['compressor'])
 
+    if run_start is None:
+        run_start = md['chunks'][0]['start']
+        run_end = md['chunks'][-1]['start']
+
     ##
     # Set and write out new metadata
     ##
-    for i, c in enumerate(md['chunks']):
-        c['start'] = starts[i]
-        c['end'] = ends[i]
-        c['run_id'] = run_id
-
-    md['start'] = starts[0]
-    md['end'] = ends[0]
+    md['start'] = run_start
+    md['end'] = run_end
     md['run_id'] = run_id
     md['data_kind'] = 'raw_records'
     md['converted_from_old_strax'] = md['strax_version']
