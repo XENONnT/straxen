@@ -59,7 +59,6 @@ class Peaklets(strax.Plugin):
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
-    rechunk_on_save = True
 
     __version__ = '0.3.0'
 
@@ -318,9 +317,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
-    # NB: merged_s2s must come first, otherwise a chunk could end
-    # in the middle of a merged peak -> bad stuff
-    depends_on = ('merged_s2s', 'peaklets', 'peaklet_classification')
+    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
