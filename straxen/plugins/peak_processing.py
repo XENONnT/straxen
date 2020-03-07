@@ -210,7 +210,7 @@ class PeakPositions(strax.Plugin):
     strax.Option('nearby_window', default=int(1e7),
                  help='Peaks starting within this time window (on either side)'
                       'in ns count as nearby.'),
-    strax.Option('peak_max_proximity_time', default=int(1e9),
+    strax.Option('peak_max_proximity_time', default=int(1e8),
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
