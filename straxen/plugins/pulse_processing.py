@@ -62,13 +62,8 @@ export, __all__ = strax.exporter()
              'Specify as a tuple of length n_tpc_pmts, or a number.'),
 
     strax.Option(
-        'n_tpc_pmts',
-        default=straxen.n_tpc_pmts,
+        'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
-    strax.Option(
-        'n_diagnostic_pmts',
-        default=254 - 248,
-        help='Number of diagnostic PMTs'),
 
     strax.Option(
         'check_raw_record_overlaps',
@@ -81,7 +76,6 @@ class PulseProcessing(strax.Plugin):
     """
     1. Split raw_records into:
      - tpc_records
-     - diagnostic_records
      - aqmon_records
 
     For TPC records, apply basic processing:
@@ -89,7 +83,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.1.1'
+    __version__ = '0.2.0'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -97,8 +91,7 @@ class PulseProcessing(strax.Plugin):
 
     depends_on = 'raw_records'
 
-    provides = ('records', 'diagnostic_records', 'aqmon_records',
-                'veto_regions', 'pulse_counts')
+    provides = ('records', 'veto_regions', 'pulse_counts')
     data_kind = {k: k for k in provides}
 
     def infer_dtype(self):
@@ -122,18 +115,14 @@ class PulseProcessing(strax.Plugin):
         if self.config['check_raw_record_overlaps']:
             check_overlaps(raw_records, n_channels=3000)
 
+        # Throw away any non-TPC records; this should only happen for XENON1T
+        # converted data
+        raw_records = raw_records[
+            raw_records['channel'] < self.config['n_tpc_pmts']]
+
         # Convert everything to the records data type -- adds extra fields.
-        records = strax.raw_to_records(raw_records)
+        r = strax.raw_to_records(raw_records)
         del raw_records
-
-        # Split off non-TPC records
-        r, other = channel_split(records, self.config['n_tpc_pmts'])
-        diagnostic_records, aqmon_records = channel_split(
-            other,
-            self.config['n_tpc_pmts'] + self.config['n_diagnostic_pmts'])
-        del records
-
-        # From here on we only work on TPC records, stored in r
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
@@ -185,8 +174,6 @@ class PulseProcessing(strax.Plugin):
             strax.zero_out_of_bounds(r)
 
         return dict(records=r,
-                    diagnostic_records=diagnostic_records,
-                    aqmon_records=aqmon_records,
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
