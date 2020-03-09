@@ -36,7 +36,10 @@ xnt_common_config = dict(
          tpc=(0, 493),
          lowgain=(500, 752),
          aqmon=(799, 807),
-         mv=(1000, 1083)))
+         tpc_blank=(999, 999),
+         mv=(1000, 1083),
+         mv_blank=(1999, 1999),
+    ))
 
 
 ##
