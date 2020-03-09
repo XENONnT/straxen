@@ -1,4 +1,4 @@
-strax
+git+git://github.com/AxFoundation/strax
 # tensorflow    # Optional, to (re)do posrec
 # holoviews     # Optional, to enable wf display
 # bokeh         # Optional, to enable wf display

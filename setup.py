@@ -13,7 +13,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='0.5.0',
+                 version='0.6.0',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
@@ -22,7 +22,10 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + [
-                     'tensorflow', 'pytest', 'hypothesis', 'boltons'],
+                     'tensorflow',
+                     'pytest',
+                     'hypothesis',
+                     'boltons'],
                  python_requires=">=3.6",
                  extras_require={
                      'docs': ['sphinx',
@@ -31,7 +34,8 @@ setuptools.setup(name='straxen',
                               'recommonmark',
                               'graphviz'],
                  },
-                 scripts=['bin/bootstrax', 'bin/straxer', 'bin/fake_daq'],
+                 scripts=['bin/bootstrax', 'bin/straxer', 'bin/fake_daq',
+                          'bin/refresh_raw_records'],
                  packages=setuptools.find_packages(),
                  classifiers=[
                      'Development Status :: 4 - Beta',
