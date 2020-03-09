@@ -288,6 +288,12 @@ class DAQReader(strax.Plugin):
         # Convert to strax chunks
         result = dict()
         for i, subd in enumerate(self.config['channel_map']):
+
+            # Ignore data from the 'blank' channels, corresponding to
+            # channels that have nothing connected
+            if subd.endswith('blank'):
+                continue
+
             result_name = 'raw_records'
             if subd != 'tpc':
                 result_name += '_' + subd
