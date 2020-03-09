@@ -111,7 +111,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.2.6\n---')
+print(f'---\nTEST VERSION 0.2.7\n---')
 
 # Runs database
 run_db_username = os.environ['MONGO_RDB_USERNAME']
@@ -215,6 +215,10 @@ else:
     print(f'Not deleting live data because --delete_live = {args.delete_live}')
 
 
+context_opts = straxen.contexts.common_opts.copy()
+context_opts['register_all'].append(straxen.daqreader)
+
+
 def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
@@ -226,7 +230,7 @@ def new_context():
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
-        **straxen.contexts.common_opts)
+        **context_opts)
     st.context_config['allow_multiprocess'] = True if args.cores > 1 else False
     st.context_config['allow_shm'] = True if args.cores > 1 else False
     st.context_config['max_messages'] = args.max_messages
@@ -618,12 +622,14 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
             '''Run strax'''
-            st.make(run_id, target,
-                    config=dict(daq_input_dir=input_dir,
-                                compressor=compressor,
+            strax_config = dict(daq_input_dir=input_dir,
+                                daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
-                                n_readout_threads=n_readout_threads),
+                                n_readout_threads=n_readout_threads,
+                                **straxen.contexts.xnt_common_config)
+            st.make(run_id, target,
+                    config=strax_config,
                     max_workers=args.cores)
 
         if args.profile.lower() == 'false':
