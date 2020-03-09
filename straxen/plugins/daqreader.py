@@ -41,7 +41,7 @@ class ArtificialDeadtimeInserted(UserWarning):
     strax.Option('daq_overlap_chunk_duration', track=False,
                  default=int(5e8), type=int,
                  help="Duration of intermediate/overlap chunks in ns"),
-    strax.Option('daq_compressor', default="blosc", track=False,
+    strax.Option('daq_compressor', default="lz4", track=False,
                  help="Algorithm used for (de)compressing the live data"),
     strax.Option('n_readout_threads', type=int, track=False,
                  help="Number of readout threads producing strax data files"),
@@ -280,7 +280,7 @@ class DAQReader(strax.Plugin):
             records["time"] += self.dt * (self.t0 // self.dt)
 
         # Split records by channel
-        result_arrays = _channel_split(
+        result_arrays = split_channel_ranges(
             records,
             np.asarray(list(self.config['channel_map'].values())))
         del records
