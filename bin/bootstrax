@@ -111,7 +111,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.2.7\n---')
+print(f'---\nTEST VERSION 0.2.8\n---')
 
 # Runs database
 run_db_username = os.environ['MONGO_RDB_USERNAME']
@@ -216,8 +216,7 @@ else:
 
 
 context_opts = straxen.contexts.common_opts.copy()
-context_opts['register_all'].append(straxen.daqreader)
-
+context_opts['register'] = [straxen.DAQReader]
 
 def new_context():
     """Create strax context that can access the runs db"""
