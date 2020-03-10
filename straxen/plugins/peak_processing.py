@@ -113,7 +113,8 @@ class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
              ('y', np.float32,
-              'Reconstructed S2 Y position (cm), uncorrected')]
+              'Reconstructed S2 Y position (cm), uncorrected')
+             ] + strax.time_fields
     depends_on = ('peaks',)
 
     # TODO
@@ -124,7 +125,7 @@ class PeakPositions(strax.Plugin):
     # except for huge chunks
     parallel = False
 
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
 
     def setup(self):
         import tensorflow as tf
@@ -195,7 +196,10 @@ class PeakPositions(strax.Plugin):
         # Convert from mm to cm... why why why
         result /= 10
 
-        return dict(x=result[:, 0], y=result[:, 1])
+        return dict(x=result[:, 0],
+                    y=result[:, 1],
+                    time=peaks['time'],
+                    endtime=strax.endtime(peaks))
 
 
 @export
@@ -206,7 +210,7 @@ class PeakPositions(strax.Plugin):
     strax.Option('nearby_window', default=int(1e7),
                  help='Peaks starting within this time window (on either side)'
                       'in ns count as nearby.'),
-    strax.Option('peak_max_proximity_time', default=int(1e9),
+    strax.Option('peak_max_proximity_time', default=int(1e8),
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
@@ -221,9 +225,10 @@ class PeakProximity(strax.OverlapWindowPlugin):
         ('t_to_next_peak', np.int64,
          'Time between end of this peak and start of next peak [ns]'),
         ('t_to_nearest_peak', np.int64,
-         'Smaller of t_to_prev_peak and t_to_next_peak [ns]')]
+         'Smaller of t_to_prev_peak and t_to_next_peak [ns]')
+    ] + strax.time_fields
 
-    __version__ = '0.3.4'
+    __version__ = '0.4.0'
 
     def get_window_size(self):
         return self.config['peak_max_proximity_time']
@@ -245,6 +250,8 @@ class PeakProximity(strax.OverlapWindowPlugin):
         t_to_next_peak[:-1] = peaks['time'][1:] - peaks['endtime'][:-1]
 
         return dict(
+            time=peaks['time'],
+            endtime=strax.endtime(peaks),
             n_competing=n_tot,
             n_competing_left=n_left,
             t_to_prev_peak=t_to_prev_peak,
