@@ -8,7 +8,7 @@ import numba
 
 import strax
 import straxen
-from straxen.common import get_to_pe, pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
 
@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=127,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.4"
+    __version__ = "0.0.5"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -26,6 +26,8 @@ class PeakBasics(strax.Plugin):
           'time'), np.int64),
         (('End time of the peak (ns since unix epoch)',
           'endtime'), np.int64),
+        (('Weighted center time of the peak (ns since unix epoch)',
+          'center_time'), np.int64),
         (('Peak integral in PE',
             'area'), np.float32),
         (('Number of PMTs contributing to the peak',
@@ -65,6 +67,8 @@ class PeakBasics(strax.Plugin):
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
 
+        r['center_time'] = p['time'] + self.compute_center_times(peaks)
+
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Negative-area peaks get 0 AFT - TODO why not NaN?
@@ -72,6 +76,17 @@ class PeakBasics(strax.Plugin):
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
         r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
         return r
+
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def compute_center_times(peaks):
+        result = np.zeros(len(peaks), dtype=np.int32)
+        for p_i, p in enumerate(peaks):
+            t = 0
+            for t_i, weight in enumerate(p['data']):
+                t += t_i * p['dt'] * weight
+            result[p_i] = t / p['area']
+        return result
 
 
 @export
@@ -90,12 +105,16 @@ class PeakBasics(strax.Plugin):
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10))
+                 default=10),
+    strax.Option('n_top_pmts', default=127,
+                 help="Number of top PMTs")
+)
 class PeakPositions(strax.Plugin):
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
              ('y', np.float32,
-              'Reconstructed S2 Y position (cm), uncorrected')]
+              'Reconstructed S2 Y position (cm), uncorrected')
+             ] + strax.time_fields
     depends_on = ('peaks',)
 
     # TODO
@@ -106,9 +125,7 @@ class PeakPositions(strax.Plugin):
     # except for huge chunks
     parallel = False
 
-    n_top_pmts = 127
-
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
 
     def setup(self):
         import tensorflow as tf
@@ -119,10 +136,16 @@ class PeakPositions(strax.Plugin):
             import keras
 
         nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
+        # badPMTList was inserted by a very clever person into the keras json
+        # file. Let's delete it to prevent future keras versions from crashing.
+        # Do NOT try `del nn_conf['badPMTList']`! See get_resource docstring
+        # for the gruesome details.
         bad_pmts = nn_conf['badPMTList']
-        del nn_conf['badPMTList']   # Keeping this in might crash keras
-        nn = keras.models.model_from_json(json.dumps(nn_conf))
-        self.pmt_mask = ~np.in1d(np.arange(self.n_top_pmts),
+        nn = keras.models.model_from_json(json.dumps({
+            k: v
+            for k, v in nn_conf.items()
+            if k != 'badPMTList'}))
+        self.pmt_mask = ~np.in1d(np.arange(self.config['n_top_pmts']),
                                  bad_pmts)
 
         # Keras needs a file to load its weights. We can't put the load
@@ -154,7 +177,7 @@ class PeakPositions(strax.Plugin):
                         y=np.zeros(0, dtype=np.float32))
 
         # Keep good top PMTS
-        x = x[:, :self.n_top_pmts][:, self.pmt_mask]
+        x = x[:, :self.config['n_top_pmts']][:, self.pmt_mask]
 
         # Normalize
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -173,7 +196,10 @@ class PeakPositions(strax.Plugin):
         # Convert from mm to cm... why why why
         result /= 10
 
-        return dict(x=result[:, 0], y=result[:, 1])
+        return dict(x=result[:, 0],
+                    y=result[:, 1],
+                    time=peaks['time'],
+                    endtime=strax.endtime(peaks))
 
 
 @export
@@ -184,7 +210,7 @@ class PeakPositions(strax.Plugin):
     strax.Option('nearby_window', default=int(1e7),
                  help='Peaks starting within this time window (on either side)'
                       'in ns count as nearby.'),
-    strax.Option('peak_max_proximity_time', default=int(1e9),
+    strax.Option('peak_max_proximity_time', default=int(1e8),
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
@@ -199,9 +225,10 @@ class PeakProximity(strax.OverlapWindowPlugin):
         ('t_to_next_peak', np.int64,
          'Time between end of this peak and start of next peak [ns]'),
         ('t_to_nearest_peak', np.int64,
-         'Smaller of t_to_prev_peak and t_to_next_peak [ns]')]
+         'Smaller of t_to_prev_peak and t_to_next_peak [ns]')
+    ] + strax.time_fields
 
-    __version__ = '0.3.4'
+    __version__ = '0.4.0'
 
     def get_window_size(self):
         return self.config['peak_max_proximity_time']
@@ -223,6 +250,8 @@ class PeakProximity(strax.OverlapWindowPlugin):
         t_to_next_peak[:-1] = peaks['time'][1:] - peaks['endtime'][:-1]
 
         return dict(
+            time=peaks['time'],
+            endtime=strax.endtime(peaks),
             n_competing=n_tot,
             n_competing_left=n_left,
             t_to_prev_peak=t_to_prev_peak,

@@ -31,6 +31,28 @@ tpc_r = 47.9
 n_tpc_pmts = 248
 
 
+@export
+def adc_thresholds():
+    """Return ADC self-trigger thresholds used by the TPC PMTs"""
+    # TODO: we should probably fetch these from the run doc
+    # (or use some other convention in XENONnT)
+    return (
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 18, 15, 15, 15, 15, 15, 54, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 16, 15, 15, 35, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 18, 15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 26, 88, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 16, 20, 22, 15, 16, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 17, 16, 15, 15,
+        15, 15, 15, 15, 17, 16, 15, 15, 15, 15, 15, 15, 45, 15, 15, 15, 15,
+        25, 15, 15, 15, 17, 15, 18, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        24, 15, 17, 15, 15, 18, 15, 15, 15, 34, 15, 15, 18, 15, 15, 39, 16,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 18, 15, 20, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 15, 15, 19, 15,
+        15, 15, 15, 15, 15, 17, 15, 15, 18, 15, 15, 15, 15, 15, 17, 15, 18,
+        15, 15, 15, 17, 15, 18, 15, 35, 15, 15)
+
 
 @export
 def pmt_positions():
@@ -78,10 +100,15 @@ _text_formats = ['text', 'csv', 'json']
 @export
 def get_resource(x, fmt='text'):
     """Return contents of file or URL x
-    :param binary: Resource is binary. Return bytes instead of a string.
+    :param fmt: Format to parse contents into
+
+    Do NOT mutate the result you get. Make a copy if you're not sure.
+    If you mutate resources it will corrupt the cache, cause terrible bugs in
+    unrelated code, tears unnumbered ye shall shed, not even the echo of
+    your lamentations shall pass over the mountains, etc.
     """
-    # Try to retrieve from in-memory cache
     if x in cache_dict:
+        # Retrieve from in-memory cache
         return cache_dict[x]
 
     if '://' in x:
@@ -163,15 +190,8 @@ def get_resource(x, fmt='text'):
         else:
             raise ValueError(f"Unsupported format {fmt}!")
 
-    try:
-        # Store a copy in in-memory cache
-        # Copying is necessary since original result might get mutated
-        cache_dict[x] = deepcopy(result)
-    except Exception:
-        warnings.warn(
-            f"Could not copy resource {x} for in-memory caching: "
-            f"using on-disk cache only.",
-            UserWarning)
+    # Store in in-memory cache
+    cache_dict[x] = result
 
     return result
 
@@ -233,7 +253,7 @@ def get_secret(x):
 @export
 def download_test_data():
     """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f4ca5e41bb7060f8424e3a8e2d9214bd19934c53/strax_test_data.tar',
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/11929e7595e178dd335d59727024847efde530fb/strax_test_data_straxv0.9.tar',
                         fmt='binary')
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)

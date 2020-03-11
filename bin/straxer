@@ -35,16 +35,16 @@ parser.add_argument(
          'data in ./strax_data, you need to delete it there first.')
 parser.add_argument(
     '--max_messages', 
-    default=4,
+    default=4, type=int,
     help=("Size of strax's internal mailbox buffers. "
           "Lower to reduce memory usage, at increasing risk of deadlocks."))
 parser.add_argument(
     '--timeout',
-    default=300,
+    default=300, type=int,
     help=("Strax' internal mailbox timeout in seconds"))
 parser.add_argument(
     '--workers',
-    default=1,
+    default=1, type=int,
     help=("Number of worker threads/processes. "
           "Strax will multithread (1/plugin) even if you set this to 1."))
 parser.add_argument(
@@ -84,14 +84,13 @@ print(f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}")
 import straxen
 print(f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}")
 
-strax.Mailbox.DEFAULT_MAX_MESSAGES = int(args.max_messages)
-strax.Mailbox.DEFAULT_TIMEOUT = int(args.timeout)
-
 st = getattr(straxen.contexts, args.context)()
 if args.diagnose_sorting:
     st.set_config(dict(diagnose_sorting=True))
 st.context_config['allow_multiprocess'] = args.multiprocess
 st.context_config['allow_shm'] = args.shm
+st.context_config['timeout'] = args.timeout
+st.context_config['max_messages'] = args.max_messages
 
 if args.from_scratch:
     for q in st.storage:
@@ -106,9 +105,15 @@ if st.is_stored(args.run_id, args.target):
     sys.exit(1)
     
 md = st.run_metadata(args.run_id)
+t_start = md['start'].timestamp()
 t_end = md['end'].timestamp()
+run_duration = t_end - t_start
+
+# TODO: this gives a warning if the raw_record creator plugin doesn't need this
+st.config['run_start_time'] = md['start'].timestamp()
 
 process = psutil.Process(os.getpid())
+
 
 def get_results():
     kwargs = dict(
@@ -123,22 +128,8 @@ def get_results():
         yield from st.get_iter(**kwargs)
 
 
+clock_start = None
 for i, d in enumerate(get_results()):
-    if i == 0:
-        print(f"Received first result: {len(d)} events.", 
-              flush=True)
-        
-        # Compute remaining run duration
-        if len(d):
-            t_start = d['time'].max() / 1e9
-        else:
-            t_start = md['start'].timestamp()
-        run_duration = t_end - t_start
-        
-        # Start the clock for ETA measurements
-        clock_start = time.time()
-        continue
-
     mem_mb = process.memory_info().rss / 1e6
 
     if not len(d):
@@ -146,18 +137,21 @@ for i, d in enumerate(get_results()):
         continue
 
     # Compute detector/data time left
-    t = d['time'].max() / 1e9
+    t = d.end / 1e9
     dt = t - t_start
     time_left = t_end - t
-    
-    # Compute processing job clock time left
-    clock = time.time()
-    d_clock = clock - clock_start
-    clock_time_left = time_left / (dt / d_clock)
-    
-    print(f"Got {len(d)} events. "
-          f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "
-          f"ETA {clock_time_left:.2f} sec. Using {mem_mb:.1f} MB RAM.",
-          flush=True)
+
+    msg = (f"Got {len(d)} items. "
+           f"Now {dt:.1f} sec / {100 * dt/run_duration:.1f}% into the run. "
+           f"Using {mem_mb:.1f} MB RAM. ")
+    if clock_start is not None:
+        # Compute processing job clock time left
+        d_clock = time.time() - clock_start
+        clock_time_left = time_left / (dt / d_clock)
+        msg += f"ETA {clock_time_left:.2f} sec."
+    else:
+        clock_start = time.time()
+
+    print(msg, flush=True)
 
 print(f"\nStraxer is done! We took {time.time() - clock_start:.1f} seconds")

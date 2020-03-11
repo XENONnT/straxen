@@ -16,13 +16,26 @@ export, __all__ = strax.exporter()
     strax.Option('peak_right_extension', default=30,
                  help="Include this many ns right of hits in peaks"),
     strax.Option('peak_min_pmts', default=2,
-                 help="Minimum contributing PMTs needed to define a peak"),
-    strax.Option('peaklet_split_min_height', default=25,
-                 help="Minimum height in PE above a local sum waveform"
-                      "minimum, on either side, to trigger a split"),
-    strax.Option('peaklet_split_min_ratio', default=4,
-                 help="Minimum ratio between local sum waveform"
-                      "minimum and maxima on either side, to trigger a split"),
+                 help="Minifnmum contributing PMTs needed to define a peak"),
+    strax.Option('peak_split_gof_threshold',
+                 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
+                 # xenon:xenonnt:analysis:strax_clustering_classification
+                 # #natural_breaks_splitting
+                 # for more information
+                 default=(
+                     None,  # Reserved
+                     ((0.5, 1), (3.5, 0.25)),
+                     ((2, 1), (4.5, 0.4))),
+                 help='Natural breaks goodness of fit/split threshold to split '
+                      'a peak. Specify as tuples of (log10(area), threshold).'),
+    strax.Option('peak_split_filter_wing_width', default=70,
+                 help='Wing width of moving average filter for '
+                      'low-split natural breaks'),
+    strax.Option('peak_split_min_area', default=40.,
+                 help='Minimum area to evaluate natural breaks criterion. '
+                      'Smaller peaks are not split.'),
+    strax.Option('peak_split_iterations', default=20,
+                 help='Maximum number of recursive peak splits to do.'),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('to_pe_file',
@@ -33,7 +46,12 @@ export, __all__ = strax.exporter()
                       "a hit a tight coincidence (ns)"),
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
-                      "a hit a tight coincidence (ns)"))
+                      "a hit a tight coincidence (ns)"),
+    strax.Option(
+        'hit_min_amplitude',
+        default=straxen.adc_thresholds(),
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number.'))
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
@@ -41,19 +59,21 @@ class Peaklets(strax.Plugin):
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
-    rechunk_on_save = True
 
-    __version__ = '0.2.1'
+    __version__ = '0.3.0'
 
     def infer_dtype(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
-        return dict(peaklets=strax.peak_dtype(n_channels=len(self.to_pe)),
+        return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
                     lone_hits=strax.hit_dtype)
+
+    def setup(self):
+        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, records):
         r = records
 
-        hits = strax.find_hits(r)
+        hits = strax.find_hits(r,
+                               min_amplitude=self.config['hit_min_amplitude'])
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -76,16 +96,21 @@ class Peaklets(strax.Plugin):
         # which is asserted inside strax.find_peaks.
         lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
 
+        # Compute basic peak properties -- needed before natural breaks
         strax.sum_waveform(peaklets, r, self.to_pe)
+        strax.compute_widths(peaklets)
 
-        # Split peaks based on local minima
+        # Split peaks using low-split natural breaks;
+        # see https://github.com/XENONnT/straxen/pull/45
+        # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
-            min_height=self.config['peaklet_split_min_height'],
-            min_ratio=self.config['peaklet_split_min_ratio'])
-
-        # Need widths for pseudo-classification
-        strax.compute_widths(peaklets)
+            algorithm='natural_breaks',
+            threshold=self.natural_breaks_threshold,
+            split_low=True,
+            filter_wing_width=self.config['peak_split_filter_wing_width'],
+            min_area=self.config['peak_split_min_area'],
+            do_iterations=self.config['peak_split_iterations'])
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -113,6 +138,25 @@ class Peaklets(strax.Plugin):
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits)
 
+    def natural_breaks_threshold(self, peaks):
+        # TODO avoid duplication with PeakBasics somehow?
+        rise_time = -peaks['area_decile_from_midpoint'][:, 1]
+
+        # This is ~1 for an clean S2, ~0 for a clean S1,
+        # and transitions gradually in between.
+        f_s2 = 8 * np.log10(rise_time.clip(1, 1e5) / 100)
+        f_s2 = 1 / (1 + np.exp(-f_s2))
+
+        log_area = np.log10(peaks['area'].clip(1, 1e7))
+        thresholds = self.config['peak_split_gof_threshold']
+        return (
+            f_s2 * np.interp(
+                log_area,
+                *np.transpose(thresholds[2]))
+            + (1 - f_s2) * np.interp(
+                log_area,
+                *np.transpose(thresholds[1])))
+
 
 @export
 @strax.takes_config(
@@ -129,8 +173,10 @@ class PeakletClassification(strax.Plugin):
     provides = 'peaklet_classification'
     depends_on = ('peaklets',)
     parallel = True
-    dtype = [('type', np.int8, 'Classification of the peak(let)')]
-    __version__ = '0.1.0'
+    dtype = (
+        strax.interval_dtype +
+        [('type', np.int8, 'Classification of the peak(let)'),])
+    __version__ = '0.2.0'
 
     def compute(self, peaklets):
         peaks = peaklets
@@ -153,7 +199,15 @@ class PeakletClassification(strax.Plugin):
         is_s2[is_s1] = False
         ptype[is_s2] = 2
 
-        return dict(type=ptype)
+        return dict(type=ptype,
+                    time=peaklets['time'],
+                    dt=peaklets['dt'],
+                    # Channel is added so the field order of the merger of
+                    # peaklet_classification and peaklets matches that
+                    # of peaklets.
+                    # This way S2 merging works on arrays of the same dtype.
+                    channel=-1,
+                    length=peaklets['length'])
 
 
 FAKE_MERGED_S2_TYPE = -42
@@ -174,13 +228,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
 
-    # Keep chunk mapping the same as peaks
-    # If we make one huge chunk, peak building
-    # will be very RAM_intensive
-    rechunk_on_save = False
-
     def infer_dtype(self):
-        return self.deps['peaklets'].dtype_for('peaklets')
+        return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
         return 5 * (self.config['s2_merge_max_gap']
@@ -216,18 +265,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s['type'] = 2
             strax.compute_widths(merged_s2s)
 
-        if len(merged_s2s) == 0:
-            # Strax does not handle the case of no merged S2s well
-            # If there are none in the entire dataset, it will just keep
-            # waiting in Peaks forever.
-            # Thus, this ugly hack of passing a single fake merged S2
-            # in the middle of the chunk, which is removed later
-            merged_s2s = np.zeros(1, merged_s2s.dtype)
-            q = merged_s2s[0]
-            q['type'] = FAKE_MERGED_S2_TYPE
-            q['time'] = (peaklets[0]['time']
-                         + strax.endtime(peaklets[0])) / 2
-            q['dt'] = 1
         return merged_s2s
 
     @staticmethod
@@ -280,9 +317,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
-    # NB: merged_s2s must come first, otherwise a chunk could end
-    # in the middle of a merged peak -> bad stuff
-    depends_on = ('merged_s2s', 'peaklets', 'peaklet_classification')
+    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True

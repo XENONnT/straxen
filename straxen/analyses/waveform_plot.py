@@ -131,7 +131,7 @@ def plot_records_matrix(context, run_id,
     plt.sca(ax)
 
     if single_figure:
-        quiet_tight_layout()
+        straxen.quiet_tight_layout()
 
 
 def seconds_range_xaxis(seconds_range):

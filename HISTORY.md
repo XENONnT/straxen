@@ -1,8 +1,36 @@
+0.6.0 / 2020-03-05
+------------------
+- Updates for the new strax version (#60)
+  - refresh_raw_records script to convert to new format
+  - DAQReader creates artificial deadtime if needed to separation
+  - PulseProcessing now baselines and flips the waveform
+  - Software-HE veto buffer overrun fixes
+  - Remove hacks for empty MergedS2 handling
+  - Add time fields to all plugins
+- Hitfinder update: noise- and channel-dependent thresholds (#55)
+- PulseProcessing checks for overlaps in data
+- Add peak center time and use it for drift computation (#51)
+- Pass record_length as option to DAQReader (#55)
+- Make n_top_pmts as option (#34)
+- Fix units in plot_energy_spectrum
+
+
+0.5.0 / 2020-02-05
+-------------------
+- Natural breaks clustering (#45)
+- Save lone hits (#40)
+- Store proximity to nearby peaks (#41)
+- Add PMT array plot, fixes to mini analysis (#44)
+- Bootstrax updates (#47)
+- Assume resources are not mutated (do not copy internally)
+
+
 0.4.1 / 2020-01-18
 -------------------
 - Fix peak duplication
 - Move peak merging code into strax
 - Fix documentation build
+
 
 0.4.0 / 2020-01-17
 -------------------
@@ -13,10 +41,12 @@
 - Rename sX_largest_other -> alt_sX_area
 - DAQReader fixes (use lz4, time conversion)
 
+
 0.3.5 / 2019-12-23
 ------------------
 - Integrate peaks with tight_coincidence
 - `straxer` script upgrades
+
 
 0.3.4 / 2019-12-20
 -------------------
