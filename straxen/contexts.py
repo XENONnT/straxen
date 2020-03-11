@@ -18,6 +18,37 @@ common_opts = dict(
     check_available=('raw_records', 'records', 'peaks',
                      'events', 'event_info'))
 
+ap_opts = dict(
+    register_all=[
+        straxen.afterpulse_processing,
+        straxen.daqreader,
+        straxen.pulse_processing,
+        straxen.peaklet_processing,
+        straxen.peak_processing,
+        straxen.event_processing,
+        straxen.cuts],
+    store_run_fields=(
+        'name', 'number', 'reader.ini.name', 'tags.name',
+        'start', 'end', 'livetime'),
+    check_available=('raw_records', 'records', 'peaks',
+                     'events', 'event_info')
+    )
+
+def strax_afterpulseanalysis():
+    return strax.Context(
+        storage=[strax.DataDirectory('/dali/lgrandi/aalbers/strax_data_raw',
+                                     take_only='raw_records',
+                                     deep_scan=False,readonly=True),
+                 strax.DataDirectory('/dali/lgrandi/aalbers/strax_data',
+                                     readonly=True,
+                                     provide_run_metadata=False),
+                 strax.DataDirectory('/dali/lgrandi/hoetzsch/xenonnt/strax_data',
+                                     provide_run_metadata=False)],
+        allow_multiprocess=True, 
+        forbid_creation_of=('raw_records',),
+        register=straxen.plugins.pax_interface.RecordsFromPax,
+        **ap_opts)
+
 
 def demo():
     """Return strax context used in the straxen demo notebook"""
