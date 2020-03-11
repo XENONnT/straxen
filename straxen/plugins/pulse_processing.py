@@ -67,6 +67,11 @@ export, __all__ = strax.exporter()
         'n_diagnostic_pmts',
         default=254 - 248,
         help='Number of diagnostic PMTs'),
+    strax.Option(
+        'check_raw_record_overlaps',
+        default=True, track=False,
+        help='Crash if any of the pulses in raw_records overlap with others '
+             'in the same channel'),
 )
 class PulseProcessing(strax.Plugin):
     """
@@ -80,7 +85,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -99,9 +104,8 @@ class PulseProcessing(strax.Plugin):
 
         dtype = dict()
         for p in self.provides:
-            if p.endswith('_records'):
-                dtype[p] = strax.raw_record_dtype(self.record_length)
-        dtype['records'] = strax.record_dtype(self.record_length)
+            if 'records' in p:
+                dtype[p] = strax.record_dtype(self.record_length)
         dtype['veto_regions'] = strax.hit_dtype
         dtype['pulse_counts'] = pulse_count_dtype(self.config['n_tpc_pmts'])
 
@@ -111,23 +115,30 @@ class PulseProcessing(strax.Plugin):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
 
     def compute(self, raw_records):
+        if self.config['check_raw_record_overlaps']:
+            check_overlaps(raw_records, n_channels=3000)
+
+        # Convert everything to the records data type -- adds extra fields.
+        records = strax.raw_to_records(raw_records)
+        del raw_records
+
         # Split off non-TPC records
-        r, other = channel_split(raw_records, self.config['n_tpc_pmts'])
+        r, other = channel_split(records, self.config['n_tpc_pmts'])
         diagnostic_records, aqmon_records = channel_split(
             other,
             self.config['n_tpc_pmts'] + self.config['n_diagnostic_pmts'])
-        # From here on we only work on TPC records
+        del records
 
-        r = strax.raw_to_records(r)
-
-        strax.baseline(r,
-                       baseline_samples=self.config['baseline_samples'],
-                       flip=True)
+        # From here on we only work on TPC records, stored in r
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
         # TODO: better to throw an error if something is nonzero
-        strax.zero_out_of_bounds(raw_records)
+        strax.zero_out_of_bounds(r)
+
+        strax.baseline(r,
+                       baseline_samples=self.config['baseline_samples'],
+                       flip=True)
 
         strax.integrate(r)
 
@@ -229,16 +240,19 @@ def software_he_veto(records, to_pe, thresholds,
         result_dtype=strax.peak_dtype(n_channels=len(to_pe),
                                       n_sum_wv_samples=veto_n))
 
-    # 2. Find initial veto regions around these peaks
-    # (with a generous right extension)
-    veto_start, veto_end = strax.find_peak_groups(
-        peaks,
-        gap_threshold=veto_length + 2 * veto_res,
-        right_extension=veto_length,
-        left_extension=veto_res)
-    veto_end = veto_end.clip(0, strax.endtime(records[-1]))
-    # dtype is like record (since we want to use hitfiding etc)
-    # but with float32 waveform
+    # 2a. Set 'candidate regions' at these peaks. These should:
+    #  - Have a fixed maximum length (else we can't use the strax hitfinder on them)
+    #  - Never extend beyond the current chunk
+    #  - Do not overlap
+    # TODO: pass the chunk endtime! For now we just use the last record endtime
+    veto_start = peaks['time']
+    veto_end = np.clip(peaks['time'] + veto_length,
+                       None,
+                       strax.endtime(records[-1]))
+    veto_end[:-1] = np.clip(veto_end[:-1], None, veto_start[1:])
+
+    # 2b. Convert these into strax record-like objects
+    # Note the waveform is float32 though (it's a summed waveform)
     regions = np.zeros(
         len(veto_start),
         dtype=strax.interval_dtype + [
@@ -250,7 +264,7 @@ def software_he_veto(records, to_pe, thresholds,
             ("pulse_length", np.int64),
         ])
     regions['time'] = veto_start
-    regions['length'] = veto_n
+    regions['length'] = (veto_end - veto_start) // veto_n
     regions['pulse_length'] = veto_n
     regions['dt'] = veto_res
 
@@ -285,7 +299,7 @@ def software_he_veto(records, to_pe, thresholds,
     return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def rough_sum(regions, records, to_pe, n, dt):
     """Compute ultra-rough sum waveforms for regions, assuming:
      - every record is a single peak at its first sample
@@ -345,13 +359,14 @@ def pulse_count_dtype(n_channels):
 
 def count_pulses(records, n_channels):
     """Return array with one element, with pulse count info from records"""
-    result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
     if len(records):
+        result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
         _count_pulses(records, n_channels, result)
-    return result
+        return result
+    return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
     lone_count = np.zeros(n_channels, dtype=np.int64)
@@ -408,13 +423,37 @@ def _count_pulses(records, n_channels, result):
 # Misc
 ##
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def _mask_and_not(x, mask):
     return x[mask], x[~mask]
 
 
 @export
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def channel_split(rr, first_other_ch):
     """Return """
     return _mask_and_not(rr, rr['channel'] < first_other_ch)
+
+
+@export
+def check_overlaps(records, n_channels):
+    """Raise a ValueError if any of the pulses in records overlap
+
+    Assumes records is already sorted by time.
+    """
+    last_end = np.zeros(n_channels, dtype=np.int64)
+    channel, time = _check_overlaps(records, last_end)
+    if channel != -9999:
+        raise ValueError(
+            f"Bad data! In channel {channel}, a pulse starts at {time}, "
+            f"BEFORE the previous pulse in that same channel ended "
+            f"(at {last_end[channel]})")
+
+
+@numba.njit(cache=True, nogil=True)
+def _check_overlaps(records, last_end):
+    for r in records:
+        if r['time'] < last_end[r['channel']]:
+            return r['channel'], r['time']
+        last_end[r['channel']] = strax.endtime(r)
+    return -9999, -9999
