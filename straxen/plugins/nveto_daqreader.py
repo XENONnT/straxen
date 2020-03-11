@@ -24,10 +24,11 @@ __all__ = ['nVETODAQReader']
                  help="Algorithm used for (de)compressing the live data"),
     strax.Option('run_start_time', default=0., type=float, track=False,
                  help="time of start run (s since unix epoch)"),
-    strax.Option('nbaseline', default=20., type=float, track=False,
+    strax.Option('nbaseline', default=20, type=int, track=False,
                  help="Number of samples used for computing the baseline"),
 )
 class nVETODAQReader(strax.Plugin):
+    __version__ = '0.0.1'
     provides = 'nveto_pre_raw_records'
     depends_on = tuple()
     dtype = strax.raw_record_dtype()

@@ -50,6 +50,7 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(nveto_pre_raw_records)
 
         # As long as we are working with TPC data we have to split of the diagnostic stuff:
+        # TODO split off nVETO acquisition monitor
         nveto_pre_raw_records, o = channel_split(nveto_pre_raw_records, straxen.N_PMTS_NVETO)
 
         # First we have to split rr into records and lone hits:
