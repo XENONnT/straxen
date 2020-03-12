@@ -111,7 +111,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.2.8\n---')
+print(f'---\nTEST VERSION 0.2.9\n---')
 
 # Runs database
 run_db_username = os.environ['MONGO_RDB_USERNAME']
@@ -229,12 +229,12 @@ def new_context():
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
+        config=straxen.contexts.xnt_common_config,
         **context_opts)
     st.context_config['allow_multiprocess'] = True if args.cores > 1 else False
     st.context_config['allow_shm'] = True if args.cores > 1 else False
     st.context_config['max_messages'] = args.max_messages
     return st
-
 
 st = new_context()
 
@@ -626,7 +626,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
                                 n_readout_threads=n_readout_threads,
-                                **straxen.contexts.xnt_common_config)
+                               )
             st.make(run_id, target,
                     config=strax_config,
                     max_workers=args.cores)
