@@ -30,15 +30,15 @@ class DistinctChannels(strax.LoopPlugin):
 
 
 @export
-class EventInfoKr(strax.MergeOnlyPlugin):
-    """Alternate version of event_info for Kr and double scatter analysis
-      * Uses a different naming convention:
+class EventInfoDouble(strax.MergeOnlyPlugin):
+    """Alternate version of event_info for Kr and other double scatter analyses
+      - Uses a different naming convention:
         s1 -> s1_a, alt_s1 -> s1_b, and similarly for s2s;
-      * Adds s1_b_distinct_channels, which is relatively expensive to compute
+      - Adds s1_b_distinct_channels, which can be tricky to compute
+        (since it requires going back to peaks)
     """
-
+    __version__ = '0.1.0'
     depends_on = ['event_info', 'distinct_channels']
-    provides = 'event_info_kr'
 
     @staticmethod
     def rename_field(orig_name):
