@@ -67,7 +67,6 @@ class DAQReader(strax.Plugin):
         'raw_records',
         'raw_records_lowgain',
         'raw_records_aqmon',
-        'raw_records_aqmon_nv',
         'raw_records_mv')
 
     data_kind = frozendict(zip(provides, provides))
