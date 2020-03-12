@@ -111,7 +111,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.2.5\n---')
+print(f'---\nTEST VERSION 0.2.9\n---')
 
 # Runs database
 run_db_username = os.environ['MONGO_RDB_USERNAME']
@@ -184,7 +184,7 @@ assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_
 # Fields in the run docs that bootstrax uses
 bootstrax_projection = f"name start end number bootstrax " \
                        f"data.host data.type data.location " \
-                       f"ini.processing_threads ini.compressor ini.strax_fragment_length".split()
+                       f"ini.processing_threads ini.compressor ini.strax_fragment_payload_bytes".split()
 
 # Filename for temporary storage of the exception
 # This is used to communicate the exception from the strax child process
@@ -215,6 +215,9 @@ else:
     print(f'Not deleting live data because --delete_live = {args.delete_live}')
 
 
+context_opts = straxen.contexts.common_opts.copy()
+context_opts['register'] = [straxen.DAQReader]
+
 def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
@@ -226,12 +229,12 @@ def new_context():
             runid_field='number',
             new_data_path=output_folder,
             mongo_dbname=dbname),
-        **straxen.contexts.common_opts)
+        config=straxen.contexts.xnt_common_config,
+        **context_opts)
     st.context_config['allow_multiprocess'] = True if args.cores > 1 else False
     st.context_config['allow_shm'] = True if args.cores > 1 else False
     st.context_config['max_messages'] = args.max_messages
     return st
-
 
 st = new_context()
 
@@ -618,12 +621,14 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
             '''Run strax'''
-            st.make(run_id, target,
-                    config=dict(input_dir=input_dir,
-                                compressor=compressor,
+            strax_config = dict(daq_input_dir=input_dir,
+                                daq_compressor=compressor,
                                 run_start_time=run_start_time,
-                                rr_samples=samples_per_record,
-                                n_readout_threads=n_readout_threads),
+                                record_length=samples_per_record,
+                                n_readout_threads=n_readout_threads,
+                               )
+            st.make(run_id, target,
+                    config=strax_config,
                     max_workers=args.cores)
 
         if args.profile.lower() == 'false':
@@ -708,11 +713,11 @@ def process_run(rd, send_heartbeats=True):
             fail(f"Could not find start in datetime.datetime object: {str(e)}")
 
         try:
-            samples_per_record = int(rd['ini']['strax_fragment_length'] / 2)  # note that value in rd in bytes
+            samples_per_record = int(rd['ini']['strax_fragment_payload_bytes'] / 2)  # note that value in rd in bytes
             if not samples_per_record == 110:
                 print(f'Samples_per_record = {samples_per_record}')
         except Exception as e:
-            fail(f"Could not find ini.strax_fragment_length in database: {str(e)}")
+            fail(f"Could not find ini.strax_fragment_payload_bytes in database: {str(e)}")
 
         strax_proc = multiprocessing.Process(
             target=run_strax,
