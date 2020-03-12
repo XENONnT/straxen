@@ -16,5 +16,8 @@ from .peak_processing import *
 from . import event_processing
 from .event_processing import *
 
+from . import KrDoubleS1Scatter
+from .KrDoubleS1Scatter import *
+
 from . import cuts
 from .cuts import *
