@@ -108,9 +108,6 @@ def main():
         payload_t_end = desired_end
 
         # Restore baseline, clear metadata, fix time
-        # We have to copy the array to avoid readonly errors
-        # (not sure why?)
-        restore_baseline(records)
         records['time'] = records['time'] - run_start
         assert np.all(records['time'] % 10 == 0)
 
@@ -191,11 +188,6 @@ def main():
 
     print("Fake DAQ done")
 
-
-@numba.njit
-def restore_baseline(records):
-    for r in records:
-        r['data'][:r['length']] = 16000 - r['data'][:r['length']]
 
 
 def write_to_dir(c, outdir):
