@@ -131,7 +131,7 @@ class RunDB(strax.StorageFrontend):
 
         # Check if the run exists
         if self.runid_field == 'name':
-            run_query = {'name': key.run_id}
+            run_query = {'name': str(key.run_id)}
         else:
             run_query = {'number': int(key.run_id)}
         dq = self._data_query(key)
@@ -233,7 +233,13 @@ class RunDB(strax.StorageFrontend):
             yield doc
 
     def run_metadata(self, run_id, projection=None):
-        doc = self.collection.find_one({'name': run_id}, projection=projection)
+        if self.runid_field == 'name':
+            run_id = str(run_id)
+        else:
+            run_id = int(run_id)
+        doc = self.collection.find_one(
+            {self.runid_field: run_id},
+            projection=projection)
         if doc is None:
             raise strax.DataNotAvailable
         if self.reader_ini_name_is_mode:
