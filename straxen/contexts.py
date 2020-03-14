@@ -77,7 +77,7 @@ def xenonnt_online(output_folder='./strax_data',
     if not we_are_the_daq:
         st.context_config['forbid_creation_of'] = 'raw_records'
 
-    # Hack for https://github.com/AxFoundation/strax/pull/223
+    # Hack for https://github.com/AxFoundation/strax/issues/246
     st.context_config['check_available'] = ()
     return st
 
