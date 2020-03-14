@@ -225,6 +225,7 @@ def new_context():
     return straxen.contexts.xenonnt_online(
         allow_multiprocess=args.cores > 1,
         allow_shm=args.cores > 1,
+        we_are_the_daq=True,
         max_messages=args.max_messages)
 
 st = new_context()
