@@ -222,19 +222,10 @@ def new_context():
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
-    st = strax.Context(
-        storage=straxen.RunDB(
-            mongo_url=mongo_url,
-            mongo_collname=run_collname,
-            runid_field='number',
-            new_data_path=output_folder,
-            mongo_dbname=dbname),
-        config=straxen.contexts.xnt_common_config,
-        **context_opts)
-    st.context_config['allow_multiprocess'] = True if args.cores > 1 else False
-    st.context_config['allow_shm'] = True if args.cores > 1 else False
-    st.context_config['max_messages'] = args.max_messages
-    return st
+    return straxen.contexts.xenonnt_online(
+        allow_multiprocess=args.cores > 1,
+        allow_shm=args.cores > 1,
+        max_messages=args.max_messages)
 
 st = new_context()
 

@@ -1,3 +1,4 @@
+import os
 import warnings
 
 from frozendict import frozendict
@@ -45,6 +46,41 @@ xnt_common_config = dict(
 ##
 # XENONnT
 ##
+
+
+def xenonnt_online(output_folder='./strax_data',
+                   we_are_the_daq=False,
+                   **kwargs):
+    """XENONnT online processing and analysis"""
+    run_db_username = straxen.get_secret('mongo_rdb_username')
+    run_db_password = straxen.get_secret('mongo_rdb_password')
+    run_db_dbname = 'run'
+    run_db_collname = 'runs'
+
+    mongo_url = f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin"
+
+    context_options = {
+        **straxen.contexts.common_opts,
+        **kwargs}
+
+    st = strax.Context(
+        storage=straxen.RunDB(
+            mongo_url=mongo_url,
+            mongo_collname=run_db_collname,
+            runid_field='number',
+            new_data_path=output_folder,
+            mongo_dbname=run_db_dbname),
+        config=straxen.contexts.xnt_common_config,
+        **context_options)
+    st.register(straxen.DAQReader)
+
+    if not we_are_the_daq:
+        st.context_config['forbid_creation_of'] = 'raw_records'
+
+    # Hack for https://github.com/AxFoundation/strax/pull/223
+    st.context_config['check_available'] = ()
+    return st
+
 
 def nt_simulation():
     import wfsim
