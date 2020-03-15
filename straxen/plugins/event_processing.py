@@ -91,7 +91,7 @@ class EventBasics(strax.LoopPlugin):
         # name                dtype       comment
         ('time',              np.int64,   'start time since unix epoch [ns]'),
         ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
-        ('endtime',           np.int64,   'center time since unix epoch [ns]'),
+        ('endtime',           np.int64,   'end time since unix epoch [ns]'),
         ('area',              np.float32, 'area, uncorrected [PE]'),
         ('n_channels',        np.int32,   'count of contributing PMTs'),
         ('n_competing',       np.float32, 'number of competing PMTs'),
