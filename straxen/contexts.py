@@ -93,7 +93,7 @@ def nt_simulation():
             detector='XENONnT',
             fax_config='https://raw.githubusercontent.com/XENONnT/'
                        'strax_auxiliary_files/master/fax_files/fax_config_nt.json',
-            **x1t_common_config),
+            **xnt_common_config),
         **straxen.contexts.common_opts)
 
 
