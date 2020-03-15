@@ -223,9 +223,10 @@ def new_context():
     # We use exactly the logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
     return straxen.contexts.xenonnt_online(
+        output_folder=output_folder,
+        we_are_the_daq=True,
         allow_multiprocess=args.cores > 1,
         allow_shm=args.cores > 1,
-        we_are_the_daq=True,
         max_messages=args.max_messages)
 
 st = new_context()
