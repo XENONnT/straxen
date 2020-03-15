@@ -177,6 +177,6 @@ if __name__ == '__main__':
     args = parse_args()
     if args.profile_ram:
         from memory_profiler import memory_usage
-        mem = memory_usage(proc=main)
+        mem = memory_usage(proc=(main, [args], dict()))
         print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
     sys.exit(main(args))
