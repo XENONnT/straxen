@@ -31,9 +31,9 @@ dtype_ap = [(('Channel/PMT number','channel'),
              (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
                '<i2'),                                        # first sample after last sample of hit
              (('Height of hit in ADC counts', 'height'),
-               '<i4'),                                        # height of pulse
+               '<i4'),                                        # height of hit
              (('Time delay w.r.t. LED hit', 'tdelay'),
-               '<i2'),                                        # time delay of pulse w.r.t to corresponding LED hit in the same WF in samples
+               '<i2'),                                        # time delay of hit w.r.t to corresponding LED hit in the same WF in samples
              (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
                '<i4')                                         # record index in which hit was found
             ]
@@ -41,21 +41,27 @@ dtype_ap = [(('Channel/PMT number','channel'),
 
 @strax.takes_config(
     strax.Option('n_pmts',
-                 default=248,
+                 default=straxen.n_tpc_pmts,
                  help="Number of PMTs in TPC"),
     strax.Option('to_pe_file',
                  default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
                  help='Link to the to_pe conversion factors'),
-    strax.Option('LED_window',
-                 default=[140,180],
-                 help='Sample range for LED pulse integration'),
+    strax.Option('LED_window_left',
+                 default=140,
+                 help='Left boundary of sample range for LED pulse integration'),
+    strax.Option('LED_window_right',
+                 default=180,
+                 help='Right boundary of sample range for LED pulse integration'),
     strax.Option('hit_threshold',
                  default=15,
                  help='Hitfinder threshold in ADC counts above baseline'),
+    strax.Option('baseline_samples',
+                 default=40,
+                 help='Number of samples to use at the start of the pulse to determine the baseline'),
     )
 class AP(strax.Plugin):
     
-    __version__ = '0.0.2.5'
+    __version__ = '0.0.3.5'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -71,34 +77,50 @@ class AP(strax.Plugin):
         print('setup:\n   plugin version = ', self.__version__,
               '\n   hit_threshold = ', self.config['hit_threshold'],
               '\n   to_pe_file = ', self.config['to_pe_file'],
-              '\n   LED_window = ', self.config['LED_window'],
+              '\n   LED_window = ', self.config['LED_window_left'], '-', self.config['LED_window_right'],
              )
+
         
     def compute(self, raw_records):
         
-        r = raw_records[raw_records['channel'] < self.config['n_pmts']]
+        # Convert everything to the records data type -- adds extra fields.
+        records = strax.raw_to_records(raw_records)
+        del raw_records
         
+        # channel split: only need the TPC PMT channels
+        r = records[records['channel'] < self.config['n_pmts']]
+        del records
         
-        #hits = strax.find_hits(r, threshold=self.config['hit_threshold'])
-        hits = find_hits_ap(r, threshold=self.config['hit_threshold'], LED_window=self.config['LED_window'])
-                
-        res = np.zeros(len(hits), dtype=self.dtype)
+        # calculate baseline and baseline rms
+        strax.baseline(r,
+                       baseline_samples=self.config['baseline_samples'],
+                       flip=True)
+        
+        # find all hits in all WFs
+        hits = find_hits_ap(r,
+                            threshold=self.config['hit_threshold'],
+                            LED_window_left=self.config['LED_window_left'],
+                            LED_window_right=self.config['LED_window_right'],
+                           )
+        
+        # copy hits to result and calculate area_pe
+        result = np.zeros(len(hits), dtype=self.dtype)
         for name in hits.dtype.names:
-            res[name] = hits[name]        
+            result[name] = hits[name]        
+        result['area_pe'] = result['area'] * self.to_pe[result['channel']]
         
-        res['area_pe'] = res['area'] * self.to_pe[res['channel']]
-        
-        return res
+        return result
 
 
+# new data type for hits in AP data
 hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
              (('Time resolution in ns', 'dt'), '<i2'),
              (('Start time of the interval (ns since unix epoch)', 'time'), '<i8'),
              (('Length of the interval in samples', 'length'), '<i4'),
-             (('Integral in ADC x samples', 'area'), '<i4'),
+             (('Integral of hit in ADC counts x samples', 'area'), '<i4'),
              (('Index of sample in record in which hit starts', 'left'), '<i2'),
              (('Index of sample in record in which the hit area suceeds 10% of its total area', 'sample_10pc_area'), '<i2'),
-             (('Index of sample in record in which the hit height suceeds 50% of maximum height', 'sample_50pc_height'), '<i2'),   
+             (('Index of sample in record in which the hit height suceeds 50% of maximum height', 'sample_50pc_height'), '<i2'),
              (('Index of sample in record of hit maximum', 'max'), '<i2'),
              (('Index of first sample in record just beyond hit (exclusive bound)', 'right'), '<i2'),
              (('Height of hit in ADC counts', 'height'), '<i4'),
@@ -110,7 +132,7 @@ hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
 @export
 @strax.growing_result(hit_ap_dtype, chunk_size=int(1e2))
 @numba.jit(nopython=True, nogil=True, cache=True)
-def find_hits_ap(records, threshold, LED_window, _result_buffer=None):
+def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_buffer=None):
 
     buffer = _result_buffer
     if not len(records):
@@ -128,7 +150,7 @@ def find_hits_ap(records, threshold, LED_window, _result_buffer=None):
         
         LED_hit = False
 
-        for i in range(LED_window[0], samples_per_record):
+        for i in range(LED_window_left, samples_per_record):
             # We can't use enumerate over r['data'],
             # numba gives errors if we do.
             # TODO: file issue?
@@ -137,24 +159,28 @@ def find_hits_ap(records, threshold, LED_window, _result_buffer=None):
             above_threshold = x > threshold
         
         
-            if (i>=LED_window[0]) & (i<=LED_window[1]):
+            if (i>=LED_window_left) & (i<=LED_window_right):
                 # start of LED integration
                 if above_threshold:
-                    if area==0:
+                    if area == 0:
                         # start of LED hit
                         hit_start = i
                     area += x
                     height = max(height, x)
                     if height == x:
                         hit_max = i
+                    
+                    # end of LED hit is last sample above threshold in LED window
+                    hit_end = i + 1    
                         
-                    if i==LED_window[1]:
+                    if i == LED_window_right:
+                        # end of LED window,
                         in_interval = True
                         LED_hit = True
                     else:
                         continue
                 else:
-                    if i==LED_window[1]:
+                    if i == LED_window_right:
                         in_interval = True
                         LED_hit = True
                     continue
@@ -169,7 +195,9 @@ def find_hits_ap(records, threshold, LED_window, _result_buffer=None):
             if in_interval:
                 if not above_threshold:
                     # Hit ends at the start of this sample
-                    hit_end = i
+                    # (LED hit end is determined already)
+                    if not LED_hit:
+                        hit_end = i
                     in_interval = False
                     
                 else:
@@ -215,7 +243,7 @@ def find_hits_ap(records, threshold, LED_window, _result_buffer=None):
                             res['sample_10pc_area'] = hit_start + data_i
                             break
                     
-                    # Store areas and height.
+                    # Store areas and height. 
                     baseline_fpart = r['baseline'] % 1
                     area += res['length'] * baseline_fpart
                     res['area'] = area
@@ -245,5 +273,3 @@ def find_hits_ap(records, threshold, LED_window, _result_buffer=None):
                         offset = 0
                         
     yield offset
-
-

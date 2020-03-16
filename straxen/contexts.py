@@ -36,14 +36,13 @@ ap_opts = dict(
                      'events', 'event_info')
     )
 
-def strax_afterpulseanalysis():
+def strax_afterpulseanalysis_xenon1t():
     return strax.Context(
-        storage=[strax.DataDirectory('/dali/lgrandi/aalbers/strax_data_raw',
-                                     take_only='raw_records',
-                                     deep_scan=False,readonly=True),
-                 strax.DataDirectory('/dali/lgrandi/aalbers/strax_data',
-                                     readonly=True,
-                                     provide_run_metadata=False),
+        storage=[strax.DataDirectory('/dali/lgrandi/xenon1t/strax_converted/raw',
+                                     take_only='raw_records', provide_run_metadata=True,
+                                     deep_scan=False, readonly=True),
+                 strax.DataDirectory('/dali/lgrandi/xenon1t/strax_converted/processed',
+                                     readonly=True, provide_run_metadata=False),
                  strax.DataDirectory('/dali/lgrandi/hoetzsch/xenonnt/strax_data',
                                      provide_run_metadata=False)],
         allow_multiprocess=True, 
