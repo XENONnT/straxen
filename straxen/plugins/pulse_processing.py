@@ -110,6 +110,9 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        assert_str = f'Incompatible options for to_pe ({len(self.to_pe)}) and ' \
+                     f'n_tpc_pmts ({self.config["n_tpc_pmts"]}). Both should be for XENON1T OR XENONnT.'
+        assert len(self.to_pe) == self.config['n_tpc_pmts'], assert_str
 
     def compute(self, raw_records):
         if self.config['check_raw_record_overlaps']:
