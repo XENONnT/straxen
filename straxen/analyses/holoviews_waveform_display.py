@@ -84,7 +84,7 @@ def _records_to_points(*, records, to_pe, t_reference):
         kdims=[hv.Dimension('time', label='Time', unit='sec'),
                hv.Dimension('channel',
                             label='PMT number',
-                            range=(0, straxen.n_tpc_pmts))],
+                            range=(0, straxen.n_tpc_pmts_1T))],
         vdims=[hv.Dimension('area', label='Area', unit='pe')])
 
     time_stream = hv.streams.RangeX(source=rec_points)
@@ -114,7 +114,7 @@ def hvdisp_plot_records_2d(records, to_pe,
     return hv.operation.datashader.dynspread(
             hv.operation.datashader.datashade(
                 records,
-                y_range=(0, straxen.n_tpc_pmts),
+                y_range=(0, straxen.n_tpc_pmts_1T),
                 streams=[time_stream])).opts(
         plot=dict(width=width,
                   tools=[x_zoom_wheel(), 'xpan'],

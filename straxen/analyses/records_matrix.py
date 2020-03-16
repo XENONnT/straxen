@@ -60,7 +60,7 @@ def raw_records_matrix(context, run_id, raw_records, time_range):
 
 
 @numba.njit
-def _records_to_matrix(records, t0, window, n_channels=straxen.n_tpc_pmts, dt=10):
+def _records_to_matrix(records, t0, window, n_channels=straxen.n_tpc_pmts_1T, dt=10):
     n_samples = window // dt
     y = np.zeros((n_samples, n_channels),
                  dtype=np.int32)

@@ -69,8 +69,8 @@ def plot_on_single_pmt_array(
 
     Other arguments are passed to plt.scatter.
     """
-    assert len(c) == straxen.n_tpc_pmts, \
-        f"Need array of {straxen.n_tpc_pmts} values, got {len(c)}"
+    assert len(c) == straxen.n_tpc_pmts_1T, \
+        f"Need array of {straxen.n_tpc_pmts_1T} values, got {len(c)}"
     if vmin is None:
         vmin = c.min()
     if vmax is None:

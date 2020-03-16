@@ -28,7 +28,7 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 first_sr1_run = 170118_1327
 tpc_r = 47.9
-n_tpc_pmts = 248
+n_tpc_pmts_1T = 248
 
 
 @export
