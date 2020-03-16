@@ -425,26 +425,28 @@ def infer_run_mode(rd, input_dir):
     Estimating save parameters for running bootstrax from:
       # TODO update with new strax version
       https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests
+    returns: dictionary of how many cores and max_messages should be used based on an
+    estimated data rate.
     '''
-    naptime, i = 10, 0
+    nap_time, i = 10, 0
     while len(os.listdir(input_dir)) < 3 * 3:
         if i > 10:
             # To few files to be sure the first chunk is completely written
             return dict(cores=args.cores, max_messages=args.max_messages)
-        time.sleep(naptime)
-    # esitmate datarate on the bases of the size of the first chunk
+        time.sleep(nap_time)
+    # Estimate data rate on the bases of the size of the first chunk
     first_chunk = input_dir + '/000000/'
     chunk_size = np.sum([os.path.getsize(first_chunk + f) for f in os.listdir(first_chunk)])
     chunk_time = rd['ini']['strax_chunk_length'] + rd['ini']['strax_chunk_overlap']
-    compresson_factor = 3  # this is an estimate
-    data_rate = compresson_factor * (chunk_size / 1e6) / (chunk_time)  # in MB/s
+    compression_factor = 3  # this is an estimate
+    data_rate = compression_factor * (chunk_size / 1e6) / chunk_time  # in MB/s
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname.strip('eb.xenon.local')) >= 3
     print(f"infer_run_mode::\teb number {int(hostname.strip('eb.xenon.local'))}")
 
     # Return a run-mode that is empirically found to provide stable processing.
-    print(f'infer_run_mode::\tWorking with an approx. datarate of {data_rate} MB/s')
+    print(f'infer_run_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
     if data_rate < 50:
         result = dict(cores=12 if is_new_eb else 8,
                       max_messages=8 if is_new_eb else 6)
@@ -499,6 +501,18 @@ def delete_live_data(live_data_path):
         raise FileNotFoundError(f'Something is off, no folder found '
                                 f'at {live_data_path} but there was '
                                 f'an attempt to delete data here')
+
+
+def clear_shm():
+    '''Manually delete files in /dev/shm/ created by npshmex on starup.'''
+    shm_dir = '/dev/shm/'
+    shm_files = [f for f in os.listdir(shm_dir) if 'npshmex' in f]
+
+    if not len(shm_files):
+        return
+    print(f'clear_shm:: clearing {len(shm_files)} files')
+    for f in tqdm(shm_files):
+        os.remove(shm_dir + f)
 
 
 ##
@@ -647,9 +661,11 @@ def get_compressor(rd, default_compressor="blosc"):
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
               run_start_time, samples_per_record, process_mode, debug=False):
-    if args.cores > 1:
-        # Clear the swap memory used by npshmmex
-        npshmex.shm_clear()
+    # Clear the swap memory used by npshmmex
+    npshmex.shm_clear()
+    # double check by forcefully clearing shm
+    clear_shm()
+
     if debug:
         log.setLevel(logging.DEBUG)
     try:
