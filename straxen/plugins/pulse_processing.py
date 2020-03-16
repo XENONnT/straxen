@@ -139,7 +139,7 @@ class PulseProcessing(strax.Plugin):
 
         pulse_counts = count_pulses(r, self.config['n_tpc_pmts'])
 
-        if (len(r) and self.hev_enabled):
+        if len(r) and self.hev_enabled:
             r, r_vetoed, veto_regions = software_he_veto(
                 r, self.to_pe,
                 area_threshold=self.config['tail_veto_threshold'],
@@ -188,7 +188,8 @@ class PulseProcessing(strax.Plugin):
 def software_he_veto(records, to_pe,
                      area_threshold=int(1e5),
                      veto_length=int(3e6),
-                     veto_res=int(1e3), pass_veto_fraction=0.01,
+                     veto_res=int(1e3),
+                     pass_veto_fraction=0.01,
                      pass_veto_extend=3):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
