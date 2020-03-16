@@ -61,8 +61,8 @@ def mini_analysis(requires=tuple(),
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
                 kwargs['to_pe'] = straxen.get_to_pe(
                     run_id,
-                    'https://raw.githubusercontent.com/XENONnT/'
-                    'strax_auxiliary_files/master/to_pe.npy')
+                    context.config['gain_model'],
+                    context.config['n_tpc_pmts'])
 
             # Prepare selection arguments
             kwargs['time_range'] = context.to_absolute_time_range(
