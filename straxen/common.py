@@ -72,14 +72,34 @@ def pmt_positions():
 
 
 @export
-def get_to_pe(run_id, to_pe_file):
-    x = get_resource(to_pe_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        run_index = [-1]
-    to_pe = x[run_index[0]]['to_pe']
-    return to_pe
+def get_to_pe(run_id, gain_model, n_tpc_pmts):
+    if not isinstance(gain_model, tuple):
+        raise ValueError(f"gain_model must be a tuple")
+    if not len(gain_model) == 2:
+        raise ValueError(f"gain_model must have two elements: "
+                         f"the model type and its specific configuration")
+    model_type, model_conf = gain_model
+
+    if model_type == 'disabled':
+        # Somebody messed up
+        raise RuntimeError("Attempt to use a disabled gain model")
+
+    if model_type == 'to_pe_per_run':
+        # Load a npy file specifing a run_id -> to_pe array
+        to_pe_file = model_conf
+        x = get_resource(to_pe_file, fmt='npy')
+        run_index = np.where(x['run_id'] == int(run_id))[0]
+        if not len(run_index):
+            # Gains not known: using placeholders
+            run_index = [-1]
+        to_pe = x[run_index[0]]['to_pe']
+        return to_pe
+
+    if model_type == 'to_pe_constant':
+        # Uniform gain, specified as a to_pe factor
+        return np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
+
+    raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
 
 @export

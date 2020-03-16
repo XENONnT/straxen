@@ -38,9 +38,8 @@ export, __all__ = strax.exporter()
                  help='Maximum number of recursive peak splits to do.'),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
-    strax.Option('to_pe_file',
-                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-                 help='Link to the to_pe conversion factors'),
+    strax.Option('gain_model',
+                 help='PMT gain model. Specify as (model_type, model_config)'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
@@ -72,7 +71,9 @@ class Peaklets(strax.Plugin):
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model'],
+                                       n_tpc_pmts=self.config['n_tpc_pmts'])
 
     def compute(self, records):
         r = records
