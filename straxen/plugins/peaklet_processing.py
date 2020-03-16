@@ -48,6 +48,10 @@ export, __all__ = strax.exporter()
                  help="Time range right of peak center to call "
                       "a hit a tight coincidence (ns)"),
     strax.Option(
+        'n_tpc_pmts', type=int,
+        help='Number of TPC PMTs'),
+
+    strax.Option(
         'hit_min_amplitude',
         default=straxen.adc_thresholds(),
         help='Minimum hit amplitude in ADC counts above baseline. '
@@ -63,11 +67,14 @@ class Peaklets(strax.Plugin):
     __version__ = '0.3.0'
 
     def infer_dtype(self):
-        return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
+        return dict(peaklets=strax.peak_dtype(n_channels=self.config['n_tpc_pmts']),
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        assert_str = f'Incompatible options for to_pe ({len(self.to_pe)}) and ' \
+                     f'n_tpc_pmts ({self.config["n_tpc_pmts"]}). Both should be for XENON1T OR XENONnT.'
+        assert len(self.to_pe) == self.config['n_tpc_pmts'], assert_str
 
     def compute(self, records):
         r = records
