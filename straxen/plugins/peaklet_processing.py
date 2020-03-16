@@ -51,7 +51,11 @@ export, __all__ = strax.exporter()
         'hit_min_amplitude',
         default=straxen.adc_thresholds(),
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number.'))
+             'Specify as a tuple of length n_tpc_pmts, or a number.'),
+    strax.Option(
+        'n_tpc_pmts', type=int,
+        help='Number of TPC PMTs'),
+)
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
@@ -63,7 +67,8 @@ class Peaklets(strax.Plugin):
     __version__ = '0.3.0'
 
     def infer_dtype(self):
-        return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
+        return dict(peaklets=strax.peak_dtype(
+                        n_channels=self.config['n_tpc_pmts']),
                     lone_hits=strax.hit_dtype)
 
     def setup(self):

@@ -8,7 +8,7 @@ import straxen
 @straxen.mini_analysis(requires=('records',),
                        warn_beyond_sec=5e-3,
                        default_time_selection='touching')
-def records_matrix(records, time_range, seconds_range, to_pe):
+def records_matrix(records, time_range, seconds_range, config, to_pe):
     """Return (wv_matrix, times, pms)
       - wv_matrix: (n_samples, n_pmt) array with per-PMT waveform intensity in PE/ns
       - times: time labels in seconds (corr. to rows)
@@ -35,6 +35,7 @@ def records_matrix(records, time_range, seconds_range, to_pe):
     wvm = _records_to_matrix(
         records,
         t0=time_range[0],
+        n_channels=config['n_tpc_pmts'],
         window=time_range[1] - time_range[0])
     wvm = wvm.astype(np.float32) * to_pe.reshape(1, -1) / dt
 
@@ -60,7 +61,7 @@ def raw_records_matrix(context, run_id, raw_records, time_range):
 
 
 @numba.njit
-def _records_to_matrix(records, t0, window, n_channels=straxen.n_tpc_pmts, dt=10):
+def _records_to_matrix(records, t0, window, n_channels, dt=10):
     n_samples = window // dt
     y = np.zeros((n_samples, n_channels),
                  dtype=np.int32)
