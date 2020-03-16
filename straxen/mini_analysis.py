@@ -23,6 +23,7 @@ The function takes the same selection arguments as context.get_array:
 
 _hv_bokeh_initialized = False
 
+
 @export
 def mini_analysis(requires=tuple(),
                   hv_bokeh=False,
@@ -44,6 +45,8 @@ def mini_analysis(requires=tuple(),
 
             if 'config' in kwargs:
                 context = context.new_context(config=kwargs['config'])
+            if 'config' in parameters:
+                kwargs['config'] = context.config
 
             # Say magic words to enable holoviews
             if hv_bokeh:
