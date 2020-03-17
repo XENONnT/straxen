@@ -26,10 +26,26 @@ x1t_common_config = dict(
         # (Minimum channel, maximum channel)
         tpc=(0, 247),
         diagnostic=(248, 253),
-        aqmon=(254, 999)))
+        aqmon=(254, 999)),
+    hev_gain_model=('to_pe_per_run',
+                    'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+    gain_model=('to_pe_per_run',
+                'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+    pmt_pulse_filter=(
+        0.012, -0.119,
+        2.435, -1.271, 0.357, -0.174, -0., -0.036,
+        -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
+        -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
+        -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
+    tail_veto_threshold=int(1e5),
+    save_outside_hits=(3, 3),
+    hit_min_amplitude=straxen.adc_thresholds(),
+)
 
 xnt_common_config = dict(
     n_tpc_pmts=493,
+    gain_model=('to_pe_constant',
+                0.005),
     channel_map=frozendict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
@@ -38,7 +54,8 @@ xnt_common_config = dict(
          tpc_blank=(999, 999),
          mv=(1000, 1083),
          mv_blank=(1999, 1999),
-    ))
+    )
+)
 
 
 ##

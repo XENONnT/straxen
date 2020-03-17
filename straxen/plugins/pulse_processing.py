@@ -8,20 +8,19 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option(
-        'to_pe_file',
-        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',    # noqa
-        help='URL of the to_pe conversion factors'),
+    strax.Option('hev_gain_model',
+                 default=('disabled', None),
+                 help='PMT gain model used in the software high-energy veto.'
+                      'Specify as (model_type, model_config)'),
     strax.Option(
         'baseline_samples',
         default=40,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
-
     # Tail veto options
     strax.Option(
         'tail_veto_threshold',
-        default=int(1e5),
+        default=0,
         help=("Minimum peakarea in PE to trigger tail veto."
               "Set to None, 0 or False to disable veto.")),
     strax.Option(
@@ -44,20 +43,16 @@ export, __all__ = strax.exporter()
     # PMT pulse processing options
     strax.Option(
         'pmt_pulse_filter',
-        default=(0.012, -0.119,
-                 2.435, -1.271, 0.357, -0.174, -0., -0.036,
-                 -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
-                 -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
-                 -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
+        default=None,
         help='Linear filter to apply to pulses, will be normalized.'),
     strax.Option(
         'save_outside_hits',
-        default=(3, 3),
+        default=(3, 20),
         help='Save (left, right) samples besides hits; cut the rest'),
 
     strax.Option(
         'hit_min_amplitude',
-        default=straxen.adc_thresholds(),
+        default=15,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_tpc_pmts, or a number.'),
 
@@ -109,7 +104,14 @@ class PulseProcessing(strax.Plugin):
         return dtype
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.hev_enabled = (
+            (self.config['hev_gain_model'][0] != 'disabled')
+            and self.config['tail_veto_threshold'])
+        if self.hev_enabled:
+            self.to_pe = straxen.get_to_pe(
+                self.run_id,
+                self.config['hev_gain_model'],
+                n_tpc_pmts=self.config['n_tpc_pmts'])
 
     def compute(self, raw_records):
         if self.config['check_raw_record_overlaps']:
@@ -137,7 +139,7 @@ class PulseProcessing(strax.Plugin):
 
         pulse_counts = count_pulses(r, self.config['n_tpc_pmts'])
 
-        if self.config['tail_veto_threshold'] and len(r):
+        if len(r) and self.hev_enabled:
             r, r_vetoed, veto_regions = software_he_veto(
                 r, self.to_pe,
                 area_threshold=self.config['tail_veto_threshold'],
@@ -186,7 +188,8 @@ class PulseProcessing(strax.Plugin):
 def software_he_veto(records, to_pe,
                      area_threshold=int(1e5),
                      veto_length=int(3e6),
-                     veto_res=int(1e3), pass_veto_fraction=0.01,
+                     veto_res=int(1e3),
+                     pass_veto_fraction=0.01,
                      pass_veto_extend=3):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).

@@ -17,7 +17,7 @@ def plot_on_pmt_arrays(
         **kwargs):
     """Plot the PMT arrays side-by-side, coloring the PMTS with c.
 
-    :param c: Array of colors to use. Must be len(straxen.n_tpc_pmts)
+    :param c: Array of colors to use. Must have len() n_tpc_pmts
     :param label: Label for the color bar
     :param figsize: Figure size to use.
     :param extend: same as plt.colorbar(extend=...)
@@ -50,6 +50,7 @@ def plot_on_pmt_arrays(
 def plot_on_single_pmt_array(
         c,
         array_name='top',
+        detector='xenon1t',
         r=straxen.tpc_r * 1.1,
         pmt_label_size=7,
         pmt_label_color='white',
@@ -57,7 +58,7 @@ def plot_on_single_pmt_array(
         **kwargs):
     """Plot one of the PMT arrays and color it by c.
 
-    :param c: Array of colors to use. Must be len(straxen.n_tpc_pmts)
+    :param c: Array of colors to use. Must be len() of the number of TPC PMTs
     :param label: Label for the color bar
     :param pmt_label_size: Fontsize for the PMT number labels.
     Set to 0 to disable.
@@ -69,8 +70,6 @@ def plot_on_single_pmt_array(
 
     Other arguments are passed to plt.scatter.
     """
-    assert len(c) == straxen.n_tpc_pmts, \
-        f"Need array of {straxen.n_tpc_pmts} values, got {len(c)}"
     if vmin is None:
         vmin = c.min()
     if vmax is None:
