@@ -74,12 +74,12 @@ nveto_common_opts = dict(
         'start', 'end', 'livetime',
         'trigger.events_built'),
     check_available=('nveto_pre_raw_records',
-                     'nveto_raw_records',
-                     'nveto_diagnostic_lone_records',
-                     'nveto_lone_records_count',
-                     'nveto_records',
-                     'nveto_pulses',
-                     'nveto_pulse_basics',
+                     # 'nveto_raw_records',
+                     # 'nveto_diagnostic_lone_records',
+                     # 'nveto_lone_records_count',
+                     # 'nveto_records',
+                     # 'nveto_pulses',
+                     # 'nveto_pulse_basics',
                      ))
 
 
