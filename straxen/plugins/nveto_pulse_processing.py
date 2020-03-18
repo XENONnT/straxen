@@ -442,6 +442,7 @@ def split_pulses(records, pulses, _result_buffer=None):
             offset += 1
             if len(buffer) == offset:
                 yield offset
+                offset = 0
     yield offset
 
 
