@@ -233,13 +233,10 @@ def concat_overlapping_hits(hits,
 
 @export
 @numba.njit(cache=True, nogil=True)
-def get_pulse_data(nveto_records, hit, start_index=0):
+def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
     """
     Searches in a given nveto_record data_chunk for the data a
     specified hit.
-
-    The function will set all samples for which no data can be found
-    to -42000..
 
     Args:
         nveto_records (np.array): Array of the nveto_record_dtype
@@ -250,6 +247,12 @@ def get_pulse_data(nveto_records, hit, start_index=0):
     Keyword Args:
         start_index (int): Index of the nveto_record from which we should
             start our search.
+        update_hit (bool): If true the hit boundaries are updated when they
+            span beyond data covered regions.
+
+    Note:
+        In case a hit spans, due to the left and right extension, into a region
+        which is not covered by any data. The hit gets chopped accordingly.
 
     Returns:
         np.array: Data of the corresponding hit.
@@ -263,17 +266,10 @@ def get_pulse_data(nveto_records, hit, start_index=0):
         them).
     """
     update_start = True
+    res_start = 0
 
     hit_start_time = hit['time']
     hit_end_time = hit['endtime']
-
-    # In case the pulse spans over multiple records we need:
-    res_start = 0
-    record_index = 0
-
-    # Init a buffer containing the data:
-    nsamples = (hit_end_time - hit_start_time) // nveto_records[0]['dt']
-    res = np.zeros(nsamples, dtype=np.float32)
 
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
         if nvr['channel'] != hit['channel']:
@@ -281,26 +277,41 @@ def get_pulse_data(nveto_records, hit, start_index=0):
 
         # Now we have the correct channel, but the correct time?
         nvr_start_time = nvr['time']
-        nvr_end_time = int(nvr['length'] * nvr['dt']) + nvr_start_time
-        if nvr_start_time <= hit_start_time < nvr_end_time:
+        nvr_end_time = int(nvr['pulse_length'] * nvr['dt']) + nvr_start_time
+        nvr_fragment_end_time = int(nvr['length'] * nvr['dt']) + nvr_start_time
+
+        if (nvr_start_time <= hit_start_time < nvr_end_time) or (nvr_start_time <= hit_end_time < nvr_fragment_end_time):
+            # We have to check if either the start or the end time of a hit is within the current fragment.
+            # Due to the left and right extension of the hitfinder it might happen that we extend the hit into
+            # a region in which we do not have any data.
+
             # We found the correct start time:
             if update_start:
-                # ... hence we can start the search for our next hit here if there are any
+                # ... hence we can start the search for our next hit here if there are any. And init our result buffer:
                 start_index = index  # Updating the start_index.
+
+                # Now we have to check if a hit falls out of bounds and act accordingly:
+                st = max(nvr_start_time, hit_start_time)
+                et = min(nvr_end_time, hit_end_time)
+                nsamples = et-st//nvr['dt']
+                res = np.zeors(nsamples, dtype=np.float32)
+                if update_hit:
+                    hit['time'] = st
+                    hit['endtime'] = et
                 update_start = False
 
-            # Now let us check how much of the pulse is in this record:
-            end_sample_time = min(hit_end_time, nvr_end_time)  # Whatever end comes first
+            # In case a hit is distributed over many fragments:
+            end_sample_time = min(et, nvr_fragment_end_time)  # Whatever end comes first
 
             end_sample = (end_sample_time - nvr_start_time) // nvr['dt']
-            start_sample = (hit_start_time - nvr_start_time) // nvr['dt']
-            nsamples = end_sample - start_sample
+            start_sample = (st - nvr_start_time) // nvr['dt']
+            nsamples_in_fragment = end_sample - start_sample
 
-            res[res_start:res_start+nsamples] = nvr['data'][start_sample:end_sample]
+            res[res_start:res_start+nsamples_in_fragment] = nvr['data'][start_sample:end_sample]
 
             # Updating the starts in case our record is distributed over more than one fragment:
-            res_start += nsamples
-            hit_start_time = nvr_end_time
+            res_start += nsamples_in_fragment
+            hit_start_time = end_sample_time
 
         if res_start == nsamples:
             # We found everything of our event:
