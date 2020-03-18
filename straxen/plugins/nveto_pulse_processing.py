@@ -263,7 +263,6 @@ def get_pulse_data(nveto_records, hit, start_index=0):
         them).
     """
     update_start = True
-    update_record = True
 
     hit_start_time = hit['time']
     hit_end_time = hit['endtime']
@@ -277,45 +276,31 @@ def get_pulse_data(nveto_records, hit, start_index=0):
     res = np.zeros(nsamples, dtype=np.float32)
 
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
-        nvr_start_time = nvr['time']
-        nvr_length_time = int(nvr['length'] * nvr['dt'])
-        dt = (hit_start_time - nvr_start_time)
+        if nvr['channel'] != hit['channel']:
+            continue
 
-        if nvr_length_time > dt >= 0:
+        # Now we have the correct channel, but the correct time?
+        nvr_start_time = nvr['time']
+        nvr_end_time = int(nvr['length'] * nvr['dt']) + nvr_start_time
+        if nvr_start_time <= hit_start_time < nvr_end_time:
             # We found the correct start time:
             if update_start:
                 # ... hence we can start the search for our next hit here if there are any
                 start_index = index  # Updating the start_index.
-                update = False
-
-            if nvr['channel'] != hit['channel']:
-                # Correct time but not the correct PMT...
-                continue
-
-            # Okay we found the correct time and correct PMT:
-            if update_record:
-                record_index = index
-                update_record = False
+                update_start = False
 
             # Now let us check how much of the pulse is in this record:
-            # Starting with the end of the pulse:
-            nvr_end_time = nvr_start_time + nvr_length_time
             end_sample_time = min(hit_end_time, nvr_end_time)  # Whatever end comes first
+
             end_sample = (end_sample_time - nvr_start_time) // nvr['dt']
-
             start_sample = (hit_start_time - nvr_start_time) // nvr['dt']
-            nsamples_in_fragment = end_sample - start_sample
+            nsamples = end_sample - start_sample
 
-            res[res_start:res_start + nsamples_in_fragment] = nvr['data'][start_sample:end_sample]
+            res[res_start:res_start+nsamples] = nvr['data'][start_sample:end_sample]
 
             # Updating the starts in case our record is distributed over more than one fragment:
-            res_start += nsamples_in_fragment
+            res_start += nsamples
             hit_start_time = nvr_end_time
-        elif dt < 0:
-            # If this happens our data or parts of it should have been in an earlier
-            # record.
-            res[res_start:] = -42000.
-            return res, start_index, 0, 0.
 
         if res_start == nsamples:
             # We found everything of our event:
@@ -323,71 +308,11 @@ def get_pulse_data(nveto_records, hit, start_index=0):
             # correct area in the end.
             # TODO: Change this?
             nvr_baseline = nvr['baseline']%1
+            return res, start_index, nvr_baseline
 
-            return res, start_index, record_index, nvr_baseline
-
-
-@numba.njit(cache=True, nogil=True)
-def get_pulse_wf(nveto_records, hit, start_index=0):
-    """
-    Like pulse_data but returns complete waveform.
-
-    TODO: Check whether we can use this as a default called by get_pulse_data. Depends on performance.
-    """
-    update_start = True
-    update_record = True
-
-    hit_start_time = hit['time']
-
-    # In case the pulse spans over multiple records we need:
-    res_start = 0
-    record_index = 0
-
-    # Since we do not know the buffer apriori we have to consider the longest event:
-    nsamples = np.max(nveto_records[start_index:]['pulse_length'])
-    res = np.zeros(nsamples, dtype=np.int16)
-
-    for index, nvr in enumerate(nveto_records[start_index:], start_index):
-        nvr_start_time = nvr['time']
-        nvr_length_time = int(nvr['length'] * nvr['dt'])
-        dt = (hit_start_time - nvr_start_time)
-
-        if nvr_length_time > dt >= 0:
-            # We found the correct start time:
-            if update_start:
-                # ... hence we can start the search for our next hit here if there are any
-                start_index = index  # Updating the start_index.
-                update = False
-
-            if nvr['channel'] != hit['channel']:
-                # Correct time but not the correct PMT...
-                continue
-
-            # Okay we found the correct time and correct PMT:
-            if update_start:
-                record_index = index
-                update_start = False
-
-            nsamples = nvr['pulse_length']
-            res = np.zeros(nsamples, dtype=np.int16)
-            nsamples_in_fragment = nvr['length']
-
-            res[res_start:res_start + nsamples_in_fragment] = nvr['data'][:nsamples_in_fragment]
-
-            # Updating the starts in case our record is distributed over more than one fragment:
-            res_start += nsamples_in_fragment
-            hit_start_time = nvr['time'] + nvr['length'] * nvr['dt']
-
-        # TODO: Add fail case
-
-        if res_start == nsamples:
-            # We found everything of our event:
-            # As a last thing get the baseline associated with the hit, this is necessary to compute the
-            # correct area in the end.
-            # TODO: Change this?
-            nvr_baseline = nvr['baseline'] % 1
-            return res, start_index, record_index, nvr_baseline
-
+        # If we manage to arrive here this means that we have not found the entire event...
+        res[res_start:] = -42000.
+        return res, start_index, 0
 
 
 @export
