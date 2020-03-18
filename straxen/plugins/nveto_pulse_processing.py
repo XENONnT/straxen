@@ -254,7 +254,7 @@ def get_pulse_data(nveto_records, hit, start_index=0):
     Returns:
         np.array: Data of the corresponding hit.
         int: Next start index.
-        int: Index of the first record holding the pulse data,
+        int: Index of the first record holding the pulse data. Only useful if data is not re-chunked.
         float: Float part of the baseline for the given event.
 
     Notes:
@@ -270,6 +270,7 @@ def get_pulse_data(nveto_records, hit, start_index=0):
 
     # In case the pulse spans over multiple records we need:
     res_start = 0
+    record_index = 0
 
     # Init a buffer containing the data:
     nsamples = (hit_end_time - hit_start_time) // nveto_records[0]['dt']
@@ -314,7 +315,7 @@ def get_pulse_data(nveto_records, hit, start_index=0):
             # If this happens our data or parts of it should have been in an earlier
             # record.
             res[res_start:] = -42000.
-            return res, start_index, 0.
+            return res, start_index, 0, 0.
 
         if res_start == nsamples:
             # We found everything of our event:
