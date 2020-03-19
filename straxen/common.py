@@ -255,7 +255,7 @@ def get_secret(x):
 
         # If on midway, try loading a standard secrets file instead
         if 'rcc' in socket.getfqdn():
-            path_to_secrets = '/home/aalbers/xenon_secrets.py'
+            path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
             if os.path.exists(path_to_secrets):
                 sys.path.append(osp.dirname(path_to_secrets))
                 import xenon_secrets
