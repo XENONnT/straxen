@@ -159,7 +159,7 @@ def strax_workshop_dali():
     return xenon1t_dali()
 
 
-def xenon1t_dali():
+def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
     return strax.Context(
         storage=[
             strax.DataDirectory(
@@ -172,11 +172,13 @@ def xenon1t_dali():
                 '/dali/lgrandi/xenon1t/strax_converted/processed',
                 readonly=True,
                 provide_run_metadata=False),
-            strax.DataDirectory('./strax_data',
+            strax.DataDirectory(output_folder,
                                 provide_run_metadata=False)],
         register=straxen.plugins.pax_interface.RecordsFromPax,
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
-        forbid_creation_of=('raw_records',),
+        forbid_creation_of=(
+            ('raw_records',) if build_lowlevel
+            else ('raw_records', 'records', 'peaklets')),
         **common_opts)
