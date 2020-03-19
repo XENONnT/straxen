@@ -75,7 +75,7 @@ class Peaklets(strax.Plugin):
                                        self.config['gain_model'],
                                        n_tpc_pmts=self.config['n_tpc_pmts'])
 
-    def compute(self, records):
+    def compute(self, records, start, end):
         r = records
 
         hits = strax.find_hits(r,
@@ -96,6 +96,11 @@ class Peaklets(strax.Plugin):
             right_extension=self.config['peak_right_extension'],
             min_channels=self.config['peak_min_pmts'],
             result_dtype=self.dtype_for('peaklets'))
+
+        # Make sure peaklets don't extend out of the chunk boundary
+        # This should be very rare in normal data due to the ADC pretrigger
+        # window.
+        self.clip_peaklet_times(peaklets, start, end)
 
         # Get hits outside peaklets, and store them separately.
         # fully_contained is OK provided gap_threshold > extension,
@@ -162,6 +167,15 @@ class Peaklets(strax.Plugin):
             + (1 - f_s2) * np.interp(
                 log_area,
                 *np.transpose(thresholds[1])))
+
+    @staticmethod
+    @numba.njit(nogil=True, cache=True)
+    def clip_peaklet_times(peaklets, start, end):
+        for p in peaklets:
+            if p['time'] < start:
+                p['time'] = start
+            if strax.endtime(p) > end:
+                p['length'] = (end - p['time']) // p['dt']
 
 
 @export
