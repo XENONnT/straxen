@@ -64,7 +64,7 @@ def hvdisp_plot_pmt_pattern(*, records, to_pe, array='bottom'):
     return pmts
 
 
-def _records_to_points(*, records, to_pe, t_reference):
+def _records_to_points(*, records, to_pe, t_reference, config):
     """Return (holoviews.Points, time_stream) corresponding to records
     """
     import holoviews as hv
@@ -84,7 +84,7 @@ def _records_to_points(*, records, to_pe, t_reference):
         kdims=[hv.Dimension('time', label='Time', unit='sec'),
                hv.Dimension('channel',
                             label='PMT number',
-                            range=(0, straxen.n_tpc_pmts))],
+                            range=(0, config['n_tpc_pmts']))],
         vdims=[hv.Dimension('area', label='Area', unit='pe')])
 
     time_stream = hv.streams.RangeX(source=rec_points)
@@ -92,7 +92,7 @@ def _records_to_points(*, records, to_pe, t_reference):
 
 
 @straxen.mini_analysis(requires=['records'], hv_bokeh=True)
-def hvdisp_plot_records_2d(records, to_pe,
+def hvdisp_plot_records_2d(records, to_pe, config,
                            t_reference, width=600, time_stream=None):
     """Plot records in a dynamic 2D histogram of (time, pmt)
 
@@ -114,7 +114,7 @@ def hvdisp_plot_records_2d(records, to_pe,
     return hv.operation.datashader.dynspread(
             hv.operation.datashader.datashade(
                 records,
-                y_range=(0, straxen.n_tpc_pmts),
+                y_range=(0, config['n_tpc_pmts']),
                 streams=[time_stream])).opts(
         plot=dict(width=width,
                   tools=[x_zoom_wheel(), 'xpan'],

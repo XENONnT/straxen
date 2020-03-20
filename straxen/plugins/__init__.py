@@ -19,5 +19,4 @@ from .event_processing import *
 from . import afterpulse_processing
 from .afterpulse_processing import *
 
-from . import cuts
-from .cuts import *
+from . import x1t_cuts

@@ -40,12 +40,14 @@ dtype_ap = [(('Channel/PMT number','channel'),
 
 
 @strax.takes_config(
-    strax.Option('n_pmts',
-                 default=straxen.n_tpc_pmts,
+    strax.Option('gain_model',
+                 help='PMT gain model. Specify as (model_type, model_config)'),
+    strax.Option('n_tpc_pmts',
+                 type=int,
                  help="Number of PMTs in TPC"),
-    strax.Option('to_pe_file',
-                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-                 help='Link to the to_pe conversion factors'),
+#    strax.Option('to_pe_file',
+#                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
+#                 help='Link to the to_pe conversion factors'),
     strax.Option('LED_window_left',
                  default=140,
                  help='Left boundary of sample range for LED pulse integration'),
@@ -61,7 +63,7 @@ dtype_ap = [(('Channel/PMT number','channel'),
     )
 class AP(strax.Plugin):
     
-    __version__ = '0.0.3.5'
+    __version__ = '0.0.3.8'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -73,10 +75,10 @@ class AP(strax.Plugin):
     dtype = dtype_ap
     
     def setup(self):
-        self.to_pe = get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.to_pe = get_to_pe(self.run_id, self.config['gain_model'], n_tpc_pmts=self.config['n_tpc_pmts'])
         print('setup:\n   plugin version = ', self.__version__,
               '\n   hit_threshold = ', self.config['hit_threshold'],
-              '\n   to_pe_file = ', self.config['to_pe_file'],
+              '\n   gain_model = ', self.config['gain_model'],
               '\n   LED_window = ', self.config['LED_window_left'], '-', self.config['LED_window_right'],
              )
 
@@ -88,7 +90,7 @@ class AP(strax.Plugin):
         del raw_records
         
         # channel split: only need the TPC PMT channels
-        r = records[records['channel'] < self.config['n_pmts']]
+        r = records[records['channel'] < self.config['n_tpc_pmts']]
         del records
         
         # calculate baseline and baseline rms
@@ -273,3 +275,4 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
                         offset = 0
                         
     yield offset
+    
