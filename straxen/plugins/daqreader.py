@@ -65,7 +65,7 @@ class DAQReader(strax.Plugin):
     """
     provides = (
         'raw_records',
-        'raw_records_high_energy',
+        'raw_records_he',  # high energy
         'raw_records_aqmon',
         'raw_records_mv')
 
