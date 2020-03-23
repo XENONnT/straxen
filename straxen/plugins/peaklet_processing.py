@@ -38,9 +38,8 @@ export, __all__ = strax.exporter()
                  help='Maximum number of recursive peak splits to do.'),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
-    strax.Option('to_pe_file',
-                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-                 help='Link to the to_pe conversion factors'),
+    strax.Option('gain_model',
+                 help='PMT gain model. Specify as (model_type, model_config)'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
@@ -51,7 +50,11 @@ export, __all__ = strax.exporter()
         'hit_min_amplitude',
         default=straxen.adc_thresholds(),
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number.'))
+             'Specify as a tuple of length n_tpc_pmts, or a number.'),
+    strax.Option(
+        'n_tpc_pmts', type=int,
+        help='Number of TPC PMTs'),
+)
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
@@ -63,13 +66,16 @@ class Peaklets(strax.Plugin):
     __version__ = '0.3.0'
 
     def infer_dtype(self):
-        return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
+        return dict(peaklets=strax.peak_dtype(
+                        n_channels=self.config['n_tpc_pmts']),
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model'],
+                                       n_tpc_pmts=self.config['n_tpc_pmts'])
 
-    def compute(self, records):
+    def compute(self, records, start, end):
         r = records
 
         hits = strax.find_hits(r,
@@ -90,6 +96,11 @@ class Peaklets(strax.Plugin):
             right_extension=self.config['peak_right_extension'],
             min_channels=self.config['peak_min_pmts'],
             result_dtype=self.dtype_for('peaklets'))
+
+        # Make sure peaklets don't extend out of the chunk boundary
+        # This should be very rare in normal data due to the ADC pretrigger
+        # window.
+        self.clip_peaklet_times(peaklets, start, end)
 
         # Get hits outside peaklets, and store them separately.
         # fully_contained is OK provided gap_threshold > extension,
@@ -156,6 +167,15 @@ class Peaklets(strax.Plugin):
             + (1 - f_s2) * np.interp(
                 log_area,
                 *np.transpose(thresholds[1])))
+
+    @staticmethod
+    @numba.njit(nogil=True, cache=True)
+    def clip_peaklet_times(peaklets, start, end):
+        for p in peaklets:
+            if p['time'] < start:
+                p['time'] = start
+            if strax.endtime(p) > end:
+                p['length'] = (end - p['time']) // p['dt']
 
 
 @export
