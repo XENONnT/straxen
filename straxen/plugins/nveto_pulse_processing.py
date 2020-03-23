@@ -147,8 +147,8 @@ class nVETOPulseEdges(strax.Plugin):
 
         # print('length', len(nveto_pulses), len(nveto_records))
         # Check if hits can be split:
-        nvp = split_pulses(nveto_records, nveto_pulses)
-        return nvp
+        #nvp = split_pulses(nveto_records, nveto_pulses)
+        return nveto_pulses
 
 @export
 @strax.growing_result(nveto_pulses_edges_dtype(), chunk_size=int(1e4))
@@ -232,7 +232,7 @@ def concat_overlapping_hits(hits,
 
 
 @export
-#@numba.njit(cache=True, nogil=True)
+@numba.njit(cache=True, nogil=True)
 def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
     """
     Searches in a given nveto_record data_chunk for the data a
@@ -253,7 +253,7 @@ def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
     Note:
         In case a hit spans, due to the left and right extension, into a region
         which is not covered by any data. The hit gets chopped accordingly.
-
+        
     Returns:
         np.array: Data of the corresponding hit.
         int: Next start index.
@@ -265,12 +265,25 @@ def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
         sorted in time. (Should also be true for hit(s) if looping over
         them).
     """
+    # TODO: Annoying and complicated function.... I have to check whether we can replace it.
+    # In the following is an explanation of all posssible event toplogies of hits and records. 
+    # For me this was very helpful during debugging, since I did not considere some of the cases 
+    # in the begining. 
+    # With the folliwng set of topologies we can build all possible kind of events:
+    #    
+    #    Case 1.: Normal hit:     |---hhh---|
+    #    Case 2.: Chopped Edges:  h|hh-----| or |------hh|h
+    #    Case 3.: Multi Fragment: |------h|hh-----|
+    #    Case 4.: Long Chopped:   h|hhhhhhh|hh----| or |----hhh|hhhhhhh|h
+    #    Case 5.: Long Double-Chopped:  h|hhhhhhhhhh|h
+    #    
+    #    Legend: |: Data edges, -: ZLE, h: hit  
     update_start = True
     res_start = 0
 
     hit_start_time = hit['time']
     hit_end_time = hit['endtime']
-    nsamples = (hit_end_time - hit_start_time)//nveto_records[0]['dt']
+    nsamples = (hit_end_time - hit_start_time)//nveto_records[0]['dt']  #Prelimnary number of samples
     
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
         if nvr['channel'] != hit['channel']:
@@ -280,21 +293,23 @@ def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
         dt = nvr['dt']
         nvr_start_time = nvr['time']
         nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time
-        nvr_fragment_end_time = int(nvr['length'] * dt) + nvr_start_time
-        if (nvr_start_time <= hit_start_time < nvr_fragment_end_time) | (nvr_start_time <= hit_end_time < nvr_fragment_end_time):
+        nvr_fragment_end_time = int(nvr['length'] * dt) + nvr_start_time        
+        if ((nvr_start_time <= hit_start_time < nvr_fragment_end_time)   # Check if start is in current fragment 
+            or ((nvr_start_time <= hit_end_time < nvr_end_time) and nvr['record_i'] == 0)):  # Check if end is in record.
             # We have to check if either the start or the end time of a hit is within the current fragment.
             # Due to the left and right extension of the hitfinder it might happen that we extend the hit into
-            # a region in which we do not have any data.
-            # We found the correct start time:
+            # a region in which we do not have any data. This covers Cases 1. - 4.
             if update_start:
-                # ... hence we can start the search for our next hit here if there are any. And init our result buffer:
-                start_index = index  # Updating the start_index.
+                start_index = index  # Updating the start_index, No need to loop over all records again...
 
                 # Now we have to check if a hit falls out of bounds and act accordingly:
                 hit_start_time = max(nvr_start_time, hit_start_time)
                 hit_end_time = min(nvr_end_time, hit_end_time)
-                nsamples = (hit_end_time - st) // dt
+
+                nsamples = (hit_end_time - hit_start_time) // dt
+
                 res = np.zeros(nsamples, dtype=np.float32)
+                
                 if update_hit:
                     hit['time'] = hit_start_time
                     hit['endtime'] = hit_end_time
@@ -302,29 +317,51 @@ def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
 
             # In case a hit is distributed over many fragments:
             end_sample_time = min(hit_end_time, nvr_fragment_end_time)  # Whatever end comes first
+            start_sample_time = min(hit_start_time, nvr_fragment_end_time)  # In case this frgament does not contain any of our data.
 
             end_sample = (end_sample_time - nvr_start_time) // dt
-            start_sample = (hit_start_time - nvr_start_time) // dt
-            nsamples_in_fragment = end_sample - start_sample
-            print(nsamples_in_fragment, len(res), res_start, len(res[res_start:res_start+nsamples_in_fragment]),
-                  len(nvr['data'][start_sample:end_sample]), start_sample, end_sample)
+            start_sample = (start_sample_time - nvr_start_time) // dt
+            nsamples_in_fragment = end_sample - start_samplef
 
             res[res_start:res_start+nsamples_in_fragment] = nvr['data'][start_sample:end_sample]
 
             # Updating the starts in case our record is distributed over more than one fragment:
             res_start += nsamples_in_fragment
-            hit_start_time = end_sample_time
-
+            hit_start_time = max(hit_start_time, end_sample_time)
+            
+        elif (hit_start_time  < nvr_start_time) and (nvr_end_time < hit_end_time):
+            # Here we deal with case 5.
+            # 1. We have to chop our hit again:
+            hit_start_time = nvr_start_time
+            hit_end_time = nvr_end_time
+            nsamples = (hit_end_time - hit_start_time)//dt
+            res = np.zeros(nsamples, dtype=np.float32)
+           
+            if update_start:
+                start_index = index  # Updating the start_index, No need to loop over all records again...     
+                if update_hit:
+                    hit['time'] = hit_start_time
+                    hit['endtime'] = hit_end_time
+                update_start = False
+            
+            # 2. We have to prepare if the hit spans over more than one fragment:
+            nsamples_in_fragment = (nvr_fragment_end_time - nvr_start_time)//dt 
+            res[res_start:res_start+nsamples_in_fragment] = nvr['data'][0:nsamples_in_fragment]  
+            
+            # If there is a higher order fragment we will add the data via the first if-statement
+            hit_start_time = nvr_fragment_end_time
+            res_start += nsamples_in_fragment
+        
         if res_start == nsamples:
             # We found everything of our event:
             # As a last thing get the baseline associated with the hit, this is necessary to compute the
             # correct area in the end.
-            # TODO: Change this?
+            # TODO: Another obstacle which I dislike... 
             nvr_baseline = nvr['baseline']%1
             return res, start_index, nvr_baseline
 
     # If we manage to arrive here this means that we have not found the entire event...
-    res[:] = np.zeros(0, dtype=np.float32)
+    res = np.ones(nsamples, dtype=np.float32) * -4200
     return res, start_index, 0
 
 
@@ -359,7 +396,7 @@ def split_pulses(records, pulses, _result_buffer=None):
     for ind, pulse in enumerate(pulses):
         # Get data and split pulses:
         # print('RO:', record_offset, 'Ch:', pulse['channel'], 'Time:', pulse['time'], 'EndTime:', pulse['endtime'])
-        data, record_offset, _, _ = get_pulse_data(records, pulse, record_offset)
+        data, _, _ = get_pulse_data(records, pulse, record_offset)  # TODO: Fix record offset
         edges = _split_pulse(data, (0, len(data)))
         edges = edges[edges >= 0]
 
