@@ -19,7 +19,7 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -28,7 +28,6 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 first_sr1_run = 170118_1327
 tpc_r = 47.9
-n_tpc_pmts = 248
 
 
 @export
@@ -73,13 +72,39 @@ def pmt_positions():
 
 
 @export
-def get_to_pe(run_id, to_pe_file):
-    x = get_resource(to_pe_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        run_index = [-1]
-    to_pe = x[run_index[0]]['to_pe']
+def get_to_pe(run_id, gain_model, n_tpc_pmts):
+    if not isinstance(gain_model, tuple):
+        raise ValueError(f"gain_model must be a tuple")
+    if not len(gain_model) == 2:
+        raise ValueError(f"gain_model must have two elements: "
+                         f"the model type and its specific configuration")
+    model_type, model_conf = gain_model
+
+    if model_type == 'disabled':
+        # Somebody messed up
+        raise RuntimeError("Attempt to use a disabled gain model")
+
+    elif model_type == 'to_pe_per_run':
+        # Load a npy file specifing a run_id -> to_pe array
+        to_pe_file = model_conf
+        x = get_resource(to_pe_file, fmt='npy')
+        run_index = np.where(x['run_id'] == int(run_id))[0]
+        if not len(run_index):
+            # Gains not known: using placeholders
+            run_index = [-1]
+        to_pe = x[run_index[0]]['to_pe']
+
+    elif model_type == 'to_pe_constant':
+        # Uniform gain, specified as a to_pe factor
+        to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
+
+    else:
+        raise NotImplementedError(f"Gain model type {model_type} not implemented")
+
+    if len(to_pe) != n_tpc_pmts:
+        raise ValueError(
+            f"Gain model {gain_model} resulted in a to_pe "
+            f"of length {len(to_pe)}, but n_tpc_pmts is {n_tpc_pmts}!")
     return to_pe
 
 
@@ -230,7 +255,7 @@ def get_secret(x):
 
         # If on midway, try loading a standard secrets file instead
         if 'rcc' in socket.getfqdn():
-            path_to_secrets = '/home/aalbers/xenon_secrets.py'
+            path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
             if os.path.exists(path_to_secrets):
                 sys.path.append(osp.dirname(path_to_secrets))
                 import xenon_secrets
