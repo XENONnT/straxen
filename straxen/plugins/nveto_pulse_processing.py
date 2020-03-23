@@ -291,22 +291,23 @@ def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
                 start_index = index  # Updating the start_index.
 
                 # Now we have to check if a hit falls out of bounds and act accordingly:
-                st = max(nvr_start_time, hit_start_time)
-                et = min(nvr_end_time, hit_end_time)
-                nsamples = (et - st) // dt
+                hit_start_time = max(nvr_start_time, hit_start_time)
+                hit_end_time = min(nvr_end_time, hit_end_time)
+                nsamples = (hit_end_time - st) // dt
                 res = np.zeros(nsamples, dtype=np.float32)
                 if update_hit:
-                    hit['time'] = st
-                    hit['endtime'] = et
+                    hit['time'] = hit_start_time
+                    hit['endtime'] = hit_end_time
                 update_start = False
 
             # In case a hit is distributed over many fragments:
-            end_sample_time = min(et, nvr_fragment_end_time)  # Whatever end comes first
+            end_sample_time = min(hit_end_time, nvr_fragment_end_time)  # Whatever end comes first
 
             end_sample = (end_sample_time - nvr_start_time) // dt
-            start_sample = (st - nvr_start_time) // dt
+            start_sample = (hit_start_time - nvr_start_time) // dt
             nsamples_in_fragment = end_sample - start_sample
-            print(nsamples_in_fragment)
+            print(nsamples_in_fragment, len(res), res_start, len(res[res_start:res_start+nsamples_in_fragment]),
+                  len(nvr['data'][start_sample:end_sample]), start_sample, end_sample)
 
             res[res_start:res_start+nsamples_in_fragment] = nvr['data'][start_sample:end_sample]
 
