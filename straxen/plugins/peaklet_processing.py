@@ -38,15 +38,23 @@ export, __all__ = strax.exporter()
                  help='Maximum number of recursive peak splits to do.'),
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
-    strax.Option('to_pe_file',
-                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
-                 help='Link to the to_pe conversion factors'),
+    strax.Option('gain_model',
+                 help='PMT gain model. Specify as (model_type, model_config)'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
-                      "a hit a tight coincidence (ns)"))
+                      "a hit a tight coincidence (ns)"),
+    strax.Option(
+        'hit_min_amplitude',
+        default=straxen.adc_thresholds(),
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number.'),
+    strax.Option(
+        'n_tpc_pmts', type=int,
+        help='Number of TPC PMTs'),
+)
 class Peaklets(strax.Plugin):
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
@@ -54,21 +62,24 @@ class Peaklets(strax.Plugin):
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
-    rechunk_on_save = True
 
     __version__ = '0.3.0'
 
     def infer_dtype(self):
-        return dict(peaklets=strax.peak_dtype(n_channels=straxen.n_tpc_pmts),
+        return dict(peaklets=strax.peak_dtype(
+                        n_channels=self.config['n_tpc_pmts']),
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['to_pe_file'])
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model'],
+                                       n_tpc_pmts=self.config['n_tpc_pmts'])
 
-    def compute(self, records):
+    def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(r)
+        hits = strax.find_hits(r,
+                               min_amplitude=self.config['hit_min_amplitude'])
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -85,6 +96,11 @@ class Peaklets(strax.Plugin):
             right_extension=self.config['peak_right_extension'],
             min_channels=self.config['peak_min_pmts'],
             result_dtype=self.dtype_for('peaklets'))
+
+        # Make sure peaklets don't extend out of the chunk boundary
+        # This should be very rare in normal data due to the ADC pretrigger
+        # window.
+        self.clip_peaklet_times(peaklets, start, end)
 
         # Get hits outside peaklets, and store them separately.
         # fully_contained is OK provided gap_threshold > extension,
@@ -152,6 +168,15 @@ class Peaklets(strax.Plugin):
                 log_area,
                 *np.transpose(thresholds[1])))
 
+    @staticmethod
+    @numba.njit(nogil=True, cache=True)
+    def clip_peaklet_times(peaklets, start, end):
+        for p in peaklets:
+            if p['time'] < start:
+                p['time'] = start
+            if strax.endtime(p) > end:
+                p['length'] = (end - p['time']) // p['dt']
+
 
 @export
 @strax.takes_config(
@@ -168,8 +193,10 @@ class PeakletClassification(strax.Plugin):
     provides = 'peaklet_classification'
     depends_on = ('peaklets',)
     parallel = True
-    dtype = [('type', np.int8, 'Classification of the peak(let)')]
-    __version__ = '0.1.0'
+    dtype = (
+        strax.interval_dtype +
+        [('type', np.int8, 'Classification of the peak(let)'),])
+    __version__ = '0.2.0'
 
     def compute(self, peaklets):
         peaks = peaklets
@@ -192,7 +219,15 @@ class PeakletClassification(strax.Plugin):
         is_s2[is_s1] = False
         ptype[is_s2] = 2
 
-        return dict(type=ptype)
+        return dict(type=ptype,
+                    time=peaklets['time'],
+                    dt=peaklets['dt'],
+                    # Channel is added so the field order of the merger of
+                    # peaklet_classification and peaklets matches that
+                    # of peaklets.
+                    # This way S2 merging works on arrays of the same dtype.
+                    channel=-1,
+                    length=peaklets['length'])
 
 
 FAKE_MERGED_S2_TYPE = -42
@@ -214,7 +249,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     provides = 'merged_s2s'
 
     def infer_dtype(self):
-        return self.deps['peaklets'].dtype_for('peaklets')
+        return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
         return 5 * (self.config['s2_merge_max_gap']
@@ -250,18 +285,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s['type'] = 2
             strax.compute_widths(merged_s2s)
 
-        if len(merged_s2s) == 0:
-            # Strax does not handle the case of no merged S2s well
-            # If there are none in the entire dataset, it will just keep
-            # waiting in Peaks forever.
-            # Thus, this ugly hack of passing a single fake merged S2
-            # in the middle of the chunk, which is removed later
-            merged_s2s = np.zeros(1, merged_s2s.dtype)
-            q = merged_s2s[0]
-            q['type'] = FAKE_MERGED_S2_TYPE
-            q['time'] = (peaklets[0]['time']
-                         + strax.endtime(peaklets[0])) / 2
-            q['dt'] = 1
         return merged_s2s
 
     @staticmethod
@@ -314,9 +337,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
-    # NB: merged_s2s must come first, otherwise a chunk could end
-    # in the middle of a merged peak -> bad stuff
-    depends_on = ('merged_s2s', 'peaklets', 'peaklet_classification')
+    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True

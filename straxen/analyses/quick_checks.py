@@ -160,38 +160,73 @@ def event_scatter(context, run_id, events,
 def plot_energy_spectrum(
         events,
         color='b', label=None,
+        unit=None, exposure_kg_sec=None,
         error_alpha=0.5, errors='fc',
         n_bins=100, min_energy=1, max_energy=100, geomspace=True):
     """Plot an energy spectrum histogram, with 1 sigma
     Poisson confidence intervals around it.
+
+    :param exposure_kg_sec: Exposure in kg * sec
+    :param unit: Unit to plot spectrum in. Can be either:
+      - events (events per bin)
+      - kg_day_kev (events per kg day keV)
+      - tonne_day_kev (events per tonne day keV)
+      - tonne_year_kev (events per tonne year keV)
+    Defaults to kg_day_kev if exposure_kg_sec is provided,
+    otherwise events.
 
     :param min_energy: Minimum energy of the histogram
     :param max_energy: Maximum energy of the histogram
     :param geomspace: If True, will use a logarithmic energy binning.
     Otherwise will use a linear scale.
     :param n_bins: Number of energy bins to use
+    
     :param color: Color to plot in
     :param label: Label for the line
     :param error_alpha: Alpha value for the statistical error band
     :param errors: Type of errors to draw, passed to 'errors'
     argument of Hist1d.plot.
     """
+    if unit is None:
+        if exposure_kg_sec is not None:
+            unit = 'kg_day_kev'
+        else:
+            unit = 'events'       
+    
     h = Hist1d(events['e_ces'],
                bins=(np.geomspace if geomspace else np.linspace)(
                    min_energy, max_energy, n_bins))
 
+    if unit == 'events':
+        scale, ylabel = 1, 'Events per bin'
+    else:
+        exposure_kg_day = exposure_kg_sec / (3600 * 24)
+        if unit == 'kg_day_kev':
+            scale = exposure_kg_day
+            ylabel = 'Events / (kg day keV)'
+        elif unit == 'tonne_day_kev':
+            scale = exposure_kg_day / 1000
+            ylabel = 'Events / (tonne day keV)'
+        elif unit == 'tonne_year_kev':
+            scale = exposure_kg_day / 1000
+            ylabel = 'Events / (tonne year keV)'
+        else:
+            raise ValueError(f"Invalid unit {unit}")
+        scale *= h.bin_volumes()
+    
     h.plot(errors=errors,
            error_style='band',
            color=color,
            label=label,
            linewidth=1,
+           scale_histogram_by=1/scale,
            error_alpha=error_alpha)
     plt.yscale('log')
     if geomspace:
         straxen.log_x(min_energy, max_energy, scalar_ticks=True)
     else:
         plt.xlim(min_energy, max_energy)
-    plt.ylabel("Events / (keV_ee * day)")
+    plt.ylabel(ylabel)
     plt.xlabel("Energy [keV_ee], CES")
 
 

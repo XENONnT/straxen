@@ -16,9 +16,7 @@ from .peak_processing import *
 from . import event_processing
 from .event_processing import *
 
-from . import cuts
-from .cuts import *
-
+from . import x1t_cuts
 
 from . import nveto_daqreader
 from .nveto_daqreader import *
