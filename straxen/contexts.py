@@ -219,4 +219,5 @@ def strax_nveto_hdm_test():
             strax.DataDirectory(
                 '/dali/lgrandi/wenz/strax_data/HdMtest',
                 provide_run_metadata=False)],
+        config=straxen.contexts.xnt_common_config,
         **nveto_common_opts)
