@@ -6,7 +6,7 @@ export, __all__ = strax.exporter()
 
 @export
 class DistinctChannels(strax.LoopPlugin):
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     depends_on = ('event_basics', 'peaks')
     dtype = [
         ('alt_s1_distinct_channels',
@@ -18,11 +18,25 @@ class DistinctChannels(strax.LoopPlugin):
         if event['alt_s1_index'] == -1:
             n_distinct = 0
         else:
-            s1_a = peaks[event['s1_index']]
-            s1_b = peaks[event['alt_s1_index']]
-            n_distinct = np.sum(
-                (s1_a['area_per_channel'] > 0)
-                != (s1_b['area_per_channel'] > 0))
+            if(event['s1_center_time'] < event['alt_s1_center_time']):
+                s1_a = peaks[event['s1_index']]
+                s1_b = peaks[event['alt_s1_index']]
+                s1_a_peaks = np.nonzero((s1_a['area_per_channel']>0)*1)
+                s1_b_peaks = np.nonzero((s1_b['area_per_channel']>0)*1)
+                n_distinct=0
+                for channel in range(len(s1_b_peaks[0])):
+                    if s1_b_peaks[0][channel] not in s1_a_peaks[0]:
+                        n_distinct += 1
+            else:
+                s1_a = peaks[event['alt_s1_index']]
+                s1_b = peaks[event['s1_index']]
+                s1_a_peaks = np.nonzero((s1_a['area_per_channel']>0)*1)
+                s1_b_peaks = np.nonzero((s1_b['area_per_channel']>0)*1)
+                n_distinct=0
+                for channel in range(len(s1_b_peaks[0])):
+                    if s1_b_peaks[0][channel] not in s1_a_peaks[0]:
+                        n_distinct += 1
+
 
         return dict(alt_s1_distinct_channels=n_distinct,
                     time=event['time'],
