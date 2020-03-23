@@ -99,10 +99,7 @@ def build_datastructure_doc():
 
     pd.set_option('display.max_colwidth', None)
 
-    st = strax.Context(
-        register_all=[x
-                      for x in straxen.contexts.common_opts['register_all']
-                      if x != straxen.cuts])
+    st = straxen.contexts.xenon1t_dali()
 
     # Too lazy to write proper graph sorter
     # Make dictionary {total number of dependencies below -> list of plugins}

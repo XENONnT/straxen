@@ -3,7 +3,9 @@ import os
 import shutil
 import warnings
 
+from frozendict import frozendict
 import numpy as np
+import numba
 
 import strax
 
@@ -22,45 +24,62 @@ class ArtificialDeadtimeInserted(UserWarning):
 
 @export
 @strax.takes_config(
-    strax.Option('daq_chunk_duration', track=False,
-                 default=int(5e9), type=int,
-                 help="Duration of regular chunks in ns"),
-    strax.Option('daq_overlap_chunk_duration', track=False,
-                 default=int(5e8), type=int,
-                 help="Duration of intermediate/overlap chunks in ns"),
-    strax.Option('daq_input_dir', type=str, track=False,
-                 help="Directory where readers put data"),
-    strax.Option('n_readout_threads', type=int, track=False,
-                 help="Number of readout threads producing strax data files"),
-    strax.Option('safe_break_in_pulses', default=1000, track=False,
-                 help="Time (ns) between pulses indicating a safe break "
-                      "in the datastream -- gaps of this size cannot be "
-                      "interior to peaklets."),
-    strax.Option('erase', default=False, track=False,
-                 help="Delete reader data after processing"),
-    strax.Option('compressor', default="blosc", track=False,
-                 help="Algorithm used for (de)compressing the live data"),
+
+    # All these must have track=False, so the raw_records hash never changes!
+
+    # DAQ settings -- should match settings given to redax
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),
     strax.Option('digitizer_sampling_resolution',
                  default=10, track=False, type=int,
                  help="Digitizer sampling resolution"),
     strax.Option('run_start_time', type=float, track=False, default=0,
-                 help="time of start run (s since unix epoch)"))
+                 help="time of start run (s since unix epoch)"),
+    strax.Option('daq_chunk_duration', track=False,
+                 default=int(5e9), type=int,
+                 help="Duration of regular chunks in ns"),
+    strax.Option('daq_overlap_chunk_duration', track=False,
+                 default=int(5e8), type=int,
+                 help="Duration of intermediate/overlap chunks in ns"),
+    strax.Option('daq_compressor', default="lz4", track=False,
+                 help="Algorithm used for (de)compressing the live data"),
+    strax.Option('n_readout_threads', type=int, track=False,
+                 help="Number of readout threads producing strax data files"),
+    strax.Option('daq_input_dir', type=str, track=False,
+                 help="Directory where readers put data"),
+
+    # DAQReader settings
+    strax.Option('safe_break_in_pulses', default=1000, track=False,
+                 help="Time (ns) between pulses indicating a safe break "
+                      "in the datastream -- gaps of this size cannot be "
+                      "interior to peaklets."),
+    strax.Option('erase', default=False, track=False,
+                 help="Delete reader data after processing"),
+    strax.Option('channel_map', track=False, type=frozendict,
+                 help="frozendict mapping subdetector to (min, max) "
+                      "channel number."))
 class DAQReader(strax.Plugin):
     """Read the XENONnT DAQ
 
     Does nothing whatsoever to the pulse data; not even baselining.
     """
-    provides = 'raw_records'
+    provides = (
+        'raw_records',
+        'raw_records_he',  # high energy
+        'raw_records_aqmon',
+        'raw_records_mv')
+
+    data_kind = frozendict(zip(provides, provides))
     depends_on = tuple()
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'lz4'
 
     def infer_dtype(self):
-        return strax.raw_record_dtype(
-            samples_per_record=self.config["record_length"])
+        return {
+            d: strax.raw_record_dtype(
+                samples_per_record=self.config["record_length"])
+            for d in self.provides}
 
     def setup(self):
         self.t0 = int(self.config['run_start_time']) * int(1e9)
@@ -128,7 +147,7 @@ class DAQReader(strax.Plugin):
         records = [
             strax.load_file(
                 fn,
-                compressor=self.config["compressor"],
+                compressor=self.config["daq_compressor"],
                 dtype=self.dtype_for('raw_records'))
             for fn in sorted(glob.glob(f'{path}/*'))]
         records = np.concatenate(records)
@@ -259,9 +278,84 @@ class DAQReader(strax.Plugin):
             # Ensure the offset is a whole digitizer sample
             records["time"] += self.dt * (self.t0 // self.dt)
 
-        result = self.chunk(
-            start=self.t0 + break_pre,
-            end=self.t0 + break_post,
-            data=records)
-        print(f"Read chunk {chunk_i:04d}, {result} from DAQ")
+        # Split records by channel
+        result_arrays = split_channel_ranges(
+            records,
+            np.asarray(list(self.config['channel_map'].values())))
+        del records
+
+        # Convert to strax chunks
+        result = dict()
+        for i, subd in enumerate(self.config['channel_map']):
+
+            # Ignore data from the 'blank' channels, corresponding to
+            # channels that have nothing connected
+            if subd.endswith('blank'):
+                continue
+
+            result_name = 'raw_records'
+            if subd != 'tpc':
+                result_name += '_' + subd
+            result[result_name] = self.chunk(
+                start=self.t0 + break_pre,
+                end=self.t0 + break_post,
+                data=result_arrays[i],
+                data_type=result_name)
+
+        print(f"Read chunk {chunk_i:06d} from DAQ")
+        for r in result.values():
+            print(f"\t{r}")
         return result
+
+
+@export
+class Fake1TDAQReader(DAQReader):
+    provides = (
+        'raw_records',
+        'raw_records_diagnostic',
+        'raw_records_aqmon')
+
+    data_kind = frozendict(zip(provides, provides))
+
+
+@export
+@numba.njit(nogil=True, cache=True)
+def split_channel_ranges(records, channel_ranges):
+    """Return numba.List of record arrays in channel_ranges.
+
+    ~2.5x as fast as a naive implementation with np.in1d
+    """
+    n_subdetectors = len(channel_ranges)
+    which_detector = np.zeros(len(records), dtype=np.int8)
+    n_in_detector = np.zeros(n_subdetectors, dtype=np.int64)
+
+    # First loop to count number of records per detector
+    for r_i, r in enumerate(records):
+        for d_i in range(n_subdetectors):
+            left, right = channel_ranges[d_i]
+            if r['channel'] > right:
+                continue
+            elif r['channel'] >= left:
+                which_detector[r_i] = d_i
+                n_in_detector[d_i] += 1
+                break
+            else:
+                print(r['time'], r['channel'])
+                raise ValueError(
+                    "Bad data from DAQ: data in unknown channel!")
+
+    # Allocate memory
+    results = numba.typed.List()
+    for d_i in range(n_subdetectors):
+        results.append(np.empty(n_in_detector[d_i], dtype=records.dtype))
+
+    # Second loop to fill results
+    # This is slightly faster than using which_detector == d_i masks,
+    # since it only needs one loop over the data.
+    n_placed = np.zeros(n_subdetectors, dtype=np.int64)
+    for r_i, r in enumerate(records):
+        d_i = which_detector[r_i]
+        results[d_i][n_placed[d_i]] = r
+        n_placed[d_i] += 1
+
+    return results

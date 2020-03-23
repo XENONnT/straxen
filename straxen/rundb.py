@@ -13,11 +13,8 @@ export, __all__ = strax.exporter()
 
 
 default_mongo_url = (
-    'mongodb://{username}:{password}@rundbcluster-shard-00-00-cfaei.'
-    'gcp.mongodb.net:27017,rundbcluster-shard-00-01-cfaei.gcp.mongodb.net'
-    ':27017,rundbcluster-shard-00-02-cfaei.gcp.mongodb.net:27017/test?'
-    'ssl=true&replicaSet=RunDBCluster-shard-0&authSource=admin')
-default_mongo_dbname = 'xenon1t'
+    'mongodb://{username}:{password}@zenigata.uchicago.edu:27017/run')
+default_mongo_dbname = 'run'
 default_mongo_collname = 'runs'
 
 
@@ -131,7 +128,7 @@ class RunDB(strax.StorageFrontend):
 
         # Check if the run exists
         if self.runid_field == 'name':
-            run_query = {'name': key.run_id}
+            run_query = {'name': str(key.run_id)}
         else:
             run_query = {'number': int(key.run_id)}
         dq = self._data_query(key)
@@ -233,7 +230,13 @@ class RunDB(strax.StorageFrontend):
             yield doc
 
     def run_metadata(self, run_id, projection=None):
-        doc = self.collection.find_one({'name': run_id}, projection=projection)
+        if self.runid_field == 'name':
+            run_id = str(run_id)
+        else:
+            run_id = int(run_id)
+        doc = self.collection.find_one(
+            {self.runid_field: run_id},
+            projection=projection)
         if doc is None:
             raise strax.DataNotAvailable
         if self.reader_ini_name_is_mode:

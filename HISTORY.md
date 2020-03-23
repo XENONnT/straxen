@@ -1,3 +1,11 @@
+0.7.0 / 2020-03-19
+------------------
+- DAQReader sorts out subdetector outputs (#64)
+- Separate XENONnT and XENON1T contexts (#68)
+- Start options for specifying gain model (#71)
+- Auto-infer bootstrax processing settings (#70)
+
+
 0.6.0 / 2020-03-05
 ------------------
 - Updates for the new strax version (#60)
