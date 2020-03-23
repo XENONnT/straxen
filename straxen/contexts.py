@@ -44,6 +44,7 @@ x1t_common_config = dict(
 
 xnt_common_config = dict(
     n_tpc_pmts=493,
+    n_nveto_pmts = 120,
     gain_model=('to_pe_constant',
                 0.005),
     channel_map=frozendict(
@@ -54,6 +55,9 @@ xnt_common_config = dict(
          tpc_blank=(999, 999),
          mv=(1000, 1083),
          mv_blank=(1999, 1999),
+        nveto=(2000, 2119),
+        nveto_aqmon=(808, 815),
+        nveto_blank=(2999),
     )
 )
 
