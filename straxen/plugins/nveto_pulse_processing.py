@@ -3,7 +3,6 @@ import numpy as np
 
 import strax
 import straxen
-from straxen import get_to_pe
 from straxen import get_resource
 export, __all__ = strax.exporter()
 
@@ -60,8 +59,6 @@ class nVETOPulseProcessing(strax.Plugin):
     data_kind = 'nveto_records'
 
     dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)  # Might be the same as records.
-
-
 
     def setup(self):
         self.hit_thresholds = get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
@@ -173,7 +170,6 @@ def concat_overlapping_hits(hits,
 
     TODO: Somehow when making last_hit_in_channel a keyword argument
         numba crashes...
-    TODO: Maybe use different datatype here, including temp record_i as in hits.
 
     Returns:
         np.array: Array of the pre_nveto_pulses data structure containing the start
@@ -251,7 +247,7 @@ def get_pulse_data(records,
             our search. This can be used to speed up the search,
             when looping over many pulses. 
         pulse_only (bool): When true only the data of the pulse is 
-            returned. Else the data of the entire recored is returned.
+            returned. Else the data of the entire record is returned.
         update_pulse_edges (bool):
     
     Note:
@@ -270,9 +266,8 @@ def get_pulse_data(records,
     
     if pulse_only:
         data, si = _get_pulse_data(records, pulse, start_index)
-        pre_len = (pulse['endtime'] - pulse['time']) 
         if si == -42:
-            # if this happend we have not found the event.
+            # if this happened we have not found the event.
             return data, start_index 
         
         # Now let us check if we have to chop the edges:
@@ -302,13 +297,10 @@ def get_pulse_data(records,
 def _get_pulse_data(nveto_records, 
                     hit, 
                     start_index):
-    # TODO: There are still 6 events which do not work and I do not know why...
-    # TODO: re-think this function....
-    # TODO: Think about how to update start index? As return or already in array
-    # In the following is an explanation of all posssible event toplogies of 
+    # In the following is an explanation of all possible event topologies of
     # hits and records. For me this was very helpful during debugging, since I 
-    # did not considere some of the cases in the begining. 
-    # With the folliwng set of topologies we can build all possible kind of 
+    # did not consider some of the cases in the beginning.
+    # With the following set of topologies we can build all possible kind of
     # events:
     #    
     #    Case 1.: Normal hit:     |---hhh---|
@@ -319,12 +311,12 @@ def _get_pulse_data(nveto_records,
     #    Case 6.:  Ch x.: |---hhhhhhh|hhhh-----| 
     #              Ch x.:                   |----hhh---|  <-- search this hit
     #              time + pulse_length overlap with next event.
-    #    Probelmatic case for start_index update:
+    #    Problematic case for start_index update:
     #    
     #    Ch x.: |------hh----|
     #    Ch y.:    |-hh---hhh---|   <-- Would find first this
     #    
-    #    Legend: |: Data edges, -: ZLE, h: hitcd  
+    #    Legend: |: Data edges, -: ZLE, h: hit
     update_start = True
     res_start = 0
 
@@ -332,10 +324,8 @@ def _get_pulse_data(nveto_records,
     hit_start_time = hit['time']
     hit_end_time = hit['endtime']
     
-    # Prelimnary number of samples
-    nsamples = (hit_end_time - hit_start_time)//dt  
-    #TODO: Channel dependent start index:
-    # Getting start index for specified channel:
+    # Preliminary number of samples
+    nsamples = (hit_end_time - hit_start_time)//dt
     hit_channel = hit['channel']
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
         
@@ -352,8 +342,8 @@ def _get_pulse_data(nveto_records,
         nvr_start_time = nvr['time']
         nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time      
         
-        if ((nvr_start_time <= hit_start_time <= nvr_end_time)   
-            or (nvr_start_time <= hit_end_time <= nvr_end_time)): 
+        if ((nvr_start_time <= hit_start_time <= nvr_end_time)
+                or (nvr_start_time <= hit_end_time <= nvr_end_time)):
             # We have to check if either the start or the end time of a hit is
             # within the current fragment. Due to the left and right extension 
             # of the hitfinder it might happen that we extend the hit into a 
@@ -404,7 +394,6 @@ def _get_pulse_data(nveto_records,
         elif hit_end_time < nvr_start_time:
             if not update_start:
                 # We have not found all of our data
-                # TODO: this could be caused if empty higher order records are deleted. 
                 res[res_start:] = -4200 # <-- #TODO: Change this back to 0 at the moment it is for debugging.
                 return res, start_index
             else:
@@ -446,7 +435,7 @@ def split_pulses(records, pulses, _result_buffer=None):
     record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
     dt = records[0]['dt']
 
-    for ind, pulse in enumerate(pulses):
+    for pulse in pulses:
         # Get data and split pulses:
         ch = pulse['channel']
         
