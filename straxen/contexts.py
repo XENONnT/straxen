@@ -50,7 +50,7 @@ xnt_common_config = dict(
     channel_map=frozendict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
-         lowgain=(500, 752),
+         he=(500, 752),  # high energy
          aqmon=(799, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
