@@ -232,6 +232,7 @@ def concat_overlapping_hits(hits,
 
 @export
 @numba.njit(cache=True, nogil=True)
+@numba.njit(cache=True, nogil=True)
 def get_pulse_data(records, 
                    pulse, 
                    start_index, 
@@ -359,8 +360,8 @@ def _get_pulse_data(nveto_records,
         nvr_start_time = nvr['time']
         nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time      
         
-        if ((nvr_start_time <= hit_start_time < nvr_end_time)   
-            or (nvr_start_time <= hit_end_time < nvr_end_time)): 
+        if ((nvr_start_time <= hit_start_time <= nvr_end_time)   
+            or (nvr_start_time <= hit_end_time <= nvr_end_time)): 
             # We have to check if either the start or the end time of a hit is
             # within the current fragment. Due to the left and right extension 
             # of the hitfinder it might happen that we extend the hit into a 
