@@ -23,6 +23,7 @@ The function takes the same selection arguments as context.get_array:
 
 _hv_bokeh_initialized = False
 
+
 @export
 def mini_analysis(requires=tuple(),
                   hv_bokeh=False,
@@ -44,6 +45,8 @@ def mini_analysis(requires=tuple(),
 
             if 'config' in kwargs:
                 context = context.new_context(config=kwargs['config'])
+            if 'config' in parameters:
+                kwargs['config'] = context.config
 
             # Say magic words to enable holoviews
             if hv_bokeh:
@@ -58,8 +61,8 @@ def mini_analysis(requires=tuple(),
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
                 kwargs['to_pe'] = straxen.get_to_pe(
                     run_id,
-                    'https://raw.githubusercontent.com/XENONnT/'
-                    'strax_auxiliary_files/master/to_pe.npy')
+                    context.config['gain_model'],
+                    context.config['n_tpc_pmts'])
 
             # Prepare selection arguments
             kwargs['time_range'] = context.to_absolute_time_range(
@@ -90,7 +93,7 @@ def mini_analysis(requires=tuple(),
             # Load required data, if any
             if len(requires):
                 deps_by_kind = strax.group_by_kind(
-                    requires, context=context, require_time=False)
+                    requires, context=context)
                 for dkind, dtypes in deps_by_kind.items():
                     if dkind in kwargs:
                         # Already have data, just apply cuts

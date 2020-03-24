@@ -23,6 +23,12 @@ def _check_pulse_count(records):
         records, n_channels=n_ch)
 
     assert counts.dtype == straxen.pulse_count_dtype(n_ch)
+
+    # TODO temporary hack until we fix strax issue #239
+    if not len(records):
+        assert len(counts) == 0
+        return
+
     assert len(counts) == 1
     count = counts[0]
 

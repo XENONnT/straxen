@@ -69,6 +69,7 @@ class nVETOPulseProcessing(strax.Plugin):
     def compute(self, nveto_raw_records):
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
+        # TODO: Separate switched off channels?
         strax.zero_out_of_bounds(nveto_raw_records)
 
         hits = strax.find_hits(nveto_raw_records, threshold=self.hit_thresholds)
@@ -78,7 +79,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
         # Probably overkill, but just to be sure...
         strax.zero_out_of_bounds(nveto_records)
-
+        
         # Deleting empty data:
         nveto_records = _del_empty(nveto_records, 1)
         return nveto_records
@@ -144,10 +145,9 @@ class nVETOPulseEdges(strax.Plugin):
                                               (('Channel/PMT number', 'channel'), np.int16)])
         nveto_pulses = concat_overlapping_hits(hits, self.config['nveto_save_outside_hits'], last_hit_in_channel)
         nveto_pulses = strax.sort_by_time(nveto_pulses)
-
         # print('length', len(nveto_pulses), len(nveto_records))
         # Check if hits can be split:
-        nveto_pulses = split_pulses(nveto_records, nveto_pulses)
+        #nveto_pulses = split_pulses(nveto_records, nveto_pulses)
         return nveto_pulses
 
 @export
@@ -230,51 +230,99 @@ def concat_overlapping_hits(hits,
             offset = 0
     yield offset
 
-
 @export
 @numba.njit(cache=True, nogil=True)
-def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
+def get_pulse_data(records, 
+                   pulse, 
+                   start_index, 
+                   pulse_only=True, 
+                   chop_pulse=False,
+                   pmt_start_channel=0):
     """
-    Searches in a given nveto_record data_chunk for the data a
-    specified hit. Expects records and hits to be sorted in time.
-
+    Searches for the data of a given hit in records (or raw_records). 
+    
     Args:
-        nveto_records (np.array): Array of the nveto_record_dtype
-        hit (np.array): Hit from which the data shall be returned.
-            The hit array must contain the fields time, endtime and
-            channel.
-
+        records (): Records or raw_records (or anything else of the 
+            interval dtype) in which the pulse should be found.
+        pulse (): Pulse which should be found. Can be any datakind 
+            which has the fields "time" and "endtime".
+        start_index (np.array): Array containing the start index for the 
+            indivudal channels. This can be used to speed up the search,
+            when looping over many pulses. Otherwise specify an array 
+            containing only zeros. 
+            
     Keyword Args:
-        start_index (int): Index of the nveto_record from which we should
-            start our search.
-        update_hit (bool): If true the hit boundaries are updated when they
-            span beyond data covered regions.
-
+        pulse_only (bool): When true only the data of the pulse is 
+            returned. Else the data of the entire recored is returned.
+    
     Note:
-        In case a hit spans, due to the left and right extension, into a region
-        which is not covered by any data. The hit gets chopped accordingly.
-        If the data of a given hit cannot be found an array of the size of the hit
-        containing only zeros is returned.
-        
+        In order to make use of start_index the function expects 
+        records and pulse to be sorted in time and channel.
+    
     Returns:
-        np.array: Data of the corresponding hit.
-        int: Next start index.
-        float: Float part of the baseline for the given event.
+        np.array: Numpy array containing the data.
+        int: Index of the record which contained the data.
+        np.array: Array or start indicies from which we should start 
+            the search for a successive pulse.
     """
+    # TODO: Cannot be the same as _get_data....
+    # TODO: There is a discripancy between this function and my other funciton...
+    # Since I do not chop here if a hit extends into non-data regions...
+    warning = "Pulse comes from a previous chunk of records."
+    assert pulse['time'] > records[0]['time'], warning
+    lr = records[-1]
+    ret = lr['time'] + lr['pulse_length'] * lr['dt']
+    assert pulse['endtime'] < ret, "Pulse comes from a future chunk of records."
+    
+    if pulse_only:
+        data, si = _get_pulse_data(records, pulse, start_index, pmt_start_channel)
+        pre_len = (pulse['endtime'] - pulse['time']) 
+        if len(data) == pre_len:
+            # if this happend we have not found the event.
+            return data, si 
+        
+        r = records[si]
+        rst = r['time']
+        dt = r['dt']
+        ret = rst + r['pulse_length'] * dt  
+        
+        # Sometimes it might happen that pulses extend into regions without any
+        # data so we have to chop the event:
+        pt = max(rst, pulse['time'])
+        pet = min(ret, pulse['endtime'])
+        if chop_pulse:
+            pulse['time'] = pt
+            pulse['endtime'] = pet
+            
+        start_sample = (pt - rst)//dt
+        end_sample = (pet - rst)//dt
+        return data[start_sample:end_sample], si
+    else:
+        return _get_pulse_data(records, pulse, start_index, pmt_start_channel)
+    
+    
+@numba.njit(cache=True, nogil=True)
+def _get_pulse_data(nveto_records, 
+                    hit, 
+                    start_indicies, 
+                    pmt_start_channel=0):
     # TODO: There are still 6 events which do not work and I do not know why...
-    # TODO: Annoying and complicated function.... I have to check whether we can replace it.
-    #       I could split the function into two first get the complete record and than the hit data.
-    # In the following is an explanation of all posssible event toplogies of hits and records. 
-    # For me this was very helpful during debugging, since I did not considere some of the cases 
-    # in the begining. 
-    # With the folliwng set of topologies we can build all possible kind of events:
+    # TODO: re-think this function....
+    # TODO: Think about how to update start index? As return or already in array
+    # In the following is an explanation of all posssible event toplogies of 
+    # hits and records. For me this was very helpful during debugging, since I 
+    # did not considere some of the cases in the begining. 
+    # With the folliwng set of topologies we can build all possible kind of 
+    # events:
     #    
     #    Case 1.: Normal hit:     |---hhh---|
     #    Case 2.: Chopped Edges:  h|hh-----| or |------hh|h
     #    Case 3.: Multi Fragment: |------h|hh-----|
     #    Case 4.: Long Chopped:   h|hhhhhhh|hh----| or |----hhh|hhhhhhh|h
     #    Case 5.: Long Double-Chopped:  h|hhhhhhhhhh|h
-    #    
+    #    Case 6.:  Ch x.: |---hhhhhhh|hhhh-----| 
+    #              Ch x.:                   |----hhh---|  <-- search this hit
+    #              time + pulse_length overlap with next event.
     #    Probelmatic case for start_index update:
     #    
     #    Ch x.: |------hh----|
@@ -282,104 +330,93 @@ def _get_pulse_data(nveto_records, hit, start_index=0, update_hit=True):
     #    
     #    Legend: |: Data edges, -: ZLE, h: hitcd  
     update_start = True
-    first_fragment = True
     res_start = 0
 
+    dt = nveto_records[0]['dt']  # assuming all channels have the same dt
     hit_start_time = hit['time']
     hit_end_time = hit['endtime']
-    nsamples = (hit_end_time - hit_start_time)//nveto_records[0]['dt']  #Prelimnary number of samples
     
+    # Prelimnary number of samples
+    nsamples = (hit_end_time - hit_start_time)//dt  
+    
+    
+    #TODO: Channel dependent start index:
+    # Getting start index for specified channel:
+    hit_channel = hit['channel']
+    start_index = start_indicies[hit_channel - pmt_start_channel]
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
-        dt = nvr['dt']
+        
+        if nvr['channel'] != hit_channel:
+            # Not the correct channel
+            continue
+        
+        # Nowe we have to search for the start of our waveform,
+        # hence ignore everything except for record_i = 0:
+        if nvr['record_i'] and update_start:
+            continue
+        
+        # Getting start and endtime of the waveform:
         nvr_start_time = nvr['time']
-        nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time
-        nvr_fragment_end_time = int(nvr['length'] * dt) + nvr_start_time        
-        if ((nvr_start_time <= hit_start_time < nvr_fragment_end_time)   # Check if start is in current fragment 
-            or ((nvr_start_time <= hit_end_time < nvr_end_time) and nvr['record_i'] == 0)):  # Check if end is in record.
-            # We have to check if either the start or the end time of a hit is within the current fragment.
-            # Due to the left and right extension of the hitfinder it might happen that we extend the hit into
-            # a region in which we do not have any data. This covers Cases 1. - 4.        
+        nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time      
+        
+        if ((nvr_start_time <= hit_start_time < nvr_end_time)   
+            or (nvr_start_time <= hit_end_time < nvr_end_time)): 
+            # We have to check if either the start or the end time of a hit is
+            # within the current fragment. Due to the left and right extension 
+            # of the hitfinder it might happen that we extend the hit into a 
+            # region in which we do not have any data. This covers Cases 1. - 4.        
             
             if update_start:
-                start_index = index  # Updating the start_index, No need to loop over all records again...
-                update_start = False
-            
-            if nvr['channel'] != hit['channel']:
-                # Now we have to check the channel,
-                # cannot do it the other way around.
-                continue
+                # Update channel specific start_index:
+                start_index = index
                 
-            
-            if first_fragment:
-                # Now we have to check if a hit falls out of bounds and act accordingly:
-                hit_start_time = max(nvr_start_time, hit_start_time)
-                hit_end_time = min(nvr_end_time, hit_end_time)
-                nsamples = (hit_end_time - hit_start_time) // dt
+                nsamples = (nvr_end_time - nvr_start_time) // dt
                 res = np.zeros(nsamples, dtype=np.float32)
-                
-                if update_hit:
-                    hit['time'] = hit_start_time
-                    hit['endtime'] = hit_end_time
-                first_fragment = False
+                update_start = False
 
             # In case a hit is distributed over many fragments:
-            end_sample_time = min(hit_end_time, nvr_fragment_end_time)  # Whatever end comes first
-            start_sample_time = min(hit_start_time, nvr_fragment_end_time)  # In case this frgament does not contain any of our data.
+            end_sample = nvr['length']
+            nsamples_in_fragment = end_sample - 0
 
-            end_sample = (end_sample_time - nvr_start_time) // dt
-            start_sample = (start_sample_time - nvr_start_time) // dt
-            nsamples_in_fragment = end_sample - start_sample
+            res[res_start:res_start+nsamples_in_fragment] = nvr['data'][0:end_sample]
 
-            res[res_start:res_start+nsamples_in_fragment] = nvr['data'][start_sample:end_sample]
-
-            # Updating the starts in case our record is distributed over more than one fragment:
+            # Updating the starts in case our record is distributed over more 
+            # than one fragment:
             res_start += nsamples_in_fragment
-            hit_start_time = max(hit_start_time, end_sample_time)
+            nvr_fragment_end_time = int(nvr['length'] * dt) + nvr_start_time  
+            hit_start_time = nvr_fragment_end_time
             
         elif (hit_start_time  < nvr_start_time) and (nvr_end_time < hit_end_time):
             # Here we deal with case 5.
             
             if update_start:
-                start_index = index  # Updating the start_index, No need to loop over all records again... 
+                start_index = index 
                 update_start = False
-                
-            if nvr['channel'] != hit['channel']:
-                # Now we have to check the channel,
-                # cannot do it the other way around.
-                continue
             
-            
-            # 1. We have to chop our hit again
-            hit_start_time = nvr_start_time
-            hit_end_time = nvr_end_time
-            nsamples = (hit_end_time - hit_start_time)//dt
+            nsamples = (nvr_end_time - nvr_start_time)//dt
             res = np.zeros(nsamples, dtype=np.float32)
-           
-            if first_fragment:
-                if update_hit:
-                    hit['time'] = hit_start_time
-                    hit['endtime'] = hit_end_time
-                first_fragment = False
             
-            # 2. We have to prepare if the hit spans over more than one fragment:
-            nsamples_in_fragment = (nvr_fragment_end_time - nvr_start_time)//dt 
+            nsamples_in_fragment = nvr['length']
             res[res_start:res_start+nsamples_in_fragment] = nvr['data'][0:nsamples_in_fragment]  
             
-            # If there is a higher order fragment we will add the data via the first if-statement
-            hit_start_time = nvr_fragment_end_time
+            # If there is a higher order fragment we will add the data via the 
+            # first if-part
             res_start += nsamples_in_fragment
+            nvr_fragment_end_time = int(nvr['length'] * dt) + nvr_start_time
+            hit_start_time = nvr_fragment_end_time
         
         if res_start == nsamples:
-            # We found everything of our event:
-            # As a last thing get the baseline associated with the hit, this is necessary to compute the
-            # correct area in the end.
-            # TODO: Another obstacle which I dislike... 
-            nvr_baseline = nvr['baseline']%1
-            return res, start_index, nvr_baseline
-     
-    # If we manage to arrive here this means that we have not found the entire event...
+            # We found everything.
+            return res, start_index
+        elif hit_end_time < nvr_start_time:
+            # We have not found all of our data:
+            res[res_start:] = -4200 # <-- #TODO: Change this back to 0 at the moment it is for debugging.
+            return res, start_index
+    
+    # If we manage to arrive here this means that we have not found the entire
+    # event...
     res = np.zeros(nsamples, dtype=np.float32)
-    return res, start_index, 0
+    return res, start_index
 
 
 @export
@@ -413,7 +450,7 @@ def split_pulses(records, pulses, _result_buffer=None):
     for ind, pulse in enumerate(pulses):
         # Get data and split pulses:
         # print('RO:', record_offset, 'Ch:', pulse['channel'], 'Time:', pulse['time'], 'EndTime:', pulse['endtime'])
-        data, record_offset, _ = _get_pulse_data(records, pulse, record_offset) 
+        data, record_offset = get_pulse_data(records, pulse, record_offset) 
         edges = _split_pulse(data, (0, len(data)))
         edges = edges[edges >= 0]
 

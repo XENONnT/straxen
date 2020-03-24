@@ -19,7 +19,11 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
+<<<<<<< HEAD
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo', 'NVETO_RECORD_LENGTH', 'n_nVETO_pmts', 'N_PMTS_NVETO']
+=======
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo']
+>>>>>>> master
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -28,12 +32,33 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 first_sr1_run = 170118_1327
 tpc_r = 47.9
-n_tpc_pmts = 248
 
 # TODO: change nVETO pmts thingy
 NVETO_RECORD_LENGTH = 110
 N_PMTS_NVETO = 14
 n_nVETO_pmts = np.arange(0, N_PMTS_NVETO, dtype=np.int16)
+
+@export
+def adc_thresholds():
+    """Return ADC self-trigger thresholds used by the TPC PMTs"""
+    # TODO: we should probably fetch these from the run doc
+    # (or use some other convention in XENONnT)
+    return (
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 18, 15, 15, 15, 15, 15, 54, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 16, 15, 15, 35, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 18, 15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 26, 88, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 16, 20, 22, 15, 16, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 17, 16, 15, 15,
+        15, 15, 15, 15, 17, 16, 15, 15, 15, 15, 15, 15, 45, 15, 15, 15, 15,
+        25, 15, 15, 15, 17, 15, 18, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        24, 15, 17, 15, 15, 18, 15, 15, 15, 34, 15, 15, 18, 15, 15, 39, 16,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 18, 15, 20, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 15, 15, 19, 15,
+        15, 15, 15, 15, 15, 17, 15, 15, 18, 15, 15, 15, 15, 15, 17, 15, 18,
+        15, 15, 15, 17, 15, 18, 15, 35, 15, 15)
 
 @export
 def pmt_positions():
@@ -54,13 +79,39 @@ def pmt_positions():
 
 
 @export
-def get_to_pe(run_id, to_pe_file):
-    x = get_resource(to_pe_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        run_index = [-1]
-    to_pe = x[run_index[0]]['to_pe']
+def get_to_pe(run_id, gain_model, n_tpc_pmts):
+    if not isinstance(gain_model, tuple):
+        raise ValueError(f"gain_model must be a tuple")
+    if not len(gain_model) == 2:
+        raise ValueError(f"gain_model must have two elements: "
+                         f"the model type and its specific configuration")
+    model_type, model_conf = gain_model
+
+    if model_type == 'disabled':
+        # Somebody messed up
+        raise RuntimeError("Attempt to use a disabled gain model")
+
+    elif model_type == 'to_pe_per_run':
+        # Load a npy file specifing a run_id -> to_pe array
+        to_pe_file = model_conf
+        x = get_resource(to_pe_file, fmt='npy')
+        run_index = np.where(x['run_id'] == int(run_id))[0]
+        if not len(run_index):
+            # Gains not known: using placeholders
+            run_index = [-1]
+        to_pe = x[run_index[0]]['to_pe']
+
+    elif model_type == 'to_pe_constant':
+        # Uniform gain, specified as a to_pe factor
+        to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
+
+    else:
+        raise NotImplementedError(f"Gain model type {model_type} not implemented")
+
+    if len(to_pe) != n_tpc_pmts:
+        raise ValueError(
+            f"Gain model {gain_model} resulted in a to_pe "
+            f"of length {len(to_pe)}, but n_tpc_pmts is {n_tpc_pmts}!")
     return to_pe
 
 
@@ -211,7 +262,7 @@ def get_secret(x):
 
         # If on midway, try loading a standard secrets file instead
         if 'rcc' in socket.getfqdn():
-            path_to_secrets = '/home/aalbers/xenon_secrets.py'
+            path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
             if os.path.exists(path_to_secrets):
                 sys.path.append(osp.dirname(path_to_secrets))
                 import xenon_secrets
@@ -234,7 +285,7 @@ def get_secret(x):
 @export
 def download_test_data():
     """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f4ca5e41bb7060f8424e3a8e2d9214bd19934c53/strax_test_data.tar',
+    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/11929e7595e178dd335d59727024847efde530fb/strax_test_data_straxv0.9.tar',
                         fmt='binary')
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
