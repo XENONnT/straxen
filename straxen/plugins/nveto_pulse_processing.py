@@ -259,10 +259,10 @@ def get_pulse_data(records,
         int: Index of the first fragment of the record which contained the data.
     """
     warning = "Pulse comes from a previous chunk of records."
-    assert pulse['time'] > records[0]['time'], warning
+    assert pulse['time'] >= records[0]['time'], warning
     lr = records[-1]
     ret = lr['time'] + lr['pulse_length'] * lr['dt']
-    assert pulse['endtime'] < ret, "Pulse comes from a future chunk of records."
+    assert pulse['endtime'] =< ret, "Pulse comes from a future chunk of records."
     
     if pulse_only:
         data, si = _get_pulse_data(records, pulse, start_index)
