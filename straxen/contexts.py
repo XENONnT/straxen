@@ -43,7 +43,7 @@ x1t_common_config = dict(
 )
 
 xnt_common_config = dict(
-    n_tpc_pmts=493,
+    n_tpc_pmts=494,
     gain_model=('to_pe_constant',
                 0.005),
     channel_map=frozendict(
