@@ -145,9 +145,9 @@ class nVETOPulseEdges(strax.Plugin):
                                               (('Channel/PMT number', 'channel'), np.int16)])
         nveto_pulses = concat_overlapping_hits(hits, self.config['nveto_save_outside_hits'], last_hit_in_channel)
         nveto_pulses = strax.sort_by_time(nveto_pulses)
-        # print('length', len(nveto_pulses), len(nveto_records))
+        
         # Check if hits can be split:
-        #nveto_pulses = split_pulses(nveto_records, nveto_pulses)
+        nveto_pulses = split_pulses(nveto_records, nveto_pulses)
         return nveto_pulses
 
 @export
@@ -232,13 +232,11 @@ def concat_overlapping_hits(hits,
 
 @export
 @numba.njit(cache=True, nogil=True)
-@numba.njit(cache=True, nogil=True)
 def get_pulse_data(records, 
                    pulse, 
-                   start_index, 
+                   start_index=0, 
                    pulse_only=True, 
-                   chop_pulse=False,
-                   pmt_start_channel=0):
+                   update_pulse_edges=False):
     """
     Searches for the data of a given hit in records (or raw_records). 
     
@@ -247,14 +245,14 @@ def get_pulse_data(records,
             interval dtype) in which the pulse should be found.
         pulse (): Pulse which should be found. Can be any datakind 
             which has the fields "time" and "endtime".
-        start_index (np.array): Array containing the start index for the 
-            indivudal channels. This can be used to speed up the search,
-            when looping over many pulses. Otherwise specify an array 
-            containing only zeros. 
             
     Keyword Args:
+        start_index (int): Start index from which we shall start 
+            our search. This can be used to speed up the search,
+            when looping over many pulses. 
         pulse_only (bool): When true only the data of the pulse is 
             returned. Else the data of the entire recored is returned.
+        update_pulse_edges (bool):
     
     Note:
         In order to make use of start_index the function expects 
@@ -262,13 +260,8 @@ def get_pulse_data(records,
     
     Returns:
         np.array: Numpy array containing the data.
-        int: Index of the record which contained the data.
-        np.array: Array or start indicies from which we should start 
-            the search for a successive pulse.
+        int: Index of the first fragment of the record which contained the data.
     """
-    # TODO: Cannot be the same as _get_data....
-    # TODO: There is a discripancy between this function and my other funciton...
-    # Since I do not chop here if a hit extends into non-data regions...
     warning = "Pulse comes from a previous chunk of records."
     assert pulse['time'] > records[0]['time'], warning
     lr = records[-1]
@@ -276,12 +269,14 @@ def get_pulse_data(records,
     assert pulse['endtime'] < ret, "Pulse comes from a future chunk of records."
     
     if pulse_only:
-        data, si = _get_pulse_data(records, pulse, start_index, pmt_start_channel)
+        data, si = _get_pulse_data(records, pulse, start_index)
         pre_len = (pulse['endtime'] - pulse['time']) 
-        if len(data) == pre_len:
+        if si == -42:
             # if this happend we have not found the event.
-            return data, si 
+            return data, start_index 
         
+        # Now let us check if we have to chop the edges:
+        # First get wf boundaries
         r = records[si]
         rst = r['time']
         dt = r['dt']
@@ -291,7 +286,8 @@ def get_pulse_data(records,
         # data so we have to chop the event:
         pt = max(rst, pulse['time'])
         pet = min(ret, pulse['endtime'])
-        if chop_pulse:
+        if update_pulse_edges:
+            # Maybe we would like to update the edges of the pulse as well
             pulse['time'] = pt
             pulse['endtime'] = pet
             
@@ -299,14 +295,13 @@ def get_pulse_data(records,
         end_sample = (pet - rst)//dt
         return data[start_sample:end_sample], si
     else:
-        return _get_pulse_data(records, pulse, start_index, pmt_start_channel)
+        return _get_pulse_data(records, pulse, start_index)
     
     
 @numba.njit(cache=True, nogil=True)
 def _get_pulse_data(nveto_records, 
                     hit, 
-                    start_indicies, 
-                    pmt_start_channel=0):
+                    start_index):
     # TODO: There are still 6 events which do not work and I do not know why...
     # TODO: re-think this function....
     # TODO: Think about how to update start index? As return or already in array
@@ -339,12 +334,9 @@ def _get_pulse_data(nveto_records,
     
     # Prelimnary number of samples
     nsamples = (hit_end_time - hit_start_time)//dt  
-    
-    
     #TODO: Channel dependent start index:
     # Getting start index for specified channel:
     hit_channel = hit['channel']
-    start_index = start_indicies[hit_channel - pmt_start_channel]
     for index, nvr in enumerate(nveto_records[start_index:], start_index):
         
         if nvr['channel'] != hit_channel:
@@ -410,14 +402,20 @@ def _get_pulse_data(nveto_records,
             # We found everything.
             return res, start_index
         elif hit_end_time < nvr_start_time:
-            # We have not found all of our data:
-            res[res_start:] = -4200 # <-- #TODO: Change this back to 0 at the moment it is for debugging.
-            return res, start_index
-    
-    # If we manage to arrive here this means that we have not found the entire
-    # event...
+            if not update_start:
+                # We have not found all of our data
+                # TODO: this could be caused if empty higher order records are deleted. 
+                res[res_start:] = -4200 # <-- #TODO: Change this back to 0 at the moment it is for debugging.
+                return res, start_index
+            else:
+                # If we manage to arrive here this means that we have not found the wf at all which should not
+                # have happend.
+                res = np.zeros(nsamples, dtype=np.float32)
+                return res, -42
+                  
+    # If we get here we did either not found the last event or something funny happend...
     res = np.zeros(nsamples, dtype=np.float32)
-    return res, start_index
+    return res, -42
 
 
 @export
@@ -445,14 +443,18 @@ def split_pulses(records, pulses, _result_buffer=None):
     """
     buffer = _result_buffer
     offset = 0
-    record_offset = 0
+    record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
     dt = records[0]['dt']
 
     for ind, pulse in enumerate(pulses):
         # Get data and split pulses:
-        # print('RO:', record_offset, 'Ch:', pulse['channel'], 'Time:', pulse['time'], 'EndTime:', pulse['endtime'])
-        data, record_offset = get_pulse_data(records, pulse, record_offset) 
-        edges = _split_pulse(data, (0, len(data)))
+        ch = pulse['channel']
+        
+        ro = record_offset[ch]
+        data, ro = get_pulse_data(records, pulse, start_index=ro, update_pulse_edges=True)
+        record_offset[ch] = ro
+                      
+        edges = _split_pulse(data)
         edges = edges[edges >= 0]
 
         # Convert edges into times:
@@ -464,7 +466,7 @@ def split_pulses(records, pulses, _result_buffer=None):
             res = buffer[offset]
             res['time'] = edges_times[ind]
             res['endtime'] = edges_times[ind + 1]
-            res['channel'] = pulse['channel']
+            res['channel'] = ch
             if nedges - 1:
                 res['split_i'] = ind + 1
             else:
@@ -477,13 +479,12 @@ def split_pulses(records, pulses, _result_buffer=None):
 
 
 @numba.njit(cache=True, nogil=True)
-def _split_pulse(data, edges, min_height=25, min_ratio=0):
+def _split_pulse(data, min_height=25, min_ratio=0):
     """
     Function which splits the PMT pulses if ncessary.
 
     Args:
         data (np.array):
-        edegs (tuble):
 
     Keyword Args:
         min_height (int):
@@ -495,15 +496,14 @@ def _split_pulse(data, edges, min_height=25, min_ratio=0):
             np.diff(edges), since we do not know apprioir the number
             of pulses.
     """
-    d = data[edges[0]:edges[1]]
-    res = np.ones(len(d), np.int16) * -1  # There cannot be more splot points than sample
+    res = np.ones(len(data), np.int16) * -1  # There cannot be more split points than sample
     ind = 1
-    res[0] = edges[0]
-    for split_point in find_split_points(d, min_height=min_height, min_ratio=min_ratio):
-        res[ind] = split_point + edges[0]
+    res[0] = 0
+    for split_point in find_split_points(data, min_height=min_height, min_ratio=min_ratio):
+        res[ind] = split_point
         ind += 1
     if ind == 1:
-        res[ind] = edges[1]
+        res[ind] = len(data)
     return res
 
 
@@ -581,7 +581,7 @@ class nVETOPulseBasics(strax.Plugin):
 
 @export
 #@numba.njit(cache=True, nogil=True)
-def compute_properties(nveto_pulses, nveto_records, to_pe):
+def compute_properties(pulses, records, to_pe):
     """
     Computes the basic PMT pulse properties.
 
@@ -596,12 +596,15 @@ def compute_properties(nveto_pulses, nveto_records, to_pe):
     """
     # TODO: Baseline part is not subtracted yet.
     # TODO: Gain stuff is not validated yet.
-    dt = nveto_records['dt'][0]
-    rind = 0
-    result_buffer = np.zeros(len(nveto_pulses), nveto_pulses_dtype())
+    dt = records['dt'][0]
+    record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
+    
+    result_buffer = np.zeros(len(pulses), nveto_pulses_dtype())
 
-    for pind, pulse in enumerate(nveto_pulses):
+    for pind, pulse in enumerate(pulses):
+        # Frequently used quantaties:
         ch = pulse['channel']
+        t = pulse['time']
 
         # parameters to be store:
         area = 0
@@ -609,8 +612,10 @@ def compute_properties(nveto_pulses, nveto_records, to_pe):
         amp_ind = 0
 
         # Getting data and baseline of the event:
-        data, rind, b = _get_pulse_data(nveto_records, pulse, start_index=rind)
-
+        ro = record_offset[ch]
+        data, ro = get_pulse_data(records, pulse, start_index=ro)
+        record_offset[ch] = ro
+        
         # Computing area and max bin:
         for ind, d in enumerate(data):
             area += d
@@ -618,7 +623,7 @@ def compute_properties(nveto_pulses, nveto_records, to_pe):
                 height = d
                 amp_ind = ind
         area = area * dt / to_pe[ch]
-        amp_time = pulse['time'] + int(amp_ind * dt)
+        amp_time = t + int(amp_ind * dt)
 
         # Computing FWHM:
         left_edge, right_edge = get_fwxm(data, amp_ind, 0.5)
@@ -633,14 +638,13 @@ def compute_properties(nveto_pulses, nveto_records, to_pe):
         right_edge = right_edge * dt - dt / 2
         width_low = right_edge - left_edge_low
 
-        nvp = nveto_pulses[pind]
         res = result_buffer[pind]
-        res['time'] = nvp['time']
-        res['endtime'] = nvp['endtime']
-        res['channel'] = nvp['channel']
+        res['time'] = t
+        res['endtime'] = pulse['endtime']
+        res['channel'] = ch
         res['area'] = area
         res['height'] = height
-        res['amp_time'] = amp_time - nvp['time']
+        res['amp_time'] = amp_time - t
         res['width'] = width
         res['left'] = left_edge
         res['low_width'] = width_low
