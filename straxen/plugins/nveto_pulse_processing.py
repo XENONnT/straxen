@@ -262,7 +262,7 @@ def get_pulse_data(records,
     assert pulse['time'] >= records[0]['time'], warning
     lr = records[-1]
     ret = lr['time'] + lr['pulse_length'] * lr['dt']
-    assert pulse['endtime'] =< ret, "Pulse comes from a future chunk of records."
+    assert pulse['endtime'] <= ret, "Pulse comes from a future chunk of records."
     
     if pulse_only:
         data, si = _get_pulse_data(records, pulse, start_index)
