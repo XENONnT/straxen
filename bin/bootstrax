@@ -115,7 +115,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.3.0\n---')
+print(f'---\nTEST VERSION 0.3.1\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -205,7 +205,7 @@ else:
     print(f'Not deleting live data because --delete_live = {args.delete_live}')
 
 
-def new_context(cores=args.cores, max_messages=args.max_messages):
+def new_context(cores=args.cores, max_messages=args.max_messages, timeout=60):
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
@@ -214,7 +214,8 @@ def new_context(cores=args.cores, max_messages=args.max_messages):
         we_are_the_daq=True,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
-        max_messages=max_messages)
+        max_messages=max_messages,
+        timeout=timeout)
 
 
 st = new_context()
@@ -423,45 +424,64 @@ def infer_run_mode(rd, input_dir):
     '''
     Infer a safe operating mode of running bootstrax based on the size of the first chunk.
     Estimating save parameters for running bootstrax from:
-      # TODO update with new strax version
-      https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_update
     returns: dictionary of how many cores and max_messages should be used based on an
     estimated data rate.
     '''
     nap_time, i = 10, 0
-    while len(os.listdir(input_dir)) < 3 * 3:
-        if i > 10:
-            # To few files to be sure the first chunk is completely written
-            return dict(cores=args.cores, max_messages=args.max_messages)
+
+    # min. of 3 chunks with each pre_, chunk and post_
+    min_chunks = 3
+    while len(os.listdir(input_dir)) < min_chunks * 3:
+        if i >= 10:
+            # Too few files to be sure the first chunk is completely written
+            result = dict(cores=args.cores, max_messages=args.max_messages)
+            print(f'Waited {i * naptime} s but less than {min_chunks} were written. Could not '
+                  f' infer run mode. Using default: {result}.')
+            return result
+        i += 1
         time.sleep(nap_time)
+
     # Estimate data rate on the bases of the size of the first chunk
     first_chunk = input_dir + '/000000/'
     chunk_size = np.sum([os.path.getsize(first_chunk + f) for f in os.listdir(first_chunk)])
     chunk_time = rd['ini']['strax_chunk_length'] + rd['ini']['strax_chunk_overlap']
-    compression_factor = 3  # this is an estimate
-    data_rate = compression_factor * (chunk_size / 1e6) / chunk_time  # in MB/s
+    compression_factor = 2.4  # this is an estimate for lz4
+    data_rate = int(compression_factor * (chunk_size / 1024 ** 2) / chunk_time)  # in MB/s
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname.strip('eb.xenon.local')) >= 3
     print(f"infer_run_mode::\teb number {int(hostname.strip('eb.xenon.local'))}")
 
-    # Return a run-mode that is empirically found to provide stable processing.
+    # Return a run-mode that is empirically found to provide stable but fast processing.
     print(f'infer_run_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
-    if data_rate < 50:
-        result = dict(cores=12 if is_new_eb else 8,
-                      max_messages=8 if is_new_eb else 6)
-    elif data_rate < 100:
-        result = dict(cores=10 if is_new_eb else 6,
-                      max_messages=8 if is_new_eb else 6)
-    elif data_rate < 300:
-        result = dict(cores=8 if is_new_eb else 5,
-                      max_messages=6 if is_new_eb else 4)
+    run_settings = {
+        'new_eb':
+            {'low_rate': dict(cores=12, max_messages=20, timeout=60),
+             'med_rate': dict(cores=12, max_messages=20, timeout=100),
+             'high_rate': dict(cores=11, max_messages=15, timeout=200),
+             'very_high_rate': dict(cores=11, max_messages=15, timeout=300),
+             'max_rate': dict(cores=11, max_messages=10, timeout=400)},
+        'old_eb':
+            {'low_rate': dict(cores=30, max_messages=20, timeout=60),
+             'med_rate': dict(cores=20, max_messages=15, timeout=100),
+             'high_rate': dict(cores=10, max_messages=15, timeout=200),
+             'very_high_rate': dict(cores=10, max_messages=10, timeout=300),
+             'max_rate': dict(cores=8, max_messages=10, timeout=400)}}
+    if data_rate < 100:
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['low_rate']
+    elif data_rate < 250:
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['med_rate']
+    elif data_rate < 500:
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['high_rate']
     elif data_rate < 700:
-        result = dict(cores=6 if is_new_eb else 4,
-                      max_messages=4 if is_new_eb else 4)
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['very_high_rate']
     else:
-        result = dict(cores=1,
-                      max_messages=4)
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['max_rate']
+
+    # override run_settings for eb5 (because of hyperthreading on eb5)
+    if hostname == 'eb5.xenon.local':
+        result['cores'] = 24 if data_rate < 500 else 20
     print(f'Override processing mode for run {rd["number"]} changing to:\t {result}')
     return result
 
@@ -681,7 +701,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
-                                n_readout_threads=n_readout_threads,
+                                n_readout_threads=n_readout_threads
                                 )
             st.make(run_id, target,
                     config=strax_config,
@@ -844,6 +864,7 @@ def process_run(rd, send_heartbeats=True):
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
+
                 if delete_live:
                     delete_live_data(loc)
                 break
