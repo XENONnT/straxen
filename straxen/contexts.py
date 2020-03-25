@@ -44,7 +44,7 @@ x1t_common_config = dict(
 
 xnt_common_config = dict(
     n_tpc_pmts=493,
-    n_nveto_pmts = 120,
+    n_nveto_pmts=120,
     gain_model=('to_pe_constant',
                 0.005),
     channel_map=frozendict(
@@ -87,9 +87,9 @@ def fake_daq():
 
 nveto_common_opts = dict(
     register_all=[
-        straxen.nveto_daqreader,
-       straxen.nveto_recorder,
-       straxen.nveto_pulse_processing
+       #  straxen.nveto_daqreader,
+       # straxen.nveto_recorder,
+       # straxen.nveto_pulse_processing
     ],
     store_run_fields=(
         'name', 'number',
@@ -97,26 +97,36 @@ nveto_common_opts = dict(
         'start', 'end', 'livetime',
         'trigger.events_built'),
     check_available=('nveto_pre_raw_records',
-                    'nveto_raw_records',
-                    'nveto_diagnostic_lone_records',
-                    'nveto_lone_records_count',
-                    'nveto_records',
-                    'nveto_pulses',
-                    'nveto_pulse_basics',
+                    # 'nveto_raw_records',
+                    # 'nveto_diagnostic_lone_records',
+                    # 'nveto_lone_records_count',
+                    # 'nveto_records',
+                    # 'nveto_pulses',
+                    # 'nveto_pulse_basics',
                      ))
 
+HdM_common_config = dict(
+    n_nveto_pmts=24,
+    n_veto_fragment_length=110,
+    channel_map=frozendict(
+         # (Minimum channel, maximum channel)
+         nveto=(0, 23),
+         nveto_aqmon=(808, 815),
+         nveto_blank=(2999),
+    )
+)
 
 def strax_nveto_hdm_test():
     return strax.Context(
         storage=[
             strax.DataDirectory(
                 # '/dali/lgrandi/hiraide/data/nveto/DaqTestHdM',
-                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
+                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data_raw',
                 take_only='nveto_pre_raw_records',
                 deep_scan=False,
                 readonly=True),
             strax.DataDirectory(
                 '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
                 provide_run_metadata=False)],
-        config=xnt_common_config,
+        config=HdM_common_config,
         **nveto_common_opts)
