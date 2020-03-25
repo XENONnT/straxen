@@ -120,7 +120,7 @@ def nt_simulation():
 # XENON1T
 ##
 
-SPE_opts = dict(
+PMT_opts = dict(
     register_all=[
         straxen.daqreader,
         straxen.pulse_processing,
@@ -199,19 +199,27 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
             else ('raw_records', 'records', 'peaklets')),
         **common_opts)
 
-
-def strax_SPE():
-    """Context for processing raw data for SPE Acceptance"""
+def strax_SPE(output_folder='/dali/lgrandi/giovo/XENONnT/strax_data', 
+              build_lowlevel=False):
     return strax.Context(
-        storage=[strax.DataDirectory('/dali/lgrandi/aalbers/strax_data_raw',
-                                     take_only='raw_records',
-                                     deep_scan=False,readonly=True),
-                 strax.DataDirectory('/dali/lgrandi/aalbers/strax_data',
-                                     readonly=True,
-                                     provide_run_metadata=False),
-                 strax.DataDirectory('/dali/lgrandi/giovo/XENONnT/strax_data',
-                                     provide_run_metadata=False)],
-        allow_multiprocess=True, 
-        forbid_creation_of=('raw_records',),
+        storage=[
+            strax.DataDirectory(
+                '/dali/lgrandi/xenon1t/strax_converted/raw',
+                take_only='raw_records',
+                provide_run_metadata=True,
+                deep_scan=False,
+                readonly=True),
+            strax.DataDirectory(
+                '/dali/lgrandi/xenon1t/strax_converted/processed',
+                readonly=True,
+                provide_run_metadata=False),
+            strax.DataDirectory(output_folder,
+                                provide_run_metadata=False)],
         register=straxen.plugins.pax_interface.RecordsFromPax,
-        **SPE_opts)
+        config=dict(**x1t_common_config),
+        # When asking for runs that don't exist, throw an error rather than
+        # starting the pax converter
+        forbid_creation_of=(
+            ('raw_records',) if build_lowlevel
+            else ('raw_records', 'records', 'peaklets')),
+        **PMT_opts)

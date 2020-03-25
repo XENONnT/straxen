@@ -16,11 +16,14 @@ from numba import njit
 # ANSWER: [fill in]
 
 @strax.takes_config(
+    strax.Option('baseline_window',
+                 default=(0,50),
+                 help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(130, 175),
+                 default=(50, 115),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(0, 125),
+                 default=(120, 185),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
                  default=(0,248),
@@ -39,9 +42,8 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     '''
     
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
     depends_on = ('raw_records',)
-    # Options below copied from other plugins, need to be reviewed by an expert
     data_kind = 'led_cal' 
     compressor = 'zstd'
     parallel = 'process'
@@ -57,7 +59,6 @@ class LEDCalibration(strax.Plugin):
             ]
     
     def compute(self, raw_records):
-        #print('gigabytes: ', (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)/1000000)
         r = raw_records[(raw_records['channel'] >= self.config['channel_list'][0])&(raw_records['channel'] <= self.config['channel_list'][1])]
         # TODO: to change during nT commissioning or add in configuration options
         temp = np.zeros(len(r), dtype=self.dtype)
@@ -67,11 +68,11 @@ class LEDCalibration(strax.Plugin):
         temp['dt'] = r['dt']
         temp['length'] = r['length']
         
-        on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'])
+        on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
         temp['amplitude_led'] = on['amplitude_led']
         temp['amplitude_noise'] = off['amplitude_noise']
 
-        area = get_area(r, self.config['led_window'], self.config['noise_window'])
+        area = get_area(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
         temp['area'] = area['area']
 
         
@@ -80,22 +81,25 @@ class LEDCalibration(strax.Plugin):
 # QUESTIONS: can some nice functions of numba.njit be used? What does @export mean?
 # ANSWERS: [fill in]
 
-#@njit
-def get_amplitude(raw_records, led_window, noise_window):
+def get_amplitude(raw_records, led_window, noise_window, baseline_window):
     '''
     Needed for the SPE computation.
     Take the maximum in two different regions, where there is the signal and where there is not.
     '''
+    left_bsl  = baseline_window[0]
+    right_bsl = baseline_window[-1]
+    
     on = np.zeros((len(raw_records)), dtype=[('channel','int16'),('amplitude_led', '<i4')])
     off = np.zeros((len(raw_records)), dtype=[('channel','int16'),('amplitude_noise', '<i4')])
     for i, r in enumerate(raw_records):
+        r['data'] = np.abs(r['data'] -  np.sum(r['data'][left_bsl:right_bsl])/float(right_bsl-left_bsl))
         on['amplitude_led'][i] = np.max(r['data'][led_window[0]:led_window[1]])
         on['channel'][i] = r['channel']
-        off['amplitude_noise'][i] = np.max(r['data'][noise_window[0]:noise_window[1]])
+        off['amplitude_noise'][i] = np.max(r['data'][noise_window[0]:noise_window[1]]) 
         off['channel'][i] = r['channel']
     return on, off
 
-def get_area(raw_records, led_window, noise_window):
+def get_area(raw_records, led_window, noise_window, baseline_window):
     '''
     Needed for the gain computation.
     Sum the data in the defined window to get the area.
@@ -104,13 +108,13 @@ def get_area(raw_records, led_window, noise_window):
     left = led_window[0]
     end_pos = [led_window[1]+2*i for i in range(6)]
 
-    left_noise  = noise_window[0]
-    right_noise = noise_window[-1]
+    left_bsl  = baseline_window[0]
+    right_bsl = baseline_window[-1]
     
     Area = np.zeros((len(raw_records)), dtype=[('channel','int16'),('area','float64')])
     for right in end_pos:
         Area['area'] += raw_records['data'][:, left:right].sum(axis=1)
-        Area['area'] -= float(right-left)*raw_records['data'][:, left_noise:right_noise].sum(axis=1)/(right_noise-left_noise)
+        Area['area'] -= float(right-left)*raw_records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
     Area['channel'] = raw_records['channel']
     Area['area'] = Area['area']/float(len(end_pos))
         
