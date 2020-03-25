@@ -48,7 +48,7 @@ class nVETOPulseProcessing(strax.Plugin):
         I shamelessly copied almost the entire code from the TPC pulse processing. So credit to the
         author of pulse_processing.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -57,7 +57,7 @@ class nVETOPulseProcessing(strax.Plugin):
     depends_on = 'nveto_raw_records'
     provides = 'nveto_records'
     data_kind = 'nveto_records'
-
+    # TODO: change to nt common config
     dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)  # Might be the same as records.
 
     def setup(self):
@@ -78,25 +78,25 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.zero_out_of_bounds(nveto_records)
         
         # Deleting empty data:
-        nveto_records = _del_empty(nveto_records, 1)
+        # TODO: Buggy at the moment fix me:
+        # nveto_records = _del_empty(nveto_records, 1)
         return nveto_records
 
 
-@numba.njit(cache=True, nogil=True)
-def _del_empty(records, order=1):
-    """
-    Function which deletes empty records. Empty means data is completely zero.
-    :param records: Records which shall be checked.
-    :param order: Fragment order. Cut will only applied to the specified order and
-        higher fragments.
-    :return: non-empty records
-    TODO: Keep track of version in straxen.pulse_processing master
-    """
-    mask = np.ones(len(records), dtype=np.bool_)
-    for ind, r in enumerate(records):
-        if r['record_i'] >= order and np.all(r['data'] == 0):
-            mask[ind] = False
-    return records[mask]
+# @numba.njit(cache=True, nogil=True)
+# def _del_empty(records, order=1):
+#     """
+#     Function which deletes empty records. Empty means data is completely zero.
+#     :param records: Records which shall be checked.
+#     :param order: Fragment order. Cut will only applied to the specified order and
+#         higher fragments.
+#     :return: non-empty records
+#     """
+#     mask = np.ones(len(records), dtype=np.bool_)
+#     for ind, r in enumerate(records):
+#         if r['record_i'] >= order and np.all(r['data'] == 0):
+#             mask[ind] = False
+#     return records[mask]
 
 
 @export

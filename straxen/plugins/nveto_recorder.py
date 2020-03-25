@@ -22,7 +22,7 @@ __all__ = ['nVETORecorder']
     strax.Option('n_lone_hits', type=int, default=1,
                  help="Number of lone hits to be stored per channel for diagnostic reasons. CANNOT BE BELOW 1!"))
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.3'
     parallel = 'process'
 
     rechunk_on_save = False
@@ -35,6 +35,7 @@ class nVETORecorder(strax.Plugin):
     data_kind = {key: key for key in provides}
 
     def infer_dtype(self):
+        # TODO change this in nT common config
         nveto_records_dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)
         nveto_lone_records_count_dtype = lone_record_count_dtype(len(straxen.n_nVETO_pmts))
@@ -124,8 +125,7 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10, fragment_max_le
     max_nfrag = np.max(lone_record['record_i'])  # We do not know the number of fragments apriori...
     lone_ids = np.ones((nchannels, n * max_nfrag), dtype=np.int32) * -1
 
-    _compute_lone_records(lone_record, res[0], lone_ids, n, channels, nbaseline,
-                          fragment_max_length=fragment_max_length)      # TODO, change this parameter into a config nT
+    _compute_lone_records(lone_record, res[0], lone_ids, n, channels, nbaseline)
 
     lone_ids = lone_ids.flatten()
     lone_ids = lone_ids[lone_ids >= 0]
@@ -134,12 +134,13 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10, fragment_max_le
 
 
 @numba.njit(nogil=True, cache=True)
-def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, fragment_max_length=110):
+def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline):
     #TODO: Change boolean indexing into normal indexing, means also change channels argument!
 
     # getting start and end time:
     res['time'] = lone_record[0]['time']
     res['endtime'] = lone_record[-1]['time']
+    fragment_max_length = len(lone_record[0]['data'])
 
     channel_index = np.arange(0, len(channels), 1, dtype=np.int16)
     nids = np.zeros(len(channels), dtype=np.int32)
@@ -180,7 +181,7 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, f
 # plugins as well.
 # ----------------------
 @numba.njit
-def rr_in_interval(rr, start_times, end_times, fragment_max_length=110):
+def rr_in_interval(rr, start_times, end_times):
     """
     Function which tests if a raw record is one of the "to be stored"
     intervals.
@@ -206,17 +207,17 @@ def rr_in_interval(rr, start_times, end_times, fragment_max_length=110):
     #             st_____|_____|__et                                 st______|______|__et
 
     in_window = np.zeros(len(rr), dtype=np.bool_)
+    fragment_max_length = len(rr[0]['data'])
+
     # Looping over rr and check if they are in the windows:
     for i, r in enumerate(rr):
-        # TODO: Check if this is faster than calling x times r['...']
         t = r['time']
         dt = r['dt']
-        l = r['length']
         pl = r['pulse_length']
         ri = r['record_i']
 
         # check if current raw_record fragment is in any interval:
-        st = t - ri * l * dt                                   # Right edge case
+        st = t - ri * fragment_max_length * dt                 # Right edge case
         et = t + int(pl * dt - ri * fragment_max_length * dt)  # Left edge case
         which_interval = (start_times <= st) & (st < end_times) | (start_times <= et) & (et < end_times)
         if np.any(which_interval):
