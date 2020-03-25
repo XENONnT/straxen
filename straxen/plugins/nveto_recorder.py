@@ -22,7 +22,7 @@ __all__ = ['nVETORecorder']
     strax.Option('n_lone_hits', type=int, default=1,
                  help="Number of lone hits to be stored per channel for diagnostic reasons. CANNOT BE BELOW 1!"))
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.3'
     parallel = 'process'
 
     rechunk_on_save = False
@@ -216,7 +216,7 @@ def rr_in_interval(rr, start_times, end_times, fragment_max_length=110):
         ri = r['record_i']
 
         # check if current raw_record fragment is in any interval:
-        st = t - ri * l * dt                                   # Right edge case
+        st = t - ri * fragment_max_length * dt                 # Right edge case
         et = t + int(pl * dt - ri * fragment_max_length * dt)  # Left edge case
         which_interval = (start_times <= st) & (st < end_times) | (start_times <= et) & (et < end_times)
         if np.any(which_interval):
