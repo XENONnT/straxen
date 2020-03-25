@@ -19,16 +19,8 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
-<<<<<<< HEAD
-<<<<<<< HEAD
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'n_tpc_pmts', 'aux_repo', 'NVETO_RECORD_LENGTH', 'n_nVETO_pmts', 'N_PMTS_NVETO']
-=======
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo']
->>>>>>> master
-=======
 
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo', 'NVETO_RECORD_LENGTH', 'n_nVETO_pmts', 'N_PMTS_NVETO']
->>>>>>> HdMtest
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -37,12 +29,6 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 first_sr1_run = 170118_1327
 tpc_r = 47.9
-
-
-# TODO: change nVETO pmts thingy
-NVETO_RECORD_LENGTH = 110
-N_PMTS_NVETO = 14
-n_nVETO_pmts = np.arange(0, N_PMTS_NVETO, dtype=np.int16)
 
 @export
 def adc_thresholds():
