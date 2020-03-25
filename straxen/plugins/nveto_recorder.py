@@ -22,20 +22,20 @@ __all__ = ['nVETORecorder']
     strax.Option('n_lone_hits', type=int, default=1,
                  help="Number of lone hits to be stored per channel for diagnostic reasons. CANNOT BE BELOW 1!"))
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.3'
     parallel = 'process'
 
-    # TODO: Check the following two parameters in strax:
-    rechunk_on_save = False  # same as in tpc pulse_processing
-    compressor = 'lz4'  # same as in tpc pulse_processing
+    rechunk_on_save = False
+    compressor = 'lz4'
 
-    depends_on = 'nveto_pre_raw_records'    # <--- change this to nveto_pre_raw_records
+    depends_on = 'nveto_pre_raw_records'
 
     provides = ('nveto_raw_records', 'nveto_diagnostic_lone_records', 'nveto_lone_records_count')
 
     data_kind = {key: key for key in provides}
 
     def infer_dtype(self):
+        # TODO change this in nT common config
         nveto_records_dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(straxen.NVETO_RECORD_LENGTH)
         nveto_lone_records_count_dtype = lone_record_count_dtype(len(straxen.n_nVETO_pmts))
@@ -50,13 +50,12 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(nveto_pre_raw_records)
 
         # As long as we are working with TPC data we have to split of the diagnostic stuff:
-        # TODO split off nVETO acquisition monitor
+        # TODO split off nVETO acquisition monitor; Note: I think this was moved to the DAQreader
         nveto_pre_raw_records, o = channel_split(nveto_pre_raw_records, straxen.N_PMTS_NVETO)
 
         # First we have to split rr into records and lone hits:
         intervals = coincidence(nveto_pre_raw_records, self.config['coincidence_level'], self.config['resolving_time'])
         mask = rr_in_interval(nveto_pre_raw_records, *intervals.T)
-        mask = mask.astype(bool)
         raw_records, lone_records = _mask_and_not(nveto_pre_raw_records, mask)
 
         # Compute some properties of the lone_records:
@@ -99,21 +98,23 @@ def lone_record_count_dtype(n_channels):
     ]
 
 
-def compute_lone_records(lone_record, channels, n, nbaseline=10):
+def compute_lone_records(lone_record, channels, n, nbaseline=10, fragment_max_length=110):
     """
     Function which estimates for each chunk some basic properties of the lone nveto_records.
+
     Args:
         lone_record (raw_records): raw_records which are flagged as lone "hits"
-        channels (np.array): List of PMT channels
+        channels (numpy.ndarray): List of PMT channels
         n (int): Number of lone records which should be stored per data chunk.
+
     Keyword Args:
         nbaseline (int): number of samples which is used to compute the baseline rms.
+
     Returns:
-        np.array: Structured array of the lone_record_count_dtype containing some
+        numpy.ndarray: Structured array of the lone_record_count_dtype containing some
             properties of the lone records which will be deleted.
-        np.array: Lone records which should be saved for diagnostic purposes. The array shape is of
+        numpy.ndarray: Lone records which should be saved for diagnostic purposes. The array shape is of
             the raw_records dtype.
-    TODO: Merge with get_n_lone_records (Done) update onyl docstring
     """
     nchannels = len(channels)
 
@@ -121,11 +122,11 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10):
     res = np.zeros(1, dtype=lone_record_count_dtype(nchannels))
 
     # buffer for lone_records to be stored:
-    max_nfrag = np.max(lone_record['record_i'])  # We do not know the number of fragments a priori...
+    max_nfrag = np.max(lone_record['record_i'])  # We do not know the number of fragments apriori...
     lone_ids = np.ones((nchannels, n * max_nfrag), dtype=np.int32) * -1
 
-    _compute_lone_records(lone_record, res[0], lone_ids, n, channels, nbaseline,
-                          default_length=straxen.NVETO_RECORD_LENGTH)
+    _compute_lone_records(lone_record, res[0], lone_ids, n, channels, nbaseline)
+
     lone_ids = lone_ids.flatten()
     lone_ids = lone_ids[lone_ids >= 0]
 
@@ -133,12 +134,13 @@ def compute_lone_records(lone_record, channels, n, nbaseline=10):
 
 
 @numba.njit(nogil=True, cache=True)
-def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, default_length=110):
+def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline):
     #TODO: Change boolean indexing into normal indexing, means also change channels argument!
 
     # getting start and end time:
     res['time'] = lone_record[0]['time']
     res['endtime'] = lone_record[-1]['time']
+    fragment_max_length = len(lone_record[0]['data'])
 
     channel_index = np.arange(0, len(channels), 1, dtype=np.int16)
     nids = np.zeros(len(channels), dtype=np.int32)
@@ -151,7 +153,7 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  channels, nbaseline, d
         if nids[ch_i] < n:
             lone_ids[ch_i][nids[ch_i]] = ind  # add event index
             # Check if the event consist out of more fragments:
-            n_frag = lr['pulse_length']//default_length
+            n_frag = lr['pulse_length']//fragment_max_length
             nids[ch_i] += 1 - n_frag  # If yes we also have to store them
 
         # Computing properties of lone records which will be deleted:
@@ -195,19 +197,32 @@ def rr_in_interval(rr, start_times, end_times):
         We will do the same for higher fragments which may be outside the window. If the start time
         of the very first fragment falls into the window.
     """
-    in_window = np.zeros(len(rr), dtype=np.int8)
+    # Here are some example we have to considere:
+    # Normal case:
+    # Interval:                  |----------------------------------------|
+    # If-case:                st___et     st_______et                st_____et
+    # Edge cases:
+    # Interval:                 |----------------------------------------|
+    # else-case      st_______|___et                             st_______|__et
+    #             st_____|_____|__et                                 st______|______|__et
+
+    in_window = np.zeros(len(rr), dtype=np.bool_)
+    fragment_max_length = len(rr[0]['data'])
 
     # Looping over rr and check if they are in the windows:
     for i, r in enumerate(rr):
-        st = r['time'] - int(r['record_i'] * straxen.NVETO_RECORD_LENGTH * r['dt'])
-        et = r['time'] + int(r['pulse_length'] * r['dt'])
+        t = r['time']
+        dt = r['dt']
+        pl = r['pulse_length']
+        ri = r['record_i']
 
-        # check if raw record is in any interval
+        # check if current raw_record fragment is in any interval:
+        st = t - ri * fragment_max_length * dt                 # Right edge case
+        et = t + int(pl * dt - ri * fragment_max_length * dt)  # Left edge case
         which_interval = (start_times <= st) & (st < end_times) | (start_times <= et) & (et < end_times)
         if np.any(which_interval):
             # tag as to be stored:
-            in_window[i] = 1
-
+            in_window[i] = True
     return in_window
 
 
