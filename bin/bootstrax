@@ -864,7 +864,6 @@ def process_run(rd, send_heartbeats=True):
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
-
                 if delete_live:
                     delete_live_data(loc)
                 break
