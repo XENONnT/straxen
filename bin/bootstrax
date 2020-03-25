@@ -171,7 +171,7 @@ wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = f"name start end number bootstrax " \
+bootstrax_projection = f"name start end number bootstrax status " \
                        f"data.host data.type data.location " \
                        f"ini.processing_threads ini.compressor ini.strax_fragment_payload_bytes " \
                        f"ini.strax_chunk_length ini.strax_chunk_overlap".split()
@@ -589,6 +589,25 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
         projection=bootstrax_projection)
 
 
+def set_status_finished(rd):
+    '''Set the status to ready to upload for datamanager and admix'''
+
+    # Only update the status if it does not exist or if it needs to be uploaded
+    ready_to_upload = {'status': 'eb_ready_to_upload'}
+    if rd.get('status') in [None, 'needs_upload']:
+        run_coll.find_one_and_update(
+            {'_id': rd['_id']},
+            {'$set': ready_to_upload})
+    elif rd.get('status') == ready_to_upload.get('status'):
+        # This is strange, boostrax already finished this run before
+        print('WARNING: bootstax has already marked this run as ready for upload. Doing nothing.')
+        pass
+    else:
+        # Do not override this field for runs already uploaded in admix
+        raise ReferenceError(f'Trying to set set the status {rd.get("status")} to '
+                             f'{ready_to_upload}! One should not override this field.')
+
+
 def abandon(*, mongo_id=None, number=None):
     """Mark a run as abandoned"""
     set_run_state(
@@ -864,6 +883,8 @@ def process_run(rd, send_heartbeats=True):
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
+                set_status_finished(rd)
+
                 if delete_live:
                     delete_live_data(loc)
                 break
