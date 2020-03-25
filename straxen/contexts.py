@@ -88,20 +88,21 @@ xnt_common_config = dict(
 nveto_common_opts = dict(
     register_all=[
         straxen.nveto_daqreader,
-        straxen.nveto_recorder,
-        straxen.nveto_pulse_processing],
+#        straxen.nveto_recorder,
+#        straxen.nveto_pulse_processing
+    ],
     store_run_fields=(
         'name', 'number',
         'reader.ini.name', 'tags.name',
         'start', 'end', 'livetime',
         'trigger.events_built'),
     check_available=('nveto_pre_raw_records',
-                     'nveto_raw_records',
-                     'nveto_diagnostic_lone_records',
-                     'nveto_lone_records_count',
-                     'nveto_records',
-                     'nveto_pulses',
-                     'nveto_pulse_basics',
+#                     'nveto_raw_records',
+#                     'nveto_diagnostic_lone_records',
+#                     'nveto_lone_records_count',
+#                     'nveto_records',
+#                     'nveto_pulses',
+#                     'nveto_pulse_basics',
                      ))
 
 
@@ -114,7 +115,7 @@ def strax_nveto_hdm_test():
                 deep_scan=False,
                 readonly=True),
             strax.DataDirectory(
-                '/dali/lgrandi/wenz/strax_data/HdMtest',
+                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
                 provide_run_metadata=False)],
         config=xnt_common_config,
         **nveto_common_opts)

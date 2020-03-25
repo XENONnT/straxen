@@ -66,7 +66,7 @@ def main():
         strax.dirname_to_prefix(folder) + '-metadata.json')
     assert osp.exists(metadata_fn)
     dtype = np.dtype(literal_eval(md['dtype']))
-    record_length = strax.record_length_from_dtype(dtype)
+    record_length = 110
 
     if not args.no_run_metadata:
         run_md = st.run_metadata(run_id)
