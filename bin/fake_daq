@@ -16,6 +16,8 @@ parser.add_argument('--input_path', default='./test_input_data',
                     help='Directory with input data (used to fake new run)')
 parser.add_argument('--input_run', default='180215_1029',
                     help='Run id of input data')
+parser.add_argument('--detector', default='tpc',
+                    help='Specifies the detector type (tpc/nveto).')
 parser.add_argument('--output', default='./from_fake_daq',
                     help='Output directory')
 parser.add_argument('--output_run', default=None,
@@ -55,7 +57,12 @@ def main():
                        **straxen.contexts.common_opts)
 
     n_readout_threads = 8
-    n_channels = st.config['n_tpc_pmts']
+    if args.detector == 'tpc':
+        n_channels = st.config['n_tpc_pmts']
+    elif args.detector == 'nveto':
+        n_channels = st.config['n_nveto_pmts']
+    else:
+        raise ValueError('Detector type not supported.')
     channels_per_reader = np.ceil(n_channels / n_readout_threads)
 
     if os.path.exists(output_dir):
@@ -80,7 +87,13 @@ def main():
     chunk_sizes = []
     chunk_data_compressed = []
 
-    source = st.get_iter(args.input_run, 'raw_records')
+    if args.detector == 'tpc':
+        source = st.get_iter(args.input_run, 'raw_records')
+    elif args.detector == 'nveto':
+        source = st.get_iter(args.input_run, 'nveto_pre_raw_records')
+    else:
+        raise ValueError('Detector type not supported.')
+
     buffer: strax.Chunk = next(source)
     payload_t_start = payload_t_end = buffer.start
     input_exhausted = False

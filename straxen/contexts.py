@@ -40,6 +40,8 @@ x1t_common_config = dict(
     tail_veto_threshold=int(1e5),
     save_outside_hits=(3, 3),
     hit_min_amplitude=straxen.adc_thresholds(),
+    # Some setting which are required by the fake daq for the nVETO HdM test set-up but not needed otherwise:
+    n_nveto_pmts=32,
 )
 
 xnt_common_config = dict(
@@ -104,17 +106,6 @@ nveto_common_opts = dict(
                     # 'nveto_pulses',
                     # 'nveto_pulse_basics',
                      ))
-
-HdM_common_config = dict(
-    n_nveto_pmts=24,
-    n_veto_fragment_length=110,
-    channel_map=frozendict(
-         # (Minimum channel, maximum channel)
-         nveto=(0, 23),
-         nveto_aqmon=(808, 815),
-         nveto_blank=(2999),
-    )
-)
 
 def strax_nveto_hdm_test():
     return strax.Context(

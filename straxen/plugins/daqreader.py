@@ -67,7 +67,9 @@ class DAQReader(strax.Plugin):
         'raw_records',
         'raw_records_he',  # high energy
         'raw_records_aqmon',
-        'raw_records_mv')
+        'raw_records_mv',
+        'nveto_pre_raw_records'
+    )
 
     data_kind = frozendict(zip(provides, provides))
     depends_on = tuple()
@@ -278,6 +280,9 @@ class DAQReader(strax.Plugin):
             # Ensure the offset is a whole digitizer sample
             records["time"] += self.dt * (self.t0 // self.dt)
 
+        # Just for the nVETO SWT in HdM:
+        convert_HdM_channels(records)
+
         # Split records by channel
         result_arrays = split_channel_ranges(
             records,
@@ -317,6 +322,20 @@ class Fake1TDAQReader(DAQReader):
 
     data_kind = frozendict(zip(provides, provides))
 
+@numba.njit(nogil=True, cache=True)
+def convert_HdM_channels(raw_records):
+    """
+    Little helper which converts HdM channel mess into nVETO channels.
+    """
+    for rr in raw_records:
+        if rr['channel'] <= 14 or 16 <= rr['channel'] <= 22 or 23 <= rr['channel'] <= 25:
+            rr['channel'] += 2000
+        elif rr['channel'] == 15:
+            rr['channel'] = 808
+        elif rr['channel'] == 31:
+            rr['channel'] = 809
+        else:
+            rr['channel'] = 2999
 
 @export
 @numba.njit(nogil=True, cache=True)
