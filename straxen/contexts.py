@@ -121,5 +121,9 @@ def strax_nveto_hdm_test():
             strax.DataDirectory(
                 '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
                 provide_run_metadata=False)],
-        config=xnt_common_config,
+        config={**xnt_common_config, **hdm_daqreader},
         **nveto_common_opts)
+
+# HdM test specific configurations;
+hdm_daqreader = dict(digitizer_sampling_resolution=2,
+                     n_readout_threads=8)
