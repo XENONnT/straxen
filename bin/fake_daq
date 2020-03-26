@@ -63,8 +63,10 @@ def main():
     n_readout_threads = 8
     if args.detector == 'tpc':
         n_channels = st.config['n_tpc_pmts']
+        sampling = 10
     elif args.detector == 'nveto':
         n_channels = st.config['n_nveto_pmts']
+        sampling = 2
     else:
         raise ValueError('Detector type not supported.')
     channels_per_reader = np.ceil(n_channels / n_readout_threads)
@@ -130,7 +132,7 @@ def main():
             run_start = records['time'][0]
             get_run_start = False
         records['time'] = records['time'] - run_start
-        assert np.all(records['time'] % 10 == 0)
+        assert np.all(records['time'] % sampling == 0)
 
         chunk_sizes.append(records.nbytes)
         result = []
