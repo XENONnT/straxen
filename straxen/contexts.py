@@ -7,6 +7,7 @@ import straxen
 
 common_opts = dict(
    register_all=[
+       # straxen.daqreader,
        straxen.pulse_processing,
        straxen.peaklet_processing,
        straxen.peak_processing,
@@ -16,7 +17,7 @@ common_opts = dict(
        'reader.ini.name', 'tags.name',
        'start', 'end', 'livetime',
        'trigger.events_built'),
-   check_available=('raw_records', 'records', 'peaklets',
+   check_available=('raw_records', 'nveto_pre_raw_records', 'records', 'peaklets',
                     'events', 'event_info'))
 
 x1t_common_config = dict(
