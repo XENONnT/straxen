@@ -7,7 +7,6 @@ import straxen
 
 common_opts = dict(
    register_all=[
-       straxen.nveto_daqreader,
        straxen.pulse_processing,
        straxen.peaklet_processing,
        straxen.peak_processing,
@@ -17,7 +16,7 @@ common_opts = dict(
        'reader.ini.name', 'tags.name',
        'start', 'end', 'livetime',
        'trigger.events_built'),
-   check_available=('raw_records', 'nveto_pre_raw_records', 'records', 'peaklets',
+   check_available=('raw_records', 'records', 'peaklets',
                     'events', 'event_info'))
 
 x1t_common_config = dict(
@@ -50,6 +49,8 @@ xnt_common_config = dict(
     n_nveto_pmts=120,
     gain_model=('to_pe_constant',
                 0.005),
+    gain_model_nveto=('to_pe_constant',
+                      0.005),
     channel_map=frozendict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
@@ -59,7 +60,7 @@ xnt_common_config = dict(
          mv=(1000, 1083),
          mv_blank=(1999, 1999),
          nveto=(2000, 2119),
-         nveto_aqmon=(808, 815),
+         aqmonnv=(808, 815),  # nveto acquisition monitor
          nveto_blank=(2999),
     )
 )
@@ -90,7 +91,7 @@ def fake_daq():
 
 nveto_common_opts = dict(
     register_all=[
-       #  straxen.nveto_daqreader,
+       straxen.daqreader,
        # straxen.nveto_recorder,
        # straxen.nveto_pulse_processing
     ],
@@ -99,20 +100,20 @@ nveto_common_opts = dict(
         'reader.ini.name', 'tags.name',
         'start', 'end', 'livetime',
         'trigger.events_built'),
-    check_available=('nveto_pre_raw_records',
-                    # 'nveto_raw_records',
-                    # 'nveto_diagnostic_lone_records',
-                    # 'nveto_lone_records_count',
-                    # 'nveto_records',
-                    # 'nveto_pulses',
-                    # 'nveto_pulse_basics',
+    check_available=('raw_records_nvpre',
+                     'raw_records_nvaqmon',
+                     # 'raw_records_nv',
+                     # 'lone_raw_records_nv',
+                     # 'lone_raw_record_statistics_nv',
+                     # 'records_nv',
+                     # 'pulse_edges_nv',
+                     # 'pulse_basics_nv'
                      ))
 
 def strax_nveto_hdm_test():
     return strax.Context(
         storage=[
             strax.DataDirectory(
-                # '/dali/lgrandi/hiraide/data/nveto/DaqTestHdM',
                 '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data_raw',
                 take_only='nveto_pre_raw_records',
                 deep_scan=False,
@@ -120,5 +121,5 @@ def strax_nveto_hdm_test():
             strax.DataDirectory(
                 '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
                 provide_run_metadata=False)],
-        config=HdM_common_config,
+        config=xnt_common_config,
         **nveto_common_opts)

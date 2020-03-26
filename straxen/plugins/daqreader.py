@@ -68,7 +68,8 @@ class DAQReader(strax.Plugin):
         'raw_records_he',  # high energy
         'raw_records_aqmon',
         'raw_records_mv',
-        'nveto_pre_raw_records'
+        'raw_records_prenv',  # nveto pre-raw_records
+        'raw_records_aqmonnv'
     )
 
     data_kind = frozendict(zip(provides, provides))
@@ -281,6 +282,7 @@ class DAQReader(strax.Plugin):
             records["time"] += self.dt * (self.t0 // self.dt)
 
         # Just for the nVETO SWT in HdM:
+        # TODO: Remove me before the best DM experiment in the world starts to take data.
         convert_HdM_channels(records)
 
         # Split records by channel
@@ -299,7 +301,9 @@ class DAQReader(strax.Plugin):
                 continue
 
             result_name = 'raw_records'
-            if subd != 'tpc':
+            if subd.endswith('nveto'):
+                result_name += '_prenv'
+            elif subd != 'tpc':
                 result_name += '_' + subd
             result[result_name] = self.chunk(
                 start=self.t0 + break_pre,
@@ -328,7 +332,7 @@ def convert_HdM_channels(raw_records):
     Little helper which converts HdM channel mess into nVETO channels.
     """
     for rr in raw_records:
-        if rr['channel'] <= 14 or 16 <= rr['channel'] <= 22 or 23 <= rr['channel'] <= 25:
+        if rr['channel'] <= 14 or 16 <= rr['channel'] <= 22 or 24 <= rr['channel'] <= 25:
             rr['channel'] += 2000
         elif rr['channel'] == 15:
             rr['channel'] = 808
