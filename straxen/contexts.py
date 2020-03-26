@@ -53,15 +53,16 @@ xnt_common_config = dict(
                       0.005),
     channel_map=frozendict(
          # (Minimum channel, maximum channel)
+         # Channels must be listed in a ascending order!
          tpc=(0, 493),
          he=(500, 752),  # high energy
          aqmon=(799, 807),
+         aqmonnv=(808, 815),  # nveto acquisition monitor
          tpc_blank=(999, 999),
          mv=(1000, 1083),
          mv_blank=(1999, 1999),
          nveto=(2000, 2119),
-         aqmonnv=(808, 815),  # nveto acquisition monitor
-         nveto_blank=(2999),
+         nveto_blank=(2999, 2999),
     )
 )
 
