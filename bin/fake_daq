@@ -31,6 +31,10 @@ parser.add_argument('--realtime', action='store_true',
                     help='Emit data at same pace as it was acquired')
 parser.add_argument('--shm', action='store_true',
                     help='Operate in /dev/shm')
+parser.add_argument( '--no_run_metadata',
+                     action='store_true',
+                     help='Refresh even if you have lost the run metadata. '
+                          'Some useful sanity checks will be disabled.')
 parser.add_argument('--chunk_duration', default=2., type=float,
                     help='Chunk size in sec (not ns)')
 parser.add_argument('--stop_after', default=float('inf'), type=float,
@@ -70,16 +74,16 @@ def main():
     os.makedirs(output_dir)
 
     # Copy over metadata
-    run_md = st.run_metadata(args.input_run)
-    st2 = st.new_context(storage=strax.DataDirectory(output_dir),
-                         replace=True)
-    run_md.setdefault('strax_defaults', dict())
-    run_md['strax_defaults']['n_readout_threads'] = n_readout_threads
-    run_md['strax_defaults']['compressor'] = args.compressor
-    st2.storage[0].write_run_metadata(output_run, run_md)
-    del st2
-
-    run_start = int(int(1e9) * int(run_md['start'].timestamp()))
+    if not args.no_run_metadata:
+        run_md = st.run_metadata(args.input_run)
+        st2 = st.new_context(storage=strax.DataDirectory(output_dir),
+                             replace=True)
+        run_md.setdefault('strax_defaults', dict())
+        run_md['strax_defaults']['n_readout_threads'] = n_readout_threads
+        run_md['strax_defaults']['compressor'] = args.compressor
+        st2.storage[0].write_run_metadata(output_run, run_md)
+        del st2
+        run_start = int(int(1e9) * int(run_md['start'].timestamp()))
 
     if args.rate:
         print("Preparing payload data: slurping into memory")
@@ -99,6 +103,7 @@ def main():
     input_exhausted = False
 
     chunk_i = -1
+    get_run_start = True
     while len(buffer) or not input_exhausted:
         chunk_i += 1
         desired_end = (
@@ -121,6 +126,9 @@ def main():
         payload_t_end = desired_end
 
         # Restore baseline, clear metadata, fix time
+        if get_run_start:
+            run_start = records['time'][0]
+            get_run_start = False
         records['time'] = records['time'] - run_start
         assert np.all(records['time'] % 10 == 0)
 
