@@ -7,7 +7,7 @@ import straxen
 
 common_opts = dict(
    register_all=[
-       straxen.daqreader,
+       straxen.nveto_daqreader,
        straxen.pulse_processing,
        straxen.peaklet_processing,
        straxen.peak_processing,
