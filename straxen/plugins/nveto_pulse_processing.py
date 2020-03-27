@@ -5,7 +5,7 @@ import strax
 import straxen
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges', 'nVETOPulseBasics']
+__all__ = ['nVETOPulseProcessing']#, 'nVETOPulseEdges', 'nVETOPulseBasics']
 
 pulse_dtype = [(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
                (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
@@ -67,16 +67,16 @@ class nVETOPulseProcessing(strax.Plugin):
         record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
         dtype = strax.record_dtype(record_length)
-        return {'records_nv': dtype}
+        return dtype
 
     # def setup(self):
     #     self.hit_thresholds = straxen.get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
 
-    def compute(self, nveto_raw_records):
+    def compute(self, raw_records_nv):
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
-        r = strax.raw_to_records(nveto_raw_records)
-        del nveto_raw_records
+        r = strax.raw_to_records(raw_records_nv)
+        del raw_records_nv
 
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
@@ -88,7 +88,7 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.zero_out_of_bounds(r)
         # TODO: Separate switched off channels for speed up?
         # TODO: Finalize hitfinder threshold.
-        hits = strax.find_hits(r, threshold=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(r, min_amplitude=self.config['hit_min_amplitude_nv'])
 
         le, re = self.config['nveto_save_outside_hits']
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
