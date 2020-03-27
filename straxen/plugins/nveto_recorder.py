@@ -19,15 +19,14 @@ __all__ = ['nVETORecorder']
     strax.Option('baseline_samples_lone_records', type=int, default=10, track=False,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records', type=int, default=2, track=False,
-                 # TODO: Fix this accept zero
-                 help="Number of lone hits to be stored per channel for diagnostic reasons. CANNOT BE BELOW 1!"),
+                 help="Number of lone hits to be stored per channel for diagnostic reasons."),
     strax.Option('channel_map', track=False, type=frozendict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('n_nveto_pmts', type=int, track=False,
         help='Number of nVETO PMTs'))
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     parallel = 'process'
 
     rechunk_on_save = False
@@ -45,11 +44,11 @@ class nVETORecorder(strax.Plugin):
 
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
-        nveto_lone_records_count_dtype = lone_record_count_dtype(self.config['n_nveto_pmts'])
+        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(self.config['n_nveto_pmts'])
 
         dtypes = [nveto_records_dtype,
                   nveto_diagnostic_lone_records_dtype,
-                  nveto_lone_records_count_dtype]
+                  nveto_lone_records_statistics_dtype]
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
@@ -74,16 +73,14 @@ class nVETORecorder(strax.Plugin):
                        baseline_samples=self.config['baseline_samples_lone_records'],
                        flip=True)
         strax.integrate(lr)
-
-        lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_hits'])
-
+        lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records'])
         return {'raw_records_nv': rr,
                 'lone_raw_records_nv': lr,
                 'lone_raw_record_statistics_nv': lrc}
 
 
 @export
-def lone_record_count_dtype(n_channels):
+def lone_record_statistics_dtype(n_channels):
     return [
         (('Lowest start time observed in the chunk', 'time'), np.int64),
         (('Highest end time observed in the chunk', 'endtime'), np.int64),
@@ -126,14 +123,13 @@ def compute_lone_records(lone_record, nveto_channels, n):
     ch0, ch119 = nveto_channels
 
     # Results computation of lone records:
-    res = np.zeros(1, dtype=lone_record_count_dtype(ch119+1-ch0))
+    res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119+1-ch0))
 
     # buffer for lone_records to be stored:
-    max_nfrag = np.max(lone_record['record_i'])  # We do not know the number of fragments apriori...
+    max_nfrag = np.max(lone_record['record_i']) + 1  # We do not know the number of fragments apriori...
+                                                     # +1 in case it is zero.
     lone_ids = np.ones((ch119 + 1 - ch0, n * max_nfrag), dtype=np.int32) * -1
-
     _compute_lone_records(lone_record, res[0], lone_ids, n, nveto_channels)
-
     lone_ids = lone_ids.flatten()
     lone_ids = lone_ids[lone_ids >= 0]
 
@@ -181,13 +177,14 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  nveto_channels):
             res['baseline_rms'][ch_ind] += lr['baseline_rms']
             res['baseline_mean'][ch_ind] += lr['baseline']
 
-    for ind in range(ch0, ch119+1):
+    for ind in range(0, ch119+1-ch0):
         if res['nfragments'][ind]:
                 nwf = res['nfragments'][ind] - res['nhigherfragments'][ind]
                 res['baseline_rms'][ind] = res['baseline_rms'][ind] / nwf
                 res['baseline_mean'][ind] = res['baseline_mean'][ind] / nwf
                 res['lone_record_area'][ind] = res['lone_record_area'][ind] / nwf
-                res['higher_lone_record_area'][ind] = res['higher_lone_record_area'][ind] / res['nhigherfragments'][ind]
+        if res['nhigherfragments'][ind]:
+            res['higher_lone_record_area'][ind] = res['higher_lone_record_area'][ind] / res['nhigherfragments'][ind]
 
 
 # ---------------------
