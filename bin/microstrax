@@ -23,8 +23,7 @@ def handle_exception(exception):
     return {'error': str(exception)}
 
 
-@hug.get('/get_data',
-         examples="run_id=180215_1029&target=raw_records")
+@hug.get('/get_data')
 def get_data(
         run_id: hug.types.text,
         target: hug.types.text,
@@ -89,7 +88,7 @@ def get_data(
                          f"to json since the binary data is {size_mb:.1f} MB. "
                          f"Try lowering max_n.")
 
-    return x.tolist()
+    return [dict(zip(row.dtype.names, row)) for row in x]
 
 
 if __name__ == "__main__":
