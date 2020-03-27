@@ -18,6 +18,11 @@ def load_context(name):
             'peaks', 'event_basics', 'event_info')
 
 
+@hug.exception(Exception)
+def handle_exception(exception):
+    return {'error': str(exception)}
+
+
 @hug.get('/get_data',
          examples="run_id=180215_1029&target=raw_records")
 def get_data(
@@ -70,8 +75,8 @@ def get_data(
                 break
 
     if load_bytes > int(1e9):
-        return (f"Cannot load {target} for run {run_id}: "
-                f"it would take more than a GB of RAM to load")
+        raise ValueError(f"Cannot load {target} for run {run_id}: "
+                         f"it would take more than a GB of RAM to load")
 
     x = st.get_array(run_id, target,
                      time_range=time_range,
@@ -80,9 +85,9 @@ def get_data(
         x = x[:max_n]
     size_mb = x.nbytes / int(1e6)
     if size_mb > 10:
-        return (f"Not converting {target} for run {run_id} "
-                f"to json since the binary data is {size_mb:.1f} MB. "
-                f"Try lowering max_n.")
+        raise ValueError(f"Not converting {target} for run {run_id} "
+                         f"to json since the binary data is {size_mb:.1f} MB. "
+                         f"Try lowering max_n.")
 
     return x.tolist()
 
