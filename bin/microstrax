@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+import argparse
+
+import hug
+import strax
+import straxen
+
+st: strax.Context
+
+
+def load_context(name):
+    global st
+    st = getattr(straxen.contexts, name)()
+    st.context_config['forbid_creation_of'] = (
+            '*',
+            # In case someone has an old strax that doesn't support * here:
+            'raw_records', 'records', 'peaklets',
+            'peaks', 'event_basics', 'event_info')
+
+
+@hug.get('/get_data',
+         examples="run_id=180215_1029&target=raw_records")
+def get_data(
+        run_id: hug.types.text,
+        target: hug.types.text,
+        max_n: hug.types.number = 1000,
+        start: hug.types.float_number = None,
+        end: hug.types.float_number = None,
+        selection_str: hug.types.text = None):
+    try:
+        st
+    except NameError:
+        return "Context not loaded???"
+
+    if max_n <= 0:
+        max_n = None
+    t0 = st.estimate_run_start(run_id, target)
+    if start is None or end is None:
+        time_range = None
+    else:
+        time_range = [t0 + int(start * int(1e9)),
+                      t0 + int(end * int(1e9))]
+
+    if not max_n:
+        load_bytes = st.size_mb(run_id, target) * int(1e6)
+
+    else:
+        # Let's see how much we really need to load, given max_n.
+        md = st.get_metadata(run_id, target)
+        if time_range is None:
+            time_range = [md['start'], md['end']]
+        load_at_least_n = 0
+        load_bytes = 0
+        for chunk_info in md['chunks']:
+
+            if (chunk_info['start'] > time_range[1]
+                    or chunk_info['end'] < time_range[0]):
+                # None of this chunk will be loaded
+                continue
+            load_bytes += chunk_info['nbytes']
+
+            if (chunk_info['start'] > time_range[0]
+                    and chunk_info['end'] < time_range[1]):
+                # All of this chunk will be loaded
+                load_at_least_n += chunk_info['n']
+
+            if load_at_least_n > max_n:
+                # No point loading any more, we already exceeded max_n
+                time_range[1] = chunk_info['end']
+                break
+
+    if load_bytes > int(1e9):
+        return (f"Cannot load {target} for run {run_id}: "
+                f"it would take more than a GB of RAM to load")
+
+    x = st.get_array(run_id, target,
+                     time_range=time_range,
+                     selection_str=selection_str)
+    if max_n:
+        x = x[:max_n]
+    size_mb = x.nbytes / int(1e6)
+    if size_mb > 10:
+        return (f"Not converting {target} for run {run_id} "
+                f"to json since the binary data is {size_mb:.1f} MB. "
+                f"Try lowering max_n.")
+
+    return x.tolist()
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(
+        description='Start a microservice to return strax data as json')
+    parser.add_argument('--context', default='xenonnt_online',
+                        help='Name of straxen context to use')
+    parser.add_argument('--port', default=8000, type=int,
+                        help='HTTP port to serve on')
+    args = parser.parse_args()
+
+    load_context(args.context)
+    hug.API(__name__).http.serve(port=args.port)
