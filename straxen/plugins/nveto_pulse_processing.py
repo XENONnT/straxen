@@ -127,11 +127,6 @@ class nVETOPulseProcessing(strax.Plugin):
         default=20, track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
-    strax.Option(
-        'hit_min_amplitude_nv',
-        default=20, track=True,
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_nveto_pmts, or a number.'),
 )
 class nVETOPulseEdges(strax.Plugin):
     """
@@ -155,7 +150,7 @@ class nVETOPulseEdges(strax.Plugin):
 
     def compute(self, records_nv):
         # Search again for hits in records:
-        hits = strax.find_hits(r, min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
 
         # Merge overlapping hit boundaries to pulses and sort by time:
         max_channel = np.max(records_nv['channel']) + 1
@@ -163,11 +158,11 @@ class nVETOPulseEdges(strax.Plugin):
                                        dtype=[(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
                                               (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
                                               (('Channel/PMT number', 'channel'), np.int16)])
-        nveto_pulses = concat_overlapping_hits(hits, self.config['nveto_save_outside_hits'], last_hit_in_channel)
-        nveto_pulses = strax.sort_by_time(nveto_pulses)
+        pulses_nv = concat_overlapping_hits(hits, self.config['nveto_save_outside_hits'], last_hit_in_channel)
+        pulses_nv = strax.sort_by_time(pulses_nv)
 
         # Check if hits can be split:
-        nveto_pulses = split_pulses(records_nv, nveto_pulses)
+        pulses_nv = split_pulses(records_nv, pulses_nv)
         return pulses_nv
 
 @export
@@ -268,14 +263,18 @@ def get_pulse_data(records,
     Keyword Args:
         start_index (int): Start index from which we shall start
             our search. This can be used to speed up the search,
-            when looping over many pulses.
+            when looping over many pulses. Please see also the Notes.
         pulse_only (bool): When true only the data of the pulse is
             returned. Else the data of the entire record is returned.
         update_pulse_edges (bool):
 
     Note:
         In order to make use of start_index the function expects
-        records and pulse to be sorted in time and channel.
+        records and pulse to be sorted in time and channel. 
+        In case records stores data with different channels the 
+        user has to keep track of the start index for each indivudal 
+        channel outside of the function. 
+    # TODO: Change this!
 
     Returns:
         np.array: Numpy array containing the data.
@@ -290,7 +289,8 @@ def get_pulse_data(records,
     if pulse_only:
         data, si = _get_pulse_data(records, pulse, start_index)
         if si == -42:
-            # if this happened we have not found the event.
+            # if this happened we have not found the event,
+            # but we want to keep the previous start index
             return data, start_index
 
         # Now let us check if we have to chop the edges:
