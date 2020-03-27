@@ -14,7 +14,7 @@ __all__ = ['nVETORecorder']
 @strax.takes_config(
     strax.Option('coincidence_level', type=int, default=4,
                  help="Required coincidence level."),
-    strax.Option('resolving_time', type=int, default=300,
+    strax.Option('resolving_time', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
     strax.Option('baseline_samples_lone_records', type=int, default=10, track=False,
                  help="Number of samples used in baseline rms calculation"),
@@ -27,7 +27,7 @@ __all__ = ['nVETORecorder']
     strax.Option('n_nveto_pmts', type=int, track=False,
         help='Number of nVETO PMTs'))
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.3'
+    __version__ = '0.0.1'
     parallel = 'process'
 
     rechunk_on_save = False
@@ -75,9 +75,7 @@ class nVETORecorder(strax.Plugin):
                        flip=True)
         strax.integrate(lr)
 
-        lrc, diagnostic_raw_records = compute_lone_records(lr,
-                                                           self.config['channel_map']['nveto'],
-                                                           self.config['n_lone_hits'])
+        lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_hits'])
 
         return {'raw_records_nv': rr,
                 'lone_raw_records_nv': lr,
@@ -214,6 +212,9 @@ def rr_in_interval(rr, start_times, end_times):
         in the to be stored interval. We will do the same for higher
         fragments which may be outside the window. If the start time
         of the very first fragment falls into the window.
+
+    Returns:
+        numpy.array: Boolean array which is true for the events to keep.
     """
     # Here are some example we have to considere:
     # Normal case:
@@ -269,13 +270,14 @@ def coincidence(hits, nfold=4, resolving_time=300):
 
 def _coincidence(rr, nfold=4, resolving_time=300):
     """
-    Function which checks if n-neighboring events are less apart from each other then
-    the specified resolving time.
+    Function which checks if n-neighboring events are less apart from
+    each other then the specified resolving time.
 
     Note:
         1.) For the nVETO recorder we treat every fragment as a single
             signal.
-        2.) The coincidence window in here is not self extending.
+        2.) The coincidence window in here is not self extending. Hence
+            we compute only the start times of a coincidence window.
         3.) By default we store the last nfold - 1 hits, since there
             might be an overlap to the next chunk. If we can not save
             break the chunks.
@@ -291,6 +293,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     """
     # 1. estimate time difference between fragments:
     start_times = rr['time']
+    mask = np.ones(len(start_times), dtype=np.bool_)
     t_diff = diff(start_times)
 
     # 2. Now we have to check if n-events are within resolving time:
@@ -304,17 +307,21 @@ def _coincidence(rr, nfold=4, resolving_time=300):
 
     t_cum = convolve1d(t_diff, kernel, mode='constant', origin=(nfold - 1) // 2)
     t_cum = t_cum[:-(nfold - 1)]  # do not have to check for last < nfold hits
+    # since we will store these rr anyhow...
+    mask[:-(nfold - 1)] = t_cum <= resolving_time
 
-    return start_times[:-(nfold - 1)][t_cum <= resolving_time]
+    return start_times[mask]
 
 
 @numba.njit(nogil=True, cache=True)
 def _merge_intervals(start_time, resolving_time):
     """
     Function which merges overlapping time intervals into a single one.
+
     Args:
         start_time (np.array): Start time of the different intervals
         resolving_time (int): Coincidence window in ns
+
     Returns:
         np.array: merged unique time intervals.
     """
