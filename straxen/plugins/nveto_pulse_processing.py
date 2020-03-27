@@ -5,7 +5,7 @@ import strax
 import straxen
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges']#, 'nVETOPulseBasics']
+__all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges', 'nVETOPulseBasics']
 
 pulse_dtype = [(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
                (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
@@ -21,10 +21,14 @@ def nveto_pulses_dtype():
         (('Area of the PMT pulse in pe', 'area'), np.float32),
         (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
         (('Position of the maximum in (minus time)', 'amp_time'), np.int16),
-        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
+        (('FWHM of the PMT pulse in ns', 'fwhm'), np.float32),
         (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
         (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
         (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
+        (('Peak widths in range of central area fraction [ns]',
+          'width'), np.float32, 11),
+        (('Peak widths: time between nth and 5th area decile [ns]',
+          'area_decile_from_midpoint'), np.float32, 11)
     ]
 
 
@@ -561,175 +565,200 @@ def find_split_points(w, min_height=0, min_ratio=0):
         yield len(w)
 
 
-# @export
-# @strax.takes_config(
-#     strax.Option(
-#         'nveto_to_pe_file',
-#         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',    # noqa
-#         help='URL of the to_pe conversion factors'),
-# )
-# class nVETOPulseBasics(strax.Plugin):
-#     """
-#     nVETO equivalent of pulse processing.
-#     """
-#     __version__ = '0.0.1'
-#
-#     parallel = True
-#     rechunk_on_save = True
-#     compressor = 'lz4'
-#
-#     depends_on = ('nveto_pulse_edges', 'nveto_records')
-#     provides = 'nveto_pulse_basics'
-#
-#     data_kind = 'nveto_pulses'
-#     dtype = nveto_pulses_dtype()
-#
-#     def setup(self):
-#         self.to_pe = np.ones(200, dtype=np.float32)
-#
-#     def compute(self, nveto_pulses, nveto_records):
-#         npb = compute_properties(nveto_pulses, nveto_records, self.to_pe)
-#         return npb
-#
-# @export
-# #@numba.njit(cache=True, nogil=True)
-# def compute_properties(pulses, records, to_pe):
-#     """
-#     Computes the basic PMT pulse properties.
-#
-#     Args:
-#         nveto_pulses (np.array): Array of the nveto_pulses_dtype
-#         nveto_records (np.array): Array of the nveto_records_dtype
-#         to_pe (np.array): Array containing the gain values of the different
-#             pmt channels
-#
-#     Returns:
-#         np.array: Array of the nveto_pulses_dtype.
-#     """
-#     # TODO: Baseline part is not subtracted yet.
-#     # TODO: Gain stuff is not validated yet.
-#     dt = records['dt'][0]
-#     record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
-#
-#     result_buffer = np.zeros(len(pulses), nveto_pulses_dtype())
-#
-#     for pind, pulse in enumerate(pulses):
-#         # Frequently used quantaties:
-#         ch = pulse['channel']
-#         t = pulse['time']
-#
-#         # parameters to be store:
-#         area = 0
-#         height = 0
-#         amp_ind = 0
-#
-#         # Getting data and baseline of the event:
-#         ro = record_offset[ch]
-#         data, ro = get_pulse_data(records, pulse, start_index=ro)
-#         record_offset[ch] = ro
-#
-#         # Computing area and max bin:
-#         for ind, d in enumerate(data):
-#             area += d
-#             if d > height:
-#                 height = d
-#                 amp_ind = ind
-#         area = area * dt / to_pe[ch]
-#         amp_time = t + int(amp_ind * dt)
-#
-#         # Computing FWHM:
-#         left_edge, right_edge = get_fwxm(data, amp_ind, 0.5)
-#
-#         left_edge = left_edge * dt + dt / 2
-#         right_edge = right_edge * dt - dt / 2
-#         width = right_edge - left_edge
-#
-#         # Computing FWTM:
-#         left_edge_low, right_edge = get_fwxm(data, amp_ind, 0.1)
-#         left_edge_low = left_edge_low * dt + dt / 2
-#         right_edge = right_edge * dt - dt / 2
-#         width_low = right_edge - left_edge_low
-#
-#         res = result_buffer[pind]
-#         res['time'] = t
-#         res['endtime'] = pulse['endtime']
-#         res['channel'] = ch
-#         res['area'] = area
-#         res['height'] = height
-#         res['amp_time'] = amp_time - t
-#         res['width'] = width
-#         res['left'] = left_edge
-#         res['low_width'] = width_low
-#         res['low_left'] = left_edge_low
-#     return result_buffer
-#
-# @export
-# # @numba.njit(cache=True, nogil=True)
-# def get_fwxm(data, index_maximum, percentage=0.5):
-#     """
-#     Estimates the left and right edge of a specific height percentage.
-#
-#     The function searches for the last sample below and above the specified
-#     height level on the left and right hand side of the maximum. If the
-#     samples are found the width is estimated based upon a linear interpolation
-#     between the samples on the left and right side.
-#     In case the samples cannot be found for either the right or left hand side
-#     the corresponding outer bin edges are use: left 0; right last sample + 1.
-#
-#     Args:
-#         data (np.array): Data of the pulse.
-#         index_maximum (ind): Position of the maximum.
-#
-#     Keyword Args:
-#         percentage (float): Level for which the witdth shall be computed.
-#
-#     Returns:
-#         float: left edge [sample]
-#         float: right edge [sample]
-#
-#     """
-#     #TODO: In case of a single sample hit FWHM is not computed correctly, m becomes zero.
-#     #TODO: Case for which all values are the same is not covered yet.
-#
-#     max_val = data[index_maximum]
-#     max_val = max_val * percentage
-#
-#     pre_max = data[:index_maximum]
-#     post_max = data[1 + index_maximum:]
-#
-#     # First the left edge:
-#     lbi, lbs = _get_fwxm_boundary(pre_max, max_val)  # coming from the left
-#     if lbi == -42:
-#         # We have not found any sample below:
-#         left_edge = 0.
-#     else:
-#         # We found a sample below so lets compute
-#         # the left edge:
-#         m = data[lbi + 1] - lbs  # divided by 1 sample
-#         left_edge = lbi + (max_val - lbs) / m
-#
-#         # Now the right edge:
-#     rbi, rbs = _get_fwxm_boundary(post_max[::-1], max_val)  # coming from the right
-#     if rbi == -42:
-#         right_edge = len(data)
-#     else:
-#         rbi = len(data) - rbi
-#         m = data[rbi - 2] - rbs
-#         right_edge = rbi - (max_val - data[rbi - 1]) / m
-#
-#     return left_edge, right_edge
-#
-# @export
-# # @numba.njit(cache=True, nogil=True)
-# def _get_fwxm_boundary(data, max_val):
-#     """
-#     Returns sample position and height for the last sample which amplitude is below
-#     the specified value
-#     """
-#     i = -42
-#     s = -42
-#     for ind, d in enumerate(data):
-#         if d < max_val:
-#             i = ind
-#             s = d
-#     return i, s
+@export
+@strax.takes_config(
+    strax.Option(
+        'nveto_to_pe_file',
+        default='/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/swt_gains.npy',    # noqa
+        help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
+)
+class nVETOPulseBasics(strax.Plugin):
+    """
+    nVETO equivalent of pulse processing.
+    """
+    __version__ = '0.0.1'
+
+    parallel = True
+    rechunk_on_save = True
+    compressor = 'lz4'
+
+    depends_on = ('pulse_edges_nv', 'records_nv')
+    provides = 'pulse_basics_nv'
+
+    data_kind = 'pulses_nv'
+    dtype = nveto_pulses_dtype()
+
+    def setup(self):
+        self.to_pe = straxen.get_resource(self.config['nveto_to_pe_file'], 'npy')
+
+    def compute(self, pulse_edges_nv, records_nv):
+        npb = compute_properties(pulse_edges_nv, records_nv, self.to_pe)
+        return npb
+
+@export
+#@numba.njit(cache=True, nogil=True)
+def compute_properties(pulses, records, to_pe):
+    """
+    Computes the basic PMT pulse properties.
+
+    Args:
+        nveto_pulses (np.array): Array of the nveto_pulses_dtype
+        nveto_records (np.array): Array of the nveto_records_dtype
+        to_pe (np.array): Array containing the gain values of the
+            different pmt channels. The array should has at least the
+            length of max channel + 1.
+
+    Returns:
+        np.array: Array of the nveto_pulses_dtype.
+    """
+    # TODO: Baseline part is not subtracted yet.
+    dt = records['dt'][0]
+    record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
+
+    result_buffer = np.zeros(len(pulses), nveto_pulses_dtype())
+
+    for pind, pulse in enumerate(pulses):
+        # Frequently used quantaties:
+        ch = pulse['channel']
+        t = pulse['time']
+
+        # parameters to be store:
+        area = 0
+        height = 0
+        amp_ind = 0
+
+        # Getting data and baseline of the event:
+        ro = record_offset[ch]
+        data, ro = get_pulse_data(records, pulse, start_index=ro)
+        record_offset[ch] = ro
+
+        # -------------------------
+        # Area decile calculation. Code adapted
+        # from strax.processing.peak_properties_index_of_fraction
+        # -------------------------
+        tot_area = np.sum(data)
+        area_decils = np.arange(0, 1.01, 0.05)
+        needed_decile = 0
+        area_fraction = 0
+        pos_deciles = np.zeros(len(area_decils), dtype=np.float32)
+
+        # Computing area, max amp and area deciles:
+        for ind, d in enumerate(data):
+            area += d
+
+            # Getting max amplitude:
+            if d > height:
+                height = d
+                amp_ind = ind
+
+            #  Check if we exceeded area fraction:
+            current_fraction = area / tot_area
+            while area_fraction + current_fraction >= area_decils[needed_decile]:
+                if d:
+                    pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / d
+                else:
+                    pos_deciles[needed_decile] = ind
+                needed_decile += 1
+                if needed_decile > len(area_decils) - 1:
+                    # Found last area decile we have to escape while loop.
+                    break
+            area_fraction += current_fraction
+
+        amp_time = t + int(amp_ind * dt)
+
+        # Computing FWHM:
+        left_edge, right_edge = get_fwxm(data, amp_ind, 0.5)
+
+        left_edge = left_edge * dt + dt / 2
+        right_edge = right_edge * dt - dt / 2
+        width = right_edge - left_edge
+
+        # Computing FWTM:
+        left_edge_low, right_edge = get_fwxm(data, amp_ind, 0.1)
+        left_edge_low = left_edge_low * dt + dt / 2
+        right_edge = right_edge * dt - dt / 2
+        width_low = right_edge - left_edge_low
+
+        res = result_buffer[pind]
+        res['time'] = t
+        res['endtime'] = pulse['endtime']
+        res['channel'] = ch
+        res['area'] = area / to_pe[ch]
+        res['height'] = height
+        res['amp_time'] = amp_time - t
+        res['width'] = width
+        res['left'] = left_edge
+        res['low_width'] = width_low
+        res['low_left'] = left_edge_low
+    return result_buffer
+
+@export
+# @numba.njit(cache=True, nogil=True)
+def get_fwxm(data, index_maximum, percentage=0.5):
+    """
+    Estimates the left and right edge of a specific height percentage.
+
+    The function searches for the last sample below and above the specified
+    height level on the left and right hand side of the maximum. If the
+    samples are found the width is estimated based upon a linear interpolation
+    between the samples on the left and right side.
+    In case the samples cannot be found for either the right or left hand side
+    the corresponding outer bin edges are use: left 0; right last sample + 1.
+
+    Args:
+        data (np.array): Data of the pulse.
+        index_maximum (ind): Position of the maximum.
+
+    Keyword Args:
+        percentage (float): Level for which the witdth shall be computed.
+
+    Returns:
+        float: left edge [sample]
+        float: right edge [sample]
+
+    """
+    #TODO: In case of a single sample hit FWHM is not computed correctly, m becomes zero.
+    #TODO: Case for which all values are the same is not covered yet.
+
+    max_val = data[index_maximum]
+    max_val = max_val * percentage
+
+    pre_max = data[:index_maximum]
+    post_max = data[1 + index_maximum:]
+
+    # First the left edge:
+    lbi, lbs = _get_fwxm_boundary(pre_max, max_val)  # coming from the left
+    if lbi == -42:
+        # We have not found any sample below:
+        left_edge = 0.
+    else:
+        # We found a sample below so lets compute
+        # the left edge:
+        m = data[lbi + 1] - lbs  # divided by 1 sample
+        left_edge = lbi + (max_val - lbs) / m
+
+        # Now the right edge:
+    rbi, rbs = _get_fwxm_boundary(post_max[::-1], max_val)  # coming from the right
+    if rbi == -42:
+        right_edge = len(data)
+    else:
+        rbi = len(data) - rbi
+        m = data[rbi - 2] - rbs
+        right_edge = rbi - (max_val - data[rbi - 1]) / m
+
+    return left_edge, right_edge
+
+@export
+# @numba.njit(cache=True, nogil=True)
+def _get_fwxm_boundary(data, max_val):
+    """
+    Returns sample position and height for the last sample which amplitude is below
+    the specified value
+    """
+    i = -42
+    s = -42
+    for ind, d in enumerate(data):
+        if d < max_val:
+            i = ind
+            s = d
+    return i, s
