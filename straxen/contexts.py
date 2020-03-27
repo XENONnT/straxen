@@ -94,7 +94,7 @@ nveto_common_opts = dict(
     register_all=[
        straxen.daqreader,
        straxen.nveto_recorder,
-       # straxen.nveto_pulse_processing
+       straxen.nveto_pulse_processing
     ],
     store_run_fields=(
         'name', 'number',
@@ -106,7 +106,7 @@ nveto_common_opts = dict(
                      'raw_records_nv',
                      'lone_raw_records_nv',
                      'lone_raw_record_statistics_nv',
-                     # 'records_nv',
+                     'records_nv',
                      # 'pulse_edges_nv',
                      # 'pulse_basics_nv'
                      ))
