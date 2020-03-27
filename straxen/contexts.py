@@ -103,9 +103,9 @@ nveto_common_opts = dict(
         'trigger.events_built'),
     check_available=('raw_records_prenv',
                      'raw_records_aqmonnv',
-                     # 'raw_records_nv',
-                     # 'lone_raw_records_nv',
-                     # 'lone_raw_record_statistics_nv',
+                     'raw_records_nv',
+                     'lone_raw_records_nv',
+                     'lone_raw_record_statistics_nv',
                      # 'records_nv',
                      # 'pulse_edges_nv',
                      # 'pulse_basics_nv'
@@ -126,5 +126,9 @@ def strax_nveto_hdm_test():
         **nveto_common_opts)
 
 # HdM test specific configurations;
+                     # DAQReader:
 hdm_daqreader = dict(digitizer_sampling_resolution=2,
-                     n_readout_threads=8)
+                     n_readout_threads=8,
+                     # Recorder:
+                     coincidence_level=2,
+                     )
