@@ -74,6 +74,7 @@ def xenonnt_online(output_folder='./strax_data',
         storage=[
             straxen.RunDB(
                 readonly=not we_are_the_daq,
+                runid_field='number',
                 new_data_path=output_folder),
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/raw',
