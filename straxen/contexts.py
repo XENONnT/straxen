@@ -107,7 +107,7 @@ nveto_common_opts = dict(
                      'lone_raw_records_nv',
                      'lone_raw_record_statistics_nv',
                      'records_nv',
-                     # 'pulse_edges_nv',
+                     'pulse_edges_nv',
                      # 'pulse_basics_nv'
                      ))
 
