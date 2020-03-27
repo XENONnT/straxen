@@ -53,15 +53,16 @@ xnt_common_config = dict(
                       0.005),
     channel_map=frozendict(
          # (Minimum channel, maximum channel)
+         # Channels must be listed in a ascending order!
          tpc=(0, 493),
          he=(500, 752),  # high energy
          aqmon=(799, 807),
-         aqmonnv=(808, 815),  # nveto acquisition monitor 
+         aqmonnv=(808, 815),  # nveto acquisition monitor
          tpc_blank=(999, 999),
          mv=(1000, 1083),
          mv_blank=(1999, 1999), 
          nveto=(2000, 2119),
-         nveto_blank=(2999,2999),
+         nveto_blank=(2999, 2999),
     )
 )
 
@@ -92,7 +93,7 @@ def fake_daq():
 nveto_common_opts = dict(
     register_all=[
        straxen.daqreader,
-       # straxen.nveto_recorder,
+       straxen.nveto_recorder,
        # straxen.nveto_pulse_processing
     ],
     store_run_fields=(
@@ -102,9 +103,9 @@ nveto_common_opts = dict(
         'trigger.events_built'),
     check_available=('raw_records_prenv',
                      'raw_records_aqmonnv',
-                     # 'raw_records_nv',
-                     # 'lone_raw_records_nv',
-                     # 'lone_raw_record_statistics_nv',
+                     'raw_records_nv',
+                     'lone_raw_records_nv',
+                     'lone_raw_record_statistics_nv',
                      # 'records_nv',
                      # 'pulse_edges_nv',
                      # 'pulse_basics_nv'
@@ -125,5 +126,9 @@ def strax_nveto_hdm_test():
         **nveto_common_opts)
 
 # HdM test specific configurations;
+                     # DAQReader:
 hdm_daqreader = dict(digitizer_sampling_resolution=2,
-                     n_readout_threads=8)
+                     n_readout_threads=8,
+                     # Recorder:
+                     coincidence_level=2,
+                     )
