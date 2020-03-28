@@ -7,30 +7,6 @@ export, __all__ = strax.exporter()
 
 __all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges', 'nVETOPulseBasics']
 
-pulse_dtype = [(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
-               (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
-               (('Channel/PMT number', 'channel'), np.int16)]
-
-@export
-def nveto_pulses_edges_dtype():
-    return pulse_dtype + [(('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int8)]
-
-@export
-def nveto_pulses_dtype():
-    return pulse_dtype + [
-        (('Area of the PMT pulse in pe', 'area'), np.float32),
-        (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
-        (('Position of the maximum in (minus time)', 'amp_time'), np.int16),
-        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
-        (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
-        (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
-        (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
-        (('Peak widths in range of central area fraction [ns]',
-          'area_decile'), np.float32, 11),
-        (('Peak widths: time between nth and 5th area decile [ns]',
-          'area_decile_from_midpoint'), np.float32, 11)
-    ]
-
 
 @export
 @strax.takes_config(
@@ -120,6 +96,28 @@ class nVETOPulseProcessing(strax.Plugin):
 #     return records[mask]
 
 
+pulse_dtype = [(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
+               (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
+               (('Channel/PMT number', 'channel'), np.int16)]
+
+@export
+def nveto_pulses_dtype():
+    return pulse_dtype + [
+        (('Area of the PMT pulse in pe', 'area'), np.float32),
+        (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
+        (('Position of the maximum in (minus time)', 'amp_time'), np.int16),
+        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
+        (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
+        (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
+        (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
+        (('Peak widths in range of central area fraction [ns]',
+          'area_decile'), np.float32, 11),
+        (('Peak widths: time between nth and 5th area decile [ns]',
+          'area_decile_from_midpoint'), np.float32, 11),
+        (('Split index 0=No Split, 1=1st part of hit 2=2nd ...', 'split_i'), np.int8)
+    ]
+
+
 @export
 @strax.takes_config(
     strax.Option(
@@ -144,10 +142,10 @@ class nVETOPulseEdges(strax.Plugin):
 
     depends_on = 'records_nv'
 
-    provides = 'pulse_edges_nv'
+    provides = 'pulses_nv'
     data_kind = 'pulses_nv'
 
-    dtype = nveto_pulses_edges_dtype()
+    dtype = nveto_pulses_dtype()
 
     # def setup(self):
     #     self.hit_thresholds = get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
@@ -170,7 +168,7 @@ class nVETOPulseEdges(strax.Plugin):
         return pulses_nv
 
 @export
-@strax.growing_result(nveto_pulses_edges_dtype(), chunk_size=int(1e4))
+@strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
 @numba.njit(nogil=True, cache=True)
 def concat_overlapping_hits(hits,
                             extensions,
@@ -435,7 +433,7 @@ def _get_pulse_data(nveto_records,
 
 
 @export
-@strax.growing_result(nveto_pulses_edges_dtype(), chunk_size=int(1e4))
+@strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
 @numba.njit(cache=True, nogil=True)
 def split_pulses(records, pulses, _result_buffer=None):
     """
@@ -582,7 +580,7 @@ class nVETOPulseBasics(strax.Plugin):
     rechunk_on_save = True
     compressor = 'lz4'
 
-    depends_on = ('pulse_edges_nv', 'records_nv')
+    depends_on = ('pulses_nv', 'records_nv')
     provides = 'pulse_basics_nv'
 
     data_kind = 'pulses_nv'
@@ -591,7 +589,7 @@ class nVETOPulseBasics(strax.Plugin):
     def setup(self):
         self.to_pe = straxen.get_resource(self.config['nveto_to_pe_file'], 'npy')
 
-    def compute(self, pulse_edges_nv, records_nv):
+    def compute(self, pulses_nv, records_nv):
         npb = compute_properties(pulse_edges_nv, records_nv, self.to_pe)
         return npb
 
@@ -692,7 +690,6 @@ def compute_properties(pulses, records, to_pe):
         res['amp_time'] = amp_time - t
         res['fwhm'] = width
         res['left'] = left_edge
-        res['low_width'] = width_low
         res['low_left'] = left_edge_low
         res['area_decile'] = (pos_deciles[11:][::-1] - pos_deciles[:10]) * dt
         res['area_decile_from_midpoint'] = (pos_deciles - pos_deciles[10]) * dt
