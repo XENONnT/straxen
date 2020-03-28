@@ -457,11 +457,11 @@ def infer_run_mode(rd, input_dir):
     print(f'infer_run_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
     run_settings = {
         'new_eb':
-            {'low_rate': dict(cores=12, max_messages=20, timeout=60),
-             'med_rate': dict(cores=12, max_messages=20, timeout=100),
-             'high_rate': dict(cores=11, max_messages=15, timeout=200),
-             'very_high_rate': dict(cores=11, max_messages=15, timeout=300),
-             'max_rate': dict(cores=11, max_messages=10, timeout=400)},
+            {'low_rate': dict(cores=24, max_messages=20, timeout=60),
+             'med_rate': dict(cores=24, max_messages=20, timeout=100),
+             'high_rate': dict(cores=20, max_messages=15, timeout=200),
+             'very_high_rate': dict(cores=20, max_messages=15, timeout=300),
+             'max_rate': dict(cores=16, max_messages=10, timeout=400)},
         'old_eb':
             {'low_rate': dict(cores=30, max_messages=20, timeout=60),
              'med_rate': dict(cores=20, max_messages=15, timeout=100),
@@ -478,10 +478,6 @@ def infer_run_mode(rd, input_dir):
         result = run_settings['new_eb' if is_new_eb else 'old_eb']['very_high_rate']
     else:
         result = run_settings['new_eb' if is_new_eb else 'old_eb']['max_rate']
-
-    # override run_settings for eb5 (because of hyperthreading on eb5)
-    if hostname == 'eb5.xenon.local':
-        result['cores'] = 24 if data_rate < 500 else 20
     print(f'Override processing mode for run {rd["number"]} changing to:\t {result}')
     return result
 
