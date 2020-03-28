@@ -21,12 +21,12 @@ def nveto_pulses_dtype():
         (('Area of the PMT pulse in pe', 'area'), np.float32),
         (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
         (('Position of the maximum in (minus time)', 'amp_time'), np.int16),
-        (('FWHM of the PMT pulse in ns', 'fwhm'), np.float32),
+        (('FWHM of the PMT pulse in ns', 'width'), np.float32),
         (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
         (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
         (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
         (('Peak widths in range of central area fraction [ns]',
-          'width'), np.float32, 11),
+          'area_decile'), np.float32, 11),
         (('Peak widths: time between nth and 5th area decile [ns]',
           'area_decile_from_midpoint'), np.float32, 11)
     ]
@@ -611,6 +611,7 @@ def compute_properties(pulses, records, to_pe):
     Returns:
         np.array: Array of the nveto_pulses_dtype.
     """
+    # TODO: None of the width estimates is robust against bipolar noise...
     # TODO: Baseline part is not subtracted yet.
     dt = records['dt'][0]
     record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
@@ -637,9 +638,10 @@ def compute_properties(pulses, records, to_pe):
         # from strax.processing.peak_properties_index_of_fraction
         # -------------------------
         tot_area = np.sum(data)
-        area_decils = np.arange(0, 1.01, 0.05)
         needed_decile = 0
         area_fraction = 0
+        compute_deciles = True
+        area_decils = np.arange(0, 1.01, 0.05)
         pos_deciles = np.zeros(len(area_decils), dtype=np.float32)
 
         # Computing area, max amp and area deciles:
@@ -652,17 +654,19 @@ def compute_properties(pulses, records, to_pe):
                 amp_ind = ind
 
             #  Check if we exceeded area fraction:
-            current_fraction = area / tot_area
-            while area_fraction + current_fraction >= area_decils[needed_decile]:
-                if d:
-                    pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / d
-                else:
-                    pos_deciles[needed_decile] = ind
-                needed_decile += 1
-                if needed_decile > len(area_decils) - 1:
-                    # Found last area decile we have to escape while loop.
-                    break
-            area_fraction += current_fraction
+            if compute_deciles:
+                current_fraction = area / tot_area
+                while area_fraction + current_fraction >= area_decils[needed_decile]:
+                    if d:
+                        pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / d
+                    else:
+                        pos_deciles[needed_decile] = ind
+                    needed_decile += 1
+                    if needed_decile > len(area_decils) - 1:
+                        # Found last area decile we have to escape while loop.
+                        compute_deciles = False
+                        break
+                area_fraction += current_fraction
 
         amp_time = t + int(amp_ind * dt)
 
@@ -686,10 +690,12 @@ def compute_properties(pulses, records, to_pe):
         res['area'] = area / to_pe[ch]
         res['height'] = height
         res['amp_time'] = amp_time - t
-        res['width'] = width
+        res['fwhm'] = width
         res['left'] = left_edge
         res['low_width'] = width_low
         res['low_left'] = left_edge_low
+        res['area_decile'] = (pos_deciles[11:][::-1] - pos_deciles[:10]) * dt
+        res['area_decile_from_midpoint'] = (pos_deciles - pos_deciles[10]) * dt
     return result_buffer
 
 @export
