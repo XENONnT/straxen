@@ -82,12 +82,12 @@ parser.add_argument('--debug', action='store_true',
 parser.add_argument('--profile', type=str, default='false',
                     help="Option to run strax in profiling mode. "
                          "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
-parser.add_argument('--cores', type=int, default=25,
+parser.add_argument('--cores', type=int, default=4,
                     help="Maximum number of workers to use in a strax process. "
                          "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
-parser.add_argument('--infer_run_mode', action='store_true',
+parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
 # TODO change to action
@@ -115,7 +115,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.3.1\n---')
+print(f'---\nTEST VERSION 0.3.2\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -156,7 +156,11 @@ timeouts = {
     # If we don't hear from a bootstrax on another host for this long,
     # remove its entry from the bootstrax status collection
     # Must be much longer than idle_nap and check_on_strax!
-    'bootstrax_presumed_dead': 300
+    'bootstrax_presumed_dead': 300,
+    # Ebs3-5 normally do all the processing. However if all are busy
+    # for a longer period of time, the ebs0-2 can also help with
+    # processing.
+    'eb3-5_max_busy_time': 10 * 60,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -297,7 +301,9 @@ def main_loop():
         print(f'bootstrax running for {(now() - t_start).seconds} seconds')
         sufficient_diskspace()
         log.info("Looking for work")
-
+        if not eb_can_process():
+            time.sleep(60)
+            continue
         set_state('busy')
         # Check resources are still OK, otherwise crash / reboot program
 
@@ -330,6 +336,7 @@ def main_loop():
 ##
 # General helpers
 ##
+
 
 def now(plus=0):
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
@@ -418,7 +425,50 @@ def log_warning(message, priority='warning'):
         'priority': dict(warning=2, info=1).get(priority, 3)})
 
 
-def infer_run_mode(rd, input_dir):
+def eb_can_process():
+    """"The new ebs (eb3-5) should be sufficient to process all data. In exceptional
+    circumstances eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
+    Before eb0-2 are also used for processing two criteria have to be fulfilled:
+      - There should be runs waiting to be processed
+      - Eb3-5 should be busy processing for a substantial time.
+    :returns: bool if this host should process a run"""
+    # eb3-5 always process.
+    if hostname in ['eb3.xenon.local', 'eb4.xenon.local', 'eb5.xenon.local']:
+        return True
+
+    # Check that there are runs that are waiting to be processed. If there are few, this
+    # eb should not process.
+    max_queue_new_runs = 2
+    n_untouched_runs = 0
+    # Count number of runs untouched by bootstrax. Sorry for the sloppy pymongo syntax.
+    for x in run_coll.find({'bootstrax': {'$exists': False}}):
+        n_untouched_runs += 1
+    if n_untouched_runs < max_queue_new_runs:
+        print(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
+        return False
+
+    # Check that eb3-5 are all busy for at least some time.
+    timeout = timeouts['eb3-5_max_busy_time']
+    n_ebs_running = 0
+    n_ebs_busy = 0
+    for eb_i in range(3, 6):
+        eb_query = bs_coll.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'})
+        if eb_query:
+            # Should count if eb3-5 are all running (as one might be offline).
+            n_ebs_running += 1
+            if eb_query['time'] < now(-timeout):
+                n_ebs_busy += 1
+
+    if (n_ebs_running == n_ebs_busy):
+        # There is a need for this eb to also process data (for now).
+        print(f'eb_can_process::\tThere is a need for {hostname} to process data')
+        return True
+    else:
+        print(f'eb_can_process::\tDo not process on {hostname}, new ebs are taking care')
+        return False
+
+
+def infer_mode(rd, input_dir):
     """Infer a safe operating mode of running bootstrax based on the size of the first
     chunk. Estimating save parameters for running bootstrax from:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_update
@@ -448,10 +498,10 @@ def infer_run_mode(rd, input_dir):
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname.strip('eb.xenon.local')) >= 3
-    print(f"infer_run_mode::\teb number {int(hostname.strip('eb.xenon.local'))}")
+    print(f"infer_mode::\teb number {int(hostname.strip('eb.xenon.local'))}")
 
     # Return a run-mode that is empirically found to provide stable but fast processing.
-    print(f'infer_run_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
+    print(f'infer_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
     run_settings = {
         'new_eb':
             {'low_rate': dict(cores=24, max_messages=20, timeout=60),
@@ -807,8 +857,8 @@ def process_run(rd, send_heartbeats=True):
         except Exception as e:
             fail(f"Could not find ini.strax_fragment_payload_bytes in database: {str(e)}")
 
-        if args.infer_run_mode:
-            process_mode = infer_run_mode(rd, loc)
+        if args.infer_mode:
+            process_mode = infer_mode(rd, loc)
         else:
             process_mode = dict(cores=args.cores, max_messages=args.max_messages)
 
