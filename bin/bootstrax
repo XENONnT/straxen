@@ -647,8 +647,8 @@ def set_status_finished(rd):
         pass
     else:
         # Do not override this field for runs already uploaded in admix
-        raise ReferenceError(f'Trying to set set the status {rd.get("status")} to '
-                             f'{ready_to_upload}! One should not override this field.')
+        raise ValueError(f'Trying to set set the status {rd.get("status")} to '
+                         f'{ready_to_upload}! One should not override this field.')
 
 
 def abandon(*, mongo_id=None, number=None):
