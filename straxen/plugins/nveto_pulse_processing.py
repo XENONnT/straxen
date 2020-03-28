@@ -590,7 +590,7 @@ class nVETOPulseBasics(strax.Plugin):
         self.to_pe = straxen.get_resource(self.config['nveto_to_pe_file'], 'npy')
 
     def compute(self, pulses_nv, records_nv):
-        npb = compute_properties(pulse_edges_nv, records_nv, self.to_pe)
+        npb = compute_properties(pulses_nv, records_nv, self.to_pe)
         return npb
 
 @export
@@ -635,7 +635,7 @@ def compute_properties(pulses, records, to_pe):
         # Area decile calculation. Code adapted
         # from strax.processing.peak_properties_index_of_fraction
         # -------------------------
-        tot_area = np.sum(data)
+        total_area = np.sum(data)
         needed_decile = 0
         area_fraction = 0
         compute_deciles = True
@@ -652,8 +652,8 @@ def compute_properties(pulses, records, to_pe):
                 amp_ind = ind
 
             #  Check if we exceeded area fraction:
-            if compute_deciles:
-                current_fraction = area / tot_area
+            if compute_deciles and total_area:
+                current_fraction = area / total_area
                 while area_fraction + current_fraction >= area_decils[needed_decile]:
                     if d:
                         pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / d
@@ -688,11 +688,11 @@ def compute_properties(pulses, records, to_pe):
         res['area'] = area / to_pe[ch]
         res['height'] = height
         res['amp_time'] = amp_time - t
-        res['fwhm'] = width
+        res['width'] = width
         res['left'] = left_edge
         res['low_left'] = left_edge_low
-        res['area_decile'] = (pos_deciles[11:][::-1] - pos_deciles[:10]) * dt
-        res['area_decile_from_midpoint'] = (pos_deciles - pos_deciles[10]) * dt
+        res['area_decile'][1:] = (pos_deciles[11:][::-1] - pos_deciles[:10]) * dt
+        res['area_decile_from_midpoint'] = (pos_deciles[::2] - pos_deciles[10]) * dt
     return result_buffer
 
 @export
