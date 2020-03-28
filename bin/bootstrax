@@ -138,8 +138,6 @@ timeouts = {
     'retry_run': 60,
     # Maximum time for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    # TODO
-    #  Do we want to have a higer number for e.g. calibration more runs?
     'max_processing_time': 7200,
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
@@ -421,13 +419,12 @@ def log_warning(message, priority='warning'):
 
 
 def infer_run_mode(rd, input_dir):
-    '''
-    Infer a safe operating mode of running bootstrax based on the size of the first chunk.
-    Estimating save parameters for running bootstrax from:
+    """Infer a safe operating mode of running bootstrax based on the size of the first
+    chunk. Estimating save parameters for running bootstrax from:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_update
     returns: dictionary of how many cores and max_messages should be used based on an
     estimated data rate.
-    '''
+    """
     nap_time, i = 10, 0
 
     # min. of 3 chunks with each pre_, chunk and post_
@@ -436,8 +433,8 @@ def infer_run_mode(rd, input_dir):
         if i >= 10:
             # Too few files to be sure the first chunk is completely written
             result = dict(cores=args.cores, max_messages=args.max_messages)
-            print(f'Waited {i * naptime} s but less than {min_chunks} were written. Could not '
-                  f' infer run mode. Using default: {result}.')
+            print(f'Waited {i * nap_time} s but less than {min_chunks} were written. '
+                  f'Could not infer run mode. Using default: {result}.')
             return result
         i += 1
         time.sleep(nap_time)
@@ -487,7 +484,7 @@ def infer_run_mode(rd, input_dir):
 ##
 
 def sufficient_diskspace():
-    '''Check if there is sufficient space available on the local disk to write to'''
+    """Check if there is sufficient space available on the local disk to write to"""
     disk = disk_usage(output_folder)
     gigabyte_to_byte = 1024.0 ** 3
     disk_free = disk.free / gigabyte_to_byte
@@ -505,8 +502,8 @@ def sufficient_diskspace():
 
 
 def delete_live_data(live_data_path):
-    '''After completing the processing and updating the runsDB, remove the
-    live_data'''
+    """After completing the processing and updating the runsDB, remove the
+    live_data"""
 
     if os.path.exists(live_data_path) and delete_live:
         print(f'Deleteing data at {live_data_path}')
@@ -520,7 +517,7 @@ def delete_live_data(live_data_path):
 
 
 def clear_shm():
-    '''Manually delete files in /dev/shm/ created by npshmex on starup.'''
+    """Manually delete files in /dev/shm/ created by npshmex on starup."""
     shm_dir = '/dev/shm/'
     shm_files = [f for f in os.listdir(shm_dir) if 'npshmex' in f]
 
@@ -586,7 +583,7 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
 
 
 def set_status_finished(rd):
-    '''Set the status to ready to upload for datamanager and admix'''
+    """Set the status to ready to upload for datamanager and admix"""
 
     # Only update the status if it does not exist or if it needs to be uploaded
     ready_to_upload = {'status': 'eb_ready_to_upload'}
@@ -711,7 +708,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
-            '''Run strax'''
+            """Run strax"""
             strax_config = dict(daq_input_dir=input_dir,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
