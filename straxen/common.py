@@ -1,6 +1,5 @@
 import ast
 import configparser
-from copy import deepcopy
 import gzip
 import inspect
 import io
@@ -12,7 +11,6 @@ import socket
 import sys
 import tarfile
 import urllib.request
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -26,49 +24,31 @@ straxen_dir = os.path.dirname(os.path.abspath(
 
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
-first_sr1_run = 170118_1327
-tpc_r = 47.9
+tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 
 
 @export
-def adc_thresholds():
-    """Return ADC self-trigger thresholds used by the TPC PMTs"""
-    # TODO: we should probably fetch these from the run doc
-    # (or use some other convention in XENONnT)
-    return (
-        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-        15, 15, 15, 15, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-        15, 15, 15, 15, 15, 18, 15, 15, 15, 15, 15, 54, 15, 15, 15, 15, 15,
-        15, 15, 15, 15, 16, 15, 15, 35, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-        15, 18, 15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 15, 15,
-        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 26, 88, 15, 15, 15, 15, 15,
-        15, 15, 15, 15, 15, 15, 16, 20, 22, 15, 16, 15, 15, 15, 15, 15, 15,
-        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 17, 16, 15, 15,
-        15, 15, 15, 15, 17, 16, 15, 15, 15, 15, 15, 15, 45, 15, 15, 15, 15,
-        25, 15, 15, 15, 17, 15, 18, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-        24, 15, 17, 15, 15, 18, 15, 15, 15, 34, 15, 15, 18, 15, 15, 39, 16,
-        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 18, 15, 20, 15, 15,
-        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 15, 15, 19, 15,
-        15, 15, 15, 15, 15, 17, 15, 15, 18, 15, 15, 15, 15, 15, 17, 15, 18,
-        15, 15, 15, 17, 15, 18, 15, 35, 15, 15)
-
-
-@export
-def pmt_positions():
+def pmt_positions(xenon1t=False):
     """Return pandas dataframe with PMT positions
     columns: array (top/bottom), i (PMT number), x, y
     """
-    # Get PMT positions from the XENON1T config wihtout PAX
-    config = configparser.ConfigParser()
-    config.read_string(
-        get_resource('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
-    pmt_config = ast.literal_eval(config['DEFAULT']['pmts'])
-    return pd.DataFrame([
-        dict(x=q['position']['x'],
-             y=q['position']['y'],
-             i=q['pmt_position'],
-             array=q.get('array','other'))
-        for q in pmt_config[:248]])
+    if xenon1t:
+        # Get PMT positions from the XENON1T config without PAX
+        config = configparser.ConfigParser()
+        config.read_string(
+            get_resource('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
+        pmt_config = ast.literal_eval(config['DEFAULT']['pmts'])
+        return pd.DataFrame([
+            dict(x=q['position']['x'],
+                 y=q['position']['y'],
+                 i=q['pmt_position'],
+                 array=q.get('array','other'))
+            for q in pmt_config[:248]])
+    else:
+        return get_resource(
+            aux_repo + '037b1cae58483743b6392f9744ef2b119d59fb05/pmt_positions_xenonnt.csv',
+            fmt='csv')
+
 
 
 @export
@@ -108,14 +88,8 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
     return to_pe
 
 
-@export
-def pax_file(x):
-    """Return URL to file hosted in the pax repository master branch"""
-    return 'https://raw.githubusercontent.com/XENON1T/pax/master/pax/data/' + x
-
-
-cache_dict = dict()
-
+# In-memory resource cache
+_resource_cache = dict()
 
 # Formats for which the original file is text, not binary
 _text_formats = ['text', 'csv', 'json']
@@ -132,9 +106,9 @@ def get_resource(x, fmt='text'):
     unrelated code, tears unnumbered ye shall shed, not even the echo of
     your lamentations shall pass over the mountains, etc.
     """
-    if x in cache_dict:
+    if x in _resource_cache:
         # Retrieve from in-memory cache
-        return cache_dict[x]
+        return _resource_cache[x]
 
     if '://' in x:
         # Web resource; look first in on-disk cache
@@ -216,7 +190,7 @@ def get_resource(x, fmt='text'):
             raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
-    cache_dict[x] = result
+    _resource_cache[x] = result
 
     return result
 
@@ -231,6 +205,7 @@ def get_elife(run_id,elife_file):
     else:
         e = x[run_index[0]]['e_life']
     return e
+
 
 @export
 def get_secret(x):
@@ -302,3 +277,40 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
+
+
+##
+# Old XENON1T Stuff
+##
+
+
+first_sr1_run = 170118_1327
+
+
+@export
+def adc_thresholds():
+    """Return ADC self-trigger thresholds used by the TPC PMTs"""
+    # TODO: we should probably fetch these from the run doc
+    # (or use some other convention in XENONnT)
+    return (
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 18, 15, 15, 15, 15, 15, 54, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 16, 15, 15, 35, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        15, 18, 15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 26, 88, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 16, 20, 22, 15, 16, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 17, 15, 15, 15, 15, 15, 17, 16, 15, 15,
+        15, 15, 15, 15, 17, 16, 15, 15, 15, 15, 15, 15, 45, 15, 15, 15, 15,
+        25, 15, 15, 15, 17, 15, 18, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+        24, 15, 17, 15, 15, 18, 15, 15, 15, 34, 15, 15, 18, 15, 15, 39, 16,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 18, 15, 20, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 15, 15, 19, 15,
+        15, 15, 15, 15, 15, 17, 15, 15, 18, 15, 15, 15, 15, 15, 17, 15, 18,
+        15, 15, 15, 17, 15, 18, 15, 35, 15, 15)
+
+@export
+def pax_file(x):
+    """Return URL to file hosted in the pax repository master branch"""
+    return 'https://raw.githubusercontent.com/XENON1T/pax/master/pax/data/' + x
