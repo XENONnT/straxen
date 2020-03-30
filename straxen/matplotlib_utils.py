@@ -10,9 +10,11 @@ export, __all__ = strax.exporter()
 
 
 @export
-def plot_on_pmt_arrays(
+def plot_pmts(
         c, label='',
-        figsize=(11, 4),
+        figsize=None,
+        xenon1t=False,
+        show_tpc=True,
         extend='neither', vmin=None, vmax=None,
         **kwargs):
     """Plot the PMT arrays side-by-side, coloring the PMTS with c.
@@ -27,9 +29,14 @@ def plot_on_pmt_arrays(
     Other arguments are passed to plot_on_single_pmt_array.
     """
     if vmin is None:
-        vmin = c.min()
+        vmin = np.nanmin(c)
     if vmax is None:
-        vmax = c.max()
+        vmax = np.nanmax(c)
+    if vmin == vmax:
+        # Single-valued array passed
+        vmax += 1
+    if figsize is None:
+        figsize = (11, 4) if xenon1t else (13, 5.5)
 
     f, axes = plt.subplots(1, 2, figsize=figsize)
     for array_i, array_name in enumerate(['top', 'bottom']):
@@ -39,21 +46,30 @@ def plot_on_pmt_arrays(
 
         plot_on_single_pmt_array(
             c,
+            xenon1t=xenon1t,
             array_name=array_name,
+            show_tpc=show_tpc,
             vmin=vmin, vmax=vmax,
             **kwargs)
 
+    axes[1].yaxis.tick_right()
+    axes[1].yaxis.set_label_position('right')
+
+    plt.tight_layout()
+    plt.subplots_adjust(wspace=0)
     plt.colorbar(ax=axes, extend=extend, label=label)
+
 
 
 @export
 def plot_on_single_pmt_array(
         c,
         array_name='top',
-        detector='xenon1t',
-        r=straxen.tpc_r * 1.1,
-        pmt_label_size=7,
+        xenon1t=False,
+        r=straxen.tpc_r * 1.03,
+        pmt_label_size=8,
         pmt_label_color='white',
+        show_tpc=True,
         log_scale=False, vmin=None, vmax=None,
         **kwargs):
     """Plot one of the PMT arrays and color it by c.
@@ -75,16 +91,17 @@ def plot_on_single_pmt_array(
     if vmax is None:
         vmax = c.max()
 
-    pmt_positions = straxen.pmt_positions().to_records()
+    pmt_positions = straxen.pmt_positions(xenon1t=xenon1t).to_records()
 
-    plt.gca().set_aspect('equal')
+    ax = plt.gca()
+    ax.set_aspect('equal')
     plt.xlim(-r, r)
     plt.ylim(-r, r)
 
     mask = pmt_positions['array'] == array_name
     pos = pmt_positions[mask]
 
-    kwargs.setdefault('s', 230)
+    kwargs.setdefault('s', 280)
     result = plt.scatter(
         pos['x'],
         pos['y'],
@@ -92,6 +109,18 @@ def plot_on_single_pmt_array(
         vmin=vmin, vmax=vmax,
         norm=matplotlib.colors.LogNorm() if log_scale else None,
         **kwargs)
+
+    if show_tpc:
+        ax.set_facecolor('lightgrey')
+        ax.add_artist(plt.Circle(
+            (0, 0),
+            straxen.tpc_r,
+            edgecolor='k',
+            facecolor='w',
+            zorder=-5,
+            linewidth=1))
+    else:
+        ax.set_axis_off()
 
     if pmt_label_size:
         for p in pos:
