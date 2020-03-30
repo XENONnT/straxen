@@ -82,12 +82,12 @@ parser.add_argument('--debug', action='store_true',
 parser.add_argument('--profile', type=str, default='false',
                     help="Option to run strax in profiling mode. "
                          "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
-parser.add_argument('--cores', type=int, default=25,
+parser.add_argument('--cores', type=int, default=4,
                     help="Maximum number of workers to use in a strax process. "
                          "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
-parser.add_argument('--infer_run_mode', action='store_true',
+parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
 # TODO change to action
@@ -115,7 +115,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.3.0\n---')
+print(f'---\nTEST VERSION 0.3.2\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -138,8 +138,6 @@ timeouts = {
     'retry_run': 60,
     # Maximum time for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    # TODO
-    #  Do we want to have a higer number for e.g. calibration more runs?
     'max_processing_time': 7200,
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
@@ -158,7 +156,11 @@ timeouts = {
     # If we don't hear from a bootstrax on another host for this long,
     # remove its entry from the bootstrax status collection
     # Must be much longer than idle_nap and check_on_strax!
-    'bootstrax_presumed_dead': 300
+    'bootstrax_presumed_dead': 300,
+    # Ebs3-5 normally do all the processing. However if all are busy
+    # for a longer period of time, the ebs0-2 can also help with
+    # processing.
+    'eb3-5_max_busy_time': 10 * 60,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -171,7 +173,7 @@ wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = f"name start end number bootstrax " \
+bootstrax_projection = f"name start end number bootstrax status " \
                        f"data.host data.type data.location " \
                        f"ini.processing_threads ini.compressor ini.strax_fragment_payload_bytes " \
                        f"ini.strax_chunk_length ini.strax_chunk_overlap".split()
@@ -205,7 +207,7 @@ else:
     print(f'Not deleting live data because --delete_live = {args.delete_live}')
 
 
-def new_context(cores=args.cores, max_messages=args.max_messages):
+def new_context(cores=args.cores, max_messages=args.max_messages, timeout=60):
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
@@ -214,7 +216,8 @@ def new_context(cores=args.cores, max_messages=args.max_messages):
         we_are_the_daq=True,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
-        max_messages=max_messages)
+        max_messages=max_messages,
+        timeout=timeout)
 
 
 st = new_context()
@@ -298,7 +301,9 @@ def main_loop():
         print(f'bootstrax running for {(now() - t_start).seconds} seconds')
         sufficient_diskspace()
         log.info("Looking for work")
-
+        if not eb_can_process():
+            time.sleep(60)
+            continue
         set_state('busy')
         # Check resources are still OK, otherwise crash / reboot program
 
@@ -331,6 +336,7 @@ def main_loop():
 ##
 # General helpers
 ##
+
 
 def now(plus=0):
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
@@ -419,49 +425,106 @@ def log_warning(message, priority='warning'):
         'priority': dict(warning=2, info=1).get(priority, 3)})
 
 
-def infer_run_mode(rd, input_dir):
-    '''
-    Infer a safe operating mode of running bootstrax based on the size of the first chunk.
-    Estimating save parameters for running bootstrax from:
-      # TODO update with new strax version
-      https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests
+def eb_can_process():
+    """"The new ebs (eb3-5) should be sufficient to process all data. In exceptional
+    circumstances eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
+    Before eb0-2 are also used for processing two criteria have to be fulfilled:
+      - There should be runs waiting to be processed
+      - Eb3-5 should be busy processing for a substantial time.
+    :returns: bool if this host should process a run"""
+    # eb3-5 always process.
+    if hostname in ['eb3.xenon.local', 'eb4.xenon.local', 'eb5.xenon.local']:
+        return True
+
+    # Check that there are runs that are waiting to be processed. If there are few, this
+    # eb should not process.
+    max_queue_new_runs = 2
+    n_untouched_runs = 0
+    # Count number of runs untouched by bootstrax. Sorry for the sloppy pymongo syntax.
+    for x in run_coll.find({'bootstrax': {'$exists': False}}):
+        n_untouched_runs += 1
+    if n_untouched_runs < max_queue_new_runs:
+        print(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
+        return False
+
+    # Check that eb3-5 are all busy for at least some time.
+    timeout = timeouts['eb3-5_max_busy_time']
+    n_ebs_running = 0
+    n_ebs_busy = 0
+    for eb_i in range(3, 6):
+        eb_query = bs_coll.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'})
+        if eb_query:
+            # Should count if eb3-5 are all running (as one might be offline).
+            n_ebs_running += 1
+            if eb_query['time'] < now(-timeout):
+                n_ebs_busy += 1
+
+    if (n_ebs_running == n_ebs_busy):
+        # There is a need for this eb to also process data (for now).
+        print(f'eb_can_process::\tThere is a need for {hostname} to process data')
+        return True
+    else:
+        print(f'eb_can_process::\tDo not process on {hostname}, new ebs are taking care')
+        return False
+
+
+def infer_mode(rd, input_dir):
+    """Infer a safe operating mode of running bootstrax based on the size of the first
+    chunk. Estimating save parameters for running bootstrax from:
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_update
     returns: dictionary of how many cores and max_messages should be used based on an
     estimated data rate.
-    '''
+    """
     nap_time, i = 10, 0
-    while len(os.listdir(input_dir)) < 3 * 3:
-        if i > 10:
-            # To few files to be sure the first chunk is completely written
-            return dict(cores=args.cores, max_messages=args.max_messages)
+
+    # min. of 3 chunks with each pre_, chunk and post_
+    min_chunks = 3
+    while len(os.listdir(input_dir)) < min_chunks * 3:
+        if i >= 10:
+            # Too few files to be sure the first chunk is completely written
+            result = dict(cores=args.cores, max_messages=args.max_messages)
+            print(f'Waited {i * nap_time} s but less than {min_chunks} were written. '
+                  f'Could not infer run mode. Using default: {result}.')
+            return result
+        i += 1
         time.sleep(nap_time)
+
     # Estimate data rate on the bases of the size of the first chunk
     first_chunk = input_dir + '/000000/'
     chunk_size = np.sum([os.path.getsize(first_chunk + f) for f in os.listdir(first_chunk)])
     chunk_time = rd['ini']['strax_chunk_length'] + rd['ini']['strax_chunk_overlap']
-    compression_factor = 3  # this is an estimate
-    data_rate = compression_factor * (chunk_size / 1e6) / chunk_time  # in MB/s
+    compression_factor = 2.4  # this is an estimate for lz4
+    data_rate = int(compression_factor * (chunk_size / 1024 ** 2) / chunk_time)  # in MB/s
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname.strip('eb.xenon.local')) >= 3
-    print(f"infer_run_mode::\teb number {int(hostname.strip('eb.xenon.local'))}")
+    print(f"infer_mode::\teb number {int(hostname.strip('eb.xenon.local'))}")
 
-    # Return a run-mode that is empirically found to provide stable processing.
-    print(f'infer_run_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
-    if data_rate < 50:
-        result = dict(cores=12 if is_new_eb else 8,
-                      max_messages=8 if is_new_eb else 6)
-    elif data_rate < 100:
-        result = dict(cores=10 if is_new_eb else 6,
-                      max_messages=8 if is_new_eb else 6)
-    elif data_rate < 300:
-        result = dict(cores=8 if is_new_eb else 5,
-                      max_messages=6 if is_new_eb else 4)
+    # Return a run-mode that is empirically found to provide stable but fast processing.
+    print(f'infer_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
+    run_settings = {
+        'new_eb':
+            {'low_rate': dict(cores=24, max_messages=20, timeout=60),
+             'med_rate': dict(cores=24, max_messages=20, timeout=100),
+             'high_rate': dict(cores=20, max_messages=15, timeout=200),
+             'very_high_rate': dict(cores=20, max_messages=15, timeout=300),
+             'max_rate': dict(cores=16, max_messages=10, timeout=400)},
+        'old_eb':
+            {'low_rate': dict(cores=30, max_messages=20, timeout=60),
+             'med_rate': dict(cores=20, max_messages=15, timeout=100),
+             'high_rate': dict(cores=10, max_messages=15, timeout=200),
+             'very_high_rate': dict(cores=10, max_messages=10, timeout=300),
+             'max_rate': dict(cores=8, max_messages=10, timeout=400)}}
+    if data_rate < 100:
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['low_rate']
+    elif data_rate < 250:
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['med_rate']
+    elif data_rate < 500:
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['high_rate']
     elif data_rate < 700:
-        result = dict(cores=6 if is_new_eb else 4,
-                      max_messages=4 if is_new_eb else 4)
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['very_high_rate']
     else:
-        result = dict(cores=1,
-                      max_messages=4)
+        result = run_settings['new_eb' if is_new_eb else 'old_eb']['max_rate']
     print(f'Override processing mode for run {rd["number"]} changing to:\t {result}')
     return result
 
@@ -471,7 +534,7 @@ def infer_run_mode(rd, input_dir):
 ##
 
 def sufficient_diskspace():
-    '''Check if there is sufficient space available on the local disk to write to'''
+    """Check if there is sufficient space available on the local disk to write to"""
     disk = disk_usage(output_folder)
     gigabyte_to_byte = 1024.0 ** 3
     disk_free = disk.free / gigabyte_to_byte
@@ -489,8 +552,8 @@ def sufficient_diskspace():
 
 
 def delete_live_data(live_data_path):
-    '''After completing the processing and updating the runsDB, remove the
-    live_data'''
+    """After completing the processing and updating the runsDB, remove the
+    live_data"""
 
     if os.path.exists(live_data_path) and delete_live:
         print(f'Deleteing data at {live_data_path}')
@@ -504,7 +567,7 @@ def delete_live_data(live_data_path):
 
 
 def clear_shm():
-    '''Manually delete files in /dev/shm/ created by npshmex on starup.'''
+    """Manually delete files in /dev/shm/ created by npshmex on starup."""
     shm_dir = '/dev/shm/'
     shm_files = [f for f in os.listdir(shm_dir) if 'npshmex' in f]
 
@@ -567,6 +630,25 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
         {'$set': {'bootstrax': bd}},
         return_document=return_new_doc,
         projection=bootstrax_projection)
+
+
+def set_status_finished(rd):
+    """Set the status to ready to upload for datamanager and admix"""
+
+    # Only update the status if it does not exist or if it needs to be uploaded
+    ready_to_upload = {'status': 'eb_ready_to_upload'}
+    if rd.get('status') in [None, 'needs_upload']:
+        run_coll.find_one_and_update(
+            {'_id': rd['_id']},
+            {'$set': ready_to_upload})
+    elif rd.get('status') == ready_to_upload.get('status'):
+        # This is strange, boostrax already finished this run before
+        print('WARNING: bootstax has already marked this run as ready for upload. Doing nothing.')
+        pass
+    else:
+        # Do not override this field for runs already uploaded in admix
+        raise ValueError(f'Trying to set set the status {rd.get("status")} to '
+                         f'{ready_to_upload}! One should not override this field.')
 
 
 def abandon(*, mongo_id=None, number=None):
@@ -676,12 +758,12 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
-            '''Run strax'''
+            """Run strax"""
             strax_config = dict(daq_input_dir=input_dir,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
-                                n_readout_threads=n_readout_threads,
+                                n_readout_threads=n_readout_threads
                                 )
             st.make(run_id, target,
                     config=strax_config,
@@ -775,8 +857,8 @@ def process_run(rd, send_heartbeats=True):
         except Exception as e:
             fail(f"Could not find ini.strax_fragment_payload_bytes in database: {str(e)}")
 
-        if args.infer_run_mode:
-            process_mode = infer_run_mode(rd, loc)
+        if args.infer_mode:
+            process_mode = infer_mode(rd, loc)
         else:
             process_mode = dict(cores=args.cores, max_messages=args.max_messages)
 
@@ -844,6 +926,8 @@ def process_run(rd, send_heartbeats=True):
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
+                set_status_finished(rd)
+
                 if delete_live:
                     delete_live_data(loc)
                 break
