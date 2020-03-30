@@ -569,7 +569,6 @@ def find_split_points(w, min_height=0, min_ratio=0):
         'nveto_to_pe_file',
         default='/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/swt_gains.npy',    # noqa
         help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
-),
     strax.Option(
         'voltage',
         default=2,
@@ -596,7 +595,7 @@ class nVETOPulseBasics(strax.Plugin):
         self.to_pe = straxen.get_resource(self.config['nveto_to_pe_file'], 'npy')
 
     def compute(self, pulses_nv, records_nv):
-        volts_per_adc = self.config['voltage']/2**14/1000
+        volts_per_adc = self.config['voltage']/2**14*1000
         npb = compute_properties(pulses_nv, records_nv, self.to_pe, volts_per_adc)
         return npb
 
@@ -703,7 +702,7 @@ def compute_properties(pulses, records, to_pe, volts_per_adc):
     return result_buffer
 
 @export
-# @numba.njit(cache=True, nogil=True)
+@numba.njit(cache=True, nogil=True)
 def get_fwxm(data, index_maximum, percentage=0.5):
     """
     Estimates the left and right edge of a specific height percentage.
@@ -759,7 +758,7 @@ def get_fwxm(data, index_maximum, percentage=0.5):
     return left_edge, right_edge
 
 @export
-# @numba.njit(cache=True, nogil=True)
+@numba.njit(cache=True, nogil=True)
 def _get_fwxm_boundary(data, max_val):
     """
     Returns sample position and height for the last sample which amplitude is below
