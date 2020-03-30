@@ -10,15 +10,22 @@ max_load_mb = 1000
 max_return_mb = 10
 
 
-def load_context(name):
+def load_context(name, extra_dirs=None):
     global st
     st = getattr(straxen.contexts, name)()
+    for sf in st.storage:
+        sf.readonly = True
+
+    if extra_dirs is not None:
+        for d in extra_dirs:
+            print(d)
+            st.storage.append(strax.DataDirectory(d, readonly=True))
+
     st.context_config['forbid_creation_of'] = (
             '*',
             # In case someone has an old strax that doesn't support * here:
             'raw_records', 'records', 'peaklets',
             'peaks', 'event_basics', 'event_info')
-    st.context_config['allow_incomplete'] = True
 
 
 @hug.exception(Exception)
@@ -104,10 +111,12 @@ if __name__ == "__main__":
                         help='HTTP port to serve on')
     parser.add_argument('--max_load_mb', default=1000)
     parser.add_argument('--max_return_mb', default=10)
+    parser.add_argument('--extra_dirs', nargs='*',
+                        help="Extra directories to look for data")
     args = parser.parse_args()
 
     max_load_mb = args.max_load_mb
     max_return_mb = args.max_return_mb
 
-    load_context(args.context)
+    load_context(args.context, extra_dirs=args.extra_dirs)
     hug.API(__name__).http.serve(port=args.port)
