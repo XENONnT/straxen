@@ -29,9 +29,9 @@ def plot_pmts(
     Other arguments are passed to plot_on_single_pmt_array.
     """
     if vmin is None:
-        vmin = c.min()
+        vmin = np.nanmin(c)
     if vmax is None:
-        vmax = c.max()
+        vmax = np.nanmax(c)
     if vmin == vmax:
         # Single-valued array passed
         vmax += 1
