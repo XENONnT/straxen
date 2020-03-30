@@ -77,14 +77,20 @@ class Events(strax.OverlapWindowPlugin):
 @strax.takes_config(
     strax.Option(
         name='allow_posts2_s1s', default=False,
-        help="Allow S1s past the main S2 to become the main S1 and S2")
+        help="Allow S1s past the main S2 to become the main S1 and S2"),
+    strax.Option(
+        name='time_ordering', default=False,
+        help="Allow the time ordering of S1s and S2s peaks")
 )
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.5.0'
+    __version__ = '0.5.1'
+
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
+
+
 
     # Properties to store for each peak (main and alternate S1 and S2)
     peak_properties = (
@@ -146,11 +152,22 @@ class EventBasics(strax.LoopPlugin):
         if not len(peaks):
             return result
 
+        # Initialize S1s and S2s center time is necessary in case of time ordering 
+        # of events without secondary peaks, otherwise --> KeyError: 'alt_s1_center_time'
+        result['s1_center_time'] = 0
+        result['s2_center_time'] = 0
+        result['alt_s1_center_time'] = 0
+        result['alt_s2_center_time'] = 0
+
+
+
         main_s = dict()
         secondary_s = dict()
         # (note we consider S2s first, to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
-
+            
+            s1_delay = 0
+            s2_delay= 0
             # Which properties do we need?
             to_store = [name for name, _, _ in self.peak_properties]
             if s_i == 2:
@@ -189,8 +206,13 @@ class EventBasics(strax.LoopPlugin):
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
 
                 # Store delay from main Si
-                result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
-                                               - main_s[s_i]['center_time'])
+                if s_i == 1:
+                    s1_delay = result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
+                                                   - main_s[s_i]['center_time'])
+                if s_i == 2:
+                    s2_delay = result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
+                                                   - main_s[s_i]['center_time'])
+
             else:
                 # No secondary Si in event
                 result[f'alt_s{s_i}_index'] = -1
@@ -206,8 +228,31 @@ class EventBasics(strax.LoopPlugin):
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
-        return result
 
+        # Swap main and secondary peaks properties depending on the si_delay, if the time ordering is active
+        if (self.config['time_ordering']):
+            if (s1_delay < 0):
+                for name in to_store:
+                    temp = result[f's1_{name}']
+                    result[f's1_{name}'] = result[f'alt_s1_{name}']
+                    result[f'alt_s1_{name}'] = temp
+
+
+            if (s2_delay < 0):
+                to_store += ['x', 'y']
+                for name in to_store:
+                    temp = result[f's2_{name}']
+                    result[f's2_{name}'] = result[f'alt_s2_{name}']
+                    result[f'alt_s2_{name}'] = temp
+
+            # Compute drift times and delay with S1s and S2s re-ordered in time
+            result['drift_time'] = result['s2_center_time'] - result['s1_center_time']
+            result['alt_s1_interaction_drift_time'] = result['s2_center_time'] - result['alt_s1_center_time']
+            result['alt_s2_interaction_drift_time'] = result['alt_s2_center_time'] - result['s1_center_time']
+            result['alt_s1_delay'] = result['alt_s1_center_time'] - result['s1_center_time']
+            result['alt_s2_delay'] = result['alt_s2_center_time'] - result['s2_center_time']
+
+        return result
 
 @export
 @strax.takes_config(
