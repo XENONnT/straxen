@@ -76,18 +76,23 @@ def xenonnt_online(output_folder='./strax_data',
                 readonly=not we_are_the_daq,
                 runid_field='number',
                 new_data_path=output_folder),
-            strax.DataDirectory(
-                '/dali/lgrandi/xenonnt/raw',
-                readonly=True,
-                take_only='raw_records'),
-            strax.DataDirectory(output_folder),
         ],
         config=straxen.contexts.xnt_common_config,
         **context_options)
     st.register(straxen.DAQReader)
 
     if not we_are_the_daq:
+        st.storage.append(
+            strax.DataDirectory(
+                '/dali/lgrandi/xenonnt/raw',
+                readonly=True,
+                take_only='raw_records'))
+        if output_folder:
+            st.storage.append(
+                strax.DataDirectory(output_folder))
+
         st.context_config['forbid_creation_of'] = 'raw_records'
+
     st.context_config['check_available'] = ('raw_records',)
 
     return st
