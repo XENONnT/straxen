@@ -423,7 +423,7 @@ def _get_pulse_data(nveto_records,
                 return res, start_index
             else:
                 # If we manage to arrive here this means that we have not found the wf at all which should not
-                # have happend.
+                # have happened.
                 res = np.zeros(nsamples, dtype=np.float32)
                 return res, -42
 
@@ -569,6 +569,12 @@ def find_split_points(w, min_height=0, min_ratio=0):
         'nveto_to_pe_file',
         default='/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/swt_gains.npy',    # noqa
         help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
+),
+    strax.Option(
+        'voltage',
+        default=2,
+        track=False,
+        help='Voltage range set during measurement. [V]'),
 )
 class nVETOPulseBasics(strax.Plugin):
     """
@@ -590,12 +596,13 @@ class nVETOPulseBasics(strax.Plugin):
         self.to_pe = straxen.get_resource(self.config['nveto_to_pe_file'], 'npy')
 
     def compute(self, pulses_nv, records_nv):
-        npb = compute_properties(pulses_nv, records_nv, self.to_pe)
+        volts_per_adc = self.config['voltage']/2**14/1000
+        npb = compute_properties(pulses_nv, records_nv, self.to_pe, volts_per_adc)
         return npb
 
 @export
 #@numba.njit(cache=True, nogil=True)
-def compute_properties(pulses, records, to_pe):
+def compute_properties(pulses, records, to_pe, volts_per_adc):
     """
     Computes the basic PMT pulse properties.
 
@@ -686,12 +693,12 @@ def compute_properties(pulses, records, to_pe):
         res['endtime'] = pulse['endtime']
         res['channel'] = ch
         res['area'] = area / to_pe[ch]
-        res['height'] = height
+        res['height'] = height * volts_per_adc
         res['amp_time'] = amp_time - t
         res['width'] = width
         res['left'] = left_edge
         res['low_left'] = left_edge_low
-        res['area_decile'][1:] = (pos_deciles[11:][::-1] - pos_deciles[:10]) * dt
+        res['area_decile'][1:] = (pos_deciles[11:] - pos_deciles[:10][::-1]) * dt
         res['area_decile_from_midpoint'] = (pos_deciles[::2] - pos_deciles[10]) * dt
     return result_buffer
 
