@@ -596,12 +596,13 @@ class nVETOPulseBasics(strax.Plugin):
 
     def compute(self, pulses_nv, records_nv):
         volts_per_adc = self.config['voltage']/2**14*1000
-        npb = compute_properties(pulses_nv, records_nv, self.to_pe, volts_per_adc)
+        npb = np.zeros(len(pulses_nv), nveto_pulses_dtype())
+        npb = compute_properties(pulses_nv, records_nv, self.to_pe, volts_per_adc, npb)
         return npb
 
 @export
-#@numba.njit(cache=True, nogil=True)
-def compute_properties(pulses, records, to_pe, volts_per_adc):
+@numba.njit(cache=True, nogil=True)
+def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
     """
     Computes the basic PMT pulse properties.
 
@@ -619,8 +620,6 @@ def compute_properties(pulses, records, to_pe, volts_per_adc):
     # TODO: Baseline part is not subtracted yet.
     dt = records['dt'][0]
     record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
-
-    result_buffer = np.zeros(len(pulses), nveto_pulses_dtype())
 
     for pind, pulse in enumerate(pulses):
         # Frequently used quantaties:
@@ -662,7 +661,7 @@ def compute_properties(pulses, records, to_pe, volts_per_adc):
                 current_fraction = area / total_area
                 while area_fraction + current_fraction >= area_decils[needed_decile]:
                     if d:
-                        pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / d
+                        pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / current_fraction
                     else:
                         pos_deciles[needed_decile] = ind
                     needed_decile += 1
@@ -697,8 +696,10 @@ def compute_properties(pulses, records, to_pe, volts_per_adc):
         res['width'] = width
         res['left'] = left_edge
         res['low_left'] = left_edge_low
+        res['low_width'] = width_low
         res['area_decile'][1:] = (pos_deciles[11:] - pos_deciles[:10][::-1]) * dt
         res['area_decile_from_midpoint'] = (pos_deciles[::2] - pos_deciles[10]) * dt
+        res['split_i'] = pulse['split_i']
     return result_buffer
 
 @export
