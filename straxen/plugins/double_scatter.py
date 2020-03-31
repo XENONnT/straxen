@@ -18,25 +18,14 @@ class DistinctChannels(strax.LoopPlugin):
         if event['alt_s1_index'] == -1:
             n_distinct = 0
         else:
-            if(event['s1_center_time'] < event['alt_s1_center_time']):
-                s1_a = peaks[event['s1_index']]
-                s1_b = peaks[event['alt_s1_index']]
-                s1_a_peaks = np.nonzero((s1_a['area_per_channel']>0)*1)
-                s1_b_peaks = np.nonzero((s1_b['area_per_channel']>0)*1)
-                n_distinct=0
-                for channel in range(len(s1_b_peaks[0])):
-                    if s1_b_peaks[0][channel] not in s1_a_peaks[0]:
-                        n_distinct += 1
-            else:
-                s1_a = peaks[event['alt_s1_index']]
-                s1_b = peaks[event['s1_index']]
-                s1_a_peaks = np.nonzero((s1_a['area_per_channel']>0)*1)
-                s1_b_peaks = np.nonzero((s1_b['area_per_channel']>0)*1)
-                n_distinct=0
-                for channel in range(len(s1_b_peaks[0])):
-                    if s1_b_peaks[0][channel] not in s1_a_peaks[0]:
-                        n_distinct += 1
-
+            s1_a = peaks[event['s1_index']]
+            s1_b = peaks[event['alt_s1_index']]
+            s1_a_peaks = np.nonzero((s1_a['area_per_channel']>0)*1)
+            s1_b_peaks = np.nonzero((s1_b['area_per_channel']>0)*1)
+            n_distinct=0
+            for channel in range(len(s1_b_peaks[0])):
+                if s1_b_peaks[0][channel] not in s1_a_peaks[0]:
+                    n_distinct += 1
 
         return dict(alt_s1_distinct_channels=n_distinct,
                     time=event['time'],
@@ -59,7 +48,9 @@ class EventInfoDouble(strax.MergeOnlyPlugin):
         special_cases = {'alt_cs1': 'cs1_b',
                          'alt_cs2': 'cs2_b',
                          'cs1': 'cs1_a',
-                         'cs2': 'cs2_a'}
+                         'cs2': 'cs2_a',
+                         'alt_s1_delay':'ds_s1_dt',
+                         'alt_s2_delay':'ds_s2_dt'}
         if orig_name in special_cases:
             return special_cases[orig_name]
 
