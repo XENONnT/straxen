@@ -10,7 +10,9 @@ common_opts = dict(
        straxen.pulse_processing,
        straxen.peaklet_processing,
        straxen.peak_processing,
-       straxen.event_processing],
+       straxen.event_processing,
+       straxen.nveto_recorder,
+       straxen.nveto_pulse_processing],
    store_run_fields=(
        'name', 'number',
        'reader.ini.name', 'tags.name',
@@ -92,9 +94,14 @@ def fake_daq():
 
 nveto_common_opts = dict(
     register_all=[
-       straxen.daqreader,
+       straxen.daqreader_hdm,
        straxen.nveto_recorder,
-       straxen.nveto_pulse_processing
+       straxen.nveto_pulse_processing,
+       # TPC plugins to avoid unused settings warning
+       straxen.pulse_processing,
+       straxen.peaklet_processing,
+       straxen.peak_processing,
+       straxen.event_processing
     ],
     store_run_fields=(
         'name', 'number',
@@ -108,7 +115,7 @@ nveto_common_opts = dict(
                      'lone_raw_record_statistics_nv',
                      'records_nv',
                      'pulse_edges_nv',
-                     # 'pulse_basics_nv'
+                     'pulse_basics_nv'
                      ))
 
 def strax_nveto_hdm_test():

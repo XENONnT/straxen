@@ -64,10 +64,6 @@ class DAQReader(strax.Plugin):
     Does nothing whatsoever to the pulse data; not even baselining.
     """
     provides = (
-        'raw_records',
-        'raw_records_he',  # high energy
-        'raw_records_aqmon',
-        'raw_records_mv',
         'raw_records_prenv',  # nveto pre-raw_records
         'raw_records_aqmonnv'
     )
