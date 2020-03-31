@@ -17,3 +17,13 @@ from . import event_processing
 from .event_processing import *
 
 from . import x1t_cuts
+
+from . import daqreader_hdm
+from .daqreader_hdm import *
+
+from . import nveto_recorder
+from .nveto_recorder import *
+
+from . import nveto_pulse_processing
+from .nveto_pulse_processing import *
+

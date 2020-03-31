@@ -17,6 +17,7 @@ import pandas as pd
 
 import strax
 export, __all__ = strax.exporter()
+
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo']
 
 straxen_dir = os.path.dirname(os.path.abspath(
@@ -25,7 +26,6 @@ straxen_dir = os.path.dirname(os.path.abspath(
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
-
 
 @export
 def pmt_positions(xenon1t=False):
