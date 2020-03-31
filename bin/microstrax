@@ -46,6 +46,13 @@ def get_data(
     except NameError:
         return "Context not loaded???"
 
+    if len(run_id) != 6:
+        try:
+            # Probably someone tried an integer, try converting to string.
+            run_id = '%06d' % int(run_id)
+        except ValueError:
+            return "Specify run in format '007157'"
+
     if max_n <= 0:
         max_n = None
     t0 = st.estimate_run_start(run_id, target)
