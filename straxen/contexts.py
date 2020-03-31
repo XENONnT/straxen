@@ -237,3 +237,6 @@ hdm_daqreader = dict(digitizer_sampling_resolution=2,
                      # Recorder:
                      coincidence_level=2,
                      )
+
+def strax_nveto_hdm_test_0_5V():
+    raise NotImplementedError('This feature is currently not implemented')
