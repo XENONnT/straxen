@@ -367,8 +367,7 @@ def _get_pulse_data(nveto_records,
         nvr_start_time = nvr['time']
         nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time
 
-        if ((nvr_start_time <= hit_start_time <= nvr_end_time)
-                or (nvr_start_time <= hit_end_time <= nvr_end_time)):
+        if ((nvr_start_time <= hit_start_time <= nvr_end_time) or (nvr_start_time <= hit_end_time <= nvr_end_time)):
             # We have to check if either the start or the end time of a hit is
             # within the current fragment. Due to the left and right extension
             # of the hitfinder it might happen that we extend the hit into a
@@ -698,7 +697,7 @@ def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
         res['low_left'] = left_edge_low
         res['low_width'] = width_low
         res['area_decile'][1:] = (pos_deciles[11:] - pos_deciles[:10][::-1]) * dt
-        res['area_decile_from_midpoint'] = (pos_deciles[::2] - pos_deciles[10]) * dt
+        res['area_decile_from_midpoint'][:] = (pos_deciles[::2] - pos_deciles[10]) * dt
         res['split_i'] = pulse['split_i']
     return result_buffer
 
