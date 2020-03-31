@@ -134,10 +134,10 @@ class nVETOPulseEdges(strax.Plugin):
     """
     Plugin which returns the boundaries of the PMT pulses.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     parallel = 'process'
-    rechunk_on_save = False
+    rechunk_on_save = True
     compressor = 'lz4'
 
     depends_on = 'records_nv'
@@ -578,10 +578,10 @@ class nVETOPulseBasics(strax.Plugin):
     """
     nVETO equivalent of pulse processing.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.3'
 
     parallel = True
-    rechunk_on_save = True
+    rechunk_on_save = False
     compressor = 'lz4'
 
     depends_on = ('pulses_nv', 'records_nv')

@@ -26,10 +26,10 @@ __all__ = ['nVETORecorder']
     strax.Option('n_nveto_pmts', type=int, track=False,
         help='Number of nVETO PMTs'))
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     parallel = 'process'
 
-    rechunk_on_save = False
+    rechunk_on_save = True
     compressor = 'lz4'
 
     depends_on = 'raw_records_prenv'
