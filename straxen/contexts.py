@@ -100,13 +100,16 @@ def xenonnt_online(output_folder='./strax_data',
     return st
 
 
-def xenonnt_led(**kwargs):
+def xenon1t_led(**kwargs):
     st = xenonnt_online(**kwargs)
+    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    # Return a new context with only raw_records and led_calibration registered
     return st.new_context(
+        replace=True,
         register=[straxen.DAQReader, straxen.LEDCalibration],
-        check_available=('raw_records', 'led_calibration'),
-        # To make sure other plugins are deregistered:
-        replace=True)
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)
 
 
 def nt_simulation():
@@ -195,8 +198,11 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
+    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    # Return a new context with only raw_records and led_calibration registered
     return st.new_context(
+        replace=True,
         register=[straxen.RecordsFromPax, straxen.LEDCalibration],
-        check_available=('raw_records', 'led_calibration'),
-        # To make sure other plugins are deregistered:
-        replace=True)
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)
