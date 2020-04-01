@@ -384,6 +384,10 @@ def update_usage(pid_process, run_number):
     usage_coll.insert_one(usage)
 
 
+def is_LED_run(rd):
+    return 'LED' in str(rd.get('mode'))
+
+
 def set_state(state):
     """Inform the bootstrax collection we're in a different state
 
@@ -742,7 +746,8 @@ def get_compressor(rd, default_compressor="blosc"):
 ##
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
-              run_start_time, samples_per_record, process_mode, debug=False):
+              run_start_time, samples_per_record, process_mode, is_LED,
+              debug=False):
     # Clear the swap memory used by npshmmex
     npshmex.shm_clear()
     # double check by forcefully clearing shm
@@ -755,6 +760,10 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
 
         st = new_context(**process_mode)
 
+        if is_LED and target != 'raw_records':
+            # For LED runs override the target and add the LED plugin. Don't do this if we are going to raw_records
+            target = 'led_calibration'
+
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
@@ -763,8 +772,10 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
-                                n_readout_threads=n_readout_threads
+                                n_readout_threads=n_readout_threads,
+                                check_raw_record_overlaps=False,
                                 )
+
             st.make(run_id, target,
                     config=strax_config,
                     max_workers=process_mode['cores'])
@@ -844,6 +855,7 @@ def process_run(rd, send_heartbeats=True):
             target = 'raw_records'
 
         compressor = get_compressor(rd)
+        is_LED = is_LED_run(rd)
 
         try:
             run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
@@ -865,7 +877,8 @@ def process_run(rd, send_heartbeats=True):
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, compressor,
-                  run_start_time, samples_per_record, process_mode, args.debug))
+                  run_start_time, samples_per_record, process_mode, is_LED,
+                  args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)
