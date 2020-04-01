@@ -231,12 +231,30 @@ def strax_nveto_hdm_test():
         **nveto_common_opts)
 
 # HdM test specific configurations;
-                     # DAQReader:
 hdm_daqreader = dict(digitizer_sampling_resolution=2,
                      n_readout_threads=8,
-                     # Recorder:
                      coincidence_level=2,
                      )
 
 def strax_nveto_hdm_test_0_5V():
-    raise NotImplementedError('This feature is currently not implemented')
+    return strax.Context(
+        storage=[
+            strax.DataDirectory(
+                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data_raw',
+                take_only='nveto_pre_raw_records',
+                deep_scan=False,
+                readonly=True),
+            strax.DataDirectory(
+                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
+                provide_run_metadata=False)],
+        config={**xnt_common_config, **hdm_daqreader_0_5V},
+        **nveto_common_opts)
+    # raise NotImplementedError('This feature is currently not implemented')
+
+# HdM test specific configurations for 0.5 V dynamic range.
+hdm_daqreader_0_5V=dict(digitizer_sampling_resolution=2,
+                     n_readout_threads=8,
+                     coincidence_level=2,
+                     hit_min_amplitude_nv=60,
+                     voltage=0.5
+                     )
