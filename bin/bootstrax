@@ -52,7 +52,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
 
 import argparse
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import multiprocessing
 import npshmex
@@ -846,7 +846,7 @@ def process_run(rd, send_heartbeats=True):
         compressor = get_compressor(rd)
 
         try:
-            run_start_time = rd['start'].timestamp()
+            run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
         except Exception as e:
             fail(f"Could not find start in datetime.datetime object: {str(e)}")
 

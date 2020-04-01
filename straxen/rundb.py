@@ -240,6 +240,11 @@ class RunDB(strax.StorageFrontend):
             run_id = str(run_id)
         else:
             run_id = int(run_id)
+        if isinstance(projection, str):
+            projection = {projection: 1}
+        elif isinstance(projection, (list, tuple)):
+            projection = {x: 1 for x in projection}
+
         doc = self.collection.find_one(
             {self.runid_field: run_id},
             projection=projection)
