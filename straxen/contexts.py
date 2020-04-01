@@ -82,11 +82,14 @@ def xenonnt_online(output_folder='./strax_data',
     st.register(straxen.DAQReader)
 
     if not we_are_the_daq:
-        st.storage.append(
+        st.storage += [
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/raw',
                 readonly=True,
-                take_only='raw_records'))
+                take_only='raw_records'),
+            strax.DataDirectory(
+                '/dali/lgrandi/xenonnt/processed',
+                readonly=True)]
         if output_folder:
             st.storage.append(
                 strax.DataDirectory(output_folder))
