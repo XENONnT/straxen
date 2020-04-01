@@ -115,7 +115,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.3.2\n---')
+print(f'---\nTEST VERSION 0.3.3\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -382,6 +382,12 @@ def update_usage(pid_process, run_number):
              'disk_used': disk.percent
              }
     usage_coll.insert_one(usage)
+
+
+def is_LED_run(rd):
+    """Check if this run is an LED run
+    :return bool"""
+    return 'LED' in str(rd.get('mode'))
 
 
 def set_state(state):
@@ -742,7 +748,8 @@ def get_compressor(rd, default_compressor="blosc"):
 ##
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
-              run_start_time, samples_per_record, process_mode, debug=False):
+              run_start_time, samples_per_record, process_mode, is_LED,
+              debug=False):
     # Clear the swap memory used by npshmmex
     npshmex.shm_clear()
     # double check by forcefully clearing shm
@@ -752,6 +759,13 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
         log.setLevel(logging.DEBUG)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
+
+        if is_LED and target != 'raw_records':
+            # For LED runs override the target and add the LED plugin. Don't do this if we are going to raw_records
+            print(f'This is an LED run! Chaning target from {target} to led_calibration')
+            target = 'led_calibration'
+            # Increase the timeout a little
+            process_mode['timeout'] = process_mode['timeout'] * 5
 
         st = new_context(**process_mode)
 
@@ -763,8 +777,10 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
-                                n_readout_threads=n_readout_threads
+                                n_readout_threads=n_readout_threads,
+                                check_raw_record_overlaps=False,
                                 )
+
             st.make(run_id, target,
                     config=strax_config,
                     max_workers=process_mode['cores'])
@@ -844,6 +860,7 @@ def process_run(rd, send_heartbeats=True):
             target = 'raw_records'
 
         compressor = get_compressor(rd)
+        is_LED = is_LED_run(rd)
 
         try:
             run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
@@ -865,7 +882,8 @@ def process_run(rd, send_heartbeats=True):
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, compressor,
-                  run_start_time, samples_per_record, process_mode, args.debug))
+                  run_start_time, samples_per_record, process_mode, is_LED,
+                  args.debug))
 
         t0 = now()
         info = dict(started_processing=t0)
