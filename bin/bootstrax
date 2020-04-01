@@ -115,7 +115,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.3.2\n---')
+print(f'---\nTEST VERSION 0.3.3\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -385,6 +385,8 @@ def update_usage(pid_process, run_number):
 
 
 def is_LED_run(rd):
+    """Check if this run is an LED run
+    :return bool"""
     return 'LED' in str(rd.get('mode'))
 
 
@@ -758,11 +760,14 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
-        st = new_context(**process_mode)
-
         if is_LED and target != 'raw_records':
             # For LED runs override the target and add the LED plugin. Don't do this if we are going to raw_records
+            print(f'This is an LED run! Chaning target from {target} to led_calibration')
             target = 'led_calibration'
+            # Increase the timeout a little
+            process_mode['timeout'] = process_mode['timeout'] * 5
+
+        st = new_context(**process_mode)
 
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
