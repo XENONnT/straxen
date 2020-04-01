@@ -101,7 +101,7 @@ def xenonnt_online(output_folder='./strax_data',
     return st
 
 
-def xenon1t_led(**kwargs):
+def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
     st.context_config['check_available'] = ('raw_records', 'led_calibration')
     # Return a new context with only raw_records and led_calibration registered
