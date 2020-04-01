@@ -63,8 +63,8 @@ class LEDCalibration(strax.Plugin):
         temp['length'] = r['length']
         
         on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
-        temp['amplitude_led'] = on['amplitude_led']
-        temp['amplitude_noise'] = off['amplitude_noise']
+        temp['amplitude_led'] = on['amplitude']
+        temp['amplitude_noise'] = off['amplitude']
 
         area = get_area(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
         temp['area'] = area['area']
@@ -75,6 +75,10 @@ class LEDCalibration(strax.Plugin):
 # QUESTIONS: can some nice functions of numba.njit be used? What does @export mean?
 # ANSWERS: [fill in]
 
+_on_off_dtype = np.dtype([('channel', 'int16'),
+                          ('amplitude', '<i4')])
+
+@numba.njit(nogil=True, cache=True)
 def get_amplitude(raw_records, led_window, noise_window, baseline_window):
     '''
     Needed for the SPE computation.
@@ -82,16 +86,25 @@ def get_amplitude(raw_records, led_window, noise_window, baseline_window):
     '''
     left_bsl  = baseline_window[0]
     right_bsl = baseline_window[-1]
+    bsl_diff = 1.0 * (right_bsl-left_bsl)
     
-    on = np.zeros((len(raw_records)), dtype=[('channel','int16'),('amplitude_led', '<i4')])
-    off = np.zeros((len(raw_records)), dtype=[('channel','int16'),('amplitude_noise', '<i4')])
+    on = np.zeros((len(raw_records)), dtype=_on_off_dtype)
+    off = np.zeros((len(raw_records)), dtype=_on_off_dtype)
     for i, r in enumerate(raw_records):
-        r['data'] = np.abs(r['data'] -  np.sum(r['data'][left_bsl:right_bsl])/float(right_bsl-left_bsl))
-        on['amplitude_led'][i] = np.max(r['data'][led_window[0]:led_window[1]])
-        on['channel'][i] = r['channel']
-        off['amplitude_noise'][i] = np.max(r['data'][noise_window[0]:noise_window[1]]) 
-        off['channel'][i] = r['channel']
+        r['data'][:] = np.abs(r['data'] - np.sum(r['data'][left_bsl:right_bsl])/bsl_diff)
+        on[i]['amplitude'] = safe_max(r['data'][led_window[0]:led_window[1]])
+        on[i]['channel'] = r['channel']
+        off[i]['amplitude'] = safe_max(r['data'][noise_window[0]:noise_window[1]])
+        off[i]['channel'] = r['channel']
     return on, off
+
+
+@numba.njit(nogil=True, cache=True)
+def safe_max(w):
+    if not len(w):
+        return 0
+    return w.max()
+
 
 def get_area(raw_records, led_window, noise_window, baseline_window):
     '''
