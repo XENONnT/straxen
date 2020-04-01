@@ -4,17 +4,15 @@ if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.
 '''
 
 import strax
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
 import numba
-import resource
-from numba import njit
+import numpy as np
 
-#export, __all__ = strax.exporter()
-# QUESTION: what does 'export, __all__ = strax.exporter()' do?
-# ANSWER: [fill in]
+# This makes sure shorthands for only the necessary functions
+# are made available under straxen.[...]
+export, __all__ = strax.exporter()
 
+
+@export
 @strax.takes_config(
     strax.Option('baseline_window',
                  default=(0,50),
@@ -27,20 +25,16 @@ from numba import njit
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
                  default=(0,248),
-                 help="Three different light level for XENON1T: (0,36), (37,126), (127,248). Defalt value: all the PMTs")
-)
-
-
+                 help="Three different light level for XENON1T: (0,36), (37,126), (127,248). Defalt value: all the PMTs"))
 class LEDCalibration(strax.Plugin):
-    
-    '''
+    """
     Preliminary version, several parameters to set during commisioning.
     LEDCalibration returns: channel, time, dt, lenght, Area, amplitudeLED and amplitudeNOISE.
     The new variables are:
     - Area: Area computed in the given window, averaged over 6 windows that have the same starting sample and different end samples.
     - amplitudeLED: peak amplitude of the LED on run in the given window.
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
-    '''
+    """
     
     __version__ = '0.1.3'
     depends_on = ('raw_records',)
