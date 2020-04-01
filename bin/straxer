@@ -41,7 +41,7 @@ def parse_args():
               "Lower to reduce memory usage, at increasing risk of deadlocks."))
     parser.add_argument(
         '--timeout',
-        default=10, type=int,
+        default=60, type=int,
         help=("Strax' internal mailbox timeout in seconds"))
     parser.add_argument(
         '--workers',
