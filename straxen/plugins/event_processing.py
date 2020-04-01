@@ -152,12 +152,11 @@ class EventBasics(strax.LoopPlugin):
         if not len(peaks):
             return result
 
-        # Initialize S1s and S2s center time is necessary in case of time ordering 
-        # of events without secondary peaks, otherwise --> KeyError: 'alt_s1_center_time'
-        result['s1_center_time'] = 0
-        result['s2_center_time'] = 0
-        result['alt_s1_center_time'] = 0
-        result['alt_s2_center_time'] = 0
+        # Token necessary for time ordering in order to compute drift_time and alt_drift_time
+        # of events only if a S1S2 pair is found in the event, otherwise --> KeyError: 'alt_s1_center_time'
+        S1S2pair_token = False
+        alt_S1_token = False
+        alt_S2_token = False
 
 
 
@@ -219,12 +218,15 @@ class EventBasics(strax.LoopPlugin):
 
         # Compute drift times only if we have a valid S1-S2 pairs
         if len(main_s) == 2:
+            S1S2pair_token = True
             result['drift_time'] = \
                 main_s[2]['center_time'] - main_s[1]['center_time']
             if 1 in secondary_s:
+                alt_S1_token=True
                 result['alt_s1_interaction_drift_time'] = \
                     main_s[2]['center_time'] - secondary_s[1]['center_time']
             if 2 in secondary_s:
+                alt_S2_token=True
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
@@ -246,11 +248,14 @@ class EventBasics(strax.LoopPlugin):
                     result[f'alt_s2_{name}'] = temp
 
             # Compute drift times and delay with S1s and S2s re-ordered in time
-            result['drift_time'] = result['s2_center_time'] - result['s1_center_time']
-            result['alt_s1_interaction_drift_time'] = result['s2_center_time'] - result['alt_s1_center_time']
-            result['alt_s2_interaction_drift_time'] = result['alt_s2_center_time'] - result['s1_center_time']
-            result['alt_s1_delay'] = result['alt_s1_center_time'] - result['s1_center_time']
-            result['alt_s2_delay'] = result['alt_s2_center_time'] - result['s2_center_time']
+            if S1S2pair_token:
+                result['drift_time'] = result['s2_center_time'] - result['s1_center_time']
+                if alt_S1_token:
+                    result['alt_s1_interaction_drift_time'] = result['s2_center_time'] - result['alt_s1_center_time']
+                    result['alt_s1_delay'] = result['alt_s1_center_time'] - result['s1_center_time']
+                if alt_S2_token:
+                    result['alt_s2_interaction_drift_time'] = result['alt_s2_center_time'] - result['s1_center_time']
+                    result['alt_s2_delay'] = result['alt_s2_center_time'] - result['s2_center_time']
 
         return result
 
