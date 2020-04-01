@@ -100,6 +100,15 @@ def xenonnt_online(output_folder='./strax_data',
     return st
 
 
+def xenonnt_led(**kwargs):
+    st = xenonnt_online(**kwargs)
+    return st.new_context(
+        register=[straxen.DAQReader, straxen.LEDCalibration],
+        check_available=('raw_records', 'led_calibration'),
+        # To make sure other plugins are deregistered:
+        replace=True)
+
+
 def nt_simulation():
     import wfsim
     return strax.Context(
@@ -119,22 +128,6 @@ def nt_simulation():
 ##
 # XENON1T
 ##
-
-PMT_opts = dict(
-    register_all=[
-        straxen.daqreader,
-        straxen.pulse_processing,
-        straxen.peaklet_processing,
-        straxen.peak_processing,
-        straxen.event_processing,
-        straxen.led_calibration
-        ],
-    store_run_fields=(
-        'name', 'number',
-        'reader.ini.name', 'tags.name',
-        'start', 'end', 'livetime',
-        'trigger.events_built'),
-    check_available=('raw_records', 'event_info'))
 
 def demo():
     """Return strax context used in the straxen demo notebook"""
@@ -190,7 +183,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
                 provide_run_metadata=False),
             strax.DataDirectory(output_folder,
                                 provide_run_metadata=False)],
-        register=straxen.plugins.pax_interface.RecordsFromPax,
+        register=straxen.RecordsFromPax,
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
@@ -199,27 +192,11 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
             else ('raw_records', 'records', 'peaklets')),
         **common_opts)
 
-def strax_SPE(output_folder='/dali/lgrandi/giovo/XENONnT/strax_data', 
-              build_lowlevel=False):
-    return strax.Context(
-        storage=[
-            strax.DataDirectory(
-                '/dali/lgrandi/xenon1t/strax_converted/raw',
-                take_only='raw_records',
-                provide_run_metadata=True,
-                deep_scan=False,
-                readonly=True),
-            strax.DataDirectory(
-                '/dali/lgrandi/xenon1t/strax_converted/processed',
-                readonly=True,
-                provide_run_metadata=False),
-            strax.DataDirectory(output_folder,
-                                provide_run_metadata=False)],
-        register=straxen.plugins.pax_interface.RecordsFromPax,
-        config=dict(**x1t_common_config),
-        # When asking for runs that don't exist, throw an error rather than
-        # starting the pax converter
-        forbid_creation_of=(
-            ('raw_records',) if build_lowlevel
-            else ('raw_records', 'records', 'peaklets')),
-        **PMT_opts)
+
+def xenon1t_led(**kwargs):
+    st = xenon1t_dali(**kwargs)
+    return st.new_context(
+        register=[straxen.RecordsFromPax, straxen.LEDCalibration],
+        check_available=('raw_records', 'led_calibration'),
+        # To make sure other plugins are deregistered:
+        replace=True)
