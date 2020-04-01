@@ -129,12 +129,21 @@ def nveto_pulses_dtype():
         default=20, track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
+    strax.Option(
+        'min_split_nv',
+        default=25, track=True,
+        help='Minimum height difference [ADC counts] between local minimum and maximum, '
+             'that a pulse get split.'),
+    strax.Option(
+        'min_split_ratio_nv',
+        default=0, track=True,
+        help='Min ratio between local maximum and minimum to split pulse (zero to switch this off).'),
 )
 class nVETOPulseEdges(strax.Plugin):
     """
     Plugin which returns the boundaries of the PMT pulses.
     """
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     parallel = 'process'
     rechunk_on_save = True
@@ -164,7 +173,7 @@ class nVETOPulseEdges(strax.Plugin):
         pulses_nv = strax.sort_by_time(pulses_nv)
 
         # Check if hits can be split:
-        pulses_nv = split_pulses(records_nv, pulses_nv)
+        pulses_nv = split_pulses(records_nv, pulses_nv, self.config['min_split_nv'], self.config['min_split_ratio_nv'])
         return pulses_nv
 
 @export
@@ -434,7 +443,7 @@ def _get_pulse_data(nveto_records,
 @export
 @strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
 @numba.njit(cache=True, nogil=True)
-def split_pulses(records, pulses, _result_buffer=None):
+def split_pulses(records, pulses, min_split_height=25, min_split_ratio=0, _result_buffer=None):
     """
     Function which checks for a given pulse if the pulse should be
     split.
@@ -467,7 +476,7 @@ def split_pulses(records, pulses, _result_buffer=None):
         data, ro = get_pulse_data(records, pulse, start_index=ro, update_pulse_edges=True)
         record_offset[ch] = ro
 
-        edges = _split_pulse(data)
+        edges = _split_pulse(data, min_split_height, min_split_ratio)
         edges = edges[edges >= 0]
 
         # Convert edges into times:
