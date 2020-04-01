@@ -216,17 +216,15 @@ nveto_common_opts = dict(
                      'pulse_basics_nv'
                      ))
 
-def strax_nveto_hdm_test():
+def strax_nveto_hdm_test(output_folder='./strax_data'):
     return strax.Context(
         storage=[
             strax.DataDirectory(
-                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data_raw',
-                take_only='nveto_pre_raw_records',
-                deep_scan=False,
-                readonly=True),
-            strax.DataDirectory(
                 '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
-                provide_run_metadata=False)],
+                provide_run_metadata=False,
+                readonly=True),
+            strax.DataDirectory(output_folder,
+                                provide_run_metadata=False)],
         config={**xnt_common_config, **hdm_daqreader},
         **nveto_common_opts)
 
@@ -236,17 +234,15 @@ hdm_daqreader = dict(digitizer_sampling_resolution=2,
                      coincidence_level=2,
                      )
 
-def strax_nveto_hdm_test_0_5V():
+def strax_nveto_hdm_test_0_5V(output_folder='./strax_data'):
     return strax.Context(
         storage=[
             strax.DataDirectory(
-                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data_raw',
-                take_only='nveto_pre_raw_records',
-                deep_scan=False,
-                readonly=True),
-            strax.DataDirectory(
                 '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
-                provide_run_metadata=False)],
+                provide_run_metadata=False,
+                readonly=True),
+            strax.DataDirectory(output_folder,
+                                provide_run_metadata=False)],
         config={**xnt_common_config, **hdm_daqreader_0_5V},
         **nveto_common_opts)
     # raise NotImplementedError('This feature is currently not implemented')
