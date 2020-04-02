@@ -693,8 +693,7 @@ def _compute_area_deciles_amplitude(data):
     amp = 0
     amp_ind = 0
     area = 0
-    height = 0
-    needed_decile = 0
+    needed_decile = 1
     prev_total_fraction = 0
     current_total_fraction = 0
     compute_deciles = True
@@ -704,7 +703,7 @@ def _compute_area_deciles_amplitude(data):
     for ind, d in enumerate(data):
         area += d
         # Getting max amplitude:
-        if d > height:
+        if d > amp:
             amp = d
             amp_ind = ind
 
@@ -716,7 +715,7 @@ def _compute_area_deciles_amplitude(data):
         if compute_deciles and total_area:
             current_total_fraction = area / total_area
             while current_total_fraction >= area_decils[needed_decile]:
-                if d:
+                if current_total_fraction:
                     fraction = (area_decils[needed_decile] - prev_total_fraction) / current_total_fraction
                     pos_deciles[needed_decile] = ind + fraction
                 else:
@@ -727,9 +726,9 @@ def _compute_area_deciles_amplitude(data):
                     compute_deciles = False
                     break
             prev_total_fraction = current_total_fraction
-        if current_total_fraction == 1:
-            # See hint in strax peak_properties _index_of_fraction.
-            pos_deciles[-1] = len(data)
+    if current_total_fraction == 1:
+        # See hint in strax peak_properties _index_of_fraction.
+        pos_deciles[-1] = len(data)
     return area, pos_deciles, amp, amp_ind
 
 
