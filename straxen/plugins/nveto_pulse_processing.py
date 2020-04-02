@@ -110,6 +110,8 @@ def nveto_pulses_dtype():
         (('Left edge of the FWHM in ns (minus time)', 'left'), np.float32),
         (('FWTM of the PMT pulse in ns', 'low_width'), np.float32),
         (('Left edge of the FWTM in ns (minus time)', 'low_left'), np.float32),
+        (('Area midpoint in ns relative to pulse start',
+          'area_midpoint'), np.float32),
         (('Peak widths in range of central area fraction [ns]',
           'area_decile'), np.float32, 11),
         (('Peak widths: time between nth and 5th area decile [ns]',
@@ -143,7 +145,7 @@ class nVETOPulseEdges(strax.Plugin):
     """
     Plugin which returns the boundaries of the PMT pulses.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
     parallel = 'process'
     rechunk_on_save = True
@@ -587,7 +589,7 @@ class nVETOPulseBasics(strax.Plugin):
     """
     nVETO equivalent of pulse processing.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
     parallel = True
     rechunk_on_save = False
@@ -634,56 +636,16 @@ def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
         ch = pulse['channel']
         t = pulse['time']
 
-        # parameters to be store:
-        area = 0
-        height = 0
-        amp_ind = 0
-
         # Getting data and baseline of the event:
         ro = record_offset[ch]
         data, ro = get_pulse_data(records, pulse, start_index=ro)
         record_offset[ch] = ro
 
-        # -------------------------
-        # Area decile calculation. Code adapted
-        # from strax.processing.peak_properties_index_of_fraction
-        # -------------------------
-        total_area = np.sum(data)
-        needed_decile = 0
-        area_fraction = 0
-        compute_deciles = True
-        area_decils = np.arange(0, 1.01, 0.05)
-        pos_deciles = np.zeros(len(area_decils), dtype=np.float32)
-
-        # Computing area, max amp and area deciles:
-        for ind, d in enumerate(data):
-            area += d
-
-            # Getting max amplitude:
-            if d > height:
-                height = d
-                amp_ind = ind
-
-            #  Check if we exceeded area fraction:
-            if compute_deciles and total_area:
-                current_fraction = area / total_area
-                while area_fraction + current_fraction >= area_decils[needed_decile]:
-                    if d:
-                        pos_deciles[needed_decile] = ind + (area_decils[needed_decile] - area_fraction) / current_fraction
-                    else:
-                        pos_deciles[needed_decile] = ind
-                    needed_decile += 1
-                    if needed_decile > len(area_decils) - 1:
-                        # Found last area decile we have to escape while loop.
-                        compute_deciles = False
-                        break
-                area_fraction += current_fraction
-
-        amp_time = t + int(amp_ind * dt)
+        area, pos_deciles, height, amp_ind = _compute_area_deciles_amplitude(data)
+        amp_time = int(amp_ind * dt)
 
         # Computing FWHM:
         left_edge, right_edge = get_fwxm(data, amp_ind, 0.5)
-
         left_edge = left_edge * dt + dt / 2
         right_edge = right_edge * dt - dt / 2
         width = right_edge - left_edge
@@ -700,15 +662,76 @@ def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
         res['channel'] = ch
         res['area'] = area / to_pe[ch]
         res['height'] = height * volts_per_adc
-        res['amp_time'] = amp_time - t
+        res['amp_time'] = amp_time
         res['width'] = width
         res['left'] = left_edge
         res['low_left'] = left_edge_low
         res['low_width'] = width_low
         res['area_decile'][1:] = (pos_deciles[11:] - pos_deciles[:10][::-1]) * dt
+        res['area_midpoint'] = pos_deciles[10] * dt
         res['area_decile_from_midpoint'][:] = (pos_deciles[::2] - pos_deciles[10]) * dt
         res['split_i'] = pulse['split_i']
     return result_buffer
+
+@numba.njit(cache=True, nogil=True)
+def _compute_area_deciles_amplitude(data):
+    """
+    Function which computes the area, area_decile_fractions, amplitude
+    and the position of the amplitude for a given waveform.
+
+    Args:
+        data (np.array): Waveform data
+
+    Returns:
+        float: area
+        np.arary: area_decile_fractions
+        float: amplitude
+        int: position of the amplitude
+    """
+
+    total_area = np.sum(data)
+    amp = 0
+    amp_ind = 0
+    area = 0
+    height = 0
+    needed_decile = 0
+    prev_total_fraction = 0
+    current_total_fraction = 0
+    compute_deciles = True
+    area_decils = np.arange(0, 1.01, 0.05)
+    pos_deciles = np.zeros(len(area_decils), dtype=np.float32)
+
+    for ind, d in enumerate(data):
+        area += d
+        # Getting max amplitude:
+        if d > height:
+            amp = d
+            amp_ind = ind
+
+        #  Check if we exceeded area fraction:
+        # -------------------------
+        # Area decile calculation. Code adapted
+        # from strax.processing.peak_properties_index_of_fraction
+        # -------------------------
+        if compute_deciles and total_area:
+            current_total_fraction = area / total_area
+            while current_total_fraction >= area_decils[needed_decile]:
+                if d:
+                    fraction = (area_decils[needed_decile] - prev_total_fraction) / current_total_fraction
+                    pos_deciles[needed_decile] = ind + fraction
+                else:
+                    pos_deciles[needed_decile] = ind
+                needed_decile += 1
+                if needed_decile > len(area_decils) - 1:
+                    # Found last area decile we have to escape while loop.
+                    compute_deciles = False
+                    break
+            prev_total_fraction = current_total_fraction
+        if current_total_fraction == 1:
+            # See hint in strax peak_properties _index_of_fraction.
+            pos_deciles[-1] = len(data)
+    return area, pos_deciles, amp, amp_ind
+
 
 @export
 @numba.njit(cache=True, nogil=True)
