@@ -749,7 +749,7 @@ def get_compressor(rd, default_compressor="blosc"):
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
               run_start_time, samples_per_record, process_mode, is_LED,
-              debug=False):
+              daq_chunk_duration, daq_overlap_chunk_duration, debug=False):
     # Clear the swap memory used by npshmmex
     npshmex.shm_clear()
     # double check by forcefully clearing shm
@@ -777,6 +777,8 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
+                                daq_chunk_duration = daq_chunk_duration,
+                                daq_overlap_chunk_duration = daq_overlap_chunk_duration,
                                 n_readout_threads=n_readout_threads,
                                 check_raw_record_overlaps=False,
                                 )
@@ -879,10 +881,14 @@ def process_run(rd, send_heartbeats=True):
         else:
             process_mode = dict(cores=args.cores, max_messages=args.max_messages)
 
+        daq_chunk_duration = int(rd['ini']['strax_chunk_length'] * 1e9)
+        daq_overlap_chunk_duration = int(rd['ini']['strax_chunk_overlap'] * 1e9)
+
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, compressor,
                   run_start_time, samples_per_record, process_mode, is_LED,
+                  daq_chunk_duration, daq_overlap_chunk_duration,
                   args.debug))
 
         t0 = now()
