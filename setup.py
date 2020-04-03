@@ -13,7 +13,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='0.6.0',
+                 version='0.7.1',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
@@ -33,8 +33,10 @@ setuptools.setup(name='straxen',
                               'nbsphinx',
                               'recommonmark',
                               'graphviz'],
+                     'microstrax': ['hug'],
                  },
                  scripts=['bin/bootstrax', 'bin/straxer', 'bin/fake_daq',
+                          'bin/microstrax',
                           'bin/refresh_raw_records'],
                  packages=setuptools.find_packages(),
                  classifiers=[

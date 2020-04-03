@@ -1,3 +1,21 @@
+0.7.1 / 2020-03-30
+------------------
+- Rename raw_records_lowgain to raw_records_he (#72)
+- Fix n_tpc_pmts for nT (#73)
+- Bootstrax updates (#74)
+- microstrax to serve strax data as JSON over HTTP (#76)
+- Update PMT plot for nT (#78)
+- Fix: peaklets cannot extend past chunk boundaries (e63767)
+
+
+0.7.0 / 2020-03-19
+------------------
+- DAQReader sorts out subdetector outputs (#64)
+- Separate XENONnT and XENON1T contexts (#68)
+- Start options for specifying gain model (#71)
+- Auto-infer bootstrax processing settings (#70)
+
+
 0.6.0 / 2020-03-05
 ------------------
 - Updates for the new strax version (#60)
