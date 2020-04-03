@@ -115,7 +115,7 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\nTEST VERSION 0.3.3\n---')
+print(f'---\nTEST VERSION 0.3.5\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -839,6 +839,12 @@ def process_run(rd, send_heartbeats=True):
 
         thread_info = rd.get('ini', dict()).get('processing_threads', dict())
         n_readout_threads = sum([v for v in thread_info.values()])
+        try:
+            daq_chunk_duration = int(rd['ini']['strax_chunk_length'] * 1e9)
+            daq_overlap_chunk_duration = int(rd['ini']['strax_chunk_overlap'] * 1e9)
+        except Exception as e:
+            fail(f"Could not find 'strax_chunk_length' and/or'strax_chunk_overlap' in "
+                 f"rundoc: {str(e)}")
 
         if not n_readout_threads:
             fail(f"Run doc for {run_id} has no readout thread count info")
@@ -880,9 +886,6 @@ def process_run(rd, send_heartbeats=True):
             process_mode = infer_mode(rd, loc)
         else:
             process_mode = dict(cores=args.cores, max_messages=args.max_messages)
-
-        daq_chunk_duration = int(rd['ini']['strax_chunk_length'] * 1e9)
-        daq_overlap_chunk_duration = int(rd['ini']['strax_chunk_overlap'] * 1e9)
 
         strax_proc = multiprocessing.Process(
             target=run_strax,
