@@ -66,6 +66,12 @@ export, __all__ = strax.exporter()
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
 
+    strax.Option(
+        'allow_sloppy_chunking',
+        default=False, track=False,
+        help=('Use a default baseline for incorrectly chunked fragments. '
+              'This is a kludge for improperly converted XENON1T data.')),
+
 )
 class PulseProcessing(strax.Plugin):
     """
@@ -133,6 +139,7 @@ class PulseProcessing(strax.Plugin):
 
         strax.baseline(r,
                        baseline_samples=self.config['baseline_samples'],
+                       allow_sloppy_chunking=self.config['allow_sloppy_chunking'],
                        flip=True)
 
         strax.integrate(r)
