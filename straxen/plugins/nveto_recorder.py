@@ -126,8 +126,7 @@ def compute_lone_records(lone_record, nveto_channels, n):
     res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119+1-ch0))
 
     # buffer for lone_records to be stored:
-    max_nfrag = np.max(lone_record['record_i']) + 1  # We do not know the number of fragments apriori...
-                                                     # +1 in case it is zero.
+    max_nfrag = np.max(lone_record['record_i'], initial=1)  # We do not know the number of fragments apriori...
     lone_ids = np.ones((ch119 + 1 - ch0, n * max_nfrag), dtype=np.int32) * -1
     _compute_lone_records(lone_record, res[0], lone_ids, n, nveto_channels)
     lone_ids = lone_ids.flatten()
