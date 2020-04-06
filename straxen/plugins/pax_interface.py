@@ -53,8 +53,6 @@ def pax_to_records(input_filename,
         # In strax data, records are always stored
         # sorted, baselined and integrated
         records = strax.sort_by_time(records)
-        strax.baseline(records)
-        strax.integrate(records)
         print("Returning %d records" % len(records))
         results = []
         return records
@@ -74,7 +72,7 @@ def pax_to_records(input_filename,
         n_records_tot = records_needed(pulse_lengths,
                                        samples_per_record).sum()
         records = np.zeros(n_records_tot,
-                           dtype=strax.record_dtype(samples_per_record))
+                           dtype=strax.raw_record_dtype(samples_per_record))
         output_record_index = 0  # Record offset in data
 
         for p in event.pulses:
@@ -150,11 +148,25 @@ class RecordsFromPax(strax.Plugin):
         pax_sizes = np.array([os.path.getsize(x)
                               for x in pax_files])
         print(f"Found {len(pax_files)} files, {pax_sizes.sum() / 1e9:.2f} GB")
+        last_endtime = 0
+
         for file_i, in_fn in enumerate(pax_files):
             if (self.config['stop_after_zips']
                     and file_i >= self.config['stop_after_zips']):
                 break
-            yield from pax_to_records(
-                in_fn,
-                samples_per_record=self.config['samples_per_record'],
-                events_per_chunk=self.config['events_per_chunk'])
+            for records in pax_to_records(
+                    in_fn,
+                    samples_per_record=self.config['samples_per_record'],
+                    events_per_chunk=self.config['events_per_chunk']):
+
+                if not len(records):
+                    continue
+                if last_endtime == 0:
+                    last_endtime = records[0]['time']
+                new_endtime = strax.endtime(records).max()
+
+                yield self.chunk(start=last_endtime,
+                                 end=new_endtime,
+                                 data=records)
+
+                last_endtime = new_endtime
