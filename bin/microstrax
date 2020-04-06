@@ -18,9 +18,9 @@ def load_context(name, extra_dirs=None):
 
     if extra_dirs is not None:
         for d in extra_dirs:
-            print(d)
             st.storage.append(strax.DataDirectory(d, readonly=True))
 
+    st.context_config['allow_incomplete'] = True
     st.context_config['forbid_creation_of'] = (
             '*',
             # In case someone has an old strax that doesn't support * here:
@@ -46,6 +46,9 @@ def get_data(
     except NameError:
         return "Context not loaded???"
 
+    if len(run_id) != 6 and run_id.isdecimal():
+        run_id = '%06d' % int(run_id)
+
     if max_n <= 0:
         max_n = None
     t0 = st.estimate_run_start(run_id, target)
@@ -55,14 +58,21 @@ def get_data(
         time_range = [t0 + int(start * int(1e9)),
                       t0 + int(end * int(1e9))]
 
-    if not max_n:
-        load_bytes = st.size_mb(run_id, target) * int(1e6)
+    md = st.get_metadata(run_id, target)   # don't catch exception, already nice
+    if not md['chunks']:
+        raise ValueError("No chunks available -- either the first chunk has "
+                         "yet to be written, or something is wrong.")
+    full_run_bytes = st.size_mb(run_id, target) * int(1e6)
+
+    if time_range is None and 'start' in md and 'end' in md:
+        time_range = [md['start'], md['end']]
+
+    if time_range is None or not max_n:
+        # We have to load all the data
+        load_bytes = full_run_bytes
 
     else:
         # Let's see how much we really need to load, given max_n.
-        md = st.get_metadata(run_id, target)
-        if time_range is None:
-            time_range = [md['start'], md['end']]
         load_at_least_n = 0
         load_bytes = 0
         for chunk_info in md['chunks']:

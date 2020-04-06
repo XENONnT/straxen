@@ -7,6 +7,15 @@ import straxen
 export, __all__ = strax.exporter()
 
 
+# These are also needed in peaklets, since hitfinding is repeated
+HITFINDER_OPTIONS = tuple([
+    strax.Option(
+        'hit_min_amplitude',
+        default=15,
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number.')])
+
+
 @export
 @strax.takes_config(
     strax.Option('hev_gain_model',
@@ -51,11 +60,6 @@ export, __all__ = strax.exporter()
         default=(3, 20),
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
-        'hit_min_amplitude',
-        default=15,
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number.'),
-    strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
     strax.Option(
@@ -63,7 +67,12 @@ export, __all__ = strax.exporter()
         default=True, track=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
-)
+    strax.Option(
+        'allow_sloppy_chunking',
+        default=False, track=False,
+        help=('Use a default baseline for incorrectly chunked fragments. '
+              'This is a kludge for improperly converted XENON1T data.')),
+    *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
     1. Split raw_records into:
@@ -130,6 +139,7 @@ class PulseProcessing(strax.Plugin):
 
         strax.baseline(r,
                        baseline_samples=self.config['baseline_samples'],
+                       allow_sloppy_chunking=self.config['allow_sloppy_chunking'],
                        flip=True)
 
         strax.integrate(r)

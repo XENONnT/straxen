@@ -87,14 +87,17 @@ def xenonnt_online(output_folder='./strax_data',
         ],
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register(straxen.DAQReader)
+    st.register([straxen.DAQReader, straxen.LEDCalibration])
 
     if not we_are_the_daq:
-        st.storage.append(
+        st.storage += [
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/raw',
                 readonly=True,
-                take_only='raw_records'))
+                take_only='raw_records'),
+            strax.DataDirectory(
+                '/dali/lgrandi/xenonnt/processed',
+                readonly=True)]
         if output_folder:
             st.storage.append(
                 strax.DataDirectory(output_folder))
@@ -104,6 +107,18 @@ def xenonnt_online(output_folder='./strax_data',
     st.context_config['check_available'] = ('raw_records',)
 
     return st
+
+
+def xenonnt_led(**kwargs):
+    st = xenonnt_online(**kwargs)
+    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    # Return a new context with only raw_records and led_calibration registered
+    return st.new_context(
+        replace=True,
+        register=[straxen.DAQReader, straxen.LEDCalibration],
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)
 
 
 def nt_simulation():
@@ -180,7 +195,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
                 provide_run_metadata=False),
             strax.DataDirectory(output_folder,
                                 provide_run_metadata=False)],
-        register=straxen.plugins.pax_interface.RecordsFromPax,
+        register=straxen.RecordsFromPax,
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
@@ -189,6 +204,16 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
             else ('raw_records', 'records', 'peaklets')),
         **common_opts)
 
+def xenon1t_led(**kwargs):
+    st = xenon1t_dali(**kwargs)
+    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    # Return a new context with only raw_records and led_calibration registered
+    return st.new_context(
+        replace=True,
+        register=[straxen.RecordsFromPax, straxen.LEDCalibration],
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)
 
 nveto_common_opts = dict(
     register_all=[
