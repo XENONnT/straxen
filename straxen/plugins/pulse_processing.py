@@ -88,7 +88,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     parallel = 'process'
     rechunk_on_save = False
