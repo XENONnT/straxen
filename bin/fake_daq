@@ -93,8 +93,10 @@ def main():
 
     if args.detector == 'tpc':
         source = st.get_iter(args.input_run, 'raw_records')
+        sampling = 10  # Hardcoded these numbers since records might be empty.
     elif args.detector == 'nveto':
         source = st.get_iter(args.input_run, 'nveto_pre_raw_records')
+        sampling = 2
     else:
         raise ValueError('Detector type not supported.')
 
@@ -130,7 +132,7 @@ def main():
             run_start = records['time'][0]
             get_run_start = False
         records['time'] = records['time'] - run_start
-        assert np.all(records['time'] % records['dt'][0] == 0)
+        assert np.all(records['time'] % sampling == 0)
 
         chunk_sizes.append(records.nbytes)
         result = []
