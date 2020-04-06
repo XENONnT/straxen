@@ -52,7 +52,7 @@ class nVETORecorder(strax.Plugin):
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
-    def compute(self, raw_records_prenv):
+    def compute(self, raw_records_prenv, start, end):
 
         strax.zero_out_of_bounds(raw_records_prenv)
 
@@ -74,6 +74,9 @@ class nVETORecorder(strax.Plugin):
                        flip=True)
         strax.integrate(lr)
         lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records'])
+        lrc['time'] = start
+        lrc['endtime'] = end
+    
         return {'raw_records_nv': rr,
                 'lone_raw_records_nv': lr,
                 'lone_raw_record_statistics_nv': lrc}
@@ -82,8 +85,8 @@ class nVETORecorder(strax.Plugin):
 @export
 def lone_record_statistics_dtype(n_channels):
     return [
-        (('Lowest start time observed in the chunk', 'time'), np.int64),
-        (('Highest end time observed in the chunk', 'endtime'), np.int64),
+        (('Start time of the chunk', 'time'), np.int64),
+        (('Endtime of the chunk', 'endtime'), np.int64),
         (('Channel of the lone record', 'channel'),
          (np.int32, n_channels)),
         (('Total number of lone record fragments', 'nfragments'),
@@ -101,7 +104,7 @@ def lone_record_statistics_dtype(n_channels):
     ]
 
 
-def compute_lone_records(lone_record, nveto_channels, n):
+def compute_lone_records(lone_records, nveto_channels, n):
     """
     Function which returns for each data chunk the specified number of
     lone_records and computes for the rest some basic properties.
@@ -121,18 +124,20 @@ def compute_lone_records(lone_record, nveto_channels, n):
             purposes. The array shape is of the raw_records dtype.
     """
     ch0, ch119 = nveto_channels
+    
+    if len(lone_records):
+        # Results computation of lone records:
+        res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119+1-ch0))
 
-    # Results computation of lone records:
-    res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119+1-ch0))
-
-    # buffer for lone_records to be stored:
-    max_nfrag = np.max(lone_record['record_i'], initial=1)  # We do not know the number of fragments apriori...
-    lone_ids = np.ones((ch119 + 1 - ch0, n * max_nfrag), dtype=np.int32) * -1
-    _compute_lone_records(lone_record, res[0], lone_ids, n, nveto_channels)
-    lone_ids = lone_ids.flatten()
-    lone_ids = lone_ids[lone_ids >= 0]
-
-    return res, lone_record[lone_ids]
+        # buffer for lone_records to be stored:
+        max_nfrag = np.max(lone_records['record_i'], initial=1)  # We do not know the number of fragments apriori...
+        lone_ids = np.ones((ch119 + 1 - ch0, n * max_nfrag), dtype=np.int32) * -1
+        _compute_lone_records(lone_records, res[0], lone_ids, n, nveto_channels)
+        lone_ids = lone_ids.flatten()
+        lone_ids = lone_ids[lone_ids >= 0]
+        return res, lone_records[lone_ids]
+    return np.zeros(0, dtype=lone_record_statistics_dtype(ch119+1-ch0)), lone_records
+        
 
 
 @numba.njit(nogil=True, cache=True)
