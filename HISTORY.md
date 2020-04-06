@@ -1,3 +1,12 @@
+0.7.2 / 2020-04-06
+------------------
+- LED plugin and contexts (#42)
+- Hitfinder fixes (adc65b, 5d1424)
+- Bootstrax updates (#83, 93496b)
+- Microstrax updates (855d18, 855d18)
+- nT context / runDB updates (7cd138, 121e36)
+
+
 0.7.1 / 2020-03-30
 ------------------
 - Rename raw_records_lowgain to raw_records_he (#72)
