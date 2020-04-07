@@ -10,7 +10,8 @@ common_opts = dict(
         straxen.pulse_processing,
         straxen.peaklet_processing,
         straxen.peak_processing,
-        straxen.event_processing],
+        straxen.event_processing,
+        straxen.double_scatter],
     store_run_fields=(
         'name', 'number',
         'reader.ini.name', 'tags.name',

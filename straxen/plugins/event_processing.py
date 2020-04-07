@@ -74,47 +74,73 @@ class Events(strax.OverlapWindowPlugin):
 
 
 @export
+@strax.takes_config(
+    strax.Option(
+        name='allow_posts2_s1s', default=False,
+        help="Allow S1s past the main S2 to become the main S1 and S2"),
+    strax.Option(
+        name='force_main_before_alt', default=False,
+        help="Make the alternate S1 (and likewise S2) the main S1 if "
+             "if occurs before the main S1.")
+)
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.3.0'
+    __version__ = '0.5.2'
+
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
 
+    # Properties to store for each peak (main and alternate S1 and S2)
+    peak_properties = (
+        # name                dtype       comment
+        ('time',              np.int64,   'start time since unix epoch [ns]'),
+        ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
+        ('endtime',           np.int64,   'end time since unix epoch [ns]'),
+        ('area',              np.float32, 'area, uncorrected [PE]'),
+        ('n_channels',        np.int32,   'count of contributing PMTs'),
+        ('n_competing',       np.float32, 'number of competing PMTs'),
+        ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
+        ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'))
+
     def infer_dtype(self):
-        dtype = [(('Number of peaks in the event',
-                   'n_peaks'), np.int32),
-                 (('Drift time between main S1 and S2 in ns',
-                   'drift_time'), np.int64)]
-        for i in [1, 2]:
-            dtype += [
-                ((f'Main S{i} peak index',
-                  f's{i}_index'), np.int32),
-                ((f'Main S{i} time since unix epoch [ns]',
-                  f's{i}_time'), np.int64),
-                ((f'Main S{i} weighted center time since unix epoch [ns]',
-                  f's{i}_center_time'), np.int64),
-                ((f'Alternate S{i} time since unix epoch [ns]',
-                  f'alt_s{i}_time'), np.int64),
-                ((f'Alternate S{i} weighted center time since unix epoch [ns]',
-                  f'alt_s{i}_center_time'), np.int64),
-                ((f'Main S{i} area, uncorrected [PE]',
-                  f's{i}_area'), np.float32),
-                ((f'Main S{i} area fraction top',
-                  f's{i}_area_fraction_top'), np.float32),
-                ((f'Main S{i} width, 50% area [ns]',
-                  f's{i}_range_50p_area'), np.float32),
-                ((f'Main S{i} number of competing peaks',
-                  f's{i}_n_competing'), np.int32),
-                ((f'Area of alternate S{i} in event [PE]',
-                  f'alt_s{i}_area'), np.float32),
-                ((f'Drift time using alternate S{i} [ns]',
-                  f'alt_s{i}_interaction_drift_time'), np.float32)]
-        dtype += [('x_s2', np.float32,
-                   'Main S2 reconstructed X position, uncorrected [cm]',),
-                  ('y_s2', np.float32,
-                   'Main S2 reconstructed Y position, uncorrected [cm]',)]
+        # Basic event properties
+        dtype = []
         dtype += strax.time_fields
+        dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
+                  ('drift_time', np.int32,
+                   'Drift time between main S1 and S2 in ns')]
+
+        for i in [1, 2]:
+            # Peak indices
+            dtype += [
+                (f's{i}_index', np.int32,
+                 f'Main S{i} peak index in event'),
+                (f'alt_s{i}_index', np.int32,
+                 f'Alternate S{i} peak index in event')]
+
+            # Peak properties
+            for name, dt, comment in self.peak_properties:
+                dtype += [
+                    (f's{i}_{name}', dt, f'Main S{i} {comment}'),
+                    (f'alt_s{i}_{name}', dt, f'Alternate S{i} {comment}')]
+
+            # Drifts and delays
+            dtype += [
+                (f'alt_s{i}_interaction_drift_time', np.int32,
+                 f'Drift time using alternate S{i} [ns]'),
+                (f'alt_s{i}_delay', np.int32,
+                 f'Time between main and alternate S{i} [ns]')]
+
+        # S2 positions
+        dtype += [('s2_x', np.float32,
+                   'Main S2 reconstructed X position, uncorrected [cm]'),
+                  ('s2_y', np.float32,
+                   'Main S2 reconstructed Y position, uncorrected [cm]'),
+                  ('alt_s2_x', np.float32,
+                   'Alternate S2 reconstructed X position, uncorrected [cm]'),
+                  ('alt_s2_y', np.float32,
+                   'Alternate S2 reconstructed Y position, uncorrected [cm]')]
 
         return dtype
 
@@ -124,44 +150,59 @@ class EventBasics(strax.LoopPlugin):
                       endtime=strax.endtime(event))
         if not len(peaks):
             return result
-
         main_s = dict()
         secondary_s = dict()
+
+        # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
+
+            # Which properties do we need?
+            to_store = [name for name, _, _ in self.peak_properties]
+            if s_i == 2:
+                to_store += ['x', 'y']
+
+            # Find all peaks of this type (S1 or S2)
             s_mask = peaks['type'] == s_i
-
-            # For determining the main / alternate S1s,
-            # remove all peaks after the main S2 (if there was one)
-            # since these cannot be related to the main S2.
-            # This is why S2 finding happened first.
-            if s_i == 1 and result[f's2_index'] != -1:
-                s_mask &= peaks['time'] < main_s[2]['time']
-
+            if not self.config['allow_posts2_s1s']:
+                # Only peaks *before* the main S2 are allowed to be
+                # the main or alternate S1
+                if s_i == 1 and result[f's2_index'] != -1:
+                    s_mask &= peaks['time'] < main_s[2]['time']
             ss = peaks[s_mask]
             s_indices = np.arange(len(peaks))[s_mask]
 
-            if not len(ss):
+            # Decide which of these signals is the main and alternate
+            if len(ss) > 1:
+                # Start by choosing the largest two signals
+                _alt_i, _main_i = np.argsort(ss['area'])[-2:]
+                if (self.config['force_main_before_alt']
+                        and ss[_alt_i]['time'] < ss[_main_i]['time']):
+                    # Promote alternate to main since it occurs earlier
+                    _alt_i, _main_i = _main_i, _alt_i
+            elif len(ss) == 1:
+                _main_i, _alt_i = 0, None
+            else:
+                _alt_i, _main_i = None, None
+
+            # Store main signal properties
+            if _main_i is None:
                 result[f's{s_i}_index'] = -1
-                continue
+            else:
+                main_s[s_i] = ss[_main_i]
+                result[f's{s_i}_index'] = s_indices[_main_i]
+                for name in to_store:
+                    result[f's{s_i}_{name}'] = main_s[s_i][name]
 
-            main_i = np.argmax(ss['area'])
-            result[f's{s_i}_index'] = s_indices[main_i]
+            # Store alternate signal properties
+            if _alt_i is None:
+                result[f'alt_s{s_i}_index'] = -1
+            else:
+                secondary_s[s_i] = ss[_alt_i]
+                result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
+                for name in to_store:
+                    result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
 
-            if ss['n_competing'][main_i] > 0 and len(ss['area']) > 1:
-                # Find second largest S..
-                secondary_s[s_i] = x = ss[np.argsort(ss['area'])[-2]]
-                for prop in ['area', 'time', 'center_time']:
-                    result[f'alt_s{s_i}_{prop}'] = x[prop]
-
-            s = main_s[s_i] = ss[main_i]
-            for prop in ['area', 'area_fraction_top', 'time', 'center_time',
-                         'range_50p_area', 'n_competing']:
-                result[f's{s_i}_{prop}'] = s[prop]
-            if s_i == 2:
-                for q in 'xy':
-                    result[f'{q}_s2'] = s[q]
-
-        # Compute a drift time only if we have a valid S1-S2 pairs
+        # Compute drift times only if we have a valid S1-S2 pair
         if len(main_s) == 2:
             result['drift_time'] = \
                 main_s[2]['center_time'] - main_s[1]['center_time']
@@ -193,7 +234,7 @@ class EventBasics(strax.LoopPlugin):
             (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
 )
 class EventPositions(strax.Plugin):
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     depends_on = ('event_basics',)
     dtype = [
@@ -222,7 +263,7 @@ class EventPositions(strax.Plugin):
     def compute(self, events):
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
 
-        orig_pos = np.vstack([events['x_s2'], events['y_s2'], z_obs]).T
+        orig_pos = np.vstack([events['s2_x'], events['s2_y'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
 
         delta_r = self.map(orig_pos)
@@ -270,8 +311,10 @@ class CorrectedAreas(strax.Plugin):
     __version__ = '0.1.0'
 
     depends_on = ['event_basics', 'event_positions']
-    dtype = [('cs1', np.float32, 'Corrected S1 area (PE)'),
-             ('cs2', np.float32, 'Corrected S2 area (PE)')
+    dtype = [('cs1', np.float32, 'Corrected S1 area [PE]'),
+             ('cs2', np.float32, 'Corrected S2 area [PE]'),
+             ('alt_cs1', np.float32, 'Corrected area of the alternate S1 [PE]'),
+             ('alt_cs2', np.float32, 'Corrected area of the alternate S2 [PE]')
              ] + strax.time_fields
 
     def setup(self):
@@ -282,16 +325,33 @@ class CorrectedAreas(strax.Plugin):
         self.elife = get_elife(self.run_id,self.config['elife_file'])
 
     def compute(self, events):
+        # S1 corrections depend on the actual corrected event position.
+        # We use this also for the alternate S1; for e.g. Kr this is
+        # fine as the S1 correction varies slowly.
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
-        s2_positions = np.vstack([events['x_s2'], events['y_s2']]).T
-        lifetime_corr = np.exp(
-            events['drift_time'] / self.elife)
+
+        # For electron lifetime corrections to the S2s,
+        # use lifetimes computed using the main S1.
+        lifetime_corr = np.exp(events['drift_time'] / self.elife)
+        alt_lifetime_corr = (
+            np.exp((events['alt_s2_interaction_drift_time'])
+                   / self.elife))
+
+        # S2(x,y) corrections use the observed S2 positions
+        s2_positions = np.vstack([events['s2_x'], events['s2_y']]).T
+        alt_s2_positions = np.vstack([events['alt_s2_x'], events['alt_s2_y']]).T
 
         return dict(
             time=events['time'],
             endtime=strax.endtime(events),
+
             cs1=events['s1_area'] / self.s1_map(event_positions),
-            cs2=events['s2_area'] * lifetime_corr / self.s2_map(s2_positions))
+            alt_cs1=events['alt_s1_area'] / self.s1_map(event_positions),
+
+            cs2=(events['s2_area'] * lifetime_corr
+                 / self.s2_map(s2_positions)),
+            alt_cs2=(events['alt_s2_area'] * alt_lifetime_corr
+                     / self.s2_map(alt_s2_positions)))
 
 
 @strax.takes_config(
