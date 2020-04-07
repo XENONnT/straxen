@@ -6,7 +6,6 @@ import straxen
 
 export, __all__ = strax.exporter()
 
-
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
@@ -59,9 +58,11 @@ HITFINDER_OPTIONS = tuple([
         'save_outside_hits',
         default=(3, 20),
         help='Save (left, right) samples besides hits; cut the rest'),
+
     strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
+
     strax.Option(
         'check_raw_record_overlaps',
         default=True, track=False,
@@ -72,6 +73,7 @@ HITFINDER_OPTIONS = tuple([
         default=False, track=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
+
     *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
@@ -111,8 +113,8 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.hev_enabled = (
-            (self.config['hev_gain_model'][0] != 'disabled')
-            and self.config['tail_veto_threshold'])
+                (self.config['hev_gain_model'][0] != 'disabled')
+                and self.config['tail_veto_threshold'])
         if self.hev_enabled:
             self.to_pe = straxen.get_to_pe(
                 self.run_id,
@@ -149,7 +151,6 @@ class PulseProcessing(strax.Plugin):
         if len(r) and self.hev_enabled:
             r, r_vetoed, veto_regions = software_he_veto(
                 r, self.to_pe,
-                self.hit_thresholds,
                 area_threshold=self.config['tail_veto_threshold'],
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
@@ -193,7 +194,7 @@ class PulseProcessing(strax.Plugin):
 ##
 
 @export
-def software_he_veto(records, to_pe, thresholds,
+def software_he_veto(records, to_pe,
                      area_threshold=int(1e5),
                      veto_length=int(3e6),
                      veto_res=int(1e3),
@@ -211,7 +212,6 @@ def software_he_veto(records, to_pe, thresholds,
 
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
-    :param thresholds: Thresholds used in find_hits.
     :param area_threshold: Minimum peak area to trigger the veto.
     Note we use a much rougher clustering than in later processing.
     :param veto_length: Time in ns to veto after the peak
@@ -289,9 +289,7 @@ def software_he_veto(records, to_pe, thresholds,
         left_extension=pass_veto_extend,
         right_extension=pass_veto_extend)
     regions['data'] = 1 - regions['data']
-
     veto = strax.find_hits(regions, min_amplitude=1)
-
     # Do not remove very tiny regions
     veto = veto[veto['length'] > 2 * pass_veto_extend]
 

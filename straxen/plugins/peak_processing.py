@@ -12,7 +12,6 @@ from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 
 
-
 @export
 @strax.takes_config(
     strax.Option('n_top_pmts', default=127,
