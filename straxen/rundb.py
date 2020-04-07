@@ -12,12 +12,8 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-default_mongo_url = (
-    'mongodb://{username}:{password}@rundbcluster-shard-00-00-cfaei.'
-    'gcp.mongodb.net:27017,rundbcluster-shard-00-01-cfaei.gcp.mongodb.net'
-    ':27017,rundbcluster-shard-00-02-cfaei.gcp.mongodb.net:27017/test?'
-    'ssl=true&replicaSet=RunDBCluster-shard-0&authSource=admin')
-default_mongo_dbname = 'xenon1t'
+default_mongo_url = 'zenigata.uchicago.edu:27017/run'
+default_mongo_dbname = 'run'
 default_mongo_collname = 'runs'
 
 
@@ -70,11 +66,12 @@ class RunDB(strax.StorageFrontend):
         self.reader_ini_name_is_mode = reader_ini_name_is_mode
         if self.new_data_path is None:
             self.readonly = True
-
         self.runid_field = runid_field
 
         if self.runid_field not in ['name', 'number']:
             raise ValueError("Unrecognized runid_field option %s" % self.runid_field)
+
+        self.hostname = socket.getfqdn()
 
         if s3_kwargs is None:
             s3_kwargs = dict(
@@ -87,10 +84,17 @@ class RunDB(strax.StorageFrontend):
                     retries=dict(max_attempts=10)))
 
         if mongo_url is None:
-            mongo_url = default_mongo_url
-        self.client = pymongo.MongoClient(mongo_url.format(
-            username=straxen.get_secret('rundb_username'),
-            password=straxen.get_secret('rundb_password')))
+            if self.hostname.endswith('xenon.local'):
+                username = straxen.get_secret('mongo_rdb_username')
+                password = straxen.get_secret('mongo_rdb_password')
+                url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
+            else:
+                username = straxen.get_secret('rundb_username')
+                password = straxen.get_secret('rundb_password')
+                url_base = default_mongo_url
+            mongo_url = f"mongodb://{username}:{password}@{url_base}"
+
+        self.client = pymongo.MongoClient(mongo_url)
 
         if mongo_dbname is None:
             mongo_dbname = default_mongo_dbname
@@ -105,7 +109,6 @@ class RunDB(strax.StorageFrontend):
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
-        self.hostname = socket.getfqdn()
         self.available_query = [{'host': self.hostname}]
         if not self.local_only:
             self.available_query.append({'host': 'ceph-s3'})
@@ -131,7 +134,7 @@ class RunDB(strax.StorageFrontend):
 
         # Check if the run exists
         if self.runid_field == 'name':
-            run_query = {'name': key.run_id}
+            run_query = {'name': str(key.run_id)}
         else:
             run_query = {'number': int(key.run_id)}
         dq = self._data_query(key)
@@ -233,7 +236,18 @@ class RunDB(strax.StorageFrontend):
             yield doc
 
     def run_metadata(self, run_id, projection=None):
-        doc = self.collection.find_one({'name': run_id}, projection=projection)
+        if self.runid_field == 'name':
+            run_id = str(run_id)
+        else:
+            run_id = int(run_id)
+        if isinstance(projection, str):
+            projection = {projection: 1}
+        elif isinstance(projection, (list, tuple)):
+            projection = {x: 1 for x in projection}
+
+        doc = self.collection.find_one(
+            {self.runid_field: run_id},
+            projection=projection)
         if doc is None:
             raise strax.DataNotAvailable
         if self.reader_ini_name_is_mode:
