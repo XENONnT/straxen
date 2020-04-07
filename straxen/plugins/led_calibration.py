@@ -91,7 +91,7 @@ def get_amplitude(raw_records, led_window, noise_window, baseline_window):
     on = np.zeros((len(raw_records)), dtype=_on_off_dtype)
     off = np.zeros((len(raw_records)), dtype=_on_off_dtype)
     for i, r in enumerate(raw_records):
-        r['data'][:] = np.abs(r['data'] - np.sum(r['data'][left_bsl:right_bsl])/bsl_diff)
+        r['data'][:] = -1.*(r['data'] - np.sum(r['data'][left_bsl:right_bsl])/bsl_diff)
         on[i]['amplitude'] = safe_max(r['data'][led_window[0]:led_window[1]])
         on[i]['channel'] = r['channel']
         off[i]['amplitude'] = safe_max(r['data'][noise_window[0]:noise_window[1]])
