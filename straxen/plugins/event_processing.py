@@ -79,18 +79,17 @@ class Events(strax.OverlapWindowPlugin):
         name='allow_posts2_s1s', default=False,
         help="Allow S1s past the main S2 to become the main S1 and S2"),
     strax.Option(
-        name='time_ordering', default=False,
-        help="Allow the time ordering of S1s and S2s peaks")
+        name='force_main_before_alt', default=False,
+        help="Make the alternate S1 (and likewise S2) the main S1 if "
+             "if occurs before the main S1.")
 )
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.5.1'
+    __version__ = '0.5.2'
 
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
-
-
 
     # Properties to store for each peak (main and alternate S1 and S2)
     peak_properties = (
@@ -151,113 +150,71 @@ class EventBasics(strax.LoopPlugin):
                       endtime=strax.endtime(event))
         if not len(peaks):
             return result
-
-        # Token necessary for time ordering in order to compute drift_time and alt_drift_time
-        # of events only if a S1S2 pair is found in the event, otherwise --> KeyError: 'alt_s1_center_time'
-        S1S2pair_token = False
-        alt_S1_token = False
-        alt_S2_token = False
-
-
-
         main_s = dict()
         secondary_s = dict()
-        # (note we consider S2s first, to enable allow_posts2_s1s = False)
+
+        # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
-            
-            s1_delay = 0
-            s2_delay= 0
+
             # Which properties do we need?
             to_store = [name for name, _, _ in self.peak_properties]
             if s_i == 2:
                 to_store += ['x', 'y']
 
-            # Find all peaks of this type (S1 or S2, hereafter Si)
+            # Find all peaks of this type (S1 or S2)
             s_mask = peaks['type'] == s_i
             if not self.config['allow_posts2_s1s']:
+                # Only peaks *before* the main S2 are allowed to be
+                # the main or alternate S1
                 if s_i == 1 and result[f's2_index'] != -1:
                     s_mask &= peaks['time'] < main_s[2]['time']
             ss = peaks[s_mask]
             s_indices = np.arange(len(peaks))[s_mask]
 
-            # Find the main Si
-            if len(ss):
-                _i = np.argmax(ss['area'])
-                main_s[s_i] = ss[_i]
-                result[f's{s_i}_index'] = s_indices[_i]
+            # Decide which of these signals is the main and alternate
+            if len(ss) > 1:
+                # Start by choosing the largest two signals
+                _alt_i, _main_i = np.argsort(ss['area'])[-2:]
+                if (self.config['force_main_before_alt']
+                        and ss[_alt_i]['time'] < ss[_main_i]['time']):
+                    # Promote alternate to main since it occurs earlier
+                    _alt_i, _main_i = _main_i, _alt_i
+            elif len(ss) == 1:
+                _main_i, _alt_i = 0, None
+            else:
+                _alt_i, _main_i = None, None
 
-                # Store main Si properties
+            # Store main signal properties
+            if _main_i is None:
+                result[f's{s_i}_index'] = -1
+            else:
+                main_s[s_i] = ss[_main_i]
+                result[f's{s_i}_index'] = s_indices[_main_i]
                 for name in to_store:
                     result[f's{s_i}_{name}'] = main_s[s_i][name]
 
+            # Store alternate signal properties
+            if _alt_i is None:
+                result[f'alt_s{s_i}_index'] = -1
             else:
-                # No Si in event
-                result[f's{s_i}_index'] = -1
-
-            # Find the secondary Si
-            if len(ss) > 1:
-                _i = np.argsort(ss['area'])[-2]
-                secondary_s[s_i] = ss[_i]
-                result[f'alt_s{s_i}_index'] = s_indices[_i]
-
-                # Store secondary Si properties
+                secondary_s[s_i] = ss[_alt_i]
+                result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
                 for name in to_store:
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
 
-                # Store delay from main Si
-                if s_i == 1:
-                    s1_delay = result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
-                                                   - main_s[s_i]['center_time'])
-                if s_i == 2:
-                    s2_delay = result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
-                                                   - main_s[s_i]['center_time'])
-
-            else:
-                # No secondary Si in event
-                result[f'alt_s{s_i}_index'] = -1
-
-        # Compute drift times only if we have a valid S1-S2 pairs
+        # Compute drift times only if we have a valid S1-S2 pair
         if len(main_s) == 2:
-            S1S2pair_token = True
             result['drift_time'] = \
                 main_s[2]['center_time'] - main_s[1]['center_time']
             if 1 in secondary_s:
-                alt_S1_token=True
                 result['alt_s1_interaction_drift_time'] = \
                     main_s[2]['center_time'] - secondary_s[1]['center_time']
             if 2 in secondary_s:
-                alt_S2_token=True
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
-
-        # Swap main and secondary peaks properties depending on the si_delay, if the time ordering is active
-        if (self.config['time_ordering']):
-            if (s1_delay < 0):
-                for name in to_store:
-                    temp = result[f's1_{name}']
-                    result[f's1_{name}'] = result[f'alt_s1_{name}']
-                    result[f'alt_s1_{name}'] = temp
-
-
-            if (s2_delay < 0):
-                to_store += ['x', 'y']
-                for name in to_store:
-                    temp = result[f's2_{name}']
-                    result[f's2_{name}'] = result[f'alt_s2_{name}']
-                    result[f'alt_s2_{name}'] = temp
-
-            # Compute drift times and delay with S1s and S2s re-ordered in time
-            if S1S2pair_token:
-                result['drift_time'] = result['s2_center_time'] - result['s1_center_time']
-                if alt_S1_token:
-                    result['alt_s1_interaction_drift_time'] = result['s2_center_time'] - result['alt_s1_center_time']
-                    result['alt_s1_delay'] = result['alt_s1_center_time'] - result['s1_center_time']
-                if alt_S2_token:
-                    result['alt_s2_interaction_drift_time'] = result['alt_s2_center_time'] - result['s1_center_time']
-                    result['alt_s2_delay'] = result['alt_s2_center_time'] - result['s2_center_time']
-
         return result
+
 
 @export
 @strax.takes_config(
