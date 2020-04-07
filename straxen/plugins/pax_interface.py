@@ -138,7 +138,7 @@ class RecordsFromPax(strax.Plugin):
     rechunk_on_save = False
     
     def infer_dtype(self):
-        return strax.record_dtype(self.config['samples_per_record'])
+        return strax.raw_record_dtype(self.config['samples_per_record'])
 
     def iter(self, *args, **kwargs):
         if not os.path.exists(self.config['pax_raw_dir']):
