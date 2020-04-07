@@ -78,6 +78,10 @@ def parse_args():
         '--debug',
         action='store_true',
         help="Enable debug logging to stdout")
+    parser.add_argument(
+        '--build_lowlevel',
+        action='store_true',
+        help='Build low-level data even if the context forbids it.')
     return parser.parse_args()
 
 
@@ -104,6 +108,8 @@ def main(args):
     st.context_config['allow_lazy'] = not (args.notlazy is True)
     st.context_config['timeout'] = args.timeout
     st.context_config['max_messages'] = args.max_messages
+    if args.build_lowlevel:
+        st.context_config['forbid_creation_of'] = tuple()
 
     if args.from_scratch:
         for q in st.storage:
