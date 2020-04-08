@@ -51,7 +51,7 @@ xnt_common_config = dict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
          he=(500, 752),  # high energy
-         aqmon=(799, 807),
+         aqmon=(790, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
          mv_blank=(1999, 1999),
