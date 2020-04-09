@@ -84,7 +84,7 @@ class Events(strax.OverlapWindowPlugin):
              "if occurs before the main S1.")
 )
 class EventBasics(strax.LoopPlugin):
-    __version__ = '0.5.2'
+    __version__ = '0.5.3'
 
     depends_on = ('events',
                   'peak_basics',
@@ -201,6 +201,10 @@ class EventBasics(strax.LoopPlugin):
                 result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
                 for name in to_store:
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
+
+                # Compute delay time properties
+                result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
+                                               - main_s[s_i]['center_time'])
 
         # Compute drift times only if we have a valid S1-S2 pair
         if len(main_s) == 2:
