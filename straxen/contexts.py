@@ -240,8 +240,8 @@ nveto_common_opts = dict(
                      'pulse_basics_nv'
                      ))
 
-def strax_nveto_hdm_test(dnymic_range_05V=False, output_folder='./strax_data'):
-    if dnymic_range_05V:
+def strax_nveto_hdm_test(dynamic_voltage_05V=False, output_folder='./strax_data'):
+    if dynamic_voltage_05V:
         config = {**xnt_common_config, **hdm_daqreader, **hdm_0_5V}
     else:
         config = {**xnt_common_config, **hdm_daqreader}
