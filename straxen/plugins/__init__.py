@@ -21,9 +21,6 @@ from .led_calibration import *
 
 from . import x1t_cuts
 
-from . import daqreader_hdm
-from .daqreader_hdm import *
-
 from . import nveto_recorder
 from .nveto_recorder import *
 
