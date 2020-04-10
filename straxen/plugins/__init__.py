@@ -16,6 +16,9 @@ from .peak_processing import *
 from . import event_processing
 from .event_processing import *
 
+from . import led_calibration
+from .led_calibration import *
+
 from . import x1t_cuts
 
 from . import daqreader_hdm
@@ -26,4 +29,3 @@ from .nveto_recorder import *
 
 from . import nveto_pulse_processing
 from .nveto_pulse_processing import *
-

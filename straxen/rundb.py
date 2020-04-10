@@ -12,8 +12,7 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-default_mongo_url = (
-    'mongodb://{username}:{password}@zenigata.uchicago.edu:27017/run')
+default_mongo_url = 'zenigata.uchicago.edu:27017/run'
 default_mongo_dbname = 'run'
 default_mongo_collname = 'runs'
 
@@ -95,9 +94,7 @@ class RunDB(strax.StorageFrontend):
                 url_base = default_mongo_url
             mongo_url = f"mongodb://{username}:{password}@{url_base}"
 
-        self.client = pymongo.MongoClient(mongo_url.format(
-            username=straxen.get_secret('rundb_username'),
-            password=straxen.get_secret('rundb_password')))
+        self.client = pymongo.MongoClient(mongo_url)
 
         if mongo_dbname is None:
             mongo_dbname = default_mongo_dbname
@@ -243,6 +240,11 @@ class RunDB(strax.StorageFrontend):
             run_id = str(run_id)
         else:
             run_id = int(run_id)
+        if isinstance(projection, str):
+            projection = {projection: 1}
+        elif isinstance(projection, (list, tuple)):
+            projection = {x: 1 for x in projection}
+
         doc = self.collection.find_one(
             {self.runid_field: run_id},
             projection=projection)
