@@ -217,7 +217,6 @@ def xenon1t_led(**kwargs):
 
 nveto_common_opts = dict(
     register_all=[
-       straxen.daqreader_hdm,
        straxen.nveto_recorder,
        straxen.nveto_pulse_processing,
        # TPC plugins to avoid unused settings warning
