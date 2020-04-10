@@ -43,7 +43,7 @@ x1t_common_config = dict(
     save_outside_hits=(3, 3),
     hit_min_amplitude=straxen.adc_thresholds(),
     # Some setting which are required by the fake daq for the nVETO HdM test set-up but not needed otherwise:
-    n_nveto_pmts=32,
+    # n_nveto_pmts=32, <-- commented this line out in order to not to cause warning massages.
 )
 
 xnt_common_config = dict(
@@ -241,7 +241,11 @@ nveto_common_opts = dict(
                      'pulse_basics_nv'
                      ))
 
-def strax_nveto_hdm_test(output_folder='./strax_data'):
+def strax_nveto_hdm_test(dnymic_range_05V=False, output_folder='./strax_data'):
+    if dnymic_range_05V:
+        config = {**xnt_common_config, **hdm_daqreader, **hdm_0_5V}
+    else:
+        config = {**xnt_common_config, **hdm_daqreader}
     return strax.Context(
         storage=[
             strax.DataDirectory(
@@ -250,7 +254,7 @@ def strax_nveto_hdm_test(output_folder='./strax_data'):
                 readonly=True),
             strax.DataDirectory(output_folder,
                                 provide_run_metadata=False)],
-        config={**xnt_common_config, **hdm_daqreader},
+        config=config,
         **nveto_common_opts)
 
 # HdM test specific configurations;
@@ -259,23 +263,6 @@ hdm_daqreader = dict(digitizer_sampling_resolution=2,
                      coincidence_level=2,
                      )
 
-def strax_nveto_hdm_test_0_5V(output_folder='./strax_data'):
-    return strax.Context(
-        storage=[
-            strax.DataDirectory(
-                '/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/strax_data',
-                provide_run_metadata=False,
-                readonly=True),
-            strax.DataDirectory(output_folder,
-                                provide_run_metadata=False)],
-        config={**xnt_common_config, **hdm_daqreader_0_5V},
-        **nveto_common_opts)
-    # raise NotImplementedError('This feature is currently not implemented')
-
 # HdM test specific configurations for 0.5 V dynamic range.
-hdm_daqreader_0_5V=dict(digitizer_sampling_resolution=2,
-                     n_readout_threads=8,
-                     coincidence_level=2,
-                     hit_min_amplitude_nv=60,
-                     voltage=0.5
-                     )
+hdm_0_5V=dict(hit_min_amplitude_nv=60,
+              voltage=0.5)
