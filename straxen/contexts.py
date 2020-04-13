@@ -141,6 +141,7 @@ def demo():
             storage=[strax.DataDirectory('./strax_data'),
                      strax.DataDirectory('./strax_test_data', readonly=True)],
             register=straxen.RecordsFromPax,
+            free_options=('channel_map',),
             forbid_creation_of=('raw_records',),
             config=dict(**x1t_common_config),
             **common_opts)
@@ -164,15 +165,6 @@ def fake_daq():
         **common_opts)
 
 
-def strax_workshop_dali():
-    warnings.warn(
-        "The strax_workshop_dali context is deprecated and will "
-        "be removed in April 2020. Please use "
-        "straxen.contexts.xenon1t_dali() instead.",
-        DeprecationWarning)
-    return xenon1t_dali()
-
-
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
     return strax.Context(
         storage=[
@@ -189,6 +181,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
             strax.DataDirectory(output_folder,
                                 provide_run_metadata=False)],
         register=straxen.RecordsFromPax,
+        free_options=('channel_map',),
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
@@ -205,6 +198,7 @@ def xenon1t_led(**kwargs):
     return st.new_context(
         replace=True,
         register=[straxen.RecordsFromPax, straxen.LEDCalibration],
+        free_options=('channel_map',),
         config=st.config,
         storage=st.storage,
         **st.context_config)

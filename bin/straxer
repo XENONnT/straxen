@@ -128,12 +128,12 @@ def main(args):
     t_end = md['end'].timestamp()
     run_duration = t_end - t_start
 
-    # TODO: this gives a warning if the raw_record creator plugin doesn't need this
     st.config['run_start_time'] = md['start'].timestamp()
+    st.context_config['free_options'] = tuple(
+        list(st.context_config['free_options']) + ['run_start_time'])
 
     process = psutil.Process(os.getpid())
     peak_ram = 0
-
 
     def get_results():
         kwargs = dict(
