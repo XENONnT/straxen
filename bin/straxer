@@ -22,7 +22,7 @@ def parse_args():
         help="ID of the run to process; usually the run name.")
     parser.add_argument(
         '--context',
-        default='strax_workshop_dali',
+        default='xenon1t_dali',
         help="Name of straxen context to use")
     parser.add_argument(
         '--target',
