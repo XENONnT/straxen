@@ -41,8 +41,8 @@ def parse_args():
               "Lower to reduce memory usage, at increasing risk of deadlocks."))
     parser.add_argument(
         '--timeout',
-        default=60, type=int,
-        help=("Strax' internal mailbox timeout in seconds"))
+        default=None, type=int,
+        help="Strax' internal mailbox timeout in seconds")
     parser.add_argument(
         '--workers',
         default=1, type=int,
@@ -106,7 +106,8 @@ def main(args):
     st.context_config['allow_multiprocess'] = args.multiprocess
     st.context_config['allow_shm'] = args.shm
     st.context_config['allow_lazy'] = not (args.notlazy is True)
-    st.context_config['timeout'] = args.timeout
+    if args.timeout is not None:
+        st.context_config['timeout'] = args.timeout
     st.context_config['max_messages'] = args.max_messages
     if args.build_lowlevel:
         st.context_config['forbid_creation_of'] = tuple()
