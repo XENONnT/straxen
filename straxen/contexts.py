@@ -1,6 +1,6 @@
 import warnings
 
-from frozendict import frozendict
+from immutabledict import immutabledict
 import strax
 import straxen
 
@@ -23,7 +23,7 @@ common_opts = dict(
 x1t_common_config = dict(
     check_raw_record_overlaps=False,
     n_tpc_pmts=248,
-    channel_map=frozendict(
+    channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         tpc=(0, 247),
         diagnostic=(248, 253),
@@ -47,7 +47,7 @@ xnt_common_config = dict(
     n_tpc_pmts=494,
     gain_model=('to_pe_constant',
                 0.005),
-    channel_map=frozendict(
+    channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
          he=(500, 752),  # high energy

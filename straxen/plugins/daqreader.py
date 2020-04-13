@@ -3,7 +3,7 @@ import os
 import shutil
 import warnings
 
-from frozendict import frozendict
+from immutabledict import immutabledict
 import numpy as np
 import numba
 
@@ -55,8 +55,8 @@ class ArtificialDeadtimeInserted(UserWarning):
                       "interior to peaklets."),
     strax.Option('erase', default=False, track=False,
                  help="Delete reader data after processing"),
-    strax.Option('channel_map', track=False, type=frozendict,
-                 help="frozendict mapping subdetector to (min, max) "
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
                       "channel number."))
 class DAQReader(strax.Plugin):
     """Read the XENONnT DAQ
@@ -69,7 +69,7 @@ class DAQReader(strax.Plugin):
         'raw_records_aqmon',
         'raw_records_mv')
 
-    data_kind = frozendict(zip(provides, provides))
+    data_kind = immutabledict(zip(provides, provides))
     depends_on = tuple()
     parallel = 'process'
     rechunk_on_save = False
@@ -315,7 +315,7 @@ class Fake1TDAQReader(DAQReader):
         'raw_records_diagnostic',
         'raw_records_aqmon')
 
-    data_kind = frozendict(zip(provides, provides))
+    data_kind = immutabledict(zip(provides, provides))
 
 
 @export
