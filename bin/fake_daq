@@ -33,7 +33,7 @@ parser.add_argument('--shm', action='store_true',
                     help='Operate in /dev/shm')
 parser.add_argument( '--no_run_metadata',
                      action='store_true',
-                     help='Refresh even if you have lost the run metadata. '
+                     help='Produce Fake DAQ data even if you have lost the run metadata. '
                           'Some useful sanity checks will be disabled.')
 parser.add_argument('--chunk_duration', default=2., type=float,
                     help='Chunk size in sec (not ns)')
@@ -74,6 +74,7 @@ def main():
     os.makedirs(output_dir)
 
     # Copy over metadata
+    run_start = None
     if not args.no_run_metadata:
         run_md = st.run_metadata(args.input_run)
         st2 = st.new_context(storage=strax.DataDirectory(output_dir),
@@ -105,7 +106,6 @@ def main():
     input_exhausted = False
 
     chunk_i = -1
-    get_run_start = True
     while len(buffer) or not input_exhausted:
         chunk_i += 1
         desired_end = (
@@ -128,9 +128,8 @@ def main():
         payload_t_end = desired_end
 
         # Restore baseline, clear metadata, fix time
-        if get_run_start:
+        if run_start is None:
             run_start = records['time'][0]
-            get_run_start = False
         records['time'] = records['time'] - run_start
         assert np.all(records['time'] % sampling == 0)
 
