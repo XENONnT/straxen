@@ -215,32 +215,42 @@ def xenon1t_led(**kwargs):
         storage=st.storage,
         **st.context_config)
 
-nveto_common_opts = dict(
-    register_all=[
-       straxen.nveto_recorder,
-       straxen.nveto_pulse_processing,
-       # TPC plugins to avoid unused settings warning
-       straxen.pulse_processing,
-       straxen.peaklet_processing,
-       straxen.peak_processing,
-       straxen.event_processing
-    ],
-    store_run_fields=(
-        'name', 'number',
-        'reader.ini.name', 'tags.name',
-        'start', 'end', 'livetime',
-        'trigger.events_built'),
-    check_available=('raw_records_prenv',
-                     'raw_records_aqmonnv',
-                     'raw_records_nv',
-                     'lone_raw_records_nv',
-                     'lone_raw_record_statistics_nv',
-                     'records_nv',
-                     'pulse_edges_nv',
-                     'pulse_basics_nv'
-                     ))
 
 def strax_nveto_hdm_test(dynamic_voltage_05V=False, output_folder='./strax_data'):
+    nveto_common_opts = dict(
+        register_all=[
+            straxen.nveto_recorder,
+            straxen.nveto_pulse_processing,
+            # TPC plugins to avoid unused settings warning
+            straxen.pulse_processing,
+            straxen.peaklet_processing,
+            straxen.peak_processing,
+            straxen.event_processing
+        ],
+        store_run_fields=(
+            'name', 'number',
+            'reader.ini.name', 'tags.name',
+            'start', 'end', 'livetime',
+            'trigger.events_built'),
+        check_available=('raw_records_prenv',
+                         'raw_records_aqmonnv',
+                         'raw_records_nv',
+                         'lone_raw_records_nv',
+                         'lone_raw_record_statistics_nv',
+                         'records_nv',
+                         'pulse_edges_nv',
+                         'pulse_basics_nv'
+                         ))
+
+    # HdM test specific configurations;
+    hdm_daqreader = dict(digitizer_sampling_resolution=2,
+                         n_readout_threads=8,
+                         coincidence_level=2,
+                         )
+    # HdM test specific configurations for 0.5 V dynamic range.
+    hdm_0_5V = dict(hit_min_amplitude_nv=60,
+                    voltage=0.5)
+
     if dynamic_voltage_05V:
         config = {**xnt_common_config, **hdm_daqreader, **hdm_0_5V}
     else:
@@ -255,13 +265,3 @@ def strax_nveto_hdm_test(dynamic_voltage_05V=False, output_folder='./strax_data'
                                 provide_run_metadata=False)],
         config=config,
         **nveto_common_opts)
-
-# HdM test specific configurations;
-hdm_daqreader = dict(digitizer_sampling_resolution=2,
-                     n_readout_threads=8,
-                     coincidence_level=2,
-                     )
-
-# HdM test specific configurations for 0.5 V dynamic range.
-hdm_0_5V=dict(hit_min_amplitude_nv=60,
-              voltage=0.5)
