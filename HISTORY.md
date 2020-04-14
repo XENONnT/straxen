@@ -1,3 +1,12 @@
+0.7.3 / 20200-04-13
+-------------------
+- Upgrade EventBasics (#65, #67, #68)
+- Double scatter treemakers (#65, #67)
+- Update pax converter for new strax (#87)
+- Fix for LED processing (#84)
+- Minor fixes for some warning messages
+
+
 0.7.2 / 2020-04-06
 ------------------
 - LED plugin and contexts (#42)

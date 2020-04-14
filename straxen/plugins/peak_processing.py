@@ -129,11 +129,7 @@ class PeakPositions(strax.Plugin):
 
     def setup(self):
         import tensorflow as tf
-        self.has_tf2 = parse_version(tf.__version__) > parse_version('2.0.a')
-        if self.has_tf2:
-            keras = tf.keras
-        else:
-            import keras
+        keras = tf.keras
 
         nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
         # badPMTList was inserted by a very clever person into the keras json
@@ -149,7 +145,7 @@ class PeakPositions(strax.Plugin):
                                  bad_pmts)
 
         # Keras needs a file to load its weights. We can't put the load
-        # inside the context, then it would break on windows
+        # inside the context, then it would break on Windows,
         # because there temporary files cannot be opened again.
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(get_resource(self.config['nn_weights'],
@@ -159,47 +155,33 @@ class PeakPositions(strax.Plugin):
         os.remove(fname)
         self.nn = nn
 
-        if not self.has_tf2:
-            # Workaround for using keras/tensorflow in a threaded environment.
-            # See: https://github.com/keras-team/keras/issues/
-            # 5640#issuecomment-345613052
-            self.nn._make_predict_function()
-            self.graph = tf.get_default_graph()
-
     def compute(self, peaks):
+        result = np.ones(len(peaks), dtype=self.dtype)
+        result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
+        result['x'] *= float('nan')
+        result['y'] *= float('nan')
+
         # Keep large peaks only
         peak_mask = peaks['area'] > self.config['min_reconstruction_area']
-        x = peaks['area_per_channel'][peak_mask, :]
-
-        if len(x) == 0:
+        if not np.sum(peak_mask):
             # Nothing to do, and .predict crashes on empty arrays
-            return dict(x=np.zeros(0, dtype=np.float32),
-                        y=np.zeros(0, dtype=np.float32))
+            return result
 
-        # Keep good top PMTS
-        x = x[:, :self.config['n_top_pmts']][:, self.pmt_mask]
-
-        # Normalize
+        # Input: normalized hitpatterns in good top PMTs
+        _in = peaks['area_per_channel'][peak_mask, :]
+        _in = _in[:, :self.config['n_top_pmts']][:, self.pmt_mask]
         with np.errstate(divide='ignore', invalid='ignore'):
-            x /= x.sum(axis=1).reshape(-1, 1)
+            _in /= _in.sum(axis=1).reshape(-1, 1)
 
-        result = np.ones((len(peaks), 2), dtype=np.float32) * float('nan')
+        # Output: positions in mm (unfortunately), so convert to cm
+        _out = self.nn.predict(_in) / 10
 
-        if self.has_tf2:
-            y = self.nn.predict(x)
-        else:
-            with self.graph.as_default():
-                y = self.nn.predict(x)
-
-        result[peak_mask, :] = y
-
-        # Convert from mm to cm... why why why
-        result /= 10
-
-        return dict(x=result[:, 0],
-                    y=result[:, 1],
-                    time=peaks['time'],
-                    endtime=strax.endtime(peaks))
+        # Set output in valid rows. Do NOT try result[peak_mask]['x']
+        # unless you want all NaN positions (boolean masks make a copy unless
+        # they are used as the last index)
+        result['x'][peak_mask] = _out[:, 0]
+        result['y'][peak_mask] = _out[:, 1]
+        return result
 
 
 @export
