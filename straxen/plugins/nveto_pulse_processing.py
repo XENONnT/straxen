@@ -564,7 +564,7 @@ def find_split_points(w, min_height=0, min_ratio=0):
         if x > last_max:
             # New max, reset minimum finder state
             # Notice this is AFTER the split check,
-            # to accomodate very fast rising second peaks
+            # to accommodate very fast rising second peaks
             last_max = x
             min_since_max = 99999999999999.9
             min_since_max_i = i
