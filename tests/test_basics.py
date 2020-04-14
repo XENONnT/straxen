@@ -1,6 +1,7 @@
 import tempfile
 import os
 
+import numpy as np
 import straxen
 
 test_run_id = '180423_1021'
@@ -25,6 +26,7 @@ def test_straxen():
             assert len(df) > 0
             assert 'cs1' in df.columns
             assert df['cs1'].sum() > 0
+            assert not np.all(np.isnan(df['x'].values))
 
             # TODO: find a way to break up the tests
             # surely pytest has common startup/cleanup?
