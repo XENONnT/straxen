@@ -346,4 +346,3 @@ def _merge_intervals(start_time, resolving_time):
     intervals[-1] = [start_time[interval_starts[-1]], start_time[-1] + resolving_time]
 
     return intervals
-
