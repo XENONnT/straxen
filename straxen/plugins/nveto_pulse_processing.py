@@ -11,7 +11,7 @@ __all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges', 'nVETOPulseBasics']
 @export
 @strax.takes_config(
     strax.Option(
-        'nveto_save_outside_hits',
+        'save_outside_hits_nv',
         default=(3, 15), track=True,
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
@@ -70,7 +70,7 @@ class nVETOPulseProcessing(strax.Plugin):
         # TODO: Finalize hitfinder threshold. Also has to be done in pulse_edges
         hits = strax.find_hits(r, min_amplitude=self.config['hit_min_amplitude_nv'])
 
-        le, re = self.config['nveto_save_outside_hits']
+        le, re = self.config['save_outside_hits_nv']
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
         
@@ -123,7 +123,7 @@ def nveto_pulses_dtype():
 @export
 @strax.takes_config(
     strax.Option(
-        'nveto_save_outside_hits',
+        'save_outside_hits_nv',
         default=(3, 15),
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
@@ -171,7 +171,7 @@ class nVETOPulseEdges(strax.Plugin):
                                        dtype=[(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
                                               (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
                                               (('Channel/PMT number', 'channel'), np.int16)])
-        pulses_nv = concat_overlapping_hits(hits, self.config['nveto_save_outside_hits'], last_hit_in_channel)
+        pulses_nv = concat_overlapping_hits(hits, self.config['save_outside_hits_nv'], last_hit_in_channel)
         pulses_nv = strax.sort_by_time(pulses_nv)
 
         # Check if hits can be split:
@@ -576,14 +576,14 @@ def find_split_points(w, min_height=0, min_ratio=0):
 @export
 @strax.takes_config(
     strax.Option(
-        'nveto_to_pe_file',
+        'to_pe_file_nv',
         default='/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/swt_gains.npy',    # noqa
         help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
     strax.Option(
         'voltage',
         default=2,
-        track=False,
-        help='Voltage range set during measurement. [V]'),
+        track=True,
+        help='Temporal option for digitizer voltage range set during measurement. [V]'),
 )
 class nVETOPulseBasics(strax.Plugin):
     """
@@ -602,7 +602,7 @@ class nVETOPulseBasics(strax.Plugin):
     dtype = nveto_pulses_dtype()
 
     def setup(self):
-        self.to_pe = straxen.get_resource(self.config['nveto_to_pe_file'], 'npy')
+        self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], 'npy')
 
     def compute(self, pulses_nv, records_nv):
         volts_per_adc = self.config['voltage']/2**14*1000

@@ -245,7 +245,7 @@ def strax_nveto_hdm_test(dynamic_voltage_05V=False, output_folder='./strax_data'
     # HdM test specific configurations;
     hdm_daqreader = dict(digitizer_sampling_resolution=2,
                          n_readout_threads=8,
-                         coincidence_level=2,
+                         resolving_time_recorder_nv=2,
                          )
     # HdM test specific configurations for 0.5 V dynamic range.
     hdm_0_5V = dict(hit_min_amplitude_nv=60,
