@@ -87,7 +87,7 @@ def xenonnt_online(output_folder='./strax_data',
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/raw',
                 readonly=True,
-                take_only='raw_records'),
+                take_only=straxen.DAQReader.provides),
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/processed',
                 readonly=True)]
