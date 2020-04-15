@@ -198,7 +198,6 @@ def xenon1t_led(**kwargs):
     return st.new_context(
         replace=True,
         register=[straxen.RecordsFromPax, straxen.LEDCalibration],
-        free_options=('channel_map',),
         config=st.config,
         storage=st.storage,
         **st.context_config)
