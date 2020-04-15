@@ -12,19 +12,20 @@ __all__ = ['nVETORecorder']
 
 
 @strax.takes_config(
-    strax.Option('coincidence_level', type=int, default=4,
+    strax.Option('coincidence_level_recorder_nv', type=int, default=4,
                  help="Required coincidence level."),
-    strax.Option('resolving_time', type=int, default=600,
+    strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('baseline_samples_lone_records', type=int, default=10, track=False,
+    strax.Option('nbaseline_samples_lone_records_nv', type=int, default=10, track=False,
                  help="Number of samples used in baseline rms calculation"),
-    strax.Option('n_lone_records', type=int, default=2, track=False,
+    strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
     strax.Option('channel_map', track=False, type=frozendict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('n_nveto_pmts', type=int, track=False,
         help='Number of nVETO PMTs'))
+
 class nVETORecorder(strax.Plugin):
     __version__ = '0.0.3'
     parallel = 'process'
@@ -57,7 +58,7 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(raw_records_prenv)
 
         # First we have to split rr into records and lone records:
-        intervals = coincidence(raw_records_prenv, self.config['coincidence_level'], self.config['resolving_time'])
+        intervals = coincidence(raw_records_prenv, self.config['coincidence_level_recorder_nv'], self.config['resolving_time_recorder_nv'])
         mask = rr_in_interval(raw_records_prenv, *intervals.T)
         rr, lone_records = straxen.plugins.pulse_processing._mask_and_not(raw_records_prenv, mask)
 
@@ -70,10 +71,10 @@ class nVETORecorder(strax.Plugin):
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
         strax.baseline(lr,
-                       baseline_samples=self.config['baseline_samples_lone_records'],
+                       baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
                        flip=True)
         strax.integrate(lr)
-        lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records'])
+        lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
         lrc['time'] = start
         lrc['endtime'] = end
     
@@ -331,7 +332,6 @@ def _merge_intervals(start_time, resolving_time):
     gaps = np.diff(start_time, prepend=start_time[0]) > resolving_time
     interval_starts = np.arange(0, len(gaps), 1)
     interval_starts = interval_starts[gaps]
-
     # Creating output
     # There is one more interval than gaps
     intervals = np.zeros((np.sum(gaps) + 1, 2), dtype=np.int64)
