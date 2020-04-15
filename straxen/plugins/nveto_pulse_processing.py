@@ -1,5 +1,6 @@
 import numba
 import numpy as np
+from immutabledict import immutabledict
 
 import strax
 import straxen
@@ -138,6 +139,9 @@ nveto_pulses_dtype = pulse_dtype + [
         'min_split_ratio_nv',
         default=0, track=True,
         help='Min ratio between local maximum and minimum to split pulse (zero to switch this off).'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number.")
 )
 class nVETOPulseEdges(strax.Plugin):
     """
@@ -164,16 +168,21 @@ class nVETOPulseEdges(strax.Plugin):
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
 
         # Merge overlapping hit boundaries to pulses and sort by time:
-        max_channel = np.max(records_nv['channel']) + 1
-        last_hit_in_channel = np.zeros(max_channel,
+        first_channel, last_channel = self.config['channel_map']['nveto']
+        nchannels = last_channel - first_channel + 1
+        last_hit_in_channel = np.zeros(nchannels,
                                        dtype=[(('Start time of the interval (ns since unix epoch)', 'time'), np.int64),
                                               (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
                                               (('Channel/PMT number', 'channel'), np.int16)])
-        pulses_nv = concat_overlapping_hits(hits, self.config['save_outside_hits_nv'], last_hit_in_channel)
+        pulses_nv = concat_overlapping_hits(hits, self.config['save_outside_hits_nv'], last_hit_in_channel, first_channel)
         pulses_nv = strax.sort_by_time(pulses_nv)
 
         # Check if hits can be split:
-        pulses_nv = split_pulses(records_nv, pulses_nv, self.config['min_split_nv'], self.config['min_split_ratio_nv'])
+        pulses_nv = split_pulses(records_nv,
+                                 pulses_nv,
+                                 self.config['channel_map']['nveto'],
+                                 self.config['min_split_nv'],
+                                 self.config['min_split_ratio_nv'])
         return pulses_nv
 
 @export
@@ -182,27 +191,29 @@ class nVETOPulseEdges(strax.Plugin):
 def concat_overlapping_hits(hits,
                             extensions,
                             last_hit_in_channel,
+                            first_channel,
                             _result_buffer=None):
     """
     Function which concatenates overlapping hits into a single one.
 
     Args:
-        hits (strax.hits): hits which should be concatenates if necessary.
-        extensions (tuple): Tuple containing the left an right extension of the
-            hit.
-        last_hit_in_channel (np.array): Structure array of the channel length.
-            The array must be empty and containing the fields "time", "endtime",
-            "channel" and "dt".
+        hits (strax.hits): hits which should be concatenates if
+            necessary.
+        extensions (tuple): Tuple containing the left an right extension
+            of the hit.
+        last_hit_in_channel (np.array): Structure array of the channel
+            length. The array must be empty and containing the fields
+            "time", "endtime","channel" and "dt".
+        first_channel (int): First channel to be expected nveto e.g.
+            2000.
 
     Keyword Args:
         _result_buffer (None): please see strax.growing_result.
 
-    TODO: Somehow when making last_hit_in_channel a keyword argument
-        numba crashes...
-
     Returns:
-        np.array: Array of the pre_nveto_pulses data structure containing the start
-            and end points of the PMT pulses in unix time.
+        np.array: Array of the pre_nveto_pulses data structure
+            containing the start and end points of the PMT pulses in
+            unix time.
     """
     buffer = _result_buffer
     offset = 0
@@ -214,7 +225,7 @@ def concat_overlapping_hits(hits,
         et = h['time'] + int((h['length'] + re) * h['dt'])
         hc = h['channel']
 
-        lhc = last_hit_in_channel[hc]
+        lhc = last_hit_in_channel[hc - first_channel]
         # Have not found any hit in this channel yet:
         if lhc['time'] == 0:
             lhc['time'] = st
@@ -283,7 +294,7 @@ def get_pulse_data(records,
         In order to make use of start_index the function expects
         records and pulse to be sorted in time and channel. 
         In case records stores data with different channels the 
-        user has to keep track of the start index for each indivudal 
+        user has to keep track of the start index for each individual
         channel outside of the function. 
     # TODO: Change this!
 
@@ -376,7 +387,7 @@ def _get_pulse_data(nveto_records,
         nvr_start_time = nvr['time']
         nvr_end_time = int(nvr['pulse_length'] * dt) + nvr_start_time
 
-        if ((nvr_start_time <= hit_start_time <= nvr_end_time) or (nvr_start_time <= hit_end_time <= nvr_end_time)):
+        if (nvr_start_time <= hit_start_time <= nvr_end_time) or (nvr_start_time <= hit_end_time <= nvr_end_time):
             # We have to check if either the start or the end time of a hit is
             # within the current fragment. Due to the left and right extension
             # of the hitfinder it might happen that we extend the hit into a
@@ -443,7 +454,13 @@ def _get_pulse_data(nveto_records,
 @export
 @strax.growing_result(nveto_pulses_dtype, chunk_size=int(1e4))
 @numba.njit(cache=True, nogil=True)
-def split_pulses(records, pulses, min_split_height=25, min_split_ratio=0, _result_buffer=None):
+def split_pulses(records,
+                 pulses,
+                 channels,
+                 min_split_height=25,
+                 min_split_ratio=0,
+                 _result_buffer=None
+                 ):
     """
     Function which checks for a given pulse if the pulse should be
     split.
@@ -465,12 +482,13 @@ def split_pulses(records, pulses, min_split_height=25, min_split_ratio=0, _resul
     """
     buffer = _result_buffer
     offset = 0
-    record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
+    first_channel, last_channel = channels
+    record_offset = np.zeros(last_channel-first_channel+1, np.int32)
     dt = records[0]['dt']
 
     for pulse in pulses:
         # Get data and split pulses:
-        ch = pulse['channel']
+        ch = pulse['channel'] - first_channel
 
         ro = record_offset[ch]
         data, ro = get_pulse_data(records, pulse, start_index=ro, update_pulse_edges=True)
@@ -488,7 +506,7 @@ def split_pulses(records, pulses, min_split_height=25, min_split_ratio=0, _resul
             res = buffer[offset]
             res['time'] = edges_times[ind]
             res['endtime'] = edges_times[ind + 1]
-            res['channel'] = ch
+            res['channel'] = pulse['channel']
             if nedges - 1:
                 res['split_i'] = ind + 1
             else:
@@ -582,6 +600,9 @@ def find_split_points(w, min_height=0, min_ratio=0):
         default=2,
         track=True,
         help='Temporal option for digitizer voltage range set during measurement. [V]'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number.")
 )
 class nVETOPulseBasics(strax.Plugin):
     """
@@ -603,23 +624,34 @@ class nVETOPulseBasics(strax.Plugin):
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], 'npy')
 
     def compute(self, pulses_nv, records_nv):
-        volts_per_adc = self.config['voltage']/2**14*1000
+        mvolts_per_adc = self.config['voltage']/2**14*1000
         npb = np.zeros(len(pulses_nv), nveto_pulses_dtype)
-        npb = compute_properties(pulses_nv, records_nv, self.to_pe, volts_per_adc, npb)
+        npb = compute_properties(pulses_nv,
+                                 records_nv,
+                                 self.to_pe,
+                                 mvolts_per_adc,
+                                 self.config['channel_map']['nveto'],
+                                 npb)
         return npb
 
 @export
 @numba.njit(cache=True, nogil=True)
-def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
+def compute_properties(pulses,
+                       records,
+                       to_pe,
+                       volts_per_adc,
+                       channels,
+                       result_buffer):
     """
     Computes the basic PMT pulse properties.
 
     Args:
-        nveto_pulses (np.array): Array of the nveto_pulses_dtype
-        nveto_records (np.array): Array of the nveto_records_dtype
+        pulses (np.array): Array of the nveto_pulses_dtype
+        records (np.array): Array of the nveto_records_dtype
         to_pe (np.array): Array containing the gain values of the
             different pmt channels. The array should has at least the
             length of max channel + 1.
+        volts_per_adc (float): Conversion factor ADC to Volt.
 
     Returns:
         np.array: Array of the nveto_pulses_dtype.
@@ -627,7 +659,8 @@ def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
     # TODO: None of the width estimates is robust against bipolar noise...
     # TODO: Baseline part is not subtracted yet.
     dt = records['dt'][0]
-    record_offset = np.zeros(np.max(pulses['channel'])+1, np.int32)
+    first_channel, last_channel = channels
+    record_offset = np.zeros(last_channel - first_channel + 1, np.int32)
 
     for pind, pulse in enumerate(pulses):
         # Frequently used quantaties:
@@ -635,9 +668,9 @@ def compute_properties(pulses, records, to_pe, volts_per_adc, result_buffer):
         t = pulse['time']
 
         # Getting data and baseline of the event:
-        ro = record_offset[ch]
+        ro = record_offset[ch-first_channel]
         data, ro = get_pulse_data(records, pulse, start_index=ro)
-        record_offset[ch] = ro
+        record_offset[ch-first_channel] = ro
 
         area, pos_deciles, height, amp_ind = _compute_area_deciles_amplitude(data)
         amp_time = int(amp_ind * dt)

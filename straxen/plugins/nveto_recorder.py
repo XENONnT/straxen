@@ -1,7 +1,7 @@
 import numba
 import numpy as np
 from scipy.ndimage import convolve1d
-from frozendict import frozendict
+from immutabledict import immutabledict
 
 import strax
 import straxen
@@ -20,7 +20,7 @@ __all__ = ['nVETORecorder']
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
-    strax.Option('channel_map', track=False, type=frozendict,
+    strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('n_nveto_pmts', type=int, track=False,
