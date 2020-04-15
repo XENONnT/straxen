@@ -100,9 +100,7 @@ pulse_dtype = [(('Start time of the interval (ns since unix epoch)', 'time'), np
                (('End time of the interval (ns since unix epoch)', 'endtime'), np.int64),
                (('Channel/PMT number', 'channel'), np.int16)]
 
-@export
-def nveto_pulses_dtype():
-    return pulse_dtype + [
+nveto_pulses_dtype = pulse_dtype + [
         (('Area of the PMT pulse in pe', 'area'), np.float32),
         (('Maximum of the PMT pulse in pe/sample', 'height'), np.float32),
         (('Position of the maximum in (minus time)', 'amp_time'), np.int16),
@@ -156,7 +154,7 @@ class nVETOPulseEdges(strax.Plugin):
     provides = 'pulses_nv'
     data_kind = 'pulses_nv'
 
-    dtype = nveto_pulses_dtype()
+    dtype = nveto_pulses_dtype
 
     # def setup(self):
     #     self.hit_thresholds = get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
@@ -179,7 +177,7 @@ class nVETOPulseEdges(strax.Plugin):
         return pulses_nv
 
 @export
-@strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
+@strax.growing_result(nveto_pulses_dtype, chunk_size=int(1e4))
 @numba.njit(nogil=True, cache=True)
 def concat_overlapping_hits(hits,
                             extensions,
@@ -443,7 +441,7 @@ def _get_pulse_data(nveto_records,
 
 
 @export
-@strax.growing_result(nveto_pulses_dtype(), chunk_size=int(1e4))
+@strax.growing_result(nveto_pulses_dtype, chunk_size=int(1e4))
 @numba.njit(cache=True, nogil=True)
 def split_pulses(records, pulses, min_split_height=25, min_split_ratio=0, _result_buffer=None):
     """
@@ -599,14 +597,14 @@ class nVETOPulseBasics(strax.Plugin):
     provides = 'pulse_basics_nv'
 
     data_kind = 'pulses_nv'
-    dtype = nveto_pulses_dtype()
+    dtype = nveto_pulses_dtype
 
     def setup(self):
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], 'npy')
 
     def compute(self, pulses_nv, records_nv):
         volts_per_adc = self.config['voltage']/2**14*1000
-        npb = np.zeros(len(pulses_nv), nveto_pulses_dtype())
+        npb = np.zeros(len(pulses_nv), nveto_pulses_dtype)
         npb = compute_properties(pulses_nv, records_nv, self.to_pe, volts_per_adc, npb)
         return npb
 
