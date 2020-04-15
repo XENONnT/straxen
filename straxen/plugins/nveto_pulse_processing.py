@@ -769,28 +769,26 @@ def get_fwxm(data, index_maximum, percentage=0.5):
     """
     Estimates the left and right edge of a specific height percentage.
 
-    The function searches for the last sample below and above the specified
-    height level on the left and right hand side of the maximum. If the
-    samples are found the width is estimated based upon a linear interpolation
-    between the samples on the left and right side.
-    In case the samples cannot be found for either the right or left hand side
-    the corresponding outer bin edges are use: left 0; right last sample + 1.
-
     Args:
         data (np.array): Data of the pulse.
         index_maximum (ind): Position of the maximum.
 
     Keyword Args:
-        percentage (float): Level for which the witdth shall be computed.
+        percentage (float): Level for which the width shall be computed.
+
+    Notes:
+        The function searches for the last sample below and above the
+        specified height level on the left and right hand side of the
+        maximum. When the samples are found the width is estimated based
+        upon a linear interpolation between the respective samples. In
+        case, that the samples cannot be found for either one of the
+        sides the corresponding outer most bin edges are used: left 0;
+        right last sample + 1.
 
     Returns:
         float: left edge [sample]
         float: right edge [sample]
-
     """
-    #TODO: In case of a single sample hit FWHM is not computed correctly, m becomes zero.
-    #TODO: Case for which all values are the same is not covered yet.
-
     max_val = data[index_maximum]
     max_val = max_val * percentage
 
