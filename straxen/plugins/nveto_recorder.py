@@ -295,7 +295,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     # 1. estimate time difference between fragments:
     start_times = rr['time']
     mask = np.ones(len(start_times), dtype=np.bool_)
-    t_diff = diff(start_times)
+    t_diff = np.diff(start_times, prepend=start_times[0])
 
     # 2. Now we have to check if n-events are within resolving time:
     #   -> use moving average with size n to accumulate time between n-pulses
@@ -328,7 +328,7 @@ def _merge_intervals(start_time, resolving_time):
     """
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
-    gaps = diff(start_time) > resolving_time
+    gaps = np.diff(start_time, prepend=start_time[0]) > resolving_time
     interval_starts = np.arange(0, len(gaps), 1)
     interval_starts = interval_starts[gaps]
 
@@ -347,28 +347,3 @@ def _merge_intervals(start_time, resolving_time):
 
     return intervals
 
-
-@numba.njit(parallel=True, nogil=True)
-def diff(array):
-    """
-    Function which estimates the difference of neighboring values
-    in an array.
-    The output array has the same shape as the input array.
-
-    Args:
-        array (np.array): array of size n
-
-    Note:
-        The input is expected to be sorted.
-
-    returns:
-        np.array: array of size n containing the differences between
-            two successive values. The leading value is set to 0.
-            (Something like array[0] - array [0], just to preserve shape)
-    """
-    length = len(array)
-    res = np.ones(length, dtype=np.int64) * -1
-    res[0] = 0
-    for i in range(length):
-        res[i + 1] = array[i + 1] - array[i]
-    return res
