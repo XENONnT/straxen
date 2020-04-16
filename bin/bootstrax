@@ -172,8 +172,8 @@ wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = f"name start end number bootstrax status " \
-                       f"data.host data.type data.location " \
+bootstrax_projection = f"name start end number bootstrax status mode " \
+                       f"data.host data.type data.location source.type " \
                        f"ini.processing_threads ini.compressor ini.strax_fragment_payload_bytes " \
                        f"ini.strax_chunk_length ini.strax_chunk_overlap".split()
 
@@ -198,6 +198,7 @@ state_doc_id = None  # Set in main loop
 output_folder = eb_directories[hostname]
 if os.access(output_folder, os.W_OK) is not True:
     raise IOError(f'No writing access to {output_folder}')
+
 
 def new_context(cores=args.cores, max_messages=args.max_messages, timeout=60):
     """Create strax context that can access the runs db"""
@@ -376,11 +377,24 @@ def update_usage(pid_process, run_number):
     usage_coll.insert_one(usage)
 
 
-def is_LED_run(rd):
-    """Check if this run is an LED run
-    :return bool"""
-    return 'LED' in str(rd.get('mode'))
+def overide_target(rd):
+    """
+    Check if the target should be overridden based on the mode of the DAQ for this run
+    :param rd: rundoc
+    :return: override": False or LED or raw_records}
+    """
+    # Special modes override target for these
+    led_modes = ['pmtgain', 'pmtap']
+    diagnostic_modes = ['exttrig', 'noise']
 
+    mode = str(rd.get('mode'))
+    print(f'overide_target::\tmode is {mode}, changing target if needed')
+    if np.any([m in mode for m in led_modes]):
+        return 'led_calibration'
+    elif np.any([m in mode for m in diagnostic_modes]):
+        return 'raw_records'
+    else:
+        return False
 
 def set_state(state):
     """Inform the bootstrax collection we're in a different state
@@ -749,7 +763,7 @@ def get_compressor(rd, default_compressor="blosc"):
 ##
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
-              run_start_time, samples_per_record, process_mode, is_LED,
+              run_start_time, samples_per_record, process_mode, target_override,
               daq_chunk_duration, daq_overlap_chunk_duration, debug=False):
     # Clear the swap memory used by npshmmex
     npshmex.shm_clear()
@@ -761,12 +775,13 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
-        if is_LED and target != 'raw_records':
-            # For LED runs override the target and add the LED plugin. Don't do this if we are going to raw_records
-            print(f'This is an LED run! Chaning target from {target} to led_calibration')
-            target = 'led_calibration'
-            # Increase the timeout a little
-            process_mode['timeout'] = process_mode['timeout'] * 5
+        # Never override the target for raw_records because we might be in a save mode
+        if target != 'raw_records' and target_override:
+            print(f'This is an non-standard run. Changing target from {target} to {target_override}')
+            if target_override == 'led_calibration':
+                # Increase the timeout a little
+                process_mode['timeout'] = process_mode['timeout'] * 5
+            target = target_override
 
         st = new_context(**process_mode)
 
@@ -792,7 +807,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
             st_make()
         else:
             prof_file = f'run{run_id}_{args.profile}'
-            if not '.prof' in prof_file:
+            if '.prof' not in prof_file:
                 prof_file += '.prof'
             print(f'starting with profiler, saving as {prof_file}')
             with strax.profile_threaded(prof_file):
@@ -869,8 +884,7 @@ def process_run(rd, send_heartbeats=True):
             target = 'raw_records'
 
         compressor = get_compressor(rd)
-        is_LED = is_LED_run(rd)
-
+        target_override = overide_target(rd)
         try:
             run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
         except Exception as e:
@@ -891,7 +905,7 @@ def process_run(rd, send_heartbeats=True):
         strax_proc = multiprocessing.Process(
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, compressor,
-                  run_start_time, samples_per_record, process_mode, is_LED,
+                  run_start_time, samples_per_record, process_mode, target_override,
                   daq_chunk_duration, daq_overlap_chunk_duration,
                   args.debug))
 
@@ -956,7 +970,7 @@ def process_run(rd, send_heartbeats=True):
                 set_run_state(rd, 'done', **info)
                 set_status_finished(rd)
 
-                if args.keep_live:
+                if not args.keep_live:
                     delete_live_data(rd, loc)
                 break
 
