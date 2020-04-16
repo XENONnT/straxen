@@ -49,6 +49,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
+__version__ = '0.4.0'
 
 import argparse
 from collections import Counter
@@ -72,6 +73,7 @@ import pytz
 import strax
 import straxen
 
+
 logging.basicConfig(level=logging.INFO,
                     format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
 
@@ -90,11 +92,9 @@ parser.add_argument('--target', default='event_info',
 parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
-# TODO change to action
-parser.add_argument('--delete_live', type=str,
-                    # TODO -> set this to yes after testing
-                    default='no',
-                    help="Delete live_data after succesful processing of the run [yes/no]")
+parser.add_argument('--keep_live',  action='store_true',
+                    help="Do not delete live_data after successful processing of the run. "
+                         "Delete the live_data if this flag is not added.")
 parser.add_argument('--max_messages', type=int,
                     default=4,
                     help="number of max mailbox messages")
@@ -114,8 +114,7 @@ args = parser.parse_args()
 ##
 # Configuration
 ##
-
-print(f'---\nTEST VERSION 0.3.5\n---')
+print(f'---\n bootstrax version {__version__}\n---')
 
 # The event builders write to different directories on the respective machines.
 eb_directories = {
@@ -199,13 +198,6 @@ state_doc_id = None  # Set in main loop
 output_folder = eb_directories[hostname]
 if os.access(output_folder, os.W_OK) is not True:
     raise IOError(f'No writing access to {output_folder}')
-
-if args.delete_live.lower() in ['y', 'yes', 'true']:
-    delete_live = True
-else:
-    delete_live = False
-    print(f'Not deleting live data because --delete_live = {args.delete_live}')
-
 
 def new_context(cores=args.cores, max_messages=args.max_messages, timeout=60):
     """Create strax context that can access the runs db"""
@@ -561,7 +553,7 @@ def delete_live_data(live_data_path):
     """After completing the processing and updating the runsDB, remove the
     live_data"""
 
-    if os.path.exists(live_data_path) and delete_live:
+    if os.path.exists(live_data_path) and not args.keep_live:
         print(f'Deleteing data at {live_data_path}')
         shutil.rmtree(live_data_path)
         if os.path.exists(live_data_path):
@@ -955,7 +947,7 @@ def process_run(rd, send_heartbeats=True):
                 set_run_state(rd, 'done', **info)
                 set_status_finished(rd)
 
-                if delete_live:
+                if args.keep_live:
                     delete_live_data(loc)
                 break
 
