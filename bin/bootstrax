@@ -549,19 +549,28 @@ def sufficient_diskspace():
     raise RuntimeError("No diskspace to write to")
 
 
-def delete_live_data(live_data_path):
+def delete_live_data(rd, live_data_path):
     """After completing the processing and updating the runsDB, remove the
     live_data"""
 
     if os.path.exists(live_data_path) and not args.keep_live:
         print(f'Deleteing data at {live_data_path}')
         shutil.rmtree(live_data_path)
-        if os.path.exists(live_data_path):
-            assert False, "we wanted to delete this path!"
     else:
         raise FileNotFoundError(f'Something is off, no folder found '
                                 f'at {live_data_path} but there was '
                                 f'an attempt to delete data here')
+    # Remove the /live_data location from the rundoc
+    if not os.path.exists(live_data_path):
+        locs = []
+        for dd in rd.get('data'):
+            if dd.get('type') != 'live':
+                locs.append(dd)
+        run_coll.find_one_and_update(
+            {'_id': rd['_id']},
+            {'$set': {'data': locs}})
+    else:
+        raise ValueError("Something went wrong we wanted to delete this path!")
 
 
 def clear_shm():
@@ -948,7 +957,7 @@ def process_run(rd, send_heartbeats=True):
                 set_status_finished(rd)
 
                 if args.keep_live:
-                    delete_live_data(loc)
+                    delete_live_data(rd, loc)
                 break
 
             else:
