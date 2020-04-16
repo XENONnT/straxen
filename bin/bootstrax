@@ -73,7 +73,6 @@ import pytz
 import strax
 import straxen
 
-
 logging.basicConfig(level=logging.INFO,
                     format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
 
@@ -114,6 +113,7 @@ args = parser.parse_args()
 ##
 # Configuration
 ##
+
 print(f'---\n bootstrax version {__version__}\n---')
 
 # The event builders write to different directories on the respective machines.
@@ -173,7 +173,7 @@ assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_
 
 # Fields in the run docs that bootstrax uses
 bootstrax_projection = f"name start end number bootstrax status mode " \
-                       f"data.host data.type data.location source.type " \
+                       f"data.host data.type data.location " \
                        f"ini.processing_threads ini.compressor ini.strax_fragment_payload_bytes " \
                        f"ini.strax_chunk_length ini.strax_chunk_overlap".split()
 
