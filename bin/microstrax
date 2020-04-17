@@ -76,7 +76,6 @@ def get_data(
         load_at_least_n = 0
         load_bytes = 0
         for chunk_info in md['chunks']:
-
             if (chunk_info['start'] > time_range[1]
                     or chunk_info['end'] < time_range[0]):
                 # None of this chunk will be loaded
@@ -119,8 +118,8 @@ if __name__ == "__main__":
                         help='Name of straxen context to use')
     parser.add_argument('--port', default=8000, type=int,
                         help='HTTP port to serve on')
-    parser.add_argument('--max_load_mb', default=1000)
-    parser.add_argument('--max_return_mb', default=10)
+    parser.add_argument('--max_load_mb', default=1000, type=int)
+    parser.add_argument('--max_return_mb', default=10, type=int)
     parser.add_argument('--extra_dirs', nargs='*',
                         help="Extra directories to look for data")
     args = parser.parse_args()
