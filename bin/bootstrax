@@ -49,7 +49,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 
 import argparse
 from collections import Counter
@@ -88,6 +88,8 @@ parser.add_argument('--cores', type=int, default=4,
                          "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
+parser.add_argument('--fix_target',  action='store_true',
+                    help="Don't allow bootstrax to switch to a different target for special runs")
 parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
@@ -383,6 +385,9 @@ def overide_target(rd):
     :param rd: rundoc
     :return: override": False or LED or raw_records}
     """
+    if args.fix_target:
+        return False
+
     # Special modes override target for these
     led_modes = ['pmtgain', 'pmtap']
     diagnostic_modes = ['exttrig', 'noise']
