@@ -49,21 +49,21 @@ dtype_ap = [(('Channel/PMT number','channel'),
 #                 default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy',
 #                 help='Link to the to_pe conversion factors'),
     strax.Option('LED_window_left',
-                 default=140,
+                 #default=140,
                  help='Left boundary of sample range for LED pulse integration'),
     strax.Option('LED_window_right',
-                 default=180,
+                 #default=180,
                  help='Right boundary of sample range for LED pulse integration'),
     strax.Option('hit_threshold',
-                 default=15,
+                 #default=15,
                  help='Hitfinder threshold in ADC counts above baseline'),
     strax.Option('baseline_samples',
-                 default=40,
+                 #default=40,
                  help='Number of samples to use at the start of the pulse to determine the baseline'),
     )
 class AP(strax.Plugin):
     
-    __version__ = '0.0.3.8'
+    __version__ = '0.0.3.9'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'

@@ -194,6 +194,14 @@ ap_opts = dict(
     check_available=('raw_records',)
     )
 
+ap_config_1t = dict(n_tpc_pmts = 248,
+                    gain_model = ('to_pe_per_run',
+                                 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+                    LED_window_left = 140,
+                    LED_window_right = 180,
+                    hit_threshold = 15,
+                    baseline_samples = 40)
+
 def strax_afterpulseanalysis_xenon1t():
     return strax.Context(
         storage=[strax.DataDirectory('/dali/lgrandi/xenon1t/strax_converted/raw',
@@ -204,8 +212,5 @@ def strax_afterpulseanalysis_xenon1t():
         allow_multiprocess=True,
         forbid_creation_of=('raw_records',),
         register=straxen.plugins.pax_interface.RecordsFromPax,
-        config=dict(n_tpc_pmts=248,
-                    gain_model=('to_pe_per_run',
-                                'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
-                   ),
+        config=ap_config_1t,
         **ap_opts)
