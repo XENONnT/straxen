@@ -3,6 +3,7 @@ import numpy as np
 
 import strax
 import straxen
+from .pulse_processing import HITFINDER_OPTIONS
 
 export, __all__ = strax.exporter()
 
@@ -47,13 +48,10 @@ export, __all__ = strax.exporter()
                  help="Time range right of peak center to call "
                       "a hit a tight coincidence (ns)"),
     strax.Option(
-        'hit_min_amplitude',
-        default=straxen.adc_thresholds(),
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number.'),
-    strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
+
+    *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
     depends_on = ('records',)

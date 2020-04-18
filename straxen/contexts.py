@@ -1,6 +1,6 @@
 import warnings
 
-from frozendict import frozendict
+from immutabledict import immutabledict
 import strax
 import straxen
 
@@ -10,7 +10,8 @@ common_opts = dict(
         straxen.pulse_processing,
         straxen.peaklet_processing,
         straxen.peak_processing,
-        straxen.event_processing],
+        straxen.event_processing,
+        straxen.double_scatter],
     store_run_fields=(
         'name', 'number',
         'reader.ini.name', 'tags.name',
@@ -23,7 +24,7 @@ common_opts = dict(
 x1t_common_config = dict(
     check_raw_record_overlaps=False,
     n_tpc_pmts=248,
-    channel_map=frozendict(
+    channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         tpc=(0, 247),
         diagnostic=(248, 253),
@@ -47,11 +48,11 @@ xnt_common_config = dict(
     n_tpc_pmts=494,
     gain_model=('to_pe_constant',
                 0.005),
-    channel_map=frozendict(
+    channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
          he=(500, 752),  # high energy
-         aqmon=(799, 807),
+         aqmon=(790, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
          mv_blank=(1999, 1999),
@@ -63,18 +64,10 @@ xnt_common_config = dict(
 # XENONnT
 ##
 
-
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    **kwargs):
     """XENONnT online processing and analysis"""
-    if we_are_the_daq:
-        run_db_username = straxen.get_secret('mongo_rdb_username')
-        run_db_password = straxen.get_secret('mongo_rdb_password')
-        mongo_url = f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin"
-    else:
-        mongo_url = None   # Default URL should work
-
     context_options = {
         **straxen.contexts.common_opts,
         **kwargs}
@@ -82,23 +75,44 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         storage=[
             straxen.RunDB(
-                mongo_url=mongo_url,
-                runid_field='number',
                 readonly=not we_are_the_daq,
+                runid_field='number',
                 new_data_path=output_folder),
+        ],
+        config=straxen.contexts.xnt_common_config,
+        **context_options)
+    st.register([straxen.DAQReader, straxen.LEDCalibration])
+
+    if not we_are_the_daq:
+        st.storage += [
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/raw',
                 readonly=True,
-                take_only='raw_records')],
-        config=straxen.contexts.xnt_common_config,
-        **context_options)
-    st.register(straxen.DAQReader)
+                take_only=straxen.DAQReader.provides),
+            strax.DataDirectory(
+                '/dali/lgrandi/xenonnt/processed',
+                readonly=True)]
+        if output_folder:
+            st.storage.append(
+                strax.DataDirectory(output_folder))
 
-    if not we_are_the_daq:
         st.context_config['forbid_creation_of'] = 'raw_records'
+
     st.context_config['check_available'] = ('raw_records',)
 
     return st
+
+
+def xenonnt_led(**kwargs):
+    st = xenonnt_online(**kwargs)
+    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    # Return a new context with only raw_records and led_calibration registered
+    return st.new_context(
+        replace=True,
+        register=[straxen.DAQReader, straxen.LEDCalibration],
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)
 
 
 def nt_simulation():
@@ -128,6 +142,7 @@ def demo():
             storage=[strax.DataDirectory('./strax_data'),
                      strax.DataDirectory('./strax_test_data', readonly=True)],
             register=straxen.RecordsFromPax,
+            free_options=('channel_map',),
             forbid_creation_of=('raw_records',),
             config=dict(**x1t_common_config),
             **common_opts)
@@ -151,15 +166,6 @@ def fake_daq():
         **common_opts)
 
 
-def strax_workshop_dali():
-    warnings.warn(
-        "The strax_workshop_dali context is deprecated and will "
-        "be removed in April 2020. Please use "
-        "straxen.contexts.xenon1t_dali() instead.",
-        DeprecationWarning)
-    return xenon1t_dali()
-
-
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
     return strax.Context(
         storage=[
@@ -175,7 +181,8 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
                 provide_run_metadata=False),
             strax.DataDirectory(output_folder,
                                 provide_run_metadata=False)],
-        register=straxen.plugins.pax_interface.RecordsFromPax,
+        register=straxen.RecordsFromPax,
+        free_options=('channel_map',),
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
@@ -214,3 +221,14 @@ def strax_afterpulseanalysis_xenon1t():
         register=straxen.plugins.pax_interface.RecordsFromPax,
         config=ap_config_1t,
         **ap_opts)
+
+def xenon1t_led(**kwargs):
+    st = xenon1t_dali(**kwargs)
+    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    # Return a new context with only raw_records and led_calibration registered
+    return st.new_context(
+        replace=True,
+        register=[straxen.RecordsFromPax, straxen.LEDCalibration],
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)

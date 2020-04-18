@@ -22,7 +22,7 @@ def parse_args():
         help="ID of the run to process; usually the run name.")
     parser.add_argument(
         '--context',
-        default='strax_workshop_dali',
+        default='xenon1t_dali',
         help="Name of straxen context to use")
     parser.add_argument(
         '--target',
@@ -41,8 +41,8 @@ def parse_args():
               "Lower to reduce memory usage, at increasing risk of deadlocks."))
     parser.add_argument(
         '--timeout',
-        default=10, type=int,
-        help=("Strax' internal mailbox timeout in seconds"))
+        default=None, type=int,
+        help="Strax' internal mailbox timeout in seconds")
     parser.add_argument(
         '--workers',
         default=1, type=int,
@@ -78,6 +78,10 @@ def parse_args():
         '--debug',
         action='store_true',
         help="Enable debug logging to stdout")
+    parser.add_argument(
+        '--build_lowlevel',
+        action='store_true',
+        help='Build low-level data even if the context forbids it.')
     return parser.parse_args()
 
 
@@ -102,8 +106,11 @@ def main(args):
     st.context_config['allow_multiprocess'] = args.multiprocess
     st.context_config['allow_shm'] = args.shm
     st.context_config['allow_lazy'] = not (args.notlazy is True)
-    st.context_config['timeout'] = args.timeout
+    if args.timeout is not None:
+        st.context_config['timeout'] = args.timeout
     st.context_config['max_messages'] = args.max_messages
+    if args.build_lowlevel:
+        st.context_config['forbid_creation_of'] = tuple()
 
     if args.from_scratch:
         for q in st.storage:
@@ -122,12 +129,12 @@ def main(args):
     t_end = md['end'].timestamp()
     run_duration = t_end - t_start
 
-    # TODO: this gives a warning if the raw_record creator plugin doesn't need this
     st.config['run_start_time'] = md['start'].timestamp()
+    st.context_config['free_options'] = tuple(
+        list(st.context_config['free_options']) + ['run_start_time'])
 
     process = psutil.Process(os.getpid())
     peak_ram = 0
-
 
     def get_results():
         kwargs = dict(

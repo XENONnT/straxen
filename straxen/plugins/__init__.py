@@ -19,4 +19,10 @@ from .event_processing import *
 from . import afterpulse_processing
 from .afterpulse_processing import *
 
+from . import double_scatter
+from .double_scatter import *
+
+from . import led_calibration
+from .led_calibration import *
+
 from . import x1t_cuts
