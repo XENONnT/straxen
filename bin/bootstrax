@@ -970,8 +970,8 @@ def process_run(rd, send_heartbeats=True):
                         < timedelta(seconds=30)):
                     # Todo
                     #  revert statement to fail(...) if daq timestamp issues are resolved
-                    warning(f"Processing covered {t_covered.seconds}, "
-                         f"but run lasted {run_duration.seconds}!")
+                    log_warning(f"Processing covered {t_covered.seconds}, "
+                                f"but run lasted {run_duration.seconds}!")
 
                 log.info(f"Run {run_id} processed succesfully")
                 set_run_state(rd, 'done', **info)
