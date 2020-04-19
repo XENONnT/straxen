@@ -43,7 +43,8 @@ class LEDCalibration(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = False
     
-    dtype = [('area', np.float64, 'Area averaged in integration windows'),
+    dtype = [('area_led', np.float64, 'Area averaged in integration LED windows'),
+             ('area_noise', np.float64, 'Area averaged in integration noise windows'),
              ('amplitude_led', np.int32, 'Amplitude in LED window'),
              ('amplitude_noise', np.int32, 'Amplitude in off LED window'),
              ('channel', np.int16, 'Channel'),
@@ -66,17 +67,17 @@ class LEDCalibration(strax.Plugin):
         temp['amplitude_led'] = on['amplitude']
         temp['amplitude_noise'] = off['amplitude']
 
-        area = get_area(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
-        temp['area'] = area['area']
-
+        area_led, area_noise = get_area(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
+        temp['area_led'] = area_led['area']
+        temp['area_noise'] = area_noise['area']
         
         return temp
 
 # QUESTIONS: can some nice functions of numba.njit be used? What does @export mean?
 # ANSWERS: [fill in]
 
-_on_off_dtype = np.dtype([('channel', 'int16'),
-                          ('amplitude', '<i4')])
+_on_off_dtype1 = np.dtype([('channel', 'int16'),
+                           ('amplitude', '<i4')])
 
 @numba.njit(nogil=True, cache=True)
 def get_amplitude(raw_records, led_window, noise_window, baseline_window):
@@ -88,8 +89,8 @@ def get_amplitude(raw_records, led_window, noise_window, baseline_window):
     right_bsl = baseline_window[-1]
     bsl_diff = 1.0 * (right_bsl-left_bsl)
     
-    on = np.zeros((len(raw_records)), dtype=_on_off_dtype)
-    off = np.zeros((len(raw_records)), dtype=_on_off_dtype)
+    on = np.zeros((len(raw_records)), dtype=_on_off_dtype1)
+    off = np.zeros((len(raw_records)), dtype=_on_off_dtype1)
     for i, r in enumerate(raw_records):
         r['data'][:] = -1.*(r['data'] - np.sum(r['data'][left_bsl:right_bsl])/bsl_diff)
         on[i]['amplitude'] = safe_max(r['data'][led_window[0]:led_window[1]])
@@ -105,6 +106,8 @@ def safe_max(w):
         return 0
     return w.max()
 
+_on_off_dtype2 = np.dtype([('channel', 'int16'),
+                           ('area', 'float64')])
 
 def get_area(raw_records, led_window, noise_window, baseline_window):
     '''
@@ -112,17 +115,27 @@ def get_area(raw_records, led_window, noise_window, baseline_window):
     Sum the data in the defined window to get the area.
     This is done in 6 integration window and it returns the average area.
     '''
-    left = led_window[0]
-    end_pos = [led_window[1]+2*i for i in range(6)]
-
+    left_led = led_window[0]
+    end_pos_led = [led_window[1]+2*i for i in range(6)]
+    left_noise = noise_window[0]
+    end_pos_noise = [noise_window[1]+2*i for i in range(6)]
+    
     left_bsl  = baseline_window[0]
     right_bsl = baseline_window[-1]
     
-    Area = np.zeros((len(raw_records)), dtype=[('channel','int16'),('area','float64')])
-    for right in end_pos:
-        Area['area'] += raw_records['data'][:, left:right].sum(axis=1)
-        Area['area'] -= float(right-left)*raw_records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
-    Area['channel'] = raw_records['channel']
-    Area['area'] = Area['area']/float(len(end_pos))
-        
-    return Area
+    Area_led = np.zeros((len(raw_records)), dtype=_on_off_dtype2)
+    Area_led['channel'] = raw_records['channel']
+    Area_noise = np.zeros((len(raw_records)), dtype=_on_off_dtype2)
+    Area_noise['channel'] = raw_records['channel']  
+    
+    for right_led in end_pos_led:
+        Area_led['area'] += raw_records['data'][:, left_led:right_led].sum(axis=1)
+        Area_led['area'] -= float(right_led-left_led)*raw_records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
+    for right_noise in end_pos_noise:
+        Area_noise['area'] += raw_records['data'][:, left_noise:right_noise].sum(axis=1)
+        Area_noise['area'] -= float(right_noise-left_noise)*raw_records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
+    
+    Area_led['area'] = Area_led['area']/float(len(end_pos))
+    Area_noise['area'] = Area_noise['area']/float(len(end_pos))
+    
+    return Area_led, Area_noise
