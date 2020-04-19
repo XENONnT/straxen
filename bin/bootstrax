@@ -65,7 +65,7 @@ import shutil
 import time
 import traceback
 from tqdm import tqdm
-
+from warnings import warn as warning
 import numpy as np
 import pymongo
 from psutil import pid_exists, Process, virtual_memory, cpu_percent, disk_usage
@@ -573,7 +573,7 @@ def delete_live_data(rd, live_data_path):
     live_data"""
 
     if os.path.exists(live_data_path) and not args.keep_live:
-        print(f'Deleteing data at {live_data_path}')
+        print(f'Deleting data at {live_data_path}')
         shutil.rmtree(live_data_path)
     else:
         raise FileNotFoundError(f'Something is off, no folder found '
@@ -628,7 +628,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
     except pymongo.errors.AutoReconnect as e:
         # mongo-db seems to be overloaded, wait a second and try again
         auto_reconnect_nap = 60
-        print(f'ran into {e}, take a nap for {auto_reconnect_nap} seconds and try again')
+        warning(f'ran into {e}, take a nap for {auto_reconnect_nap} seconds and try again')
         time.sleep(auto_reconnect_nap)
         return run_coll.find_one(query,
                                  projection=None if full_doc else bootstrax_projection)
@@ -669,7 +669,7 @@ def set_status_finished(rd):
             {'$set': ready_to_upload})
     elif rd.get('status') == ready_to_upload.get('status'):
         # This is strange, boostrax already finished this run before
-        print('WARNING: bootstax has already marked this run as ready for upload. Doing nothing.')
+        warning('WARNING: bootstax has already marked this run as ready for upload. Doing nothing.')
         pass
     else:
         # Do not override this field for runs already uploaded in admix
@@ -968,7 +968,9 @@ def process_run(rd, send_heartbeats=True):
                 if not (timedelta(seconds=-30)
                         < (run_duration - t_covered)
                         < timedelta(seconds=30)):
-                    fail(f"Processing covered {t_covered.seconds}, "
+                    # Todo
+                    #  revert statement to fail(...) if daq timestamp issues are resolved
+                    warning(f"Processing covered {t_covered.seconds}, "
                          f"but run lasted {run_duration.seconds}!")
 
                 log.info(f"Run {run_id} processed succesfully")
