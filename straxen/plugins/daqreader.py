@@ -156,21 +156,8 @@ class DAQReader(strax.Plugin):
         first_start, last_start, last_end = None, None, None
         if len(records):
             first_start, last_start = records[0]['time'], records[-1]['time']
-
-            if last_start == end:
-                # TEMPORARY HACK: Discard data assigned to wrong chunk due to
-                # https://github.com/coderdj/redax/pull/82
-                print(
-                    f"Bad data from DAQ: chunk {path} should contain data "
-                    f"that starts in [{start}, {end}), but we see start times "
-                    f"ranging from {first_start} to {last_start}.")
-                print('-> discarding offending data for now!!')
-                records = records[records['time'] < end]
-                last_start = records[-1]['time']
-
             # Records are fixed length, so we also know the last end:
             last_end = strax.endtime(records[-1])
-
             if first_start < start or last_start >= end:
                 raise ValueError(
                     f"Bad data from DAQ: chunk {path} should contain data "
