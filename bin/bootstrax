@@ -49,7 +49,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 import argparse
 from collections import Counter
