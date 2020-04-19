@@ -574,7 +574,11 @@ def delete_live_data(rd, live_data_path):
 
     if os.path.exists(live_data_path) and not args.keep_live:
         print(f'Deleting data at {live_data_path}')
+        os.system(f'du -h -d0 {live_data_path}')
+        del_start = time.time()
         shutil.rmtree(live_data_path)
+        del_finished = time.time()
+        print(f'deleting {live_data_path} took {del_finished - del_start} s')
     else:
         raise FileNotFoundError(f'Something is off, no folder found '
                                 f'at {live_data_path} but there was '
