@@ -72,7 +72,7 @@ from psutil import pid_exists, Process, virtual_memory, cpu_percent, disk_usage
 import pytz
 import strax
 import straxen
-from threading import Thread
+import threading
 
 logging.basicConfig(level=logging.INFO,
                     format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
@@ -89,15 +89,15 @@ parser.add_argument('--cores', type=int, default=4,
                          "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
                     help="Strax data type name that should be produced")
-parser.add_argument('--fix_target',  action='store_true',
+parser.add_argument('--fix_target', action='store_true',
                     help="Don't allow bootstrax to switch to a different target for special runs")
 parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
-parser.add_argument('--delete_live',  action='store_true',
+parser.add_argument('--delete_live', action='store_true',
                     help="Do not delete live_data after successful processing of the run. "
                          "Delete the live_data if this flag is not added.")
-parser.add_argument('--test_mode',  action='store_true',
+parser.add_argument('--test_mode', action='store_true',
                     help="Prevent bootstrax form interacting with the runs-database")
 parser.add_argument('--max_messages', type=int,
                     default=4,
@@ -187,6 +187,10 @@ bootstrax_projection = f"name start end number bootstrax status mode " \
 # to the bootstrax main process
 exception_tempfile = 'last_bootstrax_exception.txt'
 
+# The name of the thread that is opened to delete live_data
+delete_thread_name =  'DeleteThread'
+
+
 ##
 # Initialize globals (e.g. rundb connection)
 ##
@@ -205,7 +209,7 @@ if os.access(output_folder, os.W_OK) is not True:
     raise IOError(f'No writing access to {output_folder}')
 
 
-def new_context(cores=args.cores, max_messages=args.max_messages, timeout=60):
+def new_context(cores=args.cores, max_messages=args.max_messages, timeout=300):
     """Create strax context that can access the runs db"""
     # We use exactly the logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
@@ -265,6 +269,8 @@ def main():
             raise ValueError(f"No run numbered {number} exists")
         process_run(rd)
         log.info(f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
+        wait_on_delete_thread()
+
     else:
         # Start processing
         main_loop()
@@ -581,9 +587,9 @@ def delete_live_data(rd, live_data_path):
     """
     Open thread to delete the live_data
     """
-    delete_thread = Thread(name='DeleteThread',
-                           target=_delete_live_data,
-                           args=(rd, live_data_path))
+    delete_thread = threading.Thread(name=delete_thread_name,
+                                     target=_delete_live_data,
+                                     args=(rd, live_data_path))
     log.info(f'Starting thread to delete {live_data_path} at {now()}')
     # We rather not stop deleting the live_data if something else fails. Set the thread to daemon.
     delete_thread.setDaemon(True)
@@ -600,23 +606,40 @@ def _delete_live_data(rd, live_data_path):
         os.system(f'du -h -d0 {live_data_path}')
         del_start = time.time()
         shutil.rmtree(live_data_path)
-        del_finished = time.time()
-        log.info(f'deleting {live_data_path} took {del_finished - del_start} s')
+        log.info(f'deleting {live_data_path} took {int(time.time() - del_start)} s')
     else:
         raise FileNotFoundError(f'Something is off, no folder found '
                                 f'at {live_data_path} but there was '
                                 f'an attempt to delete data here')
     # Remove the /live_data location from the rundoc
     if not os.path.exists(live_data_path):
-        locs = []
-        for dd in rd.get('data'):
-            if dd.get('type') != 'live':
-                locs.append(dd)
-        run_coll.find_one_and_update(
-            {'_id': rd['_id']},
-            {'$set': {'data': locs}})
+        if not args.test_mode:
+            locs = []
+            for dd in rd.get('data'):
+                if dd.get('type') != 'live':
+                    locs.append(dd)
+            run_coll.find_one_and_update(
+                {'_id': rd['_id']},
+                {'$set': {'data': locs}})
     else:
         raise ValueError("Something went wrong we wanted to delete this path!")
+
+
+def wait_on_delete_thread():
+    """
+    Check that the thread with the delete_thread_name is finished before continuing.
+    """
+    threads = threading.enumerate()
+    for thread in threads:
+        if thread.name == delete_thread_name:
+            wait = True
+            while wait:
+                wait = False
+                if thread.isAlive():
+                    log.info(f'{thread.name} still running take a {timeouts["idle_nap"]} s nap')
+                    time.sleep(timeouts['idle_nap'])
+                    wait = True
+    log.info(f'Checked that {delete_thread_name} finished')
 
 
 def clear_shm():
@@ -828,8 +851,8 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 daq_compressor=compressor,
                                 run_start_time=run_start_time,
                                 record_length=samples_per_record,
-                                daq_chunk_duration = daq_chunk_duration,
-                                daq_overlap_chunk_duration = daq_overlap_chunk_duration,
+                                daq_chunk_duration=daq_chunk_duration,
+                                daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                                 n_readout_threads=n_readout_threads,
                                 check_raw_record_overlaps=False,
                                 )
