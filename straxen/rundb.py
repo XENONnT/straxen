@@ -138,7 +138,7 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': str(key.run_id)}
         else:
-            run_query = {'number': f'{key.run_id:06d}'}
+            run_query = {'number': int(key.run_id)}
         dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq},
                                        projection=dq)
