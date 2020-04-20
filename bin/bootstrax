@@ -226,7 +226,7 @@ if not args.production:
 
     log.warning(
         f'\n---------------'
-        f'\nBe aware, bootstrax not running in production_mode. Specify with --production_mode.'
+        f'\nBe aware, bootstrax not running in production mode. Specify with --production.'
         f'\nWriting new data to {output_folder}. Not saving this location in the runsDB.'
         f'\nNot writing to the runs-database.'
         f'\n---------------')
