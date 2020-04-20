@@ -21,6 +21,7 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=494,
     gain_model=('to_pe_constant', 0.005),
+    check_raw_record_overlaps=False,  # Tempory hack until DAQ timestamps fixed
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
