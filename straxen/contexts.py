@@ -143,7 +143,10 @@ def demo():
     straxen.download_test_data()
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
-                     strax.DataDirectory('./strax_test_data', readonly=True)],
+                     strax.DataDirectory('./strax_test_data',
+                                         deep_scan=True,
+                                         provide_run_metadata=True,
+                                         readonly=True)],
             register=straxen.RecordsFromPax,
             forbid_creation_of=('raw_records',),
             config=dict(**x1t_common_config),
