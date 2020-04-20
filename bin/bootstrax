@@ -588,10 +588,7 @@ def delete_live_data(rd, live_data_path):
     # We rather not stop deleting the live_data if something else fails. Set the thread to daemon.
     delete_thread.setDaemon(True)
     delete_thread.start()
-    log.info(f'DeleteThread {live_data_path} should be running {now()}')
-    for i in range(6*12):
-        log.info(f'DeleteThread running {i * 5} s')
-        time.sleep(5)
+    log.info(f'DeleteThread {live_data_path} should be running in parallel, continue MainThread now: {now()}')
 
 
 def _delete_live_data(rd, live_data_path):
