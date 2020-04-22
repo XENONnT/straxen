@@ -1088,10 +1088,8 @@ def process_run(rd, send_heartbeats=args.production):
                 if not (timedelta(seconds=-30)
                         < (run_duration - t_covered)
                         < timedelta(seconds=30)):
-                    # Todo
-                    #  revert statement to fail(...) if daq timestamp issues are resolved
-                    log_warning(f"Processing covered {t_covered.seconds}, "
-                                f"but run lasted {run_duration.seconds}!")
+                    fail(f"Processing covered {t_covered.seconds}, "
+                         f"but run lasted {run_duration.seconds}!")
 
                 log.info(f"Run {run_id} processed successfully")
                 if args.production:
