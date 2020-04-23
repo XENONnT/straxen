@@ -135,7 +135,7 @@ def get_area(raw_records, led_window, noise_window, baseline_window):
         Area_noise['area'] += raw_records['data'][:, left_noise:right_noise].sum(axis=1)
         Area_noise['area'] -= float(right_noise-left_noise)*raw_records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
     
-    Area_led['area'] = Area_led['area']/float(len(end_pos))
-    Area_noise['area'] = Area_noise['area']/float(len(end_pos))
+    Area_led['area'] = Area_led['area']/float(len(end_pos_led))
+    Area_noise['area'] = Area_noise['area']/float(len(end_pos_noise))
     
     return Area_led, Area_noise
