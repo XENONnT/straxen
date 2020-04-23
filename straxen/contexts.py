@@ -4,7 +4,6 @@ from immutabledict import immutabledict
 import strax
 import straxen
 
-
 common_opts = dict(
     register_all=[
         straxen.pulse_processing,
@@ -15,38 +14,11 @@ common_opts = dict(
         straxen.nveto_recorder,
         straxen.nveto_pulse_processing],
     store_run_fields=(
-        'name', 'number',
-        'reader.ini.name', 'tags.name',
-        'start', 'end', 'livetime',
-        'trigger.events_built'),
+        'name', 'number', 'tags.name',
+        'start', 'end', 'livetime', 'mode'),
     check_available=('raw_records', 'records', 'peaklets',
                      'events', 'event_info'))
 
-
-x1t_common_config = dict(
-    check_raw_record_overlaps=False,
-    n_tpc_pmts=248,
-    channel_map=immutabledict(
-        # (Minimum channel, maximum channel)
-        tpc=(0, 247),
-        diagnostic=(248, 253),
-        aqmon=(254, 999)),
-    hev_gain_model=('to_pe_per_run',
-                    'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
-    gain_model=('to_pe_per_run',
-                'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
-    pmt_pulse_filter=(
-        0.012, -0.119,
-        2.435, -1.271, 0.357, -0.174, -0., -0.036,
-        -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
-        -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
-        -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    tail_veto_threshold=int(1e5),
-    save_outside_hits=(3, 3),
-    hit_min_amplitude=straxen.adc_thresholds(),
-    # Some setting which are required by the fake daq for the nVETO HdM test set-up but not needed otherwise:
-    # n_nveto_pmts=32, <-- commented this line out in order to not to cause warning massages.
-)
 
 xnt_common_config = dict(
     n_tpc_pmts=494,
@@ -67,7 +39,6 @@ xnt_common_config = dict(
          nveto_blank=(2999, 2999),
     )
 )
-
 
 ##
 # XENONnT
@@ -98,7 +69,7 @@ def xenonnt_online(output_folder='./strax_data',
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/raw',
                 readonly=True,
-                take_only='raw_records'),
+                take_only=straxen.DAQReader.provides),
             strax.DataDirectory(
                 '/dali/lgrandi/xenonnt/processed',
                 readonly=True)]
@@ -145,26 +116,59 @@ def nt_simulation():
 # XENON1T
 ##
 
+x1t_context_config = {
+    **common_opts,
+    **dict(
+        free_options=('channel_map',),
+        store_run_fields=tuple(
+            [x for x in common_opts['store_run_fields'] if x != 'mode']
+            + ['trigger.events_built', 'reader.ini.name']))}
+
+x1t_common_config = dict(
+    check_raw_record_overlaps=False,
+    n_tpc_pmts=248,
+    channel_map=immutabledict(
+        # (Minimum channel, maximum channel)
+        tpc=(0, 247),
+        diagnostic=(248, 253),
+        aqmon=(254, 999)),
+    hev_gain_model=('to_pe_per_run',
+                    'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+    gain_model=('to_pe_per_run',
+                'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+    pmt_pulse_filter=(
+        0.012, -0.119,
+        2.435, -1.271, 0.357, -0.174, -0., -0.036,
+        -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
+        -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
+        -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
+    tail_veto_threshold=int(1e5),
+    save_outside_hits=(3, 3),
+    hit_min_amplitude=straxen.adc_thresholds())
+
+
 def demo():
     """Return strax context used in the straxen demo notebook"""
     straxen.download_test_data()
     return strax.Context(
             storage=[strax.DataDirectory('./strax_data'),
-                     strax.DataDirectory('./strax_test_data', readonly=True)],
+                     strax.DataDirectory('./strax_test_data',
+                                         deep_scan=True,
+                                         provide_run_metadata=True,
+                                         readonly=True)],
             register=straxen.RecordsFromPax,
-            free_options=('channel_map',),
             forbid_creation_of=('raw_records',),
             config=dict(**x1t_common_config),
-            **common_opts)
+            **x1t_context_config)
 
 
 def fake_daq():
     """Context for processing fake DAQ data in the current directory"""
     return strax.Context(
-        storage=[strax.DataDirectory('./strax_data',
-                                     provide_run_metadata=False),
+        storage=[strax.DataDirectory('./strax_data'),
                  # Fake DAQ puts run doc JSON in same folder:
                  strax.DataDirectory('./from_fake_daq',
+                                     provide_run_metadata=True,
                                      readonly=True)],
         config=dict(daq_input_dir='./from_fake_daq',
                     daq_chunk_duration=int(2e9),
@@ -173,7 +177,7 @@ def fake_daq():
                     daq_overlap_chunk_duration=int(2e8),
                     **x1t_common_config),
         register=straxen.Fake1TDAQReader,
-        **common_opts)
+        **x1t_context_config)
 
 
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
@@ -183,23 +187,19 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
                 '/dali/lgrandi/xenon1t/strax_converted/raw',
                 take_only='raw_records',
                 provide_run_metadata=True,
-                deep_scan=False,
                 readonly=True),
             strax.DataDirectory(
                 '/dali/lgrandi/xenon1t/strax_converted/processed',
-                readonly=True,
-                provide_run_metadata=False),
-            strax.DataDirectory(output_folder,
-                                provide_run_metadata=False)],
+                readonly=True),
+            strax.DataDirectory(output_folder)],
         register=straxen.RecordsFromPax,
-        free_options=('channel_map',),
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
         forbid_creation_of=(
             ('raw_records',) if build_lowlevel
             else ('raw_records', 'records', 'peaklets')),
-        **common_opts)
+        **x1t_context_config)
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
@@ -208,7 +208,6 @@ def xenon1t_led(**kwargs):
     return st.new_context(
         replace=True,
         register=[straxen.RecordsFromPax, straxen.LEDCalibration],
-        free_options=('channel_map',),
         config=st.config,
         storage=st.storage,
         **st.context_config)
