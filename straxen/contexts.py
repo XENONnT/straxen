@@ -70,8 +70,6 @@ def xenonnt_online(output_folder='./strax_data',
 
         st.context_config['forbid_creation_of'] = 'raw_records'
 
-    st.context_config['check_available'] = ('raw_records',)
-
     return st
 
 
