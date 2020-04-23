@@ -55,7 +55,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.5'
+__version__ = '0.4.6'
 
 import argparse
 from collections import Counter
@@ -198,6 +198,10 @@ exception_tempfile = 'last_bootstrax_exception.txt'
 
 # The name of the thread that is opened to delete live_data
 delete_thread_name = 'DeleteThread'
+
+# The maximum time difference (s) allowed between the timestamps in the data and the
+# duration of the run (from the runs metadeta). Fail if the difference is larger than:
+max_timetamp_diff = 5
 
 ##
 # Initialize globals (e.g. rundb connection)
@@ -1085,9 +1089,9 @@ def process_run(rd, send_heartbeats=args.production):
                 run_duration = rd['end'] - rd['start']
                 if not (0 < t_covered.seconds < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
-                if not (timedelta(seconds=-30)
+                if not (timedelta(seconds=-max_timetamp_diff)
                         < (run_duration - t_covered)
-                        < timedelta(seconds=30)):
+                        < timedelta(seconds=max_timetamp_diff)):
                     fail(f"Processing covered {t_covered.seconds}, "
                          f"but run lasted {run_duration.seconds}!")
 
