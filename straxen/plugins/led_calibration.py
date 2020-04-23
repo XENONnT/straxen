@@ -18,13 +18,13 @@ export, __all__ = strax.exporter()
                  default=(0,50),
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(50, 115),
+                 default=(75, 100),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(120, 185),
+                 default=(35, 60),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
-                 default=(0,248),
+                 default=(0,494),
                  help="Three different light level for XENON1T: (0,36), (37,126), (127,248). Defalt value: all the PMTs"))
 class LEDCalibration(strax.Plugin):
     """
@@ -36,7 +36,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
