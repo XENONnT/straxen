@@ -55,7 +55,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.6'
+__version__ = '0.4.7'
 
 import argparse
 from collections import Counter
@@ -378,7 +378,7 @@ def main_loop():
             failed_runs_seen += 1
             process_run(rd)
             continue
-
+        # Nothing to do, let's do some cleanup
         if not args.production:
             log.info(f'We have gone through the rundDB in a readonly mode there are no '
                      f'runs left. We looked at {new_runs_seen} new runs and '
@@ -537,11 +537,12 @@ def eb_can_process():
     n_ebs_running = 0
     n_ebs_busy = 0
     for eb_i in range(3, 6):
-        eb_query = bs_coll.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'})
+        eb_query = run_db.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'})
         if eb_query:
             # Should count if eb3-5 are all running (as one might be offline).
             n_ebs_running += 1
-            if eb_query['time'] < now(-timeout):
+            start_time = eb_query.get('bootstrax', {}).get('started_processing')
+            if start_time and start_time.replace(tzinfo=pytz.utc) < now(-timeout):
                 n_ebs_busy += 1
 
     if n_ebs_running == n_ebs_busy:
@@ -762,11 +763,39 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
         projection=bootstrax_projection)
 
 
+def check_data_written(rd):
+    """
+    checks that the data as written in the runs-database is actually
+    available on this machine
+    :param rd: rundoc
+    :return: type bool, False if not all paths exist or if there are no files
+    on this host
+    """
+    files_written = 0
+    for ddoc in rd['data']:
+        if ddoc['host'] == hostname:
+            if os.path.exists(ddoc['location']):
+                files_written += 1
+            else:
+                return False
+    return files_written > 0
+
+
 def set_status_finished(rd):
     """Set the status to ready to upload for datamanager and admix"""
     if not args.production:
         # Don't update the status if we are not in production mode
         return
+
+    # First check that all the data is available (that e.g. no _temp files
+    # are being renamed).
+    if not check_data_written(rd):
+        log_warning('Data not successfully written wait 30 s and check again')
+        time.sleep(30)
+        if check_data_written(rd):
+            log_warning('Data not successfully written do not mark this run '
+                        'ready for upload')
+            return
 
     # Only update the status if it does not exist or if it needs to be uploaded
     ready_to_upload = {'status': 'eb_ready_to_upload'}
@@ -775,8 +804,9 @@ def set_status_finished(rd):
             {'_id': rd['_id']},
             {'$set': ready_to_upload})
     elif rd.get('status') == ready_to_upload.get('status'):
-        # This is strange, boostrax already finished this run before
-        log_warning('WARNING: bootstax has already marked this run as ready for upload. Doing nothing.')
+        # This is strange, bootstrax already finished this run before
+        log_warning('WARNING: bootstax has already marked this run as ready '
+                    'for upload. Doing nothing.')
     else:
         # Do not override this field for runs already uploaded in admix
         raise ValueError(f'Trying to set set the status {rd.get("status")} to '
@@ -938,6 +968,8 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
         # Write exception to file, so bootstrax can read it
         exc_info = strax.formatted_exception()
         with open(exception_tempfile, mode='w') as f:
+            f.write(exc_info)
+        with open(f'~/bootstrax_exceptions/{run_id}_exception.txt', mode='w') as f:
             f.write(exc_info)
         raise
 
