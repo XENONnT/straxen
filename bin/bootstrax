@@ -538,7 +538,7 @@ def eb_can_process():
     n_ebs_running = 0
     n_ebs_busy = 0
     for eb_i in range(3, 6):
-        eb_query = run_db.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'})
+        eb_query = run_coll.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'})
         if eb_query:
             # Should count if eb3-5 are all running (as one might be offline).
             n_ebs_running += 1
