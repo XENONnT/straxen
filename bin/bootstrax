@@ -379,6 +379,7 @@ def main_loop():
             process_run(rd)
             continue
         # Nothing to do, let's do some cleanup
+        delete_temp_files()
         if not args.production:
             log.info(f'We have gone through the rundDB in a readonly mode there are no '
                      f'runs left. We looked at {new_runs_seen} new runs and '
@@ -637,6 +638,21 @@ def sufficient_diskspace():
             disk = disk_usage(output_folder)
             disk_free = disk.free / gigabyte_to_byte
     raise RuntimeError("No disk space to write to")
+
+
+def delete_temp_files():
+    """
+    removes _temp files from output_folder if successfully processed
+    """
+    temp_files = [f for f in os.listdir(output_folder) if f.endswith('_temp')]
+    for f in temp_files:
+        run_id = int(f.split('-')[0])
+        if run_coll.find_one(
+                {'bootstrax.state': 'done',
+                 'number': run_id}):
+            print(f'removing {f}')
+            # TODO
+            #  shutil.rmtree(f)
 
 
 def delete_live_data(rd, live_data_path):
