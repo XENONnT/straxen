@@ -55,7 +55,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.7'
+__version__ = '0.4.8'
 
 import argparse
 from collections import Counter
@@ -328,10 +328,13 @@ def main_loop():
     """Infinite loop looking for runs to process"""
     global state_doc_id
 
+    # Wait for mongo connection
+    ping_dbs()
+
     # Ensure we're the only bootstrax on this host
     any_running = list(bs_coll.find({'host': hostname}))
     for x in any_running:
-        if pid_exists(x['pid']):
+        if pid_exists(x['pid']) and x['pid'] is not os.getpid() :
             log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill it')
             kill_process(x['pid'])
         bs_coll.delete_one({'_id': x['_id']})
@@ -425,6 +428,7 @@ def update_usage(pid_process, run_number):
     The information contains percentages of CPU and Memory usage both for the
     sub-process (due to the multiprocessing) itself and on the host as a whole.
     """
+    ping_dbs()
     frac_to_percent = 100
     mem_tot = virtual_memory()
     disk = disk_usage(output_folder)
@@ -472,6 +476,7 @@ def set_state(state):
 
     if state is None, leave state unchanged, just update heartbeat time
     """
+    ping_dbs()
 
     if state_doc_id is None:
         log.debug("Not updating bootstrax doc: none selected. "
@@ -501,6 +506,7 @@ def log_warning(message, priority='warning'):
         warning: 2,
         <any other valid python logging level, e.g. error or fatal>: 3
     """
+    ping_dbs()
     if not args.production:
         return
     getattr(log, priority)(message)
@@ -517,6 +523,10 @@ def eb_can_process():
       - There should be runs waiting to be processed
       - Eb3-5 should be busy processing for a substantial time.
     :returns: bool if this host should process a run"""
+
+    # Check mongo connection
+    ping_dbs()
+
     # eb3-5 always process.
     if hostname in ['eb3.xenon.local', 'eb4.xenon.local', 'eb5.xenon.local']:
         return True
@@ -647,6 +657,9 @@ def delete_temp_files():
     """
     removes _temp files from output_folder if successfully processed
     """
+    # Check mongo connection
+    ping_dbs()
+
     temp_files = [f for f in os.listdir(output_folder) if f.endswith('_temp')]
     for f in temp_files:
         run_id = int(f.split('-')[0])
@@ -676,6 +689,7 @@ def delete_live_data(rd, live_data_path):
 def _delete_live_data(rd, live_data_path):
     """After completing the processing and updating the runsDB, remove the
     live_data"""
+    ping_dbs()
     log.info(f'Deleting data at {live_data_path}')
     os.system(f'du -h -d0 {live_data_path}')
     del_start = time.time()
@@ -729,6 +743,19 @@ def clear_shm():
 ##
 
 
+def ping_dbs():
+    while True:
+        try:
+            run_db.command('ping')
+            daq_db.command('ping')
+            log.info('Mongo connection is OK')
+            break
+        except Exception as ping_error:
+            log.warning(f'Failed to connect to Mongo. Ran into {ping_error}. Sleep for a '
+                        f'minute.')
+            time.sleep(60)
+
+
 def get_run(*, mongo_id=None, number=None, full_doc=False):
     """Find and return run doc matching mongo_id or number
     The bootstrax state is left unchanged.
@@ -736,6 +763,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
     :param full_doc: If true (default is False), return the full run doc
         rather than just fields used by bootstrax.
     """
+    ping_dbs()
     if number is not None:
         query = {'number': number}
     elif mongo_id is not None:
@@ -761,6 +789,7 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
 
     Any additional kwargs will be added to the bootstrax field.
     """
+    ping_dbs()
     if not args.production:
         return run_coll.find_one({'_id': rd['_id']})
 
@@ -801,6 +830,9 @@ def check_data_written(rd):
 
 def set_status_finished(rd):
     """Set the status to ready to upload for datamanager and admix"""
+    # Check mongo connection
+    ping_dbs()
+
     if not args.production:
         # Don't update the status if we are not in production mode
         return
@@ -840,6 +872,9 @@ def abandon(*, mongo_id=None, number=None):
 
 def consider_run(query, return_new_doc=True, test_counter=0):
     """Return one run doc matching query, and simultaneously set its bootstraxstate to 'considering'"""
+    # Check mongo connection
+    ping_dbs()
+
     # We must first do an atomic find-and-update to set the run's state
     # to "considering", to ensure the run doesn't get picked up by a
     # bootstrax on another host.
@@ -934,6 +969,8 @@ def get_compressor(rd, default_compressor="blosc"):
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
               run_start_time, samples_per_record, process_mode, target_override,
               daq_chunk_duration, daq_overlap_chunk_duration, debug=False):
+    # Check mongo connection
+    ping_dbs()
     # Clear the swap memory used by npshmmex
     npshmex.shm_clear()
     # double check by forcefully clearing shm
@@ -993,6 +1030,9 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
 
 
 def process_run(rd, send_heartbeats=args.production):
+    # Check mongo connection
+    ping_dbs() # TODO obsolete?
+
     log.info(f"Starting processing of run {rd['number']}")
     if rd is None:
         raise RuntimeError("Pass a valid rundoc, not None!")
@@ -1186,6 +1226,9 @@ def clean_run(*, mongo_id=None, number=None, force=False):
     Does NOT remove temporary folders,
     nor data that isn't registered to the run db.
     """
+    # Check mongo connection
+    ping_dbs()
+
     # We need to get the full data docs here, since I was too lazy to write
     # a surgical update below
     rd = get_run(mongo_id=mongo_id, number=number, full_doc=True)
@@ -1222,6 +1265,9 @@ def cleanup_db():
 
     Also cleans the bootstrax collection for stale entries
     """
+    # Check mongo connection
+    ping_dbs()
+
     log.info("Checking for bad stuff in database")
 
     # Bootstrax instances that say they are active, but haven't reported in for a while
@@ -1330,4 +1376,11 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
-    main()
+    while True:
+        try:
+            main()
+        except (pymongo.errors.NotMasterError,
+                pymongo.errors.ServerSelectionTimeoutError) as e:
+            log.warning(f'Ran into {e}. Sleep for 10 minutes and retry')
+            time.sleep(60*10)
+            continue
