@@ -653,9 +653,8 @@ def delete_temp_files():
         if run_coll.find_one(
                 {'bootstrax.state': 'done',
                  'number': run_id}):
-            print(f'removing {f}')
-            # TODO
-            #  shutil.rmtree(f)
+            print(f'removing {output_folder}/{f}')
+            shutil.rmtree(f)
 
 
 def delete_live_data(rd, live_data_path):
