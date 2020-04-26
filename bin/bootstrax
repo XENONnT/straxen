@@ -352,7 +352,10 @@ def main_loop():
         sufficient_diskspace()
         log.info("Looking for work")
         if not eb_can_process():
-            time.sleep(60)
+            # Nothing to do, let's do some cleanup and set to idle
+            delete_temp_files()
+            set_state('idle')
+            time.sleep(timeouts['idle_nap'])
             continue
         set_state('busy')
         # Check resources are still OK, otherwise crash / reboot program
