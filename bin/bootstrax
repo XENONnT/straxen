@@ -654,7 +654,7 @@ def delete_temp_files():
                 {'bootstrax.state': 'done',
                  'number': run_id}):
             print(f'removing {output_folder}/{f}')
-            shutil.rmtree(f)
+            shutil.rmtree(f'{output_folder}/{f}')
 
 
 def delete_live_data(rd, live_data_path):
