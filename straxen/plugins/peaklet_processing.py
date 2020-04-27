@@ -61,7 +61,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.0'
+    __version__ = '0.3.2'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -104,6 +104,11 @@ class Peaklets(strax.Plugin):
         # fully_contained is OK provided gap_threshold > extension,
         # which is asserted inside strax.find_peaks.
         lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
+        strax.integrate_lone_hits(
+            lone_hits, records, peaklets,
+            save_outside_hits=(self.config['peak_left_extension'],
+                               self.config['peak_right_extension']),
+            n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
         strax.sum_waveform(peaklets, r, self.to_pe)
