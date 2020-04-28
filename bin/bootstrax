@@ -862,7 +862,7 @@ def abandon(*, mongo_id=None, number=None):
 
 
 def consider_run(query, return_new_doc=True, test_counter=0):
-    """Return one run doc matching query, and simultaneously set its bootstraxstate to considering'"""
+    """Return one run doc matching query, and simultaneously set its bootstraxstate to 'considering'"""
     # Check mongo connection
     ping_dbs()
 
