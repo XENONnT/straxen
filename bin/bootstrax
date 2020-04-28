@@ -335,7 +335,8 @@ def main_loop():
     any_running = list(bs_coll.find({'host': hostname}))
     for x in any_running:
         if pid_exists(x['pid']) and x['pid'] is not os.getpid() :
-            log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill it')
+            log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill '
+                        f'it. This bootrax is {os.getpid()}')
             kill_process(x['pid'])
         bs_coll.delete_one({'_id': x['_id']})
 
@@ -542,9 +543,6 @@ def eb_can_process():
     # Count number of runs untouched by bootstrax. Sorry for the sloppy pymongo syntax.
     for _ in run_coll.find({'bootstrax': {'$exists': False}}):
         n_untouched_runs += 1
-    if n_untouched_runs < max_queue_new_runs:
-        log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
-        return False
 
     # Check that eb3-5 are all busy for at least some time.
     timeout = timeouts['eb3-5_max_busy_time']
@@ -563,9 +561,12 @@ def eb_can_process():
         # There is a need for this eb to also process data (for now).
         log.info(f'eb_can_process::\tThere is a need for {hostname} to process data')
         return True
+    elif n_untouched_runs < max_queue_new_runs and n_ebs_busy:
+        log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
     else:
         log.info(f'eb_can_process::\tDo not process on {hostname}, new ebs are taking care')
-        return False
+    return False
+
 
 
 def infer_mode(rd, input_dir):
@@ -691,10 +692,8 @@ def _delete_live_data(rd, live_data_path):
     live_data"""
     ping_dbs()
     log.info(f'Deleting data at {live_data_path}')
-    os.system(f'du -h -d0 {live_data_path}')
-    del_start = time.time()
     shutil.rmtree(live_data_path)
-    log.info(f'deleting {live_data_path} took {int(time.time() - del_start)} s')
+    log.info(f'deleting {live_data_path} finished')
     # Remove the /live_data location from the rundoc
     if not os.path.exists(live_data_path):
         log.info('updating data field in rundoc')
@@ -748,7 +747,6 @@ def ping_dbs():
         try:
             run_db.command('ping')
             daq_db.command('ping')
-            log.info('Mongo connection is OK')
             break
         except Exception as ping_error:
             log.warning(f'Failed to connect to Mongo. Ran into {ping_error}. Sleep for a '
@@ -770,16 +768,9 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
         query = {'_id': mongo_id}
     else:
         raise ValueError("Please give mongo_id or number")
-    try:
-        return run_coll.find_one(query,
-                                 projection=None if full_doc else bootstrax_projection)
-    except pymongo.errors.AutoReconnect as e:
-        # mongo-db seems to be overloaded, wait a second and try again
-        auto_reconnect_nap = 60
-        log_warning(f'ran into {e}, take a nap for {auto_reconnect_nap} seconds and try again')
-        time.sleep(auto_reconnect_nap)
-        return run_coll.find_one(query,
-                                 projection=None if full_doc else bootstrax_projection)
+
+    return run_coll.find_one(query, projection=None if full_doc else bootstrax_projection)
+
 
 
 def set_run_state(rd, state, return_new_doc=True, **kwargs):
@@ -871,7 +862,7 @@ def abandon(*, mongo_id=None, number=None):
 
 
 def consider_run(query, return_new_doc=True, test_counter=0):
-    """Return one run doc matching query, and simultaneously set its bootstraxstate to 'considering'"""
+    """Return one run doc matching query, and simultaneously set its bootstraxstate to considering'"""
     # Check mongo connection
     ping_dbs()
 
@@ -1376,11 +1367,4 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
-    while True:
-        try:
-            main()
-        except (pymongo.errors.NotMasterError,
-                pymongo.errors.ServerSelectionTimeoutError) as e:
-            log.warning(f'Ran into {e}. Sleep for 10 minutes and retry')
-            time.sleep(60*10)
-            continue
+    main()
