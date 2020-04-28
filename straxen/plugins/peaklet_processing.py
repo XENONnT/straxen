@@ -16,7 +16,7 @@ export, __all__ = strax.exporter()
                  help="Include this many ns left of hits in peaks"),
     strax.Option('peak_right_extension', default=200,
                  help="Include this many ns right of hits in peaks"),
-    strax.Option('peak_min_pmts', default=2,
+    strax.Option('peak_min_pmts', default=4,
                  help="Minifnmum contributing PMTs needed to define a peak"),
     strax.Option('peak_split_gof_threshold',
                  # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
