@@ -131,6 +131,8 @@ x1t_common_config = dict(
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
     tail_veto_threshold=int(1e5),
+    # Smaller right extension since we applied the filter
+    peak_right_extension=30,
     save_outside_hits=(3, 3),
     hit_min_amplitude=straxen.adc_thresholds())
 
