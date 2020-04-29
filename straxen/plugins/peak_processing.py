@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=127,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.5"
+    __version__ = "0.0.6"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -35,7 +35,7 @@ class PeakBasics(strax.Plugin):
         (('PMT number which contributes the most PE',
             'max_pmt'), np.int16),
         (('Area of signal in the largest-contributing PMT (PE)',
-            'max_pmt_area'), np.int32),
+            'max_pmt_area'), np.float32),
         (('Width (in ns) of the central 50% area of the peak',
             'range_50p_area'), np.float32),
         (('Width (in ns) of the central 90% area of the peak',
@@ -64,7 +64,7 @@ class PeakBasics(strax.Plugin):
         r['range_50p_area'] = p['width'][:, 5]
         r['range_90p_area'] = p['width'][:, 9]
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
-        r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
+        r['max_pmt_area'] = p['area_per_channel'][r['max_pmt']]
         r['tight_coincidence'] = p['tight_coincidence']
 
         r['center_time'] = p['time'] + self.compute_center_times(peaks)
