@@ -86,7 +86,7 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -121,7 +121,7 @@ class PulseProcessing(strax.Plugin):
                 self.config['hev_gain_model'],
                 n_tpc_pmts=self.config['n_tpc_pmts'])
 
-    def compute(self, raw_records):
+    def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
             check_overlaps(raw_records, n_channels=3000)
 
@@ -147,6 +147,8 @@ class PulseProcessing(strax.Plugin):
         strax.integrate(r)
 
         pulse_counts = count_pulses(r, self.config['n_tpc_pmts'])
+        pulse_counts['time'] = start
+        pulse_counts['endtime'] = end
 
         if len(r) and self.hev_enabled:
             r, r_vetoed, veto_regions = software_he_veto(
@@ -343,8 +345,8 @@ def pulse_count_dtype(n_channels):
     # NB: don't use the dt/length interval dtype, integer types are too small
     # to contain these huge chunk-wide intervals
     return [
-        (('Lowest start time observed in the chunk', 'time'), np.int64),
-        (('Highest endt ime observed in the chunk', 'endtime'), np.int64),
+        (('Start time of the chunk', 'time'), np.int64),
+        (('End time of the chunk', 'endtime'), np.int64),
         (('Number of pulses', 'pulse_count'),
          (np.int64, n_channels)),
         (('Number of lone pulses', 'lone_pulse_count'),
@@ -414,8 +416,6 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
-    res['time'] = records[0]['time']
-    res['endtime'] = last_end_seen
 
 
 ##

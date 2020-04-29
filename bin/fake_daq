@@ -55,6 +55,7 @@ def main():
 
     # Get context for reading
     st = strax.Context(storage=strax.DataDirectory(args.input_path,
+                                                   provide_run_metadata=True,
                                                    readonly=True),
                        register=straxen.plugins.pax_interface.RecordsFromPax,
                        config=straxen.contexts.x1t_common_config,
