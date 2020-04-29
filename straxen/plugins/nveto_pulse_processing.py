@@ -638,7 +638,7 @@ class nVETOPulseBasics(strax.Plugin):
 @numba.njit(cache=True, nogil=True)
 def compute_properties(pulses,
                        records,
-                       to_pe,
+                       adc_to_pe,
                        volts_per_adc,
                        channels,
                        result_buffer):
@@ -648,7 +648,7 @@ def compute_properties(pulses,
     Args:
         pulses (np.array): Array of the nveto_pulses_dtype
         records (np.array): Array of the nveto_records_dtype
-        to_pe (np.array): Array containing the gain values of the
+        adc_to_pe (np.array): Array containing the gain values of the
             different pmt channels. The array should has at least the
             length of max channel + 1.
         volts_per_adc (float): Conversion factor ADC to Volt.
@@ -663,17 +663,21 @@ def compute_properties(pulses,
     record_offset = np.zeros(last_channel - first_channel + 1, np.int32)
 
     for pind, pulse in enumerate(pulses):
-        # Frequently used quantaties:
+        # Frequently used quantities:
         ch = pulse['channel']
         t = pulse['time']
 
         # Getting data and baseline of the event:
         ro = record_offset[ch-first_channel]
         data, ro = get_pulse_data(records, pulse, start_index=ro)
+        bl_fpart = records[ro]['baseline'] % 1
         record_offset[ch-first_channel] = ro
 
-        area, pos_deciles, height, amp_ind = _compute_area_deciles_amplitude(data)
+        # Computing Amplitude and Amplitude position:
+        data = (data + bl_fpart)
+        amp_ind = np.argmax(data)
         amp_time = int(amp_ind * dt)
+        height = data[amp_ind]
 
         # Computing FWHM:
         left_edge, right_edge = get_fwxm(data, amp_ind, 0.5)
@@ -687,11 +691,29 @@ def compute_properties(pulses,
         right_edge = right_edge * dt - dt / 2
         width_low = right_edge - left_edge_low
 
+        # Converting data into PE and compute area and area deciles:
+        data = data * adc_to_pe[ch]
+        area = np.sum(data)
+        area_decils = np.arange(0, 1.01, 0.05)
+        pos_deciles = np.zeros(len(area_decils), dtype=np.float32)
+        length = len(data)
+
+        # Make some temporal peaks for compute_index_of_fraction
+        temp_peak = np.zeros(1, dtype=[(("Integral in PE", 'area'), np.float32),
+                                       (('Waveform data in PE/sample', 'data'),
+                                        np.int16, length),
+                                       (('Length of the interval in samples', 'length'), np.int32)])
+        temp_peak['data'] = data
+        temp_peak['area'] = area
+        temp_peak['length'] = length
+        strax.compute_index_of_fraction(temp_peak, area_decils, pos_deciles)
+
+
         res = result_buffer[pind]
         res['time'] = t
         res['endtime'] = pulse['endtime']
         res['channel'] = ch
-        res['area'] = area / to_pe[ch]
+        res['area'] = area
         res['height'] = height * volts_per_adc
         res['amp_time'] = amp_time
         res['width'] = width
@@ -703,64 +725,6 @@ def compute_properties(pulses,
         res['area_decile_from_midpoint'][:] = (pos_deciles[::2] - pos_deciles[10]) * dt
         res['split_i'] = pulse['split_i']
     return result_buffer
-
-@numba.njit(cache=True, nogil=True)
-def _compute_area_deciles_amplitude(data):
-    """
-    Function which computes the area, area_decile_fractions, amplitude
-    and the position of the amplitude for a given waveform.
-
-    Args:
-        data (np.array): Waveform data
-
-    Returns:
-        float: area
-        np.arary: area_decile_fractions
-        float: amplitude
-        int: position of the amplitude
-    """
-
-    total_area = np.sum(data)
-    amp = 0
-    amp_ind = 0
-    area = 0
-    needed_decile = 1
-    prev_total_fraction = 0
-    current_total_fraction = 0
-    compute_deciles = True
-    area_decils = np.arange(0, 1.01, 0.05)
-    pos_deciles = np.zeros(len(area_decils), dtype=np.float32)
-
-    for ind, d in enumerate(data):
-        area += d
-        # Getting max amplitude:
-        if d > amp:
-            amp = d
-            amp_ind = ind
-
-        #  Check if we exceeded area fraction:
-        # -------------------------
-        # Area decile calculation. Code adapted
-        # from strax.processing.peak_properties_index_of_fraction
-        # -------------------------
-        if compute_deciles and total_area:
-            current_total_fraction = area / total_area
-            while current_total_fraction >= area_decils[needed_decile]:
-                if current_total_fraction:
-                    fraction = (area_decils[needed_decile] - prev_total_fraction) / current_total_fraction
-                    pos_deciles[needed_decile] = ind + fraction
-                else:
-                    pos_deciles[needed_decile] = ind
-                needed_decile += 1
-                if needed_decile > len(area_decils) - 1:
-                    # Found last area decile we have to escape while loop.
-                    compute_deciles = False
-                    break
-            prev_total_fraction = current_total_fraction
-    if current_total_fraction == 1:
-        # See hint in strax peak_properties _index_of_fraction.
-        pos_deciles[-1] = len(data)
-    return area, pos_deciles, amp, amp_ind
 
 
 @export
