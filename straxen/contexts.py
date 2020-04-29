@@ -114,6 +114,7 @@ x1t_context_config = {
 
 x1t_common_config = dict(
     check_raw_record_overlaps=False,
+    allow_sloppy_chunking=True,
     n_tpc_pmts=248,
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)

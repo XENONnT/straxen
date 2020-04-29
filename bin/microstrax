@@ -64,8 +64,14 @@ def get_data(
                          "yet to be written, or something is wrong.")
     full_run_bytes = st.size_mb(run_id, target) * int(1e6)
 
-    if time_range is None and 'start' in md and 'end' in md:
-        time_range = [md['start'], md['end']]
+    if time_range is None:
+        # Time range is the full run. Find the second range corresponding
+        # to that (as best we can)
+        if not 'chunks' in md or not md['chunks']:
+            print(f"Run {run_id} has no chunks??")
+        else:
+            time_range = [md['chunks'][0]['start'],
+                          md['chunks'][-1]['end']]
 
     if time_range is None or not max_n:
         # We have to load all the data
@@ -93,8 +99,8 @@ def get_data(
                 break
 
     if load_bytes > max_load_mb * int(1e6):
-        raise ValueError(f"Cannot load {target} for run {run_id}: "
-                         f"it would take more than a GB of RAM to load")
+        raise ValueError(f"Cannot load {target} for run {run_id}: it would "
+                         f"take more than {max_load_mb} MB RAM to load.")
 
     x = st.get_array(run_id, target,
                      time_range=time_range,
