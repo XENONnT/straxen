@@ -329,7 +329,8 @@ def _merge_intervals(start_time, resolving_time):
     """
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
-    gaps = np.diff(start_time, prepend=start_time[0]) > resolving_time
+    start_time = np.append(start_time[:1], start_time)  # prepend in diff is not supported in numba
+    gaps = np.diff(start_time) > resolving_time
     interval_starts = np.arange(0, len(gaps), 1)
     interval_starts = interval_starts[gaps]
     # Creating output
