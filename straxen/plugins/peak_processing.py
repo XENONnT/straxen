@@ -64,7 +64,7 @@ class PeakBasics(strax.Plugin):
         r['range_50p_area'] = p['width'][:, 5]
         r['range_90p_area'] = p['width'][:, 9]
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
-        r['max_pmt_area'] = p['area_per_channel'][r['max_pmt']]
+        r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
 
         r['center_time'] = p['time'] + self.compute_center_times(peaks)
