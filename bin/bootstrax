@@ -550,21 +550,18 @@ def eb_can_process():
     n_ebs_busy = 0
     for eb_i in range(3, 6):
         # Should count if eb3-5 are registered as running (as one might be offline).
-        if bs_coll.find_one({'state': 'busy', 'host': f'eb{eb_i}.xenon.local'}):
+        if bs_coll.find_one({'host': f'eb{eb_i}.xenon.local'}):
             n_ebs_running += 1
-            start_time = run_coll.find_one({'state': 'busy',
-                                            'host': f'eb{eb_i}.xenon.local'}
-                                           ).get('bootstrax', {}
-                                                 ).get('started_processing')
-            if start_time and start_time.replace(tzinfo=pytz.utc) < now(-timeout):
+            running_eb = run_coll.find_one({'state': 'busy',
+                                            'host': f'eb{eb_i}.xenon.local'})
+            if running_eb and running_eb.get('started_processing').replace(tzinfo=pytz.utc) < now(-timeout):
                 n_ebs_busy += 1
-
     if ((n_ebs_running == n_ebs_busy and n_untouched_runs > max_queue_new_runs) or
             not n_ebs_running):
         # There is a need for this eb to also process data (for now).
         log.info(f'eb_can_process::\tThere is a need for {hostname} to process data')
         return True
-    elif n_untouched_runs < max_queue_new_runs:
+    elif n_untouched_runs and n_untouched_runs < max_queue_new_runs:
         log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
     else:
         log.info(f'eb_can_process::\tDo not process on {hostname}, new ebs are taking care')
