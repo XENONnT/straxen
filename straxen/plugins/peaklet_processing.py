@@ -76,8 +76,10 @@ class Peaklets(strax.Plugin):
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(r,
-                               min_amplitude=self.config['hit_min_amplitude'])
+        hits = strax.find_hits(
+            r,
+            min_amplitude=straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude']))
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!

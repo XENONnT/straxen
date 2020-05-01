@@ -20,7 +20,7 @@ common_opts = dict(
 
 xnt_common_config = dict(
     n_tpc_pmts=494,
-    gain_model=('to_pe_constant', 0.005),
+    gain_model=('to_pe_constant', '1300V_20200428'),
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
@@ -136,7 +136,7 @@ x1t_common_config = dict(
     peak_right_extension=30,
     peak_min_pmts=2,
     save_outside_hits=(3, 3),
-    hit_min_amplitude=straxen.adc_thresholds())
+    hit_min_amplitude='XENON1T_SR1')
 
 
 def demo():
