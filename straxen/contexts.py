@@ -11,11 +11,10 @@ common_opts = dict(
         straxen.peak_processing,
         straxen.event_processing,
         straxen.double_scatter],
+    check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',
-        'start', 'end', 'livetime', 'mode'),
-    check_available=('raw_records', 'records', 'peaklets',
-                     'events', 'event_info'))
+        'start', 'end', 'livetime', 'mode'))
 
 
 xnt_common_config = dict(
@@ -107,6 +106,8 @@ def nt_simulation():
 x1t_context_config = {
     **common_opts,
     **dict(
+        check_available=('raw_records', 'records', 'peaklets',
+                             'events', 'event_info'),
         free_options=('channel_map',),
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
