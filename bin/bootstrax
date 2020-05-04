@@ -1227,8 +1227,8 @@ def clean_run(*, mongo_id=None, number=None, force=False):
                 log.info(f'prevent {loc} from being deleted. The live_data has already'
                          f' been removed')
             elif os.path.exists(loc):
+                ddoc['location'] = 'deleted'
                 shutil.rmtree(loc)
-        else:
             new_data.append(ddoc)
     run_coll.find_one_and_update(
         {'_id': rd['_id']},
