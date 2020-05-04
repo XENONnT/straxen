@@ -697,7 +697,7 @@ def _delete_live_data(rd, live_data_path):
     if not os.path.exists(live_data_path):
         log.info('updating data field in rundoc')
         run_coll.update_one(
-                {'_id' : rd['_id'], 'data.type' : 'live'}
+                {'_id' : rd['_id'], 'data.type' : 'live'},
                 {'$set' : {'data.$.location' : 'deleted'}})
     else:
         raise ValueError(f"Something went wrong we wanted to delete {live_data_path}!")
