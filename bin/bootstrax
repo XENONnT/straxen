@@ -55,7 +55,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.9'
+__version__ = '0.4.10'
 
 import argparse
 from collections import Counter
@@ -106,6 +106,8 @@ parser.add_argument('--delete_live', action='store_true',
 parser.add_argument('--production', action='store_true',
                     help="Run bootstrax in production mode. Assuming test mode otherwise to prevent "
                          "interactions with the runs-database")
+parser.add_argument('--undying', action='store_true',
+                    help="Except any error and ignore it")
 parser.add_argument('--max_messages', type=int,
                     default=4,
                     help="number of max mailbox messages")
@@ -1366,4 +1368,19 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
-    main()
+    if not args.undying:
+        main()
+    else:
+        while True:
+            try:
+                main()
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except Exception as fatal_error:
+                log.error(f'Fatal warning:\tran into {fatal_error}')
+                try:
+                    log_warning(f'Fatal warning:\tran into {fatal_error}',
+                                priority='warning')
+                except Exception as warning_error:
+                    log.error(f'Fatal warning:\tcould not log {warning_error}')
+                log.warning('Restarting main loop')
