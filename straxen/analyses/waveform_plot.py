@@ -156,16 +156,16 @@ def seconds_range_xaxis(seconds_range):
     samples = chop((xticks_ns % int(1e3)) // 10)
 
     labels = [str(sec[i]) for i in range(len(xticks))]
-    print_samples = np.any(samples != samples[0])
-    print_us = print_samples | np.any(us != us[0])
+    print_ns = np.any(samples != samples[0])
+    print_us = print_ns | np.any(us != us[0])
     print_ms = print_us | np.any(ms != ms[0])
     if print_ms:
         labels = [l + f'.{ms[i]:03}' for i, l in enumerate(labels)]
         if print_us:
             labels = [l + r' $\bf{' + f'{us[i]:03}' + '}$'
                       for i, l in enumerate(labels)]
-            if print_samples:
-                labels = [l + f' {samples[i]:02}' for i, l in enumerate(labels)]
+            if print_ns:
+                labels = [l + f' {samples[i]:02}0' for i, l in enumerate(labels)]
 
     plt.xticks(ticks=xticks, labels=labels, rotation=90)
     plt.xlim(*seconds_range)

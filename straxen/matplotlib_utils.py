@@ -180,3 +180,10 @@ def quiet_tight_layout():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         plt.tight_layout()
+
+
+@export
+def draw_box(x, y, **kwargs):
+    """Draw rectangle, given x-y boundary tuples"""
+    plt.gca().add_patch(matplotlib.patches.Rectangle(
+        (x[0], y[0]), x[1] - x[0], y[1] - y[0], facecolor='none', **kwargs))

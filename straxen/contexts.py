@@ -11,16 +11,15 @@ common_opts = dict(
         straxen.peak_processing,
         straxen.event_processing,
         straxen.double_scatter],
+    check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',
-        'start', 'end', 'livetime', 'mode'),
-    check_available=('raw_records', 'records', 'peaklets',
-                     'events', 'event_info'))
+        'start', 'end', 'livetime', 'mode'))
 
 
 xnt_common_config = dict(
     n_tpc_pmts=494,
-    gain_model=('to_pe_constant', 0.005),
+    gain_model=('to_pe_constant', '1300V_20200428'),
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          tpc=(0, 493),
@@ -107,6 +106,8 @@ def nt_simulation():
 x1t_context_config = {
     **common_opts,
     **dict(
+        check_available=('raw_records', 'records', 'peaklets',
+                             'events', 'event_info'),
         free_options=('channel_map',),
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
@@ -136,7 +137,7 @@ x1t_common_config = dict(
     peak_right_extension=30,
     peak_min_pmts=2,
     save_outside_hits=(3, 3),
-    hit_min_amplitude=straxen.adc_thresholds())
+    hit_min_amplitude='XENON1T_SR1')
 
 
 def demo():
