@@ -151,10 +151,14 @@ def event_scatter(context, run_id, events,
         extend = 'neither' if color_range[1] is None else 'max'
     else:
         extend = 'min' if color_range[1] is None else 'both'
-    plt.colorbar(label="S1 area fraction top",
-                 extend=extend,
-                 ax=[ax, ax3])
-
+    if color_dim == 's1_area_fraction_top':
+        plt.colorbar(label="S1 area fraction top",
+                     extend=extend,
+                     ax=[ax, ax3])
+    else:
+        plt.colorbar(label=color_dim,
+                     extend=extend,
+                     ax=[ax, ax3])
 
 @straxen.mini_analysis(requires=('event_info',))
 def plot_energy_spectrum(

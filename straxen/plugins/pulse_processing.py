@@ -11,9 +11,10 @@ export, __all__ = strax.exporter()
 HITFINDER_OPTIONS = tuple([
     strax.Option(
         'hit_min_amplitude',
-        default=15,
+        default='pmt_commissioning_initial',
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number.')])
+             'See straxen.hit_min_amplitude for options.'
+    )])
 
 
 @export
@@ -173,7 +174,8 @@ class PulseProcessing(strax.Plugin):
             # -- before filtering,since this messes with the with the S/N
             hits = strax.find_hits(
                 r,
-                min_amplitude=self.config['hit_min_amplitude'])
+                min_amplitude=straxen.hit_min_amplitude(
+                    self.config['hit_min_amplitude']))
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses

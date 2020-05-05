@@ -1,3 +1,13 @@
+0.8.1 / 2020-05-05
+------------------
+- Update gains and hitfinder thresholds (#110)
+- Fix cuts for strax v0.9.0 (#108)
+- Bootstrax updates (#106, #109, #111)
+- Fix peak_basics' max_pmt_area dtype (was int, is now float)
+- Event scatter colorbar fix (#107)
+- Fix tutorial notebook context names
+- Add draw_box and dataframe_to_wiki
+
 0.8.0 / 2020-04-28
 -------------------
 - Fix lone hit integration (#103, #105)
