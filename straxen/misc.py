@@ -35,4 +35,3 @@ def _force_int(df, columns):
     for c in strax.to_str_tuple(columns):
         df[c] = df[c].values.astype(np.int64)
     return df
-
