@@ -30,7 +30,7 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
     elif model_type == 'to_pe_per_run':
         # Load a npy file specifing a run_id -> to_pe array
         to_pe_file = model_conf
-        x = get_resource(to_pe_file, fmt='npy')
+        x = straxen.get_resource(to_pe_file, fmt='npy')
         run_index = np.where(x['run_id'] == int(run_id))[0]
         if not len(run_index):
             # Gains not known: using placeholders
