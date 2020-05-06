@@ -101,8 +101,7 @@ parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
 parser.add_argument('--delete_live', action='store_true',
-                    help="Do not delete live_data after successful processing of the run. "
-                         "Delete the live_data if this flag is not added.")
+                    help="Delete live_data after successful processing of the run.")
 parser.add_argument('--production', action='store_true',
                     help="Run bootstrax in production mode. Assuming test mode otherwise to prevent "
                          "interactions with the runs-database")
@@ -287,8 +286,9 @@ bs_coll = run_db['bootstrax']
 log_coll = run_db['log']
 
 # Ping the databases to ensure the mongo connections are working
-run_db.command('ping')
-daq_db.command('ping')
+if not args.undying:
+    run_db.command('ping')
+    daq_db.command('ping')
 
 
 def main():
