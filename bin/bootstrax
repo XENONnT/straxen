@@ -55,7 +55,7 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
   - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.9'
+__version__ = '0.4.10'
 
 import argparse
 from collections import Counter
@@ -101,11 +101,12 @@ parser.add_argument('--infer_mode', action='store_true',
                     help="Determine best number max-messages and cores for each run automatically. "
                          "Overrides --cores and --max_messages")
 parser.add_argument('--delete_live', action='store_true',
-                    help="Do not delete live_data after successful processing of the run. "
-                         "Delete the live_data if this flag is not added.")
+                    help="Delete live_data after successful processing of the run.")
 parser.add_argument('--production', action='store_true',
                     help="Run bootstrax in production mode. Assuming test mode otherwise to prevent "
                          "interactions with the runs-database")
+parser.add_argument('--undying', action='store_true',
+                    help="Except any error and ignore it")
 parser.add_argument('--max_messages', type=int,
                     default=4,
                     help="number of max mailbox messages")
@@ -285,8 +286,9 @@ bs_coll = run_db['bootstrax']
 log_coll = run_db['log']
 
 # Ping the databases to ensure the mongo connections are working
-run_db.command('ping')
-daq_db.command('ping')
+if not args.undying:
+    run_db.command('ping')
+    daq_db.command('ping')
 
 
 def main():
@@ -1362,4 +1364,19 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
-    main()
+    if not args.undying:
+        main()
+    else:
+        while True:
+            try:
+                main()
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except Exception as fatal_error:
+                log.error(f'Fatal warning:\tran into {fatal_error}')
+                try:
+                    log_warning(f'Fatal warning:\tran into {fatal_error}',
+                                priority='warning')
+                except Exception as warning_error:
+                    log.error(f'Fatal warning:\tcould not log {warning_error}')
+                log.warning('Restarting main loop')
