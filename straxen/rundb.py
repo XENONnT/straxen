@@ -12,7 +12,7 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-default_mongo_url = 'zenigata.uchicago.edu:27017/run'
+default_mongo_url = 'xenon1t-daq.lngs.infn.it:27017/run'
 default_mongo_dbname = 'run'
 default_mongo_collname = 'runs'
 
