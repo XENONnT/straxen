@@ -60,22 +60,24 @@ dtype_ap = [(('Channel/PMT number','channel'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
     compressor = 'zstd'
     parallel = 'process'
-    rechunk_on_save = False
+    rechunk_on_save = True
     
     dtype = dtype_ap
     
     def setup(self):
+        
         self.to_pe = get_to_pe(self.run_id, self.config['gain_model'], n_tpc_pmts=self.config['n_tpc_pmts'])
         print('setup:\n   plugin version = ', self.__version__,
               '\n   hit_threshold = ', self.config['hit_threshold'],
               '\n   gain_model = ', self.config['gain_model'],
               '\n   LED_window = ', self.config['LED_window_left'], '-', self.config['LED_window_right'],
+              '\n\n to_pe =', self.to_pe,
              )
 
         
@@ -140,7 +142,7 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
     buffer = _result_buffer
     if not len(records):
         return
-    samples_per_record = len(records[0]['data'])
+    samples_per_record = len(records[0]['data']) # TODO nT: remove zero-padding at end of WFs
     offset = 0
 
     for record_i, r in enumerate(records):
@@ -177,8 +179,10 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
                     else:
                         continue
                 else:
-                    if i == LED_window_right:
+                    if (i == LED_window_right):
                         # end of LED window
+                        if area == 0: #no LED pulse found, go to next record
+                            break
                         in_interval = True
                         LED_hit = True
                     continue
@@ -193,8 +197,7 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
             if in_interval:
                 if not above_threshold:
                     # Hit ends at the start of this sample
-                    # (LED hit end is determined already)
-                    if not LED_hit:
+                    if not LED_hit: # (LED hit end is determined already)
                         hit_end = i
                     in_interval = False
                     

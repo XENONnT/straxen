@@ -109,11 +109,22 @@ def xenonnt_led(**kwargs):
     # Return a new context with only raw_records and led_calibration registered
     return st.new_context(
         replace=True,
-        register=[straxen.DAQReader, straxen.LEDCalibration],
+        register=[straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulses],
         config=st.config,
         storage=st.storage,
         **st.context_config)
 
+
+def xenonnt_ap(**kwargs):
+    st = xenonnt_online(output_folder = '/dali/lgrandi/hoetzsch/xenonnt/strax_data', **kwargs)
+    st.context_config['check_available'] = ('raw_records',)
+    # Return a new context with only raw_records and led_calibration registered
+    return st.new_context(
+        replace = True,
+        register = [straxen.DAQReader, straxen.plugins.afterpulse_processing.LEDAfterpulses],
+        config = ap_config_nt,
+        storage = st.storage,
+        **st.context_config)
 
 def nt_simulation():
     import wfsim
@@ -221,6 +232,30 @@ def strax_afterpulseanalysis_xenon1t():
         register=straxen.plugins.pax_interface.RecordsFromPax,
         config=ap_config_1t,
         **ap_opts)
+
+ap_config_nt = dict(n_tpc_pmts = 494,
+                    gain_model = ('to_pe_constant', 0.005 ),
+                    LED_window_left = 40,
+                    LED_window_right = 90,
+                    hit_threshold = 15,
+                    baseline_samples = 40,
+                    )
+
+def xenonnt_afterpulses(output_folder = '/dali/lgrandi/hoetzsch/xenonnt/strax_data'):
+    return strax.Context(
+        storage = [strax.DataDirectory('/dali/lgrandi/xenonnt/raw',
+                                        take_only = 'raw_records',
+                                        provide_run_metadata = True,
+                                        readonly = True),
+                   strax.DataDirectory(output_folder,
+                                       provide_run_metadata = False),
+                  ],
+        allow_multiprocess = True,
+        forbid_creation_of = ('raw_records',),
+        register = [straxen.DAQReader, straxen.plugins.afterpulse_processing.LEDAfterpulses],
+        config = ap_config_nt,
+        **ap_opts)
+    
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
