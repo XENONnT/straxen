@@ -14,9 +14,9 @@ export, __all__ = strax.exporter()
                  help="No hits for this many ns triggers a new peak"),
     strax.Option('peak_left_extension', default=30,
                  help="Include this many ns left of hits in peaks"),
-    strax.Option('peak_right_extension', default=30,
+    strax.Option('peak_right_extension', default=200,
                  help="Include this many ns right of hits in peaks"),
-    strax.Option('peak_min_pmts', default=2,
+    strax.Option('peak_min_pmts', default=4,
                  help="Minifnmum contributing PMTs needed to define a peak"),
     strax.Option('peak_split_gof_threshold',
                  # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
@@ -61,7 +61,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.0'
+    __version__ = '0.3.2'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -76,8 +76,10 @@ class Peaklets(strax.Plugin):
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(r,
-                               min_amplitude=self.config['hit_min_amplitude'])
+        hits = strax.find_hits(
+            r,
+            min_amplitude=straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude']))
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -104,6 +106,11 @@ class Peaklets(strax.Plugin):
         # fully_contained is OK provided gap_threshold > extension,
         # which is asserted inside strax.find_peaks.
         lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
+        strax.integrate_lone_hits(
+            lone_hits, records, peaklets,
+            save_outside_hits=(self.config['peak_left_extension'],
+                               self.config['peak_right_extension']),
+            n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
         strax.sum_waveform(peaklets, r, self.to_pe)

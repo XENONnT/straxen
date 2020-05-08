@@ -12,7 +12,7 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-default_mongo_url = 'zenigata.uchicago.edu:27017/run'
+default_mongo_url = 'xenon1t-daq.lngs.infn.it:27017/run'
 default_mongo_dbname = 'run'
 default_mongo_collname = 'runs'
 
@@ -34,11 +34,12 @@ class RunDB(strax.StorageFrontend):
                  mongo_url=None,
                  mongo_dbname=None,
                  mongo_collname=None,
+                 minimum_run_number=7157,
                  runid_field='name',
                  s3_kwargs=None,
                  local_only=False,
                  new_data_path=None,
-                 reader_ini_name_is_mode=True,
+                 reader_ini_name_is_mode=False,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -64,6 +65,7 @@ class RunDB(strax.StorageFrontend):
         self.local_only = local_only
         self.new_data_path = new_data_path
         self.reader_ini_name_is_mode = reader_ini_name_is_mode
+        self.minimum_run_number = minimum_run_number
         if self.new_data_path is None:
             self.readonly = True
         self.runid_field = runid_field
@@ -216,17 +218,22 @@ class RunDB(strax.StorageFrontend):
         if allow_incomplete:
             raise NotImplementedError("Can't allow_incomplete with RunDB yet")
 
-        dq = self._data_query(key)
+        q = self._data_query(key)
+        if self.minimum_run_number:
+            q['number'] = {'$gt': self.minimum_run_number}
         cursor = self.collection.find(
-            dq,
+            q,
             projection=[self.runid_field])
         return [x[self.runid_field] for x in cursor]
 
     def _scan_runs(self, store_fields):
+        if self.minimum_run_number:
+            query = {'number': {'$gt': self.minimum_run_number}}
+        else:
+            query = {}
         cursor = self.collection.find(
-            filter={},
-            projection=strax.to_str_tuple(
-                list(store_fields) + ['reader.ini.name']))
+            filter=query,
+            projection=strax.to_str_tuple(list(store_fields)))
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
                         total=cursor.count()):
             del doc['_id']
