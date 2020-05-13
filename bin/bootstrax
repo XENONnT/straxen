@@ -18,7 +18,7 @@ You can run more than one bootstrax instance, but only one per machine. If you s
 
 Philosophy
 ----------------
-Bootstrax has a crash-only / recovery first philosophy. Any error in the core code causes a crash; there is no nice exit or mandatory cleanup. Boostrax focuses on recovery after restarts: before starting work, we look for and fix any mess left by crashes.
+Bootstrax has a crash-only / recovery first philosophy. Any error in the core code causes a crash; there is no nice exit or mandatory cleanup. Bootstrax focuses on recovery after restarts: before starting work, we look for and fix any mess left by crashes.
 
 This ensures that hangs and hard crashes do not require expert tinkering to repair databases. Plus, you can just stop the program with ctrl-c (or, in principle, pulling the machine's power plug) at any time.
 
@@ -36,26 +36,17 @@ Bootstrax records its status in a document in the 'bootstrax' collection in the 
 
 Additionally, bootstrax tracks information with each run in the 'bootstrax' field of the run doc. We could also put this elsewhere, but it seemed convenient. This field contains the following subfields:
   - **state**: one of the following:
-    - **considering**: a boostrax is deciding what to do with it
+    - **considering**: a bootstrax is deciding what to do with it
     - **busy**: a strax process is working on it
     - **failed**: something is wrong, but we will retry after some amount of time
     - **abandoned**: bootstrax will ignore this run
   - **reason**: reason for last failure, if there ever was one (otherwise this field does not exists). Thus, it's quite possible for this field to exist (and show an exception) when the state is 'done': that just means it failed at least once but succeeded later. Tracking failure history is primarily the DAQ log's reponsibility; this message is only provided for convenience.
    - **n_failures**: number of failures on this run, if there ever was one (otherwise this field does not exist).
   - **next_retry**: time after which bootstrax might retry processing this run. Like 'reason', this will refer to the last failure.
-Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains the following fields:
-  - **run**: run number,
-  - **host**: the name of the eventbuilder,
-  - **time**: the time whereon the state was reported,
-  - **pid**: the pid of this bootstrax (sub)process,
-  - **cpu_pid**: cpu usage of the bootstrax subprocess (in percent),
-  - **cpu_tot**: cpu usage on the eventbuilder (in percent),
-  - **mem_pid**: memory used by this pid of boostrax (in percent),
-  - **mem_tot**': memory used on this eventbuilder (in percent),
-  - **disk_size**: size of the disk whereto this bootstrax instance is writing to (in TB),
+Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.4.11'
+__version__ = '0.4.12'
 
 import argparse
 from collections import Counter
@@ -74,7 +65,7 @@ from tqdm import tqdm
 
 import numpy as np
 import pymongo
-from psutil import pid_exists, Process, virtual_memory, cpu_percent, disk_usage
+from psutil import pid_exists, disk_usage
 import pytz
 import strax
 import straxen
@@ -200,6 +191,9 @@ exception_tempfile = 'last_bootstrax_exception.txt'
 # The name of the thread that is opened to delete live_data
 delete_thread_name = 'DeleteThread'
 
+# boostrax state for 'dead' or old entries in the bs_coll
+dead_state = 'dead_bootstrax'
+
 # The maximum time difference (s) allowed between the timestamps in the data and the
 # duration of the run (from the runs metadeta). Fail if the difference is larger than:
 max_timetamp_diff = 5
@@ -214,7 +208,6 @@ logging.basicConfig(
     datefmt='%m-%d %H:%M')
 log = logging.getLogger()
 hostname = socket.getfqdn()
-state_doc_id = None  # Set in main loop
 
 # Set the output folder
 output_folder = eb_directories[hostname]
@@ -267,8 +260,7 @@ daq_db_password = os.environ['MONGO_DAQ_PASSWORD']
 daq_db_username = os.environ['MONGO_DAQ_USERNAME']
 daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
 daq_db = daq_client[daq_db_name]
-usage_coll = daq_db['eb_monitor']
-bs_coll = daq_db['bootstrax']
+bs_coll = daq_db['eb_monitor']
 
 # Runs database
 run_dbname = 'xenonnt'
@@ -328,7 +320,6 @@ def main():
 
 def main_loop():
     """Infinite loop looking for runs to process"""
-    global state_doc_id
 
     # Wait for mongo connection
     ping_dbs()
@@ -340,13 +331,8 @@ def main_loop():
             log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill '
                         f'it. This bootrax is {os.getpid()}')
             kill_process(x['pid'])
-        bs_coll.delete_one({'_id': x['_id']})
 
-    # Register ourselves
-    state_doc_id = bs_coll.insert_one(dict(
-        host=hostname,
-        started=now(),
-        pid=os.getpid())).inserted_id
+    # # Register ourselves
     set_state('starting')
     t_start = now()
 
@@ -426,31 +412,6 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def update_usage(pid_process, run_number):
-    """Save information on the usage of resources in the 'eb_monitor' collection.
-    The information contains percentages of CPU and Memory usage both for the
-    sub-process (due to the multiprocessing) itself and on the host as a whole.
-    """
-    ping_dbs()
-    frac_to_percent = 100
-    mem_tot = virtual_memory()
-    disk = disk_usage(output_folder)
-    terabyte_to_byte = 1024.0 ** 4
-    #   current_process =  multiprocessing.current_process()
-    usage = {'run': int(run_number),
-             'host': hostname,
-             'time': now(),
-             'pid': pid_process.pid,
-             'cpu_pid': pid_process.cpu_percent(),
-             'cpu_tot': cpu_percent(),
-             'mem_pid': pid_process.memory_percent(),
-             'mem_tot': frac_to_percent * mem_tot.used / mem_tot.total,
-             'disk_size': disk.total / terabyte_to_byte,
-             'disk_used': disk.percent
-             }
-    usage_coll.insert_one(usage)
-
-
 def override_target(rd):
     """
     Check if the target should be overridden based on the mode of the DAQ for this run
@@ -474,31 +435,45 @@ def override_target(rd):
         return False
 
 
-def set_state(state):
+def set_state(state, update_fields=None):
     """Inform the bootstrax collection we're in a different state
 
     if state is None, leave state unchanged, just update heartbeat time
     """
     ping_dbs()
 
-    if state_doc_id is None:
-        log.debug("Not updating bootstrax doc: none selected. "
-                  "You are probably running a rogue bootstrax operation...")
-        return
-    update = {'time': now()}
-    if state is not None:
-        update['state'] = state
-    bs_coll.update_one(
-        {'_id': state_doc_id},
-        {'$set': update})
+    if not state:
+        # Find the last message of this host
+        previous_entry = bs_coll.find_one({'host': hostname,
+                                           'time': {'$lt': now(-timeouts['bootstrax_presumed_dead'])}},
+                                          sort=[('time', pymongo.DESCENDING)])
+        if not previous_entry:
+            raise ValueError('No previous entries nor state set. Are you running a rogue bootstrax?')
+        state = previous_entry.get('state')
+
+    bootstrax_state = dict(
+        host=hostname,
+        pid=os.getpid(),
+        time=now(),
+        state=state,
+        target=args.target,
+        max_cores=args.cores,
+        max_messages=args.max_messages,
+        undying=args.undying,
+        production_mode=args.production
+    )
+    if update_fields:
+        bootstrax_state.update(update_fields)
+
+    bs_coll.insert_one(bootstrax_state)
 
 
-def send_heartbeat():
+def send_heartbeat(update_fields=None):
     """Inform the bootstrax collection we're still here
     Use during long-running tasks where state doesn't change
     """
     # Same as set_state, just don't change state
-    set_state(None)
+    set_state(None, update_fields=update_fields)
 
 
 def log_warning(message, priority='warning'):
@@ -547,16 +522,20 @@ def eb_can_process():
         n_untouched_runs += 1
 
     # Check that eb3-5 are all busy for at least some time.
-    timeout = timeouts['eb3-5_max_busy_time']
     n_ebs_running = 0
     n_ebs_busy = 0
     for eb_i in range(3, 6):
         # Should count if eb3-5 are registered as running (as one might be offline).
-        if bs_coll.find_one({'host': f'eb{eb_i}.xenon.local'}):
+        bootstrax_on_host = bs_coll.find_one({'host': f'eb{eb_i}.xenon.local'},
+                                             sort=[('time', pymongo.DESCENDING)])
+        if (bootstrax_on_host and
+                bootstrax_on_host.get('time') < now(-timeouts['bootstrax_presumed_dead'])):
             n_ebs_running += 1
             running_eb = run_coll.find_one({'state': 'busy',
                                             'host': f'eb{eb_i}.xenon.local'})
-            if running_eb and running_eb.get('started_processing').replace(tzinfo=pytz.utc) < now(-timeout):
+            if (running_eb and
+                running_eb.get('started_processing').replace(tzinfo=pytz.utc) <
+                    now(-timeouts['eb3-5_max_busy_time'])):
                 n_ebs_busy += 1
     if ((n_ebs_running == n_ebs_busy and n_untouched_runs > max_queue_new_runs) or
             not n_ebs_running):
@@ -652,7 +631,10 @@ def sufficient_diskspace():
             send_heartbeat()
             disk = disk_usage(output_folder)
             disk_free = disk.free / gigabyte_to_byte
-    raise RuntimeError("No disk space to write to")
+    set_state(dead_state)
+    message = f"No disk space to write to. Kill bootstrax on {hostname}"
+    log_warning(message, priority='warning')
+    raise RuntimeError(message)
 
 
 def delete_temp_files():
@@ -1117,15 +1099,13 @@ def process_run(rd, send_heartbeats=args.production):
         t0 = now()
         info = dict(started_processing=t0)
         strax_proc.start()
-        pid_process = Process(strax_proc.pid)
-        # Ignore first time of psutil.cpu_percent (returns 0), see documentation
-        pid_process.cpu_percent()
-        cpu_percent()
 
         while True:
             if send_heartbeats:
-                update_usage(pid_process=pid_process, run_number=run_id)
-                send_heartbeat()
+                update = process_mode.copy()
+                update.update(dict(run_id=run_id,
+                                   target=target_override if target_override else args.target))
+                send_heartbeat(update)
 
             ec = strax_proc.exitcode
             if ec is None:
@@ -1257,16 +1237,21 @@ def cleanup_db():
 
     log.info("Checking for bad stuff in database")
 
+    # TODO
+    #  the lines below are obsolete given the changed strategy of how to use the bs_coll
     # Bootstrax instances that say they are active, but haven't reported in for a while
     # (these are on other hosts, or we would have killed them already)
-    while True:
-        send_heartbeat()
-        bd = bs_coll.find_one_and_delete(
-            {'time':
-                 {'$lt': now(-timeouts['bootstrax_presumed_dead'])}})
-        if bd is None:
-            break
-        log_warning(f"Bootstrax on host {bd['host']} presumed dead. Rest in peace")
+    # while True:
+    #     send_heartbeat()
+    #     bd = bs_coll.find_one_and_update(
+    #         {'host': hostname,
+    #          'status': {'$ne': dead_state},
+    #          'time': {'$lt': now(-timeouts['bootstrax_presumed_dead'])}
+    #          },
+    #         {'$set': {'state': dead_state}})
+    #     if bd is None:
+    #         break
+    #     log.info(f"Cleaned old boostrax entry on host {bd['host']}. Now presumed dead. Rest in peace")
 
     # Runs that say they are 'considering' or 'busy' but nothing happened for a while
     for state, timeout in [
