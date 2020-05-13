@@ -69,6 +69,16 @@ def xenonnt_online(output_folder='./strax_data',
         st.context_config['forbid_creation_of'] = 'raw_records'
 
     return st
+    
+def xenonnt_fried(**kwargs):
+    """XENONnT online processing and analysis for fried.rice.edu"""
+    st = xenonnt_online(**kwargs)
+    for backend in st.storage:
+        if isinstance(backend, strax.DataDirectory):
+            backend.path = backend.path.replace('/dali/lgrandi/xenonnt/',
+                                                '/data/xenonnt/')
+    
+    return st
 
 
 def xenonnt_led(**kwargs):
