@@ -13,7 +13,7 @@ def get_tree(file):
 
 @export
 def get_from_tree(tree,arrays):
-    return tree.lazyarrays(arrays,entrysteps='10 MB',cache=uproot.cache.ArrayCache('500 MB'))
+    return tree.lazyarrays(arrays,entrysteps=1,cache=uproot.cache.ArrayCache('500 MB'))
 
 @export
 def get_from_path(path,arrays):
@@ -21,7 +21,7 @@ def get_from_path(path,arrays):
     return uproot.iterate(all_files,
                             b'nEXOevents',
                             arrays,
-                            entrysteps=3,
+                            entrysteps=1,
                             # entrysteps='500 MB'
     )
 
@@ -71,12 +71,12 @@ class MCreader(strax.Plugin):
         g4_chunk = next(self.data_iterator)
         evttimes = np.random.exponential(1/self.config[f'rate_{self.sourcename}'],(g4_chunk[b'OPTime'].size,)).cumsum()+self.time
         self.time = evttimes[-1] #increment for next round
-        n_photons = len(g4_chunk[b'OPTime'].flatten())
+        n_photons = len(g4_chunk[b'OPTime'].flatten()) #flatten the events * photons-in-each-event array into one of length total-photons
         n_hits = len(g4_chunk[b'NESTHitT'].flatten())
         photon_records = np.zeros(n_photons, dtype=self.dtype[f'photons_{self.sourcename}'])
         photon_records['energy'] = (g4_chunk[b'OPEnergy']).flatten()
         photon_records['type'] = g4_chunk[b'OPType'].flatten()
-        photon_records['time'] = (g4_chunk[b'OPTime']-g4_chunk[b'OPTime']+evttimes).flatten()
+        photon_records['time'] = (g4_chunk[b'OPTime']+evttimes).flatten()
         photon_records['endtime'] = photon_records['time']
         photon_records['x'] = g4_chunk[b'OPX'].flatten()
         photon_records['y'] = g4_chunk[b'OPY'].flatten()
@@ -88,13 +88,15 @@ class MCreader(strax.Plugin):
         hits['z'] = g4_chunk[b'NESTHitZ'].flatten()
         hits['type'] = g4_chunk[b'NESTHitType'].flatten()
         hits['time'] = (g4_chunk[b'NESTHitT']+evttimes).flatten()
+        # hits['time'] = (g4_chunk[b'NESTHitT']*0+ evttimes).flatten() # temp test
         hits['endtime'] = hits['time']
         hits['energy'] = g4_chunk[b'NESTHitE'].flatten()
         hits['n_photons'] = g4_chunk[b'NESTHitNOP'].flatten()
         hits['n_electrons'] = g4_chunk[b'NESTHitNTE'].flatten()
 
-        print(f"Loaded source from {self.config[f'input_dir_{self.sourcename}']} chunk {chunk_i} time {self.time} name {self.sourcename}")
-        return {f'photons_{self.sourcename}': photon_records, f'nest_hits_{self.sourcename}': hits}
+        print(f"Loaded source from {self.config[f'input_dir_{self.sourcename}']} chunk {chunk_i} time {self.time} name {self.sourcename} first/last time {photon_records['time'].min()}/{photon_records['time'].max()}")
+        result = {f'photons_{self.sourcename}': photon_records, f'nest_hits_{self.sourcename}': hits}
+        return result
 
 import numba
 @numba.jit(nopython=True, nogil=True, cache=True)
@@ -134,25 +136,28 @@ class MCreader_factory(object):
         self.source_plugins[name]=newMCreader
         return newMCreader
 
-    def make_MCmerger(self):
+    def make_MCmergers(self):
         assert len(self.names)>0
-        class MCmerger(strax.Plugin):
-            depends_on = [f'photons_{sourcename}' for sourcename in self.names] + [f'nest_hits_{sourcename}' for sourcename in self.names]
-            provides = ['photons','nest_hits']
-            data_kind = {k: k for k in provides}
-            dtype = MCreader.dtype_original
-            rechunk_on_save = False
-            def compute(self, **kwargs):
-                output_dict = {}
-                for dtype_name, dtype_val in self.dtype.items():
-                    type_args = [arg for arg in kwargs.items() if dtype_name in arg[0] ]
-                    input_arrays = np.concatenate([arg[1] for arg in type_args])
+        mergers=[]
+        for key,type in MCreader.dtype_original.items():
+            class MCmerger(strax.Plugin):
+                depends_on = [f'{key}_{sourcename}' for sourcename in self.names]
+                provides = key
+                data_kind = key
+                dtype = type
+                rechunk_on_save = True
+                def compute(self, chunk_i,**kwargs):
+                    input_arrays = np.concatenate([arg[1] for arg in kwargs.items()])
                     output = sort_by_time(input_arrays)
-                    output_dict[dtype_name] = output
-                    print(f'merged time {output["time"] }')
-
-                return output_dict
-        return MCmerger
+                    for arg in kwargs.items():
+                        # print(arg)
+                        print(arg[0])
+                        if(len(arg[1])):
+                            print(arg[1]['time'].min(),arg[1]['time'].max())
+                    return output
+            MCmerger.__name__ = f'MCmerger_{key}'
+            mergers.append(MCmerger)
+        return mergers
 
 
 
@@ -167,8 +172,10 @@ class MCreader_factory(object):
 class MCReader_test_consumer(strax.Plugin):
     depends_on = ['photons']
     provides = 'test_consumer'
-    dtype = (('blah',np.float,'blahhh'),)
+    dtype = (('time',np.float,'blahhh'),
+             ('endtime', np.float, 'blaahhh'),)
     def compute(self,chunk_i,photons):
-        print(photons['time'],chunk_i)
+        # print(photons['time'],chunk_i)
+        # print(f'is sorted: {np.all(np.diff(photons["time"])>=0)}')
         return np.zeros(1,self.dtype)
 
