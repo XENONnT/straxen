@@ -194,6 +194,20 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
             else ('raw_records', 'records', 'peaklets')),
         **x1t_context_config)
 
+def xenon1t_fried(output_folder='./strax_data', build_lowlevel=False):
+    # For use on fried.rice.edu
+    st = xenon1t_dali(output_folder, build_lowlevel)
+    st.storage=[
+            strax.DataDirectory(
+                '/data/xenon1t/strax_data_raw',
+                take_only='raw_records',
+                provide_run_metadata=True,
+                readonly=True),
+            strax.DataDirectory(
+                '/data/xenon1t/strax_data',
+                readonly=True),
+            strax.DataDirectory(output_folder)]
+    return st
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
