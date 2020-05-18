@@ -1220,8 +1220,11 @@ def clean_run(*, mongo_id=None, number=None, force=False):
     # We need to get the full data docs here, since I was too lazy to write
     # a surgical update below
     rd = get_run(mongo_id=mongo_id, number=number, full_doc=True)
-    new_data = []
-    have_live_data = np.any(['live' in dd['type'] for dd in rd['data']])
+    have_live_data = False
+    for dd in rd['data']:
+        if dd['type'] == 'live' and dd['location'] != 'deleted':
+            have_live_data = True
+            break
     for ddoc in rd['data']:
         if 'host' in ddoc and ddoc['host'] == hostname:
             loc = ddoc['location']
@@ -1229,13 +1232,10 @@ def clean_run(*, mongo_id=None, number=None, force=False):
                 log.info(f'prevent {loc} from being deleted. The live_data has already'
                          f' been removed')
             elif os.path.exists(loc):
-                ddoc['location'] = 'deleted'
+                run_coll.update_one({'_id' : rd['_id'], 'data.type' : ddoc['type'],
+                    'data.location' : loc},
+                    {'$set' : {'data.$.location' : 'deleted'}})
                 shutil.rmtree(loc)
-            new_data.append(ddoc)
-    run_coll.find_one_and_update(
-        {'_id': rd['_id']},
-        {'$set': {
-            'data': new_data}})
 
 
 def clean_run_test_data(run_id):
