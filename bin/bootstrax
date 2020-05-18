@@ -166,6 +166,10 @@ timeouts = {
     # for a longer period of time, the ebs0-2 can also help with
     # processing.
     'eb3-5_max_busy_time': 10 * 60,
+    # Bootstrax writes it's state to the daq-database. To have a backlog we store this
+    # state using a TTL collection. To prevent too many entries in this backlog, only
+    # create new entries if the previous entry is at least this old (in seconds).
+    'min_status_interval': 60
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -325,11 +329,11 @@ def main_loop():
     ping_dbs()
 
     # Ensure we're the only bootstrax on this host
-    any_running = list(bs_coll.find({'host': hostname}))
-    for x in any_running:
-        if pid_exists(x['pid']) and x['pid'] is not os.getpid():
-            log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill '
-                        f'it. This bootrax is {os.getpid()}')
+    any_other_running = list(bs_coll.find({'host': hostname,
+                                           'pid': {'$ne': os.getpid()}}))
+    for x in any_other_running:
+        if pid_exists(x['pid']) and x['pid']:
+            log.warning(f'Bootstrax already running with PID {x["pid"]}, trying to kill it.')
             kill_process(x['pid'])
 
     # # Register ourselves
@@ -442,14 +446,12 @@ def set_state(state, update_fields=None):
     """
     ping_dbs()
 
+    # Find the last message of this host
+    previous_entry = bs_coll.find_one({'host': hostname,
+                                       'time': {'$lt': now(-timeouts['bootstrax_presumed_dead'])}},
+                                      sort=[('time', pymongo.DESCENDING)])
     if not state:
-        # Find the last message of this host
-        previous_entry = bs_coll.find_one({'host': hostname,
-                                           'time': {'$lt': now(-timeouts['bootstrax_presumed_dead'])}},
-                                          sort=[('time', pymongo.DESCENDING)])
-        if not previous_entry:
-            raise ValueError('No previous entries nor state set. Are you running a rogue bootstrax?')
-        state = previous_entry.get('state')
+        state = 'None' if not previous_entry else previous_entry.get('state')
 
     bootstrax_state = dict(
         host=hostname,
@@ -464,8 +466,11 @@ def set_state(state, update_fields=None):
     )
     if update_fields:
         bootstrax_state.update(update_fields)
-
-    bs_coll.insert_one(bootstrax_state)
+    if (not previous_entry or
+            (now() - previous_entry['_id'].generation_time).seconds > timeouts['min_status_interval']):
+        bs_coll.insert_one(bootstrax_state)
+    else:
+        bs_coll.find_one_and_update({'_id': previous_entry['_id']}, {'$set': bootstrax_state})
 
 
 def send_heartbeat(update_fields=None):
