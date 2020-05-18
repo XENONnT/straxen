@@ -704,10 +704,11 @@ def _delete_data(rd, path, data_type):
         ddoc = run_coll.find_one({'_id': rd['_id'], 'data.type': data_type})
         del ddoc['location']
         ddoc.update({'at': now(), 'by': hostname})
-        run_coll.find_one_and_update({'_id': rd['_id']},
-                                     {"$addToSet": {'deleted_data': ddoc}})
-        # Now, remove this entry from the existing 'data' entries
-        run_coll.delete_one({'_id': rd['_id'], 'data.type': data_type})
+        run_coll.update_one({'_id': rd['_id']},
+                            {"$addToSet": {'deleted_data': ddoc},
+                             "$pull" : {"data" :
+                                    {"data.type" : data_type,
+                                     "data.host" : hostname}}})
     else:
         raise ValueError(f"Something went wrong we wanted to delete {path}!")
 
