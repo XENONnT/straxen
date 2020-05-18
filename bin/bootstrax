@@ -665,8 +665,8 @@ def delete_live_data(rd, live_data_path):
     """
     if args.production and os.path.exists(live_data_path) and args.delete_live:
         delete_thread = threading.Thread(name=delete_thread_name,
-                                         target=_delete_live_data,
-                                         args=(rd, live_data_path))
+                                         target=_delete_data,
+                                         args=(rd, live_data_path, 'live'))
         log.info(f'Starting thread to delete {live_data_path} at {now()}')
         # We rather not stop deleting the live_data if something else fails. Set the thread to daemon.
         delete_thread.setDaemon(True)
@@ -675,21 +675,29 @@ def delete_live_data(rd, live_data_path):
                  f'continue MainThread now: {now()}')
 
 
-def _delete_live_data(rd, live_data_path):
+def _delete_data(rd, path, data_type):
     """After completing the processing and updating the runsDB, remove the
     live_data"""
     ping_dbs()
-    log.info(f'Deleting data at {live_data_path}')
-    shutil.rmtree(live_data_path)
-    log.info(f'deleting {live_data_path} finished')
-    # Remove the /live_data location from the rundoc
-    if not os.path.exists(live_data_path):
-        log.info('updating data field in rundoc')
-        run_coll.update_one(
-            {'_id': rd['_id'], 'data.type': 'live'},
-            {'$set': {'data.$.location': 'deleted'}})
+
+    if data_type == 'live' and not args.delete_live and args.production:
+        raise ValueError('Unsafe operation. Trying to delete live data!')
+    log.info(f'Deleting data at {path}')
+    shutil.rmtree(path)
+    log.info(f'deleting {path} finished')
+    # Remove the data location from the rundoc and append it to the 'deleted_data' entries
+    if not os.path.exists(path):
+        log.info('changing data field in rundoc')
+        ddoc = run_coll.find_one({'_id': rd['_id'], 'data.type': data_type})
+        del ddoc['location']
+        ddoc.update({'at': now(), 'by': hostname})
+        run_coll.update_one({'_id': rd['_id']},
+                            {"$addToSet": {'deleted_data': ddoc},
+                             "$pull" : {"data" :
+                                    {"data.type" : data_type,
+                                     "data.host" : hostname}}})
     else:
-        raise ValueError(f"Something went wrong we wanted to delete {live_data_path}!")
+        raise ValueError(f"Something went wrong we wanted to delete {path}!")
 
 
 def wait_on_delete_thread():
@@ -1204,22 +1212,20 @@ def clean_run(*, mongo_id=None, number=None, force=False):
     # We need to get the full data docs here, since I was too lazy to write
     # a surgical update below
     rd = get_run(mongo_id=mongo_id, number=number, full_doc=True)
-    new_data = []
-    have_live_data = np.any(['live' in dd['type'] for dd in rd['data']])
+    have_live_data = False
+    for dd in rd['data']:
+        if dd['type'] == 'live' and dd['location'] != 'deleted':
+            have_live_data = True
+            break
     for ddoc in rd['data']:
         if 'host' in ddoc and ddoc['host'] == hostname:
             loc = ddoc['location']
             if not force and not have_live_data and 'raw_records' in ddoc['type']:
+            if not force and not have_live_data and 'raw_records' in ddoc['type']:
                 log.info(f'prevent {loc} from being deleted. The live_data has already'
                          f' been removed')
             elif os.path.exists(loc):
-                ddoc['location'] = 'deleted'
-                shutil.rmtree(loc)
-            new_data.append(ddoc)
-    run_coll.find_one_and_update(
-        {'_id': rd['_id']},
-        {'$set': {
-            'data': new_data}})
+                _delete_data(rd, loc, ddoc['type'])
 
 
 def clean_run_test_data(run_id):
