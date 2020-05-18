@@ -18,10 +18,10 @@ export, __all__ = strax.exporter()
                  default=(0,50),
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(20, 55),
+                 default=(75, 110),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(75, 110),
+                 default=(20, 55),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
                  default=(0,494),
@@ -36,7 +36,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.1.4'
+    __version__ = '0.1.5'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
@@ -47,7 +47,9 @@ class LEDCalibration(strax.Plugin):
              ('amplitude_led', np.int32, 'Amplitude in LED window'),
              ('amplitude_noise', np.int32, 'Amplitude in off LED window'),
              ('channel', np.int16, 'Channel'),
-             ('time', np.int64, 'Start time of the interval (ns since unix epoch)')]
+             ('time', np.int64, 'Start time of the interval (ns since unix epoch)'),
+             ('dt', np.int16, 'Time resolution in ns'),
+             ('length', np.int32, 'Length of the interval in samples')]
     
     def compute(self, raw_records):
         r = raw_records[(raw_records['channel'] >= self.config['channel_list'][0])&(raw_records['channel'] <= self.config['channel_list'][1])]
@@ -56,6 +58,8 @@ class LEDCalibration(strax.Plugin):
         
         temp['channel'] = r['channel']
         temp['time'] = r['time']
+        temp['dt'] = r['dt']
+        temp['length'] = r['length']
         
         on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
         temp['amplitude_led'] = on['amplitude']
