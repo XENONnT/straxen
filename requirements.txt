@@ -1,4 +1,5 @@
 git+git://github.com/AxFoundation/strax
+git+git://github.com/XENONnT/utilix
 # tensorflow    # Optional, to (re)do posrec
 # holoviews     # Optional, to enable wf display
 # bokeh         # Optional, to enable wf display

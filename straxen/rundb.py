@@ -7,14 +7,10 @@ import botocore.client
 from tqdm import tqdm
 import pymongo
 
+import utilix
 import strax
 import straxen
 export, __all__ = strax.exporter()
-
-
-default_mongo_url = 'xenon1t-daq.lngs.infn.it:27017/xenonnt'
-default_mongo_dbname = 'xenonnt'
-default_mongo_collname = 'runs'
 
 
 @export
@@ -31,9 +27,6 @@ class RunDB(strax.StorageFrontend):
     provide_run_metadata = True
 
     def __init__(self,
-                 mongo_url=None,
-                 mongo_dbname=None,
-                 mongo_collname=None,
                  minimum_run_number=7157,
                  runid_field='name',
                  s3_kwargs=None,
@@ -85,24 +78,7 @@ class RunDB(strax.StorageFrontend):
                     connect_timeout=5,
                     retries=dict(max_attempts=10)))
 
-        if mongo_url is None:
-            if self.hostname.endswith('xenon.local'):
-                username = straxen.get_secret('mongo_rdb_username')
-                password = straxen.get_secret('mongo_rdb_password')
-                url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
-            else:
-                username = straxen.get_secret('rundb_username')
-                password = straxen.get_secret('rundb_password')
-                url_base = default_mongo_url
-            mongo_url = f"mongodb://{username}:{password}@{url_base}"
-
-        self.client = pymongo.MongoClient(mongo_url)
-
-        if mongo_dbname is None:
-            mongo_dbname = default_mongo_dbname
-        if mongo_collname is None:
-            mongo_collname = default_mongo_collname
-        self.collection = self.client[mongo_dbname][mongo_collname]
+        self.collection = utilix.rundb.pymongo_collection(**kwargs)
 
         self.backends = [
             strax.S3Backend(**s3_kwargs),
@@ -140,8 +116,7 @@ class RunDB(strax.StorageFrontend):
         else:
             run_query = {'number': int(key.run_id)}
         dq = self._data_query(key)
-        doc = self.collection.find_one({**run_query, **dq},
-                                       projection=dq)
+        doc = self.collection.find_one({**run_query, **dq}, projection=dq)
         if doc is None:
             # Data was not found
             if not write:

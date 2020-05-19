@@ -15,7 +15,10 @@ import urllib.request
 import numpy as np
 import pandas as pd
 
+import utilix
 import strax
+
+
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo', 'n_tpc_pmts']
 
@@ -186,10 +189,12 @@ def get_secret(x):
     message = (f"Secret {x} requested, but there is no environment "
                f"variable {env_name}, ")
     try:
-        from . import xenon_secrets
-    except ImportError:
-        message += ("nor was there a valid xenon_secrets.py "
-                    "included with your straxen installation, ")
+        config = utilix.config.Config()
+        return config.get('straxen', x)
+
+    except:
+        message += (f"nor was there a valid field in your xenon_config at {config.config_path}, ")
+        raise
 
         # If on midway, try loading a standard secrets file instead
         if 'rcc' in socket.getfqdn():
