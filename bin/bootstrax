@@ -589,14 +589,14 @@ def infer_mode(rd, input_dir):
     log.info(f'infer_mode::\tWorking with an estimated data rate of {data_rate} MB/s')
     run_settings = {
         'new_eb':
-            {'low_rate': dict(cores=24, max_messages=20, timeout=60),
-             'med_rate': dict(cores=24, max_messages=20, timeout=100),
+            {'low_rate': dict(cores=24, max_messages=20, timeout=200),
+             'med_rate': dict(cores=24, max_messages=20, timeout=200),
              'high_rate': dict(cores=20, max_messages=15, timeout=200),
              'very_high_rate': dict(cores=20, max_messages=15, timeout=300),
              'max_rate': dict(cores=16, max_messages=10, timeout=400)},
         'old_eb':
-            {'low_rate': dict(cores=30, max_messages=20, timeout=60),
-             'med_rate': dict(cores=20, max_messages=15, timeout=100),
+            {'low_rate': dict(cores=30, max_messages=20, timeout=200),
+             'med_rate': dict(cores=20, max_messages=15, timeout=200),
              'high_rate': dict(cores=10, max_messages=15, timeout=200),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=300),
              'max_rate': dict(cores=8, max_messages=10, timeout=400)}}
