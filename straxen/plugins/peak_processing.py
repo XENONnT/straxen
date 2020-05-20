@@ -1,6 +1,5 @@
 import json
 import os
-from packaging.version import parse as parse_version
 import tempfile
 
 import numpy as np
@@ -17,7 +16,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=127,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.6"
+    __version__ = "0.0.7"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -40,7 +39,8 @@ class PeakBasics(strax.Plugin):
             'range_50p_area'), np.float32),
         (('Width (in ns) of the central 90% area of the peak',
             'range_90p_area'), np.float32),
-        (('Fraction of area seen by the top array',
+        (('Fraction of area seen by the top array '
+          '(NaN for peaks with non-positive area)',
             'area_fraction_top'), np.float32),
         (('Length of the peak waveform in samples',
           'length'), np.int32),
@@ -71,9 +71,10 @@ class PeakBasics(strax.Plugin):
 
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
-        # Negative-area peaks get 0 AFT - TODO why not NaN?
+        # Negative-area peaks get NaN AFT
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
+        r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
         return r
 
