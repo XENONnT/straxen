@@ -533,7 +533,7 @@ def eb_can_process():
         bootstrax_on_host = bs_coll.find_one({'host': f'eb{eb_i}.xenon.local'},
                                              sort=[('time', pymongo.DESCENDING)])
         if (bootstrax_on_host and
-                bootstrax_on_host.get('time').replace(tzinfo=pytz.utc) < now(-timeouts['bootstrax_presumed_dead'])):
+                bootstrax_on_host.get('time').replace(tzinfo=pytz.utc) > now(-timeouts['bootstrax_presumed_dead'])):
             n_ebs_running += 1
             running_eb = run_coll.find_one({'state': 'busy',
                                             'host': f'eb{eb_i}.xenon.local'})
@@ -544,7 +544,8 @@ def eb_can_process():
     if ((n_ebs_running == n_ebs_busy and n_untouched_runs > max_queue_new_runs) or
             not n_ebs_running):
         # There is a need for this eb to also process data (for now).
-        log.info(f'eb_can_process::\tThere is a need for {hostname} to process data')
+        log.info(f'eb_can_process::\tThere is a need for {hostname} to process data. As we'
+                 f' have {n_ebs_running} running and {n_ebs_busy} busy')
         return True
     elif n_untouched_runs and n_untouched_runs < max_queue_new_runs:
         log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
