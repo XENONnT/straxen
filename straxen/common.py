@@ -49,7 +49,7 @@ def pmt_positions(xenon1t=False):
             for q in pmt_config[:248]])
     else:
         return get_resource(
-            aux_repo + '037b1cae58483743b6392f9744ef2b119d59fb05/pmt_positions_xenonnt.csv',
+            aux_repo + '874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv',
             fmt='csv')
 
 
