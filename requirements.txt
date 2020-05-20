@@ -6,3 +6,4 @@ git+git://github.com/AxFoundation/strax
 multihist>=0.6.3
 matplotlib
 packaging
+immutabledict

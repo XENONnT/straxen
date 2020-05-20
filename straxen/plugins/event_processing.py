@@ -238,7 +238,7 @@ class EventBasics(strax.LoopPlugin):
             (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
 )
 class EventPositions(strax.Plugin):
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     depends_on = ('event_basics',)
     dtype = [
