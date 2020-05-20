@@ -1107,7 +1107,7 @@ def process_run(rd, send_heartbeats=args.production):
         if args.infer_mode:
             process_mode = infer_mode(rd, loc)
         else:
-            process_mode = dict(cores=args.cores, max_messages=args.max_messages)
+            process_mode = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
 
         strax_proc = multiprocessing.Process(
             target=run_strax,
