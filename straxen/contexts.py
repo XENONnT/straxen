@@ -18,7 +18,8 @@ common_opts = dict(
 
 
 xnt_common_config = dict(
-    n_tpc_pmts=494,
+    n_tpc_pmts=straxen.n_tpc_pmts,
+    n_top_pmts=straxen.n_top_pmts,
     gain_model=('to_pe_constant', '1300V_20200428'),
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)

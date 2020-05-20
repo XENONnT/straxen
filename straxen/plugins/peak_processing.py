@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('n_top_pmts', default=253,
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
     __version__ = "0.0.7"
@@ -107,7 +107,7 @@ class PeakBasics(strax.Plugin):
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
                  default=10),
-    strax.Option('n_top_pmts', default=127,
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
 class PeakPositions(strax.Plugin):

@@ -47,9 +47,8 @@ export, __all__ = strax.exporter()
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
                       "a hit a tight coincidence (ns)"),
-    strax.Option(
-        'n_tpc_pmts', type=int,
-        help='Number of TPC PMTs'),
+    strax.Option('n_tpc_pmts', type=int,
+                 help='Number of TPC PMTs'),
 
     *HITFINDER_OPTIONS,
 )
