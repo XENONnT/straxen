@@ -113,7 +113,7 @@ class InterpolatingMap:
             # Support for specifying coordinate system as a gridspec
             grid = [np.linspace(left, right, points)
                     for _, (left, right, points) in cs]
-            cs = np.array(np.meshgrid(*grid))
+            cs = np.array(np.meshgrid(*grid, indexing='ij'))
             cs = np.transpose(cs, np.roll(np.arange(len(grid)+1), -1))
             cs = np.array(cs).reshape((-1, len(grid)))
             self.dimensions = len(grid)
