@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('n_top_pmts', default=127,
+    strax.Option('n_top_pmts', default=253,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
     __version__ = "0.0.7"
