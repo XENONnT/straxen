@@ -24,7 +24,7 @@ export, __all__ = strax.exporter()
                  default=(20, 55),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
-                 default=(0,494),
+                 default=(np.arange(0,494,1),
                  help="List of PMTs. Defalt value: all the PMTs"))
 class LEDCalibration(strax.Plugin):
     """
