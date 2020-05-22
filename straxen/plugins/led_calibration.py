@@ -18,14 +18,14 @@ export, __all__ = strax.exporter()
                  default=(0,50),
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(50, 115),
+                 default=(75, 110),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(120, 185),
+                 default=(20, 55),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
-                 default=(0,248),
-                 help="Three different light level for XENON1T: (0,36), (37,126), (127,248). Defalt value: all the PMTs"))
+                 default=(0,494),
+                 help="List of PMTs. Defalt value: all the PMTs"))
 class LEDCalibration(strax.Plugin):
     """
     Preliminary version, several parameters to set during commisioning.
@@ -36,7 +36,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.1.3'
+    __version__ = '0.1.5'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
@@ -49,8 +49,7 @@ class LEDCalibration(strax.Plugin):
              ('channel', np.int16, 'Channel'),
              ('time', np.int64, 'Start time of the interval (ns since unix epoch)'),
              ('dt', np.int16, 'Time resolution in ns'),
-             ('length', np.int32, 'Length of the interval in samples')
-            ]
+             ('length', np.int32, 'Length of the interval in samples')]
     
     def compute(self, raw_records):
         r = raw_records[(raw_records['channel'] >= self.config['channel_list'][0])&(raw_records['channel'] <= self.config['channel_list'][1])]
@@ -69,7 +68,6 @@ class LEDCalibration(strax.Plugin):
         area = get_area(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
         temp['area'] = area['area']
 
-        
         return temp
 
 # QUESTIONS: can some nice functions of numba.njit be used? What does @export mean?
