@@ -11,7 +11,7 @@ import numpy as np
 # are made available under straxen.[...]
 export, __all__ = strax.exporter()
 
-
+channel_list = [i for i in range(494)]
 @export
 @strax.takes_config(
     strax.Option('baseline_window',
@@ -24,7 +24,7 @@ export, __all__ = strax.exporter()
                  default=(20, 55),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
-                 default=(np.arange(0,494,1),
+                 default=(channel_list),
                  help="List of PMTs. Defalt value: all the PMTs"))
 class LEDCalibration(strax.Plugin):
     """
@@ -36,7 +36,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.1.5'
+    __version__ = '0.1.6'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
@@ -52,8 +52,12 @@ class LEDCalibration(strax.Plugin):
              ('length', np.int32, 'Length of the interval in samples')]
     
     def compute(self, raw_records):
-        r = raw_records[(raw_records['channel'] >= self.config['channel_list'][0])&(raw_records['channel'] <= self.config['channel_list'][1])]
-        # TODO: to change during nT commissioning or add in configuration options
+        '''
+        The data for LED calibration are build for those PMT which belongs to channel list. 
+        This is used for the different ligh levels. As defaul value all the PMTs are considered.
+        '''
+        mask = np.where(np.in1d(raw_records['channel'], self.config['channel_list']))[0]
+        r = raw_records[mask]
         temp = np.zeros(len(r), dtype=self.dtype)
         
         temp['channel'] = r['channel']
@@ -69,9 +73,6 @@ class LEDCalibration(strax.Plugin):
         temp['area'] = area['area']
 
         return temp
-
-# QUESTIONS: can some nice functions of numba.njit be used? What does @export mean?
-# ANSWERS: [fill in]
 
 _on_off_dtype = np.dtype([('channel', 'int16'),
                           ('amplitude', '<i4')])
