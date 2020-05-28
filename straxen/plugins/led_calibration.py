@@ -105,7 +105,7 @@ def safe_max(w):
     return w.max()
 
 
-def get_area(raw_records, led_window, noise_window, baseline_window):
+def get_area(raw_records, led_window, baseline_window):
     '''
     Needed for the gain computation.
     Sum the data in the defined window to get the area.
