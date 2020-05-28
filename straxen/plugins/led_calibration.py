@@ -69,7 +69,7 @@ class LEDCalibration(strax.Plugin):
         temp['amplitude_led'] = on['amplitude']
         temp['amplitude_noise'] = off['amplitude']
 
-        area = get_area(r, self.config['led_window'], self.config['noise_window'], self.config['baseline_window'])
+        area = get_area(r, self.config['led_window'], self.config['baseline_window'])
         temp['area'] = area['area']
 
         return temp
