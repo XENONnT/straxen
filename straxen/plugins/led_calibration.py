@@ -18,7 +18,7 @@ channel_list = [i for i in range(494)]
                  default=(0,50),
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(75, 110),
+                 default=(75, 105),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
                  default=(20, 55),
