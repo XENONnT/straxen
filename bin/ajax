@@ -7,7 +7,7 @@ cleaning tool to remove old data from eventbuilders
 Joran Angevaare, 2020
 
 """
-__version__ = '0.0.0'
+__version__ = '0.0.1'
 
 import argparse
 from datetime import datetime, timedelta
@@ -23,11 +23,11 @@ def now(plus=0):
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
 
 
-def _delete_data(rd, path, data_type, test= True):
+def delete_data(rd, path, data_type, test=True):
     """After completing the processing and updating the runsDB, remove the
     live_data"""
 
-    if data_type == 'live' and not args.delete_live and args.production:
+    if data_type == 'live' and not args.delete_live:
         raise ValueError('Unsafe operation. Trying to delete live data!')
     if os.path.exists(path):
         log.info(f'Deleting data at {path}')
@@ -67,17 +67,23 @@ if __name__ == '__main__':
         description="XENONnT cleaning manager")
     parser.add_argument('--force', action='store_true',
                         help="Forcefully remove stuff from this host")
+    parser.add_argument('--delete_live', action='store_true',
+                        help="delete live data for this run")
     parser.add_argument('--test', action='store_true',
-                        help="Forcefully remove stuff from this host")
+                        help="Never remove data nor update databases")
 
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--number', type=int, metavar='NUMBER',
                          help="Process a single run, regardless of its status.")
-    actions.add_argument('--all', action='store_true',
-                         help="remove all runs from this eb that are transferred")
 
     args = parser.parse_args()
     run_id = '%06d' % args.number
+    if args.force:
+        log.warning(f'DANGERZONE you are forcefully deleting data that may result in an irrecoverable loss of data.')
+        log.info(f'Please note that tests argument is {args.test} which means you are {"" if args.test else "!NOT!"} safe')
+        if not input('Want to proceed willingly? [y]').lower() == 'y':
+            log.info(f'Alright no unsafe operations, bye bye')
+            exit(-1)
 
     hostname = socket.getfqdn()
 
@@ -125,11 +131,12 @@ if __name__ == '__main__':
         if not deleted_data:
             raise FileNotFoundError(f'No data registered on {hostname} for {args.number}')
     else:
-        have_live_data = False
+        have_live_data, have_raw_records = False, False
         for dd in rd['data']:
             if dd['type'] == 'live' and dd['location'] != 'deleted':
                 have_live_data = True
-                break
+            if dd['type'] == 'raw_records' and dd['location'] != 'deleted':
+                have_raw_records = True
         for ddoc in rd['data']:
             if 'host' in ddoc and ddoc['host'] == hostname:
                 loc = ddoc['location']
@@ -138,9 +145,21 @@ if __name__ == '__main__':
                              f' been removed')
                 elif os.path.exists(loc):
                     log.info(f'delete data at {loc}')
-                    _delete_data(rd, loc, ddoc['type'], test= args.test)
+                    delete_data(rd, loc, ddoc['type'], test=args.test)
                 else:
                     loc = loc + '_temp'
                     log.info(f'delete data at {loc}')
-                    _delete_data(rd, loc, ddoc['type'], test= args.test)
+                    delete_data(rd, loc, ddoc['type'], test=args.test)
+            elif 'host' in ddoc and ddoc['host'] == 'daq':
+                loc = ddoc['location']
+                if not args.delete_live:
+                    log.info(f'prevent {loc} from being deleted. Do so with --delete_live')
+                elif not args.force and not have_raw_records:
+                    log.info(f'Unsafe to delete {loc}, no raw_records registered. Force with --force')
+                elif args.force and not have_raw_records:
+                    log.info(f'Forcefully delete {loc}, but no raw_records registered!')
+                    delete_data(rd, loc, ddoc['type'], test=args.test)
+                else:
+                    log.info(f'Deleting data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=args.test)
     log.info(f'Ajax did {run_id}, bye bye')
