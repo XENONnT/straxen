@@ -165,7 +165,7 @@ timeouts = {
     # Ebs3-5 normally do all the processing. However if all are busy
     # for a longer period of time, the ebs0-2 can also help with
     # processing.
-    'eb3-5_max_busy_time': 10 * 60,
+    'eb3-5_max_busy_time': 5 * 60,
     # Bootstrax writes it's state to the daq-database. To have a backlog we store this
     # state using a TTL collection. To prevent too many entries in this backlog, only
     # create new entries if the previous entry is at least this old (in seconds).
@@ -535,12 +535,13 @@ def eb_can_process():
         if (bootstrax_on_host and
                 bootstrax_on_host.get('time').replace(tzinfo=pytz.utc) > now(-timeouts['bootstrax_presumed_dead'])):
             n_ebs_running += 1
-            running_eb = run_coll.find_one({'state': 'busy',
-                                            'host': f'eb{eb_i}.xenon.local'})
+            running_eb = run_coll.find_one({'bootstrax.state': 'busy',
+                                            'bootstrax.host': f'eb{eb_i}.xenon.local'})
             if (running_eb and
-                running_eb.get('started_processing').replace(tzinfo=pytz.utc) <
+                running_eb.get('bootstrax',{}).get('started_processing',now()).replace(tzinfo=pytz.utc) <
                     now(-timeouts['eb3-5_max_busy_time'])):
                 n_ebs_busy += 1
+                log.info(f'eb_can_process::\t eb{eb_i} is busy')
     if ((n_ebs_running == n_ebs_busy and n_untouched_runs > max_queue_new_runs) or
             not n_ebs_running):
         # There is a need for this eb to also process data (for now).
@@ -548,9 +549,10 @@ def eb_can_process():
                  f' have {n_ebs_running} running and {n_ebs_busy} busy')
         return True
     elif n_untouched_runs and n_untouched_runs < max_queue_new_runs:
-        log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs')
+        log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs.')
     else:
         log.info(f'eb_can_process::\tDo not process on {hostname}, new ebs are taking care')
+    log.info(f'eb_can_process::\trunning: {n_ebs_running}\tbusy: {n_ebs_busy}\tqueue: {n_untouched_runs}')
     return False
 
 
