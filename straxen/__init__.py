@@ -1,10 +1,14 @@
-__version__ = '0.8.0'
+__version__ = '0.9.0'
 
 from .common import *
 from .itp_map import *
 from .rundb import *
 from .matplotlib_utils import *
 from .mini_analysis import *
+from .misc import *
+
+from .gain_models import *
+from .hitfinder_thresholds import *
 
 from . import plugins
 from .plugins import *

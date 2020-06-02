@@ -107,7 +107,8 @@ def hvdisp_plot_records_2d(records, to_pe, config,
     if time_stream is None:
         # Records are still a dataframe, convert it to points
         records, time_stream = _records_to_points(
-            records=records, to_pe=to_pe, t_reference=t_reference)
+            records=records, to_pe=to_pe, t_reference=t_reference,
+            config=config)
 
     # TODO: weigh by area?
 
@@ -202,6 +203,7 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
     hv_bokeh=True)
 def waveform_display(
         context, run_id, to_pe, time_range, t_reference, records, peaks,
+        config,
         width=600, show_largest=None):
     """Plot a waveform overview display"
 
@@ -211,7 +213,8 @@ def waveform_display(
 
     records_points, time_stream = _records_to_points(records=records,
                                                      to_pe=to_pe,
-                                                     t_reference=t_reference)
+                                                     t_reference=t_reference,
+                                                     config=config)
 
     time_v_channel = context.hvdisp_plot_records_2d(
         run_id=run_id, to_pe=to_pe,

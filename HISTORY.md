@@ -1,3 +1,27 @@
+
+0.9.0 / 2020-05-20
+------------------
+- Use revised coordinates for PMT positions (9da05b)
+- Fix tutorials and holoviews display (32490b)
+- Fix coordinate flipping in itp_map (#113)
+- Fix n_hits field for peaklets (#122)
+- Fix led_calibration options (#120)
+- Fix n_top_pmts default (#119)
+- Bootstrax updates (#112, #121)
+- Update parameters for new rundb setup
+- Specify immutabledict requirement (#116)
+
+
+0.8.1 / 2020-05-05
+------------------
+- Update gains and hitfinder thresholds (#110)
+- Fix cuts for strax v0.9.0 (#108)
+- Bootstrax updates (#106, #109, #111)
+- Fix peak_basics' max_pmt_area dtype (was int, is now float)
+- Event scatter colorbar fix (#107)
+- Fix tutorial notebook context names
+- Add draw_box and dataframe_to_wiki
+
 0.8.0 / 2020-04-28
 -------------------
 - Fix lone hit integration (#103, #105)
