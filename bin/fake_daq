@@ -49,6 +49,7 @@ def main():
 
     # Get context for reading
     st = strax.Context(storage=strax.DataDirectory(args.input_path,
+                                                   provide_run_metadata=True,
                                                    readonly=True),
                        register=straxen.plugins.pax_interface.RecordsFromPax,
                        config=straxen.contexts.x1t_common_config,
@@ -64,7 +65,8 @@ def main():
 
     # Copy over metadata
     run_md = st.run_metadata(args.input_run)
-    st2 = st.new_context(storage=strax.DataDirectory(output_dir),
+    st2 = st.new_context(storage=strax.DataDirectory(output_dir,
+                                                     provide_run_metadata=True),
                          replace=True)
     run_md.setdefault('strax_defaults', dict())
     run_md['strax_defaults']['n_readout_threads'] = n_readout_threads

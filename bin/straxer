@@ -2,6 +2,7 @@
 """Process a single run with straxen
 """
 import argparse
+import datetime
 import logging
 import time
 import os
@@ -125,8 +126,8 @@ def main(args):
         return 1
 
     md = st.run_metadata(args.run_id)
-    t_start = md['start'].timestamp()
-    t_end = md['end'].timestamp()
+    t_start = md['start'].replace(tzinfo=datetime.timezone.utc).timestamp()
+    t_end = md['end'].replace(tzinfo=datetime.timezone.utc).timestamp()
     run_duration = t_end - t_start
 
     st.config['run_start_time'] = md['start'].timestamp()
