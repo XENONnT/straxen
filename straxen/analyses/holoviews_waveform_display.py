@@ -21,7 +21,7 @@ def x_zoom_wheel():
 
 
 @straxen.mini_analysis(requires=['records'], hv_bokeh=True)
-def hvdisp_plot_pmt_pattern(*, records, to_pe, array='bottom'):
+def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array='bottom'):
     """Plot a PMT array, with colors showing the intensity
     of light observed in the time range
 
@@ -29,7 +29,7 @@ def hvdisp_plot_pmt_pattern(*, records, to_pe, array='bottom'):
     """
     import holoviews as hv
 
-    pmts = straxen.pmt_positions()
+    pmts = straxen.pmt_positions(xenon1t=config['n_tpc_pmts'] < 300)
     areas = np.bincount(records['channel'],
                         weights=records['area'] * to_pe[records['channel']],
                         minlength=len(pmts))
@@ -190,6 +190,11 @@ def _range_plot(f, full_time_range, t_reference, **kwargs):
         if x_range is None:
             x_range = seconds_from(np.asarray(full_time_range),
                                    t_reference)
+
+        # Deal with strange time ranges -- not sure how these arise?
+        x_range = np.nan_to_num(x_range)
+        if x_range[1] == x_range[0]:
+            x_range[1] += 1
 
         return f(time_range=(t_reference + int(x_range[0] * 1e9),
                              t_reference + int(x_range[1] * 1e9)),
