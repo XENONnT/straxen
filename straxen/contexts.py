@@ -83,7 +83,7 @@ def xenonnt_led(**kwargs):
         storage=st.storage,
         **st.context_config)
 
-
+#This gain model is a temp solution untill we have a nice stable one
 def xenonnt_simulation():
     import wfsim
     return strax.Context(
@@ -92,7 +92,10 @@ def xenonnt_simulation():
         config=dict(detector='XENONnT',
                     fax_config='https://raw.githubusercontent.com/XENONnT/'
                  'strax_auxiliary_files/master/fax_files/fax_config_nt.json',
-                    **straxen.contexts.xnt_common_config,),
+                    **straxen.contexts.xnt_common_config,
+                    gain_model=('to_pe_per_run',
+                'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe_nt.npy'),
+                   ),
         **straxen.contexts.common_opts)
 
 
