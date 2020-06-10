@@ -580,11 +580,14 @@ def infer_mode(rd, input_dir):
 
     # Get data rate from dispatcher
     data_rate = 0
-    for det in rd['detectors']:
-        try:
-            data_rate += ag_stat_coll.find_one({'detector' : det}, sort=(['_id', -1]))['rate']
-        except:
-            pass
+    try:
+        docs = ag_stat_coll.aggregate([
+                    {'$match': {'number': rd['number']}},
+                    {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
+                ])
+        data_rate = sum(docs.values())
+    except:
+        pass
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
