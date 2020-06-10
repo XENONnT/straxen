@@ -21,7 +21,7 @@ channel_list = [i for i in range(494)]
                  default=(75, 105),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(20, 55),
+                 default=(20, 50),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
                  default=(tuple(channel_list)),
@@ -37,7 +37,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.2.1'
+    __version__ = '0.2.2'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
@@ -98,7 +98,7 @@ def get_records(raw_records, baseline_window):
               (('Channel/PMT number', 'channel'), '<i2'), 
               (('Length of pulse to which the record belongs (without zero-padding)', 'pulse_length'), '<i4'), 
               (('Fragment number in the pulse', 'record_i'), '<i2'), 
-              (('Waveform data in raw ADC counts', 'data'), 'f8', (600,))]
+              (('Waveform data in raw ADC counts', 'data'), 'f8', (165,))]
               
     records = np.zeros(len(raw_records), dtype=_dtype)
 
@@ -110,10 +110,10 @@ def get_records(raw_records, baseline_window):
     records['channel']      = raw_records['channel']
     records['data']         = raw_records['data']
 
-    mask = np.where((records['record_i']==0)&(records['length']==600))[0]
+    mask = np.where((records['record_i']==0)&(records['length']==160))[0]
     records = records[mask]
     bl = records['data'][:, baseline_window[0]:baseline_window[1]].mean(axis=1)
-    records['data'][:, :600] = -1. * (records['data'][:, :600].transpose() - bl[:]).transpose()
+    records['data'][:, :160] = -1. * (records['data'][:, :160].transpose() - bl[:]).transpose()
     return records
 
 _on_off_dtype = np.dtype([('channel', 'int16'),
@@ -126,18 +126,17 @@ def get_amplitude(records, led_window, noise_window):
     """   
     on = np.zeros((len(records)), dtype=_on_off_dtype)
     off = np.zeros((len(records)), dtype=_on_off_dtype)
-    for i, r in enumerate(records):
-        on[i]['amplitude']  = safe_max(r['data'][led_window[0]:led_window[1]])
-        on[i]['channel']    = r['channel']
-        off[i]['amplitude'] = safe_max(r['data'][noise_window[0]:noise_window[1]])
-        off[i]['channel']   = r['channel']
+    on['amplitude'] = np.max(records['data'][:, led_window[0]:led_window[1]], axis=1)
+    on['channel']   = records['channel']
+    off['amplitude'] = np.max(records['data'][:, noise_window[0]:noise_window[1]], axis=1)
+    off['channel']   = records['channel']
     return on, off
 
-@numba.njit(nogil=True, cache=True)
-def safe_max(w):
-    if not len(w):
-        return 0
-    return w.max()
+#@numba.njit(nogil=True, cache=True)
+#def safe_max(w):
+#    if not len(w):
+#        return 0
+#    return w.max()
 
 _area_dtype = np.dtype([('channel', 'int16'),
                         ('area', 'float64')])
@@ -157,7 +156,8 @@ def get_area(records, led_window, baseline_window):
     Area = np.zeros((len(records)), dtype=_area_dtype)
     for right in end_pos:
         Area['area'] += records['data'][:, left:right].sum(axis=1)
-        Area['area'] -= float(right-left)*records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
+        #print(float(right-left)*records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl))
+        #Area['area'] -= float(right-left)*records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
     Area['channel'] = records['channel']
     Area['area']    = Area['area']/float(len(end_pos))
         
