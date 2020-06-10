@@ -201,7 +201,7 @@ dead_state = 'dead_bootstrax'
 
 # The maximum time difference (s) allowed between the timestamps in the data and the
 # duration of the run (from the runs metadeta). Fail if the difference is larger than:
-max_timetamp_diff = 5
+max_timetamp_diff = 2
 
 ##
 # Initialize globals (e.g. rundb connection)
