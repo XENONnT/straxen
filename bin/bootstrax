@@ -585,7 +585,7 @@ def infer_mode(rd, input_dir):
                     {'$match': {'number': rd['number']}},
                     {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
                 ])
-        data_rate = sum(docs.values())
+        data_rate = sum([d['rate'] for d in docs])
     except:
         pass
 
