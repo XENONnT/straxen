@@ -1,3 +1,4 @@
+from immutabledict import immutabledict
 import numba
 import numpy as np
 
@@ -92,7 +93,10 @@ class PulseProcessing(strax.Plugin):
     __version__ = '0.2.1'
 
     parallel = 'process'
-    rechunk_on_save = False
+    rechunk_on_save = immutabledict(
+        records=False,
+        veto_regions=True,
+        pulse_counts=True)
     compressor = 'lz4'
 
     depends_on = 'raw_records'
