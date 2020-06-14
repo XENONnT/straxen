@@ -37,7 +37,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.2.2'
+    __version__ = '0.2.3'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
@@ -57,14 +57,11 @@ class LEDCalibration(strax.Plugin):
         The data for LED calibration are build for those PMT which belongs to channel list. 
         This is used for the different ligh levels. As defaul value all the PMTs are considered.
         '''
-        start = datetime.datetime.now()
         mask = np.where(np.in1d(raw_records['channel'], self.config['channel_list']))[0]
         rr   = raw_records[mask]
         r    = get_records(rr, baseline_window=self.config['baseline_window'])
         del rr, raw_records
-        stop = datetime.datetime.now()
-        print('Mask and get_records: ', stop - start)
-        
+               
         temp = np.zeros(len(r), dtype=self.dtype)
         
         temp['channel'] = r['channel']
@@ -72,19 +69,13 @@ class LEDCalibration(strax.Plugin):
         temp['dt']      = r['dt']
         temp['length']  = r['length']
         
-        start = datetime.datetime.now()
         on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'])
         temp['amplitude_led']   = on['amplitude']
         temp['amplitude_noise'] = off['amplitude']
-        stop = datetime.datetime.now()
-        print('Amp: ', stop - start)
-        
-        start = datetime.datetime.now()
-        area = get_area(r, self.config['led_window'], baseline_window=self.config['baseline_window'])
+               
+        area = get_area(r, self.config['led_window'])
         temp['area'] = area['area']
-        stop = datetime.datetime.now()
-        print('Area: ', stop - start)
-
+        
         return temp
     
 def get_records(raw_records, baseline_window):
@@ -98,7 +89,7 @@ def get_records(raw_records, baseline_window):
               (('Channel/PMT number', 'channel'), '<i2'), 
               (('Length of pulse to which the record belongs (without zero-padding)', 'pulse_length'), '<i4'), 
               (('Fragment number in the pulse', 'record_i'), '<i2'), 
-              (('Waveform data in raw ADC counts', 'data'), 'f8', (165,))]
+              (('Waveform data in raw ADC counts', 'data'), 'f4', (165,))]
               
     records = np.zeros(len(raw_records), dtype=_dtype)
 
@@ -117,7 +108,7 @@ def get_records(raw_records, baseline_window):
     return records
 
 _on_off_dtype = np.dtype([('channel', 'int16'),
-                          ('amplitude', 'float64')])
+                          ('amplitude', 'float32')])
 
 def get_amplitude(records, led_window, noise_window):
     """
@@ -132,16 +123,10 @@ def get_amplitude(records, led_window, noise_window):
     off['channel']   = records['channel']
     return on, off
 
-#@numba.njit(nogil=True, cache=True)
-#def safe_max(w):
-#    if not len(w):
-#        return 0
-#    return w.max()
-
 _area_dtype = np.dtype([('channel', 'int16'),
-                        ('area', 'float64')])
+                        ('area', 'float32')])
 
-def get_area(records, led_window, baseline_window):
+def get_area(records, led_window):
     """
     Needed for the gain computation.
     Sum the data in the defined window to get the area.
@@ -149,15 +134,10 @@ def get_area(records, led_window, baseline_window):
     """
     left = led_window[0]
     end_pos = [led_window[1]+2*i for i in range(6)]
-
-    left_bsl  = baseline_window[0]
-    right_bsl = baseline_window[1]
-    
+  
     Area = np.zeros((len(records)), dtype=_area_dtype)
     for right in end_pos:
         Area['area'] += records['data'][:, left:right].sum(axis=1)
-        #print(float(right-left)*records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl))
-        #Area['area'] -= float(right-left)*records['data'][:, left_bsl:right_bsl].sum(axis=1)/(right_bsl-left_bsl)
     Area['channel'] = records['channel']
     Area['area']    = Area['area']/float(len(end_pos))
         
