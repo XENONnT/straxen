@@ -44,9 +44,9 @@ class LEDCalibration(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = False
     
-    dtype = [('area', np.float64, 'Area averaged in integration windows'),
-             ('amplitude_led', np.float64, 'Amplitude in LED window'),
-             ('amplitude_noise', np.float64, 'Amplitude in off LED window'),
+    dtype = [('area', np.float32, 'Area averaged in integration windows'),
+             ('amplitude_led', np.float32, 'Amplitude in LED window'),
+             ('amplitude_noise', np.float32, 'Amplitude in off LED window'),
              ('channel', np.int16, 'Channel'),
              ('time', np.int64, 'Start time of the interval (ns since unix epoch)'),
              ('dt', np.int16, 'Time resolution in ns'),
