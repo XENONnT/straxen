@@ -49,7 +49,6 @@ Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is
 __version__ = '0.5.1'
 
 import argparse
-from collections import Counter
 from datetime import datetime, timedelta, timezone
 import logging
 import multiprocessing
@@ -271,7 +270,7 @@ daq_db_username = os.environ['MONGO_DAQ_USERNAME']
 daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
 daq_db = daq_client[daq_db_name]
 bs_coll = daq_db['eb_monitor']
-ag_stat_col = daq_db['aggregate_status']
+ag_stat_coll = daq_db['aggregate_status']
 
 # Runs database
 run_dbname = 'xenonnt'
@@ -530,7 +529,7 @@ def eb_can_process():
     max_queue_new_runs = 2
 
     # Count number of runs untouched by bootstrax.
-    n_untouched_runs = run_coll.count_documents({'bootstrax' : {'$exists' : 0}})
+    n_untouched_runs = run_coll.count_documents({'bootstrax': {'$exists': 0}})
 
     # Check that eb3-5 are all busy for at least some time.
     n_ebs_running = 0
@@ -545,7 +544,7 @@ def eb_can_process():
             running_eb = run_coll.find_one({'bootstrax.state': 'busy',
                                             'bootstrax.host': f'eb{eb_i}.xenon.local'})
             if (running_eb and
-                running_eb.get('bootstrax',{}).get('started_processing',now()).replace(tzinfo=pytz.utc) <
+                running_eb.get('bootstrax', {}).get('started_processing', now()).replace(tzinfo=pytz.utc) <
                     now(-timeouts['eb3-5_max_busy_time'])):
                 n_ebs_busy += 1
                 log.info(f'eb_can_process::\t eb{eb_i} is busy')
@@ -571,29 +570,29 @@ def infer_mode(rd, input_dir):
     estimated data rate.
     """
     nap_time, i = 10, 0
+    default_opt = result = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
 
     # min. of 3 chunks with each pre_, chunk and post_
     min_chunks = 3
     while len(os.listdir(input_dir)) < min_chunks * 3:
         if i >= 10:
             # Too few files to be sure the first chunk is completely written
-            result = dict(cores=args.cores, max_messages=args.max_messages)
             log.info(f'Waited {i * nap_time} s but less than {min_chunks} were written. '
                      f'Could not infer run mode. Using default: {result}.')
-            return result
+            return default_opt
         i += 1
         time.sleep(nap_time)
 
     # Get data rate from dispatcher
-    data_rate = 0
     try:
         docs = ag_stat_coll.aggregate([
                     {'$match': {'number': rd['number']}},
                     {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
                 ])
         data_rate = sum([d['rate'] for d in docs])
-    except:
-        pass
+    except Exception as e:
+        log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.')
+        return default_opt
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
@@ -646,7 +645,6 @@ def sufficient_diskspace():
                      f'on {hostname}. Waiting {wait_diskspace_dt} s ({i}th iteration)')
             time.sleep(wait_diskspace_dt)
             send_heartbeat(dict(state='disk full'))
-            disk_pct = disk_usage(output_folder).percent
     set_state(dead_state)
     message = f"No disk space to write to. Kill bootstrax on {hostname}"
     log_warning(message, priority='warning')
@@ -666,7 +664,7 @@ def delete_temp_files():
         if run_coll.find_one(
                 {'bootstrax.state': 'done',
                  'number': run_id},
-                {'_id' : 1}):
+                {'_id': 1}):
             log.info(f'removing {output_folder}/{f}')
             shutil.rmtree(f'{output_folder}/{f}')
 
@@ -714,7 +712,7 @@ def _delete_data(rd, path, data_type):
                             {"$addToSet": {'deleted_data': ddoc},
                              "$pull": {"data":
                                            {"type": data_type,
-                                            "host": {'$in':['daq', hostname]}}}})
+                                            "host": {'$in': ['daq', hostname]}}}})
     else:
         raise ValueError(f"Something went wrong we wanted to delete {path}!")
 
