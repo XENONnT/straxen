@@ -157,6 +157,7 @@ class RunDB(strax.StorageFrontend):
                     {'_id': doc['_id']},
                     {'$push': {'data': {
                         'location': output_path,
+                        'file_count': len(os.listdir(output_path)),
                         'host': self.hostname,
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
