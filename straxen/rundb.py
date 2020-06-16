@@ -154,17 +154,10 @@ class RunDB(strax.StorageFrontend):
                 if not doc:
                     raise ValueError(f"Attempt to register new data for non-existing run {key.run_id}")   # noqa
 
-                # Count the number of files in the output path (NB: when registering the
-                # path, it usually does not exist yet yielding file_count: None)
-                file_count = None
-                if os.path.exists(output_path):
-                    file_count = len(os.listdir(output_path))
-
                 self.collection.find_one_and_update(
                     {'_id': doc['_id']},
                     {'$push': {'data': {
                         'location': output_path,
-                        'file_count': file_count,
                         'host': self.hostname,
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
