@@ -277,8 +277,7 @@ def _rmtree(path):
     :return:
     """
     if args.execute:
-        pass
-        # shutil.rmtree(path)
+        shutil.rmtree(path)
     else:
         log.info(f'TESTING:\tshutil.rmtree({path})')
         if not os.path.exists(path):
