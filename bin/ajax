@@ -8,7 +8,7 @@ Joran Angevaare, 2020
 
 This tool keeps the event builders clean by:
  A) deleting data associated to a run if it has been abandoned (delete live_data and data from eb)
- B) there is old high level data on the machine
+ B) deleting data if there is old high level data on the machine
  C) (re)moving old raw_records_nv as we do not plan to store this data long term
  D) check that the live_data is deleted if a run has been successfully processed and uploaded
 
