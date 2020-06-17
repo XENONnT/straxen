@@ -18,6 +18,15 @@ import shutil
 import pymongo
 import pytz
 
+# TODO
+#  Ajax is aimed at making bootstrax simpler and more devoted to the processing while Ajax
+#  is clearing the data behind it.
+#  To this purpose I want to add:
+#  Delete the failed runs from the /live_data partition
+#  Delete old high level plugins
+#  Move/Delete old raw_records_nv
+#  Delete live_data if the run has been successfully processed and uploaded
+
 
 def now(plus=0):
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
