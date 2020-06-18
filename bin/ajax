@@ -56,7 +56,7 @@ ajax_thresholds = {
     # timeout)
     'nap_time': 3600,  # s
     # Short nap time
-    'short_nap': 1,  # s
+    'short_nap': 60,  # s
 
 }
 
@@ -96,6 +96,8 @@ def main_ajax():
             clean_raw_records_nv()
         elif args.mode == 'clean_abandoned':
             clean_abandoned()
+            if hostname == eb_can_clean_ceph:
+                clean_abandoned(delete_live=True)
         elif args.mode == 'clean_all':
             while True:
                 if hostname == eb_can_clean_ceph:
@@ -139,6 +141,7 @@ def clean_cehp():
 
         # Repeat.
         if args.execute:
+            wait_on_delete_thread()
             clean_cehp()
 
     # Finally, check that there is no old data on ceph that is also not in the rundoc.
@@ -323,7 +326,7 @@ def delete_data(rd, path, data_type, test=True):
 
         ddoc.update({'at': now(), 'by': hostname + '.ajax'})
         log.info(f'update with {ddoc}')
-        if args.execute and not args.test:
+        if args.execute and not test:
             if confirm('update rundoc?'):
                 run_coll.update_one({'_id': rd['_id']},
                                     {"$addToSet": {'deleted_data': ddoc},
@@ -332,7 +335,7 @@ def delete_data(rd, path, data_type, test=True):
                                                     "host": {'$in': ['daq', hostname]}}}})
         else:
             log.info(f'Update ddoc with : {ddoc}')
-    elif not test:
+    elif not test and not args.ask_confirm:
         raise ValueError(f"Something went wrong we wanted to delete {path}!")
 
 
@@ -358,14 +361,17 @@ def remove_run_from_host(number, delete_live=False):
             if not args.force and not have_live_data and 'raw_records' in ddoc['type']:
                 log.info(f'prevent {loc} from being deleted. The live_data has already'
                          f' been removed')
-            elif os.path.exists(loc):
-                log.info(f'delete data at {loc}')
-                delete_data(rd, loc, ddoc['type'], test=not args.execute)
             else:
-                loc = loc + '_temp'
                 log.info(f'delete data at {loc}')
                 delete_data(rd, loc, ddoc['type'], test=not args.execute)
+
+                loc = loc + '_temp'
+                if os.path.exists(loc):
+                    log.info(f'delete data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
         elif 'host' in ddoc and ddoc['host'] == 'daq':
+            if not delete_live:
+                continue
             run_id = '%06d' % number
             loc = os.path.join(ddoc['location'], run_id)
             if not delete_live:
@@ -440,11 +446,9 @@ def confirm(question):
     """
     if not args.ask_confirm:
         return True
-    answer = str(input(question+' (y/n): ')).lower().strip()
-    if answer is 'y':
-        return True
-    elif answer is 'no':
-        return False
+    answer = str(input(question + ' (y/n): ')).lower().strip()
+    if answer in ('y', 'n'):
+        return answer == 'y'
     else:
         confirm('please input (y/n)\n')
 
@@ -553,6 +557,11 @@ if __name__ == '__main__':
     run_db = run_client[run_dbname]
     run_coll = run_db[run_collname]
 
-    main_ajax()
+    try:
+        main_ajax()
+    except KeyboardInterrupt as e:
+        log.info('\nStopping, wait a second for the delete threads\n')
+        wait_on_delete_thread()
+        raise e
     wait_on_delete_thread()
     log.info(f'main::\tAjax finished, bye bye')
