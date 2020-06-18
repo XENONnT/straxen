@@ -277,7 +277,8 @@ def _rmtree(path):
     :return:
     """
     if args.execute:
-        shutil.rmtree(path)
+        if confirm(f'delete {path}?'):
+            shutil.rmtree(path)
     else:
         log.info(f'TESTING:\tshutil.rmtree({path})')
         if not os.path.exists(path):
@@ -323,11 +324,12 @@ def delete_data(rd, path, data_type, test=True):
         ddoc.update({'at': now(), 'by': hostname + '.ajax'})
         log.info(f'update with {ddoc}')
         if args.execute and not args.test:
-            run_coll.update_one({'_id': rd['_id']},
-                                {"$addToSet": {'deleted_data': ddoc},
-                                 "$pull": {"data":
-                                               {"type": data_type,
-                                                "host": {'$in': ['daq', hostname]}}}})
+            if confirm('update rundoc?'):
+                run_coll.update_one({'_id': rd['_id']},
+                                    {"$addToSet": {'deleted_data': ddoc},
+                                     "$pull": {"data":
+                                                   {"type": data_type,
+                                                    "host": {'$in': ['daq', hostname]}}}})
         else:
             log.info(f'Update ddoc with : {ddoc}')
     elif not test:
@@ -395,6 +397,7 @@ def remove_if_unregistered(number, delete_live=False):
             # runDB)
             _remove_unregistered_run(ceph_folder, run_id, checked_db=True)
 
+
 def _remove_unregistered_run(base_folder, run_id, checked_db=False):
     """
     NB: The check that this run is not registered should be performed first!
@@ -428,6 +431,22 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
 def now(plus=0):
     """UTC timestamp"""
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
+
+
+def confirm(question):
+    """
+    If --ask_confirm is specified, ask user to confirm to proceed.
+    :return: bool
+    """
+    if not args.ask_confirm:
+        return True
+    answer = str(input(question+' (y/n): ')).lower().strip()
+    if answer is 'y':
+        return True
+    elif answer is 'no':
+        return False
+    else:
+        confirm('please input (y/n)\n')
 
 
 def wait_on_delete_thread():
@@ -464,6 +483,9 @@ if __name__ == '__main__':
         description="XENONnT cleaning manager")
     parser.add_argument('--force', action='store_true',
                         help="Forcefully remove stuff from this host")
+    parser.add_argument('--ask_confirm', action='store_true',
+                        help="Always ask for confirmation before deleting data/updating"
+                             " the rundoc")
     parser.add_argument('--delete_live', action='store_true',
                         help="delete live data for this run")
     parser.add_argument('--execute', action='store_true',
