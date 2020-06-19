@@ -252,10 +252,10 @@ def clean_abandoned(delete_live=False):
     """
     if not args.force:
         log.warning("Cannot delete abandoned data without --force. Please restart with "
-                    "--force and --ask_confirm")
+                    "--mode clean_abandoned --force --ask_confirm")
 
     # Notice that we thread the deletion of live_data. As such we need to allow multiple
-    # runs to be deleted simultenously.
+    # runs to be deleted simultaneously.
     if not delete_live:
         rd = run_coll.find_one({'bootstrax.state': 'abandoned',
                                 'data.host': hostname})
