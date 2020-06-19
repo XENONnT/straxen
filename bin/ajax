@@ -19,7 +19,7 @@ Therefore D) can only be performed on one of the eventbuiders (see eb_can_clean_
 
 """
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 import argparse
 from datetime import datetime, timedelta
@@ -45,8 +45,6 @@ ajax_thresholds = {
     # this many seconds ago
     'wait_after_processing': 2 * 3600,  # s
     # Remove the raw records of the neutron veto after this many seconds
-    # TODO
-    #  make sure that ajax breaks if we get a SN trigger
     'remove_raw_records_nv': 24 * 3600,  # s
     # Remove high level plugins if the run is this old
     # TODO
@@ -56,14 +54,14 @@ ajax_thresholds = {
     # timeout)
     'nap_time': 3600,  # s
     # Short nap time
-    'short_nap': 60,  # s
+    'short_nap': 5,  # s
 
 }
 
 # The low level data is taken care of by admix so we don't have to delete this. All other
 # data-types are deleted in the clean_high_level_data routine
-low_level_data = ['raw_records*',
-                  'records*', 'lone_hits', 'veto_regions', 'pulse_counts', 'led_calibration',
+low_level_data = ['raw_records*', 'records*',
+                  'lone_hits', 'veto_regions', 'pulse_counts', 'led_calibration',
                   'peaklets']
 
 # Open deletion threads with this prefix (and also look for these before quiting ajax)
@@ -81,9 +79,7 @@ eb_can_clean_ceph = 'eb0.xenon.local'
 def main_ajax():
     """Main function"""
     if args.number:
-        remove_run_from_host(args.number)
-    if args.delete_live:
-        remove_run_from_host(args.number, delete_live=True)
+        remove_run_from_host(args.number, delete_live=args.delete_live)
 
     if args.mode:
         if args.mode == 'clean_ceph':
@@ -92,6 +88,8 @@ def main_ajax():
             clean_high_level_data()
         elif args.mode == 'clean_unregistered':
             clean_unregistered()
+            if hostname == eb_can_clean_ceph:
+                clean_unregistered(delete_live=True)
         elif args.mode == 'clean_raw_records_nv':
             clean_raw_records_nv()
         elif args.mode == 'clean_abandoned':
@@ -102,9 +100,13 @@ def main_ajax():
             while True:
                 if hostname == eb_can_clean_ceph:
                     clean_cehp()
+                    clean_abandoned(delete_live=True)
+                    clean_unregistered(delete_live=True)
+
                 clean_high_level_data()
                 clean_unregistered()
                 clean_raw_records_nv()
+                clean_abandoned()
                 if not args.execute:
                     break
                 log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
@@ -207,9 +209,7 @@ def check_sn_trigger():
 
 
 def clean_raw_records_nv():
-    """
-    Based on the runsDB, remove the raw_records_nv if they are old
-    """
+    """Based on the runsDB, remove the raw_records_nv if they are old"""
     check_sn_trigger()
     rd = run_coll.find_one({'data.type': 'raw_records_nv',
                             'start':
@@ -246,30 +246,54 @@ def clean_unregistered(delete_live=False):
 
 def clean_abandoned(delete_live=False):
     """
-    Recursively delete data associated to abandoned runs.
+    Recursively delete data associated to abandoned runs. If deleting live data, submit
+    multiple threads at the same time.
     :param delete_live: bool, if true also delete the live_data of these runs.
     """
+    if not args.force:
+        log.warning("Cannot delete abandoned data without --force. Please restart with "
+                    "--force and --ask_confirm")
+
+    # Notice that we thread the deletion of live_data. As such we need to allow multiple
+    # runs to be deleted simultenously.
     if not delete_live:
         rd = run_coll.find_one({'bootstrax.state': 'abandoned',
                                 'data.host': hostname})
+        if rd is None:
+            return
+        else:
+            # Make it iterable for the loop below
+            rds = [rd]
     else:
-        rd = run_coll.find_one({'bootstrax.state': 'abandoned',
-                                'data.host': 'daq'})
-    if rd is None:
-        return
+        rds = run_coll.find({'bootstrax.state': 'abandoned',
+                             'data.location': '/live_data/xenonnt',
+                             'data.host': 'daq'})
 
-    run_number = rd['number']
-    log.info(f'clean_abandoned::\tremove data associated to run {run_number}')
-    remove_run_from_host(run_number, delete_live=delete_live)
+    # Count the number of threads. Only allow one if we aks for user input.
+    i = 0
+    i_max = 1 if args.ask_confirm else 5
+    for rd in rds:
+        if i >= i_max:
+            break
+        run_number = rd['number']
+        log.info(f'clean_abandoned::\tremove data associated to run {run_number}')
+        remove_run_from_host(run_number, delete_live=delete_live)
+        i += 1
+    else:
+        # Apparently there is no rd in rds
+        return
 
     # Repeat
     if args.execute:
-        clean_abandoned()
+        if delete_live:
+            wait_on_delete_thread()
+        clean_abandoned(delete_live=delete_live)
 
 
 ##
 # Core functions
 ##
+
 
 def _rmtree(path):
     """
@@ -289,9 +313,7 @@ def _rmtree(path):
 
 
 def threaded_delete_data(rd, path, data_type, test=True):
-    """
-    Wrapper for delete_data to run in separate threads.
-    """
+    """Wrapper for delete_data to run in separate threads."""
     thread_name = thread_prefix + path.split('/')[-1]
     delete_thread = threading.Thread(name=thread_name,
                                      target=delete_data,
@@ -340,6 +362,11 @@ def delete_data(rd, path, data_type, test=True):
 
 
 def remove_run_from_host(number, delete_live=False):
+    """
+    Save way of removing data from host if data registerred elsewhere
+    :param number: run number (not ID!)
+    :param delete_live: bool, if true delete the live_data else the processed data
+    """
     # Query the database to remove data
     rd = run_coll.find_one({'number': number,
                             'data.host': hostname if not delete_live else 'daq'})
@@ -354,11 +381,15 @@ def remove_run_from_host(number, delete_live=False):
         if dd['type'] == 'raw_records' and dd['location'] != 'deleted':
             have_raw_records = True
     for ddoc in rd['data']:
+        # This is processed data on the eventbuilders
         if 'host' in ddoc and ddoc['host'] == hostname:
             if delete_live:
+                # If you want to delete the live data you shouldn't consider this ddoc
                 continue
             loc = ddoc['location']
             if not args.force and not have_live_data and 'raw_records' in ddoc['type']:
+                # If we do not have live_data, don't delete raw_records. However, if we
+                # --force deletion, do go to the next else statement
                 log.info(f'prevent {loc} from being deleted. The live_data has already'
                          f' been removed')
             else:
@@ -370,13 +401,17 @@ def remove_run_from_host(number, delete_live=False):
                     log.info(f'delete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute)
         elif 'host' in ddoc and ddoc['host'] == 'daq':
+            # This is the live_data
             if not delete_live:
+                # If you want to delete processed data you shouldn't consider this ddoc
                 continue
             run_id = '%06d' % number
             loc = os.path.join(ddoc['location'], run_id)
             if not delete_live:
                 log.info(f'prevent {loc} from being deleted. Do so with --delete_live')
             elif not args.force and not have_raw_records:
+                # If we do not have raw records, don't delete this data. However, if we
+                # --force deletion, do go to the next else statement
                 log.info(f'Unsafe to delete {loc}, no raw_records registered. Force with '
                          f'--force')
             else:
@@ -388,6 +423,11 @@ def remove_run_from_host(number, delete_live=False):
 
 
 def remove_if_unregistered(number, delete_live=False):
+    """
+    Given a run number delete data on this machine that matches that number
+    :param number: int! the run_number (not run_id)
+    :param delete_live: Bool, if True: Remove the live_data. Else remove processed data
+    """
     # Query the database to remove data
     rd = run_coll.find_one({'number': number,
                             'data.host': hostname if not delete_live else 'daq'})
@@ -446,7 +486,7 @@ def confirm(question):
     """
     if not args.ask_confirm:
         return True
-    answer = str(input(question + ' (y/n): ')).lower().strip()
+    answer = str(input(question + ' (y/n): \n')).lower().strip()
     if answer in ('y', 'n'):
         return answer == 'y'
     else:
@@ -454,9 +494,7 @@ def confirm(question):
 
 
 def wait_on_delete_thread():
-    """
-    Check that the threads with the thread_prefix are finished before continuing.
-    """
+    """Check that the threads with the thread_prefix are finished before continuing."""
     threads = threading.enumerate()
     for thread in threads:
         if thread_prefix in thread.name:
@@ -516,7 +554,7 @@ if __name__ == '__main__':
     if args.mode == 'clean_raw_records_nv':
         log.info(f'main::\tDelete neutron veto data from {hostname} older than '
                  f'{ajax_thresholds["remove_raw_records_nv"]} s')
-        raise NotImplementedError("I don't know what to do with the raw_records of the NV")
+        raise NotImplementedError("I dont know what to do with the raw_records of the NV")
     if args.delete_live:
         if not args.number:
             raise ValueError("Specify which number with --number")
@@ -528,7 +566,9 @@ if __name__ == '__main__':
         if not input('Want to proceed willingly? [y]').lower() == 'y':
             log.info(f'main::\tAlright no unsafe operations, bye bye')
             exit(-1)
-        raise NotImplementedError('main::\tI dont want to have this option enabled yet.')
+        if args.mode != 'clean_abandoned':
+            raise NotImplementedError('main::\tI dont want to have this option enabled '
+                                      'yet.')
 
     # The event builders write to different directories on the respective machines.
     eb_directories = {
