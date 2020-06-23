@@ -254,6 +254,6 @@ def waveform_display(
             show_largest=show_largest),
         streams=[time_stream])
 
-    layout = (peak_wvs + array_plot['top']
-              + time_v_channel + array_plot['bottom'])
+    layout = (time_v_channel + peak_wvs 
+              + array_plot['top'] +  array_plot['bottom'])
     return layout.cols(2)
