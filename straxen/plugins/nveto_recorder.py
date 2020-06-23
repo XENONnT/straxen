@@ -262,6 +262,10 @@ def coincidence(hits, nfold=4, resolving_time=300):
         The coincidence window is self-extending. The bounds are both
         inclusive. 
 
+    Warning:
+        Will not test the last nfold - 1 elements. Since we do not know
+        the time of the first element in the next chunk!
+
     Returns:
         np.array: array containing the start times and end times of the
             corresponding intervals.
@@ -297,7 +301,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     """
     # 1. estimate time difference between fragments:
     start_times = rr['time']
-    mask = np.ones(len(start_times), dtype=np.bool_)
+    mask = np.zeros(len(start_times), dtype=np.bool_)
     t_diff = np.diff(start_times, prepend=start_times[0])
 
     # 2. Now we have to check if n-events are within resolving time:
