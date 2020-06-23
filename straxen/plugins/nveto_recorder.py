@@ -257,8 +257,10 @@ def coincidence(hits, nfold=4, resolving_time=300):
             strax.interval_dtype e.g. records, hits, peaks...
         nfold (int): coincidence level.
         resolving_time (int): Time window of the coincidence [ns].
+    
     Note:
-        A self-extending coincidence window is used here.
+        The coincidence window is self-extending. The bounds are both
+        inclusive. 
 
     Returns:
         np.array: array containing the start times and end times of the
