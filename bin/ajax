@@ -1,0 +1,610 @@
+#!/usr/bin/env python
+"""
+AJAX: XENONnT
+Aggregate Junking Ancient Xenondata
+cleaning tool to remove old data from eventbuilders.
+=============================================
+Joran Angevaare, 2020
+
+This tool keeps the event builders clean by:
+ A) deleting data associated to a run if it has been abandoned (delete live_data and data from eb)
+ B) deleting data if there is old high level data on the machine
+ C) (re)moving old raw_records_nv as we do not plan to store this data long term
+ D) check that the live_data is deleted if a run has been successfully processed and uploaded
+
+Whereas A-C can be performed on autopilot D is a rather delicate task as it can become somewhat complicated if multiple
+ajax instances are running on different machines.
+This could be solved by registering ajax like bootstrax but this seems overkill at the moment.
+Therefore D) can only be performed on one of the eventbuiders (see eb_can_clean_ceph).
+
+"""
+
+__version__ = '0.1.0'
+
+import argparse
+from datetime import datetime, timedelta
+import logging
+import os
+import socket
+import shutil
+import pymongo
+import pytz
+import threading
+import time
+import re
+import numpy as np
+import sys
+
+##
+# Parameters
+##
+ajax_thresholds = {
+    # Remove the live data only if this many seconds old
+    'remove_live_after': 24 * 3600,  # s
+    # Remove do not remove successfully processed runs if they have finished less than
+    # this many seconds ago
+    'wait_after_processing': 2 * 3600,  # s
+    # Remove the raw records of the neutron veto after this many seconds
+    'remove_raw_records_nv': 24 * 3600,  # s
+    # Remove high level plugins if the run is this old
+    # TODO
+    #  change the value to a different one
+    'remove_high_level_data': 365 * 24 * 3600,  # s
+    # Minimum time for restarting ajax to check for new stuff to clean (essentially the
+    # timeout)
+    'nap_time': 3600,  # s
+    # Short nap time
+    'short_nap': 5,  # s
+
+}
+
+# The low level data is taken care of by admix so we don't have to delete this. All other
+# data-types are deleted in the clean_high_level_data routine
+low_level_data = ['raw_records*', 'records*',
+                  'lone_hits', 'veto_regions', 'pulse_counts', 'led_calibration',
+                  'peaklets']
+
+# Open deletion threads with this prefix (and also look for these before quiting ajax)
+thread_prefix = 'ajax_delete'
+
+# To prevent multiple ebs from cleaning ceph only this one can actually do it
+eb_can_clean_ceph = 'eb0.xenon.local'
+
+
+##
+# Main functions
+##
+
+
+def main_ajax():
+    """Main function"""
+    if args.number:
+        remove_run_from_host(args.number, delete_live=args.delete_live, force=args.force)
+
+    if args.mode:
+        if args.mode == 'clean_ceph':
+            clean_cehp()
+        elif args.mode == 'clean_high_level_data':
+            clean_high_level_data()
+        elif args.mode == 'clean_unregistered':
+            clean_unregistered()
+            if hostname == eb_can_clean_ceph:
+                clean_unregistered(delete_live=True)
+        elif args.mode == 'clean_raw_records_nv':
+            clean_raw_records_nv()
+        elif args.mode == 'clean_abandoned':
+            clean_abandoned()
+            if hostname == eb_can_clean_ceph:
+                clean_abandoned(delete_live=True)
+        elif args.mode == 'clean_all':
+            while True:
+                if hostname == eb_can_clean_ceph:
+                    clean_cehp()
+                    clean_abandoned(delete_live=True)
+                    clean_unregistered(delete_live=True)
+
+                clean_high_level_data()
+                clean_unregistered()
+                clean_raw_records_nv()
+                clean_abandoned()
+                if not args.execute:
+                    break
+                log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
+                time.sleep(ajax_thresholds['nap_time'])
+        else:
+            raise ValueError(f'Unknown mode {args.mode}')
+
+
+def clean_cehp():
+    """
+    Look for old data on ceph. If found, delete it. Recursively iterate until no old data
+    is found. This function only works on the the host that is eb_can_clean_ceph.
+    """
+    if not hostname == eb_can_clean_ceph:
+        log.info(f'clean_cehp::\tfor cleaning ceph, go to {eb_can_clean_ceph}')
+        return
+
+    rd = run_coll.find_one({'bootstrax.state': 'done',
+                            'status': 'transferred',
+                            'start':
+                                {'$lt': now(-ajax_thresholds['remove_live_after'])},
+                            'bootstrax.time':
+                                {"$lt": now(-ajax_thresholds['wait_after_processing'])},
+                            'data.type': 'live'})
+    if rd is None:
+        return
+    else:
+        run_number = rd['number']
+        log.info(f'clean_cehp::\tremove data associated to run {run_number}')
+        remove_run_from_host(run_number, delete_live=True, force=args.force)
+        log.info(f'clean_cehp::\tfinished for {run_number}, take a'
+                 f' {ajax_thresholds["short_nap"]} s nap')
+        time.sleep(ajax_thresholds['short_nap'])
+
+        # Repeat.
+        if args.execute:
+            wait_on_delete_thread()
+            clean_cehp()
+
+    # Finally, check that there is no old data on ceph that is also not in the rundoc.
+    clean_unregistered(delete_live=True)
+
+
+def clean_high_level_data():
+    """
+    Check the runs database for old data on this host and clean all non-low-level
+    data-types from this host.
+    """
+    # We need to grep all the rundocs at once as simply doing one at the time (find_one)
+    # might get stuck as the query may yield the same result the next time it is called.
+    rds = run_coll.find({'bootstrax.state': 'done',
+                         'status': 'transferred',
+                         'start':
+                             {"$lt": now(-ajax_thresholds['remove_high_level_data'])},
+                         'data.host': hostname})
+    if not rds:
+        # Great, we are clean
+        return
+
+    for rd in rds:
+        # First check that we actually have raw_records stored somewhere
+        have_raw_records = False
+        for dd in rd['data']:
+            if dd['type'] == 'raw_records' and dd['location'] != 'deleted':
+                have_raw_records = True
+                break
+        if not have_raw_records:
+            break
+
+        # Okay, good to go let's see if it is high level data and if so, delete it
+        for ddoc in rd['data']:
+            # Only delete data on this host
+            if 'host' in ddoc and ddoc['host'] == hostname:
+                is_low_level = re.findall('|'.join(low_level_data), ddoc['type'])
+                if is_low_level:
+                    continue
+                loc = ddoc['location']
+                if 'raw_records' in ddoc['type']:
+                    raise ValueError('clean_high_level_data::\tyour regex syntax fails!')
+                elif os.path.exists(loc):
+                    log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
+                else:
+                    loc = loc + '_temp'
+                    log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
+
+
+def check_sn_trigger():
+    """
+    Get the information of a supernova trigger from some place. If occurred we should
+    crash immediately to prevent data loss
+    """
+    # Check some database for supernova triggers
+    super_nova = False
+    # super_nova = True if run_db['sn_trigger'].find_one({'time':{'$exists':True}}) else False
+    if super_nova:
+        # Just brute force quit, no exception catching nonsense
+        sys.exit(-1)
+
+
+def clean_raw_records_nv():
+    """Based on the runsDB, remove the raw_records_nv if they are old"""
+    check_sn_trigger()
+    rd = run_coll.find_one({'data.type': 'raw_records_nv',
+                            'start':
+                                {'$lt': now(-ajax_thresholds["remove_raw_records_nv"])}})
+    if not rd:
+        return
+    for ddoc in rd['data']:
+        if ddoc.get('type', '') == 'raw_records_nv':
+            break
+    if ddoc.get('type', '') == 'raw_records_nv':
+        log.info(f'clean_raw_records_nv::\tNOT implemented but could have done something '
+                 f'with {ddoc["location"]}')
+
+    pass
+
+
+def clean_unregistered(delete_live=False):
+    """
+    Clean data that is not in the database. To do this check the output folder and remove
+    files if there is no corresponding entry in the rundoc
+    :param delete_live: bool, if true delete unregistered live data.
+    """
+    folder_to_check = output_folder if delete_live is False else ceph_folder
+    all_data = os.listdir(folder_to_check)
+    run_ids = []
+    for f in all_data:
+        run_ids.append(f.split('-')[0])
+    run_ids = np.unique(run_ids)
+    log.info(f'clean_unregistered::\tfound {len(run_ids)} runs stored on'
+             f'{folder_to_check}. Checking that each is in the runs-database')
+    for run_id in run_ids:
+        remove_if_unregistered(int(run_id), delete_live=delete_live)
+
+
+def clean_abandoned(delete_live=False):
+    """
+    Recursively delete data associated to abandoned runs. If deleting live data, submit
+    multiple threads at the same time.
+    :param delete_live: bool, if true also delete the live_data of these runs.
+    """
+    # Notice that we thread the deletion of live_data. As such we need to allow multiple
+    # runs to be deleted simultaneously.
+    if not delete_live:
+        rd = run_coll.find_one({'bootstrax.state': 'abandoned',
+                                'data.host': hostname})
+        if rd is None:
+            log.info('clean_abandoned::\tNo more matches in rundoc')
+            return
+        else:
+            # Make it iterable for the loop below
+            rds = [rd]
+    else:
+        rds = run_coll.find({'bootstrax.state': 'abandoned',
+                             'data.location': '/live_data/xenonnt',
+                             'data.host': 'daq'})
+
+    # Count the number of threads. Only allow one if we aks for user input.
+    i = 0
+    i_max = 1 if args.ask_confirm else 5
+    for rd in rds:
+        if i >= i_max:
+            break
+        run_number = rd['number']
+        log.info(f'clean_abandoned::\tremove data associated to run {run_number}')
+        # Please note that we have to force these runs always since they should not be
+        # stored elsewhere. They are abandoned for a reason!
+        remove_run_from_host(run_number, delete_live=delete_live, force=True)
+        i += 1
+    if not i:
+        log.info('clean_abandoned::\tNo more live_data matches in rundoc')
+        # Apparently there is no rd in rds
+        return
+
+    # Repeat
+    if args.execute:
+        if delete_live:
+            wait_on_delete_thread()
+        return clean_abandoned(delete_live=delete_live)
+
+
+##
+# Core functions
+##
+
+
+def _rmtree(path):
+    """
+    Wrapper for shutil.rmtree. All deletion statements in this script go through this
+    function in order to make sure that the args.execute statement is always double
+    (tripple) checked before deleting data.
+    :param path: path to delete
+    :return:
+    """
+    if args.execute:
+        if confirm(f'delete {path}?'):
+            shutil.rmtree(path)
+    else:
+        log.info(f'TESTING:\tshutil.rmtree({path})')
+        if not os.path.exists(path):
+            raise ValueError(f'{path} does not exist')
+
+
+def threaded_delete_data(rd, path, data_type, test=True):
+    """Wrapper for delete_data to run in separate threads."""
+    thread_name = thread_prefix + path.split('/')[-1]
+    delete_thread = threading.Thread(name=thread_name,
+                                     target=delete_data,
+                                     args=(rd, path, data_type, test))
+    log.info(f'Starting thread to delete {path} at {now()}')
+    # We rather not stop deleting the live_data if something else fails. Set the thread
+    # to daemon.
+    delete_thread.setDaemon(True)
+    delete_thread.start()
+    log.info(f'DeleteThread {path} should be running in parallel, continue MainThread '
+             f'now: {now()}')
+
+
+def delete_data(rd, path, data_type, test=True):
+    """Delete data and update the rundoc"""
+    # if data_type == 'live' and not args.delete_live:
+    #     raise ValueError('Unsafe operation. Trying to delete live data!')
+    if os.path.exists(path):
+        log.info(f'Deleting data at {path}')
+        if not test:
+            _rmtree(path)
+    log.info(f'deleting {path} finished')
+    # Remove the data location from the rundoc and append it to the 'deleted_data' entries
+    if not os.path.exists(path):
+        log.info('changing data field in rundoc')
+        for ddoc in rd['data']:
+            if ddoc['type'] == data_type and ddoc['host'] in ('daq', hostname):
+                break
+        for k in ddoc.copy().keys():
+            if k in ['location', 'meta', 'protocol']:
+                ddoc.pop(k)
+
+        ddoc.update({'at': now(), 'by': hostname + '.ajax'})
+        log.info(f'update with {ddoc}')
+        if args.execute and not test:
+            if confirm('update rundoc?'):
+                run_coll.update_one({'_id': rd['_id']},
+                                    {"$addToSet": {'deleted_data': ddoc},
+                                     "$pull": {"data":
+                                                   {"type": data_type,
+                                                    "host": {'$in': ['daq', hostname]}}}})
+        else:
+            log.info(f'Update ddoc with : {ddoc}')
+    elif not test and not args.ask_confirm:
+        raise ValueError(f"Something went wrong we wanted to delete {path}!")
+
+
+def remove_run_from_host(number, delete_live=False, force=False):
+    """
+    Save way of removing data from host if data registered elsewhere
+    :param number: run number (not ID!)
+    :param delete_live: bool, if true delete the live_data else the processed data
+    :param force: forcefully remove the data even if we don't have the right copies (e.g.
+    deleting /live_data when the raw_records are not stored. Be careful with this option!
+    Should only be used for the deletion of abandoned runs.
+    """
+    # Query the database to remove data
+    rd = run_coll.find_one({'number': number,
+                            'data.host': hostname if not delete_live else 'daq'})
+    if not rd:
+        log.info(f'No registered data for {number} on {hostname}')
+        return
+
+    have_live_data, have_raw_records = False, False
+    for dd in rd['data']:
+        if dd['type'] == 'live' and dd['location'] != 'deleted':
+            have_live_data = True
+        if dd['type'] == 'raw_records' and dd['location'] != 'deleted':
+            have_raw_records = True
+    for ddoc in rd['data']:
+        # This is processed data on the eventbuilders
+        if 'host' in ddoc and ddoc['host'] == hostname:
+            if delete_live:
+                # If you want to delete the live data you shouldn't consider this ddoc
+                continue
+            loc = ddoc['location']
+            if not force and not have_live_data and 'raw_records' in ddoc['type']:
+                # If we do not have live_data, don't delete raw_records. However, if we
+                # --force deletion, do go to the next else statement
+                log.info(f'prevent {loc} from being deleted. The live_data has already'
+                         f' been removed')
+            else:
+                log.info(f'delete data at {loc}')
+                delete_data(rd, loc, ddoc['type'], test=not args.execute)
+
+                loc = loc + '_temp'
+                if os.path.exists(loc):
+                    log.info(f'delete data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
+        elif 'host' in ddoc and ddoc['host'] == 'daq':
+            # This is the live_data
+            if not delete_live:
+                # If you want to delete processed data you shouldn't consider this ddoc
+                continue
+            run_id = '%06d' % number
+            loc = os.path.join(ddoc['location'], run_id)
+            if not delete_live:
+                log.info(f'prevent {loc} from being deleted. Do so with --delete_live')
+            elif not force and not have_raw_records:
+                # If we do not have raw records, don't delete this data. However, if we
+                # --force deletion, do go to the next else statement
+                log.info(f'Unsafe to delete {loc}, no raw_records registered. Force with '
+                         f'--force')
+            else:
+                if force and not have_raw_records:
+                    log.info(f'Forcefully delete {loc}, but no raw_records registered!')
+                else:
+                    log.info(f'Deleting data at {loc}')
+                threaded_delete_data(rd, loc, ddoc['type'], test=not args.execute)
+
+
+def remove_if_unregistered(number, delete_live=False):
+    """
+    Given a run number delete data on this machine that matches that number
+    :param number: int! the run_number (not run_id)
+    :param delete_live: Bool, if True: Remove the live_data. Else remove processed data
+    """
+    # Query the database to remove data
+    rd = run_coll.find_one({'number': number,
+                            'data.host': hostname if not delete_live else 'daq'})
+    run_id = '%06d' % number
+
+    if not rd:
+        log.info(f'remove_if_unregistered::\trun {number} is NOT registered in the runDB')
+        if not delete_live:
+            # Check the local ebs disk for data.
+            _remove_unregistered_run(output_folder, run_id, checked_db=True)
+        else:
+            # Check ceph for data associated to this run (which is apparently not in the
+            # runDB)
+            _remove_unregistered_run(ceph_folder, run_id, checked_db=True)
+
+
+def _remove_unregistered_run(base_folder, run_id, checked_db=False):
+    """
+    NB: The check that this run is not registered should be performed first!
+    Deletes any folder from base_folder that matches run_id.
+    :param base_folder: folder to check
+    :param run_id: run_id to remove from folder
+    :param checked_db: Bool if it is checked that this run in not in the database.
+    """
+    if not checked_db:
+        raise ValueError("Only insert runs where for it is checked that it is "
+                         "not registered in the runs database ")
+    log.warning(f'No data for {run_id} found! Double checking {base_folder}!')
+    deleted_data = False
+    for folder in os.listdir(base_folder):
+        if run_id in folder:
+            log.info(f'Cleaning {base_folder + folder}')
+            if args.execute:
+                _rmtree(base_folder + folder)
+            else:
+                log.info(f'TEST\tdeleting {base_folder + folder}')
+            deleted_data = True
+    if not deleted_data:
+        raise FileNotFoundError(f'No data registered on {hostname} for {run_id}')
+
+
+##
+# Helper functions
+##
+
+
+def now(plus=0):
+    """UTC timestamp"""
+    return datetime.now(pytz.utc) + timedelta(seconds=plus)
+
+
+def confirm(question):
+    """
+    If --ask_confirm is specified, ask user to confirm to proceed.
+    :return: bool
+    """
+    if not args.ask_confirm:
+        return True
+    answer = str(input(question + ' (y/n): \n')).lower().strip()
+    if answer in ('y', 'n'):
+        return answer == 'y'
+    else:
+        confirm('please input (y/n)\n')
+
+
+def wait_on_delete_thread():
+    """Check that the threads with the thread_prefix are finished before continuing."""
+    threads = threading.enumerate()
+    for thread in threads:
+        if thread_prefix in thread.name:
+            wait = True
+            while wait:
+                wait = False
+                if thread.isAlive():
+                    log.info(f'{thread.name} still running take a '
+                             f'{ajax_thresholds["short_nap"]} s nap')
+                    time.sleep(ajax_thresholds['short_nap'])
+                    wait = True
+    log.info(f'wait_on_delete_thread::\tChecked that all {thread_prefix}* finished')
+
+
+##
+# Main
+##
+
+
+if __name__ == '__main__':
+    print(f'---\n ajax version {__version__}\n---')
+    logging.basicConfig(level=logging.INFO,
+                        format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
+    log = logging.getLogger()
+    hostname = socket.getfqdn()
+
+    parser = argparse.ArgumentParser(
+        description="XENONnT cleaning manager")
+    parser.add_argument('--force', action='store_true',
+                        help="Forcefully remove stuff from this host")
+    parser.add_argument('--ask_confirm', action='store_true',
+                        help="Always ask for confirmation before deleting data/updating"
+                             " the rundoc")
+    parser.add_argument('--delete_live', action='store_true',
+                        help="delete live data for this run")
+    parser.add_argument('--execute', action='store_true',
+                        help="Execute the deletion commands. If not specified, ajax "
+                             "assumes you want to test")
+
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument('--number', type=int, metavar='NUMBER',
+                         help="Process a single run, regardless of its status.")
+    actions.add_argument('--mode', type=str,
+                         help=
+                         'Run ajax in any of the following modes: [clean_ceph, clean_raw_records_nv, '
+                         'clean_unregistered, clean_abandoned, clean_high_level_data, clean_all]\n'
+                         '"clean_ceph": Remove successfully processed runs and abandoned runs from /live_data\n'
+                         '"clean_raw_records_nv": (re)move raw_records_nv if older than threshold\n'
+                         '"clean_unregistered": remove all data from this host that is not registered in the rundb\n'
+                         '"clean_abandoned": remove all the data associated to abandoned runs\n'
+                         '"clean_high_level_data": remove all the data on host that is not registered in the rundb\n'
+                         '"clean_all": Clean everything that AJAX can get its hands on: unregistered data, high level '
+                         'data, old raw_records_nv')
+
+    args = parser.parse_args()
+
+    if args.mode == 'clean_raw_records_nv':
+        log.info(f'main::\tDelete neutron veto data from {hostname} older than '
+                 f'{ajax_thresholds["remove_raw_records_nv"]} s')
+        raise NotImplementedError("I dont know what to do with the raw_records of the NV")
+    if args.delete_live:
+        if not args.number:
+            raise ValueError("Specify which number with --number")
+    if args.force:
+        log.warning(f'main::\tDANGER ZONE you are forcefully deleting data that may '
+                    f'result in an irrecoverable loss of data.')
+        log.info(f'main::\tPlease note that execute argument is {args.execute} which '
+                 f'means you are {"" if not args.execute else "!NOT!"} safe')
+        if not input('Want to proceed willingly? [y]').lower() == 'y':
+            log.info(f'main::\tAlright no unsafe operations, bye bye')
+            exit(-1)
+        if args.mode != 'clean_abandoned':
+            raise NotImplementedError('main::\tI dont want to have this option enabled '
+                                      'yet.')
+
+    # The event builders write to different directories on the respective machines.
+    eb_directories = {
+        'eb0.xenon.local': '/data2/xenonnt_processed/',
+        'eb1.xenon.local': '/data1/xenonnt_processed/',
+        'eb2.xenon.local': '/nfs/eb0_data1/xenonnt_processed/',
+        'eb3.xenon.local': '/data/xenonnt_processed/',
+        'eb4.xenon.local': '/data/xenonnt_processed/',
+        'eb5.xenon.local': '/data/xenonnt_processed/',
+    }
+
+    # Set the folders
+    ceph_folder = '/live_data/xenonnt/'
+    output_folder = eb_directories[hostname]
+    if os.access(output_folder, os.W_OK) is not True:
+        raise IOError(f'main::\tNo writing access to {output_folder}')
+
+    # Runs database
+    run_dbname = 'xenonnt'
+    run_collname = 'runs'
+
+    run_db_username = os.environ['MONGO_RDB_USERNAME']
+    run_db_password = os.environ['MONGO_RDB_PASSWORD']
+    run_client = pymongo.MongoClient(
+        f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin")
+    run_db = run_client[run_dbname]
+    run_coll = run_db[run_collname]
+
+    try:
+        main_ajax()
+    except KeyboardInterrupt as e:
+        log.info('\nStopping, wait a second for the delete threads\n')
+        wait_on_delete_thread()
+        raise e
+    wait_on_delete_thread()
+    log.info(f'main::\tAjax finished, bye bye')
