@@ -211,8 +211,8 @@ def xenon1t_simulation():
     return strax.Context(
         storage=strax.DataDirectory('./strax_data'),
         register=wfsim.RawRecordsFromFax1T,
-        config=dict(fax_config='https://raw.githubusercontent.com/XENONnT/'
-                 'strax_auxiliary_files/master/fax_files/fax_config_1t.json',
+        config=dict(fax_config=aux_repo+'1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
+
                     detector='XENON1T',
                     **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
