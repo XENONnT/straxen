@@ -92,7 +92,7 @@ def xenonnt_simulation():
         storage=strax.DataDirectory('./strax_data'),
         register=wfsim.RawRecordsFromFaxNT,
         config=dict(detector='XENONnT',
-                    fax_config=aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json'
+                    fax_config=aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
                     **straxen.contexts.xnt_common_config,
                    ),
         **straxen.contexts.common_opts)
