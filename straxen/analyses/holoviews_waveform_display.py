@@ -43,7 +43,7 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array='bottom'):
                hv.Dimension('y',
                             unit='cm',
                             range=(-straxen.tpc_r * f, straxen.tpc_r * f)),
-               hv.Dimension('i', range=(0, 248), label='PMT number'),
+               hv.Dimension('i', range=(0, config['n_tpc_pmts']), label='PMT number'),
                hv.Dimension('area', label='Area', unit='PE')])
     pmts = pmts.to(
         hv.Points,
