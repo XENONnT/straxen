@@ -6,6 +6,9 @@ free of holoviews.
 import numpy as np
 import pandas as pd
 
+import straxen
+
+
 def seconds_from(t, t_reference):
     return (t - t_reference) / int(1e9)
 
