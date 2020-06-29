@@ -343,7 +343,6 @@ def rough_sum(regions, records, to_pe, n, dt):
 ##
 # Pulse counting
 ##
-
 @export
 def pulse_count_dtype(n_channels):
     # NB: don't use the dt/length interval dtype, integer types are too small
@@ -359,20 +358,24 @@ def pulse_count_dtype(n_channels):
          (np.int64, n_channels)),
         (('Integral of lone pulses in ADC_count x samples', 'lone_pulse_area'),
          (np.int64, n_channels)),
+        (('Average baseline', 'baseline_mean'),
+         (np.int16, n_channels)),
+        (('Average baseline rms', 'baseline_rms_mean'),
+         (np.float32, n_channels)),
     ]
 
 
-def count_pulses(records, n_channels):
+def count_pulses(records, n_channels, start_channel=0):
     """Return array with one element, with pulse count info from records"""
     if len(records):
         result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
-        _count_pulses(records, n_channels, result)
+        _count_pulses(records, n_channels, start_channel, result)
         return result
     return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
 @numba.njit(cache=True, nogil=True)
-def _count_pulses(records, n_channels, result):
+def _count_pulses(records, n_channels, start_channel, result):
     count = np.zeros(n_channels, dtype=np.int64)
     lone_count = np.zeros(n_channels, dtype=np.int64)
     area = np.zeros(n_channels, dtype=np.int64)
@@ -384,20 +387,23 @@ def _count_pulses(records, n_channels, result):
     # Array of booleans to track whether we are currently in a lone pulse
     # in each channel
     in_lone_pulse = np.zeros(n_channels, dtype=np.bool_)
-
+    baseline_buffer = np.zeros(n_channels, dtype=np.float64)
+    baseline_rms_buffer = np.zeros(n_channels, dtype=np.float64)
     for r_i, r in enumerate(records):
         if r_i != len(records) - 1:
             next_start = records[r_i + 1]['time']
 
-        ch = r['channel']
-        if ch >= n_channels:
-            print(ch)
+        ch = r['channel'] - start_channel  # start_channel needed for e.g. nveto
+        if ch >= n_channels or ch < 0:
+            print('Channel:', ch, 'Start channel:', start_channel)
             raise RuntimeError("Out of bounds channel in get_counts!")
 
         area[ch] += r['area']  # <-- Summing total area in channel
 
         if r['record_i'] == 0:
             count[ch] += 1
+            baseline_buffer[ch] += r['baseline']
+            baseline_rms_buffer[ch] += r['baseline_rms'] 
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] * r['dt'] < next_start):
@@ -420,6 +426,8 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
+    res['baseline_mean'][:] = (baseline_buffer/count)[:]
+    res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
 
 ##
