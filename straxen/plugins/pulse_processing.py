@@ -365,17 +365,17 @@ def pulse_count_dtype(n_channels):
     ]
 
 
-def count_pulses(records, n_channels, start_channel=0):
+def count_pulses(records, n_channels):
     """Return array with one element, with pulse count info from records"""
     if len(records):
         result = np.zeros(1, dtype=pulse_count_dtype(n_channels))
-        _count_pulses(records, n_channels, start_channel, result)
+        _count_pulses(records, n_channels, result)
         return result
     return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
 @numba.njit(cache=True, nogil=True)
-def _count_pulses(records, n_channels, start_channel, result):
+def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
     lone_count = np.zeros(n_channels, dtype=np.int64)
     area = np.zeros(n_channels, dtype=np.int64)
@@ -393,9 +393,9 @@ def _count_pulses(records, n_channels, start_channel, result):
         if r_i != len(records) - 1:
             next_start = records[r_i + 1]['time']
 
-        ch = r['channel'] - start_channel  # start_channel needed for e.g. nveto
-        if ch >= n_channels or ch < 0:
-            print('Channel:', ch, 'Start channel:', start_channel)
+        ch = r['channel']
+        if ch >= n_channels:
+            print('Channel:', ch)
             raise RuntimeError("Out of bounds channel in get_counts!")
 
         area[ch] += r['area']  # <-- Summing total area in channel
