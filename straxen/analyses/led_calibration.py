@@ -383,7 +383,7 @@ def get_gainconversion(mu):
 
     return gain
 
-def get_gain(self, data_s, data_b, channels=np.arange(0,494, 1), bad_channels=None, order=10):
+def get_gain(data_s, data_b, channels=np.arange(0,494, 1), bad_channels=None, order=10):
     ''' 
     Function that computed the gain from the occupancy.
 
@@ -488,8 +488,11 @@ def xenonnt_occupancy(context, run_id, led_cal, seconds_range,
     ### Selection of those events where at least 10 PMTs have seen something
     good_time = [ ]
     bad_time  = [ ]
-    for chunk in st.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
-                             keep_columns = ('channel', 'area', 'time')):
+    st = straxen.contexts.xenonnt_led()
+    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
+    for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
+                                              keep_columns = ('channel', 'area', 'time')):
         led_data_ = chunk.data
         timestamp = np.unique(led_data_['time'])
         time_led_good = led_data_[led_data_['area']>50]['time']
@@ -501,13 +504,13 @@ def xenonnt_occupancy(context, run_id, led_cal, seconds_range,
     print('Check if good and bad are different: ', good_time == bad_time)
     print('Events with at least on PMT with area > 50: ', len(good_time))
     print('Events without at least on PMT with area < 50: ', len(bad_time))
-    mask = np.isin(data_led['time'], good_time)
+    mask     = np.isin(data_led['time'], good_time)
     data_led = data_led[mask]
     
     ### Fill led_area and noise_area for gain anc occupancy estimation
     led_area = np.zeros(len(data_led), dtype = np.dtype([('channel', 'int16'), ('area', 'float32')]))
     led_area['channel'] = data_led['channel']
-    led_area['area'] = data_led['area']
+    led_area['area']    = data_led['area']
     
     noise_area = np.empty(0, dtype = np.dtype([('channel', 'int16'), ('area', 'float32')]))
     for ch in channels:
@@ -535,8 +538,8 @@ def xenonnt_occupancy(context, run_id, led_cal, seconds_range,
     
     ### Save gain and occupancy
     if save_gain==True:
-        save_in = folder_gain+'occupancy_timeselection_'+run[0]+'_'+run[1]
-        print('Gain: ', save_in)
+        save_in = folder_gain+'occupancy_timeselection_'+run_id[0]+'_'+run_id[1]
+        print('\nHey I am saving occupancy here: ', save_in, '\n')
         np.savez(save_in, x=occupancy)
         
     return occupancy
@@ -544,7 +547,8 @@ def xenonnt_occupancy(context, run_id, led_cal, seconds_range,
 @straxen.mini_analysis(requires=('led_calibration',))
 def xenonnt_gain(context, run_id, led_cal, seconds_range,
                  channels=np.arange(0,494, 1), bad_channels=None, order=10,
-                 save_gain=False, folder_gain=None):
+                 save_gain=False, folder_gain=None, 
+                 save_plot_gain=False, folder_plot_gain=None):
     
     if bad_channels == None:
         bad_channels = [ ]
@@ -554,8 +558,11 @@ def xenonnt_gain(context, run_id, led_cal, seconds_range,
     ### Selection of those events where at least 10 PMTs have seen something
     good_time = [ ]
     bad_time  = [ ]
-    for chunk in st.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
-                             keep_columns = ('channel', 'area', 'time')):
+    st = straxen.contexts.xenonnt_led()
+    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
+    for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
+                                              keep_columns = ('channel', 'area', 'time')):
         led_data_ = chunk.data
         timestamp = np.unique(led_data_['time'])
         time_led_good = led_data_[led_data_['area']>50]['time']
@@ -610,13 +617,14 @@ def xenonnt_gain(context, run_id, led_cal, seconds_range,
     gain = get_gain(led_area, noise_area, channels=channels, bad_channels=bad_channels, order=order)
     
     ### Save gain and occupancy
-    if save_gain==True:
-        save_in = folder_gain+'/histogram/area_'+run[0]+'_'+run[1]
-        print('Histogram for db: ', save_in)
+    if save_plot_gain==True:
+        save_in = folder_plot_gain+'area_'+run_id[0]+'_'+run_id[1]
+        print('\nHey I am saving the area histogram here: ', save_in, '\n')
         np.savez(save_in, x=led, y=noise)
         
-        save_in = folder_gain+'gain_timeselection_'+run[0]+'_'+run[1]
-        print('Gain: ', save_in)
+    if save_gain==True:  
+        save_in = folder_gain+'gain_timeselection_'+run_id[0]+'_'+run_id[1]
+        print('\nHey I am saving the gain here: ', save_in, '\n')
         np.savez(save_in, x=gain)
     
     return gain
@@ -634,8 +642,11 @@ def xenonnt_spespectrum(context, run_id, led_cal, seconds_range,
     ### Selection of those events where at least 10 PMTs have seen something
     good_time = [ ]
     bad_time  = [ ]
-    for chunk in st.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
-                             keep_columns = ('channel', 'area', 'time')):
+    st = straxen.contexts.xenonnt_led()
+    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
+    for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
+                                              keep_columns = ('channel', 'area', 'time')):
         led_data_ = chunk.data
         timestamp = np.unique(led_data_['time'])
         time_led_good = led_data_[led_data_['area']>50]['time']
@@ -679,8 +690,8 @@ def xenonnt_spespectrum(context, run_id, led_cal, seconds_range,
     spe_spectrum = get_scalingspectrum(led_amplitude, noise_amplitude, 
                                        channels=channels, bad_channels=bad_channels)
     if save_spe==True:
-        save_in = folder_spe+'spespectrum_timeselection_'+run[0]+'_'+run[1]
-        print('Histogram for db: ', save_in)
+        save_in = folder_spe+'spespectrum_timeselection_'+run_id[0]+'_'+run_id[1]
+        print('\nHey I am saving the SPE spectrum here: ', save_in, '\n')
         np.savez(save_in, x=spe_spectrum)
         
     return spe_spectrum
@@ -699,8 +710,11 @@ def xenonnt_speacceptance(context, run_id, led_cal, seconds_range,
     ### Selection of those events where at least 10 PMTs have seen something
     good_time = [ ]
     bad_time  = [ ]
-    for chunk in st.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
-                             keep_columns = ('channel', 'area', 'time')):
+    st = straxen.contexts.xenonnt_led()
+    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
+    for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
+                                              keep_columns = ('channel', 'area', 'time')):
         led_data_ = chunk.data
         timestamp = np.unique(led_data_['time'])
         time_led_good = led_data_[led_data_['area']>50]['time']
@@ -746,8 +760,8 @@ def xenonnt_speacceptance(context, run_id, led_cal, seconds_range,
                                        channels=channels, bad_channels=bad_channels)
     
     if save_spe==True:
-        save_in = folder_spe+'spespectrum_timeselection_'+run[0]+'_'+run[1]
-        print('Histogram for db: ', save_in)
+        save_in = folder_spe+'spespectrum_timeselection_'+run_id[0]+'_'+run_id[1]
+        print('\nHey I am saving the SPE acceptance here: ', save_in, '\n')
         np.savez(save_in, x=spe_acceptance)
         
     return spe_acceptance
