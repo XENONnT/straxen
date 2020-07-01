@@ -2,6 +2,7 @@ from hypothesis import given, settings
 import strax
 import strax.testutils
 import straxen
+import numpy as np
 
 
 @settings(deadline=None)
