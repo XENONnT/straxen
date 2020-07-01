@@ -5,6 +5,7 @@ import strax
 import straxen
 
 export, __all__ = strax.exporter()
+__all__ += ['NO_PULSE_COUNTS']
 
 
 # These are also needed in peaklets, since hitfinding is repeated
@@ -374,6 +375,7 @@ def count_pulses(records, n_channels):
     return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
+NO_PULSE_COUNTS = -9999  # Special value required by average_baseline in case counts = 0
 @numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
@@ -426,7 +428,9 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
-    res['baseline_mean'][:] = (baseline_buffer/count)[:]
+    means = (baseline_buffer/count)
+    means[np.isnan(means)] = NO_PULSE_COUNTS
+    res['baseline_mean'][:] = means[:]
     res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
 
