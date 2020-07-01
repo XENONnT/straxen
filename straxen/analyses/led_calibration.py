@@ -7,6 +7,7 @@ from scipy.signal import savgol_filter
 import configparser as cp
 import time
 import datetime 
+import warnings
 
 import strax
 import straxen
@@ -133,7 +134,7 @@ def get_speacceptance(data_spe, data_noise, channels = np.arange(0, 494, 1), bad
                         sigma_diff = np.sqrt(arr['spectrum led'][0] + arr['spectrum noise scaled '+str(i-10)+' bin'][0])
 
                         res =  1. - np.cumsum(diff)/np.sum(diff)
-                        res = np.clip(res, 0, 1)
+                        res = np.clip(res, -0.1, +1.1)
                         x = arr['bins led'][0]
                         x_center = 0.5 * (x[1:] + x[:-1])
                         pos_15ADC = np.where(x==15)
@@ -489,7 +490,7 @@ def xenonnt_occupancy(context, run_id, led_cal, seconds_range,
     good_time = [ ]
     bad_time  = [ ]
     st = straxen.contexts.xenonnt_led()
-    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    straxdata = '/dali/lgrandi/led_calibration/strax_data/'
     st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
     for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
                                               keep_columns = ('channel', 'area', 'time')):
@@ -559,7 +560,7 @@ def xenonnt_gain(context, run_id, led_cal, seconds_range,
     good_time = [ ]
     bad_time  = [ ]
     st = straxen.contexts.xenonnt_led()
-    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    straxdata = '/dali/lgrandi/led_calibration/strax_data/'
     st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
     for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
                                               keep_columns = ('channel', 'area', 'time')):
@@ -643,7 +644,7 @@ def xenonnt_spespectrum(context, run_id, led_cal, seconds_range,
     good_time = [ ]
     bad_time  = [ ]
     st = straxen.contexts.xenonnt_led()
-    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    straxdata = '/dali/lgrandi/led_calibration/strax_data/'
     st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
     for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
                                               keep_columns = ('channel', 'area', 'time')):
@@ -677,7 +678,7 @@ def xenonnt_spespectrum(context, run_id, led_cal, seconds_range,
         
     ### Check about LED and NOISE staticts! Warning is rised if the difference is grater than +/- 5 percent.
     for ch in channels:
-        if ch not in bad_ch:
+        if ch not in bad_channels:
             len1 = len(led_amplitude[led_amplitude['channel']==ch]['amplitude_led'])
             len2 = len(noise_amplitude[noise_amplitude['channel']==ch]['amplitude_noise'])
             if len1 !=0:
@@ -685,7 +686,7 @@ def xenonnt_spespectrum(context, run_id, led_cal, seconds_range,
                 if np.abs(diff)>5:
                     warnings.warn('In PMT ch '+str(ch)+' noise statistics is different about '+str(diff)+' percent compare to LED statistics.')
             else:
-                bad_ch.append(ch)
+                bad_channels.append(ch)
                 print('len(data_led) of channel %s is zero'%(str(ch)))
     spe_spectrum = get_scalingspectrum(led_amplitude, noise_amplitude, 
                                        channels=channels, bad_channels=bad_channels)
@@ -711,7 +712,7 @@ def xenonnt_speacceptance(context, run_id, led_cal, seconds_range,
     good_time = [ ]
     bad_time  = [ ]
     st = straxen.contexts.xenonnt_led()
-    straxdata = '/dali/lgrandi/giovo/XENONnT/strax_data/'
+    straxdata = '/dali/lgrandi/led_calibration/strax_data/'
     st_fortimeselection = st.new_context(storage=[strax.DataDirectory(straxdata, provide_run_metadata=False)])
     for chunk in st_fortimeselection.get_iter(run_id[0], 'led_calibration', max_workers=20, seconds_range=seconds_range,
                                               keep_columns = ('channel', 'area', 'time')):
@@ -745,7 +746,7 @@ def xenonnt_speacceptance(context, run_id, led_cal, seconds_range,
         
     ### Check about LED and NOISE staticts! Warning is rised if the difference is grater than +/- 5 percent.
     for ch in channels:
-        if ch not in bad_ch:
+        if ch not in bad_channels:
             len1 = len(led_amplitude[led_amplitude['channel']==ch]['amplitude_led'])
             len2 = len(noise_amplitude[noise_amplitude['channel']==ch]['amplitude_noise'])
             if len1 !=0:
@@ -753,14 +754,14 @@ def xenonnt_speacceptance(context, run_id, led_cal, seconds_range,
                 if np.abs(diff)>5:
                     warnings.warn('In PMT ch '+str(ch)+' noise statistics is different about '+str(diff)+' percent compare to LED statistics.')
             else:
-                bad_ch.append(ch)
+                bad_channels.append(ch)
                 print('len(data_led) of channel %s is zero'%(str(ch)))
                 
     spe_acceptance = get_speacceptance(led_amplitude, noise_amplitude, 
                                        channels=channels, bad_channels=bad_channels)
     
     if save_spe==True:
-        save_in = folder_spe+'spespectrum_timeselection_'+run_id[0]+'_'+run_id[1]
+        save_in = folder_spe+'speacceptance_timeselection_'+run_id[0]+'_'+run_id[1]
         print('\nHey I am saving the SPE acceptance here: ', save_in, '\n')
         np.savez(save_in, x=spe_acceptance)
         
