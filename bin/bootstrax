@@ -635,8 +635,8 @@ def infer_mode(rd, input_dir):
 
     # Lower the settings if there are continuous failures on this run:
     if rd['bootstrax'].get('n_failures', 0) >= lower_resources_after_n_failures:
-        result['cores'] /= 2
-        result['max_messages'] /= 2
+        result['cores'] //= 2
+        result['max_messages'] //= 2
         result['timeout'] *= 1.5
         log_warning(f'infer_mode::\tRepeated failures. Lowering mode to {result}. This '
                     f'may indicated a sub-optimal state of {hostname}!')
