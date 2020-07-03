@@ -568,26 +568,14 @@ def eb_can_process():
     return False
 
 
-def infer_mode(rd, input_dir):
+def infer_mode(rd):
     """Infer a safe operating mode of running bootstrax based on the size of the first
     chunk. Estimating save parameters for running bootstrax from:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_update
     returns: dictionary of how many cores and max_messages should be used based on an
     estimated data rate.
     """
-    nap_time, i = 10, 0
-    default_opt = result = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
-
-    # min. of 3 chunks with each pre_, chunk and post_
-    min_chunks = 3
-    while len(os.listdir(input_dir)) < min_chunks * 3:
-        if i >= 10:
-            # Too few files to be sure the first chunk is completely written
-            log.info(f'Waited {i * nap_time} s but less than {min_chunks} were written. '
-                     f'Could not infer run mode. Using default: {result}.')
-            return default_opt
-        i += 1
-        time.sleep(nap_time)
+    default_opt = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
 
     # Get data rate from dispatcher
     try:
@@ -598,7 +586,7 @@ def infer_mode(rd, input_dir):
         data_rate = sum([d['rate'] for d in docs])
     except Exception as e:
         log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.')
-        return default_opt
+        data_rate = None
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
@@ -620,7 +608,9 @@ def infer_mode(rd, input_dir):
              'high_rate': dict(cores=10, max_messages=15, timeout=200),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=300),
              'max_rate': dict(cores=8, max_messages=10, timeout=400)}}
-    if data_rate < 100:
+    if data_rate is None:
+        result = default_opt
+    elif data_rate < 100:
         result = run_settings[eb]['low_rate']
     elif data_rate < 250:
         result = run_settings[eb]['med_rate']
@@ -635,9 +625,10 @@ def infer_mode(rd, input_dir):
 
     # Lower the settings if there are continuous failures on this run:
     if rd['bootstrax'].get('n_failures', 0) >= lower_resources_after_n_failures:
-        result['cores'] //= 2
-        result['max_messages'] //= 2
-        result['timeout'] *= 1.5
+        result = dict(cores=max(4, result['cores'] // 2),
+                      max_messages=max(4, result['max_messages'] // 2),
+                      timeout=min(1000, result['timeout']* 1.5)
+                      )
         log_warning(f'infer_mode::\tRepeated failures. Lowering mode to {result}. This '
                     f'may indicated a sub-optimal state of {hostname}!')
 
@@ -1153,7 +1144,7 @@ def process_run(rd, send_heartbeats=args.production):
             fail(f"Could not find daq_config.strax_fragment_payload_bytes in database: {str(e)}")
 
         if args.infer_mode:
-            process_mode = infer_mode(rd, loc)
+            process_mode = infer_mode(rd)
         else:
             process_mode = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
 
