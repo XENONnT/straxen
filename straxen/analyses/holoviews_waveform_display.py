@@ -1,5 +1,4 @@
 """Dynamic holoviews-based waveform display
-
 Note imports are inside function, to keep 'import straxen'
 free of holoviews.
 """
@@ -24,7 +23,6 @@ def x_zoom_wheel():
 def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array='bottom'):
     """Plot a PMT array, with colors showing the intensity
     of light observed in the time range
-
     :param array: 'top' or 'bottom', array to show
     """
     import holoviews as hv
@@ -48,7 +46,7 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array='bottom'):
                hv.Dimension('y',
                             unit='cm',
                             range=(-straxen.tpc_r * f, straxen.tpc_r * f)),
-               hv.Dimension('i', label='PMT number'),
+               hv.Dimension('i', range=(0, config['n_tpc_pmts']), label='PMT number'),
                hv.Dimension('area', label='Area', unit='PE')])
     pmts = pmts.to(
         hv.Points,
@@ -95,7 +93,6 @@ def _records_to_points(*, records, to_pe, t_reference, config):
 def hvdisp_plot_records_2d(records, to_pe, config,
                            t_reference, width=600, time_stream=None):
     """Plot records in a dynamic 2D histogram of (time, pmt)
-
     :param width: Plot width in pixels
     :param time_stream: holoviews rangex stream to use. If provided,
     we assume records is already converted to points (which hopefully
@@ -109,9 +106,9 @@ def hvdisp_plot_records_2d(records, to_pe, config,
         records, time_stream = _records_to_points(
             records=records, to_pe=to_pe, t_reference=t_reference,
             config=config)
-
+        
+    
     # TODO: weigh by area?
-
     return hv.operation.datashader.dynspread(
             hv.operation.datashader.datashade(
                 records,
@@ -120,7 +117,7 @@ def hvdisp_plot_records_2d(records, to_pe, config,
         plot=dict(width=width,
                   tools=[x_zoom_wheel(), 'xpan'],
                   default_tools=['save', 'pan', 'box_zoom', 'save', 'reset'],
-                  show_grid=False))
+                  show_grid=False)).opts(title="Time vs. Channel")
 
 
 @straxen.mini_analysis(
@@ -211,7 +208,6 @@ def waveform_display(
         config,
         width=600, show_largest=None):
     """Plot a waveform overview display"
-
     :param width: Plot width in pixels
     """
     import holoviews as hv
@@ -259,6 +255,5 @@ def waveform_display(
             show_largest=show_largest),
         streams=[time_stream])
 
-    layout = (peak_wvs + array_plot['top']
-              + time_v_channel + array_plot['bottom'])
+    layout = time_v_channel + peak_wvs + array_plot['top'] + array_plot['bottom']
     return layout.cols(2)
