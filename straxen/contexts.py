@@ -1,5 +1,3 @@
-import warnings
-
 from immutabledict import immutabledict
 import strax
 import straxen
