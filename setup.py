@@ -36,7 +36,7 @@ setuptools.setup(name='straxen',
                      'microstrax': ['hug'],
                  },
                  scripts=['bin/bootstrax', 'bin/straxer', 'bin/fake_daq',
-                          'bin/microstrax',
+                          'bin/microstrax', 'bin/ajax',
                           'bin/refresh_raw_records'],
                  packages=setuptools.find_packages(),
                  classifiers=[
