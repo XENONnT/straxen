@@ -81,20 +81,18 @@ def xenonnt_led(**kwargs):
         storage=st.storage,
         **st.context_config)
 
-
-def nt_simulation():
+#This gain model is a temp solution untill we have a nice stable one
+def xenonnt_simulation(output_folder = './strax_data'):
     import wfsim
+    xnt_common_config['gain_model'] = ('to_pe_per_run',
+                                        aux_repo+'58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
     return strax.Context(
-        storage='./strax_data',
-        register=wfsim.RawRecordsFromFax,
-        config=dict(
-            nchunk=1,
-            event_rate=1,
-            chunk_size=10,
-            detector='XENONnT',
-            fax_config='https://raw.githubusercontent.com/XENONnT/'
-                       'strax_auxiliary_files/master/fax_files/fax_config_nt.json',
-            **xnt_common_config),
+        storage=strax.DataDirectory(output_folder),
+        register=wfsim.RawRecordsFromFaxNT,
+        config=dict(detector='XENONnT',
+                    fax_config=aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    **straxen.contexts.xnt_common_config,
+                   ),
         **straxen.contexts.common_opts)
 
 
@@ -205,3 +203,14 @@ def xenon1t_led(**kwargs):
         config=st.config,
         storage=st.storage,
         **st.context_config)
+
+def xenon1t_simulation(output_folder = './strax_data'):
+    import wfsim
+    return strax.Context(
+        storage=strax.DataDirectory(output_folder),
+        register=wfsim.RawRecordsFromFax1T,
+        config=dict(fax_config=aux_repo+'1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
+
+                    detector='XENON1T',
+                    **straxen.contexts.x1t_common_config),
+        **straxen.contexts.common_opts)
