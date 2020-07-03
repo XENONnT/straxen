@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -80,7 +80,7 @@ parser.add_argument('--debug', action='store_true',
 parser.add_argument('--profile', type=str, default='false',
                     help="Option to run strax in profiling mode. "
                          "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
-parser.add_argument('--cores', type=int, default=4,
+parser.add_argument('--cores', type=int, default=8,
                     help="Maximum number of workers to use in a strax process. "
                          "Set to -1 for all available cores")
 parser.add_argument('--target', default='event_info',
@@ -98,7 +98,7 @@ parser.add_argument('--production', action='store_true',
 parser.add_argument('--undying', action='store_true',
                     help="Except any error and ignore it")
 parser.add_argument('--max_messages', type=int,
-                    default=4,
+                    default=10,
                     help="number of max mailbox messages")
 
 actions = parser.add_mutually_exclusive_group()
@@ -200,11 +200,17 @@ dead_state = 'dead_bootstrax'
 
 # The maximum time difference (s) allowed between the timestamps in the data and the
 # duration of the run (from the runs metadeta). Fail if the difference is larger than:
-max_timetamp_diff = 2
+max_timetamp_diff = 5
 
 # The maximum number of retries for processing a run. After this many times of retrying
 # to process a run, the DAQ-group has to either manually fix this run or manually fail it.
 max_n_retry = 20
+
+# Bootstrax retries runs multiple times. If there have been this many fails we could lower
+# the resources to be somewhat more lenient on the CPU and RAM of the eventbuilders. Use
+# this option with care as we might be running in a sub-optimal mode that may not be
+# noticed and eventbuilders may be spending more time on trying to reprocess failed runs.
+lower_resources_after_n_failures = 10
 
 
 ##
@@ -265,8 +271,8 @@ st = new_context()
 
 # DAQ database
 daq_db_name = 'daq'
-daq_db_password = os.environ['MONGO_DAQ_PASSWORD']
-daq_db_username = os.environ['MONGO_DAQ_USERNAME']
+daq_db_password = straxen.get_secret('MONGO_DAQ_PASSWORD'.lower())
+daq_db_username = straxen.get_secret('MONGO_DAQ_USERNAME'.lower())
 daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
 daq_db = daq_client[daq_db_name]
 bs_coll = daq_db['eb_monitor']
@@ -279,8 +285,8 @@ if args.production:
     run_db = st.storage[0].client[run_dbname]
 else:
     # Please note, this is a read only account on the rundb
-    run_db_username = os.environ['RUNDB_USERNAME']
-    run_db_password = os.environ['RUNDB_PASSWORD']
+    run_db_username = straxen.get_secret('RUNDB_USERNAME'.lower())
+    run_db_password = straxen.get_secret('RUNDB_PASSWORD'.lower())
     run_client = pymongo.MongoClient(
         f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017/xenonnt")
     run_db = run_client[run_dbname]
@@ -624,7 +630,17 @@ def infer_mode(rd, input_dir):
         result = run_settings[eb]['very_high_rate']
     else:
         result = run_settings[eb]['max_rate']
-    log.info(f'Override processing mode for run {rd["number"]} changing to:\t {result}')
+    log.info(f'infer_mode::\tOverride processing mode for run {rd["number"]} changing to:'
+             f'\t {result}')
+
+    # Lower the settings if there are continuous failures on this run:
+    if rd['bootstrax'].get('n_failures', 0) >= lower_resources_after_n_failures:
+        result['cores'] /= 2
+        result['max_messages'] /= 2
+        result['timeout'] *= 1.5
+        log_warning(f'infer_mode::\tRepeated failures. Lowering mode to {result}. This '
+                    f'may indicated a sub-optimal state of {hostname}!')
+
     return result
 
 
