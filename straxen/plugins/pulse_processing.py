@@ -299,7 +299,7 @@ def software_he_veto(records, to_pe,
 
     # 5. Apply the veto and return results
     veto_mask = strax.fully_contained_in(records, veto) == -1
-    return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
+    return tuple(list(mask_and_not(records, veto_mask)) + [veto])
 
 
 @numba.njit(cache=True, nogil=True)
@@ -423,9 +423,9 @@ def _count_pulses(records, n_channels, result):
 ##
 # Misc
 ##
-
+@export
 @numba.njit(cache=True, nogil=True)
-def _mask_and_not(x, mask):
+def mask_and_not(x, mask):
     return x[mask], x[~mask]
 
 
@@ -433,7 +433,7 @@ def _mask_and_not(x, mask):
 @numba.njit(cache=True, nogil=True)
 def channel_split(rr, first_other_ch):
     """Return """
-    return _mask_and_not(rr, rr['channel'] < first_other_ch)
+    return mask_and_not(rr, rr['channel'] < first_other_ch)
 
 
 @export
