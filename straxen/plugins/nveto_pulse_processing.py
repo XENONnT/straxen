@@ -1,5 +1,6 @@
 import strax
 import numpy as np
+import numba
 export, __all__ = strax.exporter()
 
 __all__ = ['nVETOPulseProcessing']
@@ -25,10 +26,6 @@ __all__ = ['nVETOPulseProcessing']
 class nVETOPulseProcessing(strax.Plugin):
     """
     nVETO equivalent of pulse processing.
-
-    Note:
-        I shamelessly copied almost the entire code from the TPC pulse processing. So credit to the
-        author of pulse_processing.
     """
     __version__ = '0.0.3'
 
@@ -67,29 +64,36 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
-        r = clean_up_empty_records(r, allow_all=False)
+        r = clean_up_empty_records(r, only_last=True)
         return r
 
+
 @numba.njit(cache=True, nogil=True)
-def clean_up_empty_records(records, allow_all=False):
+def clean_up_empty_records(records, only_last=True):
     """
     Function which deletes empty records. Empty means data is completely
     zero.
 
     :param records: Records which shall be checked.
-    :param allow_all: If true allows to delete intermediate fragments
-        which are between two records.
+    :param only_last: If true only last fragments of a pulse are deleted.
     :return: non-empty records
+
+    Note:
+        If only_last is false, record_i will not updated for the
+        successive records.
     """
-    indicies = np.zeros(len(records), dtype=np.bool_)
+    indicies_to_keep = np.zeros(len(records), dtype=np.int32)
     n_indicies = 0
     for ind, r in enumerate(records):
         m_last_fragment = (r['record_i'] > 0) and (r['length'] < len(r['data']))
-        if not allow_all and m_last_fragment:
-            continue
-        if np.all(r['data'] == 0):
-            indicies[n_indicies] = ind
+        if only_last and not m_last_fragment:
+            indicies_to_keep[n_indicies] = ind
             n_indicies += 1
-    return records[indicies[:n_indicies]]
+            continue
+
+        if np.any(r['data'] != 0):
+            indicies_to_keep[n_indicies] = ind
+            n_indicies += 1
+    return indicies_to_keep[:n_indicies]
 
 
