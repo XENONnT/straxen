@@ -1,4 +1,5 @@
 import strax
+import numpy as np
 export, __all__ = strax.exporter()
 
 __all__ = ['nVETOPulseProcessing']
@@ -29,7 +30,7 @@ class nVETOPulseProcessing(strax.Plugin):
         I shamelessly copied almost the entire code from the TPC pulse processing. So credit to the
         author of pulse_processing.
     """
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -45,9 +46,6 @@ class nVETOPulseProcessing(strax.Plugin):
         dtype = strax.record_dtype(record_length)
         return dtype
 
-    # def setup(self):
-    #     self.hit_thresholds = straxen.get_resource(self.config['nveto_adc_thresholds'], fmt='npy')
-
     def compute(self, raw_records_nv):
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
@@ -62,34 +60,36 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.integrate(r)
 
         strax.zero_out_of_bounds(r)
-        # TODO: Separate switched off channels for speed up?
-        # TODO: Finalize hitfinder threshold. Also has to be done in pulse_edges
+
         hits = strax.find_hits(r, min_amplitude=self.config['hit_min_amplitude_nv'])
 
         le, re = self.config['save_outside_hits_nv']
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
-        
-        # Deleting empty data:
-        # TODO: Buggy at the moment fix me:
-        # nveto_records = _del_empty(nveto_records, 1)
+
+        r = clean_up_empty_records(r, allow_all=False)
         return r
 
+@numba.njit(cache=True, nogil=True)
+def clean_up_empty_records(records, allow_all=False):
+    """
+    Function which deletes empty records. Empty means data is completely
+    zero.
 
-# @numba.njit(cache=True, nogil=True)
-# def _del_empty(records, order=1):
-#     """
-#     Function which deletes empty records. Empty means data is completely zero.
-#     :param records: Records which shall be checked.
-#     :param order: Fragment order. Cut will only applied to the specified order and
-#         higher fragments.
-#     :return: non-empty records
-#     """
-#     mask = np.ones(len(records), dtype=np.bool_)
-#     for ind, r in enumerate(records):
-#         if r['record_i'] >= order and np.all(r['data'] == 0):
-#             mask[ind] = False
-#     return records[mask]
-
+    :param records: Records which shall be checked.
+    :param allow_all: If true allows to delete intermediate fragments
+        which are between two records.
+    :return: non-empty records
+    """
+    indicies = np.zeros(len(records), dtype=np.bool_)
+    n_indicies = 0
+    for ind, r in enumerate(records):
+        m_last_fragment = (r['record_i'] > 0) and (r['length'] < len(r['data']))
+        if not allow_all and m_last_fragment:
+            continue
+        if np.all(r['data'] == 0):
+            indicies[n_indicies] = ind
+            n_indicies += 1
+    return records[indicies[:n_indicies]]
 
 

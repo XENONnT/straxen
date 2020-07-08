@@ -257,8 +257,10 @@ def coincidence(hits, nfold=4, resolving_time=300):
             strax.interval_dtype e.g. records, hits, peaks...
         nfold (int): coincidence level.
         resolving_time (int): Time window of the coincidence [ns].
+    
     Note:
-        A self-extending coincidence window is used here.
+        The coincidence window is self-extending. The bounds are both
+        inclusive. 
 
     Warning:
         Will not test the last nfold - 1 elements. Since we do not know
@@ -333,21 +335,19 @@ def _merge_intervals(start_time, resolving_time):
     """
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
-    start_time = np.append(start_time[:1], start_time)  # prepend in diff is not supported in numba
     gaps = np.diff(start_time) > resolving_time
-    interval_starts = np.arange(0, len(gaps), 1)
-    interval_starts = interval_starts[gaps]
+    
+    last_element = np.argwhere(gaps).flatten()
+    first_element = 0
     # Creating output
     # There is one more interval than gaps
     intervals = np.zeros((np.sum(gaps) + 1, 2), dtype=np.int64)
 
     # Looping over all intervals, except for the last one:
-    for ind, csi in enumerate(interval_starts[:-1]):
-        nsi = interval_starts[ind + 1]
-        intervals[ind + 1] = [start_time[csi], start_time[nsi - 1] + resolving_time]
+    for ind, le in enumerate(last_element):
+        intervals[ind] = (start_time[first_element], start_time[le]+resolving_time)
+        first_element = le + 1
 
-    # Now doing the first and last one:
-    intervals[0] = [start_time[0], start_time[interval_starts[0] - 1] + resolving_time]
-    intervals[-1] = [start_time[interval_starts[-1]], start_time[-1] + resolving_time]
-
+    # Now we have to deal with the last gap:
+    intervals[-1] = (start_time[first_element], start_time[first_element:][-1] + resolving_time)
     return intervals
