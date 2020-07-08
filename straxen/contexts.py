@@ -12,7 +12,8 @@ common_opts = dict(
         straxen.event_processing,
         straxen.double_scatter,
         straxen.nveto_recorder,
-        straxen.nveto_pulse_processing],
+        straxen.nveto_pulse_processing,
+        straxen.nveto_hitlets],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',

@@ -29,3 +29,6 @@ from .nveto_recorder import *
 
 from . import nveto_pulse_processing
 from .nveto_pulse_processing import *
+
+from . import nveto_hitlets
+from .nveto_hitlets import *
