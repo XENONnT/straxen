@@ -93,7 +93,6 @@ class nVETOHitlets(strax.Plugin):
                                          algorithm='local_minimum',
                                          min_height=self.config['min_split_nv'],
                                          min_ratio=self.config['min_split_ratio_nv'],
-                                         result_dtype=strax.hitlet_dtype(n_sample=hits['length'].max()),
                                          )
 
         # Compute other hitlet properties:
