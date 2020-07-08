@@ -24,8 +24,8 @@ __all__ = ['nVETORecorder']
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('n_nveto_pmts', type=int, track=False,
-        help='Number of nVETO PMTs'))
-
+        help='Number of nVETO PMTs')
+)
 class nVETORecorder(strax.Plugin):
     __version__ = '0.0.3'
     parallel = 'process'
@@ -58,16 +58,21 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(raw_records_prenv)
 
         # First we have to split rr into records and lone records:
-        intervals = coincidence(raw_records_prenv, self.config['coincidence_level_recorder_nv'], self.config['resolving_time_recorder_nv'])
+        # Please note that we consider everything as a lone record which
+        # does not satisfy the coincidence requirement
+        intervals = coincidence(raw_records_prenv,
+                                self.config['coincidence_level_recorder_nv'],
+                                self.config['resolving_time_recorder_nv'])
         mask = rr_in_interval(raw_records_prenv, *intervals.T)
-        rr, lone_records = straxen.plugins.pulse_processing._mask_and_not(raw_records_prenv, mask)
+        rr, lone_records = straxen.mask_and_not(raw_records_prenv, mask)
 
         # Compute some properties of the lone_records:
+        # We compute only for lone_records baseline etc. since
+        # pre_raw_records will be deleted, otherwise we could not change
+        # the settings and reprocess the data in case of raw_records_nv
         lr = strax.raw_to_records(lone_records)
         del lone_records
 
-        # We compute only for lone_records baseline etc. since pre_raw_records will be deleted,
-        # hence we could not change the settings and reprocess the data in case of raw_records....
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
         strax.baseline(lr,
@@ -111,7 +116,7 @@ def compute_lone_records(lone_records, nveto_channels, n):
     lone_records and computes for the rest some basic properties.
 
     Args:
-        lone_record (raw_records): raw_records which are flagged as lone
+        lone_records (raw_records): raw_records which are flagged as lone
             "hits"
         nveto_channels (tuple): First and last channel of nVETO.
         n (int): Number of lone records which should be stored per data
@@ -138,20 +143,20 @@ def compute_lone_records(lone_records, nveto_channels, n):
         lone_ids = lone_ids[lone_ids >= 0]
         return res, lone_records[lone_ids]
     return np.zeros(0, dtype=lone_record_statistics_dtype(ch119+1-ch0)), lone_records
-        
 
 
 @numba.njit(nogil=True, cache=True)
 def _compute_lone_records(lone_record, res, lone_ids, n,  nveto_channels):
     ch0, ch119 = nveto_channels
+    n_channels = ch119 - ch0 + 1
 
     # getting start and end time:
     res['time'] = lone_record[0]['time']
     res['endtime'] = lone_record[-1]['time'] + lone_record[-1]['pulse_length'] * lone_record[-1]['dt']
     fragment_max_length = len(lone_record[0]['data'])
 
-    n_lr = np.zeros(ch119 + 1 - ch0, dtype=np.int32)
-    n_index = np.zeros(ch119 + 1 - ch0, dtype=np.int32)
+    n_lr = np.zeros(n_channels, dtype=np.int32)
+    n_index = np.zeros(n_channels, dtype=np.int32)
 
     for ind, lr in enumerate(lone_record):
         ch = lr['channel']
@@ -182,12 +187,12 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  nveto_channels):
             res['baseline_rms'][ch_ind] += lr['baseline_rms']
             res['baseline_mean'][ch_ind] += lr['baseline']
 
-    for ind in range(0, ch119+1-ch0):
+    for ind in range(0, n_channels):
         if res['nfragments'][ind]:
-                nwf = res['nfragments'][ind] - res['nhigherfragments'][ind]
-                res['baseline_rms'][ind] = res['baseline_rms'][ind] / nwf
-                res['baseline_mean'][ind] = res['baseline_mean'][ind] / nwf
-                res['lone_record_area'][ind] = res['lone_record_area'][ind] / nwf
+            nwf = res['nfragments'][ind] - res['nhigherfragments'][ind]
+            res['baseline_rms'][ind] = res['baseline_rms'][ind] / nwf
+            res['baseline_mean'][ind] = res['baseline_mean'][ind] / nwf
+            res['lone_record_area'][ind] = res['lone_record_area'][ind] / nwf
         if res['nhigherfragments'][ind]:
             res['higher_lone_record_area'][ind] = res['higher_lone_record_area'][ind] / res['nhigherfragments'][ind]
 
@@ -245,6 +250,7 @@ def rr_in_interval(rr, start_times, end_times):
             # tag as to be stored:
             in_window[i] = True
     return in_window
+
 
 @export
 def coincidence(hits, nfold=4, resolving_time=300):
