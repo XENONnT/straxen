@@ -6,7 +6,7 @@ import strax
 import straxen
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETOPulseProcessing', 'nVETOPulseEdges', 'nVETOPulseBasics']
+__all__ = ['nVETOHitlets']
 
 
 @export
