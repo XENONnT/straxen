@@ -96,8 +96,11 @@ class nVETOHitlets(strax.Plugin):
                                          )
 
         # Compute other hitlet properties:
+        # We have to loop here 3 times over all hitlets...
         strax.hitlet_properties(temp_hitlets)
-        strax.conditional_entropy(temp_hitlets, template='flat', square_data=False)
+        entropy = strax.conditional_entropy(temp_hitlets, template='flat', square_data=False)
+        temp_hitlets['entropy'][:] = entropy
+        strax.compute_widths(temp_hitlets)
 
         # Remove data field:
         names = [name for name in temp_hitlets.dtype.names if name is not 'data']
