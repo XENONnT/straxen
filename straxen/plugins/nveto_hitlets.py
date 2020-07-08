@@ -22,8 +22,8 @@ __all__ = ['nVETOHitlets']
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option(
         'min_split_nv',
-        default=2**14, track=True,
-        help='Minimum height difference [ADC counts] between local minimum and maximum, '
+        default=100, track=True,
+        help='Minimum height difference pe/sample between local minimum and maximum, '
              'that a pulse get split.'),
     strax.Option(
         'min_split_ratio_nv',
