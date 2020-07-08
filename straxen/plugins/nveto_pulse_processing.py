@@ -27,7 +27,7 @@ class nVETOPulseProcessing(strax.Plugin):
     """
     nVETO equivalent of pulse processing.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -94,4 +94,4 @@ def clean_up_empty_records(records, only_last=True):
         if np.any(r['data'] != 0):
             indicies_to_keep[n_indicies] = ind
             n_indicies += 1
-    return indicies_to_keep[:n_indicies]
+    return records[indicies_to_keep[:n_indicies]]
