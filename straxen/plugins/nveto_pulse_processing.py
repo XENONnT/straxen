@@ -95,5 +95,3 @@ def clean_up_empty_records(records, only_last=True):
             indicies_to_keep[n_indicies] = ind
             n_indicies += 1
     return indicies_to_keep[:n_indicies]
-
-
