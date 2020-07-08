@@ -103,6 +103,31 @@ class nVETOHitlets(strax.Plugin):
         strax.compute_widths(temp_hitlets)
 
         # Remove data field:
-        names = [name for name in temp_hitlets.dtype.names if name is not 'data']
-        hitlets = temp_hitlets[names]
+        hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
+        hitlets = _drop_data_field(temp_hitlets, hitlets)
+
         return hitlets
+
+@numba.njit
+def _drop_data_field(old_hitlets, new_hitlets):
+    n = len(old_hitlets)
+    for i in range(n):
+        o = old_hitlets[i]
+        n = new_hitlets[i]
+
+        n['time'] = o['time']
+        n['length'] = o['length']
+        n['dt'] = o['dt']
+        n['channel'] = o['channel']
+        n['hit_length'] = o['hit_length']
+        n['area'] = o['area']
+        n['amplitude'] = o['amplitude']
+        n['time_amplitude'] = o['time_amplitude']
+        n['entropy'] = o['entropy']
+        n['width'][:] = o['width'][:]
+        n['area_decile_from_midpoint'][:] = o['area_decile_from_midpoint'][:]
+        n['fwhm'] = o['fwhm']
+        n['fwtm'] = o['fwtm']
+        n['left'] = o['left']
+        n['low_left'] = o['low_left']
+        n['record_i'] = o['record_i']
