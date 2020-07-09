@@ -156,8 +156,9 @@ class DAQReader(strax.Plugin):
         first_start, last_start, last_end = None, None, None
         if len(records):
             first_start, last_start = records[0]['time'], records[-1]['time']
-            # Records are fixed length, so we also know the last end:
-            last_end = strax.endtime(records[-1])
+            # Records are sorted by (start)time and are of variable length.
+            # Their endtimes can differ.
+            last_end = strax.endtime(records).max()
             if first_start < start or last_start >= end:
                 raise ValueError(
                     f"Bad data from DAQ: chunk {path} should contain data "
