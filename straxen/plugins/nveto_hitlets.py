@@ -108,7 +108,7 @@ class nVETOHitlets(strax.Plugin):
             hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
             hitlets = _drop_data_field(temp_hitlets, hitlets)
         else:
-            hitlets = np.zeros(0, strax.hitlet_dtype()
+            hitlets = np.zeros(0, strax.hitlet_dtype())
         return hitlets
 
 @numba.njit
