@@ -9,7 +9,7 @@ import straxen
 export, __all__ = strax.exporter()
 
 __all__ = ['nVETORecorder']
-
+#TODO: Unify docstrings
 
 @strax.takes_config(
     strax.Option('coincidence_level_recorder_nv', type=int, default=4,
@@ -79,13 +79,13 @@ class nVETORecorder(strax.Plugin):
                        baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
                        flip=True)
         strax.integrate(lr)
-        lrc, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
-        lrc['time'] = start
-        lrc['endtime'] = end
+        lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
+        lrs['time'] = start
+        lrs['endtime'] = end
     
         return {'raw_records_nv': rr,
                 'lone_raw_records_nv': lr,
-                'lone_raw_record_statistics_nv': lrc}
+                'lone_raw_record_statistics_nv': lrs}
 
 
 @export
@@ -222,6 +222,8 @@ def rr_in_interval(rr, start_times, end_times):
 
     Returns:
         numpy.array: Boolean array which is true for the events to keep.
+
+    #TODO: This function is way too slow...
     """
     # Here are some example we have to considere:
     # Normal case:
