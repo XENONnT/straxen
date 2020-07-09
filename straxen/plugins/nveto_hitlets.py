@@ -79,33 +79,36 @@ class nVETOHitlets(strax.Plugin):
         hits = strax.sort_by_time(hits)
 
         # Now convert hits into temp_hitlets including the data field:
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_dtype(n_sample=hits['length'].max()))
-        strax.refresh_hit_to_hitlets(hits, temp_hitlets)
-        del hits
+        if len(hits):
+            temp_hitlets = np.zeros(len(hits), strax.hitlet_dtype(n_sample=hits['length'].max()))
 
-        # Get hitlet data and split hitlets:
-        strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
+            strax.refresh_hit_to_hitlets(hits, temp_hitlets)
+            del hits
 
-        temp_hitlets = strax.split_peaks(temp_hitlets,
-                                         records_nv,
-                                         self.to_pe,
-                                         data_type='hitlets',
-                                         algorithm='local_minimum',
-                                         min_height=self.config['min_split_nv'],
-                                         min_ratio=self.config['min_split_ratio_nv']
-                                         )
+            # Get hitlet data and split hitlets:
+            strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
 
-        # Compute other hitlet properties:
-        # We have to loop here 3 times over all hitlets...
-        strax.hitlet_properties(temp_hitlets)
-        entropy = strax.conditional_entropy(temp_hitlets, template='flat', square_data=False)
-        temp_hitlets['entropy'][:] = entropy
-        strax.compute_widths(temp_hitlets)
+            temp_hitlets = strax.split_peaks(temp_hitlets,
+                                             records_nv,
+                                             self.to_pe,
+                                             data_type='hitlets',
+                                             algorithm='local_minimum',
+                                             min_height=self.config['min_split_nv'],
+                                             min_ratio=self.config['min_split_ratio_nv']
+                                             )
 
-        # Remove data field:
-        hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
-        hitlets = _drop_data_field(temp_hitlets, hitlets)
+            # Compute other hitlet properties:
+            # We have to loop here 3 times over all hitlets...
+            strax.hitlet_properties(temp_hitlets)
+            entropy = strax.conditional_entropy(temp_hitlets, template='flat', square_data=False)
+            temp_hitlets['entropy'][:] = entropy
+            strax.compute_widths(temp_hitlets)
 
+            # Remove data field:
+            hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
+            hitlets = _drop_data_field(temp_hitlets, hitlets)
+        else:
+            hitlets = np.zeros(0, strax.hitlet_dtype()
         return hitlets
 
 @numba.njit
