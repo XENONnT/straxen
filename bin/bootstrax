@@ -595,24 +595,26 @@ def infer_mode(rd):
 
     # Return a run-mode that is empirically found to provide stable but fast processing.
     log.info(f'infer_mode::\tWorking with a data rate of {data_rate:.1f} MB/s')
+    # TODO
+    #  decrease timeout later. Unsure why needed now.
     run_settings = {
         'new_eb':
             {'low_rate': dict(cores=24, max_messages=20, timeout=200),
-             'med_rate': dict(cores=24, max_messages=20, timeout=200),
-             'high_rate': dict(cores=20, max_messages=15, timeout=200),
-             'very_high_rate': dict(cores=20, max_messages=15, timeout=300),
-             'max_rate': dict(cores=16, max_messages=10, timeout=400)},
+             'med_rate': dict(cores=24, max_messages=20, timeout=300),
+             'high_rate': dict(cores=20, max_messages=15, timeout=1000),
+             'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
+             'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
         'old_eb':
             {'low_rate': dict(cores=30, max_messages=20, timeout=200),
-             'med_rate': dict(cores=20, max_messages=15, timeout=200),
-             'high_rate': dict(cores=10, max_messages=15, timeout=200),
-             'very_high_rate': dict(cores=10, max_messages=10, timeout=300),
-             'max_rate': dict(cores=8, max_messages=10, timeout=400)}}
+             'med_rate': dict(cores=20, max_messages=15, timeout=300),
+             'high_rate': dict(cores=10, max_messages=15, timeout=1000),
+             'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
+             'max_rate': dict(cores=8, max_messages=10, timeout=2000)}}
     if data_rate is None:
         result = default_opt
     elif data_rate < 100:
         result = run_settings[eb]['low_rate']
-    elif data_rate < 250:
+    elif data_rate < 200:
         result = run_settings[eb]['med_rate']
     elif data_rate < 500:
         result = run_settings[eb]['high_rate']
