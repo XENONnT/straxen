@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-
+import warnings
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
 
 from .records_matrix import DEFAULT_MAX_SAMPLES
+export, __all__ = strax.exporter()
+__all__ += ['plot_wf']
 
 
 @straxen.mini_analysis()
@@ -78,14 +80,36 @@ def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
                   t0=t_reference,
                   color={0: 'gray', 1: 'b', 2: 'g'}[p['type']])
 
-    if xaxis:
+    if xaxis == 'since_start':
+        seconds_range_xaxis(seconds_range, t0=seconds_range[0])
+    elif xaxis:
         seconds_range_xaxis(seconds_range)
+        plt.xlim(*seconds_range)
     else:
         plt.xticks([])
-    plt.xlim(*seconds_range)
+        plt.xlim(*seconds_range)
     plt.ylabel("Intensity [PE/ns]")
     if single_figure:
         plt.tight_layout()
+
+
+@straxen.mini_analysis(
+    requires=('peaks', 'peak_basics'),
+    default_time_selection='touching',
+    warn_beyond_sec=60)
+def plot_hit_pattern(peaks, seconds_range, t_reference,
+                 axes=None,
+                 vmin=None,
+                 log_scale=False,
+                 label=None,
+                 single_figure=False,
+                 figsize=(10, 4), ):
+    if single_figure:
+        plt.figure(figsize=figsize)
+    if len(peaks) > 1:
+        print(f'warning showing total area of {len(peaks)} peaks')
+    straxen.plot_pmts(np.sum(peaks['area_per_channel'], axis=0),
+              axes=axes, vmin=vmin, log_scale=log_scale, label=label)
 
 
 @straxen.mini_analysis()
@@ -152,7 +176,7 @@ def plot_records_matrix(context, run_id,
         straxen.quiet_tight_layout()
 
 
-def seconds_range_xaxis(seconds_range):
+def seconds_range_xaxis(seconds_range, t0=None):
     """Make a pretty time axis given seconds_range"""
     plt.xlim(*seconds_range)
     ax = plt.gca()
@@ -160,14 +184,19 @@ def seconds_range_xaxis(seconds_range):
     xticks = plt.xticks()[0]
     if not len(xticks):
         return
-    #xticks[0] = seconds_range[0]
-    #xticks[-1] = seconds_range[-1]
+
+    #     xticks[0] = seconds_range[0]
+    #     xticks[-1] = seconds_range[-1]
 
     # Format the labels
     # I am not very proud of this code...
     def chop(x):
         return np.floor(x).astype(np.int)
-    xticks_ns = np.round(xticks * int(1e9)).astype(np.int)
+
+    if t0 is None:
+        xticks_ns = np.round(xticks * int(1e9)).astype(np.int)
+    else:
+        xticks_ns = np.round((xticks - xticks[0]) * int(1e9)).astype(np.int)
     sec = chop(xticks_ns // int(1e9))
     ms = chop((xticks_ns % int(1e9)) // int(1e6))
     us = chop((xticks_ns % int(1e6)) // int(1e3))
@@ -177,17 +206,22 @@ def seconds_range_xaxis(seconds_range):
     print_ns = np.any(samples != samples[0])
     print_us = print_ns | np.any(us != us[0])
     print_ms = print_us | np.any(ms != ms[0])
-    if print_ms:
+    if print_ms and t0 is None:
         labels = [l + f'.{ms[i]:03}' for i, l in enumerate(labels)]
         if print_us:
             labels = [l + r' $\bf{' + f'{us[i]:03}' + '}$'
                       for i, l in enumerate(labels)]
             if print_ns:
                 labels = [l + f' {samples[i]:02}0' for i, l in enumerate(labels)]
-
-    plt.xticks(ticks=xticks, labels=labels, rotation=90)
-    plt.xlim(*seconds_range)
-    plt.xlabel("Time since run start [sec]")
+        plt.xticks(ticks=xticks, labels=labels, rotation=90)
+    else:
+        labels = list(chop((xticks_ns // 10) * 10))
+        labels[-1] = ""
+        plt.xticks(ticks=xticks, labels=labels, rotation=0)
+    if t0 is None:
+        plt.xlabel("Time since run start [sec]")
+    else:
+        plt.xlabel("Time [ns]")
 
 
 def plot_peak(p, t0=None, **kwargs):
@@ -211,15 +245,73 @@ def plot_peak(p, t0=None, **kwargs):
 def time_and_samples(p, t0=None):
     """Return (x, y) numpy arrays for plotting the waveform data in p
     using 'steps-pre'.
-
     Where x is the time since t0 in seconds (or another time_scale),
       and y is intensity in PE / ns.
     :param p: Peak or other similar strax data type
     :param t0: Zero of time in ns since unix epoch
     """
-    n = p['length']
+    n = int(p['length'])
     if t0 is None:
         t0 = p['time']
     x = ((p['time'] - t0) + np.arange(n + 1) * p['dt']) / int(1e9)
     y = p['data'][:n] / p['dt']
     return x, np.concatenate([[y[0]], y])
+
+
+def plot_wf(st, peaks, runs, log=True, plot_extension=5_000, hit_pattern=True,
+            **kwargs):
+    p = peaks
+
+    def get_run_start(peak):
+        this_run_id = runs['name'].values[0]
+        this_start = st.estimate_run_start(this_run_id)
+        for k, _run_id in enumerate(runs['name']):
+            if k == len(runs) - 1:
+                break
+            next_run_id = runs['name'].values[k + 1]
+            next_start = st.estimate_run_start(next_run_id)
+            if next_start > peak['time']:
+                break
+            this_start = next_start
+            this_run_id = next_run_id
+
+        return this_run_id, this_start
+
+    run_id, run_start = get_run_start(p)
+    t_range = np.array([p['time'].min(), p['endtime'].max()])
+    if not np.iterable(plot_extension):
+        t_range += np.array([-plot_extension, plot_extension])
+    elif len(plot_extension) == 2:
+        t_range += plot_extension
+    else:
+        raise ValueError('Wrong dimensions for plot_extension. Use scalar or object of len( ) == 2')
+    t_range -= run_start
+    t_range = t_range / 10 ** 9
+    t_range = np.clip(t_range, 0, np.inf)
+
+    try:
+        if hit_pattern:
+            plt.figure(figsize=(14, 11))
+            ax0 = plt.subplot(212)
+        else:
+            plt.figure(figsize=(14, 5))
+        plot_peaks(st, run_id, seconds_range=t_range, single_figure=False,
+                   **kwargs)
+        if hit_pattern:
+            axes = plt.subplot(221), plt.subplot(222)
+            plot_hit_pattern(st, run_id, seconds_range=t_range,
+                             axes=axes, vmin=1 if log else None,
+                             log_scale=log, label='Area per channel [PE]')
+
+    except (ValueError,
+            ZeroDivisionError,
+            strax.mailbox.MailboxKilled,
+            RuntimeError) as e:
+        if np.all(plot_extension == 0):
+            warnings.warn('Failed despite 0 ns extension')
+            plt.clf()
+            return
+        else:
+            warnings.warn('Failed to deliver. Trying with no extension')
+            return plot_wf(st, peaks, runs, log=log, plot_extension=0,
+                           hit_pattern=hit_pattern, **kwargs)
