@@ -2,6 +2,7 @@ from hypothesis import given, settings
 import strax
 import strax.testutils
 import straxen
+import numpy as np
 
 
 @settings(deadline=None)
@@ -43,3 +44,12 @@ def _check_pulse_count(records):
         # Not sure how to check lone pulses other than duplicating logic
         # already in count_pulses, so just do a basic check:
         assert count['lone_pulse_area'][ch] <= count['pulse_area'][ch]
+        
+        # Check baseline values:
+        # nan does not exist for integer:
+        mean = straxen.NO_PULSE_COUNTS if np.isnan(np.mean(rc0['baseline'])) else int(np.mean(rc0['baseline']))
+        assert count['baseline_mean'][ch] == mean
+        if not np.isnan(count['baseline_rms_mean'][ch]):
+            assert count['baseline_rms_mean'][ch] == np.mean(rc0['baseline_rms'])
+        else:
+            assert np.isnan(np.mean(rc0['baseline_rms']))

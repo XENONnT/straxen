@@ -159,8 +159,13 @@ class DAQReader(strax.Plugin):
         first_start, last_start, last_end = None, None, None
         if len(records):
             first_start, last_start = records[0]['time'], records[-1]['time']
-            # Records are fixed length, so we also know the last end:
-            last_end = strax.endtime(records[-1])
+            # Records are sorted by (start)time and are of variable length.
+            # Their end-times can differ. In the most pessimistic case we have
+            # to look back one record length for each channel.
+            tot_channels = np.sum([np.diff(x)+1 for x in
+                                   self.config['channel_map'].values()])
+            look_n_samples = self.config["record_length"] * tot_channels
+            last_end = strax.endtime(records[-look_n_samples:]).max()
             if first_start < start or last_start >= end:
                 raise ValueError(
                     f"Bad data from DAQ: chunk {path} should contain data "

@@ -1,3 +1,4 @@
+from immutabledict import immutabledict
 import numba
 import numpy as np
 
@@ -5,6 +6,7 @@ import strax
 import straxen
 
 export, __all__ = strax.exporter()
+__all__ += ['NO_PULSE_COUNTS']
 
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
@@ -87,10 +89,13 @@ class PulseProcessing(strax.Plugin):
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
     """
-    __version__ = '0.2.1'
+    __version__ = '0.2.2'
 
     parallel = 'process'
-    rechunk_on_save = False
+    rechunk_on_save = immutabledict(
+        records=False,
+        veto_regions=True,
+        pulse_counts=True)
     compressor = 'lz4'
 
     depends_on = 'raw_records'
@@ -341,7 +346,6 @@ def rough_sum(regions, records, to_pe, n, dt):
 ##
 # Pulse counting
 ##
-
 @export
 def pulse_count_dtype(n_channels):
     # NB: don't use the dt/length interval dtype, integer types are too small
@@ -357,6 +361,10 @@ def pulse_count_dtype(n_channels):
          (np.int64, n_channels)),
         (('Integral of lone pulses in ADC_count x samples', 'lone_pulse_area'),
          (np.int64, n_channels)),
+        (('Average baseline', 'baseline_mean'),
+         (np.int16, n_channels)),
+        (('Average baseline rms', 'baseline_rms_mean'),
+         (np.float32, n_channels)),
     ]
 
 
@@ -369,6 +377,7 @@ def count_pulses(records, n_channels):
     return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
+NO_PULSE_COUNTS = -9999  # Special value required by average_baseline in case counts = 0
 @numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
@@ -382,20 +391,23 @@ def _count_pulses(records, n_channels, result):
     # Array of booleans to track whether we are currently in a lone pulse
     # in each channel
     in_lone_pulse = np.zeros(n_channels, dtype=np.bool_)
-
+    baseline_buffer = np.zeros(n_channels, dtype=np.float64)
+    baseline_rms_buffer = np.zeros(n_channels, dtype=np.float64)
     for r_i, r in enumerate(records):
         if r_i != len(records) - 1:
             next_start = records[r_i + 1]['time']
 
         ch = r['channel']
         if ch >= n_channels:
-            print(ch)
+            print('Channel:', ch)
             raise RuntimeError("Out of bounds channel in get_counts!")
 
         area[ch] += r['area']  # <-- Summing total area in channel
 
         if r['record_i'] == 0:
             count[ch] += 1
+            baseline_buffer[ch] += r['baseline']
+            baseline_rms_buffer[ch] += r['baseline_rms'] 
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] * r['dt'] < next_start):
@@ -418,6 +430,10 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
+    means = (baseline_buffer/count)
+    means[np.isnan(means)] = NO_PULSE_COUNTS
+    res['baseline_mean'][:] = means[:]
+    res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
 
 ##
