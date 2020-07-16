@@ -26,11 +26,7 @@ xnt_common_config = dict(
          aqmon=(790, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
-         mv_blank=(1999, 1999)),
-    peak_split_gof_threshold=(
-        None,  # Reserved
-        ((0.5, 1), (4, 0.4)),
-        ((2, 1), (4.5, 0.4))))
+         mv_blank=(1999, 1999)))
 
 
 ##
@@ -140,7 +136,11 @@ x1t_common_config = dict(
     peak_right_extension=30,
     peak_min_pmts=2,
     save_outside_hits=(3, 3),
-    hit_min_amplitude='XENON1T_SR1')
+    hit_min_amplitude='XENON1T_SR1',
+    peak_split_gof_threshold=(
+        None,  # Reserved
+        ((0.5, 1), (3.5, 0.25)),
+        ((2, 1), (4.5, 0.4))))
 
 
 def demo():
