@@ -26,7 +26,11 @@ xnt_common_config = dict(
          aqmon=(790, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
-         mv_blank=(1999, 1999)))
+         mv_blank=(1999, 1999)),
+    peak_split_gof_threshold=(
+        None,  # Reserved
+        ((0.5, 1), (4, 0.4)),
+        ((2, 1), (4.5, 0.4))))
 
 
 ##
