@@ -86,6 +86,8 @@ def main_ajax():
             clean_cehp()
         elif args.mode == 'clean_high_level_data':
             clean_high_level_data()
+        elif args.mode == 'clean_non_latest':
+            clean_non_latest()
         elif args.mode == 'clean_unregistered':
             clean_unregistered()
             if hostname == eb_can_clean_ceph:
@@ -107,6 +109,7 @@ def main_ajax():
                 clean_unregistered()
                 clean_raw_records_nv()
                 clean_abandoned()
+                clean_non_latest()
                 if not args.execute:
                     break
                 log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
@@ -192,6 +195,46 @@ def clean_high_level_data():
                 else:
                     loc = loc + '_temp'
                     log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
+
+
+def clean_non_latest():
+    """
+    Remove data on this host if the boostrax.host field is not this host while
+    processing has finished
+    """
+    # We need to grep all the rundocs at once as simply doing one at the time (find_one)
+    # might get stuck as the query may yield the same result the next time it is called.
+    rds = run_coll.find({'bootstrax.state': 'done',
+                         'bootstrax.host': {'$ne': hostname},
+                         'data.host': hostname})
+    if not rds:
+        # Great, we are clean
+        return
+
+    for rd in rds:
+        # First check that we actually have raw_records stored on one of the other ebs
+        have_raw_records = False
+        for dd in rd['data']:
+            if (dd['type'] == 'raw_records' and
+                    dd['location'] != 'deleted' and
+                    dd['host'] != hostname):
+                have_raw_records = True
+                break
+        if not have_raw_records:
+            break
+
+        # Okay, good to go let's see if it is high level data and if so, delete it
+        for ddoc in rd['data']:
+            # Only delete data on this host
+            if 'host' in ddoc and ddoc['host'] == hostname:
+                loc = ddoc['location']
+                if os.path.exists(loc):
+                    log.info(f'clean_non_latest::\tdelete data at {loc}')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
+                else:
+                    loc = loc + '_temp'
+                    log.info(f'clean_non_latest::\tdelete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute)
 
 
@@ -549,6 +592,7 @@ if __name__ == '__main__':
                          '"clean_unregistered": remove all data from this host that is not registered in the rundb\n'
                          '"clean_abandoned": remove all the data associated to abandoned runs\n'
                          '"clean_high_level_data": remove all the data on host that is not registered in the rundb\n'
+                         '"clean_non_latest": remove data on this host if it was not the last to process a given run \n'
                          '"clean_all": Clean everything that AJAX can get its hands on: unregistered data, high level '
                          'data, old raw_records_nv')
 
@@ -569,7 +613,7 @@ if __name__ == '__main__':
         if not input('Want to proceed willingly? [y]').lower() == 'y':
             log.info(f'main::\tAlright no unsafe operations, bye bye')
             exit(-1)
-        if args.mode != 'clean_abandoned':
+        if args.mode != 'clean_abandoned' or not args.number:
             raise NotImplementedError('main::\tI dont want to have this option enabled '
                                       'yet.')
 
