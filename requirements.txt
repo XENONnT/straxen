@@ -7,4 +7,4 @@ multihist>=0.6.3
 matplotlib
 packaging
 immutabledict
-numpy>1.8.0
+numpy>1.18.0
