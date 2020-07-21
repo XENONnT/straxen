@@ -80,7 +80,7 @@ class nVETOHitlets(strax.Plugin):
 
         # Now convert hits into temp_hitlets including the data field:
         if len(hits):
-            temp_hitlets = np.zeros(len(hits), strax.hitlet_dtype(n_sample=hits['length'].max()))
+            temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_sample=hits['length'].max()))
 
             strax.refresh_hit_to_hitlets(hits, temp_hitlets)
             del hits
