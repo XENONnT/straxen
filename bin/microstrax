@@ -4,6 +4,7 @@ import argparse
 import hug
 import strax
 import straxen
+import os
 
 st: strax.Context
 max_load_mb = 1000
@@ -18,6 +19,8 @@ def load_context(name, extra_dirs=None):
 
     if extra_dirs is not None:
         for d in extra_dirs:
+            if os.access(d, os.W_OK) is not True:
+                raise IOError(f'No writing access to {d}. Check mountpoints ')
             st.storage.append(strax.DataDirectory(d, readonly=True))
 
     st.context_config['allow_incomplete'] = True
