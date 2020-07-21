@@ -19,7 +19,7 @@ Therefore D) can only be performed on one of the eventbuiders (see eb_can_clean_
 
 """
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 import argparse
 from datetime import datetime, timedelta
@@ -613,7 +613,7 @@ if __name__ == '__main__':
         if not input('Want to proceed willingly? [y]').lower() == 'y':
             log.info(f'main::\tAlright no unsafe operations, bye bye')
             exit(-1)
-        if args.mode != 'clean_abandoned' or not args.number:
+        if args.mode != 'clean_abandoned' and not args.number:
             raise NotImplementedError('main::\tI dont want to have this option enabled '
                                       'yet.')
 
