@@ -1,3 +1,13 @@
+0.9.2 / 2020-07-21
+--------------------
+- Change S1 split threshold (#150)
+- Chunking endtimes in DAQReader (#146)
+- Up version of peaklets for strax update (#152)
+- Forbid users to create records (#153)
+- Several updates in ajax, bootstrax and microstrax (#155, #151, #148, #147, #143)
+- Bugfix led_calibration (#142)
+
+
 0.9.1 / 2020-07-03
 --------------------
 - Rechunk pulse_counts and veto regions (#130)
