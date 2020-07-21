@@ -81,18 +81,19 @@ def xenonnt_led(**kwargs):
         storage=st.storage,
         **st.context_config)
 
-#This gain model is a temp solution untill we have a nice stable one
-def xenonnt_simulation(output_folder = './strax_data'):
+
+# This gain model is a temp solution untill we have a nice stable one
+def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     xnt_common_config['gain_model'] = ('to_pe_per_run',
-                                        aux_repo+'58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+                                        straxen.aux_repo+'58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
     return strax.Context(
         storage=strax.DataDirectory(output_folder),
         register=wfsim.RawRecordsFromFaxNT,
         config=dict(detector='XENONnT',
-                    fax_config=aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    fax_config=straxen.aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
                     **straxen.contexts.xnt_common_config,
-                   ),
+                     ),
         **straxen.contexts.common_opts)
 
 
@@ -135,7 +136,11 @@ x1t_common_config = dict(
     peak_right_extension=30,
     peak_min_pmts=2,
     save_outside_hits=(3, 3),
-    hit_min_amplitude='XENON1T_SR1')
+    hit_min_amplitude='XENON1T_SR1',
+    peak_split_gof_threshold=(
+        None,  # Reserved
+        ((0.5, 1), (3.5, 0.25)),
+        ((2, 1), (4.5, 0.4))))
 
 
 def demo():
@@ -204,13 +209,13 @@ def xenon1t_led(**kwargs):
         storage=st.storage,
         **st.context_config)
 
-def xenon1t_simulation(output_folder = './strax_data'):
+
+def xenon1t_simulation(output_folder='./strax_data'):
     import wfsim
     return strax.Context(
         storage=strax.DataDirectory(output_folder),
         register=wfsim.RawRecordsFromFax1T,
-        config=dict(fax_config=aux_repo+'1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
-
+        config=dict(fax_config=straxen.aux_repo+'1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
                     detector='XENON1T',
                     **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)

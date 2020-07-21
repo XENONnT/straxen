@@ -25,7 +25,7 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1), (3.5, 0.25)),
+                     ((0.5, 1), (4, 0.4)),
                      ((2, 1), (4.5, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
