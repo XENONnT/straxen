@@ -65,7 +65,7 @@ def xenonnt_online(output_folder='./strax_data',
             st.storage.append(
                 strax.DataDirectory(output_folder))
 
-        st.context_config['forbid_creation_of'] = 'raw_records'
+        st.context_config['forbid_creation_of'] = ('raw_records', 'records')
 
     return st
 
