@@ -92,6 +92,8 @@ def xenonnt_simulation(output_folder='./strax_data'):
         register=wfsim.RawRecordsFromFaxNT,
         config=dict(detector='XENONnT',
                     fax_config=straxen.aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+                    nn_weights = straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
                     **straxen.contexts.xnt_common_config,
                      ),
         **straxen.contexts.common_opts)
