@@ -16,6 +16,9 @@ HITFINDER_OPTIONS_he = tuple([
 
 @export
 @strax.takes_config(
+    strax.Option(
+        'n_tpc_pmts_all',track=False,default=800
+        ),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(straxen.PulseProcessing):
     __version__ = '0.0.1'
@@ -30,6 +33,7 @@ class PulseProcessingHe(straxen.PulseProcessing):
 
     def setup(self):
         self.hev_enabled=False
+        self.config['n_tpc_pmts'] = self.config['n_tpc_pmts_all']
         self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
