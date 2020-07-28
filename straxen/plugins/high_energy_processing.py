@@ -39,10 +39,14 @@ class PulseProcessingHe(straxen.PulseProcessing):
     
 @export
 @strax.takes_config(
-    *HITFINDER_OPTIONS_he,
+
+    strax.Option(
+        'n_tpc_pmts_all',track=False,default=800
+        ),
+    *HITFINDER_OPTIONS_he
 )
 class PeakletsHe(straxen.Peaklets):
-    depends_on = 'records_he',
+    depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
     __version__ = '0.0.3'
@@ -50,7 +54,7 @@ class PeakletsHe(straxen.Peaklets):
     
     def infer_dtype(self):
         return strax.peak_dtype(
-                        n_channels=self.config['n_tpc_pmts'])
+                        n_channels=self.config['n_tpc_pmts_all'])
 
     def setup(self):
         self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']  
@@ -115,4 +119,3 @@ class PeakBasicsHe(straxen.PeakBasics):
 
     def compute(self, peaks_he):
         return super().compute(peaks_he)
-
