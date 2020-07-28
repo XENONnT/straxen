@@ -68,7 +68,7 @@ class PeakletsHe(straxen.Peaklets):
                                        n_tpc_pmts=self.config['n_tpc_pmts'])
         buffer_pmts = np.zeros(self.config['he_channels_offset'])
         self.to_pe = np.concatenate((buffer_pmts,self.to_pe))
-        self.to_pe *= amplification
+        self.to_pe *= self.config['amplification']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start,end)
