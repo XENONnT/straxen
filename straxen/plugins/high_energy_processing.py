@@ -18,7 +18,7 @@ HITFINDER_OPTIONS_he = tuple([
 @strax.takes_config(
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(straxen.PulseProcessing):
-    __version__ = '0.2.5'
+    __version__ = '0.0.1'
     rechunk_on_save = False
     depends_on = 'raw_records_he'
     provides = 'records_he'
@@ -43,14 +43,19 @@ class PulseProcessingHe(straxen.PulseProcessing):
     strax.Option(
         'n_tpc_pmts_all',track=False,default=800
         ),
+    strax.Option(
+        'he_channels_offset',track=False,default=500
+        ),
+    strax.Option(
+        'amplification',track=False,default=20
+        ),
     *HITFINDER_OPTIONS_he
 )
 class PeakletsHe(straxen.Peaklets):
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
-    __version__ = '0.0.3'
-    parrallel=False
+    __version__ = '0.0.1'
     
     def infer_dtype(self):
         return strax.peak_dtype(
@@ -61,9 +66,9 @@ class PeakletsHe(straxen.Peaklets):
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
                                        n_tpc_pmts=self.config['n_tpc_pmts'])
-        buffer_pmts = np.zeros(500)
+        buffer_pmts = np.zeros(self.config['he_channels_offset'])
         self.to_pe = np.concatenate((buffer_pmts,self.to_pe))
-        self.to_pe *= 20
+        self.to_pe *= amplification
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start,end)
@@ -81,15 +86,14 @@ class PeakletClassificationHe(straxen.PeakletClassification):
         return super().compute(peaklets_he)
 
 
-FAKE_MERGED_S2_TYPE = -42
-
 @export
-class MergedS2s(straxen.MergedS2s):
+class MergedS2sHe(straxen.MergedS2s):
     """Merge together peaklets if we believe they form a single peak instead
     """
     depends_on = ('peaklets_he', 'peaklet_classification_he')
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
+    __version__ = '0.0.1'
     
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))
@@ -99,11 +103,12 @@ class MergedS2s(straxen.MergedS2s):
 
 
 @export
-class Peaks(straxen.Peaks):
+class PeaksHe(straxen.Peaks):
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
     provides = 'peaks_he'
-
+    __version__ = '0.0.1'
+    
     def infer_dtype(self):
         return self.deps['peaklets_he'].dtype_for('peaklets')
 
@@ -113,7 +118,7 @@ class Peaks(straxen.Peaks):
 
 @export
 class PeakBasicsHe(straxen.PeakBasics):
-    __version__ = "0.0.7"
+    __version__ = '0.0.1'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
 
