@@ -1,3 +1,39 @@
+0.9.2 / 2020-07-21
+--------------------
+- Change S1 split threshold (#150)
+- Chunking endtimes in DAQReader (#146)
+- Up version of peaklets for strax update (#152)
+- Forbid users to create records (#153)
+- Several updates in ajax, bootstrax and microstrax (#155, #151, #148, #147, #143)
+- Bugfix led_calibration (#142)
+
+
+0.9.1 / 2020-07-03
+--------------------
+- Rechunk pulse_counts and veto regions (#130)
+- Add baseline info to pulse_counts (#140)
+- Waveform plotting fixes (#137, #128)
+- More gain model options (#132)
+- Add ajax data removal script (#134)
+- LED calibration update (#125)
+- Bootstrax updates (#129)
+- Update simulation context (#127)
+- Fix n+1 bug in n_hits (#126)
+
+
+0.9.0 / 2020-05-20
+------------------
+- Use revised coordinates for PMT positions (9da05b)
+- Fix tutorials and holoviews display (32490b)
+- Fix coordinate flipping in itp_map (#113)
+- Fix n_hits field for peaklets (#122)
+- Fix led_calibration options (#120)
+- Fix n_top_pmts default (#119)
+- Bootstrax updates (#112, #121)
+- Update parameters for new rundb setup
+- Specify immutabledict requirement (#116)
+
+
 0.8.1 / 2020-05-05
 ------------------
 - Update gains and hitfinder thresholds (#110)

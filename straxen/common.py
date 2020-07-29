@@ -20,7 +20,8 @@ import strax
 
 
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo', 'n_tpc_pmts']
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
+            'n_tpc_pmts', 'n_top_pmts']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -29,6 +30,7 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 n_tpc_pmts = 494
+n_top_pmts = 253
 
 
 @export
@@ -50,7 +52,7 @@ def pmt_positions(xenon1t=False):
             for q in pmt_config[:248]])
     else:
         return get_resource(
-            aux_repo + '037b1cae58483743b6392f9744ef2b119d59fb05/pmt_positions_xenonnt.csv',
+            aux_repo + '874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv',
             fmt='csv')
 
 

@@ -25,7 +25,7 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1), (3.5, 0.25)),
+                     ((0.5, 1), (4, 0.4)),
                      ((2, 1), (4.5, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
@@ -47,9 +47,8 @@ export, __all__ = strax.exporter()
     strax.Option('tight_coincidence_window_right', default=50,
                  help="Time range right of peak center to call "
                       "a hit a tight coincidence (ns)"),
-    strax.Option(
-        'n_tpc_pmts', type=int,
-        help='Number of TPC PMTs'),
+    strax.Option('n_tpc_pmts', type=int,
+                 help='Number of TPC PMTs'),
 
     *HITFINDER_OPTIONS,
 )
@@ -61,7 +60,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.2'
+    __version__ = '0.3.5'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -150,7 +149,13 @@ class Peaklets(strax.Plugin):
             assert np.diff(hits['time']).min(initial=1) >= 0, "Hits not sorted"
             assert np.all(peaklets['time'][1:]
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
-
+        
+        # Update nhits of peaklets:
+        counts = strax.touching_windows(hits, peaklets)
+        counts = np.diff(counts, axis=1).flatten()
+        counts += 1
+        peaklets['n_hits'] = counts
+        
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits)
 
