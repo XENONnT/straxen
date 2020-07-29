@@ -62,7 +62,8 @@ class nVETORecorder(strax.Plugin):
         intervals = coincidence(raw_records_prenv,
                                 self.config['coincidence_level_recorder_nv'],
                                 self.config['resolving_time_recorder_nv'])
-        mask = rr_in_interval(raw_records_prenv, *intervals.T)
+        neighbors = strax.record_links(raw_records_prenv)
+        mask = pulse_in_interval(raw_records_prenv, neighbors, *intervals.T)
         rr, lone_records = straxen.mask_and_not(raw_records_prenv, mask)
 
         # Compute some properties of the lone_records:
@@ -202,55 +203,48 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  nveto_channels):
 # plugins as well.
 # ----------------------
 @numba.njit
-def rr_in_interval(rr, start_times, end_times):
-    """
-    Function which tests if a raw record is one of the "to be stored"
-    intervals.
+@numba.njit
+def pulse_in_interval(raw_records, record_links, start_times, end_times):
+    nrr = len(raw_records)
+    result = np.zeros(nrr, np.bool_)
 
-    Args:
-        rr (np.array): raw records
-        start_times (np.array): start of the time interval
-        end_times (np.array): end of the time interval
+    indicies = np.arange(0, nrr, 1, dtype=np.int32)
+    last_interval_seen = 0
+    for ind in indicies:
+        rr = raw_records[ind]
 
-    Note:
-        Since it might happen that the start_time is defined by a
-        fragment of higher order we will also check if the pulse_end is
-        in the to be stored interval. We will do the same for higher
-        fragments which may be outside the window. If the start time
-        of the very first fragment falls into the window.
+        # We only have to check the current and next interval:
+        m_starts = rr['time'] >= start_times[last_interval_seen:last_interval_seen + 2]
+        m_ends = rr['time'] <= end_times[last_interval_seen:last_interval_seen + 2]  # TODO: Is <= ambigious?
+        m = m_starts & m_ends
 
-    Returns:
-        numpy.array: Boolean array which is true for the events to keep.
+        message = ('This is odd this record omitted the current intervals.' 
+                   f'Record time {rr["time"]} last endtime {end_times[last_interval_seen + 2]}')
 
-    #TODO: This function is way too slow...
-    """
-    # Here are some example we have to considere:
-    # Normal case:
-    # Interval:                  |----------------------------------------|
-    # If-case:                st___et     st_______et                st_____et
-    # Edge cases:
-    # Interval:                 |----------------------------------------|
-    # else-case      st_______|___et                             st_______|__et
-    #             st_____|_____|__et                                 st______|______|__et
+        assert rr['time'] < end_times[last_interval_seen + 2], message
 
-    in_window = np.zeros(len(rr), dtype=np.bool_)
-    fragment_max_length = len(rr[0]['data'])
+        if np.any(m):
+            # This record is inside an interval
+            result[ind] = True
 
-    # Looping over rr and check if they are in the windows:
-    for i, r in enumerate(rr):
-        t = r['time']
-        dt = r['dt']
-        pl = r['pulse_length']
-        ri = r['record_i']
+            # Update intervals which we have seen already:
+            last_interval_seen = np.argwhere(m)[0, 0] + last_interval_seen
 
-        # check if current raw_record fragment is in any interval:
-        st = t - ri * fragment_max_length * dt                 # Right edge case
-        et = t + int(pl * dt - ri * fragment_max_length * dt)  # Left edge case
-        which_interval = (start_times <= st) & (st < end_times) | (start_times <= et) & (et < end_times)
-        if np.any(which_interval):
-            # tag as to be stored:
-            in_window[i] = True
-    return in_window
+            # Now we have to get all associated records and set them to true:
+            for neighbors in record_links:
+                n = 0  # some trial counter
+                ri = ind
+                while n <= 1000:
+                    ri = neighbors[ri]
+                    if ri == -1:
+                        break
+                    else:
+                        result[ri] = True
+
+                if n == 1000:
+                    raise RuntimeWarning('Tried more than 1000 times to find'
+                                         ' neighboring record. This is odd.')
+    return result
 
 
 @export
