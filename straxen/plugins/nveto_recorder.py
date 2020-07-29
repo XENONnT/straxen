@@ -9,8 +9,7 @@ import straxen
 export, __all__ = strax.exporter()
 
 __all__ = ['nVETORecorder']
-#TODO: Unify docstrings
-
+# TODO: Unify docstrings
 @strax.takes_config(
     strax.Option('coincidence_level_recorder_nv', type=int, default=4,
                  help="Required coincidence level."),
