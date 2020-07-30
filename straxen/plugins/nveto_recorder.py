@@ -280,9 +280,11 @@ def coincidence(records, nfold=4, resolving_time=300):
          intervals are exactly resolving_time apart from each other
          they will be merged into a single interval.
     """
-    start_times = _coincidence(records, nfold, resolving_time)
-    intervals = _merge_intervals(start_times, resolving_time)
-
+    if len(records):
+        start_times = _coincidence(records, nfold, resolving_time)
+        intervals = _merge_intervals(start_times, resolving_time)
+    else:
+        intervals = np.zeros((0, 2), np.int64)
     return intervals
 
 
