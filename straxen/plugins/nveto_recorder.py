@@ -211,11 +211,8 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
     nrr = len(raw_records)
     result = np.zeros(nrr, np.bool_)
 
-    indicies = np.arange(0, nrr, 1, dtype=np.int32)
     last_interval_seen = 0
-    for ind in indicies:
-        rr = raw_records[ind]
-
+    for ind, rr in enumerate(raw_records):
         # We only have to check the current and the next two intervals:
         st = start_times[last_interval_seen:last_interval_seen + 2]
         et = end_times[last_interval_seen:last_interval_seen + 2]
