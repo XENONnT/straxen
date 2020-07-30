@@ -3,9 +3,6 @@ import numpy as np
 import numba
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETOPulseProcessing']
-
-
 @export
 @strax.takes_config(
     strax.Option(
@@ -67,7 +64,7 @@ class nVETOPulseProcessing(strax.Plugin):
         r = clean_up_empty_records(r, only_last=True)
         return r
 
-
+@export
 @numba.njit(cache=True, nogil=True)
 def clean_up_empty_records(records, only_last=True):
     """
@@ -79,17 +76,18 @@ def clean_up_empty_records(records, only_last=True):
     :return: non-empty records
 
     Note:
-        If only_last is false, record_i will not updated for the
-        successive records.
+        If only_last is false, also records within a pulse can be deleted.
+        This may lead to unwanted consequences if it not taken into account.
     """
     indicies_to_keep = np.zeros(len(records), dtype=np.int32)
     n_indicies = 0
     for ind, r in enumerate(records):
-        m_last_fragment = (r['record_i'] > 0) and (r['length'] < len(r['data']))
-        if only_last and not m_last_fragment:
-            indicies_to_keep[n_indicies] = ind
-            n_indicies += 1
-            continue
+        if only_last:
+            m_last_fragment = (r['record_i'] > 0) and (r['length'] < len(r['data']))
+            if m_last_fragment:
+                indicies_to_keep[n_indicies] = ind
+                n_indicies += 1
+                continue
 
         if np.any(r['data'] != 0):
             indicies_to_keep[n_indicies] = ind
