@@ -63,7 +63,8 @@ class nVETOHitlets(strax.Plugin):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
-        #TODO: Unify with TPC and add adc thresholds
+        # TODO: Unify with TPC and add adc thresholds
+        # TODO Check all plugins if they can handle empty chunks!
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
 
     def compute(self, records_nv):
@@ -79,7 +80,8 @@ class nVETOHitlets(strax.Plugin):
         hits = strax.sort_by_time(hits)
 
         # Now convert hits into temp_hitlets including the data field:
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_dtype(n_sample=hits['length'].max()))
+        # TODO will  .max() will fail when empty.
+        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_sample=hits['length'].max()))
 
         strax.refresh_hit_to_hitlets(hits, temp_hitlets)
         del hits
@@ -106,7 +108,7 @@ class nVETOHitlets(strax.Plugin):
         # Remove data field:
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
         drop_data_field(temp_hitlets, hitlets)
-        
+
         return hitlets
 
 @numba.njit
