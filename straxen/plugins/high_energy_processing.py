@@ -17,7 +17,10 @@ HITFINDER_OPTIONS_he = tuple([
 @export
 @strax.takes_config(
     strax.Option(
-        'n_tpc_pmts_all',track=False,default=800
+        'n_tpc_pmts_he',track=False,default=800
+        ),
+    strax.Option(
+        'parent_version',track=True,default=straxen.PulseProcessing.__version__
         ),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(straxen.PulseProcessing):
@@ -33,7 +36,7 @@ class PulseProcessingHe(straxen.PulseProcessing):
 
     def setup(self):
         self.hev_enabled=False
-        self.config['n_tpc_pmts'] = self.config['n_tpc_pmts_all']
+        self.config['n_tpc_pmts'] = self.config['n_tpc_pmts_he']
         self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
@@ -43,15 +46,17 @@ class PulseProcessingHe(straxen.PulseProcessing):
     
 @export
 @strax.takes_config(
-
     strax.Option(
-        'n_tpc_pmts_all',track=False,default=800
+        'n_tpc_pmts_he',track=False,default=800
         ),
     strax.Option(
         'he_channels_offset',track=False,default=500
         ),
     strax.Option(
         'amplification',track=False,default=20
+        ),
+    strax.Option(
+        'parent_version',track=True,default=straxen.Peaklets.__version__
         ),
     *HITFINDER_OPTIONS_he
 )
@@ -80,6 +85,11 @@ class PeakletsHe(straxen.Peaklets):
         
         
 @export
+@strax.takes_config(
+    strax.Option(
+        'parent_version',track=True,default=straxen.PeakletClassification.__version__
+        ),
+)
 class PeakletClassificationHe(straxen.PeakletClassification):
     """Classify peaklets as unknown, S1, or S2."""
     provides = 'peaklet_classification_he'
@@ -91,6 +101,11 @@ class PeakletClassificationHe(straxen.PeakletClassification):
 
 
 @export
+@strax.takes_config(
+    strax.Option(
+        'parent_version',track=True,default=straxen.MergedS2s.__version__
+        ),
+)
 class MergedS2sHe(straxen.MergedS2s):
     """Merge together peaklets if we believe they form a single peak instead
     """
@@ -107,6 +122,11 @@ class MergedS2sHe(straxen.MergedS2s):
 
 
 @export
+@strax.takes_config(
+    strax.Option(
+        'parent_version',track=True,default=straxen.Peaks.__version__
+        ),
+)
 class PeaksHe(straxen.Peaks):
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
@@ -121,6 +141,11 @@ class PeaksHe(straxen.Peaks):
 
 
 @export
+@strax.takes_config(
+    strax.Option(
+        'parent_version',track=True,default=straxen.PeakBasics.__version__
+        ),
+)
 class PeakBasicsHe(straxen.PeakBasics):
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
