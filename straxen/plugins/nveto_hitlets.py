@@ -6,9 +6,6 @@ import strax
 import straxen
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETOHitlets']
-
-
 @export
 @strax.takes_config(
     strax.Option(
@@ -49,7 +46,7 @@ class nVETOHitlets(strax.Plugin):
     """
     Plugin which computes the nveto hitlets and their parameters.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -64,7 +61,6 @@ class nVETOHitlets(strax.Plugin):
 
     def setup(self):
         # TODO: Unify with TPC and add adc thresholds
-        # TODO Check all plugins if they can handle empty chunks!
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
 
     def compute(self, records_nv):
@@ -80,8 +76,11 @@ class nVETOHitlets(strax.Plugin):
         hits = strax.sort_by_time(hits)
 
         # Now convert hits into temp_hitlets including the data field:
-        # TODO will  .max() will fail when empty.
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_sample=hits['length'].max()))
+        if len(hits):
+            nsamples = hits['length'].max()
+        else:
+            nsamples = 0
+        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_sample=nsamples))
 
         strax.refresh_hit_to_hitlets(hits, temp_hitlets)
         del hits
@@ -113,6 +112,14 @@ class nVETOHitlets(strax.Plugin):
 
 @numba.njit
 def drop_data_field(old_hitlets, new_hitlets):
+    """
+    Function which copies everything except for the data field.
+    If anyone know a better and faster way please let me know....
+
+    :param old_hitlets:
+    :param new_hitlets:
+    :return:
+    """
     n = len(old_hitlets)
     for i in range(n):
         o = old_hitlets[i]
