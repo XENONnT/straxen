@@ -26,7 +26,9 @@ xnt_common_config = dict(
          aqmon=(790, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
-         mv_blank=(1999, 1999)))
+         mv_blank=(1999, 1999)),
+    nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    nn_weights = straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
 
 
 ##
