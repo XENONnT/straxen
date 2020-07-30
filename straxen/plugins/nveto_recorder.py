@@ -8,8 +8,7 @@ import straxen
 
 export, __all__ = strax.exporter()
 
-__all__ = ['nVETORecorder']
-# TODO: Unify docstrings
+@export
 @strax.takes_config(
     strax.Option('coincidence_level_recorder_nv', type=int, default=4,
                  help="Required coincidence level."),
@@ -23,7 +22,7 @@ __all__ = ['nVETORecorder']
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('n_nveto_pmts', type=int, track=False,
-        help='Number of nVETO PMTs')
+                 help='Number of nVETO PMTs')
 )
 class nVETORecorder(strax.Plugin):
     __version__ = '0.0.3'
@@ -53,7 +52,6 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_prenv, start, end):
-
         strax.zero_out_of_bounds(raw_records_prenv)
 
         # First we have to split rr into records and lone records:
@@ -64,6 +62,9 @@ class nVETORecorder(strax.Plugin):
                                 self.config['resolving_time_recorder_nv'])
         neighbors = strax.record_links(raw_records_prenv)
         mask = pulse_in_interval(raw_records_prenv, neighbors, *intervals.T)
+        # Always set the last n-1 events to true since chunk gaps could be smaller than resolving time and we are
+        # just storing data.
+        mask[:-self.config['coincidence_level_recorder_nv']-1] = True
         rr, lone_records = straxen.mask_and_not(raw_records_prenv, mask)
 
         # Compute some properties of the lone_records:
@@ -115,19 +116,16 @@ def compute_lone_records(lone_records, nveto_channels, n):
     Function which returns for each data chunk the specified number of
     lone_records and computes for the rest some basic properties.
 
-    Args:
-        lone_records (raw_records): raw_records which are flagged as lone
-            "hits"
-        nveto_channels (tuple): First and last channel of nVETO.
-        n (int): Number of lone records which should be stored per data
-         chunk.
+    :param lone_records: raw_records which are flagged as lone
+            records.
+    :param nveto_channels: First and last channel of nVETO.
+    :param n: Number of lone records to be stored per chunk.
 
-    Returns:
-        numpy.ndarray: Structured array of the lone_record_count_dtype
-            containing some properties of the lone records which will be
-            deleted.
-        numpy.ndarray: Lone records which should be saved for diagnostic
-            purposes. The array shape is of the raw_records dtype.
+    :returns: Structured array of the lone_record_count_dtype
+        containing some properties of the lone records which will be
+        deleted.
+    :returns: Lone records which should be saved for diagnostic purposes.
+        The array shape is of the raw_records dtype.
     """
     ch0, ch119 = nveto_channels
     
@@ -197,14 +195,19 @@ def _compute_lone_records(lone_record, res, lone_ids, n,  nveto_channels):
             res['higher_lone_record_area'][ind] = res['higher_lone_record_area'][ind] / res['nhigherfragments'][ind]
 
 
-# ---------------------
-# Auxiliary functions:
-# Maybe these function might be useful for other
-# plugins as well.
-# ----------------------
-@numba.njit
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def pulse_in_interval(raw_records, record_links, start_times, end_times):
+    """
+    Checks if a records is in one of the intervals. If yes the entire
+    pulse ist flagged as to be stored.
+
+    :param raw_records: raw_records or records
+    :param record_links: position of the previous and next record if
+        pulse is made of many fragments
+    :param start_times: start time of the coincidence intervals
+    :param end_times: endtimes of the coincidence intervals
+    :return: boolean array true if one fragment of a pulse is in window.
+    """
     nrr = len(raw_records)
     result = np.zeros(nrr, np.bool_)
 
@@ -248,36 +251,35 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
 
 @export
-def coincidence(hits, nfold=4, resolving_time=300):
+def coincidence(records, nfold=4, resolving_time=300, test_n_minus_one=False):
     """
     Checks if n-neighboring events are less apart from each other then
     the specified resolving time.
 
-    Args:
-        hits (hits): Can be anything which is of the dtype
-            strax.interval_dtype e.g. records, hits, peaks...
-        nfold (int): coincidence level.
-        resolving_time (int): Time window of the coincidence [ns].
-    
+    :param records: Can be anything which is of the dtype
+        strax.interval_dtype e.g. records, hits, peaks...
+    :param nfold: coincidence level.
+    :param resolving_time: Time window of the coincidence [ns].
+    :param test_n_minus_one: If true we also include the last n-1 events
+        in the coincidence.
+    :return: array containing the start times and end times of the
+            corresponding intervals.
+
     Note:
         The coincidence window is self-extending. The bounds are both
-        inclusive. 
+        inclusive. #TODO check this.
 
     Warning:
         Will not test the last nfold - 1 elements. Since we do not know
         the time of the first element in the next chunk!
-
-    Returns:
-        np.array: array containing the start times and end times of the
-            corresponding intervals.
     """
-    start_times = _coincidence(hits, nfold, resolving_time)
+    start_times = _coincidence(records, nfold, resolving_time, test_n_minus_one)
     intervals = _merge_intervals(start_times, resolving_time)
 
     return intervals
 
 
-def _coincidence(rr, nfold=4, resolving_time=300):
+def _coincidence(rr, nfold=4, resolving_time=300, test_n_minus_one=False):
     """
     Function which checks if n-neighboring events are less apart from
     each other then the specified resolving time.
@@ -287,18 +289,8 @@ def _coincidence(rr, nfold=4, resolving_time=300):
             signal.
         2.) The coincidence window in here is not self extending. Hence
             we compute only the start times of a coincidence window.
-        3.) By default we store the last nfold - 1 hits, since there
-            might be an overlap to the next chunk. If we can not save
-            break the chunks.
-
-    Args:
-        rr (raw_records): raw_records
-        nfold (int): coincidence level.
-        resolving_time (int): Time window of the coincidence [ns].
-
-    Returns:
-        np.array: array containing the start times of the n-fold
-        coincidence intervals
+        3.) By default we cannot test the last n-1 records since we
+            do not know the gap to the next chunk.
     """
     # 1. estimate time difference between fragments:
     start_times = rr['time']
@@ -312,13 +304,14 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     # generate kernel:
     kernel = np.zeros(nfold)
     kernel[:(nfold - 1)] = 1  # weight last seen by t_diff must be zero since
-    # starting time point e.g. n=4: [0,1,1,1] --> [f1, f2, f3, f4, ..., fn]
+    # starting time point e.g. n=4: [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn]  --> 0*dt1 + dt2 + dt3 + dt4
 
-    t_cum = convolve1d(t_diff, kernel, mode='constant', origin=(nfold - 1) // 2)
-    t_cum = t_cum[:-(nfold - 1)]  # do not have to check for last < nfold hits
-    # since we will store these rr anyhow...
-    mask[:-(nfold - 1)] = t_cum <= resolving_time
-
+    if not test_n_minus_one:
+        t_cum = convolve1d(t_diff, kernel, mode='constant', origin=(nfold - 1) // 2)
+        t_cum = t_cum[:-(nfold - 1)]  # Cannot check for the last n-1 records
+        mask[:-(nfold - 1)] = t_cum <= resolving_time
+    else:
+        raise NotImplementedError('The option is currently not implemented.')
     return start_times[mask]
 
 
@@ -326,13 +319,6 @@ def _coincidence(rr, nfold=4, resolving_time=300):
 def _merge_intervals(start_time, resolving_time):
     """
     Function which merges overlapping time intervals into a single one.
-
-    Args:
-        start_time (np.array): Start time of the different intervals
-        resolving_time (int): Coincidence window in ns
-
-    Returns:
-        np.array: merged unique time intervals.
     """
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
