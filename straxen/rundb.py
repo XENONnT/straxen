@@ -105,8 +105,9 @@ class RunDB(strax.StorageFrontend):
         self.collection = self.client[mongo_dbname][mongo_collname]
 
         self.backends = [
-            strax.S3Backend(**s3_kwargs),
-            strax.FileSytemBackend(),
+            #strax.S3Backend(**s3_kwargs),
+            #strax.FileSytemBackend(),
+            strax.rucio(),
         ]
 
         # Construct mongo query for runs with available data.
@@ -140,8 +141,24 @@ class RunDB(strax.StorageFrontend):
         else:
             run_query = {'number': int(key.run_id)}
         dq = self._data_query(key)
-        doc = self.collection.find_one({**run_query, **dq},
+
+        # Check that we are in rucio backend
+        try:
+            dq = {
+            'data': {
+                '$elemMatch': {
+                    'type': key.data_type,
+                    'protocol': 'rucio'}}}
+            doc = self.collection.find_one({**run_query, **dq},
                                        projection=dq)
+            datum = doc['data'][0]
+            return datum['protocol'], str(key.run_id) + '-' + datum['did'].split(':')[1]
+        except doc is None:
+            pass
+        
+        doc = self.collection.find_one({**run_query, **dq},
+                                      projection=dq)
+
         if doc is None:
             # Data was not found
             if not write:
