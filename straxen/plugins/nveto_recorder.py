@@ -25,7 +25,7 @@ export, __all__ = strax.exporter()
                  help='Number of nVETO PMTs')
 )
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
     parallel = 'process'
 
     rechunk_on_save = True
