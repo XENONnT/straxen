@@ -216,21 +216,36 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
     for ind in indicies:
         rr = raw_records[ind]
 
-        # We only have to check the current and next interval:
-        m_starts = rr['time'] >= start_times[last_interval_seen:last_interval_seen + 2]
-        m_ends = rr['time'] <= end_times[last_interval_seen:last_interval_seen + 2]  # TODO: Is <= ambigious?
+        # We only have to check the current and the next two intervals:
+        st = start_times[last_interval_seen:last_interval_seen + 2]
+        et = end_times[last_interval_seen:last_interval_seen + 2]
+
+        if (last_interval_seen + 2) < len(end_times):
+            # As soon as we have seen all intervals rr['time'] can be larger
+            assert rr['time'] < et[-1], 'This is odd this record omitted the current intervals.'
+
+        # Check if record start is in interval:
+        m_starts = rr['time'] >= st
+        # <= in m_ends is not ambiguous here since if start and end time of an interval would be the same
+        # they would have been merged into a single interval in coincidence.
+        m_ends = rr['time'] <= et
+
+        # Check if record end is in interval:
+        m_starts = m_starts | (strax.endtime(rr) >= st)
+        m_ends = m_ends | (strax.endtime(rr) <= et)
         m = m_starts & m_ends
 
-        message = ('This is odd this record omitted the current intervals.' 
-                   f'Record time {rr["time"]} last endtime {end_times[last_interval_seen + 2]}')
-
-        assert rr['time'] < end_times[last_interval_seen + 2], message
-
         if np.any(m):
-            # This record is inside an interval
+            # This record is inside one of the interval
             result[ind] = True
 
             # Update intervals which we have seen already:
+            # If we have a funny record for which the start time is in interval 0
+            # and the end time in interval 1 we still set last interval seen to be
+            # the first interval. It might happen that this record is followed by
+            # a second record which is shorter falling only into interval 1. While
+            # there will be guaranteed by the definition of our coincidence another
+            # record at the start of the interval 1 which will increment last_interval_seen
             last_interval_seen = np.argwhere(m)[0, 0] + last_interval_seen
 
             # Now we have to get all associated records and set them to true:
@@ -251,7 +266,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
 
 @export
-def coincidence(records, nfold=4, resolving_time=300, test_n_minus_one=False):
+def coincidence(records, nfold=4, resolving_time=300):
     """
     Checks if n-neighboring events are less apart from each other then
     the specified resolving time.
@@ -260,26 +275,21 @@ def coincidence(records, nfold=4, resolving_time=300, test_n_minus_one=False):
         strax.interval_dtype e.g. records, hits, peaks...
     :param nfold: coincidence level.
     :param resolving_time: Time window of the coincidence [ns].
-    :param test_n_minus_one: If true we also include the last n-1 events
-        in the coincidence.
     :return: array containing the start times and end times of the
             corresponding intervals.
 
     Note:
-        The coincidence window is self-extending. The bounds are both
-        inclusive. #TODO check this.
-
-    Warning:
-        Will not test the last nfold - 1 elements. Since we do not know
-        the time of the first element in the next chunk!
+        The coincidence window is self-extending. If start times of two
+         intervals are exactly resolving_time apart from each other
+         they will be merged into a single interval.
     """
-    start_times = _coincidence(records, nfold, resolving_time, test_n_minus_one)
+    start_times = _coincidence(records, nfold, resolving_time)
     intervals = _merge_intervals(start_times, resolving_time)
 
     return intervals
 
 
-def _coincidence(rr, nfold=4, resolving_time=300, test_n_minus_one=False):
+def _coincidence(rr, nfold=4, resolving_time=300):
     """
     Function which checks if n-neighboring events are less apart from
     each other then the specified resolving time.
@@ -306,12 +316,11 @@ def _coincidence(rr, nfold=4, resolving_time=300, test_n_minus_one=False):
     kernel[:(nfold - 1)] = 1  # weight last seen by t_diff must be zero since
     # starting time point e.g. n=4: [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn]  --> 0*dt1 + dt2 + dt3 + dt4
 
-    if not test_n_minus_one:
-        t_cum = convolve1d(t_diff, kernel, mode='constant', origin=(nfold - 1) // 2)
-        t_cum = t_cum[:-(nfold - 1)]  # Cannot check for the last n-1 records
-        mask[:-(nfold - 1)] = t_cum <= resolving_time
-    else:
-        raise NotImplementedError('The option is currently not implemented.')
+    t_cum = convolve1d(t_diff, kernel, mode='constant', origin=(nfold - 1) // 2)
+    # Do not have to check the last n-1 events since by definition they can not satisfy the n-fold coincidence.
+    # So we can keep the mask false.
+    t_cum = t_cum[:-(nfold - 1)]
+    mask[:-(nfold - 1)] = t_cum <= resolving_time
     return start_times[mask]
 
 
@@ -319,6 +328,10 @@ def _coincidence(rr, nfold=4, resolving_time=300, test_n_minus_one=False):
 def _merge_intervals(start_time, resolving_time):
     """
     Function which merges overlapping time intervals into a single one.
+
+    Note:
+        If start times of two intervals are exactly resolving_time apart
+        from each other they will be merged into a single interval.
     """
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
