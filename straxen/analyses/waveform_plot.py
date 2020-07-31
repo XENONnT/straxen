@@ -6,10 +6,19 @@ import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
 
+from .records_matrix import DEFAULT_MAX_SAMPLES
+
 
 @straxen.mini_analysis()
-def plot_waveform(context, deep=False, show_largest=100, figsize=None,
-                  cbar_loc='lower right', lower_panel_height=2, **kwargs):
+def plot_waveform(context,
+                  deep=False,
+                  show_largest=100,
+                  figsize=None,
+                  max_samples=DEFAULT_MAX_SAMPLES,
+                  ignore_max_sample_warning=True,
+                  cbar_loc='lower right',
+                  lower_panel_height=2,
+                  **kwargs):
     """Plot the sum waveform and optionally per-PMT waveforms
 
     :param deep: If True, show per-PMT waveform matrix under sum waveform.
@@ -42,6 +51,8 @@ def plot_waveform(context, deep=False, show_largest=100, figsize=None,
         plt.sca(axes[1])
         context.plot_records_matrix(**kwargs,
                                     cbar_loc=cbar_loc,
+                                    max_samples=max_samples,
+                                    ignore_max_sample_warning=ignore_max_sample_warning,
                                     raw=deep == 'raw',
                                     single_figure=False)
 
@@ -83,6 +94,8 @@ def plot_records_matrix(context, run_id,
                         cbar_loc='upper right',
                         raw=False,
                         single_figure=True, figsize=(10, 4),
+                        max_samples=DEFAULT_MAX_SAMPLES,
+                        ignore_max_sample_warning=False,
                         **kwargs):
     if seconds_range is None:
         raise ValueError(
@@ -94,11 +107,16 @@ def plot_records_matrix(context, run_id,
 
     f = context.raw_records_matrix if raw else context.records_matrix
 
-    wvm, ts, ys = f(run_id, **kwargs)
+    wvm, ts, ys = f(run_id,
+                    max_samples=max_samples,
+                    ignore_max_sample_warning=ignore_max_sample_warning,
+                    **kwargs)
 
     plt.pcolormesh(
         ts, ys, wvm.T,
-        norm=matplotlib.colors.LogNorm(), vmin=1e-2,
+        norm=matplotlib.colors.LogNorm(),
+        vmin=min(0.1 * wvm.max(), 1e-2),
+        vmax=wvm.max(),
         cmap=plt.cm.inferno)
     plt.xlim(*seconds_range)
 
