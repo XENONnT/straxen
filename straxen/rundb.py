@@ -105,8 +105,8 @@ class RunDB(strax.StorageFrontend):
         self.collection = self.client[mongo_dbname][mongo_collname]
 
         self.backends = [
-            #strax.S3Backend(**s3_kwargs),
-            #strax.FileSytemBackend(),
+            strax.S3Backend(**s3_kwargs),
+            strax.FileSytemBackend(),
             strax.rucio(),
         ]
 
