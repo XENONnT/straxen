@@ -3,7 +3,6 @@ import straxen
 
 import numpy as np
 
-from straxen.common import get_to_pe
 import numba
 export, __all__ = strax.exporter()
 
@@ -32,13 +31,14 @@ dtype_ap = [(('Channel/PMT number','channel'),
                '<i2'),                                        # first sample after last sample of hit
              (('Height of hit in ADC counts', 'height'),
                '<i4'),                                        # height of hit
-             (('Time delay w.r.t. LED hit', 'tdelay'),
+             (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
                '<i2'),                                        # time delay of hit w.r.t to corresponding LED hit in the same WF in samples
              (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
                '<i4')                                         # record index in which hit was found
             ]
 
 
+@export
 @strax.takes_config(
     strax.Option('gain_model',
                  help='PMT gain model. Specify as (model_type, model_config)'),
@@ -46,21 +46,21 @@ dtype_ap = [(('Channel/PMT number','channel'),
                  type=int,
                  help="Number of PMTs in TPC"),
     strax.Option('LED_window_left',
-                 #default=140,
+                 default=40,
                  help='Left boundary of sample range for LED pulse integration'),
     strax.Option('LED_window_right',
-                 #default=180,
+                 default=90,
                  help='Right boundary of sample range for LED pulse integration'),
     strax.Option('hit_threshold',
-                 #default=15,
+                 default=15,
                  help='Hitfinder threshold in ADC counts above baseline'),
     strax.Option('baseline_samples',
-                 #default=40,
+                 default=40,
                  help='Number of samples to use at the start of the pulse to determine the baseline'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.0.5'
+    __version__ = '0.0.7'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -72,7 +72,7 @@ class LEDAfterpulses(strax.Plugin):
     
     def setup(self):
         
-        self.to_pe = get_to_pe(self.run_id, self.config['gain_model'], n_tpc_pmts=self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], n_tpc_pmts=self.config['n_tpc_pmts'])
         print('setup:\n   plugin version = ', self.__version__,
               '\n   hit_threshold = ', self.config['hit_threshold'],
               '\n   gain_model = ', self.config['gain_model'],
@@ -142,7 +142,7 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
     buffer = _result_buffer
     if not len(records):
         return
-    samples_per_record = len(records[0]['data']) # TODO nT: remove zero-padding at end of WFs
+    samples_per_record = len(records[0]['data'])
     offset = 0
 
     for record_i, r in enumerate(records):
