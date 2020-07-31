@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.3'
+__version__ = '0.5.4'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1087,28 +1087,38 @@ def process_run(rd, send_heartbeats=args.production):
                 fail("Corrupted data doc, found entry without 'type' field")
             if dd['type'] == 'live':
                 break
-            else:
-                if args.production:
-                    fail("Non-live data already registered; untracked failure?")
-                else:
-                    dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
-        else:
-            if args.production:
-                fail(f"No live data entry in rundoc")
-            else:
+            elif not args.production:
+                # We are just testing let's assume its on the usual location
                 dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
+            else:
+                fail("Non-live data already registered; untracked failure?")
+        else:
+            fail(f"No live data entry in rundoc")
 
         if not osp.exists(dd['location']):
             fail(f"No access to live data folder {dd['location']}")
 
-        thread_info = rd.get('daq_config', dict()).get('processing_threads', dict())
-        n_readout_threads = sum([v for v in thread_info.values()])
         try:
-            daq_chunk_duration = int(rd['daq_config']['strax_chunk_length'] * 1e9)
-            daq_overlap_chunk_duration = int(rd['daq_config']['strax_chunk_overlap'] * 1e9)
+            # Fetch parameters from the rundoc. If not readably, let's use redax' default
+            # values (that are hardcoded here).
+            if 'daq_conig' not in rd:
+                log_warning('No daq_config in the rundoc!')
+            dq_conf = rd.get('daq_config', dict())
+            to_read = ('processing_threads', 'strax_chunk_length','strax_chunk_overlap',
+                       'strax_fragment_payload_bytes')
+            for conf in to_read:
+                if conf not in dq_conf:
+                    log_warning(f'{conf} not in rundoc for {run_id}! Using default values.')
+            thread_info = dq_conf.get('processing_threads', dict())
+            n_readout_threads = sum([v for v in thread_info.values()])
+            daq_chunk_duration = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
+            daq_overlap_chunk_duration = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
+            # note that value in rd in bytes hence //2
+            samples_per_record = dq_conf.get('strax_fragment_payload_bytes', 220) // 2
+            if not samples_per_record == 110:
+                log.info(f'Samples_per_record = {samples_per_record}')
         except Exception as e:
-            fail(f"Could not find 'strax_chunk_length' and/or'strax_chunk_overlap' in "
-                 f"rundoc: {str(e)}")
+            fail(f"Could not find {to_read} in rundoc: {str(e)}")
 
         if not n_readout_threads:
             fail(f"Run doc for {run_id} has no readout thread count info")
@@ -1130,7 +1140,7 @@ def process_run(rd, send_heartbeats=args.production):
             os.remove(exception_tempfile)
 
         target = args.target
-        if not args.production and not 'bootstrax'in rd:
+        if not args.production and 'bootstrax' not in rd:
             # Bootstrax does not register in non-production mode
             pass
         elif rd['bootstrax'].get('n_failures', 0) > 1 and not args.process:
@@ -1143,13 +1153,6 @@ def process_run(rd, send_heartbeats=args.production):
             run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
         except Exception as e:
             fail(f"Could not find start in datetime.datetime object: {str(e)}")
-
-        try:
-            samples_per_record = rd['daq_config']['strax_fragment_payload_bytes'] // 2  # note that value in rd in bytes
-            if not samples_per_record == 110:
-                log.info(f'Samples_per_record = {samples_per_record}')
-        except Exception as e:
-            fail(f"Could not find daq_config.strax_fragment_payload_bytes in database: {str(e)}")
 
         if args.infer_mode:
             process_mode = infer_mode(rd)
@@ -1192,7 +1195,14 @@ def process_run(rd, send_heartbeats=args.production):
                 log.info(f"Strax done on run {run_id}, performing basic data quality check")
 
                 try:
-                    md = st.get_meta(run_id, 'raw_records')
+                    # Sometimes we have only he channels or mv channels, try loading one
+                    # until we get one with chunks.
+                    for rr_type in ('raw_records', 'raw_records_he', 'raw_records_mv',
+                                    # 'raw_records_nv' # not in the DAQ-reader yet.
+                                    ):
+                        md = st.get_meta(run_id, rr_type)
+                        if len(md['chunks']):
+                            break
                 except Exception:
                     fail("Processing succeeded, but metadata not readable: "
                          + traceback.format_exc())
@@ -1247,7 +1257,6 @@ def process_run(rd, send_heartbeats=args.production):
 
     except RunFailed:
         return
-
 
 
 ##
