@@ -168,7 +168,7 @@ timeouts = {
 # hence, we can check if there is sufficient diskspace and if not, wait a while.
 # Below are the max number of times and number of seconds bootstrax will wait.
 wait_diskspace_max_space_percent = 90
-wait_diskspace_n_max = 100  # times
+wait_diskspace_n_max = 60 * 24 * 7 # times
 wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
