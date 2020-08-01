@@ -19,7 +19,7 @@ Therefore D) can only be performed on one of the eventbuiders (see eb_can_clean_
 
 """
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 import argparse
 from datetime import datetime, timedelta
@@ -82,34 +82,40 @@ def main_ajax():
         remove_run_from_host(args.number, delete_live=args.delete_live, force=args.force)
 
     if args.mode:
-        if args.mode == 'clean_ceph':
-            clean_cehp()
-        elif args.mode == 'clean_high_level_data':
-            clean_high_level_data()
-        elif args.mode == 'clean_non_latest':
-            clean_non_latest()
-        elif args.mode == 'clean_unregistered':
-            clean_unregistered()
-            if hostname == eb_can_clean_ceph:
+        _modes = {'clean_ceph': clean_cehp,
+                  'clean_high_level_data': clean_high_level_data,
+                  'clean_non_latest': clean_non_latest,
+                  'clean_unregistered': clean_unregistered,
+                  'clean_raw_records_nv': clean_raw_records_nv,
+                  'clean_abandoned': clean_abandoned,
+                  'clean_database': clean_database}
+
+        if args.mode in _modes:
+            # Do this mode
+            _modes[args.mode]()
+
+        if hostname == eb_can_clean_ceph:
+            if args.mode == 'clean_unregistered':
                 clean_unregistered(delete_live=True)
-        elif args.mode == 'clean_raw_records_nv':
-            clean_raw_records_nv()
-        elif args.mode == 'clean_abandoned':
-            clean_abandoned()
-            if hostname == eb_can_clean_ceph:
+            elif args.mode == 'clean_abandoned':
                 clean_abandoned(delete_live=True)
-        elif args.mode == 'clean_all':
+            elif args.mode == 'clean_database':
+                clean_database(delete_live=True)
+
+        if args.mode == 'clean_all':
             while True:
                 if hostname == eb_can_clean_ceph:
                     clean_cehp()
                     clean_abandoned(delete_live=True)
                     clean_unregistered(delete_live=True)
+                    clean_database(delete_live=True)
 
                 clean_high_level_data()
                 clean_unregistered()
                 clean_raw_records_nv()
                 clean_abandoned()
                 clean_non_latest()
+                clean_database()
                 if not args.execute:
                     break
                 log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
@@ -515,6 +521,33 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
         raise FileNotFoundError(f'No data registered on {hostname} for {run_id}')
 
 
+def clean_database(delete_live=False):
+    """
+    Remove entries from the database if the data is not on this host anymore
+    """
+    # We need to grep all the rundocs at once as simply doing one at the time (find_one)
+    # might get stuck as the query may yield the same result the next time it is called.
+    if not delete_live:
+        rds = run_coll.find({'data.host': hostname})
+    else:
+        rds = run_coll.find({'data.host': 'daq'})
+    if not rds:
+        # Great, we are clean
+        return
+
+    for rd in rds:
+        # Okay, good to go let's see if it is high level data and if so, delete it
+        for ddoc in rd['data']:
+            # Only delete data on this host
+            if (('host' in ddoc and ddoc['host'] == hostname) or
+                    ('host' in ddoc and ddoc['host'] == 'daq' and delete_live)):
+                loc = ddoc['location']
+                if not os.path.exists(loc):
+                    log.info(f'clean_non_latest::\tdelete entry of data at {loc} as it '
+                             f'does not exist')
+                    delete_data(rd, loc, ddoc['type'], test=not args.execute)
+
+
 ##
 # Helper functions
 ##
@@ -593,6 +626,7 @@ if __name__ == '__main__':
                          '"clean_abandoned": remove all the data associated to abandoned runs\n'
                          '"clean_high_level_data": remove all the data on host that is not registered in the rundb\n'
                          '"clean_non_latest": remove data on this host if it was not the last to process a given run \n'
+                         '"clean_database": check if all the entries that the database claims are actually here \n'                         
                          '"clean_all": Clean everything that AJAX can get its hands on: unregistered data, high level '
                          'data, old raw_records_nv')
 
@@ -617,19 +651,9 @@ if __name__ == '__main__':
             raise NotImplementedError('main::\tI dont want to have this option enabled '
                                       'yet.')
 
-    # The event builders write to different directories on the respective machines.
-    eb_directories = {
-        'eb0.xenon.local': '/data2/xenonnt_processed/',
-        'eb1.xenon.local': '/data1/xenonnt_processed/',
-        'eb2.xenon.local': '/nfs/eb0_data1/xenonnt_processed/',
-        'eb3.xenon.local': '/data/xenonnt_processed/',
-        'eb4.xenon.local': '/data/xenonnt_processed/',
-        'eb5.xenon.local': '/data/xenonnt_processed/',
-    }
-
     # Set the folders
     ceph_folder = '/live_data/xenonnt/'
-    output_folder = eb_directories[hostname]
+    output_folder = '/data/xenonnt_processed/'
     if os.access(output_folder, os.W_OK) is not True:
         raise IOError(f'main::\tNo writing access to {output_folder}')
 
