@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.4'
+__version__ = '0.5.5'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -119,17 +119,9 @@ args = parser.parse_args()
 
 print(f'---\n bootstrax version {__version__}\n---')
 
-# The event builders write to different directories on the respective machines.
-eb_directories = {
-    'eb0.xenon.local': '/data2/xenonnt_processed/',
-    'eb1.xenon.local': '/data1/xenonnt_processed/',
-    'eb2.xenon.local': '/nfs/eb0_data1/xenonnt_processed/',
-    'eb3.xenon.local': '/data/xenonnt_processed/',
-    'eb4.xenon.local': '/data/xenonnt_processed/',
-    'eb5.xenon.local': '/data/xenonnt_processed/',
-}
 # The folder that can be used for testing bootstrax (i.e. non production mode). It will be written to:
-test_data_folder = './bootstrax/'
+test_data_folder = ('/nfs/scratch/bootstrax/' if os.path.exists('/nfs/scratch/bootstrax/')
+                    else './bootstrax/')
 
 # Timeouts in seconds
 timeouts = {
@@ -225,7 +217,7 @@ log = logging.getLogger()
 hostname = socket.getfqdn()
 
 # Set the output folder
-output_folder = eb_directories[hostname]
+output_folder = '/data/xenonnt_processed/'
 if os.access(output_folder, os.W_OK) is not True:
     raise IOError(f'No writing access to {output_folder}')
 
@@ -529,6 +521,9 @@ def eb_can_process():
     # In test mode we can always process
     if not args.production:
         return True
+    elif 'eb2' in hostname:
+        log_warning('Why is eb2 alive?!')
+        return False
 
     # Check that there are runs that are waiting to be processed. If there are few, this
     # eb should not process.
