@@ -243,6 +243,72 @@ def get_livetime_sec(context, run_id, things=None):
         else:
             return (md['end'] - md['start']).total_seconds()
 
+@export
+def remap_channels(data, verbose = True, _tqdm = False):
+    remap = get_resource(
+        'https://raw.githubusercontent.com/XENONnT/analysiscode/d5d0b4c16603ce09c70b251bea0a814a8da83c07/DAQ/remap_sectors/remap_sectors.csv?token=AFKDK2UQLVPRDG5MNMZ57IS7FZ7FK',
+        fmt='csv')
+    
+    def wr_tqdm(x):
+        if _tqdm:
+            try:
+                return tqdm.tqdm_notebook(x)
+            except (AttributeError, ModuleNotFoundError, ImportError):
+                # ok lets not wrap but return x
+                pass
+        return x
+        
+    def get_dtypes(dat):
+        if  isinstance(dat, np.ndarray):
+            _k =  dat.dtype.names
+        elif isinstance(dat, pd.DataFrame):
+             _k =  dat.keys()
+        return _k
+    
+    def convert_channel(arr, replace = ('channel',)):    
+        for _rep in replace:
+            _k = get_dtypes(arr)
+            if _rep not in _k:
+                continue
+            buff = np.array(arr[_rep])
+            _ndids = 0
+            for _, _row in wr_tqdm(remap.iterrows()):
+                pmt_new, pmt_old = _row['PMT_new'], _row['PMT_old']
+                mask = arr[_rep] == pmt_old
+                buff[mask] = pmt_new
+                _ndids += np.sum(mask)
+            arr[_rep] = buff
+            if verbose: print(f'convert_channel:: changed {_ndids}/{len(arr)}')
+        # Not needed for np.array but for pd.DataFrames
+        return arr
+    
+    def remap_bolean(data, name):
+        _k = get_dtypes(data)
+        if name not in _k:
+            return data
+        buff = np.array(data[name])
+        for _, _row in remap.iterrows():
+            pmt_new, pmt_old = _row['PMT_new'], _row['PMT_old']
+            buff[pmt_new] = data[name][pmt_old]
+        data[name] = buff
+        # Not needed for np.array but for pd.DataFrames
+        return data
+    
+    def convert_channel_like(data, n_chs = st.config['n_tpc_pmts']):
+        if not len(data):
+            return
+        res = data.copy()
+        for k in wr_tqdm(get_dtypes(data)):
+            if np.iterable(data[k][0]) and len(data[k][0]) == n_chs:
+                if verbose: print(f'convert_channel_like:: update {k}')
+                res = remap_bolean(data, k)
+        return res
+    
+    _dat = data.copy()
+    assert np.all(data['time'][-2:] < st.estimate_run_start('008797')), 'Only remap old data'
+    data = convert_channel_like(_dat)
+    data = convert_channel(_dat)
+    return _dat
 
 
 ##
