@@ -140,22 +140,20 @@ class RunDB(strax.StorageFrontend):
             run_query = {'name': str(key.run_id)}
         else:
             run_query = {'number': int(key.run_id)}
-        dq = self._data_query(key)
 
         # Check that we are in rucio backend
-        try:
-            dq = {
-            'data': {
-                '$elemMatch': {
-                    'type': key.data_type,
-                    'protocol': 'rucio'}}}
-            doc = self.collection.find_one({**run_query, **dq},
-                                       projection=dq)
+        dq = {
+        'data': {
+            '$elemMatch': {
+                'type': key.data_type,
+                'protocol': 'rucio'}}}
+        doc = self.collection.find_one({**run_query, **dq},
+                                    projection=dq)
+        if doc is not None:
             datum = doc['data'][0]
             return datum['protocol'], str(key.run_id) + '-' + datum['did'].split(':')[1]
-        except doc is None:
-            pass
         
+        dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq},
                                       projection=dq)
 
