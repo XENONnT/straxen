@@ -31,12 +31,12 @@ xnt_common_config = dict(
          aqmon=(790, 807),
          aqmonnv=(808, 815),  # nveto acquisition monitor
          tpc_blank=(999, 999),
-         nveto=(2000, 2119),
-         nveto_blank=(2999, 2999),
          mv=(1000, 1083),
-         mv_blank=(1999, 1999)),
+         mv_blank=(1999, 1999),
+         nveto=(2000, 2119),
+         nveto_blank=(2999, 2999)),
     nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights = straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
+    nn_weights=straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
 
 
 ##
