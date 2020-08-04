@@ -67,9 +67,9 @@ class DAQReader(strax.Plugin):
         'raw_records',
         'raw_records_he',  # high energy
         'raw_records_aqmon',
-        'raw_records_mv',
         'raw_records_prenv',  # nveto pre-raw_records
         'raw_records_aqmonnv'
+        'raw_records_mv',    # mveto has to be last due to lineage
     )
 
     data_kind = immutabledict(zip(provides, provides))
@@ -296,7 +296,7 @@ class DAQReader(strax.Plugin):
                 continue
 
             result_name = 'raw_records'
-            if subd.endswith('nveto'):
+            if subd.startswith('nveto'):
                 result_name += '_prenv'
             elif subd != 'tpc':
                 result_name += '_' + subd
