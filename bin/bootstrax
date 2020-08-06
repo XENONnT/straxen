@@ -840,7 +840,7 @@ def upload_file_metadata(rd):
     :param rd: rundoc
     """
     try:
-        st_meta = new_context(dict(cores=args.cores, max_messages=args.max_messages, timeout=100))
+        st_meta = new_context(cores=args.cores, max_messages=args.max_messages, timeout=100)
         st_meta.set_context_config({'forbid_creation_of': '*'})
     except Exception as e:
         log_warning(f"Cannot create context to read the metadata: {e}")
