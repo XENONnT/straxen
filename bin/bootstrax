@@ -1346,7 +1346,8 @@ def cleanup_db():
         bd = bs_coll.find_one(
                 {'host': f'eb{eb_i}.xenon.local'},
                 sort=[('time', pymongo.DESCENDING)])
-        if (bd['time'] < now(-timeouts['bootstrax_presumed_dead']) and
+        if (bd and
+                bd['time'] < now(-timeouts['bootstrax_presumed_dead']) and
                 bd['state'] is not dead_state):
             bs_coll.find_one_and_update({'_id': bd['_id']},
                                         {'$set': {'state': dead_state}})
