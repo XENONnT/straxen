@@ -1,25 +1,21 @@
 #!/usr/bin/env python
 """
-AJAX: XENONnT
-Aggregate Junking Ancient Xenondata
-cleaning tool to remove old data from eventbuilders.
+AJAX: XENON-nT
+Aggregate Junking Ancient Xenon-data
+cleaning tool to remove old data from event builders.
 =============================================
 Joran Angevaare, 2020
 
-This tool keeps the event builders clean by:
- A) deleting data associated to a run if it has been abandoned (delete live_data and data from eb)
- B) deleting data if there is old high level data on the machine
- C) (re)moving old raw_records_nv as we do not plan to store this data long term
- D) check that the live_data is deleted if a run has been successfully processed and uploaded
+This tool keeps the event builders clean by performing any of the cleaning modes
+(try 'ajax --help' for a complete description).
 
-Whereas A-C can be performed on autopilot D is a rather delicate task as it can become somewhat complicated if multiple
-ajax instances are running on different machines.
-This could be solved by registering ajax like bootstrax but this seems overkill at the moment.
-Therefore D) can only be performed on one of the eventbuiders (see eb_can_clean_ceph).
-
+Some of these modes also affect the live_data rather than the processed data. As there can
+be multiple instances of ajax running there is a dedicated machine 'eb_can_clean_ceph'
+that may delete the live_data such that we prevent multiple attempts to perform a single
+action.
 """
 
-__version__ = '0.2.0'
+__version__ = '0.2.2'
 
 import argparse
 from datetime import datetime, timedelta
@@ -34,6 +30,9 @@ import time
 import re
 import numpy as np
 import sys
+import strax
+import straxen
+
 
 ##
 # Parameters
@@ -81,33 +80,25 @@ def main_ajax():
     if args.number:
         remove_run_from_host(args.number, delete_live=args.delete_live, force=args.force)
 
-    if args.mode:
-        _modes = {'clean_ceph': clean_cehp,
-                  'clean_high_level_data': clean_high_level_data,
-                  'clean_non_latest': clean_non_latest,
-                  'clean_unregistered': clean_unregistered,
-                  'clean_raw_records_nv': clean_raw_records_nv,
-                  'clean_abandoned': clean_abandoned,
-                  'clean_database': clean_database}
+    if args.clean:
+        _modes = {'ceph': clean_cehp,
+                  'high_level_data': clean_high_level_data,
+                  'non_latest': clean_non_latest,
+                  'unregistered': clean_unregistered,
+                  'raw_records_nv': clean_raw_records_nv,
+                  'abandoned': clean_abandoned,
+                  'old_hash': clean_old_hash,
+                  'database': clean_database}
 
-        if args.mode in _modes:
-            print(args.mode)
+        if args.clean in _modes:
             # Do this mode
-            mode = _modes[args.mode]
-            mode()
-            print(f'Done with {args.mode}')
-        elif args.mode != 'clean_all':
-            raise ValueError(f'Unknown mode {args.mode}')
+            _modes[args.clean]()
+            if hostname == eb_can_clean_ceph and (
+                    args.clean in ['abandoned', 'unregistered', 'database']):
+                _modes[args.clean](delete_live=True)
 
-        if hostname == eb_can_clean_ceph:
-            if args.mode == 'clean_unregistered':
-                clean_unregistered(delete_live=True)
-            elif args.mode == 'clean_abandoned':
-                clean_abandoned(delete_live=True)
-            elif args.mode == 'clean_database':
-                clean_database(delete_live=True)
-
-        if args.mode == 'clean_all':
+            log.info(f'Done with {args.clean}')
+        elif args.clean == 'all':
             while True:
                 if hostname == eb_can_clean_ceph:
                     clean_cehp()
@@ -125,6 +116,8 @@ def main_ajax():
                     break
                 log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
                 time.sleep(ajax_thresholds['nap_time'])
+        else:
+            raise ValueError(f'Unknown cleaning mode {args.clean}')
 
 
 def clean_cehp():
@@ -264,6 +257,7 @@ def clean_raw_records_nv():
     """Based on the runsDB, remove the raw_records_nv if they are old"""
     check_sn_trigger()
     rd = run_coll.find_one({'data.type': 'raw_records_nv',
+                            'data.host': hostname,
                             'start':
                                 {'$lt': now(-ajax_thresholds["remove_raw_records_nv"])}})
     if not rd:
@@ -293,11 +287,43 @@ def clean_unregistered(delete_live=False):
     log.info(f'clean_unregistered::\tfound {len(run_ids)} runs stored on'
              f'{folder_to_check}. Checking that each is in the runs-database')
     for run_id in run_ids:
-        try:
-            run_number = int(run_id)
-        except ValueError:
-            print(f"Strange {run_id} cannot be converted to a run_number")
+        run_number = int(run_id)
         remove_if_unregistered(run_number, delete_live=delete_live)
+
+
+def clean_old_hash():
+    """
+    Query the database for data that was processed with other settings of straxen that
+    lead to a different linage hash. If we can find something on this host that is not in
+    correspondence with the latest hash: delete it.
+    """
+    rds = run_coll.find({'data.type.$': {'$nin': low_level_data}, 'data.host': hostname})
+
+    for rd in rds:
+        run_id = f'{rd["number"]:06d}'
+        for ddoc in rd['data']:
+            if (
+                    ('host' in ddoc and ddoc['host'] != hostname) or
+                    (bool(re.findall('|'.join(low_level_data), ddoc['type']))) or
+                    ('meta' not in ddoc or 'lineage' not in ddoc['meta'])
+            ):
+                # We don't consider this ddoc because:
+                # - The ddoc is from another host
+                # - The ddoc is low-level (then it should be handled by admix not by ajax)
+                # - The ddoc is not in the right format because it's probably not made by
+                # bootstrax. It doesn't have the info we need to check if the hash is old.
+                continue
+
+            ddoc_hash = (ddoc['meta']['lineage_hash'] if 'lineage_hash' in ddoc['meta']
+                         else strax.DataKey(run_id, 'raw_records', ddoc['meta']['lineage']
+                                            ).lineage_hash)
+            current_st_hash = st.key_for(run_id, ddoc['type']).lineage_hash
+
+            if current_st_hash != ddoc_hash:
+                loc = ddoc['location']
+                log.info(f'clean_old_hash::\tLineage for run {run_id}, {ddoc["type"]} is '
+                         f'{current_st_hash}. Removing old hash: {ddoc_hash} from {loc}.')
+                delete_data(rd, loc, ddoc['type'], test=not args.execute)
 
 
 def clean_abandoned(delete_live=False):
@@ -623,23 +649,24 @@ if __name__ == '__main__':
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--number', type=int, metavar='NUMBER',
                          help="Process a single run, regardless of its status.")
-    actions.add_argument('--mode', type=str,
+    actions.add_argument('--clean', type=str,
                          help=
-                         'Run ajax in any of the following modes: [clean_ceph, clean_raw_records_nv, '
-                         'clean_unregistered, clean_abandoned, clean_high_level_data, clean_all]\n'
-                         '"clean_ceph": Remove successfully processed runs and abandoned runs from /live_data\n'
-                         '"clean_raw_records_nv": (re)move raw_records_nv if older than threshold\n'
-                         '"clean_unregistered": remove all data from this host that is not registered in the rundb\n'
-                         '"clean_abandoned": remove all the data associated to abandoned runs\n'
-                         '"clean_high_level_data": remove all the data on host that is not registered in the rundb\n'
-                         '"clean_non_latest": remove data on this host if it was not the last to process a given run \n'
-                         '"clean_database": check if all the entries that the database claims are actually here \n' 
-                         '"clean_all": Clean everything that AJAX can get its hands on: unregistered data, high level '
+                         'Run ajax in any of the following modes: clean [ceph, raw_records_nv, '
+                         'unregistered, abandoned, high_level_data, all]\n'
+                         '"ceph": Remove successfully processed runs and abandoned runs from /live_data\n'
+                         '"raw_records_nv": (re)move raw_records_nv if older than threshold\n'
+                         '"unregistered": remove all data from this host that is not registered in the rundb\n'
+                         '"abandoned": remove all the data associated to abandoned runs\n'
+                         '"high_level_data": remove all the data on host that is not registered in the rundb\n'
+                         '"non_latest": remove data on this host if it was not the last to process a given run \n'
+                         '"database": check if all the entries that the database claims are actually here \n'
+                         '"old_hash": remove high level data if the hash doesnt equal the latest for this datatype \n' 
+                         '"all": Clean everything that AJAX can get its hands on: unregistered data, high level '
                          'data, old raw_records_nv')
 
     args = parser.parse_args()
 
-    if args.mode == 'clean_raw_records_nv':
+    if args.clean == 'raw_records_nv':
         log.info(f'main::\tDelete neutron veto data from {hostname} older than '
                  f'{ajax_thresholds["remove_raw_records_nv"]} s')
         raise NotImplementedError("I dont know what to do with the raw_records of the NV")
@@ -654,9 +681,13 @@ if __name__ == '__main__':
         if not input('Want to proceed willingly? [y]').lower() == 'y':
             log.info(f'main::\tAlright no unsafe operations, bye bye')
             exit(-1)
-        if args.mode != 'clean_abandoned' and not args.number:
+        if args.clean != 'abandoned' and not args.number:
             raise NotImplementedError('main::\tI dont want to have this option enabled '
                                       'yet.')
+
+    if args.clean in ['all', 'old_hash']:
+        # Need the context for the latest hash
+        st = straxen.contexts.xenonnt_online()
 
     # Set the folders
     ceph_folder = '/live_data/xenonnt/'
