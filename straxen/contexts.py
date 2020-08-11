@@ -1,6 +1,7 @@
 from immutabledict import immutabledict
 import strax
 import straxen
+from warnings import warn
 
 common_opts = dict(
     register_all=[
@@ -35,9 +36,9 @@ xnt_common_config = dict(
 # XENONnT
 ##
 
-def xenonnt_online(output_folder='./strax_data',
-                   we_are_the_daq=False,
-                   **kwargs):
+def xenonnt_online_test2(output_folder='./strax_data',
+                         we_are_the_daq=False,
+                         **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
         **straxen.contexts.common_opts,
@@ -69,7 +70,41 @@ def xenonnt_online(output_folder='./strax_data',
 
         st.context_config['forbid_creation_of'] = ('raw_records', 'records')
 
-    return st
+    # This patch warns users to load old data. In this data the channels were swapped
+    # (hardware-wise)
+    st2 = st.new_context(
+        replace=True,
+        register=list(st._plugin_class_registry.values()),
+        config=st.config,
+        storage=st.storage,
+        **st.context_config)
+
+    def _get_df(run_id: str, targets, **kwargs):
+        __doc__ = st.get_df.__doc__
+        return straxen.remap_wrapper(run_id, st.get_df(run_id, targets, **kwargs))
+
+    def _get_array(run_id: str, targets, **kwargs):
+        __doc__ = st.get_array.__doc__
+        return straxen.remap_wrapper(run_id, st.get_array(run_id, targets, **kwargs))
+
+    def _accumulate(run_id: str, targets, **kwargs):
+        __doc__ = st.accumulate.__doc__
+        return straxen.remap_wrapper(run_id, st.accumulate(run_id, targets, **kwargs))
+
+    def _get_iter(run_id: str, targets, **kwargs):
+        __doc__ = st.get_iter.__doc__
+        if int(run_id) <= straxen.common.last_miscabled_run:
+            warn('This data has swapped channels. Do \n'
+                 'data = straxen.common.remap_channels(<data>)\nSee: '
+                 'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap')
+        return st.get_iter(run_id, targets, **kwargs)
+
+    st2.get_array = _get_array
+    st2.get_df = _get_df
+    st2.accumulate = _accumulate
+    st2.get_iter = _get_iter
+
+    return st2
 
 
 def xenonnt_led(**kwargs):

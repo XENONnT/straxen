@@ -11,7 +11,7 @@ import socket
 import sys
 import tarfile
 import urllib.request
-
+import tqdm
 import numpy as np
 import pandas as pd
 
@@ -28,7 +28,7 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 n_tpc_pmts = 494
 n_top_pmts = 253
-
+last_miscabled_run = 8796
 
 @export
 def pmt_positions(xenon1t=False):
@@ -244,70 +244,125 @@ def get_livetime_sec(context, run_id, things=None):
             return (md['end'] - md['start']).total_seconds()
 
 @export
-def remap_channels(data, verbose = True, _tqdm = False):
+def remap_channels(data, verbose=True, _tqdm=False):
+    """
+    There were some errors in the channel mapping of old data as described in
+        https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
+        using this function, we can convert old data to reflect the right channel map
+        while loading the data. We convert both the field 'channel' as well as anything
+        that is an array of the same length of the number of channels.
+    :param data: numpy array of pandas dataframe
+    :param verbose: print messages while converting data
+    :param _tqdm: bool (try to) add a tqdm wrapper to show the progress
+    :return: Correctly mapped data
+    """
+    # This map shows which channels were recabled. We now have to do the same in software
+    # for old runs.
     remap = get_resource(
-        'https://raw.githubusercontent.com/XENONnT/analysiscode/d5d0b4c16603ce09c70b251bea0a814a8da83c07/DAQ/remap_sectors/remap_sectors.csv?token=AFKDK2UQLVPRDG5MNMZ57IS7FZ7FK',
+        aux_repo + '/ecb6da7bd4deb98cd0a4e83b3da81c1e67505b16/remapped_channels_since_20200729_17.20UTC.csv',
         fmt='csv')
-    
+
     def wr_tqdm(x):
+        """Wrap input x with tqdm"""
         if _tqdm:
             try:
                 return tqdm.tqdm_notebook(x)
             except (AttributeError, ModuleNotFoundError, ImportError):
-                # ok lets not wrap but return x
+                # ok, sorry lets not wrap but return x
                 pass
         return x
-        
+
     def get_dtypes(dat):
-        if  isinstance(dat, np.ndarray):
-            _k =  dat.dtype.names
+        """
+        Return keys/dtype names of pd.DataFrame or numpy array
+        :param dat: 
+        :return: 
+        """
+        if isinstance(dat, np.ndarray):
+            _k = dat.dtype.names
         elif isinstance(dat, pd.DataFrame):
-             _k =  dat.keys()
+            _k = dat.keys()
         return _k
-    
-    def convert_channel(arr, replace = ('channel',)):    
+
+    def convert_channel(_data, replace=('channel',)):
+        """Given an array, replace the 'channel' entry if we had to remap it according to 
+        the map"""
+        # loop over the things to replace
         for _rep in replace:
-            _k = get_dtypes(arr)
+            _k = get_dtypes(_data)
             if _rep not in _k:
+                # Apparently this data doesn't have the entry we want to replace
                 continue
-            buff = np.array(arr[_rep])
-            _ndids = 0
+            # Make a buffer we can overwrite and replace with an remapped array
+            buff = np.array(_data[_rep])
+            _n_replacements = 0
             for _, _row in wr_tqdm(remap.iterrows()):
                 pmt_new, pmt_old = _row['PMT_new'], _row['PMT_old']
-                mask = arr[_rep] == pmt_old
+                mask = _data[_rep] == pmt_old
                 buff[mask] = pmt_new
-                _ndids += np.sum(mask)
-            arr[_rep] = buff
-            if verbose: print(f'convert_channel:: changed {_ndids}/{len(arr)}')
-        # Not needed for np.array but for pd.DataFrames
-        return arr
-    
-    def remap_bolean(data, name):
-        _k = get_dtypes(data)
-        if name not in _k:
-            return data
-        buff = np.array(data[name])
+                _n_replacements += np.sum(mask)
+            _data[_rep] = buff
+            if verbose:
+                print(f'convert_channel::\tchanged {_n_replacements}/{len(_data)} items')
+        # Not needed for np.array as the internal memory already reflects it but it is 
+        # needed for pd.DataFrames.
+        return _data
+
+    def remap_single_entry(_data, _entry):
+        """
+        Remap the data of a single entry.
+        :param _data: reshuffle the _data according to for _entry according to the map
+        :param _entry: key or dtype of the data.
+        :return: correctly mapped data
+        """
+        _k = get_dtypes(_data)
+        if _entry not in _k:
+            raise ValueError(f'remap_single_entry::\tcannot remap {_entry} in data with'
+                             f' fields {_k}')
+        buff = np.array(_data[_entry])
         for _, _row in remap.iterrows():
             pmt_new, pmt_old = _row['PMT_new'], _row['PMT_old']
-            buff[pmt_new] = data[name][pmt_old]
-        data[name] = buff
+            buff[:, pmt_new] = _data[_entry][:, pmt_old]
+        _data[_entry] = buff
         # Not needed for np.array but for pd.DataFrames
-        return data
-    
-    def convert_channel_like(data, n_chs = st.config['n_tpc_pmts']):
-        if not len(data):
-            return
-        res = data.copy()
-        for k in wr_tqdm(get_dtypes(data)):
-            if np.iterable(data[k][0]) and len(data[k][0]) == n_chs:
-                if verbose: print(f'convert_channel_like:: update {k}')
-                res = remap_bolean(data, k)
-        return res
-    
+        return _data
+
+    def convert_channel_like(channel_data, n_chs=n_tpc_pmts):
+        """
+        Look for entries in the data of n_chs length. If found, assume it should be
+            remapped according to the map
+        :param channel_data: data to be converted according to the map
+        :param n_chs: the number of channels
+        :return: correctly mapped data
+        """
+        if not len(channel_data):
+            return channel_data
+        # Create a buffer to overright
+        buffer = channel_data.copy()
+        for k in wr_tqdm(get_dtypes(channel_data)):
+            if np.iterable(channel_data[k][0]) and len(channel_data[k][0]) == n_chs:
+                if verbose:
+                    print(f'convert_channel_like::\tupdate {k}')
+                buffer = remap_single_entry(buffer, k)
+        return buffer
+
+    # Take the last two samples as otherwise the pd.dataframe gives an unexpected output.
+    # I would have preferred st.estimate_run_start(f'00{last_miscabled_run}')) but st is
+    # not per se initialized.
+    if np.any(data['time'][-2:] > 1595963543000000000):
+        raise ValueError(f'Do not remap the data after run 00{last_miscabled_run}')
+
+    # Make sure we make a new entry as otherwise some internal buffer of numpy arrays may
+    # yield puzzling results.
     _dat = data.copy()
-    assert np.all(data['time'][-2:] < st.estimate_run_start('008797')), 'Only remap old data'
-    data = convert_channel_like(_dat)
-    data = convert_channel(_dat)
+    del data
+
+    # Do the conversion(s)
+    _dat = convert_channel(_dat)
+    if not isinstance(_dat, pd.DataFrame):
+        # pd.DataFrames are flat arrays and thus cannot have channel_like arrays in them
+        _dat = convert_channel_like(_dat)
+
     return _dat
 
 
