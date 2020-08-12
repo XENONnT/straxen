@@ -1122,13 +1122,13 @@ def process_run(rd, send_heartbeats=args.production):
         if not osp.exists(dd['location']):
             fail(f"No access to live data folder {dd['location']}")
 
+        if 'daq_config' not in rd:
+            fail('No daq_config in the rundoc!')
         try:
             # Fetch parameters from the rundoc. If not readably, let's use redax' default
             # values (that are hardcoded here).
-            if 'daq_conig' not in rd:
-                log_warning('No daq_config in the rundoc!')
-            dq_conf = rd.get('daq_config', dict())
-            to_read = ('processing_threads', 'strax_chunk_length','strax_chunk_overlap',
+            dq_conf = rd['daq_config']
+            to_read = ('processing_threads', 'strax_chunk_length', 'strax_chunk_overlap',
                        'strax_fragment_payload_bytes')
             for conf in to_read:
                 if conf not in dq_conf:
@@ -1222,7 +1222,7 @@ def process_run(rd, send_heartbeats=args.production):
                     # Sometimes we have only he channels or mv channels, try loading one
                     # until we get one with chunks.
                     for rr_type in ('raw_records', 'raw_records_he', 'raw_records_mv',
-                                    # 'raw_records_nv' # not in the DAQ-reader yet.
+                            # 'raw_records_nv' # not in the DAQ-reader yet.
                                     ):
                         md = st.get_meta(run_id, rr_type)
                         if len(md['chunks']):
