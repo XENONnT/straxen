@@ -186,4 +186,10 @@ if __name__ == "__main__":
 
     load_context(args.context, extra_dirs=args.extra_dirs)
     set_state()
-    hug.API(__name__).http.serve(port=args.port)
+
+    while True:
+        try:
+            hug.API(__name__).http.serve(port=args.port)
+        except pymongo.errors.NotMasterError:
+            print('Ran into the infamous pymongo.errors.NotMasterError. Sleep for a sec')
+            time.sleep(60)
