@@ -81,7 +81,7 @@ def main_ajax():
         remove_run_from_host(args.number, delete_live=args.delete_live, force=args.force)
 
     if args.clean:
-        _modes = {'ceph': clean_cehp,
+        _modes = {'ceph': clean_ceph,
                   'high_level_data': clean_high_level_data,
                   'non_latest': clean_non_latest,
                   'unregistered': clean_unregistered,
@@ -101,7 +101,7 @@ def main_ajax():
         elif args.clean == 'all':
             while True:
                 if hostname == eb_can_clean_ceph:
-                    clean_cehp()
+                    clean_ceph()
                     clean_abandoned(delete_live=True)
                     clean_unregistered(delete_live=True)
                     clean_database(delete_live=True)
@@ -120,13 +120,13 @@ def main_ajax():
             raise ValueError(f'Unknown cleaning mode {args.clean}')
 
 
-def clean_cehp():
+def clean_ceph():
     """
     Look for old data on ceph. If found, delete it. Recursively iterate until no old data
     is found. This function only works on the the host that is eb_can_clean_ceph.
     """
     if not hostname == eb_can_clean_ceph:
-        log.info(f'clean_cehp::\tfor cleaning ceph, go to {eb_can_clean_ceph}')
+        log.info(f'clean_ceph::\tfor cleaning ceph, go to {eb_can_clean_ceph}')
         return
 
     rd = run_coll.find_one({'bootstrax.state': 'done',
@@ -140,16 +140,16 @@ def clean_cehp():
         return
     else:
         run_number = rd['number']
-        log.info(f'clean_cehp::\tremove data associated to run {run_number}')
+        log.info(f'clean_ceph::\tremove data associated to run {run_number}')
         remove_run_from_host(run_number, delete_live=True, force=args.force)
-        log.info(f'clean_cehp::\tfinished for {run_number}, take a'
+        log.info(f'clean_ceph::\tfinished for {run_number}, take a'
                  f' {ajax_thresholds["short_nap"]} s nap')
         time.sleep(ajax_thresholds['short_nap'])
 
         # Repeat.
         if args.execute:
             wait_on_delete_thread()
-            clean_cehp()
+            clean_ceph()
 
     # Finally, check that there is no old data on ceph that is also not in the rundoc.
     clean_unregistered(delete_live=True)
@@ -293,38 +293,23 @@ def clean_unregistered(delete_live=False):
 
 def clean_old_hash():
     """
-    Query the database for data that was processed with other settings of straxen that
-    lead to a different linage hash. If we can find something on this host that is not in
-    correspondence with the latest hash: delete it.
+    Loop over the files on the host and check that the lineage is the same as the current
+    lineage hash we would get from straxen
     """
-    rds = run_coll.find({'data.type.$': {'$nin': low_level_data}, 'data.host': hostname})
-
-    for rd in rds:
-        run_id = f'{rd["number"]:06d}'
-        for ddoc in rd['data']:
-            if (
-                    ('host' in ddoc and ddoc['host'] != hostname) or
-                    (bool(re.findall('|'.join(low_level_data), ddoc['type']))) or
-                    ('meta' not in ddoc or 'lineage' not in ddoc['meta'])
-            ):
-                # We don't consider this ddoc because:
-                # - The ddoc is from another host
-                # - The ddoc is low-level (then it should be handled by admix not by ajax)
-                # - The ddoc is not in the right format because it's probably not made by
-                # bootstrax. It doesn't have the info we need to check if the hash is old.
-                continue
-
-            ddoc_hash = (ddoc['meta']['lineage_hash'] if 'lineage_hash' in ddoc['meta']
-                         else strax.DataKey(run_id, 'raw_records', ddoc['meta']['lineage']
-                                            ).lineage_hash)
-            current_st_hash = st.key_for(run_id, ddoc['type']).lineage_hash
-
-            if current_st_hash != ddoc_hash:
-                loc = ddoc['location']
-                log.info(f'clean_old_hash::\tLineage for run {run_id}, {ddoc["type"]} is '
-                         f'{current_st_hash}. Removing old hash: {ddoc_hash} from {loc}.')
-                delete_data(rd, loc, ddoc['type'], test=not args.execute)
-
+    files = os.listdir(output_folder)
+    for f in files:
+        run_id, data_type, lineage_hash = f.split('-')
+        if bool(re.findall('|'.join(low_level_data), data_type)):
+            continue
+        current_st_hash = st.key_for(run_id, data_type).lineage_hash
+        if current_st_hash != lineage_hash:
+            loc = os.path.join(output_folder, f)
+            log.info(f'clean_old_hash::\tLineage for run {run_id}, {data_type} is '
+                     f'{current_st_hash}. Removing old hash: {lineage_hash} from {loc}.')
+            rd = run_coll.find({'data.type': data_type,
+                                'data.host': hostname,
+                                'number': int(run_id)})
+            delete_data(rd, loc, data_type, test=not args.execute)
 
 def clean_abandoned(delete_live=False):
     """
