@@ -1,7 +1,6 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-from warnings import warn
 
 common_opts = dict(
     register_all=[
