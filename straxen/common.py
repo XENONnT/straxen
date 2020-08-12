@@ -28,7 +28,10 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 n_tpc_pmts = 494
 n_top_pmts = 253
+
+# See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 last_miscabled_run = 8796
+t_start_first_correctly_cabled_run = 1596036001000000000
 
 @export
 def pmt_positions(xenon1t=False):
@@ -377,7 +380,7 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     # Take the last two samples as otherwise the pd.DataFrame gives an unexpected output.
     # I would have preferred st.estimate_run_start(f'00{last_miscabled_run}')) but st is
     # not per se initialized.
-    if np.any(data['time'][-2:] > 1596036001000000000):
+    if np.any(data['time'][-2:] > t_start_first_correctly_cabled_run):
         raise ValueError(f'Do not remap the data after run 00{last_miscabled_run}')
 
     if safe_copy:
@@ -405,13 +408,13 @@ def remap_old(data):
     :param data: numpy array of data with at least the field time. It is assumed
         the data is sorted by time
     """
-    start_first_correcly_cabled_run = 1596036001000000000
-    if np.any(data['time'][:2] >= start_first_correcly_cabled_run):
+
+    if np.any(data['time'][:2] >= t_start_first_correctly_cabled_run):
         # We leave the 'new' data be
         pass
     else:
         # select the old data and do the remapping for this
-        mask = data['time'] < start_first_correcly_cabled_run
+        mask = data['time'] < t_start_first_correctly_cabled_run
         data[mask] = remap_channels(data[mask])
     return data
 
