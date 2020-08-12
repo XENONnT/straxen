@@ -244,16 +244,23 @@ def get_livetime_sec(context, run_id, things=None):
             return (md['end'] - md['start']).total_seconds()
 
 @export
-def remap_channels(data, verbose=True, _tqdm=False):
+def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     """
     There were some errors in the channel mapping of old data as described in
         https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
         using this function, we can convert old data to reflect the right channel map
         while loading the data. We convert both the field 'channel' as well as anything
         that is an array of the same length of the number of channels.
+
     :param data: numpy array of pandas dataframe
+
     :param verbose: print messages while converting data
+
+    :param safe_copy: if True make a copy of the data prior to performing manipulations.
+        Will prevent overwrites of the internal references but does require more memory.
+    
     :param _tqdm: bool (try to) add a tqdm wrapper to show the progress
+
     :return: Correctly mapped data
     """
     # This map shows which channels were recabled. We now have to do the same in software
@@ -272,21 +279,32 @@ def remap_channels(data, verbose=True, _tqdm=False):
                 pass
         return x
 
-    def get_dtypes(dat):
+    def get_dtypes(_data):
         """
         Return keys/dtype names of pd.DataFrame or numpy array
-        :param dat: 
-        :return: 
+
+        :param _data: data to get the keys/dtype names
+
+        :return: keys/dtype names
         """
-        if isinstance(dat, np.ndarray):
-            _k = dat.dtype.names
-        elif isinstance(dat, pd.DataFrame):
-            _k = dat.keys()
+        if isinstance(_data, np.ndarray):
+            _k = _data.dtype.names
+        elif isinstance(_data, pd.DataFrame):
+            _k = _data.keys()
         return _k
 
-    def convert_channel(_data, replace=('channel',)):
-        """Given an array, replace the 'channel' entry if we had to remap it according to 
-        the map"""
+    def convert_channel(_data, replace=('channel', 'max_pmt')):
+        """
+        Given an array, replace the 'channel' entry if we had to remap it according to the
+            map of channels to be remapped
+
+        :param _data: data whereof the replace entries should be changed according to the
+            remapping of channels
+
+        :param replace: entries (keys/numpy-dtypes) that should be changed in the data
+
+        :return: remapped data where each of the replace entries has been replaced
+        """
         # loop over the things to replace
         for _rep in replace:
             _k = get_dtypes(_data)
@@ -304,15 +322,19 @@ def remap_channels(data, verbose=True, _tqdm=False):
             _data[_rep] = buff
             if verbose:
                 print(f'convert_channel::\tchanged {_n_replacements}/{len(_data)} items')
-        # Not needed for np.array as the internal memory already reflects it but it is 
+        # Not needed for np.array as the internal memory already reflects it but it is
         # needed for pd.DataFrames.
         return _data
 
     def remap_single_entry(_data, _entry):
         """
         Remap the data of a single entry.
-        :param _data: reshuffle the _data according to for _entry according to the map
+
+        :param _data: reshuffle the _data according to for _entry according to the map of
+            channels to be remapped
+
         :param _entry: key or dtype of the data.
+
         :return: correctly mapped data
         """
         _k = get_dtypes(_data)
@@ -331,10 +353,16 @@ def remap_channels(data, verbose=True, _tqdm=False):
         """
         Look for entries in the data of n_chs length. If found, assume it should be
             remapped according to the map
-        :param channel_data: data to be converted according to the map
+
+        :param channel_data: data to be converted according to the map of channels to be
+            remapped. This data is checked for any entries (dtype names) that have a
+            length equal to the n_chs and if so, is remapped accordingly
+
         :param n_chs: the number of channels
+
         :return: correctly mapped data
         """
+
         if not len(channel_data):
             return channel_data
         # Create a buffer to overright
@@ -346,16 +374,20 @@ def remap_channels(data, verbose=True, _tqdm=False):
                 buffer = remap_single_entry(buffer, k)
         return buffer
 
-    # Take the last two samples as otherwise the pd.dataframe gives an unexpected output.
+    # Take the last two samples as otherwise the pd.DataFrame gives an unexpected output.
     # I would have preferred st.estimate_run_start(f'00{last_miscabled_run}')) but st is
     # not per se initialized.
-    if np.any(data['time'][-2:] > 1595963543000000000):
+    if np.any(data['time'][-2:] > 1596036001000000000):
         raise ValueError(f'Do not remap the data after run 00{last_miscabled_run}')
 
-    # Make sure we make a new entry as otherwise some internal buffer of numpy arrays may
-    # yield puzzling results.
-    _dat = data.copy()
-    del data
+    if safe_copy:
+        # Make sure we make a new entry as otherwise some internal buffer of numpy arrays
+        # may yield puzzling results as internal buffers may also reflect the change.
+        _dat = data.copy()
+        del data
+    else:
+        # Just continue with data
+        _dat = data
 
     # Do the conversion(s)
     _dat = convert_channel(_dat)
@@ -365,6 +397,23 @@ def remap_channels(data, verbose=True, _tqdm=False):
 
     return _dat
 
+
+def remap_old(data):
+    """
+    If the data is of before the time sectors were re-cabled, apply a software remap
+        otherwise just return the data is it is.
+    :param data: numpy array of data with at least the field time. It is assumed
+        the data is sorted by time
+    """
+    start_first_correcly_cabled_run = 1596036001000000000
+    if np.any(data['time'][:2] >= start_first_correcly_cabled_run):
+        # We leave the 'new' data be
+        pass
+    else:
+        # select the old data and do the remapping for this
+        mask = data['time'] < start_first_correcly_cabled_run
+        data[mask] = remap_channels(data[mask])
+    return data
 
 ##
 # Old XENON1T Stuff
