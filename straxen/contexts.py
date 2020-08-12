@@ -37,8 +37,8 @@ xnt_common_config = dict(
 ##
 
 def xenonnt_online(output_folder='./strax_data',
-                         we_are_the_daq=False,
-                         **kwargs):
+                   we_are_the_daq=False,
+                   **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
         **straxen.contexts.common_opts,
