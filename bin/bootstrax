@@ -361,7 +361,8 @@ def main_loop():
         # Check resources are still OK, otherwise crash / reboot program
 
         # Process new runs
-        rd = consider_run({"bootstrax": {"$exists": False}}, test_counter=new_runs_seen)
+        rd = consider_run({"bootstrax.state": {"$exists": False}},
+                          test_counter=new_runs_seen)
         if rd is not None:
             new_runs_seen += 1
             process_run(rd)
