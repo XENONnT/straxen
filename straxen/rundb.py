@@ -107,7 +107,7 @@ class RunDB(strax.StorageFrontend):
         self.backends = [
             strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
-            strax.rucio(),
+            strax.rucio('/dali/lgrandi/rucio/'),
         ]
 
         # Construct mongo query for runs with available data.
