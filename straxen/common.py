@@ -14,6 +14,7 @@ import urllib.request
 import tqdm
 import numpy as np
 import pandas as pd
+from re import match
 
 import strax
 export, __all__ = strax.exporter()
@@ -401,16 +402,24 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     return _dat
 
 
-def remap_old(data):
+def remap_old(data, targets, works_on_target=''):
     """
     If the data is of before the time sectors were re-cabled, apply a software remap
         otherwise just return the data is it is.
-    :param data: numpy array of data with at least the field time. It is assumed
-        the data is sorted by time
+    :param data: numpy array of data with at least the field time. It is assumed the data
+        is sorted by time
+    :param targets: targets in the st.get_array to get
+    :param works_on_target: regex match string to match any of the targets. By default set
+        to '' such that any target in the targets would be remapped (which is what we want
+        as channels are present in most data types). If one only wants records (no
+        raw-records) and peaks* use e.g. works_on_target = 'records|peaks'.
     """
 
     if np.any(data['time'][:2] >= t_start_first_correctly_cabled_run):
         # We leave the 'new' data be
+        pass
+    elif not np.any([match(works_on_target, t) for t in strax.to_str_tuple(targets)]):
+        # None of the targets are such that we want to remap
         pass
     else:
         # select the old data and do the remapping for this
