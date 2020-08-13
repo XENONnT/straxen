@@ -144,7 +144,7 @@ def _set_state():
             host=socket.getfqdn(),
             pid=os.getpid(),
             time=now(),
-            state='running',
+            state='hosting microstrax',
             max_load_mb=args.max_load_mb,
             max_return_mb=args.max_return_mb,
             context=args.context,
