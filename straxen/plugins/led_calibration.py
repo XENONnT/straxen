@@ -18,10 +18,10 @@ channel_list = [i for i in range(494)]
                  default=(0,40),
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(75, 105),
+                 default=(78, 116),
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(20, 50),
+                 default=(10, 48),
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
                  default=(tuple(channel_list)),
@@ -37,7 +37,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.2.3'
+    __version__ = '0.2.4'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
