@@ -26,7 +26,9 @@ xnt_common_config = dict(
          aqmon=(790, 807),
          tpc_blank=(999, 999),
          mv=(1000, 1083),
-         mv_blank=(1999, 1999)))
+         mv_blank=(1999, 1999)),
+    nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    nn_weights = straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
 
 
 ##
@@ -176,7 +178,11 @@ def fake_daq():
         **x1t_context_config)
 
 
-def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
+def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
+    context_options = {
+        **x1t_context_config,
+        **kwargs}
+    
     return strax.Context(
         storage=[
             strax.DataDirectory(
@@ -195,7 +201,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
         forbid_creation_of=(
             ('raw_records',) if build_lowlevel
             else ('raw_records', 'records', 'peaklets')),
-        **x1t_context_config)
+        **context_options)
 
 
 def xenon1t_led(**kwargs):
