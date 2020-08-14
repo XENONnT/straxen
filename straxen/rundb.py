@@ -40,6 +40,7 @@ class RunDB(strax.StorageFrontend):
                  local_only=False,
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
+                 rucio_path = '/dali/lgrandi/rucio/',
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -66,6 +67,7 @@ class RunDB(strax.StorageFrontend):
         self.new_data_path = new_data_path
         self.reader_ini_name_is_mode = reader_ini_name_is_mode
         self.minimum_run_number = minimum_run_number
+        self.rucio_path = rucio_path
         if self.new_data_path is None:
             self.readonly = True
         self.runid_field = runid_field
@@ -107,7 +109,7 @@ class RunDB(strax.StorageFrontend):
         self.backends = [
             strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
-            strax.rucio(),
+            strax.rucio(rucio_path),
         ]
 
         # Construct mongo query for runs with available data.
