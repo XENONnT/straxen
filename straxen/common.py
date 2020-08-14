@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from re import match
 import numba
+from warnings import warn
 
 import strax
 export, __all__ = strax.exporter()
@@ -412,6 +413,8 @@ def remap_old(data, targets, works_on_target=''):
         pass
     else:
         # select the old data and do the remapping for this
+        warn('Correcting data of runs with mis-cabled PMTs. \nSee: https://'
+             'xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap')
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
         data[mask] = remap_channels(data[mask])
     return data
