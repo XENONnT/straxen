@@ -15,6 +15,7 @@ import tqdm
 import numpy as np
 import pandas as pd
 from re import match
+import numba
 
 import strax
 export, __all__ = strax.exporter()
@@ -31,8 +32,8 @@ n_tpc_pmts = 494
 n_top_pmts = 253
 
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-last_miscabled_run = 8796
-t_start_first_correctly_cabled_run = 1596036001000000000
+LAST_MISCABLED_RUN = 8796
+TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
 @export
 def pmt_positions(xenon1t=False):
@@ -283,20 +284,6 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
                 pass
         return x
 
-    def get_dtypes(_data):
-        """
-        Return keys/dtype names of pd.DataFrame or numpy array
-
-        :param _data: data to get the keys/dtype names
-
-        :return: keys/dtype names
-        """
-        if isinstance(_data, np.ndarray):
-            _k = _data.dtype.names
-        elif isinstance(_data, pd.DataFrame):
-            _k = _data.keys()
-        return _k
-
     def convert_channel(_data, replace=('channel', 'max_pmt')):
         """
         Given an array, replace the 'channel' entry if we had to remap it according to the
@@ -309,47 +296,49 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
 
         :return: remapped data where each of the replace entries has been replaced
         """
+        data_keys = get_dtypes(_data)
+
         # loop over the things to replace
         for _rep in replace:
-            _k = get_dtypes(_data)
-            if _rep not in _k:
+            if _rep not in data_keys:
                 # Apparently this data doesn't have the entry we want to replace
                 continue
             # Make a buffer we can overwrite and replace with an remapped array
             buff = np.array(_data[_rep])
-            _n_replacements = 0
-            for _, _row in wr_tqdm(remap.iterrows()):
-                pmt_new, pmt_old = _row['PMT_new'], _row['PMT_old']
-                mask = _data[_rep] == pmt_old
-                buff[mask] = pmt_new
-                _n_replacements += np.sum(mask)
+            buff = _swap_values_in_array(np.array(_data[_rep]),
+                                         buff,
+                                         np.array(remap['PMT_new'].values),
+                                         np.array(remap['PMT_old'].values))
             _data[_rep] = buff
             if verbose:
-                print(f'convert_channel::\tchanged {_n_replacements}/{len(_data)} items')
+                print(f'convert_channel::\tchanged {_rep}')
         # Not needed for np.array as the internal memory already reflects it but it is
         # needed for pd.DataFrames.
         return _data
 
-    def remap_single_entry(_data, _entry):
+    def remap_single_entry(_data, _array_entry):
         """
-        Remap the data of a single entry.
+        Remap the data of a array field (_entry) in the data. For example, remap
+            saturated_channel (which is of length n_pmts) where the entries of the PMT_old
+            will be replaced by the entries of PMT_new and vise versa.
 
         :param _data: reshuffle the _data according to for _entry according to the map of
             channels to be remapped
 
-        :param _entry: key or dtype of the data.
+        :param _array_entry: key or dtype of the data. NB: should be array whereof the length
+            equals the number of PMTs!
 
         :return: correctly mapped data
         """
         _k = get_dtypes(_data)
-        if _entry not in _k:
-            raise ValueError(f'remap_single_entry::\tcannot remap {_entry} in data with'
-                             f' fields {_k}')
-        buff = np.array(_data[_entry])
+        if _array_entry not in _k:
+            raise ValueError(f'remap_single_entry::\tcannot remap {_array_entry} in data '
+                             f'with fields {_k}.')
+        buff = np.array(_data[_array_entry])
         for _, _row in remap.iterrows():
             pmt_new, pmt_old = _row['PMT_new'], _row['PMT_old']
-            buff[:, pmt_new] = _data[_entry][:, pmt_old]
-        _data[_entry] = buff
+            buff[:, pmt_new] = _data[_array_entry][:, pmt_old]
+        _data[_array_entry] = buff
         # Not needed for np.array but for pd.DataFrames
         return _data
 
@@ -381,8 +370,8 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     # Take the last two samples as otherwise the pd.DataFrame gives an unexpected output.
     # I would have preferred st.estimate_run_start(f'00{last_miscabled_run}')) but st is
     # not per se initialized.
-    if np.any(data['time'][-2:] > t_start_first_correctly_cabled_run):
-        raise ValueError(f'Do not remap the data after run 00{last_miscabled_run}')
+    if np.any(data['time'][-2:] > TSTART_FIRST_CORRECTLY_CABLED_RUN):
+        raise ValueError(f'Do not remap the data after run 00{LAST_MISCABLED_RUN}')
 
     if safe_copy:
         # Make sure we make a new entry as otherwise some internal buffer of numpy arrays
@@ -415,7 +404,7 @@ def remap_old(data, targets, works_on_target=''):
         raw-records) and peaks* use e.g. works_on_target = 'records|peaks'.
     """
 
-    if np.any(data['time'][:2] >= t_start_first_correctly_cabled_run):
+    if np.any(data['time'][:2] >= TSTART_FIRST_CORRECTLY_CABLED_RUN):
         # We leave the 'new' data be
         pass
     elif not np.any([match(works_on_target, t) for t in strax.to_str_tuple(targets)]):
@@ -423,9 +412,45 @@ def remap_old(data, targets, works_on_target=''):
         pass
     else:
         # select the old data and do the remapping for this
-        mask = data['time'] < t_start_first_correctly_cabled_run
+        mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
         data[mask] = remap_channels(data[mask])
     return data
+
+
+@export
+def get_dtypes(_data):
+    """
+    Return keys/dtype names of pd.DataFrame or numpy array
+
+    :param _data: data to get the keys/dtype names
+
+    :return: keys/dtype names
+    """
+    if isinstance(_data, np.ndarray):
+        _k = _data.dtype.names
+    elif isinstance(_data, pd.DataFrame):
+        _k = _data.keys()
+    return _k
+
+
+@numba.jit(nopython=True, nogil=True, cache=True)
+def _swap_values_in_array(data_arr, buffer, items, replacements):
+    """
+    Fill buffer for item[k] -> replacements[k]
+    :param data_arr: numpy array of data
+    :param buffer: copy of data_arr where the replacements of items will be saved
+    :param items: array of len x containing values that are in data_arr and need to be
+        replaced with the corresponding item in replacements
+    :param replacements: array of len x containing the values that should replace the
+        corresponding item in items
+    :return: the buffer reflecting the changes
+    """
+    for i, val in enumerate(data_arr):
+        for k, it in enumerate(items):
+            if val == it:
+                buffer[i] = replacements[k]
+                break
+    return buffer
 
 ##
 # Old XENON1T Stuff
