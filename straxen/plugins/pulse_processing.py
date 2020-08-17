@@ -20,7 +20,7 @@ HITFINDER_OPTIONS = tuple([
 
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
-        'hit_min_amplitude_he',track=False,
+        'hit_min_amplitude_he',track=True,
         default=tuple(np.ones(800, dtype=np.int16) * 15),
         help='Minimum hit amplitude in ADC counts above baseline. '
              'See straxen.hit_min_amplitude for options.'
