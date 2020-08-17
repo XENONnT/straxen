@@ -197,7 +197,7 @@ class Peaklets(strax.Plugin):
         'channel_offset_he',track=False,default=500
         ),
     strax.Option(
-        'amplification',track=False,default=20
+        'amplification',track=True,default=20
         ),
     strax.Option(
         'peaklet_parent_version',track=True,default=Peaklets.__version__
