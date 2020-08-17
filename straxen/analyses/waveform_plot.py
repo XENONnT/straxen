@@ -5,6 +5,8 @@ import warnings
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
+from datetime import datetime
+import pandas as pd
 
 from .records_matrix import DEFAULT_MAX_SAMPLES
 export, __all__ = strax.exporter()
@@ -258,9 +260,30 @@ def time_and_samples(p, t0=None):
     return x, np.concatenate([[y[0]], y])
 
 
-def plot_wf(st, peaks, runs, log=True, plot_extension=5_000, hit_pattern=True,
+def plot_wf(st: strax.Context,
+            containers,
+            runs, plot_log=True, plot_extension=5_000, hit_pattern=True,
+            timestamp=True, time_fmt="%d-%b-%Y (%H:%M:%S)",
             **kwargs):
-    p = peaks
+    """
+    Combined waveform plot
+    :param st: strax.Context
+    :param containers: peaks/records/events where from we want to plot all the peaks that
+        are within it's time range +- the plot_extension
+    :param runs: runs (data frame or single run_number)
+    :param plot_log: Plot the y-scale of the wf in log-space
+    :param plot_extension: include this much time arround the contaiers (can be scalar or
+        list of (left_extension, right_extension)
+    :param hit_pattern: include the hitpattern in the wf
+    :param timestamp: print the timestamp to the plot
+    :param time_fmt: format fo the timestamp (datetime.strftime format)
+    :param kwargs: kwargs for plot_peaks
+    """
+    p = containers  # usually peaks
+
+    if isinstance(runs, str):
+        print(f'Assuming {runs} is a run id')
+        runs = pd.DataFrame({'name': [runs]})
 
     def get_run_start(peak):
         this_run_id = runs['name'].values[0]
@@ -270,7 +293,7 @@ def plot_wf(st, peaks, runs, log=True, plot_extension=5_000, hit_pattern=True,
                 break
             next_run_id = runs['name'].values[k + 1]
             next_start = st.estimate_run_start(next_run_id)
-            if next_start > peak['time']:
+            if next_start > peak['time'].max():
                 break
             this_start = next_start
             this_run_id = next_run_id
@@ -278,13 +301,16 @@ def plot_wf(st, peaks, runs, log=True, plot_extension=5_000, hit_pattern=True,
         return this_run_id, this_start
 
     run_id, run_start = get_run_start(p)
-    t_range = np.array([p['time'].min(), p['endtime'].max()])
+    t_range = np.array([p['time'].min(), strax.endtime(p).max()])
+
+    # Extend the time range if needed.
     if not np.iterable(plot_extension):
         t_range += np.array([-plot_extension, plot_extension])
     elif len(plot_extension) == 2:
         t_range += plot_extension
     else:
-        raise ValueError('Wrong dimensions for plot_extension. Use scalar or object of len( ) == 2')
+        raise ValueError('Wrong dimensions for plot_extension. Use scalar or object of '
+                         'len( ) == 2')
     t_range -= run_start
     t_range = t_range / 10 ** 9
     t_range = np.clip(t_range, 0, np.inf)
@@ -292,26 +318,42 @@ def plot_wf(st, peaks, runs, log=True, plot_extension=5_000, hit_pattern=True,
     try:
         if hit_pattern:
             plt.figure(figsize=(14, 11))
-            ax0 = plt.subplot(212)
+            plt.subplot(212)
         else:
             plt.figure(figsize=(14, 5))
-        plot_peaks(st, run_id, seconds_range=t_range, single_figure=False,
-                   **kwargs)
+        # Plot the wf
+        plot_peaks(st, run_id, seconds_range=t_range, single_figure=False, **kwargs)
+
+        if timestamp:
+            _ax = plt.gca()
+            t_stamp = datetime.datetime.fromtimestamp(
+                containers['time'].min() / 10 ** 9).strftime(time_fmt)
+            _ax.text(0.975, 0.925, t_stamp,
+                     horizontalalignment='right',
+                     verticalalignment='top',
+                     transform=_ax.transAxes)
+        # Select the additional two pannels to show the top and bottom arrays
         if hit_pattern:
             axes = plt.subplot(221), plt.subplot(222)
-            plot_hit_pattern(st, run_id, seconds_range=t_range,
-                             axes=axes, vmin=1 if log else None,
-                             log_scale=log, label='Area per channel [PE]')
+            plot_hit_pattern(st, run_id,
+                             seconds_range=t_range,
+                             axes=axes,
+                             vmin=1 if plot_log else None,
+                             log_scale=plot_log,
+                             label='Area per channel [PE]')
 
+    # This can be somewhat hairy, as explained in AxFoundation/strax#247 there is a bug in
+    # strax that may yield the errors below. For now we will retry once without the plot
+    # extension.
     except (ValueError,
             ZeroDivisionError,
             strax.mailbox.MailboxKilled,
             RuntimeError) as e:
         if np.all(plot_extension == 0):
-            warnings.warn('Failed despite 0 ns extension')
+            warnings.warn(f'Failed despite 0 ns extension. Ran into {e}')
             plt.clf()
             return
         else:
             warnings.warn('Failed to deliver. Trying with no extension')
-            return plot_wf(st, peaks, runs, log=log, plot_extension=0,
-                           hit_pattern=hit_pattern, **kwargs)
+            return plot_wf(st, containers, runs, plot_log=plot_log, plot_extension=0,
+                           hit_pattern = hit_pattern, **kwargs)
