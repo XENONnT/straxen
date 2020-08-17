@@ -78,6 +78,8 @@ def xenonnt_online(output_folder='./strax_data',
 
         st.context_config['forbid_creation_of'] = ('raw_records', 'records')
 
+    # Remap the data if it is before channel swap.
+    st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
     return st
 
 
