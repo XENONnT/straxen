@@ -8,7 +8,6 @@ import straxen
 export, __all__ = strax.exporter()
 __all__ += ['NO_PULSE_COUNTS']
 
-
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
@@ -84,9 +83,8 @@ HITFINDER_OPTIONS_he = tuple([
         default=False, track=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
-    
-    *HITFINDER_OPTIONS)
 
+    *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
     1. Split raw_records into:
@@ -128,8 +126,8 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.hev_enabled = (
-            (self.config['hev_gain_model'][0] != 'disabled')
-            and self.config['tail_veto_threshold'])
+                (self.config['hev_gain_model'][0] != 'disabled')
+                and self.config['tail_veto_threshold'])
         if self.hev_enabled:
             self.to_pe = straxen.get_to_pe(
                 self.run_id,
@@ -349,7 +347,7 @@ def software_he_veto(records, to_pe,
 
     # 5. Apply the veto and return results
     veto_mask = strax.fully_contained_in(records, veto) == -1
-    return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
+    return tuple(list(mask_and_not(records, veto_mask)) + [veto])
 
 
 @numba.njit(cache=True, nogil=True)
@@ -484,9 +482,9 @@ def _count_pulses(records, n_channels, result):
 ##
 # Misc
 ##
-
+@export
 @numba.njit(cache=True, nogil=True)
-def _mask_and_not(x, mask):
+def mask_and_not(x, mask):
     return x[mask], x[~mask]
 
 
@@ -494,7 +492,7 @@ def _mask_and_not(x, mask):
 @numba.njit(cache=True, nogil=True)
 def channel_split(rr, first_other_ch):
     """Return """
-    return _mask_and_not(rr, rr['channel'] < first_other_ch)
+    return mask_and_not(rr, rr['channel'] < first_other_ch)
 
 
 @export
