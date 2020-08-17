@@ -187,7 +187,11 @@ def fake_daq():
         **x1t_context_config)
 
 
-def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
+def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
+    context_options = {
+        **x1t_context_config,
+        **kwargs}
+    
     return strax.Context(
         storage=[
             strax.DataDirectory(
@@ -206,7 +210,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False):
         forbid_creation_of=(
             ('raw_records',) if build_lowlevel
             else ('raw_records', 'records', 'peaklets')),
-        **x1t_context_config)
+        **context_options)
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
