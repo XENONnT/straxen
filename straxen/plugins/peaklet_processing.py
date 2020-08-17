@@ -3,7 +3,7 @@ import numpy as np
 
 import strax
 import straxen
-from .pulse_processing import HITFINDER_OPTIONS
+from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he
 
 export, __all__ = strax.exporter()
 
@@ -186,6 +186,47 @@ class Peaklets(strax.Plugin):
                 p['time'] = start
             if strax.endtime(p) > end:
                 p['length'] = (end - p['time']) // p['dt']
+                
+                
+@export
+@strax.takes_config(
+    strax.Option(
+        'n_tpc_pmts_he',track=False,default=800
+        ),
+    strax.Option(
+        'channel_offset_he',track=False,default=500
+        ),
+    strax.Option(
+        'amplification',track=False,default=20
+        ),
+    strax.Option(
+        'peaklet_parent_version',track=True,default=Peaklets.__version__
+        ),
+    *HITFINDER_OPTIONS_he
+)
+class PeakletsHe(Peaklets):
+    depends_on = 'records_he'
+    provides = 'peaklets_he'
+    data_kind = 'peaklets_he'
+    __version__ = '0.0.1'
+    
+    def infer_dtype(self):
+        return strax.peak_dtype(
+                        n_channels=self.config['n_tpc_pmts_he'])
+
+    def setup(self):
+        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']  
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model'],
+                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+        buffer_pmts = np.zeros(self.config['channel_offset_he'])
+        self.to_pe = np.concatenate((buffer_pmts,self.to_pe))
+        self.to_pe *= self.config['amplification']
+
+    def compute(self, records_he, start, end):
+        result = super().compute(records_he, start,end)
+        return result['peaklets']
+                
 
 
 @export
@@ -239,6 +280,22 @@ class PeakletClassification(strax.Plugin):
                     channel=-1,
                     length=peaklets['length'])
 
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'peaklet_classification_parent_version',track=True,default=PeakletClassification.__version__
+        ),
+)
+class PeakletClassificationHe(PeakletClassification):
+    """Classify peaklets as unknown, S1, or S2."""
+    provides = 'peaklet_classification_he'
+    depends_on = ('peaklets_he',)
+    __version__ = '0.0.1'
+
+    def compute(self, peaklets_he):
+        return super().compute(peaklets_he)
+    
 
 FAKE_MERGED_S2_TYPE = -42
 
@@ -341,7 +398,28 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         return start_merge_at[:n_to_merge], end_merge_at[:n_to_merge]
 
+    
+@export
+@strax.takes_config(
+    strax.Option(
+        'merged_s2s_parent_version',track=True,default=MergedS2s.__version__
+        ),
+)
+class MergedS2sHe(MergedS2s):
+    """Merge together peaklets if we believe they form a single peak instead
+    """
+    depends_on = ('peaklets_he', 'peaklet_classification_he')
+    data_kind = 'merged_s2s_he'
+    provides = 'merged_s2s_he'
+    __version__ = '0.0.1'
+    
+    def infer_dtype(self):
+        return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))
 
+    def compute(self, peaklets_he):
+        return super().compute(peaklets_he)
+    
+    
 @export
 @strax.takes_config(
     strax.Option('diagnose_sorting', track=False, default=False,
@@ -369,6 +447,26 @@ class Peaks(strax.Plugin):
             assert np.all(peaks['time'][1:]
                           >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
         return peaks
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'peaks_parent_version',track=True,default=Peaks.__version__
+        ),
+)
+class PeaksHe(Peaks):
+    depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
+    data_kind = 'peaks_he'
+    provides = 'peaks_he'
+    __version__ = '0.0.1'
+    
+    def infer_dtype(self):
+        return self.deps['peaklets_he'].dtype_for('peaklets')
+
+    def compute(self, peaklets_he, merged_s2s_he):
+        return super().compute(peaklets_he, merged_s2s_he)
+
 
 
 

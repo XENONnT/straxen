@@ -93,6 +93,21 @@ class PeakBasics(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
+        'peak_basics_parent_version',track=True,default=PeakBasics.__version__
+        ),
+)
+class PeakBasicsHe(PeakBasics):
+    __version__ = '0.0.1'
+    depends_on = 'peaks_he'
+    provides = 'peak_basics_he'
+
+    def compute(self, peaks_he):
+        return super().compute(peaks_he)
+
+
+@export
+@strax.takes_config(
+    strax.Option(
         'nn_architecture',
         help='Path to JSON of neural net architecture',
         default_by_run=[

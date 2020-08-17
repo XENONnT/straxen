@@ -18,6 +18,13 @@ HITFINDER_OPTIONS = tuple([
              'See straxen.hit_min_amplitude for options.'
     )])
 
+HITFINDER_OPTIONS_he = tuple([
+    strax.Option(
+        'hit_min_amplitude_he',track=False,
+        default=tuple(np.ones(800, dtype=np.int16) * 15),
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'See straxen.hit_min_amplitude for options.'
+    )])
 
 @export
 @strax.takes_config(
@@ -199,6 +206,42 @@ class PulseProcessing(strax.Plugin):
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
+    
+@export
+@strax.takes_config(
+    strax.Option(
+        'n_tpc_pmts_he',track=False,default=800
+        ),
+    strax.Option(
+        'pulse_processing_parent_version',track=True,default=PulseProcessing.__version__
+        ),
+    *HITFINDER_OPTIONS_he)
+class PulseProcessingHe(PulseProcessing):
+    __version__ = '0.0.1'
+    provides = ('records_he', 'pulse_counts_he')
+    data_kind = {k: k for k in provides}
+    rechunk_on_save = immutabledict(
+        records_he=False,
+        pulse_counts_he=True)
+    depends_on = 'raw_records_he'
+    parallel = 'process'
+    compressor = 'lz4'  
+    
+    def infer_dtype(self):
+        dtype=dict()
+        dtype['records_he'] = strax.record_dtype(strax.DEFAULT_RECORD_LENGTH)
+        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_tpc_pmts_he'])
+        return dtype
+
+    def setup(self):
+        self.hev_enabled=False
+        self.config['n_tpc_pmts'] = self.config['n_tpc_pmts_he']
+        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
+
+    def compute(self, raw_records_he, start, end):
+        result = super().compute(raw_records_he, start,end)
+        return dict(records_he=result['records'],
+                    pulse_counts_he=result['pulse_counts'])
 
 ##
 # Software HE Veto
@@ -437,7 +480,7 @@ def _count_pulses(records, n_channels, result):
     res['baseline_mean'][:] = means[:]
     res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
-
+    
 ##
 # Misc
 ##
@@ -476,3 +519,5 @@ def _check_overlaps(records, last_end):
             return r['channel'], r['time']
         last_end[r['channel']] = strax.endtime(r)
     return -9999, -9999
+
+
