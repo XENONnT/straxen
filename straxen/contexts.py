@@ -48,7 +48,8 @@ def xenonnt_online(output_folder='./strax_data',
             straxen.RunDB(
                 readonly=not we_are_the_daq,
                 runid_field='number',
-                new_data_path=output_folder),
+                new_data_path=output_folder,
+                rucio_path='/dali/lgrandi/rucio/'),
         ],
         config=straxen.contexts.xnt_common_config,
         **context_options)
