@@ -37,7 +37,7 @@ class LEDCalibration(strax.Plugin):
     - amplitudeNOISE: amplitude of the LED on run in a window far from the signal one.
     """
     
-    __version__ = '0.2.4'
+    __version__ = '0.2.3'
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
