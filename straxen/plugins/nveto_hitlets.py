@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 @strax.takes_config(
     strax.Option(
         'save_outside_hits_nv',
-        default=(3, 15),
+        default=(3, 15), track=True,
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_nv',
@@ -63,7 +63,7 @@ class nVETOHitlets(strax.Plugin):
         # TODO: Unify with TPC and add adc thresholds
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
 
-    def compute(self, records_nv):
+    def compute(self, records_nv, start, end):
         # Search again for hits in records:
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
 
@@ -72,7 +72,9 @@ class nVETOHitlets(strax.Plugin):
         # accidentally concatenate two PMT signals we split them later again.
         hits = strax.concat_overlapping_hits(hits,
                                              self.config['save_outside_hits_nv'],
-                                             self.config['channel_map']['nveto'])
+                                             self.config['channel_map']['nveto'],
+                                             start,
+                                             end)
         hits = strax.sort_by_time(hits)
 
         # Now convert hits into temp_hitlets including the data field:
@@ -80,8 +82,11 @@ class nVETOHitlets(strax.Plugin):
             nsamples = hits['length'].max()
         else:
             nsamples = 0
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_sample=nsamples))
+        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
 
+        # Generating hitlets and copying relevant information from hits to hitlets.
+        # These hitlets are not stored in the end since this array also contains a data
+        # field which we will drop later.
         strax.refresh_hit_to_hitlets(hits, temp_hitlets)
         del hits
 
