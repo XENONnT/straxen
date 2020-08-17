@@ -520,4 +520,3 @@ def _check_overlaps(records, last_end):
         last_end[r['channel']] = strax.endtime(r)
     return -9999, -9999
 
-
