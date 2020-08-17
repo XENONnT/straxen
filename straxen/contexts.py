@@ -57,7 +57,8 @@ def xenonnt_online(output_folder='./strax_data',
             straxen.RunDB(
                 readonly=not we_are_the_daq,
                 runid_field='number',
-                new_data_path=output_folder),
+                new_data_path=output_folder,
+                rucio_path='/dali/lgrandi/rucio/'),
         ],
         config=straxen.contexts.xnt_common_config,
         **context_options)
@@ -78,6 +79,8 @@ def xenonnt_online(output_folder='./strax_data',
 
         st.context_config['forbid_creation_of'] = ('raw_records', 'records')
 
+    # Remap the data if it is before channel swap.
+    st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
     return st
 
 
