@@ -8,7 +8,10 @@ common_opts = dict(
         straxen.peaklet_processing,
         straxen.peak_processing,
         straxen.event_processing,
-        straxen.double_scatter],
+        straxen.double_scatter,
+        straxen.nveto_recorder,
+        straxen.nveto_pulse_processing,
+        straxen.nveto_hitlets],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',
@@ -16,24 +19,30 @@ common_opts = dict(
 
 
 xnt_common_config = dict(
+    n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model=('to_pe_constant', '1300V_20200428'),
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)
+         # Channels must be listed in a ascending order!
          tpc=(0, 493),
          he=(500, 752),  # high energy
          aqmon=(790, 807),
+         aqmonnv=(808, 815),  # nveto acquisition monitor
          tpc_blank=(999, 999),
          mv=(1000, 1083),
-         mv_blank=(1999, 1999)),
+         mv_blank=(1999, 1999),
+         nveto=(2000, 2119),
+         nveto_blank=(2999, 2999)),
     nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights = straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
+    nn_weights=straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
 
 
 ##
 # XENONnT
 ##
+
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
@@ -205,7 +214,6 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
             ('raw_records',) if build_lowlevel
             else ('raw_records', 'records', 'peaklets')),
         **context_options)
-
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)

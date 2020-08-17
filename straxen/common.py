@@ -32,6 +32,7 @@ tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 n_tpc_pmts = 494
 n_top_pmts = 253
 
+
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
 TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
