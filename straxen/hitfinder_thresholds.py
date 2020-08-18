@@ -31,4 +31,10 @@ def hit_min_amplitude(model):
         result[453] = 30
         return result
     
+    if model == 'pmt_commissioning_initial_he':
+        # ADC thresholds used for the initial PMT commissioning data
+        # (at least since April 28 2020, run 007305)
+        result = 15 * np.ones(straxen.contexts.xnt_common_config['channel_map']['he'][1], dtype=np.int16)
+        return result
+    
     raise ValueError(f"Unknown ADC threshold model {model}")
