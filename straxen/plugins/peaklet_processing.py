@@ -190,11 +190,11 @@ class Peaklets(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('n_tpc_pmts_he', track=False, default=752,
+    strax.Option('n_tpc_pmts', track=False, default=752, child_option=True,
                  help="Maximum channel of the he channels"),
-    strax.Option('channel_offset_he', track=False, default=500,
+    strax.Option('he_channel_offset', track=False, default=500,
                  help="Minimum channel number of the he channels"),
-    strax.Option('amplification_le_to_he', default=20, track=True,
+    strax.Option('le_to_he_amplification', default=20, track=True,
                  help="Difference in amplification between low energy and high "
                       "energy channels"),
     strax.Option('peak_min_pmts_he', default=2, child_option=True, track=True,
@@ -215,9 +215,9 @@ class PeakletsHe(Peaklets):
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
                                        n_tpc_pmts=self.config['n_tpc_pmts'])
-        buffer_pmts = np.zeros(self.config['channel_offset_he'])
+        buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
-        self.to_pe *= self.config['amplification_le_to_he']
+        self.to_pe *= self.config['le_to_he_amplification']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start,end)

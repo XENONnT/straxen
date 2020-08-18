@@ -208,9 +208,8 @@ class PulseProcessing(strax.Plugin):
     
 @export
 @strax.takes_config(
-    strax.Option(
-        'n_tpc_pmts_he', track=False,default=752
-        ),
+    strax.Option('n_tpc_pmts', track=False, default=752, child_option=True,
+                 help="Maximum channel of the he channels"),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(PulseProcessing):
     __version__ = '0.0.1'
