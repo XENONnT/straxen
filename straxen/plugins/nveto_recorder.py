@@ -63,8 +63,7 @@ class nVETORecorder(strax.Plugin):
                                 self.config['coincidence_level_recorder_nv'],
                                 self.config['resolving_time_recorder_nv'])
         neighbors = strax.record_links(raw_records_nv)
-        starts, ends = intervals.T
-        mask = pulse_in_interval(raw_records_nv, neighbors, starts, ends)
+        mask = pulse_in_interval(raw_records_nv, neighbors, *intervals.T)
         # Always set the last n-1 events to true since chunk gaps could be smaller than resolving time and we are
         # just storing data.
         mask[:-self.config['coincidence_level_recorder_nv']-1] = True
