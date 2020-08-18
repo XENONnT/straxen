@@ -31,15 +31,17 @@ class nVETORecorder(strax.Plugin):
     rechunk_on_save = True
     compressor = 'lz4'
 
-    depends_on = 'raw_records_prenv'
+    depends_on = 'raw_records_nv'
 
-    provides = ('raw_records_nv', 'lone_raw_records_nv', 'lone_raw_record_statistics_nv')
+    provides = ('raw_records_coin_nv ',  # nv-raw-records with coincidence requirement (stored long term)
+                'lone_raw_records_nv',
+                'lone_raw_record_statistics_nv')
 
     data_kind = {key: key for key in provides}
 
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
-            self.deps['raw_records_prenv'].dtype_for('raw_records_prenv'))
+            self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
 
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
@@ -51,25 +53,25 @@ class nVETORecorder(strax.Plugin):
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
-    def compute(self, raw_records_prenv, start, end):
-        strax.zero_out_of_bounds(raw_records_prenv)
+    def compute(self, raw_records_nv, start, end):
+        strax.zero_out_of_bounds(raw_records_nv)
 
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
-        intervals = coincidence(raw_records_prenv,
+        intervals = coincidence(raw_records_nv,
                                 self.config['coincidence_level_recorder_nv'],
                                 self.config['resolving_time_recorder_nv'])
-        neighbors = strax.record_links(raw_records_prenv)
-        mask = pulse_in_interval(raw_records_prenv, neighbors, *intervals.T)
+        neighbors = strax.record_links(raw_records_nv)
+        mask = pulse_in_interval(raw_records_nv, neighbors, *intervals.T)
         # Always set the last n-1 events to true since chunk gaps could be smaller than resolving time and we are
         # just storing data.
         mask[:-self.config['coincidence_level_recorder_nv']-1] = True
-        rr, lone_records = straxen.mask_and_not(raw_records_prenv, mask)
+        rr, lone_records = straxen.mask_and_not(raw_records_nv, mask)
 
         # Compute some properties of the lone_records:
         # We compute only for lone_records baseline etc. since
-        # pre_raw_records will be deleted, otherwise we could not change
+        # raw_records_nv will be deleted, otherwise we could not change
         # the settings and reprocess the data in case of raw_records_nv
         lr = strax.raw_to_records(lone_records)
         del lone_records
@@ -84,7 +86,7 @@ class nVETORecorder(strax.Plugin):
         lrs['time'] = start
         lrs['endtime'] = end
     
-        return {'raw_records_nv': rr,
+        return {'raw_records_coin_nv': rr,
                 'lone_raw_records_nv': lr,
                 'lone_raw_record_statistics_nv': lrs}
 
