@@ -208,7 +208,7 @@ class PulseProcessing(strax.Plugin):
     
 @export
 @strax.takes_config(
-    strax.Option('n_tpc_pmts', track=False, default=752, child_option=True,
+    strax.Option('n_he_pmts', track=False, default=752,
                  help="Maximum channel of the he channels"),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(PulseProcessing):
@@ -231,7 +231,7 @@ class PulseProcessingHe(PulseProcessing):
 
     def setup(self):
         self.hev_enabled=False
-        self.config['n_tpc_pmts'] = self.config['n_tpc_pmts_he']
+        self.config['n_tpc_pmts'] = self.config['n_he_pmts']
         self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):

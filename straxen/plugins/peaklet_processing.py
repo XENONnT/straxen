@@ -190,7 +190,7 @@ class Peaklets(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('n_tpc_pmts', track=False, default=752, child_option=True,
+    strax.Option('n_he_pmts', track=False, default=752,
                  help="Maximum channel of the he channels"),
     strax.Option('he_channel_offset', track=False, default=500,
                  help="Minimum channel number of the he channels"),
@@ -209,7 +209,7 @@ class PeakletsHe(Peaklets):
     child_ends_with = '_he'
 
     def infer_dtype(self):
-        return strax.peak_dtype(n_channels=self.config['n_tpc_pmts_he'])
+        return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
 
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id,
