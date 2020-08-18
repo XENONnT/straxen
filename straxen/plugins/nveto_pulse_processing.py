@@ -30,21 +30,21 @@ class nVETOPulseProcessing(strax.Plugin):
     rechunk_on_save = False
     compressor = 'lz4'
 
-    depends_on = 'raw_records_nv'
+    depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
     data_kind = 'records_nv'
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
-            self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
+            self.deps['raw_records_coin_nv'].dtype_for('raw_records_coin_nv'))
         dtype = strax.record_dtype(record_length)
         return dtype
 
-    def compute(self, raw_records_nv):
+    def compute(self, raw_records_coin_nv):
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
-        r = strax.raw_to_records(raw_records_nv)
-        del raw_records_nv
+        r = strax.raw_to_records(raw_records_coin_nv)
+        del raw_records_coin_nv
 
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
