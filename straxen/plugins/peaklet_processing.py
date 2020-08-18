@@ -3,7 +3,7 @@ import numpy as np
 
 import strax
 import straxen
-from .pulse_processing import HITFINDER_OPTIONS
+from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he
 
 export, __all__ = strax.exporter()
 
@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
     strax.Option('peak_right_extension', default=200,
                  help="Include this many ns right of hits in peaks"),
     strax.Option('peak_min_pmts', default=4,
-                 help="Minifnmum contributing PMTs needed to define a peak"),
+                 help="Minimum number of contributing PMTs needed to define a peak"),
     strax.Option('peak_split_gof_threshold',
                  # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
                  # xenon:xenonnt:analysis:strax_clustering_classification
@@ -190,6 +190,42 @@ class Peaklets(strax.Plugin):
 
 @export
 @strax.takes_config(
+    strax.Option('n_he_pmts', track=False, default=752,
+                 help="Maximum channel of the he channels"),
+    strax.Option('he_channel_offset', track=False, default=500,
+                 help="Minimum channel number of the he channels"),
+    strax.Option('le_to_he_amplification', default=20, track=True,
+                 help="Difference in amplification between low energy and high "
+                      "energy channels"),
+    strax.Option('peak_min_pmts_he', default=2, child_option=True, track=True,
+                 help="Minimum number of contributing PMTs needed to define a peak"),
+    *HITFINDER_OPTIONS_he
+)
+class PeakletsHe(Peaklets):
+    depends_on = 'records_he'
+    provides = 'peaklets_he'
+    data_kind = 'peaklets_he'
+    __version__ = '0.0.1'
+    child_ends_with = '_he'
+
+    def infer_dtype(self):
+        return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
+
+    def setup(self):
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model'],
+                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+        buffer_pmts = np.zeros(self.config['he_channel_offset'])
+        self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
+        self.to_pe *= self.config['le_to_he_amplification']
+
+    def compute(self, records_he, start, end):
+        result = super().compute(records_he, start, end)
+        return result['peaklets']
+
+
+@export
+@strax.takes_config(
     strax.Option('s1_max_rise_time', default=60,
                  help="Maximum S1 rise time for < 100 PE [ns]"),
     strax.Option('s1_max_rise_time_post100', default=150,
@@ -240,7 +276,20 @@ class PeakletClassification(strax.Plugin):
                     length=peaklets['length'])
 
 
+@export
+class PeakletClassificationHe(PeakletClassification):
+    """Classify peaklets as unknown, S1, or S2."""
+    provides = 'peaklet_classification_he'
+    depends_on = ('peaklets_he',)
+    __version__ = '0.0.1'
+    child_ends_with = '_he'
+
+    def compute(self, peaklets_he):
+        return super().compute(peaklets_he)
+    
+
 FAKE_MERGED_S2_TYPE = -42
+
 
 @export
 @strax.takes_config(
@@ -341,6 +390,23 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         return start_merge_at[:n_to_merge], end_merge_at[:n_to_merge]
 
+    
+@export
+class MergedS2sHe(MergedS2s):
+    """Merge together peaklets if we believe they form a single peak instead
+    """
+    depends_on = ('peaklets_he', 'peaklet_classification_he')
+    data_kind = 'merged_s2s_he'
+    provides = 'merged_s2s_he'
+    __version__ = '0.0.1'
+    child_ends_with = '_he'
+
+    def infer_dtype(self):
+        return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))
+
+    def compute(self, peaklets_he):
+        return super().compute(peaklets_he)
+
 
 @export
 @strax.takes_config(
@@ -370,6 +436,20 @@ class Peaks(strax.Plugin):
                           >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
         return peaks
 
+
+@export
+class PeaksHe(Peaks):
+    depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
+    data_kind = 'peaks_he'
+    provides = 'peaks_he'
+    __version__ = '0.0.1'
+    child_ends_with = '_he'
+
+    def infer_dtype(self):
+        return self.deps['peaklets_he'].dtype_for('peaklets')
+
+    def compute(self, peaklets_he, merged_s2s_he):
+        return super().compute(peaklets_he, merged_s2s_he)
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)

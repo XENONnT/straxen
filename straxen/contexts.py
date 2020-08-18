@@ -77,7 +77,7 @@ def xenonnt_online(output_folder='./strax_data',
             st.storage.append(
                 strax.DataDirectory(output_folder))
 
-        st.context_config['forbid_creation_of'] = ('raw_records', 'records')
+        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
 
     # Remap the data if it is before channel swap.
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
@@ -167,7 +167,7 @@ def demo():
                                          provide_run_metadata=True,
                                          readonly=True)],
             register=straxen.RecordsFromPax,
-            forbid_creation_of=('raw_records',),
+            forbid_creation_of=straxen.daqreader.DAQReader.provides,
             config=dict(**x1t_common_config),
             **x1t_context_config)
 
@@ -211,8 +211,8 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
         forbid_creation_of=(
-            ('raw_records',) if build_lowlevel
-            else ('raw_records', 'records', 'peaklets')),
+            straxen.daqreader.DAQReader.provides if build_lowlevel
+            else straxen.daqreader.DAQReader.provides + ('records', 'peaklets')),
         **context_options)
 
 def xenon1t_led(**kwargs):
