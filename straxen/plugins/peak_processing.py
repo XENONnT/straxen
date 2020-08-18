@@ -95,7 +95,6 @@ class PeakBasicsHe(PeakBasics):
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
-    parallel = super().parallel
     child_ends_with = '_he'
 
     def compute(self, peaks_he):

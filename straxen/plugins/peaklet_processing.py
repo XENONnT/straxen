@@ -206,7 +206,6 @@ class PeakletsHe(Peaklets):
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
     __version__ = '0.0.1'
-    parallel = super().parallel
     child_ends_with = '_he'
 
     def infer_dtype(self):
@@ -446,7 +445,6 @@ class PeaksHe(Peaks):
     data_kind = 'peaks_he'
     provides = 'peaks_he'
     __version__ = '0.0.1'
-    parallel = super().parallel
     child_ends_with = '_he'
 
     def infer_dtype(self):
