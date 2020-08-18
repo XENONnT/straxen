@@ -20,8 +20,8 @@ HITFINDER_OPTIONS = tuple([
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
         'hit_min_amplitude_he',track=True,
-        default=tuple(np.ones(800, dtype=np.int16) * 15),
-        help='Minimum hit amplitude in ADC counts above baseline. '
+        default="pmt_commissioning_initial_he",
+        help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
              'See straxen.hit_min_amplitude for options.'
     )])
 
@@ -208,7 +208,7 @@ class PulseProcessing(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
-        'n_tpc_pmts_he',track=False,default=800
+        'n_tpc_pmts_he',track=False,default=752
         ),
     strax.Option(
         'pulse_processing_parent_version',track=True,default=PulseProcessing.__version__
