@@ -75,7 +75,7 @@ class PeakBasics(strax.Plugin):
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
         r['area_fraction_top'][~m] = float('nan')
-        r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
+        r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
         return r
 
     @staticmethod

@@ -220,7 +220,7 @@ class PeakletsHe(Peaklets):
         self.to_pe *= self.config['le_to_he_amplification']
 
     def compute(self, records_he, start, end):
-        result = super().compute(records_he, start,end)
+        result = super().compute(records_he, start, end)
         return result['peaklets']
 
 
@@ -277,22 +277,19 @@ class PeakletClassification(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        'peaklet_classification_parent_version',track=True,default=PeakletClassification.__version__
-        ),
-)
 class PeakletClassificationHe(PeakletClassification):
     """Classify peaklets as unknown, S1, or S2."""
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
+    child_ends_with = '_he'
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
     
 
 FAKE_MERGED_S2_TYPE = -42
+
 
 @export
 @strax.takes_config(
@@ -402,14 +399,15 @@ class MergedS2sHe(MergedS2s):
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
     __version__ = '0.0.1'
-    
+    child_ends_with = '_he'
+
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
-    
-    
+
+
 @export
 @strax.takes_config(
     strax.Option('diagnose_sorting', track=False, default=False,

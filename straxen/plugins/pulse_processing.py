@@ -26,6 +26,7 @@ HITFINDER_OPTIONS_he = tuple([
              'See straxen.hit_min_amplitude for options.'
     )])
 
+
 @export
 @strax.takes_config(
     strax.Option('hev_gain_model',
@@ -224,24 +225,25 @@ class PulseProcessingHe(PulseProcessing):
     child_ends_with = '_he'
 
     def infer_dtype(self):
-        dtype=dict()
+        dtype = dict()
         dtype['records_he'] = strax.record_dtype(strax.DEFAULT_RECORD_LENGTH)
-        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_tpc_pmts_he'])
+        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
         return dtype
 
     def setup(self):
-        self.hev_enabled=False
+        self.hev_enabled = False
         self.config['n_tpc_pmts'] = self.config['n_he_pmts']
         self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
-        result = super().compute(raw_records_he, start,end)
+        result = super().compute(raw_records_he, start, end)
         return dict(records_he=result['records'],
                     pulse_counts_he=result['pulse_counts'])
 
 ##
 # Software HE Veto
 ##
+
 
 @export
 def software_he_veto(records, to_pe,
