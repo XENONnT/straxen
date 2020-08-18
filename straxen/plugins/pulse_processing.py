@@ -211,6 +211,8 @@ class PulseProcessing(strax.Plugin):
 @strax.takes_config(
     strax.Option('n_he_pmts', track=False, default=752,
                  help="Maximum channel of the he channels"),
+    strax.Option('record_length', default=110, track=False, type=int,
+                 help="Number of samples per raw_record"),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(PulseProcessing):
     __version__ = '0.0.1'
@@ -226,7 +228,7 @@ class PulseProcessingHe(PulseProcessing):
 
     def infer_dtype(self):
         dtype = dict()
-        dtype['records_he'] = strax.record_dtype(strax.DEFAULT_RECORD_LENGTH)
+        dtype['records_he'] = strax.record_dtype(self.config["record_length"])
         dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
         return dtype
 
