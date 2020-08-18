@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
     strax.Option('peak_right_extension', default=200,
                  help="Include this many ns right of hits in peaks"),
     strax.Option('peak_min_pmts', default=4,
-                 help="Minifnmum contributing PMTs needed to define a peak"),
+                 help="Minimum number of contributing PMTs needed to define a peak"),
     strax.Option('peak_split_gof_threshold',
                  # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
                  # xenon:xenonnt:analysis:strax_clustering_classification
@@ -186,24 +186,19 @@ class Peaklets(strax.Plugin):
                 p['time'] = start
             if strax.endtime(p) > end:
                 p['length'] = (end - p['time']) // p['dt']
-                
-                
+
+
 @export
 @strax.takes_config(
-    strax.Option(
-        'n_tpc_pmts_he',track=False,default=752,
-        help="Maximum channel of the he channels",
-        ),
-    strax.Option(
-        'channel_offset_he',track=False,default=500,
-        help="Minumum channel number of the he channels"
-        ),
-    strax.Option(
-        'amplification',track=True,default=20
-        ),
-    strax.Option(
-        'peaklet_parent_version',track=True,default=Peaklets.__version__
-        ),
+    strax.Option('n_tpc_pmts_he', track=False, default=752,
+                 help="Maximum channel of the he channels"),
+    strax.Option('channel_offset_he', track=False, default=500,
+                 help="Minimum channel number of the he channels"),
+    strax.Option('amplification_le_to_he', default=20, track=True,
+                 help="Difference in amplification between low energy and high "
+                      "energy channels"),
+    strax.Option('peak_min_pmts_he', default=2, child_option=True, track=True,
+                 help="Minimum number of contributing PMTs needed to define a peak"),
     *HITFINDER_OPTIONS_he
 )
 class PeakletsHe(Peaklets):
@@ -211,24 +206,23 @@ class PeakletsHe(Peaklets):
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
     __version__ = '0.0.1'
-    
+    parallel = super().parallel
+    child_ends_with = '_he'
+
     def infer_dtype(self):
-        return strax.peak_dtype(
-                        n_channels=self.config['n_tpc_pmts_he'])
+        return strax.peak_dtype(n_channels=self.config['n_tpc_pmts_he'])
 
     def setup(self):
-        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']  
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
                                        n_tpc_pmts=self.config['n_tpc_pmts'])
         buffer_pmts = np.zeros(self.config['channel_offset_he'])
-        self.to_pe = np.concatenate((buffer_pmts,self.to_pe))
-        self.to_pe *= self.config['amplification']
+        self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
+        self.to_pe *= self.config['amplification_le_to_he']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start,end)
         return result['peaklets']
-                
 
 
 @export
@@ -402,11 +396,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     
 @export
-@strax.takes_config(
-    strax.Option(
-        'merged_s2s_parent_version',track=True,default=MergedS2s.__version__
-        ),
-)
 class MergedS2sHe(MergedS2s):
     """Merge together peaklets if we believe they form a single peak instead
     """
@@ -452,24 +441,19 @@ class Peaks(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        'peaks_parent_version',track=True,default=Peaks.__version__
-        ),
-)
 class PeaksHe(Peaks):
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
     provides = 'peaks_he'
     __version__ = '0.0.1'
-    
+    parallel = super().parallel
+    child_ends_with = '_he'
+
     def infer_dtype(self):
         return self.deps['peaklets_he'].dtype_for('peaklets')
 
     def compute(self, peaklets_he, merged_s2s_he):
         return super().compute(peaklets_he, merged_s2s_he)
-
-
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)

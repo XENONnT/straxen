@@ -19,8 +19,9 @@ HITFINDER_OPTIONS = tuple([
 
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
-        'hit_min_amplitude_he',track=True,
+        'hit_min_amplitude_he', track=True,
         default="pmt_commissioning_initial_he",
+        child_option=True,
         help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
              'See straxen.hit_min_amplitude for options.'
     )])
@@ -208,10 +209,7 @@ class PulseProcessing(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
-        'n_tpc_pmts_he',track=False,default=752
-        ),
-    strax.Option(
-        'pulse_processing_parent_version',track=True,default=PulseProcessing.__version__
+        'n_tpc_pmts_he', track=False,default=752
         ),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(PulseProcessing):
@@ -223,8 +221,9 @@ class PulseProcessingHe(PulseProcessing):
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
     parallel = 'process'
-    compressor = 'lz4'  
-    
+    compressor = 'lz4'
+    child_ends_with = '_he'
+
     def infer_dtype(self):
         dtype=dict()
         dtype['records_he'] = strax.record_dtype(strax.DEFAULT_RECORD_LENGTH)
@@ -478,7 +477,7 @@ def _count_pulses(records, n_channels, result):
     res['baseline_mean'][:] = means[:]
     res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
-    
+
 ##
 # Misc
 ##
