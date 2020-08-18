@@ -33,7 +33,7 @@ class nVETORecorder(strax.Plugin):
 
     depends_on = 'raw_records_nv'
 
-    provides = ('raw_records_coin_nv ',  # nv-raw-records with coincidence requirement (stored long term)
+    provides = ('raw_records_coin_nv',  # nv-raw-records with coincidence requirement (stored long term)
                 'lone_raw_records_nv',
                 'lone_raw_record_statistics_nv')
 
