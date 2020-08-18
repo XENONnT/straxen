@@ -191,10 +191,12 @@ class Peaklets(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
-        'n_tpc_pmts_he',track=False,default=800
+        'n_tpc_pmts_he',track=False,default=752,
+        help="Maximum channel of the he channels",
         ),
     strax.Option(
-        'channel_offset_he',track=False,default=500
+        'channel_offset_he',track=False,default=500,
+        help="Minumum channel number of the he channels"
         ),
     strax.Option(
         'amplification',track=True,default=20
