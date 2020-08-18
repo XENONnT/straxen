@@ -75,7 +75,7 @@ class PeakBasics(strax.Plugin):
         m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
         r['area_fraction_top'][~m] = float('nan')
-        r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
+        r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
         return r
 
     @staticmethod
@@ -91,15 +91,11 @@ class PeakBasics(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        'peak_basics_parent_version',track=True,default=PeakBasics.__version__
-        ),
-)
 class PeakBasicsHe(PeakBasics):
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
+    child_ends_with = '_he'
 
     def compute(self, peaks_he):
         return super().compute(peaks_he)

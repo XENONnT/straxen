@@ -19,11 +19,13 @@ HITFINDER_OPTIONS = tuple([
 
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
-        'hit_min_amplitude_he',track=True,
+        'hit_min_amplitude_he', track=True,
         default="pmt_commissioning_initial_he",
+        child_option=True,
         help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
              'See straxen.hit_min_amplitude for options.'
     )])
+
 
 @export
 @strax.takes_config(
@@ -207,12 +209,10 @@ class PulseProcessing(strax.Plugin):
     
 @export
 @strax.takes_config(
-    strax.Option(
-        'n_tpc_pmts_he',track=False,default=752
-        ),
-    strax.Option(
-        'pulse_processing_parent_version',track=True,default=PulseProcessing.__version__
-        ),
+    strax.Option('n_he_pmts', track=False, default=752,
+                 help="Maximum channel of the he channels"),
+    strax.Option('record_length', default=110, track=False, type=int,
+                 help="Number of samples per raw_record"),
     *HITFINDER_OPTIONS_he)
 class PulseProcessingHe(PulseProcessing):
     __version__ = '0.0.1'
@@ -223,27 +223,29 @@ class PulseProcessingHe(PulseProcessing):
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
     parallel = 'process'
-    compressor = 'lz4'  
-    
+    compressor = 'lz4'
+    child_ends_with = '_he'
+
     def infer_dtype(self):
-        dtype=dict()
-        dtype['records_he'] = strax.record_dtype(strax.DEFAULT_RECORD_LENGTH)
-        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_tpc_pmts_he'])
+        dtype = dict()
+        dtype['records_he'] = strax.record_dtype(self.config["record_length"])
+        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
         return dtype
 
     def setup(self):
-        self.hev_enabled=False
-        self.config['n_tpc_pmts'] = self.config['n_tpc_pmts_he']
+        self.hev_enabled = False
+        self.config['n_tpc_pmts'] = self.config['n_he_pmts']
         self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
-        result = super().compute(raw_records_he, start,end)
+        result = super().compute(raw_records_he, start, end)
         return dict(records_he=result['records'],
                     pulse_counts_he=result['pulse_counts'])
 
 ##
 # Software HE Veto
 ##
+
 
 @export
 def software_he_veto(records, to_pe,
@@ -478,7 +480,7 @@ def _count_pulses(records, n_channels, result):
     res['baseline_mean'][:] = means[:]
     res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
-    
+
 ##
 # Misc
 ##
