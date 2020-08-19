@@ -67,7 +67,10 @@ class DAQReader(strax.Plugin):
         'raw_records',
         'raw_records_he',  # high energy
         'raw_records_aqmon',
-        'raw_records_mv')
+        'raw_records_nv',  # nveto raw_records (will not be stored long term)
+        'raw_records_aqmonnv',
+        'raw_records_mv',    # mveto has to be last due to lineage
+    )
 
     data_kind = immutabledict(zip(provides, provides))
     depends_on = tuple()
@@ -298,7 +301,9 @@ class DAQReader(strax.Plugin):
                 continue
 
             result_name = 'raw_records'
-            if subd != 'tpc':
+            if subd.startswith('nveto'):
+                result_name += '_nv'
+            elif subd != 'tpc':
                 result_name += '_' + subd
             result[result_name] = self.chunk(
                 start=self.t0 + break_pre,

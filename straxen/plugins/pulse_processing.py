@@ -8,13 +8,21 @@ import straxen
 export, __all__ = strax.exporter()
 __all__ += ['NO_PULSE_COUNTS']
 
-
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
         'hit_min_amplitude',
         default='pmt_commissioning_initial',
         help='Minimum hit amplitude in ADC counts above baseline. '
+             'See straxen.hit_min_amplitude for options.'
+    )])
+
+HITFINDER_OPTIONS_he = tuple([
+    strax.Option(
+        'hit_min_amplitude_he', track=True,
+        default="pmt_commissioning_initial_he",
+        child_option=True,
+        help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
              'See straxen.hit_min_amplitude for options.'
     )])
 
@@ -77,9 +85,8 @@ HITFINDER_OPTIONS = tuple([
         default=False, track=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
-    
-    *HITFINDER_OPTIONS)
 
+    *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
     1. Split raw_records into:
@@ -121,8 +128,8 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.hev_enabled = (
-            (self.config['hev_gain_model'][0] != 'disabled')
-            and self.config['tail_veto_threshold'])
+                (self.config['hev_gain_model'][0] != 'disabled')
+                and self.config['tail_veto_threshold'])
         if self.hev_enabled:
             self.to_pe = straxen.get_to_pe(
                 self.run_id,
@@ -199,10 +206,46 @@ class PulseProcessing(strax.Plugin):
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
+    
+@export
+@strax.takes_config(
+    strax.Option('n_he_pmts', track=False, default=752,
+                 help="Maximum channel of the he channels"),
+    strax.Option('record_length', default=110, track=False, type=int,
+                 help="Number of samples per raw_record"),
+    *HITFINDER_OPTIONS_he)
+class PulseProcessingHe(PulseProcessing):
+    __version__ = '0.0.1'
+    provides = ('records_he', 'pulse_counts_he')
+    data_kind = {k: k for k in provides}
+    rechunk_on_save = immutabledict(
+        records_he=False,
+        pulse_counts_he=True)
+    depends_on = 'raw_records_he'
+    parallel = 'process'
+    compressor = 'lz4'
+    child_ends_with = '_he'
+
+    def infer_dtype(self):
+        dtype = dict()
+        dtype['records_he'] = strax.record_dtype(self.config["record_length"])
+        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
+        return dtype
+
+    def setup(self):
+        self.hev_enabled = False
+        self.config['n_tpc_pmts'] = self.config['n_he_pmts']
+        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
+
+    def compute(self, raw_records_he, start, end):
+        result = super().compute(raw_records_he, start, end)
+        return dict(records_he=result['records'],
+                    pulse_counts_he=result['pulse_counts'])
 
 ##
 # Software HE Veto
 ##
+
 
 @export
 def software_he_veto(records, to_pe,
@@ -306,7 +349,7 @@ def software_he_veto(records, to_pe,
 
     # 5. Apply the veto and return results
     veto_mask = strax.fully_contained_in(records, veto) == -1
-    return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
+    return tuple(list(mask_and_not(records, veto_mask)) + [veto])
 
 
 @numba.njit(cache=True, nogil=True)
@@ -441,9 +484,9 @@ def _count_pulses(records, n_channels, result):
 ##
 # Misc
 ##
-
+@export
 @numba.njit(cache=True, nogil=True)
-def _mask_and_not(x, mask):
+def mask_and_not(x, mask):
     return x[mask], x[~mask]
 
 
@@ -451,7 +494,7 @@ def _mask_and_not(x, mask):
 @numba.njit(cache=True, nogil=True)
 def channel_split(rr, first_other_ch):
     """Return """
-    return _mask_and_not(rr, rr['channel'] < first_other_ch)
+    return mask_and_not(rr, rr['channel'] < first_other_ch)
 
 
 @export
