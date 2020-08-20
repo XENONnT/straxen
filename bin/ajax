@@ -44,7 +44,7 @@ ajax_thresholds = {
     # this many seconds ago
     'wait_after_processing': 2 * 3600,  # s
     # Remove the raw records of the neutron veto after this many seconds
-    'remove_raw_records_nv': 24 * 3600,  # s
+    'remove_raw_records_nv': 365.25 * 24 * 3600,  # s
     # Remove high level plugins if the run is this old
     # TODO
     #  change the value to a different one
@@ -306,10 +306,11 @@ def clean_old_hash():
             loc = os.path.join(output_folder, f)
             log.info(f'clean_old_hash::\tLineage for run {run_id}, {data_type} is '
                      f'{current_st_hash}. Removing old hash: {lineage_hash} from {loc}.')
-            rd = run_coll.find({'data.type': data_type,
-                                'data.host': hostname,
-                                'number': int(run_id)})
+            rd = run_coll.find_one({'data.type': data_type,
+                                    'data.host': hostname,
+                                    'number': int(run_id)})
             delete_data(rd, loc, data_type, test=not args.execute)
+
 
 def clean_abandoned(delete_live=False):
     """
