@@ -7,7 +7,7 @@ from straxen import units
 export, __all__ = strax.exporter()
 
 
-class S2Width(strax.Plugin):
+class S2Width(strax.CutPlugin):
     """S2 Width cut based on diffusion model
     The S2 width cut compares the S2 width to what we could expect based on its depth in the detector. The inputs to
     this are the drift velocity and the diffusion constant. The allowed variation in S2 width is greater at low
@@ -21,9 +21,10 @@ class S2Width(strax.Plugin):
     ported from lax.sciencerun1.py"""
     depends_on = ('event_info',)
     provides = 'cut_S2width'
-    dtype = [('cut_S2width', np.bool, 'S2 Width cut')] + strax.time_fields
+    cut_description = 'S2 Width cut'
+    cut_name = 'cut_S2width'
 
-    __version__ = 1.1
+    __version__ = 1.2
 
     diffusion_constant = 29.35 * ((units.cm) ** 2) / units.s
     v_drift = 1.335 * (units.um) / units.ns
@@ -47,15 +48,11 @@ class S2Width(strax.Plugin):
     def logpdf(self, events):
         return chi2.logpdf(self.normWidth(events) * (self.nElectron(events) - 1), self.nElectron(events))
 
-    def compute(self, events):
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_S2width'] = np.all([self.logpdf(events) > -14], axis=0)
-        return r
+    def cut_by(self, events):
+        return np.all([self.logpdf(events) > -14], axis=0)
 
 
-class S1SingleScatter(strax.Plugin):
+class S1SingleScatter(strax.CutPlugin):
     """Requires only one valid interaction between the largest S2, and any S1 recorded before it.
     The S1 cut checks that any possible secondary S1s recorded in a waveform, could not have also
     produced a valid interaction with the primary S2. To check whether an interaction between the
@@ -71,12 +68,13 @@ class S1SingleScatter(strax.Plugin):
     """
     depends_on = 'event_info'
     provides = 'cut_S1SingleScatter'
-
+    cut_name = 'cut_S1SingleScatter'
+    cut_description = 'S1 Single Scatter cut'
     s2width = S2Width
-    dtype = [('cut_S1SingleScatter', np.bool, 'S1 Single Scatter cut')] + strax.time_fields
-    __version__ = 1.1
 
-    def compute(self, events):
+    __version__ = 1.2
+
+    def cut_by(self, events):
         mask = events['alt_s1_interaction_drift_time'] > self.s2width.DriftTimeFromGate
         alt_n_electron = np.clip(events[mask]['s2_area'], 0, 5000) / self.s2width.scg
 
@@ -88,16 +86,10 @@ class S1SingleScatter(strax.Plugin):
 
         alt_interaction_passes = chi2.logpdf(alt_rel_width * (alt_n_electron - 1), alt_n_electron) > - 20
 
-        arr = np.all([True ^ alt_interaction_passes], axis=0)
-
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_S1SingleScatter'] = arr
-        return r
+        return np.all([True ^ alt_interaction_passes], axis=0)
 
 
-class S2SingleScatter(strax.Plugin):
+class S2SingleScatter(strax.CutPlugin):
     """Check that largest other S2 area is smaller than some bound.
     The single scatter is to cut an event if its largest_other_s2 is too large.
     As the largest_other_s2 takes a greater value when they originated from some real scatters
@@ -108,8 +100,9 @@ class S2SingleScatter(strax.Plugin):
     """
     depends_on = 'event_info'
     provides = 'cut_S2SingleScatter'
-    dtype = [('cut_S2SingleScatter', np.bool, 'S2 Single Scatter cut')] + strax.time_fields
-    __version__ = 4.1
+    cut_name = 'cut_S2SingleScatter'
+    cut_description = 'S2 Single Scatter cut'
+    __version__ = 4.2
 
     @classmethod
     def other_s2_bound(cls, s2_area):
@@ -121,18 +114,14 @@ class S2SingleScatter(strax.Plugin):
 
         return rescaled_s2_0 * another_term_0 + rescaled_s2_1 * another_term_1
 
-    def compute(self, events):
+    def cut_by(self, events):
         largest_other_s2_is_nan = np.isnan(events['s2_largest_other'])
         arr = np.all([largest_other_s2_is_nan | (events['s2_largest_other'] < self.other_s2_bound(events['s2_area']))],
                      axis=0)
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_S2SingleScatter'] = arr
-        return r
+        return arr
 
 
-class S2Threshold(strax.Plugin):
+class S2Threshold(strax.CutPlugin):
     """The S2 energy at which the trigger is perfectly efficient.
     See: https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:analysis:firstresults:daqtriggerpaxefficiency
     Contact: Jelle Aalbers <aalbers@nikhef.nl>
@@ -140,20 +129,15 @@ class S2Threshold(strax.Plugin):
     """
     depends_on = 'event_info'
     provides = 'S2Threshold'
-    dtype = [('cut_S2threshold', np.bool, 's2 must be larger then 200 PE')] + strax.time_fields
-    __version__ = 1.1
+    cut_name = 'cut_S2threshold'
+    cut_description = 's2 must be larger then 200 PE'
+    __version__ = 1.3
 
-    def compute(self, events):
-        arr = np.all([events['s2_area'] > 200],
-                     axis=0)
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_S2threshold'] = arr
-        return r
+    def cut_by(self, events):
+        return np.all([events['s2_area'] > 200], axis=0)
 
 
-class S2AreaFractionTop(strax.Plugin):
+class S2AreaFractionTop(strax.CutPlugin):
     """Cuts events with an unusual fraction of S2 on top array.
     Primarily cuts gas events with a particularly large S2 AFT, also targets some
     strange / junk / other events with a low AFT.
@@ -164,8 +148,10 @@ class S2AreaFractionTop(strax.Plugin):
     """
     depends_on = ('event_info',)
     provides = 'cut_S2AreaFractionTop'
-    dtype = [('cut_S2AreaFractionTop', np.bool, 'Cut on S2 AFT')] + strax.time_fields
-    __version__ = 1.1
+    cut_name = 'cut_S2AreaFractionTop'
+    cut_description = 'Cut on S2 AFT'
+
+    __version__ = 1.2
 
     def upper_limit_s2_aft(self, s2):
         return 0.6177399420527526 + 3.713166211522462e-08 * s2 + 0.5460484265254656 / np.log(s2)
@@ -173,34 +159,26 @@ class S2AreaFractionTop(strax.Plugin):
     def lower_limit_s2_aft(self, s2):
         return 0.6648160611018054 - 2.590402853814859e-07 * s2 - 0.8531029789184852 / np.log(s2)
 
-    def compute(self, events):
+    def cut_by(self, events):
         arr = np.all([events['s2_area_fraction_top'] < self.upper_limit_s2_aft(events['s2_area']),
                       events['s2_area_fraction_top'] > self.lower_limit_s2_aft(events['s2_area'])], axis=0)
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_S2AreaFractionTop'] = arr
-        return r
+        return arr
 
 
-class FiducialCylinder1T(strax.Plugin):
+class FiducialCylinder1T(strax.CutPlugin):
     """Implementation of fiducial volume cylinder 1T,
     ported from lax.sciencerun0.py"""
     depends_on = ('event_positions',)
     provides = 'fiducial_cylinder_1t'
-    dtype = [('cut_fiducial_cylinder', np.bool, 'One tonne fiducial cylinder')] + strax.time_fields
-    __version__ = 1.1
+    cut_name = 'cut_fiducial_cylinder'
+    cut_description = 'One tonne fiducial cylinder'
 
-    def compute(self, events):
-        arr = np.all([(-92.9 < events['z']), (-9 > events['z']),
-                      (36.94 > np.sqrt(events['x'] ** 2 + events['y'] ** 2))],
-                     axis=0)
+    __version__ = 1.2
 
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_fiducial_cylinder'] = arr
-        return r
+    def cut_by(self, events):
+        return np.all([(-92.9 < events['z']), (-9 > events['z']),
+                       (36.94 > np.sqrt(events['x'] ** 2 + events['y'] ** 2))],
+                      axis=0)
 
 
 class S1MaxPMT(strax.LoopPlugin):
@@ -208,6 +186,7 @@ class S1MaxPMT(strax.LoopPlugin):
     port from lax.sciencerun0.py"""
     depends_on = ('events', 'event_basics', 'peak_basics')
     dtype = [('cut_s1_max_pmt', np.bool, 'S1 max PMT cut')] + strax.time_fields
+
     __version__ = 1.1
 
     def compute_loop(self, event, peaks):
@@ -223,18 +202,17 @@ class S1MaxPMT(strax.LoopPlugin):
         return ret
 
 
-class S1LowEnergyRange(strax.Plugin):
+class S1LowEnergyRange(strax.CutPlugin):
     """Pass only events with cs1<200"""
     depends_on = ('events', 'corrected_areas')
-    dtype = [('cut_s1_low_energy_range', np.bool, "Event under 200pe")] + strax.time_fields
-    __version__ = 1.1
+    provides = 'cut_s1_low_energy_range'
+    cut_name = 'cut_s1_low_energy_range'
+    cut_description = "Event under 200pe"
+
+    __version__ = 1.2
 
     def compute(self, events):
-        r = np.zeros(len(events), self.dtype)
-        r['endtime'] = events['endtime']
-        r['time'] = events['time']
-        r['cut_s1_low_energy_range'] = np.all([events['cs1'] < 200], axis=0)
-        return r
+        return np.all([events['cs1'] < 200], axis=0)
 
 
 class SR1Cuts(strax.MergeOnlyPlugin):
