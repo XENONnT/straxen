@@ -211,7 +211,7 @@ class S1LowEnergyRange(strax.CutPlugin):
 
     __version__ = 1.2
 
-    def compute(self, events):
+    def cut_by(self, events):
         return np.all([events['cs1'] < 200], axis=0)
 
 
