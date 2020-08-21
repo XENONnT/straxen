@@ -14,9 +14,10 @@ import pandas as pd
 import graphviz
 import strax
 import straxen
+import numpy as np
+
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
-
 
 page_header = """
 Straxen datastructure
@@ -77,8 +78,18 @@ because changing any of those options affect this data indirectly.
 kind_colors = dict(
     events='#ffffff',
     peaks='#98fb98',
+    hitlets='#0066ff',
+    peaklets='#d9ff66',
+    merged_s2s='#ccffcc',
     records='#ffa500',
-    raw_records='#ff4500')
+    raw_records='#ff4500',
+    raw_records_coin='#ff4500')
+
+suffices = ['_he', '_nv', "_mv"]
+for suffix in suffices:
+    to_copy = list(kind_colors.keys())
+    for c in to_copy:
+        kind_colors[c + suffix] = kind_colors[c]
 
 
 def add_spaces(x):
@@ -95,68 +106,89 @@ def add_spaces(x):
 
 
 def build_datastructure_doc():
+
     out = page_header
 
     pd.set_option('display.max_colwidth', None)
 
-    st = straxen.contexts.xenon1t_dali()
+    st = straxen.contexts.xenonnt_online()
 
     # Too lazy to write proper graph sorter
     # Make dictionary {total number of dependencies below -> list of plugins}
-    plugins_by_deps = defaultdict(list)
-    for pn, p in st._plugin_class_registry.items():
-        plugins = st._get_plugins((pn,), run_id='0')
-        plugins_by_deps[len(plugins)].append(pn)
+    tree_suffices = ['', '_nv', '_he', '_mv']
+    plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
+    # Make graph for each suffix ('' referring to TPC)
+    for suffix in tree_suffices:
+        for pn, p in st._plugin_class_registry.items():
+            if suffix not in pn:
+                continue
+            elif suffix == '' and np.any([s in pn for s in tree_suffices if s != '']):
+                continue
+            plugins = st._get_plugins((pn,), run_id='0')
+            plugins_by_deps[suffix][len(plugins)].append(pn)
+    for suffix in tree_suffices:
+        print(f'------------ {suffix} ------------')
+        os.makedirs(this_dir + f'/graphs{suffix}', exist_ok=True)
+        for n_deps in list(reversed(sorted(list(plugins_by_deps[suffix].keys())))):
+            for data_type in plugins_by_deps[suffix][n_deps]:
+                plugins = st._get_plugins((data_type,), run_id='0')
 
-    os.makedirs(this_dir + '/graphs', exist_ok=True)
+                # Create dependency graph
+                g = graphviz.Digraph(format='svg')
+                # g.attr('graph', autosize='false', size="25.7,8.3!")
+                for d, p in plugins.items():
+                    if suffix not in p.data_kind_for(d):
+                        # E.g. don't bother with raw_records_nv stuff for mv
+                        continue
+                    elif suffix == '' and np.any([s in p.data_kind_for(d) for s in tree_suffices if s != '']):
+                        # E.g. don't bother with raw_records_nv stuff for tpc ('' is always in a string)
+                        continue
+                    elif 'raw_records' in p.data_kind_for(d):
+                        if 'raw_records' in data_type:
+                            # fine
+                            pass
+                        elif f'raw_records{suffix}' != p.data_kind_for(d) and 'aqmon' in p.data_kind_for(d):
+                            # skip aqmon raw_records in dependency graph
+                            continue
+                    g.node(d,
+                           style='filled',
+                           href='#' + d.replace('_', '-'),
+                           fillcolor=kind_colors.get(p.data_kind_for(d), 'grey'))
+                    for dep in p.depends_on:
+                        g.edge(d, dep)
 
-    for n_deps in list(reversed(sorted(list(plugins_by_deps.keys())))):
-        for data_type in plugins_by_deps[n_deps]:
-            plugins = st._get_plugins((data_type,), run_id='0')
+                fn = this_dir + f'/graphs{suffix}/' + data_type
+                g.render(fn)
+                with open(fn + '.svg', mode='r') as f:
+                    svg = add_spaces(f.readlines()[5:])
 
-            # Create dependency graph
-            g = graphviz.Digraph(format='svg')
-            # g.attr('graph', autosize='false', size="25.7,8.3!")
-            for d, p in plugins.items():
-                g.node(d,
-                       style='filled',
-                       href='#' + d.replace('_', '-'),
-                       fillcolor=kind_colors.get(p.data_kind_for(d), 'grey'))
-                for dep in p.depends_on:
-                    g.edge(d, dep)
+                config_df = st.show_config(d).sort_values(by='option')
 
-            fn = this_dir + '/graphs/' + data_type
-            g.render(fn)
-            with open(fn + '.svg', mode='r') as f:
-                svg = add_spaces(f.readlines()[5:])
+                # Shorten long default values
+                config_df['default'] = [
+                    x[:10] + '...' + x[-10:]
+                    if isinstance(x, str) and len(x) > 30 else x
+                    for x in config_df['default'].values]
 
-            config_df = st.show_config(d).sort_values(by='option')
+                p = plugins[data_type]
 
-            # Shorten long default values
-            config_df['default'] = [
-                x[:10] + '...' + x[-10:]
-                if isinstance(x, str) and len(x) > 30 else x
-                for x in config_df['default'].values]
+                out += template.format(
+                    p=p,
+                    svg=svg,
+                    data_type=data_type,
+                    columns=add_spaces(
+                        st.data_info(data_type).to_html(index=False)
+                    ),
+                    kind=p.data_kind_for(data_type),
+                    docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
+                    config_options=add_spaces(
+                        config_df.to_html(index=False))
+                )
 
-            p = plugins[data_type]
+        with open(this_dir + f'/reference/datastructure{suffix}.rst', mode='w') as f:
+            f.write(out)
 
-            out += template.format(
-                p=p,
-                svg=svg,
-                data_type=data_type,
-                columns=add_spaces(
-                    st.data_info(data_type).to_html(index=False)
-                ),
-                kind=p.data_kind_for(data_type),
-                docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
-                config_options=add_spaces(
-                    config_df.to_html(index=False))
-            )
-
-    with open(this_dir + '/reference/datastructure.rst', mode='w') as f:
-        f.write(out)
-
-    shutil.rmtree(this_dir + '/graphs')
+        shutil.rmtree(this_dir + f'/graphs{suffix}')
 
 
 try:
