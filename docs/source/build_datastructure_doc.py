@@ -111,6 +111,35 @@ def add_spaces(x):
     return y
 
 
+def skip(p, d, suffix, data_type):
+    if suffix not in p.data_kind_for(d):
+        # E.g. don't bother with raw_records_nv stuff for mv
+        return True
+    elif suffix == '' and np.any([s in p.data_kind_for(d) for s in tree_suffices if s != '']):
+        # E.g. don't bother with raw_records_nv stuff for tpc ('' is always in a string)
+        return True
+    elif 'raw_records' in p.data_kind_for(d):
+        if 'raw_records' in data_type:
+            # fine
+            pass
+        elif f'raw_records{suffix}' != p.data_kind_for(d) and 'aqmon' in p.data_kind_for(d):
+            # skip aqmon raw_records in dependency graph
+            return True
+    return False
+
+
+def get_plugins_deps(st):
+    plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
+    for suffix in tree_suffices:
+        for pn, p in st._plugin_class_registry.items():
+            if suffix not in pn:
+                continue
+            elif suffix == '' and np.any([s in pn for s in tree_suffices if s != '']):
+                continue
+            plugins = st._get_plugins((pn,), run_id='0')
+            plugins_by_deps[suffix][len(plugins)].append(pn)
+    return plugins_by_deps
+
 def build_datastructure_doc():
 
     pd.set_option('display.max_colwidth', None)
@@ -120,16 +149,9 @@ def build_datastructure_doc():
     # Too lazy to write proper graph sorter
     # Make dictionary {total number of dependencies below -> list of plugins}
 
-    plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
+    plugins_by_deps = get_plugins_deps(st)
+
     # Make graph for each suffix ('' referring to TPC)
-    for suffix in tree_suffices:
-        for pn, p in st._plugin_class_registry.items():
-            if suffix not in pn:
-                continue
-            elif suffix == '' and np.any([s in pn for s in tree_suffices if s != '']):
-                continue
-            plugins = st._get_plugins((pn,), run_id='0')
-            plugins_by_deps[suffix][len(plugins)].append(pn)
     for suffix in tree_suffices:
         out = page_header.format(title = {titles[suffix]})
         print(f'------------ {suffix} ------------')
@@ -142,19 +164,8 @@ def build_datastructure_doc():
                 g = graphviz.Digraph(format='svg')
                 # g.attr('graph', autosize='false', size="25.7,8.3!")
                 for d, p in plugins.items():
-                    if suffix not in p.data_kind_for(d):
-                        # E.g. don't bother with raw_records_nv stuff for mv
+                    if skip(p, d, suffix, data_type):
                         continue
-                    elif suffix == '' and np.any([s in p.data_kind_for(d) for s in tree_suffices if s != '']):
-                        # E.g. don't bother with raw_records_nv stuff for tpc ('' is always in a string)
-                        continue
-                    elif 'raw_records' in p.data_kind_for(d):
-                        if 'raw_records' in data_type:
-                            # fine
-                            pass
-                        elif f'raw_records{suffix}' != p.data_kind_for(d) and 'aqmon' in p.data_kind_for(d):
-                            # skip aqmon raw_records in dependency graph
-                            continue
                     g.node(d,
                            style='filled',
                            href='#' + d.replace('_', '-'),
@@ -177,18 +188,11 @@ def build_datastructure_doc():
 
                 p = plugins[data_type]
 
-                out += template.format(
-                    p=p,
-                    svg=svg,
-                    data_type=data_type,
-                    columns=add_spaces(
-                        st.data_info(data_type).to_html(index=False)
-                    ),
+                out += template.format(p=p, svg=svg, data_type=data_type,
+                    columns=add_spaces(st.data_info(data_type).to_html(index=False)),
                     kind=p.data_kind_for(data_type),
                     docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
-                    config_options=add_spaces(
-                        config_df.to_html(index=False))
-                )
+                    config_options=add_spaces(config_df.to_html(index=False)))
 
         with open(this_dir + f'/reference/datastructure{suffix}.rst', mode='w') as f:
             f.write(out)
