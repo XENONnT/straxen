@@ -1,4 +1,4 @@
-__version__ = '0.9.2'
+__version__ = '0.10.0'
 
 from .common import *
 from .itp_map import *

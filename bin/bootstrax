@@ -97,6 +97,10 @@ parser.add_argument('--production', action='store_true',
                          "interactions with the runs-database")
 parser.add_argument('--undying', action='store_true',
                     help="Except any error and ignore it")
+parser.add_argument('--sub_d_targets', nargs='*',
+                    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv'],
+                    help="Target(s) for other sub-detectors. If not produced automatically "
+                         "when processing tpc data, st.make the requested data later.")
 parser.add_argument('--max_messages', type=int,
                     default=10,
                     help="number of max mailbox messages")
@@ -625,7 +629,7 @@ def infer_mode(rd):
              f'\t {result}')
 
     # Lower the settings if there are continuous failures on this run:
-    if rd['bootstrax'].get('n_failures', 0) >= lower_resources_after_n_failures:
+    if rd.get('bootstrax', {}).get('n_failures', 0) >= lower_resources_after_n_failures:
         result = dict(cores=max(4, result['cores'] // 2),
                       max_messages=max(4, result['max_messages'] // 2),
                       timeout=min(1000, result['timeout']* 1.5)
@@ -1023,7 +1027,8 @@ def get_compressor(rd, default_compressor="lz4"):
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
               run_start_time, samples_per_record, process_mode, target_override,
-              daq_chunk_duration, daq_overlap_chunk_duration, debug=False):
+              daq_chunk_duration, daq_overlap_chunk_duration, n_fails,
+              debug=False):
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1064,6 +1069,21 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
             st.make(run_id, target,
                     config=strax_config,
                     max_workers=process_mode['cores'])
+
+            if (target != 'raw_records' and n_fails == 0) or args.fix_target:
+                # Make the nv, he, and mv data type only if we are:
+                #  - Not processing up to raw_records (that means we are in some recovery mode)
+                #  - We haven't failed this run before.
+                # or
+                #  - Are fixing the target (this is useful for testing but normally not used)
+                for sub_d_target in args.sub_d_targets:
+                    if sub_d_target not in st._plugin_class_registry:
+                        log_warning(f'Trying to make unknown data type {sub_d_target}')
+                        continue
+                    elif not st.is_stored(run_id, sub_d_target):
+                        st.make(run_id, sub_d_target,
+                                config=strax_config,
+                                max_workers=process_mode['cores'])
 
         if args.profile.lower() == 'false':
             st_make()
@@ -1168,10 +1188,11 @@ def process_run(rd, send_heartbeats=args.production):
             os.remove(exception_tempfile)
 
         target = args.target
+        n_fails = rd['bootstrax'].get('n_failures', 0)
         if not args.production and 'bootstrax' not in rd:
             # Bootstrax does not register in non-production mode
             pass
-        elif rd['bootstrax'].get('n_failures', 0) > 1 and not args.process:
+        elif n_fails > 1 and not args.process:
             # Failed before, and on autopilot: do just raw_records
             target = 'raw_records'
 
@@ -1191,7 +1212,7 @@ def process_run(rd, send_heartbeats=args.production):
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, compressor,
                   run_start_time, samples_per_record, process_mode, target_override,
-                  daq_chunk_duration, daq_overlap_chunk_duration,
+                  daq_chunk_duration, daq_overlap_chunk_duration, n_fails,
                   args.debug))
 
         t0 = now()
