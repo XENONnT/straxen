@@ -39,7 +39,7 @@ export, __all__ = strax.exporter()
                       "channel number."),
     strax.Option(
         'to_pe_file_nv',
-        default='/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/swt_gains.npy',  # noqa
+        default=straxen.aux_repo + '/c5800ea686f06f0149af30b2db9c08b6216ecb36/n_veto_gains.npy?raw=true',  # noqa
         help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
 )
 class nVETOHitlets(strax.Plugin):
@@ -125,8 +125,8 @@ def drop_data_field(old_hitlets, new_hitlets):
     :param new_hitlets:
     :return:
     """
-    n = len(old_hitlets)
-    for i in range(n):
+    n_hitlets = len(old_hitlets)
+    for i in range(n_hitlets):
         o = old_hitlets[i]
         n = new_hitlets[i]
 
