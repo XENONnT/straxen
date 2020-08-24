@@ -16,7 +16,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    """Condense the data field in peaks to peak-properties"""
+    """Condense the data field in peaks to peak-properties."""
     __version__ = "0.0.7"
     parallel = True
     depends_on = ('peaks',)
@@ -211,7 +211,8 @@ class PeakPositions(strax.Plugin):
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
-    """Look for peaks around a peak to determine how many peaks are in proximity of a peak
+    """
+    Look for peaks around a peak to determine how many peaks are in proximity of a peak
     """
     depends_on = ('peak_basics',)
     dtype = [

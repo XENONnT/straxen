@@ -64,8 +64,8 @@ class Peaklets(strax.Plugin):
     To get Peaklets from records apply/do:
         1. Hit finding
         2. Peak finding
-        3. Peak splitting
-        4. Sum waveform
+        3. Peak splitting using the natural breaks algorithm
+        4. Compute the digital sum waveform
     """
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
@@ -292,8 +292,8 @@ class PeakletClassification(strax.Plugin):
 
 
 @export
-class PeakletClassificationHe():
-    """Classify peaklets as unknown, S1, or S2."""
+class PeakletClassificationHe(PeakletClassification):
+    __doc__ = PeakletClassification.__doc__
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
@@ -316,7 +316,9 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Merge together peaklets if we believe they form a single peak instead
+    """
+    Merge together peaklets if peak finding favours that they would form a
+        single peak instead.
     """
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
@@ -408,8 +410,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     
 @export
 class MergedS2sHe(MergedS2s):
-    """Merge together peaklets if we believe they form a single peak instead
-    """
+    __doc__ = MergedS2s.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he')
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
@@ -429,7 +430,8 @@ class MergedS2sHe(MergedS2s):
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
     """
-    Merge peaklets and merged S2s such that we obtain our peaks. As this step is
+    Merge peaklets and merged S2s such that we obtain our peaks (replacing all
+        peaklets that were later re-merged as S2s). As this step is
         computationally trivial, never save this plugin.
     """
     depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
@@ -458,10 +460,7 @@ class Peaks(strax.Plugin):
 
 @export
 class PeaksHe(Peaks):
-    """
-    Merge peaklets and merged S2s such that we obtain our peaks. As this step is
-        computationally trivial, never save this plugin.
-    """
+    __doc__ = Peaks.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
     provides = 'peaks_he'
