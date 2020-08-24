@@ -53,6 +53,20 @@ export, __all__ = strax.exporter()
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
+    """
+    Split records into:
+        -peaklets
+        -lone_hits
+
+    Peaklets are very aggressively split peaks such that we are able to find S1-S2s even
+        if they are close to each other. (S2) Peaks that are split into too many peaklets
+        will be merged later on.
+    To get Peaklets from records apply/do:
+        1. Hit finding
+        2. Peak finding
+        3. Peak splitting
+        4. Sum waveform
+    """
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
     data_kind = dict(peaklets='peaklets',
@@ -202,6 +216,7 @@ class Peaklets(strax.Plugin):
     *HITFINDER_OPTIONS_he
 )
 class PeakletsHe(Peaklets):
+    __doc__ = Peaklets.__doc__
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
@@ -277,7 +292,7 @@ class PeakletClassification(strax.Plugin):
 
 
 @export
-class PeakletClassificationHe(PeakletClassification):
+class PeakletClassificationHe():
     """Classify peaklets as unknown, S1, or S2."""
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
@@ -413,6 +428,10 @@ class MergedS2sHe(MergedS2s):
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
+    """
+    Merge peaklets and merged S2s such that we obtain our peaks. As this step is
+        computationally trivial, never save this plugin.
+    """
     depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
@@ -439,6 +458,10 @@ class Peaks(strax.Plugin):
 
 @export
 class PeaksHe(Peaks):
+    """
+    Merge peaklets and merged S2s such that we obtain our peaks. As this step is
+        computationally trivial, never save this plugin.
+    """
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
     provides = 'peaks_he'

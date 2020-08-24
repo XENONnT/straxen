@@ -59,9 +59,10 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."))
 class DAQReader(strax.Plugin):
-    """Read the XENONnT DAQ
+    """Read the XENONnT DAQ-live_data from redax and split it to the appropriate
+    raw_record data-types based on the channel-map.
 
-    Does nothing whatsoever to the pulse data; not even baselining.
+    Does nothing whatsoever to the live_data; not even baselining.
     """
     provides = (
         'raw_records',
