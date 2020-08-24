@@ -22,6 +22,8 @@ Straxen is the analysis framework for XENONnT, built on top of the generic [stra
     :caption: Reference
 
     reference/datastructure
+    reference/datastructure_he
+    reference/datastructure_nv
     reference/straxen
 
 
