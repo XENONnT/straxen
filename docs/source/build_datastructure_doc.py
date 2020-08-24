@@ -184,7 +184,7 @@ def build_datastructure_doc():
 
     # Make graph for each suffix ('' referring to TPC)
     for suffix in tree_suffices:
-        out = page_header.format(title = {titles[suffix]})
+        out = page_header.format(title=titles[suffix])
         print(f'------------ {suffix} ------------')
         os.makedirs(this_dir + f'/graphs{suffix}', exist_ok=True)
         for n_deps in list(reversed(sorted(list(plugins_by_deps[suffix].keys())))):
