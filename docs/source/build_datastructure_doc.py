@@ -9,7 +9,6 @@ For extra credit, the SVGs are clickable.
 from collections import defaultdict
 import os
 import shutil
-
 import pandas as pd
 import graphviz
 import strax
@@ -112,6 +111,16 @@ def add_spaces(x):
 
 
 def skip(p, d, suffix, data_type):
+    """
+    Can we skip this plugin in our for loop (a bunch of if statements to check if we can
+        continue).
+    :param p: strax.plugin
+    :param d: dependency of the strax.plugin
+    :param suffix: any of the tree_suffices needed for the logic
+    :param data_type: data type (sting)
+    :return: bool if we can continue (do not include this one in the data-structure if
+        True)
+    """
     if suffix not in p.data_kind_for(d):
         # E.g. don't bother with raw_records_nv stuff for mv
         return True
@@ -129,6 +138,12 @@ def skip(p, d, suffix, data_type):
 
 
 def get_plugins_deps(st):
+    """
+    For a given Strax.Context return the dependencies per plugin split by the known
+        tree_suffices.
+    :param st: Strax.Context
+    :return: dict of default dicts containing the number of dependencies.
+    """
     plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
     for suffix in tree_suffices:
         for pn, p in st._plugin_class_registry.items():
@@ -140,11 +155,27 @@ def get_plugins_deps(st):
             plugins_by_deps[suffix][len(plugins)].append(pn)
     return plugins_by_deps
 
+
+def get_context():
+    """
+    Need to init a context without initializing the runs_db as that requires the
+        appropriate passwords.
+    :return: straxen context that mimics the xenonnt_online context without the rundb init
+    """
+    # Alternatively, it might be better to make the rundb init optional to circumvent it
+    st = strax.Context(
+        config=straxen.contexts.xnt_common_config,
+        **straxen.contexts.common_opts,)
+    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
+    return st
+
+
 def build_datastructure_doc():
 
-    pd.set_option('display.max_colwidth', None)
+    pd.set_option('display.max_colwidth', int(1e9))
 
-    st = straxen.contexts.xenonnt_online()
+    st = get_context()
 
     # Too lazy to write proper graph sorter
     # Make dictionary {total number of dependencies below -> list of plugins}
