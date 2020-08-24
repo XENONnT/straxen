@@ -256,7 +256,8 @@ def check_sn_trigger():
 def clean_raw_records_nv():
     """Based on the runsDB, remove the raw_records_nv if they are old"""
     check_sn_trigger()
-    rd = run_coll.find_one({'data.type': 'raw_records_nv',
+    rd = run_coll.find_one({'bootstrax.state': 'done',
+                            'data.type': 'raw_records_nv',
                             'data.host': hostname,
                             'start':
                                 {'$lt': now(-ajax_thresholds["remove_raw_records_nv"])}})
@@ -299,17 +300,27 @@ def clean_old_hash():
     files = os.listdir(output_folder)
     for f in files:
         run_id, data_type, lineage_hash = f.split('-')
-        if bool(re.findall('|'.join(low_level_data), data_type)):
+        if (bool(re.findall('|'.join(low_level_data), data_type)) or
+                '_temp' in lineage_hash):
             continue
+        elif data_type not in st._plugin_class_registry:
+            log.warning(f'{data_type} is not registered!')
+            continue
+
         current_st_hash = st.key_for(run_id, data_type).lineage_hash
         if current_st_hash != lineage_hash:
             loc = os.path.join(output_folder, f)
             log.info(f'clean_old_hash::\tLineage for run {run_id}, {data_type} is '
                      f'{current_st_hash}. Removing old hash: {lineage_hash} from {loc}.')
-            rd = run_coll.find_one({'data.type': data_type,
+            rd = run_coll.find_one({'bootstrax.state': 'done',
+                                    'data.type': data_type,
                                     'data.host': hostname,
                                     'number': int(run_id)})
-            delete_data(rd, loc, data_type, test=not args.execute)
+            if rd:
+                delete_data(rd, loc, data_type, test=not args.execute)
+            else:
+                log.info(f'{data_type} at {loc} not registered as done for {run_id}. '
+                         f'Perhaps the data still processing the run?')
 
 
 def clean_abandoned(delete_live=False):
@@ -500,7 +511,8 @@ def remove_if_unregistered(number, delete_live=False):
     :param delete_live: Bool, if True: Remove the live_data. Else remove processed data
     """
     # Query the database to remove data
-    rd = run_coll.find_one({'number': number,
+    rd = run_coll.find_one({'bootstrax.state':'done',
+                            'number': number,
                             'data.host': hostname if not delete_live else 'daq'})
     run_id = '%06d' % number
 
@@ -547,9 +559,9 @@ def clean_database(delete_live=False):
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
     if not delete_live:
-        rds = run_coll.find({'data.host': hostname})
+        rds = run_coll.find({'bootstrax.state': 'done', 'data.host': hostname})
     else:
-        rds = run_coll.find({'data.host': 'daq'})
+        rds = run_coll.find({'bootstrax.state': 'done', 'data.host': 'daq'})
     if not rds:
         # Great, we are clean
         return
