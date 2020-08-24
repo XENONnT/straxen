@@ -162,7 +162,7 @@ def get_context():
         appropriate passwords.
     :return: straxen context that mimics the xenonnt_online context without the rundb init
     """
-    # TODO perhaps it is better to make the rundb init optional to circumvent it
+    # Alternatively, it might be better to make the rundb init optional to circumvent it
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **straxen.contexts.common_opts,)
