@@ -224,7 +224,6 @@ class PulseProcessingHe(PulseProcessing):
         records_he=False,
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
-    parallel = 'process'
     compressor = 'lz4'
     child_ends_with = '_he'
 
