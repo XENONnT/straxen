@@ -46,7 +46,6 @@ xnt_common_config = dict(
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
-                   _database_init=True,
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
@@ -54,17 +53,17 @@ def xenonnt_online(output_folder='./strax_data',
         **kwargs}
 
     st = strax.Context(
-        config=straxen.contexts.xnt_common_config,
-        **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration])
-
-    st.storage = [
+        storage=[
             straxen.RunDB(
                 readonly=not we_are_the_daq,
                 runid_field='number',
                 new_data_path=output_folder,
-                rucio_path='/dali/lgrandi/rucio/'),] \
-        if _database_init else []
+                rucio_path='/dali/lgrandi/rucio/'),
+        ],
+        config=straxen.contexts.xnt_common_config,
+        **context_options)
+    st.register([straxen.DAQReader, straxen.LEDCalibration])
+
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
