@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 import argparse
 from datetime import datetime, timedelta
@@ -41,7 +41,7 @@ ajax_thresholds = {
     # Remove the live data only if this many seconds old
     'remove_live_after': 24 * 3600,  # s
     # Remove do not remove successfully processed runs if they have finished less than
-    # this many seconds ago
+    # this many seconds ago to e.g. allow for saving et cetera
     'wait_after_processing': 2 * 3600,  # s
     # Remove the raw records of the neutron veto after this many seconds
     'remove_raw_records_nv': 365.25 * 24 * 3600,  # s
@@ -208,6 +208,8 @@ def clean_non_latest():
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
     rds = run_coll.find({'bootstrax.state': 'done',
+                         'bootstrax.time':
+                             {"$lt": now(-ajax_thresholds['wait_after_processing'])},
                          'bootstrax.host': {'$ne': hostname},
                          'data.host': hostname})
     if not rds:
@@ -511,7 +513,9 @@ def remove_if_unregistered(number, delete_live=False):
     :param delete_live: Bool, if True: Remove the live_data. Else remove processed data
     """
     # Query the database to remove data
-    rd = run_coll.find_one({'bootstrax.state':'done',
+    rd = run_coll.find_one({'bootstrax.state': 'done',
+                            'bootstrax.time':
+                                {"$lt": now(-ajax_thresholds['wait_after_processing'])},
                             'number': number,
                             'data.host': hostname if not delete_live else 'daq'})
     run_id = '%06d' % number
@@ -559,9 +563,15 @@ def clean_database(delete_live=False):
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
     if not delete_live:
-        rds = run_coll.find({'bootstrax.state': 'done', 'data.host': hostname})
+        rds = run_coll.find({'bootstrax.state': 'done',
+                             'bootstrax.time':
+                                 {"$lt": now(-ajax_thresholds['wait_after_processing'])},
+                             'data.host': hostname})
     else:
-        rds = run_coll.find({'bootstrax.state': 'done', 'data.host': 'daq'})
+        rds = run_coll.find({'bootstrax.state': 'done',
+                             'bootstrax.time':
+                                {"$lt": now(-ajax_thresholds['wait_after_processing'])},
+                             'data.host': 'daq'})
     if not rds:
         # Great, we are clean
         return
