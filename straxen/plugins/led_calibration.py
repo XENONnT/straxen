@@ -61,42 +61,39 @@ class LEDCalibration(strax.Plugin):
         rr   = raw_records[mask]
         r    = get_records(rr, baseline_window=self.config['baseline_window'])
         del rr, raw_records
-               
+
         temp = np.zeros(len(r), dtype=self.dtype)
-        
+
         temp['channel'] = r['channel']
         temp['time']    = r['time']
         temp['dt']      = r['dt']
         temp['length']  = r['length']
-        
+
         on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'])
         temp['amplitude_led']   = on['amplitude']
         temp['amplitude_noise'] = off['amplitude']
-               
+
         area = get_area(r, self.config['led_window'])
         temp['area'] = area['area']
-        
         return temp
-    
+
+
 def get_records(raw_records, baseline_window):
     """
     Determine baseline as the average of the first baseline_samples
     of each pulse. Subtract the pulse float(data) from baseline.
-    """  
-    
-    if len(raw_records):
-        record_length = len(raw_records['data'][0])
-    else:
-        return
-        
-    _dtype = [(('Start time since unix epoch [ns]', 'time'), '<i8'), 
-              (('Length of the interval in samples', 'length'), '<i4'), 
-              (('Width of one sample [ns]', 'dt'), '<i2'), 
-              (('Channel/PMT number', 'channel'), '<i2'), 
-              (('Length of pulse to which the record belongs (without zero-padding)', 'pulse_length'), '<i4'), 
-              (('Fragment number in the pulse', 'record_i'), '<i2'), 
+    """
+
+    record_length = np.shape(raw_records.dtype['data'])[0]
+
+    _dtype = [(('Start time since unix epoch [ns]', 'time'), '<i8'),
+              (('Length of the interval in samples', 'length'), '<i4'),
+              (('Width of one sample [ns]', 'dt'), '<i2'),
+              (('Channel/PMT number', 'channel'), '<i2'),
+              (('Length of pulse to which the record belongs (without zero-padding)', 'pulse_length'), '<i4'),
+              (('Fragment number in the pulse', 'record_i'), '<i2'),
               (('Waveform data in raw ADC counts', 'data'), 'f4', (record_length,))]
-              
+
     records = np.zeros(len(raw_records), dtype=_dtype)
 
     records['time']         = raw_records['time']

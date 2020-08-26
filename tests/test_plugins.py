@@ -33,12 +33,14 @@ class DummyRawRecords(strax.Plugin):
         return chunk_i < N_CHUNKS
 
     def compute(self, chunk_i):
-        r = np.zeros(recs_per_chunk, self.dtype['raw_records'])
         t0 = chunk_i + self.config['secret_time_offset']
-        r['time'] = t0
-        r['length'] = r['dt'] = 1
-        r['channel'] = np.arange(len(r))
-
+        if chunk_i < N_CHUNKS - 1:
+            r = np.zeros(recs_per_chunk, self.dtype['raw_records'])
+            r['time'] = t0
+            r['length'] = r['dt'] = 1
+            r['channel'] = np.arange(len(r))
+        else:
+            r = np.zeros(0, self.dtype['raw_records'])
         res = {p: self.chunk(start=t0, end=t0 + 1, data=r, data_type=p)
                for p in self.provides}
         return res
@@ -64,13 +66,12 @@ def _run_plugins(st,
         # As we use a temporary directory we should have a clean start
         assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
 
-        # # 1Ts NN seems funky, let's ignore it for now?
-        # target = {'nT': 'event_info', '1T': 'event_info'}[context_name]
+        # Create event info
         target = 'event_info'
-        # Create stuff
         st.make(run_id=run_id,
                 targets=target,
                 **proces_kwargs)
+
         # The stuff should be there
         assert st.is_stored(run_id, target), f'Could not make {target}'
 
@@ -80,9 +81,6 @@ def _run_plugins(st,
         #  B) Most development will be on nT, 1T may get less changes
         #     in the near future
         if make_all:
-            # First make some _he stuff for multiprocessing
-            st.make(run_id, 'peaks_he', **proces_kwargs)
-
             # Now make sure we can get some data for all plugins
             for p in list(st._plugin_class_registry.keys()):
                 if p not in forbidden_plugins:
