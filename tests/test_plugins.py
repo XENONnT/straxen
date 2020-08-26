@@ -141,4 +141,3 @@ def test_nT_mutlticore():
 def test_1T_mutlticore():
     print('1T multicore')
     test_1T(2)
-gi
