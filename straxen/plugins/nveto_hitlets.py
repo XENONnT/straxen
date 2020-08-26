@@ -45,6 +45,20 @@ export, __all__ = strax.exporter()
 class nVETOHitlets(strax.Plugin):
     """
     Plugin which computes the nveto hitlets and their parameters.
+
+    Hitlets are an extension of regular hits. They include the left
+    and right extension. The plugin does the following:
+
+        1. Generate hitlets which includes these sub-steps:
+            * Apply left and right hit extension and concatenate
+                overlapping hits.
+            * Generate temp. hitelts and look for their waveforms in
+                their corresponding records.
+            * Split hitlets if they satisfy the set criteria.
+        2. Compute the properties of the hitlets.
+
+    Note:
+        Hitlets are getting chopped if extended in not recorded regions.
     """
     __version__ = '0.0.2'
 
