@@ -8,6 +8,9 @@ from strax.testutils import run_id, recs_per_chunk
 # Number of chunks for the dummy raw records we are writing here
 N_CHUNKS = 2
 
+##
+# Tools
+##
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False)
@@ -40,72 +43,102 @@ class DummyRawRecords(strax.Plugin):
                for p in self.provides}
         return res
 
+# Don't concern ourselves with rr_aqmon et cetera
+forbidden_plugins = tuple([p for p in
+                           straxen.daqreader.DAQReader.provides
+                           if p not in DummyRawRecords.provides])
 
-def test_all_plugins():
+
+def _run_plugins(st,
+                 make_all=False,
+                 **proces_kwargs):
     """
-    Try all plugins (except the DAQReader) in both multicore and signle core mode to see
-    if we can really push some (empty) data from it and don't have any nasty problems like
-    that we are referring to some non existant dali folder.
+    Try all plugins (except the DAQReader) for a given context (st) to see if
+    we can really push some (empty) data from it and don't have any nasty
+    problems like that we are referring to some non existant dali folder.
     """
-    # Test both lazy and not lazy multicore/single core
-    for max_workers in [2, 1]:
-        for it, (context_name, st) in enumerate(
-                {"nT": straxen.contexts.xenonnt_online(_database_init=False),
-                 "1T": straxen.contexts.xenon1t_dali()}.items()
-        ):
-            print(f'Testing {context_name} context')
-            with tempfile.TemporaryDirectory() as temp_dir:
 
-                # Don't concern ourselves with rr_aqmon et cetera
-                forbidden_plugins = tuple([p for p in
-                                           straxen.daqreader.DAQReader.provides
-                                           if p not in DummyRawRecords.provides])
+    with tempfile.TemporaryDirectory() as temp_dir:
+        st.storage = [strax.DataDirectory(temp_dir)]
 
-                # Change config to allow for testing both multiprocessing and lazy mode
-                st.set_context_config({'forbid_creation_of': forbidden_plugins})
-                if max_workers - 1:
-                     st.set_context_config({
-                         'allow_multiprocess': True,
-                         'allow_lazy': False,
-                         'timeout': 60,  # we don't want to build travis for ever
-                     })
+        # As we use a temporary directory we should have a clean start
+        assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
 
-                st.register(DummyRawRecords)
-                st.storage = [strax.DataDirectory(temp_dir)]
+        # # 1Ts NN seems funky, let's ignore it for now?
+        # target = {'nT': 'event_info', '1T': 'event_info'}[context_name]
+        target = 'event_info'
+        # Create stuff
+        st.make(run_id=run_id,
+                targets=target,
+                **proces_kwargs)
+        # The stuff should be there
+        assert st.is_stored(run_id, target), f'Could not make {target}'
 
-                # As we use a temporary directory we should have a clean start
-                assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
+        # I'm only going to do this for nT because:
+        #  A) Doing this many more times does not give us much more
+        #     info (everything above already worked fine)
+        #  B) Most development will be on nT, 1T may get less changes
+        #     in the near future
+        if make_all:
+            # First make some _he stuff for multiprocessing
+            st.make(run_id, 'peaks_he', **proces_kwargs)
 
-                # 1Ts NN seems funky, let's ignore it for now?
-                target = {'nT': 'event_info', '1T': 'peak_basics'}[context_name]
+            # Now make sure we can get some data for all plugins
+            for p in list(st._plugin_class_registry.keys()):
+                if p not in forbidden_plugins:
+                    st.get_array(run_id=run_id,
+                                 targets=p,
+                                 **proces_kwargs)
 
-                # Create stuff
-                st.make(run_id=run_id,
-                        targets=target,
-                        max_workers=max_workers)
-                # The stuff should be there
-                assert st.is_stored(run_id, target), f'Could not make {target}'
-
-                # I'm only going to do this for nT because:
-                #  A) Doing this many more times does not give us much more
-                #     info (everything above already worked fine)
-                #  B) Most development will be on nT, 1T may get less changes
-                #     in the near future
-                if context_name == 'nT':
-                    # First make some _he stuff for multiprocessing
-                    st.make(run_id, 'peaks_he', max_workers=max_workers)
-
-                    # Now make sure we can get some data for all plugins
-                    for p in list(st._plugin_class_registry.keys()):
-                        if p not in forbidden_plugins:
-                            st.get_array(run_id=run_id,
-                                         targets=p,
-                                         max_workers=max_workers)
-
-                            # Check for types that we want to save that they are stored.
-                            if (int(st._plugin_class_registry['peaks'].save_when) >
-                                    int(strax.SaveWhen.TARGET)):
-                                is_stored = st.is_stored(run_id, p)
-                                assert is_stored, f"{p} did not save correctly!"
+                    # Check for types that we want to save that they are stored.
+                    if (int(st._plugin_class_registry['peaks'].save_when) >
+                            int(strax.SaveWhen.TARGET)):
+                        is_stored = st.is_stored(run_id, p)
+                        assert is_stored, f"{p} did not save correctly!"
 
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
+
+
+def _update_context(st, max_workers):
+    # Change config to allow for testing both multiprocessing and lazy mode
+    st.set_context_config({'forbid_creation_of': forbidden_plugins})
+    st.register(DummyRawRecords)
+    if max_workers - 1:
+        st.set_context_config({
+            'allow_multiprocess': True,
+            'allow_lazy': False,
+            'timeout': 60,  # we don't want to build travis for ever
+        })
+
+##
+# Tests
+##
+
+
+def test_1T(ncores=1):
+    if ncores == 1:
+        print('-- 1T lazy mode --')
+    st = straxen.contexts.xenon1t_dali()
+    _update_context(st, ncores)
+    _run_plugins(st, make_all=False, max_wokers=ncores)
+    print(st.context_config)
+
+
+def test_nT(ncores=1):
+    if ncores == 1:
+        print('-- nT lazy mode --')
+    st = straxen.contexts.xenonnt_online(_database_init=False)
+    _update_context(st, ncores)
+    _run_plugins(st, make_all=True, max_wokers=ncores)
+    print(st.context_config)
+
+
+def test_nT_mutlticore():
+    print('nT multicore')
+    test_nT(2)
+
+
+def test_1T_mutlticore():
+    print('1T multicore')
+    test_1T(2)
+gi
