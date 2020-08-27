@@ -61,6 +61,11 @@ class Peaklets(strax.Plugin):
     Peaklets are very aggressively split peaks such that we are able to find S1-S2s even
         if they are close to each other. (S2) Peaks that are split into too many peaklets
         will be merged later on.
+    
+    Lone hits are all hits which are outside of any peak. The area of lone_hits includes 
+        the left and right hit extension, except the extension overlaps with any peaks or
+        other hits.
+    
     To get Peaklets from records apply/do:
         1. Hit finding
         2. Peak finding
