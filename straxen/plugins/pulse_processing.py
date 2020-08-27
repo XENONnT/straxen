@@ -98,6 +98,12 @@ class PulseProcessing(strax.Plugin):
     1. Flip, baseline, and integrate the waveform
     2. Apply software HE veto after high-energy peaks.
     3. Find hits, apply linear filter, and zero outside hits.
+    
+    pulse_counts holds some average information for the 
+        individual PMT channels for each chunk of raw_records. 
+        This includes e.g. number of recorded pulses, lone_pulses
+        (pulses which do not overlapp with any other pulse), 
+        or mean values of baseline and baseline rms channel.
     """
     __version__ = '0.2.2'
 
