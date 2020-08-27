@@ -22,7 +22,7 @@ export, __all__ = strax.exporter()
 )
 class nVETOPulseProcessing(strax.Plugin):
     """
-    nVETO equivalent of pulse processing.
+    nVETO equivalent of pulse processing. Not much more to say about.
     """
     __version__ = '0.0.4'
 
