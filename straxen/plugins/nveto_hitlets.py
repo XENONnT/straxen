@@ -45,7 +45,7 @@ export, __all__ = strax.exporter()
 class nVETOHitlets(strax.Plugin):
     """
     Plugin which computes the nveto hitlets and their parameters.
-
+    
     Hitlets are an extension of regular hits. They include the left
     and right extension. The plugin does the following:
 
