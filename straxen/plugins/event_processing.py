@@ -23,6 +23,22 @@ export, __all__ = strax.exporter()
                       'triggering peak'),
 )
 class Events(strax.OverlapWindowPlugin):
+    """
+    Plugin which defines an "event" in our TPC.
+
+    An event is defined by peak(s) in fixed range of time around a peak
+    which satisfies certain conditions:
+
+        1. The triggering peak must have a certain area.
+        2. The triggering peak must have less than
+            "trigger_max_competing" peaks. (A competing peak must have
+            a certain area fraction of the triggering peak and must be
+            in a window close to the main peak)
+
+    Note:
+        The time range which defines an event gets chopped at the chunk
+        boundaries. This happens at invalid boundaries of the
+    """
     depends_on = ['peak_basics', 'peak_proximity']
     data_kind = 'events'
     dtype = [
@@ -81,9 +97,16 @@ class Events(strax.OverlapWindowPlugin):
     strax.Option(
         name='force_main_before_alt', default=False,
         help="Make the alternate S1 (and likewise S2) the main S1 if "
-             "if occurs before the main S1.")
+             "occurs before the main S1.")
 )
 class EventBasics(strax.LoopPlugin):
+    """
+    Computes the basic properties of the main/alternative S1/S2 within
+    an event.
+
+    The main and alternative S2 is given by the largest two S2-Peaks
+    within the event. By default this is also true for S1.
+    """
     __version__ = '0.5.3'
 
     depends_on = ('events',
@@ -238,6 +261,10 @@ class EventBasics(strax.LoopPlugin):
             (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
 )
 class EventPositions(strax.Plugin):
+    """
+    Computes the observed and corrected position for the main S1/S2
+    pairs in an event.
+    """
     __version__ = '0.1.2'
 
     depends_on = ('event_basics',)
@@ -312,6 +339,17 @@ class EventPositions(strax.Plugin):
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
         help='link to the electron lifetime'))
 class CorrectedAreas(strax.Plugin):
+    """
+    Plugin which applies light collection efficiency maps and electron
+    life time to the data.
+
+    Computes the cS1/cS2 for the main/alternative S1/S2 as well as the
+    corrected life time.
+
+    Note:
+        Please be aware that for both, the main and alternative S1, the
+        area is corrected according to the xy-position of the main S2.
+    """
     __version__ = '0.1.0'
 
     depends_on = ['event_basics', 'event_positions']
@@ -375,6 +413,9 @@ class CorrectedAreas(strax.Plugin):
         default=13.7e-3),
 )
 class EnergyEstimates(strax.Plugin):
+    """
+    Plugin which converts cS1 and cS2 into energies.
+    """
     __version__ = '0.1.0'
     depends_on = ['corrected_areas']
     dtype = [
@@ -400,6 +441,10 @@ class EnergyEstimates(strax.Plugin):
 
 
 class EventInfo(strax.MergeOnlyPlugin):
+    """
+    Plugin which merges the information of all event data_kinds into a
+    single data_type.
+    """
     depends_on = ['events',
                   'event_basics', 'event_positions', 'corrected_areas',
                   'energy_estimates']
