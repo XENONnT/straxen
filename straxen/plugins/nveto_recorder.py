@@ -25,6 +25,15 @@ export, __all__ = strax.exporter()
                  help='Number of nVETO PMTs')
 )
 class nVETORecorder(strax.Plugin):
+    """
+    Plugin which builds a software trigger based on records. The trigger
+    is defined by a simple coincidence between pulse fragments within
+    the specified resolving time.
+    All records which do not fall into one of the coincidence windows
+    are labeled as lone records for which we compute some average
+    properties for monitoring purposes. Depending on the setting also
+    a fixed number of the lone_records per channel are stored.
+    """
     __version__ = '0.0.4'
     parallel = 'process'
 

@@ -6,6 +6,10 @@ export, __all__ = strax.exporter()
 
 @export
 class DistinctChannels(strax.LoopPlugin):
+    """
+    Compute the number of contributing PMTs that contribute to the
+    alt_s1 but not to the main S1.
+    """
     __version__ = '0.1.1'
     depends_on = ('event_basics', 'peaks')
     dtype = [
@@ -34,7 +38,8 @@ class DistinctChannels(strax.LoopPlugin):
 
 @export
 class EventInfoDouble(strax.MergeOnlyPlugin):
-    """Alternate version of event_info for Kr and other double scatter analyses
+    """Alternate version of event_info for Kr and other double scatter
+    analyses:
       - Uses a different naming convention:
         s1 -> s1_a, alt_s1 -> s1_b, and similarly for s2s;
       - Adds s1_b_distinct_channels, which can be tricky to compute
