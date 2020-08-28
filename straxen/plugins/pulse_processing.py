@@ -221,7 +221,7 @@ class PulseProcessing(strax.Plugin):
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),
     *HITFINDER_OPTIONS_he)
-class PulseProcessingHe(PulseProcessing):
+class PulseProcessingHighEnergy(PulseProcessing):
     __doc__ = PulseProcessing.__doc__
     __version__ = '0.0.1'
     provides = ('records_he', 'pulse_counts_he')
