@@ -220,7 +220,7 @@ class Peaklets(strax.Plugin):
                  help="Minimum number of contributing PMTs needed to define a peak"),
     *HITFINDER_OPTIONS_he
 )
-class PeakletsHe(Peaklets):
+class PeakletsHighEnergy(Peaklets):
     __doc__ = Peaklets.__doc__
     depends_on = 'records_he'
     provides = 'peaklets_he'
@@ -297,7 +297,7 @@ class PeakletClassification(strax.Plugin):
 
 
 @export
-class PeakletClassificationHe(PeakletClassification):
+class PeakletClassificationHighEnergy(PeakletClassification):
     __doc__ = PeakletClassification.__doc__
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
@@ -414,7 +414,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     
 @export
-class MergedS2sHe(MergedS2s):
+class MergedS2sHighEnergy(MergedS2s):
     __doc__ = MergedS2s.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he')
     data_kind = 'merged_s2s_he'
@@ -464,7 +464,7 @@ class Peaks(strax.Plugin):
 
 
 @export
-class PeaksHe(Peaks):
+class PeaksHighEnergy(Peaks):
     __doc__ = Peaks.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
