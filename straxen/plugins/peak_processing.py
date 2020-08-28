@@ -96,7 +96,7 @@ class PeakBasics(strax.Plugin):
 
 
 @export
-class PeakBasicsHe(PeakBasics):
+class PeakBasicsHighEnergy(PeakBasics):
     __doc__ = PeakBasics.__doc__
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
