@@ -28,12 +28,11 @@ class Events(strax.OverlapWindowPlugin):
 
     An event is defined by peak(s) in fixed range of time around a peak
     which satisfies certain conditions:
-
         1. The triggering peak must have a certain area.
         2. The triggering peak must have less than
-            "trigger_max_competing" peaks. (A competing peak must have
-            a certain area fraction of the triggering peak and must be
-            in a window close to the main peak)
+            "trigger_max_competing" peaks. (A competing peak must have a
+            certain area fraction of the triggering peak and must be in a
+            window close to the main peak)
 
     Note:
         The time range which defines an event gets chopped at the chunk
@@ -104,7 +103,7 @@ class EventBasics(strax.LoopPlugin):
     Computes the basic properties of the main/alternative S1/S2 within
     an event.
 
-    The main and alternative S2 is given by the largest two S2-Peaks
+    The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
     __version__ = '0.5.3'
@@ -414,7 +413,7 @@ class CorrectedAreas(strax.Plugin):
 )
 class EnergyEstimates(strax.Plugin):
     """
-    Plugin which converts cS1 and cS2 into energies.
+    Plugin which converts cS1 and cS2 energies from PE to KeVee.
     """
     __version__ = '0.1.0'
     depends_on = ['corrected_areas']

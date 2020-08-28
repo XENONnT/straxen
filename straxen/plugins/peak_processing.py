@@ -16,7 +16,11 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    """Condense the data field in peaks to peak-properties."""
+    """
+    Compute the basic peak-properties, thereby dropping structured
+    arrays.
+    NB: This plugin can therefore be loaded as a pandas DataFrame.
+    """
     __version__ = "0.0.7"
     parallel = True
     depends_on = ('peaks',)
@@ -212,7 +216,8 @@ class PeakPositions(strax.Plugin):
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
     """
-    Look for peaks around a peak to determine how many peaks are in proximity of a peak
+    Look for peaks around a peak to determine how many peaks are in
+    proximity (in time) of a peak.
     """
     depends_on = ('peak_basics',)
     dtype = [

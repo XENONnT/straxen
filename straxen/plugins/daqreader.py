@@ -60,20 +60,20 @@ class ArtificialDeadtimeInserted(UserWarning):
                       "channel number."))
 class DAQReader(strax.Plugin):
     """
-    Read the XENONnT DAQ-live_data from redax and split it to the appropriate
-    raw_record data-types based on the channel-map.
+    Read the XENONnT DAQ-live_data from redax and split it to the
+    appropriate raw_record data-types based on the channel-map.
 
     Does nothing whatsoever to the live_data; not even baselining.
 
     Provides:
-        raw_records: (tpc)raw_records
-        raw_records_he: raw_records for the high energy boards digitizing the
-            top PMT-array at lower amplification
-        raw_records_nv: neutron veto raw_records; only stored temporary as the
-            software coincidence trigger not applied yet.
-        raw_records_mv: moun veto raw_records
-        raw_records_aqmon: raw_records for the acquisition monitor (_nv for
-            neutron veto).
+        raw_records: (tpc)raw_records.
+        raw_records_he: raw_records for the high energy boards
+            digitizing the top PMT-array at lower amplification.
+        raw_records_nv: neutron veto raw_records; only stored temporary
+            as the software coincidence trigger not applied yet.
+        raw_records_mv: muon veto raw_records.
+        raw_records_aqmon: raw_records for the acquisition monitor (_nv
+            for neutron veto).
     """
     provides = (
         'raw_records',

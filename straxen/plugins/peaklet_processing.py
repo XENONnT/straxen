@@ -53,26 +53,26 @@ export, __all__ = strax.exporter()
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
+    depends_on = ('records',)
     """
     Split records into:
         -peaklets
         -lone_hits
 
-    Peaklets are very aggressively split peaks such that we are able to find S1-S2s even
-        if they are close to each other. (S2) Peaks that are split into too many peaklets
-        will be merged later on.
-    
-    Lone hits are all hits which are outside of any peak. The area of lone_hits includes 
-        the left and right hit extension, except the extension overlaps with any peaks or
-        other hits.
+    Peaklets are very aggressively split peaks such that we are able 
+        to find S1-S2s even if they are close to each other. (S2) Peaks
+        that are split into too many peaklets will be merged later on.
     
     To get Peaklets from records apply/do:
         1. Hit finding
         2. Peak finding
         3. Peak splitting using the natural breaks algorithm
         4. Compute the digital sum waveform
+
+    Lone hits are all hits which are outside of any peak. The area of 
+        lone_hits includes the left and right hit extension, except the
+        extension overlaps with any peaks or other hits.
     """
-    depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
     data_kind = dict(peaklets='peaklets',
                      lone_hits='lone_hits')
@@ -322,8 +322,8 @@ FAKE_MERGED_S2_TYPE = -42
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
-    Merge together peaklets if peak finding favours that they would form a
-        single peak instead.
+    Merge together peaklets if peak finding favours that they would
+        form a single peak instead.
     """
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
@@ -435,9 +435,9 @@ class MergedS2sHe(MergedS2s):
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
     """
-    Merge peaklets and merged S2s such that we obtain our peaks (replacing all
-        peaklets that were later re-merged as S2s). As this step is
-        computationally trivial, never save this plugin.
+    Merge peaklets and merged S2s such that we obtain our peaks
+        (replacing all peaklets that were later re-merged as S2s). As
+        this step is computationally trivial, never save this plugin.
     """
     depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'

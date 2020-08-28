@@ -48,7 +48,6 @@ class nVETOHitlets(strax.Plugin):
     
     Hitlets are an extension of regular hits. They include the left
     and right extension. The plugin does the following:
-
         1. Generate hitlets which includes these sub-steps:
             * Apply left and right hit extension and concatenate
                 overlapping hits.
