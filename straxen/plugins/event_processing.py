@@ -413,7 +413,7 @@ class CorrectedAreas(strax.Plugin):
 )
 class EnergyEstimates(strax.Plugin):
     """
-    Plugin which converts cS1 and cS2 energies from PE to KeVee.
+    Plugin which converts cS1 and cS2 into energies (from PE to KeVee).
     """
     __version__ = '0.1.0'
     depends_on = ['corrected_areas']
