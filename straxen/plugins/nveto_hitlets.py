@@ -50,9 +50,9 @@ class nVETOHitlets(strax.Plugin):
     and right extension. The plugin does the following:
         1. Generate hitlets which includes these sub-steps:
             * Apply left and right hit extension and concatenate
-                overlapping hits.
+            overlapping hits.
             * Generate temp. hitelts and look for their waveforms in
-                their corresponding records.
+            their corresponding records.
             * Split hitlets if they satisfy the set criteria.
         2. Compute the properties of the hitlets.
 

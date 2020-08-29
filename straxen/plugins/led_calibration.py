@@ -33,12 +33,13 @@ class LEDCalibration(strax.Plugin):
     LEDCalibration returns: channel, time, dt, lenght, Area,
     amplitudeLED and amplitudeNOISE.
     The new variables are:
-    - Area: Area computed in the given window, averaged over 6 windows
-        that have the same starting sample and different end samples.
-    - amplitudeLED: peak amplitude of the LED on run in the given
+        - Area: Area computed in the given window, averaged over 6
+        windowsthat have the same starting sample and different end
+        samples.
+        - amplitudeLED: peak amplitude of the LED on run in the given
         window.
-    - amplitudeNOISE: amplitude of the LED on run in a window far from
-        the signal one.
+        - amplitudeNOISE: amplitude of the LED on run in a window far
+         from the signal one.
     """
     
     __version__ = '0.2.3'
