@@ -1141,7 +1141,11 @@ def process_run(rd, send_heartbeats=args.production):
             else:
                 fail("Non-live data already registered; untracked failure?")
         else:
-            fail(f"No live data entry in rundoc")
+            if not args.production:
+                # We are just testing let's assume its on the usual location
+                dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
+            else:
+                fail(f"No live data entry in rundoc")
 
         if not osp.exists(dd['location']):
             fail(f"No access to live data folder {dd['location']}")
