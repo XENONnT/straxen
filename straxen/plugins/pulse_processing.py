@@ -26,6 +26,8 @@ HITFINDER_OPTIONS_he = tuple([
              'See straxen.hit_min_amplitude for options.'
     )])
 
+HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
+
 
 @export
 @strax.takes_config(
@@ -221,8 +223,8 @@ class PulseProcessing(strax.Plugin):
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),
     *HITFINDER_OPTIONS_he)
-class PulseProcessingHe(PulseProcessing):
-    __doc__ = PulseProcessing.__doc__
+class PulseProcessingHighEnergy(PulseProcessing):
+    __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
     __version__ = '0.0.1'
     provides = ('records_he', 'pulse_counts_he')
     data_kind = {k: k for k in provides}

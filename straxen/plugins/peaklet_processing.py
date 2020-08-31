@@ -3,7 +3,7 @@ import numpy as np
 
 import strax
 import straxen
-from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he
+from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 
 export, __all__ = strax.exporter()
 
@@ -220,8 +220,8 @@ class Peaklets(strax.Plugin):
                  help="Minimum number of contributing PMTs needed to define a peak"),
     *HITFINDER_OPTIONS_he
 )
-class PeakletsHe(Peaklets):
-    __doc__ = Peaklets.__doc__
+class PeakletsHighEnergy(Peaklets):
+    __doc__ = HE_PREAMBLE + Peaklets.__doc__
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
@@ -297,8 +297,8 @@ class PeakletClassification(strax.Plugin):
 
 
 @export
-class PeakletClassificationHe(PeakletClassification):
-    __doc__ = PeakletClassification.__doc__
+class PeakletClassificationHighEnergy(PeakletClassification):
+    __doc__ = HE_PREAMBLE + PeakletClassification.__doc__
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
@@ -323,7 +323,7 @@ FAKE_MERGED_S2_TYPE = -42
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
-        form a single peak instead.
+    form a single peak instead.
     """
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
@@ -414,8 +414,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     
 @export
-class MergedS2sHe(MergedS2s):
-    __doc__ = MergedS2s.__doc__
+class MergedS2sHighEnergy(MergedS2s):
+    __doc__ = HE_PREAMBLE + MergedS2s.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he')
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
@@ -464,8 +464,8 @@ class Peaks(strax.Plugin):
 
 
 @export
-class PeaksHe(Peaks):
-    __doc__ = Peaks.__doc__
+class PeaksHighEnergy(Peaks):
+    __doc__ = HE_PREAMBLE + Peaks.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
     provides = 'peaks_he'
