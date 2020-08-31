@@ -53,6 +53,25 @@ export, __all__ = strax.exporter()
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
+    """
+    Split records into:
+        -peaklets
+        -lone_hits
+
+    Peaklets are very aggressively split peaks such that we are able
+    to find S1-S2s even if they are close to each other. (S2) Peaks
+    that are split into too many peaklets will be merged later on.
+
+    To get Peaklets from records apply/do:
+        1. Hit finding
+        2. Peak finding
+        3. Peak splitting using the natural breaks algorithm
+        4. Compute the digital sum waveform
+
+    Lone hits are all hits which are outside of any peak. The area of
+    lone_hits includes the left and right hit extension, except the
+    extension overlaps with any peaks or other hits.
+    """
     depends_on = ('records',)
     provides = ('peaklets', 'lone_hits')
     data_kind = dict(peaklets='peaklets',
@@ -202,6 +221,7 @@ class Peaklets(strax.Plugin):
     *HITFINDER_OPTIONS_he
 )
 class PeakletsHe(Peaklets):
+    __doc__ = Peaklets.__doc__
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
@@ -278,7 +298,7 @@ class PeakletClassification(strax.Plugin):
 
 @export
 class PeakletClassificationHe(PeakletClassification):
-    """Classify peaklets as unknown, S1, or S2."""
+    __doc__ = PeakletClassification.__doc__
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
@@ -301,7 +321,9 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Merge together peaklets if we believe they form a single peak instead
+    """
+    Merge together peaklets if peak finding favours that they would
+        form a single peak instead.
     """
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
@@ -393,8 +415,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     
 @export
 class MergedS2sHe(MergedS2s):
-    """Merge together peaklets if we believe they form a single peak instead
-    """
+    __doc__ = MergedS2s.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he')
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
@@ -413,6 +434,11 @@ class MergedS2sHe(MergedS2s):
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"))
 class Peaks(strax.Plugin):
+    """
+    Merge peaklets and merged S2s such that we obtain our peaks
+    (replacing all peaklets that were later re-merged as S2s). As this
+    step is computationally trivial, never save this plugin.
+    """
     depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
@@ -439,6 +465,7 @@ class Peaks(strax.Plugin):
 
 @export
 class PeaksHe(Peaks):
+    __doc__ = Peaks.__doc__
     depends_on = ('peaklets_he', 'peaklet_classification_he', 'merged_s2s_he')
     data_kind = 'peaks_he'
     provides = 'peaks_he'

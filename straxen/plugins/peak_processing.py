@@ -16,6 +16,11 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
+    """
+    Compute the basic peak-properties, thereby dropping structured
+    arrays.
+    NB: This plugin can therefore be loaded as a pandas DataFrame.
+    """
     __version__ = "0.0.7"
     parallel = True
     depends_on = ('peaks',)
@@ -92,6 +97,7 @@ class PeakBasics(strax.Plugin):
 
 @export
 class PeakBasicsHe(PeakBasics):
+    __doc__ = PeakBasics.__doc__
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
@@ -122,6 +128,7 @@ class PeakBasicsHe(PeakBasics):
                  help="Number of top PMTs")
 )
 class PeakPositions(strax.Plugin):
+    """Compute the S2 (x,y)-position based on a neural net."""
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
              ('y', np.float32,
@@ -208,6 +215,10 @@ class PeakPositions(strax.Plugin):
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
+    """
+    Look for peaks around a peak to determine how many peaks are in
+    proximity (in time) of a peak.
+    """
     depends_on = ('peak_basics',)
     dtype = [
         ('n_competing', np.int32,

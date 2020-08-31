@@ -1250,7 +1250,10 @@ def process_run(rd, send_heartbeats=args.production):
                             # 'raw_records_nv' # not in the DAQ-reader yet.
                                     ):
                         md = st.get_meta(run_id, rr_type)
-                        if len(md['chunks']):
+                        if len(md['chunks']) and (
+                                'first_time' in md['chunks'][0] and
+                                'last_endtime' in md['chunks'][0]
+                        ):
                             break
                 except Exception:
                     fail("Processing succeeded, but metadata not readable: "
@@ -1268,7 +1271,7 @@ def process_run(rd, send_heartbeats=args.production):
                 # this has to be done with some care...
                 t_covered = timedelta(
                     seconds=(max([x.get('last_endtime', 0) for x in md['chunks']]) -
-                             min([x.get('first_time', float('inf')) for x in md['chunks']])) / 1e9)
+                             min([x.get('first_time', 10e9*1e9) for x in md['chunks']])) / 1e9)
                 run_duration = rd['end'] - rd['start']
                 if not (0 < t_covered.seconds < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
