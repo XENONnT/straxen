@@ -9,7 +9,7 @@ import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
-
+from .pulse_processing import  HE_PREAMBLE
 
 @export
 @strax.takes_config(
@@ -96,8 +96,8 @@ class PeakBasics(strax.Plugin):
 
 
 @export
-class PeakBasicsHe(PeakBasics):
-    __doc__ = PeakBasics.__doc__
+class PeakBasicsHighEnergy(PeakBasics):
+    __doc__ = HE_PREAMBLE + PeakBasics.__doc__
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
