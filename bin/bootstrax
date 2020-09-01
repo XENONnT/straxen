@@ -273,6 +273,7 @@ daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}
 daq_db = daq_client[daq_db_name]
 bs_coll = daq_db['eb_monitor']
 ag_stat_coll = daq_db['aggregate_status']
+log_coll = daq_db['log']
 
 # Runs database
 run_dbname = 'xenonnt'
@@ -287,7 +288,6 @@ else:
         f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017/xenonnt")
     run_db = run_client[run_dbname]
 run_coll = run_db[run_collname]
-log_coll = run_db['log']
 
 # Ping the databases to ensure the mongo connections are working
 if not args.undying:
@@ -490,22 +490,27 @@ def send_heartbeat(update_fields=None):
     set_state(None, update_fields=update_fields)
 
 
-def log_warning(message, priority='warning'):
+def log_warning(message, priority='warning', run_id=None):
     """Report a warning to the terminal (using the logging module)
     and the DAQ log DB.
+    :param message: insert string into log_coll
     :param priority: severity of warning. Can be:
         info: 1,
         warning: 2,
         <any other valid python logging level, e.g. error or fatal>: 3
+    :param run_id: optional run id.
     """
     ping_dbs()
     if not args.production:
         return
     getattr(log, priority)(message)
-    log_coll.insert_one({
+    warning_message = {
         'message': message,
         'user': f'bootstrax_{hostname}',
-        'priority': dict(warning=2, info=1).get(priority, 3)})
+        'priority': dict(warning=2, info=1).get(priority, 3)}
+    if run_id:
+        warning_message.update({'run_id': run_id})
+    log_coll.insert_one(warning_message)
 
 
 def eb_can_process():
@@ -588,7 +593,8 @@ def infer_mode(rd):
                 ])
         data_rate = sum([d['rate'] for d in docs])
     except Exception as e:
-        log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.')
+        log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.',
+                    run_id=f'{rd["number"]:06}')
         data_rate = None
 
     # Find out if eb is new (eb3-eb5):
@@ -635,7 +641,9 @@ def infer_mode(rd):
                       timeout=min(1000, result['timeout']* 1.5)
                       )
         log_warning(f'infer_mode::\tRepeated failures. Lowering mode to {result}. This '
-                    f'may indicated a sub-optimal state of {hostname}!')
+                    f'may indicated a sub-optimal state of {hostname}!',
+                    priority='warning',
+                    run_id=f'{rd["number"]:06}')
 
     return result
 
@@ -659,7 +667,7 @@ def sufficient_diskspace():
             send_heartbeat(dict(state='disk full'))
     set_state(dead_state)
     message = f"No disk space to write to. Kill bootstrax on {hostname}"
-    log_warning(message, priority='warning')
+    log_warning(message, priority='Error')
     raise RuntimeError(message)
 
 
@@ -869,7 +877,7 @@ def upload_file_metadata(rd):
         st_meta = new_context(cores=args.cores, max_messages=args.max_messages, timeout=100)
         st_meta.set_context_config({'forbid_creation_of': '*'})
     except Exception as e:
-        log_warning(f"Cannot create context to read the metadata: {e}")
+        log_warning(f"Cannot create context to read the metadata: {e}", priority='info')
         st_meta = None
 
     for ddoc in rd['data']:
@@ -890,7 +898,8 @@ def upload_file_metadata(rd):
                     avg_data_size_mb = int(np.average(chunk_mb))
                     lineage_hash = md['lineage_hash']
                 except Exception as e:
-                    log_warning(f"Cannot load metadata if {ddoc['type']}: {e}")
+                    log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
+                                run_id=f'{rd["number"]:06}')
 
             run_coll.update_one(
                     {'_id': rd['_id'],
@@ -928,7 +937,8 @@ def set_status_finished(rd):
     elif rd.get('status') == ready_to_upload.get('status'):
         # This is strange, bootstrax already finished this run before
         log_warning('WARNING: bootstax has already marked this run as ready '
-                    'for upload. Doing nothing.')
+                    'for upload. Doing nothing.',
+                    run_id=f'{rd["number"]:06}')
     else:
         # Do not override this field for runs already uploaded in admix
         raise ValueError(f'Trying to set set the status {rd.get("status")} to '
@@ -1014,7 +1024,8 @@ def fail_run(rd, reason):
 
     # Report to DAQ log and screen
     log_warning(f"{fail_name} on {long_run_id}: {reason}",
-                priority=failure_message_level)
+                priority=failure_message_level,
+                run_id=f'{rd["number"]:06}')
 
 
 def manual_fail(*, mongo_id=None, number=None, reason=''):
@@ -1030,7 +1041,9 @@ def get_compressor(rd, default_compressor="lz4"):
         return rd["daq_config"]["compressor"]
     except KeyError:
         log_warning(f"Bootstrax couldn't read the compressor form the run_doc. "
-                    f"Assuming 'lz4' for now")
+                    f"Assuming 'lz4' for now",
+                    priority='info',
+                    run_id=f'{rd["number"]:06}')
         return default_compressor
 
 
@@ -1091,7 +1104,9 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                 #  - Are fixing the target (this is useful for testing but normally not used)
                 for sub_d_target in args.sub_d_targets:
                     if sub_d_target not in st._plugin_class_registry:
-                        log_warning(f'Trying to make unknown data type {sub_d_target}')
+                        log_warning(f'Trying to make unknown data type {sub_d_target}',
+                                    priority='info',
+                                    run_id=run_id)
                         continue
                     elif not st.is_stored(run_id, sub_d_target):
                         st.make(run_id, sub_d_target,
@@ -1173,7 +1188,9 @@ def process_run(rd, send_heartbeats=args.production):
                        'strax_fragment_payload_bytes')
             for conf in to_read:
                 if conf not in dq_conf:
-                    log_warning(f'{conf} not in rundoc for {run_id}! Using default values.')
+                    log_warning(f'{conf} not in rundoc for {run_id}! Using default values.',
+                                priority='info',
+                                run_id=run_id)
             thread_info = dq_conf.get('processing_threads', dict())
             n_readout_threads = sum([v for v in thread_info.values()])
             daq_chunk_duration = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
@@ -1495,7 +1512,7 @@ if __name__ == '__main__':
                 log.error(f'Fatal warning:\tran into {fatal_error}')
                 try:
                     log_warning(f'Fatal warning:\tran into {fatal_error}',
-                                priority='warning')
+                                priority='error')
                 except Exception as warning_error:
                     log.error(f'Fatal warning:\tcould not log {warning_error}')
                 log.warning('Restarting main loop')
