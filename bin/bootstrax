@@ -839,6 +839,24 @@ def check_data_written(rd):
     return files_written > 0
 
 
+def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
+    """
+    Check that all files are written. It might be that the savers are still in
+    the process of renaming from folder_temp to folder. Hence allow some wait
+    time to allow the savers to finish
+    :param rd: rundoc
+    :param wait_max: max seconds to wait for data to save
+    :param wait_per_cycle: wait this many seconds if the data is not yet there
+    """
+    start = time.time()
+    while not check_data_written(rd):
+        if time.time() - start > wait_max:
+            return False
+        send_heartbeat()
+        time.sleep(wait_per_cycle)
+    return True
+
+
 def upload_file_metadata(rd):
     """
     Update the data-field in the rundoc with a portion of the metadata. Also count the
@@ -897,14 +915,9 @@ def set_status_finished(rd):
         return
 
     # First check that all the data is available (that e.g. no _temp files
-    # are being renamed).
-    if not check_data_written(rd):
-        log_warning('Data not successfully written wait 30 s and check again')
-        time.sleep(30)
-        if check_data_written(rd):
-            log_warning('Data not successfully written do not mark this run '
-                        'ready for upload')
-            return
+    # are being renamed). This line should be over-redundant as we already
+    # check earlier.
+    all_files_saved(rd)
 
     # Only update the status if it does not exist or if it needs to be uploaded
     ready_to_upload = {'status': 'eb_ready_to_upload'}
@@ -1273,6 +1286,7 @@ def process_run(rd, send_heartbeats=args.production):
                 # (at least up to some fudge factor)
                 # Since chunks can be empty, and we don't want to crash,
                 # this has to be done with some care...
+                # Lets assume some ridiculous timestamp (in ns): 10e9*1e9
                 t_covered = timedelta(
                     seconds=(max([x.get('last_endtime', 0) for x in md['chunks']]) -
                              min([x.get('first_time', 10e9*1e9) for x in md['chunks']])) / 1e9)
@@ -1284,6 +1298,8 @@ def process_run(rd, send_heartbeats=args.production):
                         < timedelta(seconds=max_timetamp_diff)):
                     fail(f"Processing covered {t_covered.seconds}, "
                          f"but run lasted {run_duration.seconds}!")
+                if not all_files_saved(rd):
+                    fail("Not all files in the rundoc for this run are saved")
 
                 log.info(f"Run {run_id} processed successfully")
                 if args.production:
