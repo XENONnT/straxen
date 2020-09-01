@@ -103,7 +103,7 @@ def main_ajax():
                 if hostname == eb_can_clean_ceph:
                     clean_ceph()
                     clean_abandoned(delete_live=True)
-                    clean_database(delete_live=True)
+                    # clean_database(delete_live=True)
 
                     # Don't do clean_unregistered by default (only if specified
                     # as specific argument on host "eb_can_clean_ceph") as
