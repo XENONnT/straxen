@@ -553,7 +553,7 @@ def eb_can_process():
                     'bootstrax.state': 'busy',
                     'bootstrax.host': f'eb{eb_i}.xenon.local',
                     'bootstrax.started_processing': {
-                        '$gt': now(-timeouts['eb3-5_max_busy_time'])}})
+                        '$lt': now(-timeouts['eb3-5_max_busy_time'])}})
             if running_eb:
                 n_ebs_busy += 1
                 log.info(f'eb_can_process::\t eb{eb_i} is busy')
@@ -1141,7 +1141,11 @@ def process_run(rd, send_heartbeats=args.production):
             else:
                 fail("Non-live data already registered; untracked failure?")
         else:
-            fail(f"No live data entry in rundoc")
+            if not args.production:
+                # We are just testing let's assume its on the usual location
+                dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
+            else:
+                fail(f"No live data entry in rundoc")
 
         if not osp.exists(dd['location']):
             fail(f"No access to live data folder {dd['location']}")
