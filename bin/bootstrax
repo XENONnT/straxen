@@ -222,8 +222,6 @@ hostname = socket.getfqdn()
 
 # Set the output folder
 output_folder = '/data/xenonnt_processed/'
-if os.access(output_folder, os.W_OK) is not True:
-    raise IOError(f'No writing access to {output_folder}')
 
 if not args.production:
     # This means we are in some test mode
@@ -296,6 +294,12 @@ if not args.undying:
 
 
 def main():
+    # Check that writing access is OK, otherwise report to the database and die
+    if os.access(output_folder, os.W_OK) is not True:
+        message = f'No writing access to {output_folder}'
+        log_warning(message, priority='fatal')
+        raise IOError(message)
+
     if args.cores == -1:
         # Use all of the available cores on this machine
         args.cores = multiprocessing.cpu_count()
@@ -316,7 +320,9 @@ def main():
         number = args.process
         rd = consider_run({'number': number})
         if rd is None:
-            raise ValueError(f"No run numbered {number} exists")
+            message = f"Trying to process single rung but no run numbered {number} exists"
+            log_warning(message, priority='fatal')
+            raise ValueError(message)
         process_run(rd)
         log.info(f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
         wait_on_delete_thread()
@@ -422,7 +428,9 @@ def kill_process(pid, wait_time=None):
         if not pid_exists(pid):
             return
         if signal == 'die':
-            raise RuntimeError(f"Could not kill process {pid}")
+            message = f"Could not kill process {pid}"
+            log_warning(message, priority='fatal')
+            raise RuntimeError(message)
         os.kill(pid, sig)
 
 
@@ -504,12 +512,20 @@ def log_warning(message, priority='warning', run_id=None):
     if not args.production:
         return
     getattr(log, priority)(message)
+    # Log according to redax rules
+    # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
     warning_message = {
         'message': message,
         'user': f'bootstrax_{hostname}',
-        'priority': dict(warning=2, info=1).get(priority, 3)}
-    if run_id:
-        warning_message.update({'run_id': run_id})
+        'priority':
+            dict(debug=0,
+                 info=1,
+                 warning=2,
+                 error=3,
+                 fatal=4,
+                 ).get(priority.lower(), 3)}
+    if run_id is not None:
+        warning_message.update({'runid': run_id})
     log_coll.insert_one(warning_message)
 
 
@@ -532,7 +548,7 @@ def eb_can_process():
     if not args.production:
         return True
     elif 'eb2' in hostname:
-        log_warning('Why is eb2 alive?!')
+        log_warning('Why is eb2 alive?!', priority='error')
         return False
 
     # Check that there are runs that are waiting to be processed. If there are few, this
@@ -594,7 +610,7 @@ def infer_mode(rd):
         data_rate = sum([d['rate'] for d in docs])
     except Exception as e:
         log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.',
-                    run_id=f'{rd["number"]:06}')
+                    run_id=f'{rd["number"]:06}', priority='info')
         data_rate = None
 
     # Find out if eb is new (eb3-eb5):
@@ -667,7 +683,7 @@ def sufficient_diskspace():
             send_heartbeat(dict(state='disk full'))
     set_state(dead_state)
     message = f"No disk space to write to. Kill bootstrax on {hostname}"
-    log_warning(message, priority='Error')
+    log_warning(message, priority='fatal')
     raise RuntimeError(message)
 
 
@@ -711,7 +727,9 @@ def _delete_data(rd, path, data_type):
     ping_dbs()
 
     if data_type == 'live' and not args.delete_live and args.production:
-        raise ValueError('Unsafe operation. Trying to delete live data!')
+        message = 'Unsafe operation. Trying to delete live data!'
+        log_warning(message, priority='fatal')
+        raise ValueError(message)
     log.info(f'Deleting data at {path}')
     if os.path.exists(path):
         shutil.rmtree(path)
@@ -734,7 +752,9 @@ def _delete_data(rd, path, data_type):
                                            {"type": data_type,
                                             "host": {'$in': ['daq', hostname]}}}})
     else:
-        raise ValueError(f"Something went wrong we wanted to delete {path}!")
+        message = f"Something went wrong we wanted to delete {path}!"
+        log_warning(message, priority='fatal')
+        raise ValueError(message)
 
 
 def wait_on_delete_thread():
@@ -796,6 +816,7 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
     elif mongo_id is not None:
         query = {'_id': mongo_id}
     else:
+        # This means you are not running a normal bootstrax (no reason to report to rundb)
         raise ValueError("Please give mongo_id or number")
 
     return run_coll.find_one(query, projection=None if full_doc else bootstrax_projection)
@@ -877,7 +898,7 @@ def upload_file_metadata(rd):
         st_meta = new_context(cores=args.cores, max_messages=args.max_messages, timeout=100)
         st_meta.set_context_config({'forbid_creation_of': '*'})
     except Exception as e:
-        log_warning(f"Cannot create context to read the metadata: {e}", priority='info')
+        log_warning(f"Cannot create context to read the metadata: {e}", priority='warning')
         st_meta = None
 
     for ddoc in rd['data']:
@@ -899,6 +920,7 @@ def upload_file_metadata(rd):
                     lineage_hash = md['lineage_hash']
                 except Exception as e:
                     log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
+                                priority='warning',
                                 run_id=f'{rd["number"]:06}')
 
             run_coll.update_one(
@@ -938,11 +960,14 @@ def set_status_finished(rd):
         # This is strange, bootstrax already finished this run before
         log_warning('WARNING: bootstax has already marked this run as ready '
                     'for upload. Doing nothing.',
+                    priority='warning',
                     run_id=f'{rd["number"]:06}')
     else:
         # Do not override this field for runs already uploaded in admix
-        raise ValueError(f'Trying to set set the status {rd.get("status")} to '
-                         f'{ready_to_upload}! One should not override this field.')
+        message = (f'Trying to set set the status {rd.get("status")} to '
+                   f'{ready_to_upload}! One should not override this field.')
+        log_warning(message, priority='fatal')
+        raise ValueError(message)
 
 
 def abandon(*, mongo_id=None, number=None):
@@ -1181,16 +1206,17 @@ def process_run(rd, send_heartbeats=args.production):
         if 'daq_config' not in rd:
             fail('No daq_config in the rundoc!')
         try:
-            # Fetch parameters from the rundoc. If not readably, let's use redax' default
+            # Fetch parameters from the rundoc. If not readable, let's use redax' default
             # values (that are hardcoded here).
             dq_conf = rd['daq_config']
             to_read = ('processing_threads', 'strax_chunk_length', 'strax_chunk_overlap',
                        'strax_fragment_payload_bytes')
-            for conf in to_read:
-                if conf not in dq_conf:
-                    log_warning(f'{conf} not in rundoc for {run_id}! Using default values.',
-                                priority='info',
-                                run_id=run_id)
+            report_missing_config = [conf for conf in to_read if conf not in dq_conf]
+            if report_missing_config:
+                log_warning(f'{", ".join(report_missing_config)} not in rundoc for '
+                            f'{run_id}! Using default values.',
+                            priority='info',
+                            run_id=run_id)
             thread_info = dq_conf.get('processing_threads', dict())
             n_readout_threads = sum([v for v in thread_info.values()])
             daq_chunk_duration = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
