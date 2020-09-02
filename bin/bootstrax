@@ -320,7 +320,7 @@ def main():
         number = args.process
         rd = consider_run({'number': number})
         if rd is None:
-            message = f"Trying to process single rung but no run numbered {number} exists"
+            message = f"Trying to process single run but no run numbered {number} exists"
             log_warning(message, priority='fatal')
             raise ValueError(message)
         process_run(rd)
