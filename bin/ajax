@@ -356,8 +356,6 @@ def clean_abandoned(delete_live=False):
     # runs to be deleted simultaneously.
     if not delete_live:
         rd = run_coll.find_one({'bootstrax.state': 'abandoned',
-                                'bootstrax.time':
-                                    {"$lt": now(-ajax_thresholds['wait_after_processing'])},
                                 'data.host': hostname})
         if rd is None:
             log.info('clean_abandoned::\tNo more matches in rundoc')
@@ -490,16 +488,20 @@ def delete_data(rd, path, data_type,
     data. We can specify this e.g. if we know this is data associated to some abandoned
     run.
     """
-    # if data_type == 'live' and not args.delete_live:
-    #     raise ValueError('Unsafe operation. Trying to delete live data!')
+    # First check that we are not deleting essential data (unless we are working
+    # with abandoned runs or so.
     if not ignore_low_data_check:
         n_live, n_rr = check_rundoc_for_live_and_raw(rd)
         if not (
                 n_live or
                 n_rr >= 1 + int('raw_records' in data_type)):
-            raise ValueError(f'Trying to delete {data_type} but we only have {n_live} '
-                             f'live- and {n_rr} raw_record-files in the runs-database. '
-                             f'This might be an essential copy of the data!')
+            message = (f'Trying to delete {data_type} but we only have {n_live}'
+                       f' live- and {n_rr} raw_record-files in the '
+                       f'runs-database. This might be an essential copy of the'
+                       f' data!')
+            log_warning(message, priority='fatal', run_id=f'{rd["number"]:06}')
+            raise ValueError(message)
+
     if os.path.exists(path):
         log.info(f'Deleting data at {path}')
         if not test:
@@ -507,6 +509,7 @@ def delete_data(rd, path, data_type,
         log.info(f'deleting {path} finished')
     else:
         log.info(f'There is no data on {path}! Just doing the rundoc.')
+
     # Remove the data location from the rundoc and append it to the 'deleted_data' entries
     if not os.path.exists(path):
         log.info('changing data field in rundoc')
@@ -562,7 +565,8 @@ def remove_run_from_host(number, delete_live=False, force=False):
     rd = run_coll.find_one({'number': number,
                             'data.host': hostname if not delete_live else 'daq'})
     if not rd:
-        log.info(f'No registered data for {number} on {hostname}')
+        log_warning(f'No registered data for {number} on {hostname}',
+                    run_id=f'{number:06}', priority='info')
         return
 
     have_live_data, have_raw_records = check_rundoc_for_live_and_raw(rd)
@@ -599,8 +603,9 @@ def remove_run_from_host(number, delete_live=False, force=False):
             if not force and not have_raw_records:
                 # If we do not have raw records, don't delete this data. However, if we
                 # --force deletion, do go to the next else statement
-                log.info(f'Unsafe to delete {loc}, no raw_records registered. Force with '
-                         f'--force')
+                log_warning(
+                    f'Unsafe to delete {loc}, no raw_records registered. Force with '
+                    f'--force', priority='info')
             elif not force and have_raw_records:
                 log.info(f'Deleting {loc} since we have raw_records registered.')
                 threaded_delete_data(rd, loc, ddoc['type'], test=not args.execute,
@@ -631,7 +636,10 @@ def remove_if_unregistered(number, delete_live=False):
         # the data is registered and we don't have to do anything.
         return
     else:
-        log.info(f'remove_if_unregistered::\trun {number} is NOT registered in the runDB')
+        log_warning(f'remove_if_unregistered::\trun {number} is NOT registered '
+                    f'in the runDB but is stored on {hostname}',
+                    run_id=run_id,
+                    priority='error')
         if not delete_live:
             # Check the local ebs disk for data.
             _remove_unregistered_run(output_folder, run_id, checked_db=True)
@@ -650,9 +658,14 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
     :param checked_db: Bool if it is checked that this run in not in the database.
     """
     if not checked_db:
+        log_warning(f'remove_if_unregistered::\trogue ajax operations! Trying '
+                    f'to delete {run_id} from {hostname}',
+                    run_id=run_id,
+                    priority='fatal')
         raise ValueError("Only insert runs where for it is checked that it is "
                          "not registered in the runs database and double checked.")
-    log.warning(f'No data for {run_id} found! Double checking {base_folder}!')
+    log_warning(f'No data for {run_id} found! Double checking {base_folder}!',
+                run_id=run_id, priority='warning')
     deleted_data = False
 
     for folder in os.listdir(base_folder):
@@ -665,20 +678,25 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
             n_live, n_rr = check_rundoc_for_live_and_raw(rd)
 
             if not (n_live or n_rr >= 1 + int('raw_records' in folder)):
-                raise ValueError(
-                    f'Trying to delete {folder} but we only have {n_live} live- and '
-                    f'{n_rr} raw_record-files in the runs-database. This might be an '
-                    f'essential copy of the data!')
+                message = (f'Trying to delete {folder} but we only have '
+                           f'{n_live} live- and {n_rr} raw_record-files in the '
+                           f'runs-database. This might be an essential copy of '
+                           f'the data!')
+                log_warning(message, run_id=run_id, priority='fatal')
+                raise ValueError(message)
 
             # OK, we still have live_data somewhere or we have raw_records (elsewhere)
             if args.execute:
-                _rmtree(base_folder + folder)
+                shutil.move(os.path.join(base_folder, folder),
+                            os.path.join(non_registered_folder, folder))
             else:
-                log.info(f'TEST\tdeleting {base_folder + folder}')
+                log.info(f'TEST\tmoving {base_folder + folder}')
             deleted_data = True
 
     if not deleted_data:
-        raise FileNotFoundError(f'No data registered on {hostname} for {run_id}')
+        message = f'No data registered on {hostname} for {run_id}'
+        log_warning(message, priority='fatal')
+        raise FileNotFoundError(message)
 
 ##
 # Helper functions
@@ -719,6 +737,38 @@ def wait_on_delete_thread():
                     wait = True
     log.info(f'wait_on_delete_thread::\tChecked that all {thread_prefix}* finished')
 
+
+def log_warning(message, priority='warning', run_id=None):
+    """Report a warning to the terminal (using the logging module)
+    and the DAQ log DB.
+    :param message: insert string into log_coll
+    :param priority: severity of warning. Can be:
+        info: 1,
+        warning: 2,
+        <any other valid python logging level, e.g. error or fatal>: 3
+    :param run_id: optional run id.
+    """
+    if not args.execute:
+        return
+    getattr(log, priority)(message)
+    # Log according to redax rules
+    # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
+    warning_message = {
+        'message': message,
+        'user': f'ajax_{hostname}',
+        'priority':
+            dict(debug=0,
+                 info=1,
+                 warning=2,
+                 error=3,
+                 fatal=4,
+                 ).get(priority.lower(), 3)}
+    if run_id is not None:
+        warning_message.update({'runid': run_id})
+    if args.execute:
+        # Only upload warning if we would actually execute the script
+        log_coll.insert_one(warning_message)
+    log.info(message)
 
 ##
 # Main
@@ -768,7 +818,7 @@ if __name__ == '__main__':
     if args.clean == 'raw_records_nv':
         log.info(f'main::\tDelete neutron veto data from {hostname} older than '
                  f'{ajax_thresholds["remove_raw_records_nv"]} s')
-        raise NotImplementedError("I dont know what to do with the raw_records of the NV")
+        raise NotImplementedError("I don't know what to do with the raw_records of the NV")
     if args.delete_live:
         if not args.number:
             raise ValueError("Specify which number with --number")
@@ -787,7 +837,7 @@ if __name__ == '__main__':
             exit(-1)
         if args.clean != 'abandoned' and not args.number:
             raise NotImplementedError(
-                'main::\tI dont want to have this option enabled (yet).')
+                "main::\tI don't want to have this option enabled (yet).")
 
     if args.clean in ['all', 'old_hash']:
         # Need the context for the latest hash
@@ -796,19 +846,29 @@ if __name__ == '__main__':
     # Set the folders
     ceph_folder = '/live_data/xenonnt/'
     output_folder = '/data/xenonnt_processed/'
-    if os.access(output_folder, os.W_OK) is not True:
-        raise IOError(f'main::\tNo writing access to {output_folder}')
+    non_registered_folder = '/data/xenonnt_unregistered/'
+    for f in (output_folder, non_registered_folder):
+        if os.access(f, os.W_OK) is not True:
+            log_warning(f'main::\tNo writing access to {f}', property='fatal')
+            raise IOError(f'main::\tNo writing access to {f}')
 
     # Runs database
     run_dbname = 'xenonnt'
     run_collname = 'runs'
-
-    run_db_username = os.environ['MONGO_RDB_USERNAME']
-    run_db_password = os.environ['MONGO_RDB_PASSWORD']
+    run_db_username = straxen.get_secret('RUNDB_USERNAME'.lower())
+    run_db_password = straxen.get_secret('RUNDB_PASSWORD'.lower())
     run_client = pymongo.MongoClient(
         f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin")
     run_db = run_client[run_dbname]
     run_coll = run_db[run_collname]
+
+    # DAQ database
+    daq_db_name = 'daq'
+    daq_db_password = straxen.get_secret('MONGO_DAQ_PASSWORD'.lower())
+    daq_db_username = straxen.get_secret('MONGO_DAQ_USERNAME'.lower())
+    daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
+    daq_db = daq_client[daq_db_name]
+    log_coll = daq_db['log']
 
     try:
         main_ajax()
