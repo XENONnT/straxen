@@ -127,3 +127,5 @@ def _mask(x, mask):
 def channel_select(rr, ch_stop, ch_start):
     """Return """
     return _mask(rr, (rr['channel'] >= ch_stop) & (rr['channel'] <= ch_start)) 
+
+
