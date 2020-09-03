@@ -94,7 +94,7 @@ def main_ajax():
             # Do this mode
             _modes[args.clean]()
             if hostname == eb_can_clean_ceph and (
-                    args.clean in ['abandoned', 'unregistered', 'database']):
+                    args.clean in ['abandoned', 'database']):
                 _modes[args.clean](delete_live=True)
 
             log.info(f'Done with {args.clean}')
@@ -682,8 +682,12 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
 
             # OK, we still have live_data somewhere or we have raw_records (elsewhere)
             if args.execute:
-                shutil.move(os.path.join(base_folder, folder),
-                            os.path.join(non_registered_folder, folder))
+                # Double check returns True automatically if not args.ask_confirm
+                if confirm(
+                        f'Should we really move {os.path.join(base_folder, folder)} '
+                        f'to {os.path.join(non_registered_folder, folder)}?'):
+                    shutil.move(os.path.join(base_folder, folder),
+                                os.path.join(non_registered_folder, folder))
             else:
                 log.info(f'TEST\tmoving {base_folder + folder}')
             deleted_data = True
@@ -850,10 +854,10 @@ if __name__ == '__main__':
     # Runs database
     run_dbname = 'xenonnt'
     run_collname = 'runs'
-    run_db_username = straxen.get_secret('RUNDB_USERNAME'.lower())
-    run_db_password = straxen.get_secret('RUNDB_PASSWORD'.lower())
+    run_db_username = straxen.get_secret('mongo_rdb_username'.lower())
+    run_db_password = straxen.get_secret('mongo_rdb_password'.lower())
     run_client = pymongo.MongoClient(
-        f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017/xenonnt")
+        f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin")
     run_db = run_client[run_dbname]
     run_coll = run_db[run_collname]
     run_db.command('ping')
