@@ -183,11 +183,7 @@ def clean_high_level_data():
 
     for rd in rds:
         # First check that we actually have raw_records stored somewhere
-        have_raw_records = False
-        for dd in rd['data']:
-            if dd['type'] == 'raw_records' and dd['location'] != 'deleted':
-                have_raw_records = True
-                break
+        _, have_raw_records = check_rundoc_for_live_and_raw(rd)
         if not have_raw_records:
             break
 
@@ -232,7 +228,6 @@ def clean_non_latest():
         have_raw_records = False
         for dd in rd['data']:
             if (dd['type'] == 'raw_records' and
-                    dd['location'] != 'deleted' and
                     dd['host'] != hostname):
                 have_raw_records = True
                 break
@@ -545,9 +540,9 @@ def check_rundoc_for_live_and_raw(rd):
     """
     n_live_data, n_raw_records = 0, 0
     for dd in rd['data']:
-        if dd['type'] == 'live' and dd['location'] != 'deleted':
+        if dd['type'] == 'live':
             n_live_data += 1
-        if dd['type'] == 'raw_records' and dd['location'] != 'deleted':
+        if dd['type'] == 'raw_records':
             n_raw_records += 1
     return n_live_data, n_raw_records
 
