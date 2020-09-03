@@ -853,9 +853,10 @@ if __name__ == '__main__':
     run_db_username = straxen.get_secret('RUNDB_USERNAME'.lower())
     run_db_password = straxen.get_secret('RUNDB_PASSWORD'.lower())
     run_client = pymongo.MongoClient(
-        f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017,old-gw:27017/admin")
+        f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017/xenonnt")
     run_db = run_client[run_dbname]
     run_coll = run_db[run_collname]
+    run_db.command('ping')
 
     # DAQ database
     daq_db_name = 'daq'
@@ -864,6 +865,7 @@ if __name__ == '__main__':
     daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
     daq_db = daq_client[daq_db_name]
     log_coll = daq_db['log']
+    daq_db.command('ping')
 
     try:
         main_ajax()
