@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.3'
+__version__ = '0.5.6'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -97,6 +97,10 @@ parser.add_argument('--production', action='store_true',
                          "interactions with the runs-database")
 parser.add_argument('--undying', action='store_true',
                     help="Except any error and ignore it")
+parser.add_argument('--sub_d_targets', nargs='*',
+                    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv'],
+                    help="Target(s) for other sub-detectors. If not produced automatically "
+                         "when processing tpc data, st.make the requested data later.")
 parser.add_argument('--max_messages', type=int,
                     default=10,
                     help="number of max mailbox messages")
@@ -119,17 +123,9 @@ args = parser.parse_args()
 
 print(f'---\n bootstrax version {__version__}\n---')
 
-# The event builders write to different directories on the respective machines.
-eb_directories = {
-    'eb0.xenon.local': '/data2/xenonnt_processed/',
-    'eb1.xenon.local': '/data1/xenonnt_processed/',
-    'eb2.xenon.local': '/nfs/eb0_data1/xenonnt_processed/',
-    'eb3.xenon.local': '/data/xenonnt_processed/',
-    'eb4.xenon.local': '/data/xenonnt_processed/',
-    'eb5.xenon.local': '/data/xenonnt_processed/',
-}
 # The folder that can be used for testing bootstrax (i.e. non production mode). It will be written to:
-test_data_folder = './bootstrax/'
+test_data_folder = ('/nfs/scratch/bootstrax/' if os.path.exists('/nfs/scratch/bootstrax/')
+                    else './bootstrax/')
 
 # Timeouts in seconds
 timeouts = {
@@ -176,7 +172,7 @@ timeouts = {
 # hence, we can check if there is sufficient diskspace and if not, wait a while.
 # Below are the max number of times and number of seconds bootstrax will wait.
 wait_diskspace_max_space_percent = 90
-wait_diskspace_n_max = 100  # times
+wait_diskspace_n_max = 60 * 24 * 7  # times
 wait_diskspace_dt = 60  # seconds
 assert timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt, "wait_diskspace_dt too large"
 
@@ -225,7 +221,7 @@ log = logging.getLogger()
 hostname = socket.getfqdn()
 
 # Set the output folder
-output_folder = eb_directories[hostname]
+output_folder = '/data/xenonnt_processed/'
 if os.access(output_folder, os.W_OK) is not True:
     raise IOError(f'No writing access to {output_folder}')
 
@@ -369,7 +365,8 @@ def main_loop():
         # Check resources are still OK, otherwise crash / reboot program
 
         # Process new runs
-        rd = consider_run({"bootstrax": {"$exists": False}}, test_counter=new_runs_seen)
+        rd = consider_run({"bootstrax.state": {"$exists": False}},
+                          test_counter=new_runs_seen)
         if rd is not None:
             new_runs_seen += 1
             process_run(rd)
@@ -529,6 +526,9 @@ def eb_can_process():
     # In test mode we can always process
     if not args.production:
         return True
+    elif 'eb2' in hostname:
+        log_warning('Why is eb2 alive?!')
+        return False
 
     # Check that there are runs that are waiting to be processed. If there are few, this
     # eb should not process.
@@ -542,16 +542,19 @@ def eb_can_process():
     n_ebs_busy = 0
     for eb_i in range(3, 6):
         # Should count if eb3-5 are registered as running (as one might be offline).
-        bootstrax_on_host = bs_coll.find_one({'host': f'eb{eb_i}.xenon.local'},
-                                             sort=[('time', pymongo.DESCENDING)])
-        if (bootstrax_on_host and
-                bootstrax_on_host.get('time').replace(tzinfo=pytz.utc) > now(-timeouts['bootstrax_presumed_dead'])):
+        bootstrax_on_host = bs_coll.find_one({
+            'host': f'eb{eb_i}.xenon.local',
+            'time': {'$gt': now(-timeouts['bootstrax_presumed_dead'])}},
+            sort=[('time', pymongo.DESCENDING)])
+
+        if bootstrax_on_host:
             n_ebs_running += 1
-            running_eb = run_coll.find_one({'bootstrax.state': 'busy',
-                                            'bootstrax.host': f'eb{eb_i}.xenon.local'})
-            if (running_eb and
-                running_eb.get('bootstrax', {}).get('started_processing', now()).replace(tzinfo=pytz.utc) <
-                    now(-timeouts['eb3-5_max_busy_time'])):
+            running_eb = run_coll.find_one({
+                    'bootstrax.state': 'busy',
+                    'bootstrax.host': f'eb{eb_i}.xenon.local',
+                    'bootstrax.started_processing': {
+                        '$lt': now(-timeouts['eb3-5_max_busy_time'])}})
+            if running_eb:
                 n_ebs_busy += 1
                 log.info(f'eb_can_process::\t eb{eb_i} is busy')
     if ((n_ebs_running == n_ebs_busy and n_untouched_runs > max_queue_new_runs) or
@@ -626,7 +629,7 @@ def infer_mode(rd):
              f'\t {result}')
 
     # Lower the settings if there are continuous failures on this run:
-    if rd['bootstrax'].get('n_failures', 0) >= lower_resources_after_n_failures:
+    if rd.get('bootstrax', {}).get('n_failures', 0) >= lower_resources_after_n_failures:
         result = dict(cores=max(4, result['cores'] // 2),
                       max_messages=max(4, result['max_messages'] // 2),
                       timeout=min(1000, result['timeout']* 1.5)
@@ -836,23 +839,52 @@ def check_data_written(rd):
     return files_written > 0
 
 
-def count_files(rd):
+def upload_file_metadata(rd):
     """
-    Count the number of files on the location on the basis of the data entry in the rundoc
-    This info is used for Admix to checksum that all the files are correctly uploaded to
-    Rucio
+    Update the data-field in the rundoc with a portion of the metadata. Also count the
+    number of files on the location on the basis of the data entry in the rundoc. The
+    filecount info is used for Admix to checksum that all the files are correctly uploaded
+    to Rucio.
     :param rd: rundoc
     """
+    try:
+        st_meta = new_context(cores=args.cores, max_messages=args.max_messages, timeout=100)
+        st_meta.set_context_config({'forbid_creation_of': '*'})
+    except Exception as e:
+        log_warning(f"Cannot create context to read the metadata: {e}")
+        st_meta = None
+
     for ddoc in rd['data']:
         if hostname != ddoc['host']:
             continue
         loc = ddoc.get('location', '')
+
         if os.path.exists(loc):
             file_count = len(os.listdir(loc))
+            # Can also get the latter from st.lineage_for but too lazy for that
+            data_size_mb, avg_data_size_mb, lineage_hash = None, None, None
+            run_id = '%06d' % rd['number']
+            if st_meta is not None:
+                try:
+                    md = st.get_meta(run_id, ddoc['type'])
+                    chunk_mb = [chunk['nbytes']/(1e6) for chunk in md['chunks']]
+                    data_size_mb = int(np.sum(chunk_mb))
+                    avg_data_size_mb = int(np.average(chunk_mb))
+                    lineage_hash = md['lineage_hash']
+                except Exception as e:
+                    log_warning(f"Cannot load metadata if {ddoc['type']}: {e}")
+
             run_coll.update_one(
                     {'_id': rd['_id'],
                      'data.location': ddoc['location']},
-                    {'$set': {'data.$.file_count': file_count}})
+                    {'$set':
+                         {'data.$.file_count': file_count,
+                          'data.$.meta.strax_version': strax.__version__,
+                          'data.$.meta.straxen_version': straxen.__version__,
+                          'data.$.meta.size_mb': data_size_mb,
+                          'data.$.meta.avg_chunk_mb': avg_data_size_mb,
+                          'data.$.meta.lineage_hash': lineage_hash}
+                     })
 
 
 def set_status_finished(rd):
@@ -995,7 +1027,8 @@ def get_compressor(rd, default_compressor="lz4"):
 
 def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
               run_start_time, samples_per_record, process_mode, target_override,
-              daq_chunk_duration, daq_overlap_chunk_duration, debug=False):
+              daq_chunk_duration, daq_overlap_chunk_duration, n_fails,
+              debug=False):
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1036,6 +1069,21 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
             st.make(run_id, target,
                     config=strax_config,
                     max_workers=process_mode['cores'])
+
+            if (target != 'raw_records' and n_fails == 0) or args.fix_target:
+                # Make the nv, he, and mv data type only if we are:
+                #  - Not processing up to raw_records (that means we are in some recovery mode)
+                #  - We haven't failed this run before.
+                # or
+                #  - Are fixing the target (this is useful for testing but normally not used)
+                for sub_d_target in args.sub_d_targets:
+                    if sub_d_target not in st._plugin_class_registry:
+                        log_warning(f'Trying to make unknown data type {sub_d_target}')
+                        continue
+                    elif not st.is_stored(run_id, sub_d_target):
+                        st.make(run_id, sub_d_target,
+                                config=strax_config,
+                                max_workers=process_mode['cores'])
 
         if args.profile.lower() == 'false':
             st_make()
@@ -1087,22 +1135,42 @@ def process_run(rd, send_heartbeats=args.production):
                 fail("Corrupted data doc, found entry without 'type' field")
             if dd['type'] == 'live':
                 break
+            elif not args.production:
+                # We are just testing let's assume its on the usual location
+                dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
             else:
                 fail("Non-live data already registered; untracked failure?")
         else:
-            fail(f"No live data entry in rundoc")
+            if not args.production:
+                # We are just testing let's assume its on the usual location
+                dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
+            else:
+                fail(f"No live data entry in rundoc")
 
         if not osp.exists(dd['location']):
             fail(f"No access to live data folder {dd['location']}")
 
-        thread_info = rd.get('daq_config', dict()).get('processing_threads', dict())
-        n_readout_threads = sum([v for v in thread_info.values()])
+        if 'daq_config' not in rd:
+            fail('No daq_config in the rundoc!')
         try:
-            daq_chunk_duration = int(rd['daq_config']['strax_chunk_length'] * 1e9)
-            daq_overlap_chunk_duration = int(rd['daq_config']['strax_chunk_overlap'] * 1e9)
+            # Fetch parameters from the rundoc. If not readably, let's use redax' default
+            # values (that are hardcoded here).
+            dq_conf = rd['daq_config']
+            to_read = ('processing_threads', 'strax_chunk_length', 'strax_chunk_overlap',
+                       'strax_fragment_payload_bytes')
+            for conf in to_read:
+                if conf not in dq_conf:
+                    log_warning(f'{conf} not in rundoc for {run_id}! Using default values.')
+            thread_info = dq_conf.get('processing_threads', dict())
+            n_readout_threads = sum([v for v in thread_info.values()])
+            daq_chunk_duration = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
+            daq_overlap_chunk_duration = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
+            # note that value in rd in bytes hence //2
+            samples_per_record = dq_conf.get('strax_fragment_payload_bytes', 220) // 2
+            if not samples_per_record == 110:
+                log.info(f'Samples_per_record = {samples_per_record}')
         except Exception as e:
-            fail(f"Could not find 'strax_chunk_length' and/or'strax_chunk_overlap' in "
-                 f"rundoc: {str(e)}")
+            fail(f"Could not find {to_read} in rundoc: {str(e)}")
 
         if not n_readout_threads:
             fail(f"Run doc for {run_id} has no readout thread count info")
@@ -1124,10 +1192,11 @@ def process_run(rd, send_heartbeats=args.production):
             os.remove(exception_tempfile)
 
         target = args.target
-        if not args.production and not 'bootstrax'in rd:
+        n_fails = rd['bootstrax'].get('n_failures', 0)
+        if not args.production and 'bootstrax' not in rd:
             # Bootstrax does not register in non-production mode
             pass
-        elif rd['bootstrax'].get('n_failures', 0) > 1 and not args.process:
+        elif n_fails > 1 and not args.process:
             # Failed before, and on autopilot: do just raw_records
             target = 'raw_records'
 
@@ -1138,13 +1207,6 @@ def process_run(rd, send_heartbeats=args.production):
         except Exception as e:
             fail(f"Could not find start in datetime.datetime object: {str(e)}")
 
-        try:
-            samples_per_record = rd['daq_config']['strax_fragment_payload_bytes'] // 2  # note that value in rd in bytes
-            if not samples_per_record == 110:
-                log.info(f'Samples_per_record = {samples_per_record}')
-        except Exception as e:
-            fail(f"Could not find daq_config.strax_fragment_payload_bytes in database: {str(e)}")
-
         if args.infer_mode:
             process_mode = infer_mode(rd)
         else:
@@ -1154,7 +1216,7 @@ def process_run(rd, send_heartbeats=args.production):
             target=run_strax,
             args=(run_id, loc, target, n_readout_threads, compressor,
                   run_start_time, samples_per_record, process_mode, target_override,
-                  daq_chunk_duration, daq_overlap_chunk_duration,
+                  daq_chunk_duration, daq_overlap_chunk_duration, n_fails,
                   args.debug))
 
         t0 = now()
@@ -1186,7 +1248,17 @@ def process_run(rd, send_heartbeats=args.production):
                 log.info(f"Strax done on run {run_id}, performing basic data quality check")
 
                 try:
-                    md = st.get_meta(run_id, 'raw_records')
+                    # Sometimes we have only he channels or mv channels, try loading one
+                    # until we get one with chunks.
+                    for rr_type in ('raw_records', 'raw_records_he', 'raw_records_mv',
+                            # 'raw_records_nv' # not in the DAQ-reader yet.
+                                    ):
+                        md = st.get_meta(run_id, rr_type)
+                        if len(md['chunks']) and (
+                                'first_time' in md['chunks'][0] and
+                                'last_endtime' in md['chunks'][0]
+                        ):
+                            break
                 except Exception:
                     fail("Processing succeeded, but metadata not readable: "
                          + traceback.format_exc())
@@ -1203,7 +1275,7 @@ def process_run(rd, send_heartbeats=args.production):
                 # this has to be done with some care...
                 t_covered = timedelta(
                     seconds=(max([x.get('last_endtime', 0) for x in md['chunks']]) -
-                             min([x.get('first_time', float('inf')) for x in md['chunks']])) / 1e9)
+                             min([x.get('first_time', 10e9*1e9) for x in md['chunks']])) / 1e9)
                 run_duration = rd['end'] - rd['start']
                 if not (0 < t_covered.seconds < float('inf')):
                     fail(f"Processed data covers {t_covered} sec")
@@ -1217,7 +1289,7 @@ def process_run(rd, send_heartbeats=args.production):
                 if args.production:
                     set_run_state(rd, 'done', **info)
                     set_status_finished(rd)
-                    count_files(rd)
+                    upload_file_metadata(rd)
 
                     if args.delete_live:
                         delete_live_data(rd, loc)
@@ -1241,7 +1313,6 @@ def process_run(rd, send_heartbeats=args.production):
 
     except RunFailed:
         return
-
 
 
 ##
@@ -1302,21 +1373,17 @@ def cleanup_db():
 
     log.info("Checking for bad stuff in database")
 
-    # TODO
-    #  the lines below are obsolete given the changed strategy of how to use the bs_coll
-    # Bootstrax instances that say they are active, but haven't reported in for a while
-    # (these are on other hosts, or we would have killed them already)
-    # while True:
-    #     send_heartbeat()
-    #     bd = bs_coll.find_one_and_update(
-    #         {'host': hostname,
-    #          'status': {'$ne': dead_state},
-    #          'time': {'$lt': now(-timeouts['bootstrax_presumed_dead'])}
-    #          },
-    #         {'$set': {'state': dead_state}})
-    #     if bd is None:
-    #         break
-    #     log.info(f"Cleaned old boostrax entry on host {bd['host']}. Now presumed dead. Rest in peace")
+    # Check for all the ebs if their last state message is not longer ago than the time we assume that the eb is dead.
+    for eb_i in range(6):
+        bd = bs_coll.find_one(
+                {'host': f'eb{eb_i}.xenon.local'},
+                sort=[('time', pymongo.DESCENDING)])
+        if (bd and
+                bd['time'].replace(tzinfo=pytz.utc) < now(
+                    -timeouts['bootstrax_presumed_dead']) and
+                bd['state'] is not dead_state):
+            bs_coll.find_one_and_update({'_id': bd['_id']},
+                                        {'$set': {'state': dead_state}})
 
     # Runs that say they are 'considering' or 'busy' but nothing happened for a while
     for state, timeout in [

@@ -59,15 +59,30 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."))
 class DAQReader(strax.Plugin):
-    """Read the XENONnT DAQ
+    """
+    Read the XENONnT DAQ-live_data from redax and split it to the
+    appropriate raw_record data-types based on the channel-map.
 
-    Does nothing whatsoever to the pulse data; not even baselining.
+    Does nothing whatsoever to the live_data; not even baselining.
+
+    Provides:
+        - raw_records: (tpc)raw_records.
+        - raw_records_he: raw_records for the high energy boards
+        digitizing the top PMT-array at lower amplification.
+        - raw_records_nv: neutron veto raw_records; only stored temporary
+        as the software coincidence trigger not applied yet.
+        - raw_records_mv: muon veto raw_records.
+        - raw_records_aqmon: raw_records for the acquisition monitor (_nv
+        for neutron veto).
     """
     provides = (
         'raw_records',
         'raw_records_he',  # high energy
         'raw_records_aqmon',
-        'raw_records_mv')
+        'raw_records_nv',  # nveto raw_records (will not be stored long term)
+        'raw_records_aqmon_nv',
+        'raw_records_mv',    # mveto has to be last due to lineage
+    )
 
     data_kind = immutabledict(zip(provides, provides))
     depends_on = tuple()
@@ -298,7 +313,9 @@ class DAQReader(strax.Plugin):
                 continue
 
             result_name = 'raw_records'
-            if subd != 'tpc':
+            if subd.startswith('nveto'):
+                result_name += '_nv'
+            elif subd != 'tpc':
                 result_name += '_' + subd
             result[result_name] = self.chunk(
                 start=self.t0 + break_pre,

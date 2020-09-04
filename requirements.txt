@@ -9,3 +9,4 @@ matplotlib
 packaging
 immutabledict
 numpy>1.18.0
+strax>=0.12.0

@@ -1,3 +1,16 @@
+0.10.0 / 2020-08-187
+--------------------
+- Neutron-veto integration (#86)
+- Processing for high energy channels (#161, #176)
+- Integrate rucio as storage backend (#164)
+- Remapping of old runs (#166)
+- Bootstrax/microstrax/ajax updates (#165)
+- Pull request template (#168)
+- Neural net for nT placeholder (#158)
+- Forbid creation of any rr-type (#177)
+- Add kwargs to 1T-contex (#167)
+- Update LED-settings (#170)
+
 0.9.2 / 2020-07-21
 --------------------
 - Change S1 split threshold (#150)

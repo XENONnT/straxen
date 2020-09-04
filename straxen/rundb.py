@@ -33,6 +33,7 @@ class RunDB(strax.StorageFrontend):
                  local_only=False,
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
+                 rucio_path=None,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -59,6 +60,7 @@ class RunDB(strax.StorageFrontend):
         self.new_data_path = new_data_path
         self.reader_ini_name_is_mode = reader_ini_name_is_mode
         self.minimum_run_number = minimum_run_number
+        self.rucio_path = rucio_path
         if self.new_data_path is None:
             self.readonly = True
         self.runid_field = runid_field
@@ -84,6 +86,8 @@ class RunDB(strax.StorageFrontend):
             strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
         ]
+        if self.rucio_path is not None:
+            self.backends.append(strax.rucio(self.rucio_path))
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
@@ -115,8 +119,23 @@ class RunDB(strax.StorageFrontend):
             run_query = {'name': str(key.run_id)}
         else:
             run_query = {'number': int(key.run_id)}
+
+        # Check that we are in rucio backend
+        if self.rucio_path is not None:
+            dq = {
+                'data': {
+                    '$elemMatch': {
+                        'type': key.data_type,
+                        'protocol': 'rucio'}}}
+            doc = self.collection.find_one({**run_query, **dq},
+                                           projection=dq)
+            if doc is not None:
+                datum = doc['data'][0]
+                return datum['protocol'], str(key.run_id) + '-' + datum['did'].split(':')[1]
+        
         dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq}, projection=dq)
+
         if doc is None:
             # Data was not found
             if not write:
