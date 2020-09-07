@@ -24,7 +24,7 @@ class nVETOPulseProcessing(strax.Plugin):
     """
     nVETO equivalent of pulse processing. Not much more to say about.
     """
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
 
     parallel = 'process'
     rechunk_on_save = False
