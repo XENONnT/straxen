@@ -61,12 +61,13 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
-        r = clean_up_empty_records(r, only_last=True)
+        rlinks = strax.record_links(raw_records_coin_nv)
+        r = clean_up_empty_records(r, rlinks, only_last=True)
         return r
 
 @export
 @numba.njit(cache=True, nogil=True)
-def clean_up_empty_records(records, only_last=True):
+def clean_up_empty_records(records, record_links, only_last=True):
     """
     Function which deletes empty records. Empty means data is completely
     zero.
@@ -92,4 +93,27 @@ def clean_up_empty_records(records, only_last=True):
         if np.any(r['data'] != 0):
             indicies_to_keep[n_indicies] = ind
             n_indicies += 1
+            continue
+
+        # If we arrive here this means we will remove this record
+        # Hence we have to update the pulse_lengths accordingly:
+        length = r['length']
+
+        TRIAL_COUNTER = 500  # Do not want to be stuck forever
+        for neighbors in record_links:
+            neighbor_i = ind
+            ntries = 0
+
+            while ntries < TRIAL_COUNTER:
+                neighbor_i = neighbors[neighbor_i]
+                if neighbor_i == -1:
+                    # No neighbor anymore
+                    break
+                else:
+                    records[neighbor_i]['pulse_length'] -= length
+                ntries += 1
+            if ntries == TRIAL_COUNTER:
+                mes = 'Tried to correct the pulse_length for more than 500 fragments of a single pulse, this is odd.'
+                raise TimeoutError(mes)
+
     return records[indicies_to_keep[:n_indicies]]
