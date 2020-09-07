@@ -61,7 +61,7 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
-        rlinks = strax.record_links(raw_records_coin_nv)
+        rlinks = strax.record_links(r)
         r = clean_up_empty_records(r, rlinks, only_last=True)
         return r
 
