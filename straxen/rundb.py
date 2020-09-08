@@ -113,7 +113,6 @@ class RunDB(strax.StorageFrontend):
                             raise pymongo.errors.ServerSelectionTimeoutError(
                                 'Cannot connect to any mongo url')
 
-
         self.client = pymongo.MongoClient(mongo_url)
 
         if mongo_dbname is None:
