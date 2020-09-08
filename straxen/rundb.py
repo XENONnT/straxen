@@ -93,6 +93,7 @@ class RunDB(strax.StorageFrontend):
                 username = straxen.get_secret('mongo_rdb_username')
                 password = straxen.get_secret('mongo_rdb_password')
                 url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
+                mongo_url = f"mongodb://{username}:{password}@{url_base}"
             else:
                 username = straxen.get_secret('rundb_username')
                 password = straxen.get_secret('rundb_password')
@@ -111,6 +112,7 @@ class RunDB(strax.StorageFrontend):
                         if url_base == mongo_connections[-1]:
                             raise pymongo.errors.ServerSelectionTimeoutError(
                                 'Cannot connect to any mongo url')
+
 
         self.client = pymongo.MongoClient(mongo_url)
 
