@@ -106,7 +106,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
 
             while ntries < TRIAL_COUNTER:
                 neighbor_i = neighbors[neighbor_i]
-                if neighbor_i == -1:
+                if neighbor_i == strax.NO_RECORD_LINK:
                     # No neighbor anymore
                     break
                 else:
