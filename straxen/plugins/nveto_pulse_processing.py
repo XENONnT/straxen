@@ -122,7 +122,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
                     records[neighbor_i]['pulse_length'] -= length
                 ntries += 1
             if ntries == MAX_RECORD_I:
-                mes = f'Found more than {MAX_RECORD_I} links for a single pulse this is odd.'
+                mes = 'Found more than 500 links for a single pulse this is odd.'
                 raise TimeoutError(mes)
 
     return records[indicies_to_keep[:n_indicies]]
