@@ -85,7 +85,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
     for ind, r in enumerate(records):
         if only_last:
             m_last_fragment = (r['record_i'] > 0) and (r['length'] < len(r['data']))
-            if m_last_fragment:
+            if not m_last_fragment:
                 indicies_to_keep[n_indicies] = ind
                 n_indicies += 1
                 continue
