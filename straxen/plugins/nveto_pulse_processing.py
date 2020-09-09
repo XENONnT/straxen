@@ -82,19 +82,19 @@ def clean_up_empty_records(records, record_links, only_last=True):
     """
     indicies_to_keep = np.zeros(len(records), dtype=np.int32)
     n_indicies = 0
-    for ind, r in enumerate(records):
+    for rind, r in enumerate(records):
         if only_last:
-            m_first = record_links[0][ind] == strax.NO_RECORD_LINK  #
-            m_in_between = record_links[1][ind] != strax.NO_RECORD_LINK
+            m_first = record_links[0][rind] == strax.NO_RECORD_LINK  #
+            m_in_between = record_links[1][rind] != strax.NO_RECORD_LINK
             if m_first or m_in_between:
             # we are not the last record as we don't have a link on the left (i.e. are first) or have a link on the
             # right
-                indicies_to_keep[n_indicies] = ind
+                indicies_to_keep[n_indicies] = rind
                 n_indicies += 1
                 continue
 
         if np.any(r['data'] != 0):
-            indicies_to_keep[n_indicies] = ind
+            indicies_to_keep[n_indicies] = rind
             n_indicies += 1
             continue
 
@@ -109,7 +109,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
             if only_last & ind:
                 continue
 
-            neighbor_i = ind
+            neighbor_i = rind
             ntries = 0
 
             # Looping over all left/right neighbors and update pulse_length
