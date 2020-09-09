@@ -105,7 +105,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
         MAX_RECORD_I  = 500  # Do not want to be stuck forever
 
         left_links, right_links = record_links  # Just to make for loop more explicit
-        for ind, neighbors in enumerate(left_links, right_links):
+        for ind, neighbors in enumerate((left_links, right_links)):
             if only_last & ind:
                 continue
 
