@@ -12,8 +12,9 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-default_mongo_url = 'fried.rice.edu:27017/xenonnt'
-backup_mongo_url = 'xenon-rundb.grid.uchicago.edu:27017,xenon1t-daq.lngs.infn.it:27017/xenonnt'
+default_mongo_url = 'xenon-rundb.grid.uchicago.edu:27017/xenonnt'
+backup_mongo_urls = ('fried.rice.edu:27017/xenonnt',
+                     'xenon1t-daq.lngs.infn.it:27017/xenonnt')
 default_mongo_dbname = 'xenonnt'
 default_mongo_collname = 'runs'
 
@@ -99,7 +100,7 @@ class RunDB(strax.StorageFrontend):
                 password = straxen.get_secret('rundb_password')
 
                 # try connection to the mongo database in this order
-                mongo_connections = [default_mongo_url, backup_mongo_url]
+                mongo_connections = [default_mongo_url, *backup_mongo_urls]
                 for url_base in mongo_connections:
                     try:
                         mongo_url = f"mongodb://{username}:{password}@{url_base}"
@@ -111,7 +112,7 @@ class RunDB(strax.StorageFrontend):
                         warn(f'Cannot connect to to Mongo url: {url_base}')
                         if url_base == mongo_connections[-1]:
                             raise pymongo.errors.ServerSelectionTimeoutError(
-                                'Cannot connect to any mongo url')
+                                'Cannot connect to any Mongo url')
 
         self.client = pymongo.MongoClient(mongo_url)
 
