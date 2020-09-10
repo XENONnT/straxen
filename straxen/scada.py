@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
 def convert_time_zone(df, tz):
     """
     Function which converts the current time zone of a given
-    pd.DataFrame into another one timezone.
+    pd.DataFrame into another timezone.
 
     :param df: pandas.DataFrame containing the Data. Index must be a
         datetime object with time zone information.
@@ -40,9 +40,11 @@ def convert_time_zone(df, tz):
         df.index.rename(f'time {tz}', inplace=True)
     return df
 
+
 def find_scada_parameter():
     # TODO: Add function which returns SCADA sensor names by short Name
     raise NotImplementedError
+
 
 @export
 def get_scada_values(parameters,
