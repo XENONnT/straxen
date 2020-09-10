@@ -5,7 +5,7 @@ import numba
 import numpy as np
 
 import strax
-from SCADA_SECRETS import SCData_URL, SCLastValue_URL, SCADA_SECRETS
+from .SCADA_SECRETS import SCData_URL, SCLastValue_URL, SCADA_SECRETS
 
 export, __all__ = strax.exporter()
 

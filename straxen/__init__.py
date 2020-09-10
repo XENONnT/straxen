@@ -6,6 +6,7 @@ from .rundb import *
 from .matplotlib_utils import *
 from .mini_analysis import *
 from .misc import *
+from .scada import *
 
 from .gain_models import *
 from .hitfinder_thresholds import *
