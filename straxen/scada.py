@@ -9,9 +9,36 @@ from SCADA_SECRETS import SCData_URL, SCLastValue_URL, SCADA_SECRETS
 
 export, __all__ = strax.exporter()
 
-def convert_labtime_to_unix():
-    #TODO: Add convinient CET/Lab time to unix time converter
-    raise NotImplementedError
+@export
+def convert_time_zone(df, tz):
+    """
+    Function which converts the current time zone of a given
+    pd.DataFrame into another one timezone.
+
+    :param df: pandas.DataFrame containing the Data. Index must be a
+        datetime object with time zone information.
+    :param tz: str representing the timezone the index should be
+        converted to. See the notes for more information.
+    :return: pandas.DataFrame with converted time index.
+
+    Notes:
+        You can find a complete list of available timezones via:
+        ```
+        import pytz
+        pytz.all_timezones
+        ```
+        You can also specify 'strax' as timezone which will convert the
+        time index into a 'strax time' equivalent.
+        The default timezone of strax is UTC.
+    """
+    if tz == 'strax':
+        df = df.tz_convert(tz='UTC')
+        df.index = df.index.astype(np.int64)
+        df.index.rename(f'time strax', inplace=True)
+    else:
+        df = df.tz_convert(tz=tz)
+        df.index.rename(f'time {tz}', inplace=True)
+    return df
 
 def find_scada_parameter():
     # TODO: Add function which returns SCADA sensor names by short Name
@@ -92,6 +119,11 @@ def get_scada_values(parameters,
             df = pd.concat((df, temp_df[k]), axis=1)
         else:
             df = temp_df
+
+    # Adding timezone information and rename index:
+    df.set_index('time', inplace=True)
+    df = df.tz_localize(tz='UTC')
+    df.index.rename('time UTC', inplace=True)
     return df
 
 
