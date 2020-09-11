@@ -22,7 +22,10 @@ def convert_time_zone(df, tz):
     :return: pandas.DataFrame with converted time index.
 
     Notes:
-        You can find a complete list of available timezones via:
+        1. ) The input pandas.DataFrame must be indexed via datetime
+        objects which are timezone aware.
+
+        2.)  You can find a complete list of available timezones via:
         ```
         import pytz
         pytz.all_timezones
@@ -203,9 +206,9 @@ def _downsample_scada(times, values, nvalues):
     else:
         nsamples = (len(times) // nvalues)
     res = np.zeros(nsamples, dtype=np.float32)
-    new_times = np.zeros(nsamples, dtype=np.int64)  # TODO: Think about the time binning...
+    new_times = np.zeros(nsamples, dtype=np.int64)
     for ind in range(nsamples):
         res[ind] = np.mean(values[ind * nvalues:(ind + 1) * nvalues])
-        new_times[ind] = times[ind * nvalues]
+        new_times[ind] = np.mean(times[ind * nvalues:(ind + 1) * nvalues])
 
     return new_times, res
