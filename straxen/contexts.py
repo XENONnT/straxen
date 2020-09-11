@@ -62,7 +62,10 @@ def xenonnt_online(output_folder='./strax_data',
         readonly=not we_are_the_daq,
         runid_field='number',
         new_data_path=output_folder,
-        rucio_path='/dali/lgrandi/rucio/'), ] if _database_init else []
+        rucio_path='/dali/lgrandi/rucio/'),
+        straxen.OnlineMonitor(readonly=not we_are_the_daq,
+                              take_only=('pulse_counts', 'pulse_counts_he'))
+        ] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(

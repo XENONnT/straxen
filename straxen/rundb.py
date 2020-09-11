@@ -90,29 +90,7 @@ class RunDB(strax.StorageFrontend):
                     retries=dict(max_attempts=10)))
 
         if mongo_url is None:
-            if self.hostname.endswith('xenon.local'):
-                username = straxen.get_secret('mongo_rdb_username')
-                password = straxen.get_secret('mongo_rdb_password')
-                url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
-                mongo_url = f"mongodb://{username}:{password}@{url_base}"
-            else:
-                username = straxen.get_secret('rundb_username')
-                password = straxen.get_secret('rundb_password')
-
-                # try connection to the mongo database in this order
-                mongo_connections = [default_mongo_url, *backup_mongo_urls]
-                for url_base in mongo_connections:
-                    try:
-                        mongo_url = f"mongodb://{username}:{password}@{url_base}"
-                        # Force server timeout if we cannot connect ot this url. If this
-                        # does not raise an error, break and use this url
-                        pymongo.MongoClient(mongo_url).server_info()
-                        break
-                    except pymongo.errors.ServerSelectionTimeoutError:
-                        warn(f'Cannot connect to to Mongo url: {url_base}')
-                        if url_base == mongo_connections[-1]:
-                            raise pymongo.errors.ServerSelectionTimeoutError(
-                                'Cannot connect to any Mongo url')
+            mongo_url = get_mongo_url(self.hostname)
 
         self.client = pymongo.MongoClient(mongo_url)
 
@@ -295,3 +273,30 @@ class RunDB(strax.StorageFrontend):
         if self.reader_ini_name_is_mode:
             doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         return doc
+
+
+def get_mongo_url(hostname):
+    if hostname.endswith('xenon.local'):
+        username = straxen.get_secret('mongo_rdb_username')
+        password = straxen.get_secret('mongo_rdb_password')
+        url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
+        mongo_url = f"mongodb://{username}:{password}@{url_base}"
+    else:
+        username = straxen.get_secret('rundb_username')
+        password = straxen.get_secret('rundb_password')
+
+        # try connection to the mongo database in this order
+        mongo_connections = [default_mongo_url, *backup_mongo_urls]
+        for url_base in mongo_connections:
+            try:
+                mongo_url = f"mongodb://{username}:{password}@{url_base}"
+                # Force server timeout if we cannot connect ot this url. If this
+                # does not raise an error, break and use this url
+                pymongo.MongoClient(mongo_url).server_info()
+                break
+            except pymongo.errors.ServerSelectionTimeoutError:
+                warn(f'Cannot connect to to Mongo url: {url_base}')
+                if url_base == mongo_connections[-1]:
+                    raise pymongo.errors.ServerSelectionTimeoutError(
+                        'Cannot connect to any Mongo url')
+    return mongo_url
