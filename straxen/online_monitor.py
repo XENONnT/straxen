@@ -29,4 +29,3 @@ class OnlineMonitor(MongoFrontend):
                          col_n=col_n,
                          *args, **kwargs)
         self.readonly = read_only
-
