@@ -52,8 +52,7 @@ def get_scada_values(parameters,
                      end=None,
                      context=None,
                      run_id=None,
-                     target=None,
-                     seconds_range=None,
+                     time_selection_kwargs={},
                      value_every_seconds=1):
     """
     Function which returns XENONnT slow control values for a given set
@@ -70,8 +69,8 @@ def get_scada_values(parameters,
     :param end: same as start but as end.
     :param context: Context you are working with (e.g. st).
     :param run_id: Id of the run.
-    :param target: Target for which the run start and end should be used.
-    :param seconds_range: Range of seconds since the run start.
+    :param time_selection_kwargs: Keyword arguments taken by
+        st.to_absolute_time_range().
     :param value_every_seconds: Defines with which time difference
         values should be returned. Must be an integer!
         Default: one value per 1 seconds.
@@ -82,27 +81,14 @@ def get_scada_values(parameters,
         mes = 'The argument "parameters" has to be specified as a dict.'
         raise ValueError(mes)
 
-    if np.all((run_id, context, target)):
+    if np.all((run_id, context)):
         # User specified a valid context and run_id, so get the start
         # and end time for our query:
-        meta = context.get_meta(run_id, target)
-        # TODO: Target is only used to identify a stored data_kind metadata. Could be removed since start and end
-        #  should be the same for all data_kinds.
-        start = meta['start']  # TODO: This will fail for raw_records. Does not have start or end field; why?
+        start, end = context.to_absolute_time_range(run_id, **time_selection_kwargs)
 
-        if seconds_range:
-            start += seconds_range[0] * 10**9
-            end = start + seconds_range[1] * 10**9
-        else:
-            end = meta['end']
-
-    if np.all((start, end)):
-        # User specified a vaild start and end time, so there is not
-        # anything which needs to be done.
-        pass
-
-    else:
-        mes = ('You have to specify either a run_id, context and target.'
+    if not np.all((start, end)):
+        # User has not specified any vaild start and end time
+        mes = ('You have to specify either a run_id and context.'
                ' E.g. call get_scada_values(parameters, run_id=run,'
                ' target=raw_records", context=st) or you have to specifiy'
                'a valid start and end time.')
@@ -110,7 +96,7 @@ def get_scada_values(parameters,
 
     # Now loop over specified parameters and get the values for those.
     for ind, (k, p) in enumerate(parameters.items()):
-        print(f'Start to query {k}: {p}') #TODO: Remove me?
+        print(f'Start to query {k}: {p}')
         temp_df = _query_single_parameter(start, end, k, p, value_every_seconds)
 
         if ind:
