@@ -22,7 +22,7 @@ xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', '1300V_20200428', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
+    gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          # Channels must be listed in a ascending order!
