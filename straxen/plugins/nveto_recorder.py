@@ -25,7 +25,16 @@ export, __all__ = strax.exporter()
                  help='Number of nVETO PMTs')
 )
 class nVETORecorder(strax.Plugin):
-    __version__ = '0.0.4'
+    """
+    Plugin which builds a software trigger based on records. The trigger
+    is defined by a simple coincidence between pulse fragments within
+    the specified resolving time.
+    All records which do not fall into one of the coincidence windows
+    are labeled as lone records for which we compute some average
+    properties for monitoring purposes. Depending on the setting also
+    a fixed number of the lone_records per channel are stored.
+    """
+    __version__ = '0.0.5'
     parallel = 'process'
 
     rechunk_on_save = True
@@ -62,11 +71,19 @@ class nVETORecorder(strax.Plugin):
         intervals = coincidence(raw_records_nv,
                                 self.config['coincidence_level_recorder_nv'],
                                 self.config['resolving_time_recorder_nv'])
+        # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
+        # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
+        if len(intervals):
+            intervals_with_bounds = np.zeros((len(intervals) + 2, 2), dtype=np.int64)
+            intervals_with_bounds[1:-1, :] = intervals
+            intervals_with_bounds[0, :] = start, min(start + self.config['resolving_time_recorder_nv'], intervals[0, 0])
+            intervals_with_bounds[-1, :] = max(end - self.config['resolving_time_recorder_nv'], intervals[-1, 1]), end
+            del intervals
+        else:
+            intervals_with_bounds = np.zeros((0, 2), dtype=np.int64)
+
         neighbors = strax.record_links(raw_records_nv)
-        mask = pulse_in_interval(raw_records_nv, neighbors, *np.transpose(intervals))
-        # Always set the last n-1 events to true since chunk gaps could be smaller than resolving time and we are
-        # just storing data.
-        mask[:-self.config['coincidence_level_recorder_nv']-1] = True
+        mask = pulse_in_interval(raw_records_nv, neighbors, *np.transpose(intervals_with_bounds))
         rr, lone_records = straxen.mask_and_not(raw_records_nv, mask)
 
         # Compute some properties of the lone_records:
@@ -216,8 +233,8 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
     last_interval_seen = 0
     for ind, rr in enumerate(raw_records):
         # We only have to check the current and the next two intervals:
-        st = start_times[last_interval_seen:last_interval_seen + 2]
-        et = end_times[last_interval_seen:last_interval_seen + 2]
+        st = start_times[last_interval_seen:last_interval_seen + 3]
+        et = end_times[last_interval_seen:last_interval_seen + 3]
 
         if (last_interval_seen + 2) < len(end_times):
             # As soon as we have seen all intervals rr['time'] can be larger
@@ -242,7 +259,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
             # If we have a funny record for which the start time is in interval 0
             # and the end time in interval 1 we still set last interval seen to be
             # the first interval. It might happen that this record is followed by
-            # a second record which is shorter falling only into interval 1. While
+            # a second record which is shorter falling only into interval 0. While
             # there will be guaranteed by the definition of our coincidence another
             # record at the start of the interval 1 which will increment last_interval_seen
             last_interval_seen = np.argwhere(m)[0, 0] + last_interval_seen
