@@ -26,6 +26,8 @@ HITFINDER_OPTIONS_he = tuple([
              'See straxen.hit_min_amplitude for options.'
     )])
 
+HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
+
 
 @export
 @strax.takes_config(
@@ -90,13 +92,20 @@ HITFINDER_OPTIONS_he = tuple([
 class PulseProcessing(strax.Plugin):
     """
     1. Split raw_records into:
-     - tpc_records
+     - (tpc) records
      - aqmon_records
+     - pulse_counts
 
     For TPC records, apply basic processing:
-    1. Flip, baseline, and integrate the waveform
-    2. Apply software HE veto after high-energy peaks.
-    3. Find hits, apply linear filter, and zero outside hits.
+        1. Flip, baseline, and integrate the waveform
+        2. Apply software HE veto after high-energy peaks.
+        3. Find hits, apply linear filter, and zero outside hits.
+    
+    pulse_counts holds some average information for the individual PMT
+    channels for each chunk of raw_records. This includes e.g.
+    number of recorded pulses, lone_pulses (pulses which do not
+    overlap with any other pulse), or mean values of baseline and
+    baseline rms channel.
     """
     __version__ = '0.2.2'
 
@@ -214,7 +223,8 @@ class PulseProcessing(strax.Plugin):
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),
     *HITFINDER_OPTIONS_he)
-class PulseProcessingHe(PulseProcessing):
+class PulseProcessingHighEnergy(PulseProcessing):
+    __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
     __version__ = '0.0.1'
     provides = ('records_he', 'pulse_counts_he')
     data_kind = {k: k for k in provides}
@@ -222,7 +232,6 @@ class PulseProcessingHe(PulseProcessing):
         records_he=False,
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
-    parallel = 'process'
     compressor = 'lz4'
     child_ends_with = '_he'
 
