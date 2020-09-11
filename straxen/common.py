@@ -412,7 +412,7 @@ def remap_old(data, targets, works_on_target=''):
     elif not np.any([match(works_on_target, t) for t in strax.to_str_tuple(targets)]):
         # None of the targets are such that we want to remap
         pass
-    else:
+    elif len(data):
         # select the old data and do the remapping for this
         warn('Correcting data of runs with mis-cabled PMTs. \nSee: https://'
              'xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap')

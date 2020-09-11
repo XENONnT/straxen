@@ -23,7 +23,7 @@ xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', '1300V_20200428'),
+    gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
     channel_map=immutabledict(
          # (Minimum channel, maximum channel)
          # Channels must be listed in a ascending order!
@@ -47,6 +47,7 @@ xnt_common_config = dict(
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
+                   _database_init=True,
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
@@ -54,17 +55,15 @@ def xenonnt_online(output_folder='./strax_data',
         **kwargs}
 
     st = strax.Context(
-        storage=[
-            straxen.RunDB(
-                readonly=not we_are_the_daq,
-                runid_field='number',
-                new_data_path=output_folder,
-                rucio_path='/dali/lgrandi/rucio/'),
-        ],
         config=straxen.contexts.xnt_common_config,
         **context_options)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
+    st.storage = [straxen.RunDB(
+        readonly=not we_are_the_daq,
+        runid_field='number',
+        new_data_path=output_folder,
+        rucio_path='/dali/lgrandi/rucio/'), ] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(

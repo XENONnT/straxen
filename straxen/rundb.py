@@ -2,7 +2,7 @@ import os
 import re
 import typing
 import socket
-
+from warnings import warn
 import botocore.client
 from tqdm import tqdm
 import pymongo
@@ -12,7 +12,9 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-default_mongo_url = 'fried.rice.edu:27017/xenonnt'
+default_mongo_url = 'xenon-rundb.grid.uchicago.edu:27017/xenonnt'
+backup_mongo_urls = ('fried.rice.edu:27017/xenonnt',
+                     'xenon1t-daq.lngs.infn.it:27017/xenonnt')
 default_mongo_dbname = 'xenonnt'
 default_mongo_collname = 'runs'
 
@@ -92,11 +94,25 @@ class RunDB(strax.StorageFrontend):
                 username = straxen.get_secret('mongo_rdb_username')
                 password = straxen.get_secret('mongo_rdb_password')
                 url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
+                mongo_url = f"mongodb://{username}:{password}@{url_base}"
             else:
                 username = straxen.get_secret('rundb_username')
                 password = straxen.get_secret('rundb_password')
-                url_base = default_mongo_url
-            mongo_url = f"mongodb://{username}:{password}@{url_base}"
+
+                # try connection to the mongo database in this order
+                mongo_connections = [default_mongo_url, *backup_mongo_urls]
+                for url_base in mongo_connections:
+                    try:
+                        mongo_url = f"mongodb://{username}:{password}@{url_base}"
+                        # Force server timeout if we cannot connect ot this url. If this
+                        # does not raise an error, break and use this url
+                        pymongo.MongoClient(mongo_url).server_info()
+                        break
+                    except pymongo.errors.ServerSelectionTimeoutError:
+                        warn(f'Cannot connect to to Mongo url: {url_base}')
+                        if url_base == mongo_connections[-1]:
+                            raise pymongo.errors.ServerSelectionTimeoutError(
+                                'Cannot connect to any Mongo url')
 
         self.client = pymongo.MongoClient(mongo_url)
 
