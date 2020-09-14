@@ -206,6 +206,6 @@ def _downsample_scada(times, values, nvalues):
     new_times = np.zeros(nsamples, dtype=np.int64)  # TODO: Think about the time binning...
     for ind in range(nsamples):
         res[ind] = np.mean(values[ind * nvalues:(ind + 1) * nvalues])
-        new_times[ind] = times[ind * nvalues]
+        new_times[ind] = np.mean(times[ind * nvalues:(ind + 1) * nvalues])
 
     return new_times, res
