@@ -22,7 +22,10 @@ def convert_time_zone(df, tz):
     :return: pandas.DataFrame with converted time index.
 
     Notes:
-        You can find a complete list of available timezones via:
+        1. ) The input pandas.DataFrame must be indexed via datetime
+        objects which are timezone aware.
+
+        2.)  You can find a complete list of available timezones via:
         ```
         import pytz
         pytz.all_timezones
@@ -116,10 +119,10 @@ def get_scada_values(parameters,
 
 
 def _query_single_parameter(start,
-                           end,
-                           parameter_key,
-                           parameter_name,
-                           value_every_seconds=1):
+                            end,
+                            parameter_key,
+                            parameter_name,
+                            value_every_seconds=1):
     """
     Function to query the values of a single parameter from SCData.
 
@@ -160,7 +163,7 @@ def _query_single_parameter(start,
     # First we have to create an array where we can fill values with
     # the sampling frequency of scada:
     # TODO: Add a check in case user queries to many values. If yes read
-    #  the data in chunks.
+    #  the data in chunks. How much are too many?
     seconds = np.arange(start, end, 10**9)
     df = pd.DataFrame()
     df.loc[:, 'time'] = seconds
@@ -192,18 +195,20 @@ def _query_single_parameter(start,
 
 @numba.njit
 def _downsample_scada(times, values, nvalues):
-    '''
-    Function which downsamples scada values.
+    """
+    Function which down samples scada values.
 
-    Downsampling means simply taking the mean of the corresponding time
-    range.
-    '''
+    :param times: Unix times of the data points.
+    :param values: Corresponding sensor value
+    :param nvalues: Number of samples we average over.
+    :return: new time values and
+    """
     if len(times) % nvalues:
         nsamples = (len(times) // nvalues) - 1
     else:
         nsamples = (len(times) // nvalues)
     res = np.zeros(nsamples, dtype=np.float32)
-    new_times = np.zeros(nsamples, dtype=np.int64)  # TODO: Think about the time binning...
+    new_times = np.zeros(nsamples, dtype=np.int64)
     for ind in range(nsamples):
         res[ind] = np.mean(values[ind * nvalues:(ind + 1) * nvalues])
         new_times[ind] = np.mean(times[ind * nvalues:(ind + 1) * nvalues])
