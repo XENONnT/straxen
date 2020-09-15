@@ -55,7 +55,7 @@ def get_scada_values(parameters,
                      end=None,
                      context=None,
                      run_id=None,
-                     time_selection_kwargs={},
+                     time_selection_kwargs={'full_range': True},
                      value_every_seconds=1):
     """
     Function which returns XENONnT slow control values for a given set
@@ -73,7 +73,7 @@ def get_scada_values(parameters,
     :param context: Context you are working with (e.g. st).
     :param run_id: Id of the run.
     :param time_selection_kwargs: Keyword arguments taken by
-        st.to_absolute_time_range().
+        st.to_absolute_time_range(). Default: full_range=True.
     :param value_every_seconds: Defines with which time difference
         values should be returned. Must be an integer!
         Default: one value per 1 seconds.
