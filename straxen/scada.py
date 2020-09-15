@@ -71,7 +71,10 @@ def get_scada_values(parameters,
         unix time.
     :param end: same as start but as end.
     :param context: Context you are working with (e.g. st).
-    :param run_id: Id of the run.
+    :param run_id: Id of the run. Can also be specified as a list or
+        tuble of two run ids. In this case we will return the time
+        range lasting between the start of the first and endtime of the
+        second run.
     :param time_selection_kwargs: Keyword arguments taken by
         st.to_absolute_time_range(). Default: full_range=True.
     :param value_every_seconds: Defines with which time difference
@@ -87,7 +90,11 @@ def get_scada_values(parameters,
     if np.all((run_id, context)):
         # User specified a valid context and run_id, so get the start
         # and end time for our query:
-        start, end = context.to_absolute_time_range(run_id, **time_selection_kwargs)
+        if isinstance(run_id, (list, tuple)):
+            start, _ = context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
+            _, end = context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
+        else:
+            start, end = context.to_absolute_time_range(run_id, **time_selection_kwargs)
 
     if not np.all((start, end)):
         # User has not specified any vaild start and end time
