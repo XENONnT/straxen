@@ -87,9 +87,9 @@ class Peaklets(strax.Plugin):
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+        cmt=straxen.CmtServices()
+        self.to_pe = cmt.get_corrections_config(self.run_id,
+                                                'pmt_gains', self.config['gain_model'])
 
     def compute(self, records, start, end):
         r = records
@@ -232,9 +232,10 @@ class PeakletsHighEnergy(Peaklets):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+        cmt=straxen.CmtServices()
+        self.to_pe = cmt.get_corrections_config(self.run_id, 'pmt_gains',
+                                            self.config['gain_model'])
+
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.config['le_to_he_amplification']

@@ -140,11 +140,10 @@ class PulseProcessing(strax.Plugin):
                 (self.config['hev_gain_model'][0] != 'disabled')
                 and self.config['tail_veto_threshold'])
         if self.hev_enabled:
-            self.to_pe = straxen.get_to_pe(
-                self.run_id,
-                self.config['hev_gain_model'],
-                n_tpc_pmts=self.config['n_tpc_pmts'])
-
+            cmt = straxen.CmtServices()
+            self.to_pe = cmt.get_corrections_config(self.run_id, 'pmt_gains',
+                                                    self.config['hev_gain_model'])
+        
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
             check_overlaps(raw_records, n_channels=3000)

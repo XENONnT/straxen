@@ -9,6 +9,7 @@ from .misc import *
 
 from .gain_models import *
 from .hitfinder_thresholds import *
+from .corrections_services import *
 
 from . import plugins
 from .plugins import *
