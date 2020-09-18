@@ -151,7 +151,13 @@ class CmtServices():
 
         except KeyError:
             raise ValueError(f'Global version {global_version} not found')
-
+        # be cautious with very early runs 
+        test = np.isnan(pmt_gains)
+        if test.all:
+            raise ValueError(f'to_pe(PMT gains) values are NaN, no data available'
+                             f' for {run_id} in the gain model with version {global_version},'
+                             f' please set a cte values for {run_id}')
+            
         return pmt_gains
 
     def get_lce(self, run_id, s, position, global_version='v1', xenon1t=False):
