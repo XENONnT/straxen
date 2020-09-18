@@ -59,10 +59,9 @@ def mini_analysis(requires=tuple(),
             # TODO: This is a placeholder until the corrections system
             # is more fully developed
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
-                kwargs['to_pe'] = straxen.get_to_pe(
-                    run_id,
-                    context.config['gain_model'],
-                    context.config['n_tpc_pmts'])
+                cmt=straxen.CmtServices()
+                kwargs['to_pe'] = cmt.get_corrections_config(run_id,
+                        'pmt_gains', context.config['gain_model'])
 
             # Prepare selection arguments
             kwargs['time_range'] = context.to_absolute_time_range(

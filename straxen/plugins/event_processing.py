@@ -334,9 +334,8 @@ class EventPositions(strax.Plugin):
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
-        'elife_file',
-        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
-        help='link to the electron lifetime'))
+        'elife_model',
+        help='electron lifetime model'))
 class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
