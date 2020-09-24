@@ -275,6 +275,7 @@ def software_he_veto(records, to_pe, chunk_end,
 
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
+    :param chunk_end: Endtime of chunk to set as maximum ceiling for the veto period
     :param area_threshold: Minimum peak area to trigger the veto.
     Note we use a much rougher clustering than in later processing.
     :param veto_length: Time in ns to veto after the peak
