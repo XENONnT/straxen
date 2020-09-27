@@ -66,7 +66,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     hev_*   <= DDC10 hardware high energy veto
     """
         
-    __version__ ='0.0.23'
+    __version__ ='0.0.24'
     depends_on = ('aqmon_hits') 
     provides  = ('veto_intervals')
     data_kind = ('veto_intervals')
@@ -79,12 +79,11 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         return dtype
     
     def setup(self):
-        aq_ch_start = 800
+        aq_ch_start = straxen.n_hard_aqmon_start
         aqmon_channel_names = ('sum_wf','m_veto_sync',
                                'hev_stop', 'hev_start', 'he_stop','he_start','busy_stop', 'busy_start')
         channel_numbers = np.arange(aq_ch_start, aq_ch_start + len(aqmon_channel_names))
         
-        self.tmp_dtype = strax.time_fields
         # Keeping ch_range as class attribute for now, maybe will need it for other features
         self.channel_range = self.config['channel_map']['aqmon']
         self.channel_map = dict(zip(aqmon_channel_names, channel_numbers))
@@ -98,18 +97,20 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     def compute(self, aqmon_hits): 
         hits = aqmon_hits
         
+        # Make a dict to populate later
         res = dict()
+        
         for i, veto in enumerate(self.veto_names):
-            channels = channel_select(hits, self.channel_map[veto + 'stop'], self.channel_map[veto + 'start'])
-            vetos = self.merge_vetos(channels, gap = self.config['max_veto_gap'],\
-                                           dtype = self.tmp_dtype, t = 0)
+            veto_hits = channel_select(hits, self.channel_map[veto + 'stop'], self.channel_map[veto + 'start'])
+            vetos = self.merge_vetos(veto_hits, gap = self.config['max_veto_gap'],\
+                                           dtype = strax.time_fields, t = 0)
             
-            # Check that we found a veto start time and then populate the resulting dict
-            if np.any(vetos['time']):
-                res['time'] = vetos['time']
-                res['endtime'] = vetos['endtime']
-                res['veto_interval'] = vetos['endtime'] - vetos['time']
-                res['veto_type'] = veto + 'veto'        
+            # Check that we found a veto interval and update the resulting dict
+            if len(vetos):
+                res.setdefault("time",[]).extend(vetos['time'])
+                res.setdefault("endtime",[]).extend(vetos['endtime'])
+                res.setdefault("veto_interval",[]).extend((vetos['endtime'] - vetos['time']))
+                res.setdefault("veto_type",[]).extend([veto + 'veto']*len(vetos))
         return res
     
     @staticmethod
@@ -120,13 +121,10 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             result['time'] = start 
             result['endtime'] = stop
         else:
-            result = np.zeros(1,dtype=dtype)
-            result['time'] =  t
-            result['endtime'] = t
+            result = np.zeros(0,dtype=dtype)
         return result
             
 @numba.njit
 def channel_select(rr, ch_stop, ch_start):
     """Return data in between stop and start channels of the acquisition monitor (AM)"""
     return rr[((rr['channel'] == ch_stop) | (rr['channel'] == ch_start))] 
-
