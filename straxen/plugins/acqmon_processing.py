@@ -75,7 +75,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         dtype = [(('veto start time since unix epoch [ns]', 'time'), np.int64),
                  (('veto end time since unix epoch [ns]', 'endtime'), np.int64),
                  (('veto interval [ns]', 'veto_interval'), np.int64),
-                 (('veto signal type', 'veto_type'), np.str('U10'))]
+                 (('veto signal type', 'veto_type'), np.str('U9'))]
         return dtype
     
     def setup(self):
@@ -88,7 +88,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         self.channel_range = self.config['channel_map']['aqmon']
         self.channel_map = dict(zip(aqmon_channel_names, channel_numbers))
         self.veto_names = ['busy_','he_','hev_']
-        return self.channel_map
     
     def get_window_size(self):
         # Give a very wide window
@@ -98,7 +97,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         hits = aqmon_hits
         
         # Make a dict to populate later
-        res = dict()
+        res_temp = dict()
         
         for i, veto in enumerate(self.veto_names):
             veto_hits = channel_select(hits, self.channel_map[veto + 'stop'], self.channel_map[veto + 'start'])
@@ -107,10 +106,14 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             
             # Check that we found a veto interval and update the resulting dict
             if len(vetos):
-                res.setdefault("time",[]).extend(vetos['time'])
-                res.setdefault("endtime",[]).extend(vetos['endtime'])
-                res.setdefault("veto_interval",[]).extend((vetos['endtime'] - vetos['time']))
-                res.setdefault("veto_type",[]).extend([veto + 'veto']*len(vetos))
+                res_temp.setdefault("time",[]).extend(vetos['time'])
+                res_temp.setdefault("endtime",[]).extend(vetos['endtime'])
+                res_temp.setdefault("veto_interval",[]).extend((vetos['endtime'] - vetos['time']))
+                res_temp.setdefault("veto_type",[]).extend([veto + 'veto']*len(vetos))
+        
+        res = strax.dict_to_rec(res_temp)
+        res.sort(order = 'time') 
+        
         return res
     
     @staticmethod
