@@ -1,3 +1,17 @@
+0.10.1 / 2020-09-11
+--------------------
+- Added pytest to travis which builds data for all registered nT plugins (#193)
+- Added moun- and neutron-veto into the streamline processing with bootstrax (#184)
+- Added back-up URLs for the mongoDB (#213)
+- Updated data cleaning/handling with ajax and bootstrax (#182, #191, #196, #202, #206)
+- Updated documentation and doc-strings (#189, #192 and #198)
+- Updated bin scripts like straxer (#204) 
+- Updated PMT gains (#208)
+- Renamed high energy plugins (#200)
+- Bugifx in nveto-plugins (#183, #209)
+- Bugfix in clean_up_empty_records (#210)
+
+
 0.10.0 / 2020-08-187
 --------------------
 - Neutron-veto integration (#86)
