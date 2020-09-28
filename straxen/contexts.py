@@ -78,8 +78,9 @@ def xenonnt_online(output_folder='./strax_data',
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
 
     # Remap the data if it is before channel swap (because of wrongly cabled
-    # signal cable connectors) These are runs older than run 8797, before 
-    # commissioning. Runs newer than 8796 are not affected. See: 
+    # signal cable connectors) These are runs older than run 8797, before
+    # commissioning. Runs newer than 8796 are not affected. See:
+    # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
     return st
@@ -97,7 +98,7 @@ def xenonnt_led(**kwargs):
         **st.context_config)
 
 
-# This gain model is a temp solution untill we have a nice stable one
+# This gain model is a temporary solution until we have a nice stable one
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     xnt_common_config['gain_model'] = ('to_pe_per_run',
