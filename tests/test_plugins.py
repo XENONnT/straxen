@@ -12,6 +12,7 @@ N_CHUNKS = 2
 # Tools
 ##
 
+
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False)
 )
@@ -19,7 +20,10 @@ class DummyRawRecords(strax.Plugin):
     """
     Provide dummy raw records for the mayor raw_record types
     """
-    provides = ('raw_records', 'raw_records_he', 'raw_records_nv',)
+    provides = ('raw_records',
+                'raw_records_he',
+                'raw_records_nv',
+                'raw_records_aqmon')
     parallel = 'process'
     depends_on = tuple()
     data_kind = immutabledict(zip(provides, provides))
@@ -44,6 +48,7 @@ class DummyRawRecords(strax.Plugin):
         res = {p: self.chunk(start=t0, end=t0 + 1, data=r, data_type=p)
                for p in self.provides}
         return res
+
 
 # Don't concern ourselves with rr_aqmon et cetera
 forbidden_plugins = tuple([p for p in
