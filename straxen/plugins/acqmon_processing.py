@@ -111,7 +111,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
                 res_temp.setdefault("veto_interval",[]).extend((vetos['endtime'] - vetos['time']))
                 res_temp.setdefault("veto_type",[]).extend([veto + 'veto']*len(vetos))
         
-        res = strax.dict_to_rec(res_temp)
+        res = strax.dict_to_rec(res_temp, dtype=self.dtype)
         res.sort(order = 'time') 
         
         return res
