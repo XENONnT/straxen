@@ -11,32 +11,32 @@ common_opts = dict(
         straxen.double_scatter,
         straxen.nveto_recorder,
         straxen.nveto_pulse_processing,
-        straxen.nveto_hitlets],
+        straxen.nveto_hitlets,
+        straxen.acqmon_processing],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',
         'start', 'end', 'livetime', 'mode'))
 
-
 xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', '1300V_20200428'),
+    gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
     channel_map=immutabledict(
-         # (Minimum channel, maximum channel)
-         # Channels must be listed in a ascending order!
-         tpc=(0, 493),
-         he=(500, 752),  # high energy
-         aqmon=(790, 807),
-         aqmon_nv=(808, 815),  # nveto acquisition monitor
-         tpc_blank=(999, 999),
-         mv=(1000, 1083),
-         mv_blank=(1999, 1999),
-         nveto=(2000, 2119),
-         nveto_blank=(2999, 2999)),
-    nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
+        # (Minimum channel, maximum channel)
+        # Channels must be listed in a ascending order!
+        tpc=(0, 493),
+        he=(500, 752),  # high energy
+        aqmon=(790, 807),
+        aqmon_nv=(808, 815),  # nveto acquisition monitor
+        tpc_blank=(999, 999),
+        mv=(1000, 1083),
+        mv_blank=(1999, 1999),
+        nveto=(2000, 2119),
+        nveto_blank=(2999, 2999)),
+    nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
 
 
 ##
@@ -78,7 +78,11 @@ def xenonnt_online(output_folder='./strax_data',
 
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
 
-    # Remap the data if it is before channel swap.
+    # Remap the data if it is before channel swap (because of wrongly cabled
+    # signal cable connectors) These are runs older than run 8797, before
+    # commissioning. Runs newer than 8796 are not affected. See:
+    # https://github.com/XENONnT/straxen/pull/166 and
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
     return st
 
@@ -95,18 +99,18 @@ def xenonnt_led(**kwargs):
         **st.context_config)
 
 
-# This gain model is a temp solution untill we have a nice stable one
+# This gain model is a temporary solution until we have a nice stable one
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     xnt_common_config['gain_model'] = ('to_pe_per_run',
-                                        straxen.aux_repo+'58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+                                       straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
     return strax.Context(
         storage=strax.DataDirectory(output_folder),
         register=wfsim.RawRecordsFromFaxNT,
         config=dict(detector='XENONnT',
-                    fax_config=straxen.aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
                     **straxen.contexts.xnt_common_config,
-                     ),
+                    ),
         **straxen.contexts.common_opts)
 
 
@@ -118,7 +122,7 @@ x1t_context_config = {
     **common_opts,
     **dict(
         check_available=('raw_records', 'records', 'peaklets',
-                             'events', 'event_info'),
+                         'events', 'event_info'),
         free_options=('channel_map',),
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
@@ -160,15 +164,15 @@ def demo():
     """Return strax context used in the straxen demo notebook"""
     straxen.download_test_data()
     return strax.Context(
-            storage=[strax.DataDirectory('./strax_data'),
-                     strax.DataDirectory('./strax_test_data',
-                                         deep_scan=True,
-                                         provide_run_metadata=True,
-                                         readonly=True)],
-            register=straxen.RecordsFromPax,
-            forbid_creation_of=straxen.daqreader.DAQReader.provides,
-            config=dict(**x1t_common_config),
-            **x1t_context_config)
+        storage=[strax.DataDirectory('./strax_data'),
+                 strax.DataDirectory('./strax_test_data',
+                                     deep_scan=True,
+                                     provide_run_metadata=True,
+                                     readonly=True)],
+        register=straxen.RecordsFromPax,
+        forbid_creation_of=straxen.daqreader.DAQReader.provides,
+        config=dict(**x1t_common_config),
+        **x1t_context_config)
 
 
 def fake_daq():
@@ -193,7 +197,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
     context_options = {
         **x1t_context_config,
         **kwargs}
-    
+
     return strax.Context(
         storage=[
             strax.DataDirectory(
@@ -214,6 +218,7 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
             else straxen.daqreader.DAQReader.provides + ('records', 'peaklets')),
         **context_options)
 
+
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
     st.context_config['check_available'] = ('raw_records', 'led_calibration')
@@ -231,7 +236,8 @@ def xenon1t_simulation(output_folder='./strax_data'):
     return strax.Context(
         storage=strax.DataDirectory(output_folder),
         register=wfsim.RawRecordsFromFax1T,
-        config=dict(fax_config=straxen.aux_repo+'1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
-                    detector='XENON1T',
-                    **straxen.contexts.x1t_common_config),
+        config=dict(
+            fax_config=straxen.aux_repo + '1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
+            detector='XENON1T',
+            **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
