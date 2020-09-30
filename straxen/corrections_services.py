@@ -1,9 +1,6 @@
 """Return corrections from corrections DB
 """
-from datetime import datetime
-from datetime import timezone
 import pytz
-from bson.son import SON
 import pymongo
 import numpy as np
 from warnings import warn
