@@ -335,7 +335,11 @@ class EventPositions(strax.Plugin):
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
         'elife_model',
-        help='electron lifetime model'))
+        help='electron lifetime model '
+             'Specify as (model_type, model_config) '
+             'where model_type can be elife_model or elife_constant '
+             'and model_config can be a version if elife_mdeol or '
+             'can be a float or np.array if elife_constant'))
 class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
@@ -365,7 +369,7 @@ class CorrectedAreas(strax.Plugin):
 
         cmt=straxen.CmtServices()
         self.elife = cmt.get_corrections_config(self.run_id, 'elife',
-                                                self.config['elife_file'])
+                                                self.config['elife_model'])
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.

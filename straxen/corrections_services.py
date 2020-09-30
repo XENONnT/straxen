@@ -25,27 +25,46 @@ class CmtServices():
     """
     def __init__(self, host=None, username='nt_analysis', password=None):
         """
-        :param host: DB host
-        :param username: DB username
+        :param host: corrections DB host
+        :param username: corrections DB username
+            nt_analysis user has read only permission to corrections DB
+            cmt user has r/w permission to corrections DB and read permission to runsDB
         :param password: DB password
         """
         self.host = host
         self.username = username
-        self.password = password
-        if self.username.endswith('analysis'):
+        if password is not None:
+            self.password = password
+        elif self.username.endswith('analysis'):
             self.password = straxen.get_secret('rundb_password')
-
+        else:
+            raise ValueError('No password for {user_name}')
+        # Initialize DBs
         if host is None:
             mongo_connections = [default_mongo_url, *backup_mongo_urls]
             for url in mongo_connections:
                 try:
-                    mongo_url = f'mongodb://{url}'
-
+                    if self.username.endswith('analysis'):
+                        mongo_url = f'mongodb://{url}'
+                    else:
+                        mongo_url = url[:-14]
+                    # Initialize correction DB
                     self.interface = strax.CorrectionsInterface(
                         host=mongo_url,
                         username=self.username,
                         password=self.password,
                         database_name='corrections')
+                    # Initialize runs DB
+                    runsdb_user = straxen.get_secret('rundb_username')
+                    runsdb_mongo_url = f'mongodb://{runsdb_user}@{url}'
+                    self.collection = pymongo.MongoClient(
+                            runsdb_mongo_url,
+                            password=straxen.get_secret(
+                                'rundb_password'))['xenonnt']['runs']
+                    self.collection_1t = pymongo.MongoClient(
+                            runsdb_mongo_url,
+                            password=straxen.get_secret(
+                                'rundb_password'))['run']['runs_new']
                     break
                 except pymongo.errors.ServerSelectionTimeoutError:
                     warn(f'Cannot connect to to Mongo url: {url}')
@@ -53,18 +72,14 @@ class CmtServices():
                         raise pymongo.errors.ServerSelectionTimeoutError(
                             'Cannot connect to any Mongo url')
         else:
-            self.interface = strax.CorrectionsInterface(
-                    host=self.host,
-                    username=self.username,
-                    password=self.password,
-                    database_name='corrections')
+            raise PermissionError(f'Trying to use an invalid host(non xenon host)')
 
     def get_corrections_config(self, run_id, correction=None, config_model=None):
         """
         Get context configuration for a given correction
         :param run_id: run id from runDB
         :param correction: correction's name (str type)
-        :param config_model: configuration model (dict type)
+        :param config_model: configuration model (tuple type)
         :return: correction value(s)
         """
 
@@ -85,8 +100,14 @@ class CmtServices():
                 n_tpc_pmts = straxen.n_tpc_pmts
                 if xenon1t:
                     n_tpc_pmts = 248
+                if type(global_version) != float and type(global_version) != np.ndarray:
+                    raise ValueError(
+                            f'User specify a model type {model_type} '
+                            f'and provide a {type(global_version)} to be used')
                 cte_value = global_version
                 to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * cte_value
+                if len(to_pe) != n_tpc_pmts:
+                    raise ValueError(f'to_pe length does not match {n_tpc_pmts}')
                 return to_pe
 
             else:
@@ -101,7 +122,7 @@ class CmtServices():
                 elife = float(cte_value)
                 return elife
         else:
-            raise ValueError(f'{corection} not found')
+            raise ValueError(f'{correction} not found')
 
     def get_elife(self, run_id, global_version='v1', xenon1t=False):
         """
@@ -111,7 +132,7 @@ class CmtServices():
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: electron lifetime correction value
         """
-        when = CmtServices.get_time(run_id, xenon1t)
+        when = self.get_time(run_id, xenon1t)
         if xenon1t:
             df_global = self.interface.read('global_xenon1t')
         else:
@@ -132,9 +153,9 @@ class CmtServices():
         :param run_id: run id from runDB
         :param global_version: global version
         :param xenon1t: boolean, whether you are processing xenon1t data or not
-        :retrun: array of pmt gains to PE values
+        :return: array of pmt gains to PE values
         """
-        when = CmtServices.get_time(run_id, xenon1t)
+        when = self.get_time(run_id, xenon1t)
         if xenon1t:
             df_global = self.interface.read('global_xenon1t')
         else:
@@ -151,13 +172,12 @@ class CmtServices():
 
         except KeyError:
             raise ValueError(f'Global version {global_version} not found')
-        # be cautious with very early runs 
+        # be cautious with very early runs
         test = np.isnan(pmt_gains)
-        if test.all:
+        if test.all():
             raise ValueError(f'to_pe(PMT gains) values are NaN, no data available'
                              f' for {run_id} in the gain model with version {global_version},'
                              f' please set a cte values for {run_id}')
-            
         return pmt_gains
 
     def get_lce(self, run_id, s, position, global_version='v1', xenon1t=False):
@@ -170,53 +190,34 @@ class CmtServices():
         """
         raise NotImplementedError
 
-    def get_fdc(slef, run_id, position, global_version='v1', xenon1t=False):
+    def get_fdc(self, run_id, position, global_version='v1', xenon1t=False):
         """
         Smart logic to return field distortion map values.
         :param run_id: run id from runDB
-        :param postion: event position
+        :param position: event position
         :param xenon1t: boolean xenon1t data=False/True
         """
         raise NotImplementedError
 
-    @staticmethod
-    def get_time(run_id, xenon1t=False):
+    def get_time(self, run_id, xenon1t=False):
         """
         Smart logic to return start time from runsDB
         :param run_id: run id from runDB
         :param xenon1t: boolean, whether you are processing xenon1t data or not
-        :retrun: run start time
+        :return: run start time
         """
-        # xenonnt use int
-        if not xenon1t:
-            run_id = int(run_id)
-
-        username = straxen.get_secret('rundb_username')
-        rundb_password = straxen.get_secret('rundb_password')
-        mongo_url = f'mongodb://{username}@xenon-rundb.grid.uchicago.edu:27017/xenonnt'
-        collection = pymongo.MongoClient(mongo_url, password=rundb_password)['xenonnt']['runs']
-
-        pipeline = [
-                {'$match':
-                    {"number": run_id, "detectors": "tpc", "end":
-                        {"$exists": True}}},
-                {"$project": {'time': '$start', 'number': 1, '_id': 0}},
-                {"$sort": SON([("time", 1)])}]
-
+        runsdb_collection = pymongo.MongoClient()
         if xenon1t:
-            collection = pymongo.MongoClient(mongo_url, password=rundb_password)['run']['runs_new']
-            pipeline = [
-                    {'$match':
-                        {"name": run_id, "detector": "tpc", "end":
-                            {"$exists": True}}},
-                    {"$project": {'time': '$start', 'name': 1, '_id': 0}},
-                    {"$sort": SON([("time", 1)])}]
+            runsdb_collection = self.collection_1t
+        else:
+            # xenonnt use int
+            run_id = int(run_id)
+            runsdb_collection = self.collection
 
-        # to save it in datetime format
-        time = datetime.now(tz=timezone.utc)
-        rundb_info = list(collection.aggregate(pipeline))
-        if not len(rundb_info):
+        rundoc = runsdb_collection.find_one(
+                {'name' if xenon1t else 'number': run_id, 'end': {'$exists': 1}},
+                {'start': 1})
+        if rundoc is None:
             raise ValueError(f'run_id = {run_id} not found')
-        for t in collection.aggregate(pipeline):
-            time = t['time']
+        time = rundoc['start']
         return time.replace(tzinfo=pytz.utc)
