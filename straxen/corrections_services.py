@@ -97,7 +97,7 @@ class CmtServices():
                 n_tpc_pmts = straxen.n_tpc_pmts
                 if xenon1t:
                     n_tpc_pmts = 248
-                if type(global_version) != float and type(global_version) != np.ndarray:
+                if not isinstance(global_version, float) and not isinstance(global_version, np.ndarray):
                     raise ValueError(
                             f'User specify a model type {model_type} '
                             f'and provide a {type(global_version)} to be used')
