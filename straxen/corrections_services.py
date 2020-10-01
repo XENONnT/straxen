@@ -4,6 +4,7 @@ import pytz
 import pymongo
 import numpy as np
 from warnings import warn
+from functools import lru_cache
 
 import strax
 import straxen
@@ -89,39 +90,46 @@ class CmtServices():
             xenon1t = False
 
         if correction == 'pmt_gains':
-            if model_type == 'to_pe_model':
-                to_pe = self.get_pmt_gains(run_id, global_version, xenon1t)
-                return to_pe
-
-            elif model_type == 'to_pe_constant':
-                n_tpc_pmts = straxen.n_tpc_pmts
-                if xenon1t:
-                    n_tpc_pmts = 248
-                if not isinstance(global_version, float) and not isinstance(global_version, np.ndarray):
-                    raise ValueError(
-                            f'User specify a model type {model_type} '
-                            f'and provide a {type(global_version)} to be used')
-                cte_value = global_version
-                to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * cte_value
-                if len(to_pe) != n_tpc_pmts:
-                    raise ValueError(f'to_pe length does not match {n_tpc_pmts}')
-                return to_pe
-
-            else:
-                raise ValueError(f'{model_type} not implemented')
-
+            to_pe = self.get_pmt_gains(run_id, model_type, global_version, xenon1t)
+            return to_pe
         elif correction == 'elife':
-            if model_type == 'elife_model':
-                elife = self.get_elife(run_id, global_version, xenon1t)
-                return elife
-            elif model_type == 'elife_constant':
-                cte_value = global_version
-                elife = float(cte_value)
-                return elife
+            elife = self.get_elife(run_id, model_type, global_version, xenon1t)
+            return elife
         else:
             raise ValueError(f'{correction} not found')
 
-    def get_elife(self, run_id, global_version='v1', xenon1t=False):
+    @lru_cache(maxsize=None)
+    def _get_correction(self, run_id, correction, global_version, xenon1t=False):
+        """
+        Smart logic to get correction from DB
+        :param run_id: run id from runDB
+        :param correction: correction's name, key word (str type)
+        :param global_version: global version (str type)
+        :param xenon1t: boolean, whether you are processing xenon1t data or not
+        :return: correction value(s)
+        """
+        when = self.get_time(run_id, xenon1t)
+        if xenon1t:
+            df_global = self.interface.read('global_xenon1t')
+        else:
+            df_global = self.interface.read('global')
+        try:
+            values = []
+            for it_correction, version in df_global.iloc[-1][global_version].items():
+                if correction in it_correction:
+                    df = self.interface.read(it_correction)
+                    df = self.interface.interpolate(df, when)
+                    values.append(df.loc[df.index == when, version].values[0])
+                corrections = np.asarray(values)
+        except KeyError:
+            raise ValueError(f'Global version {global_version} not found for correction {correction}')
+        # for single value corrections, e.g. elife correction
+        if len(corrections) == 1:
+            return float(corrections)
+        else:
+            return corrections
+
+    def get_elife(self, run_id, model_type, global_version, xenon1t=False):
         """
         Smart logic to return electron lifetime correction
         :param run_id: run id from runDB
@@ -129,22 +137,21 @@ class CmtServices():
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: electron lifetime correction value
         """
-        when = self.get_time(run_id, xenon1t)
-        if xenon1t:
-            df_global = self.interface.read('global_xenon1t')
+        if model_type == 'elife_model':
+            elife = self._get_correction(run_id, 'elife', global_version, xenon1t)
+            return elife
+        elif model_type == 'elife_constant':
+            if not isinstance(global_version, float):
+                raise ValueError(
+                    f'User specify a model type {model_type} '
+                    f'and provide a {type(global_version)} to be used')
+            cte_value = global_version
+            elife = float(cte_value)
+            return elife
         else:
-            df_global = self.interface.read('global')
-        try:
-            for correction, version in df_global.iloc[-1][global_version].items():
-                if 'elife' in correction:
-                    df = self.interface.read(correction)
-                    df = self.interface.interpolate(df, when)
-        except KeyError:
-            raise ValueError(f'Global version {global_version} not found')
+            raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
-        return df.loc[df.index == when, global_version].values[0]
-
-    def get_pmt_gains(self, run_id, global_version='v1', xenon1t=False):
+    def get_pmt_gains(self, run_id, model_type, global_version, xenon1t=False):
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
@@ -152,30 +159,31 @@ class CmtServices():
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: array of pmt gains to PE values
         """
-        when = self.get_time(run_id, xenon1t)
-        if xenon1t:
-            df_global = self.interface.read('global_xenon1t')
+        if model_type == 'to_pe_model':
+            to_pe = self._get_correction(run_id, 'pmt', global_version, xenon1t)
+            # be cautious with very early runs
+            test = np.isnan(to_pe)
+            if test.all():
+                raise ValueError(
+                        f'to_pe(PMT gains) values are NaN, no data available'
+                        f' for {run_id} in the gain model with version {global_version},'
+                        f' please set a cte values for {run_id}')
+            return to_pe
+        elif model_type == 'to_pe_constant':
+            n_tpc_pmts = straxen.n_tpc_pmts
+            if xenon1t:
+                n_tpc_pmts = 248
+            if not isinstance(global_version, float) and not isinstance(global_version, np.ndarray):
+                raise ValueError(
+                        f'User specify a model type {model_type} '
+                        f'and provide a {type(global_version)} to be used')
+            cte_value = global_version
+            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * cte_value
+            if len(to_pe) != n_tpc_pmts:
+                raise ValueError(f'to_pe length does not match {n_tpc_pmts}')
+            return to_pe
         else:
-            df_global = self.interface.read('global')
-        try:
-            # equivalent to 'to_pe' in gains_model
-            gains = []
-            for correction, version in df_global.iloc[-1][global_version].items():
-                if 'pmt' in correction:
-                    df = self.interface.read(correction)
-                    df = self.interface.interpolate(df, when)
-                    gains.append(df.loc[df.index == when, version].values[0])
-                pmt_gains = np.asarray(gains, dtype=np.float32)
-
-        except KeyError:
-            raise ValueError(f'Global version {global_version} not found')
-        # be cautious with very early runs
-        test = np.isnan(pmt_gains)
-        if test.all():
-            raise ValueError(f'to_pe(PMT gains) values are NaN, no data available'
-                             f' for {run_id} in the gain model with version {global_version},'
-                             f' please set a cte values for {run_id}')
-        return pmt_gains
+            raise ValueError(f'{model_type} not implemented for to_pe values')
 
     def get_lce(self, run_id, s, position, global_version='v1', xenon1t=False):
         """
