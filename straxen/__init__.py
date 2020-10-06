@@ -3,7 +3,7 @@ __version__ = '0.10.1'
 from .common import *
 from .itp_map import *
 from .rundb import *
-from  .online_monitor import *
+from .online_monitor import *
 from .matplotlib_utils import *
 from .mini_analysis import *
 from .misc import *

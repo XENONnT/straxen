@@ -62,9 +62,7 @@ def xenonnt_online(output_folder='./strax_data',
         readonly=not we_are_the_daq,
         runid_field='number',
         new_data_path=output_folder,
-        rucio_path='/dali/lgrandi/rucio/'),
-        straxen.OnlineMonitor(readonly=not we_are_the_daq,
-                              take_only=('pulse_counts', 'pulse_counts_he'))
+        rucio_path='/dali/lgrandi/rucio/')
         ] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
@@ -80,6 +78,11 @@ def xenonnt_online(output_folder='./strax_data',
                 strax.DataDirectory(output_folder))
 
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
+    # Only the online monitor backend for the DAQ
+    elif _database_init:
+        st.storage += [straxen.OnlineMonitor(
+            readonly=not we_are_the_daq,
+            take_only=('pulse_counts', 'pulse_counts_he', 'veto_intervals'))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797, before
