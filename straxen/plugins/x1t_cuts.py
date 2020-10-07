@@ -20,11 +20,11 @@ class S2Width(strax.CutPlugin):
     Contact: Tianyu <tz2263@columbia.edu>, Yuehuan <weiyh@physik.uzh.ch>, Jelle <jaalbers@nikhef.nl>
     ported from lax.sciencerun1.py"""
     depends_on = ('event_info',)
-    provides = 'cut_S2width'
+    provides = 'cut_s2_width'
     cut_description = 'S2 Width cut'
-    cut_name = 'cut_S2width'
+    cut_name = 'CutS2Width'
 
-    __version__ = 1.2
+    __version__ = 1.3
 
     diffusion_constant = 29.35 * ((units.cm) ** 2) / units.s
     v_drift = 1.335 * (units.um) / units.ns
@@ -67,12 +67,12 @@ class S1SingleScatter(strax.CutPlugin):
     ported from lax.sciencerun1.py
     """
     depends_on = 'event_info'
-    provides = 'cut_S1SingleScatter'
-    cut_name = 'cut_S1SingleScatter'
+    provides = 'cut_s1_single_scatter'
+    cut_name = 'CutS1SingleScatter'
     cut_description = 'S1 Single Scatter cut'
     s2width = S2Width
 
-    __version__ = 1.2
+    __version__ = 1.3
 
     def cut_by(self, events):
         mask = events['alt_s1_interaction_drift_time'] > self.s2width.DriftTimeFromGate
@@ -99,10 +99,10 @@ class S2SingleScatter(strax.CutPlugin):
     ported from lax.sciencerun1.py
     """
     depends_on = 'event_info'
-    provides = 'cut_S2SingleScatter'
-    cut_name = 'cut_S2SingleScatter'
+    provides = 'cut_s2_single_scatter'
+    cut_name = 'CutS2SingleScatter'
     cut_description = 'S2 Single Scatter cut'
-    __version__ = 4.2
+    __version__ = 4.3
 
     @classmethod
     def other_s2_bound(cls, s2_area):
@@ -115,8 +115,8 @@ class S2SingleScatter(strax.CutPlugin):
         return rescaled_s2_0 * another_term_0 + rescaled_s2_1 * another_term_1
 
     def cut_by(self, events):
-        largest_other_s2_is_nan = np.isnan(events['s2_largest_other'])
-        arr = np.all([largest_other_s2_is_nan | (events['s2_largest_other'] < self.other_s2_bound(events['s2_area']))],
+        largest_other_s2_is_nan = np.isnan(events['alt_s2_area'])
+        arr = np.all([largest_other_s2_is_nan | (events['alt_s2_area'] < self.other_s2_bound(events['s2_area']))],
                      axis=0)
         return arr
 
@@ -128,10 +128,10 @@ class S2Threshold(strax.CutPlugin):
     ported from lax.sciencerun1.py
     """
     depends_on = 'event_info'
-    provides = 'S2Threshold'
-    cut_name = 'cut_S2threshold'
+    provides = 's2_threshold'
+    cut_name = 'CutS2Threshold'
     cut_description = 's2 must be larger then 200 PE'
-    __version__ = 1.3
+    __version__ = 1.4
 
     def cut_by(self, events):
         return np.all([events['s2_area'] > 200], axis=0)
@@ -147,11 +147,11 @@ class S2AreaFractionTop(strax.CutPlugin):
     ported from lax.sciencerun1.py
     """
     depends_on = ('event_info',)
-    provides = 'cut_S2AreaFractionTop'
-    cut_name = 'cut_S2AreaFractionTop'
+    provides = 'cut_s2_area_fraction_top'
+    cut_name = 'CutS2AreaFractionTop'
     cut_description = 'Cut on S2 AFT'
 
-    __version__ = 1.2
+    __version__ = 1.3
 
     def upper_limit_s2_aft(self, s2):
         return 0.6177399420527526 + 3.713166211522462e-08 * s2 + 0.5460484265254656 / np.log(s2)
@@ -170,10 +170,10 @@ class FiducialCylinder1T(strax.CutPlugin):
     ported from lax.sciencerun0.py"""
     depends_on = ('event_positions',)
     provides = 'fiducial_cylinder_1t'
-    cut_name = 'cut_fiducial_cylinder'
+    cut_name = 'CutFiducialCylinder'
     cut_description = 'One tonne fiducial cylinder'
 
-    __version__ = 1.2
+    __version__ = 1.3
 
     def cut_by(self, events):
         return np.all([(-92.9 < events['z']), (-9 > events['z']),
@@ -206,10 +206,10 @@ class S1LowEnergyRange(strax.CutPlugin):
     """Pass only events with cs1<200"""
     depends_on = ('events', 'corrected_areas')
     provides = 'cut_s1_low_energy_range'
-    cut_name = 'cut_s1_low_energy_range'
+    cut_name = 'CutS1LowEnergyRange'
     cut_description = "Event under 200pe"
 
-    __version__ = 1.2
+    __version__ = 1.3
 
     def cut_by(self, events):
         return np.all([events['cs1'] < 200], axis=0)
