@@ -21,8 +21,8 @@ class S2Width(strax.CutPlugin):
     ported from lax.sciencerun1.py"""
     depends_on = ('event_info',)
     provides = 'cut_s2_width'
+    cut_name = 'cut_s2_width'
     cut_description = 'S2 Width cut'
-    cut_name = 'CutS2Width'
 
     __version__ = 1.3
 
@@ -68,7 +68,7 @@ class S1SingleScatter(strax.CutPlugin):
     """
     depends_on = 'event_info'
     provides = 'cut_s1_single_scatter'
-    cut_name = 'CutS1SingleScatter'
+    cut_name = 'cut_s1_single_scatter'
     cut_description = 'S1 Single Scatter cut'
     s2width = S2Width
 
@@ -100,7 +100,7 @@ class S2SingleScatter(strax.CutPlugin):
     """
     depends_on = 'event_info'
     provides = 'cut_s2_single_scatter'
-    cut_name = 'CutS2SingleScatter'
+    cut_name = 'cut_s2_single_scatter'
     cut_description = 'S2 Single Scatter cut'
     __version__ = 4.3
 
@@ -128,8 +128,8 @@ class S2Threshold(strax.CutPlugin):
     ported from lax.sciencerun1.py
     """
     depends_on = 'event_info'
-    provides = 's2_threshold'
-    cut_name = 'CutS2Threshold'
+    provides = 'cut_s2_threshold'
+    cut_name = 'cut_s2_threshold'
     cut_description = 's2 must be larger then 200 PE'
     __version__ = 1.4
 
@@ -148,7 +148,7 @@ class S2AreaFractionTop(strax.CutPlugin):
     """
     depends_on = ('event_info',)
     provides = 'cut_s2_area_fraction_top'
-    cut_name = 'CutS2AreaFractionTop'
+    cut_name = 'cut_s2_area_fraction_top'
     cut_description = 'Cut on S2 AFT'
 
     __version__ = 1.3
@@ -169,8 +169,8 @@ class FiducialCylinder1T(strax.CutPlugin):
     """Implementation of fiducial volume cylinder 1T,
     ported from lax.sciencerun0.py"""
     depends_on = ('event_positions',)
-    provides = 'fiducial_cylinder_1t'
-    cut_name = 'CutFiducialCylinder'
+    provides = 'cut_fiducial_cylinder_1t'
+    cut_name = 'cut_fiducial_cylinder_1t'
     cut_description = 'One tonne fiducial cylinder'
 
     __version__ = 1.3
@@ -186,8 +186,8 @@ class S1MaxPMT(strax.LoopPlugin):
     port from lax.sciencerun0.py"""
     depends_on = ('events', 'event_basics', 'peak_basics')
     dtype = [('cut_s1_max_pmt', np.bool, 'S1 max PMT cut')] + strax.time_fields
-
-    __version__ = 1.1
+    provides = 'cut_s1_max_pmt'
+    __version__ = 1.2
 
     def compute_loop(self, event, peaks):
         ret = dict(cut_s1_max_pmt=True)
@@ -206,7 +206,7 @@ class S1LowEnergyRange(strax.CutPlugin):
     """Pass only events with cs1<200"""
     depends_on = ('events', 'corrected_areas')
     provides = 'cut_s1_low_energy_range'
-    cut_name = 'CutS1LowEnergyRange'
+    cut_name = 'cut_s1_low_energy_range'
     cut_description = "Event under 200pe"
 
     __version__ = 1.3
@@ -216,12 +216,12 @@ class S1LowEnergyRange(strax.CutPlugin):
 
 
 class SR1Cuts(strax.MergeOnlyPlugin):
-    depends_on = ['fiducial_cylinder_1t', 's1_max_pmt', 's1_low_energy_range']
+    depends_on = ['fiducial_cylinder_1t', 'cut_s1_max_pmt', 'cut_s1_low_energy_range']
     save_when = strax.SaveWhen.ALWAYS
 
 
 class FiducialEvents(strax.Plugin):
-    depends_on = ['event_info', 'fiducial_cylinder_1t']
+    depends_on = ['event_info', 'cut_fiducial_cylinder_1t']
     data_kind = 'fiducial_events'
 
     def infer_dtype(self):
@@ -229,4 +229,4 @@ class FiducialEvents(strax.Plugin):
                                    for d in self.depends_on])
 
     def compute(self, events):
-        return events[events['cut_fiducial_cylinder']]
+        return events[events['cut_fiducial_cylinder_1t']]
