@@ -279,7 +279,7 @@ def get_mongo_url(hostname):
     if hostname.endswith('xenon.local'):
         username = straxen.get_secret('mongo_rdb_username')
         password = straxen.get_secret('mongo_rdb_password')
-        url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
+        url_base = 'xenon1t-daq:27017'
         mongo_url = f"mongodb://{username}:{password}@{url_base}"
     else:
         username = straxen.get_secret('rundb_username')
