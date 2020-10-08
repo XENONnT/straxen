@@ -211,13 +211,22 @@ to_pe_file_tpc_default   = [1 for i in range(494)]
 channel_list_tpc_default = [i for i in range(494)]
 
 @export
-@strax.takes_config(  
+@strax.takes_config(
+    strax.Option('save_outside_hits',
+                 default=(3, 20),
+                 help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option('to_pe_file_tpc', 
                  default=to_pe_file_tpc_default,
                  help='Expect gains in units ADC/sample.'),
     strax.Option('channel_list_tpc',
                  default=(tuple(channel_list_tpc_default)),
-                 help="List of PMTs. Defalt value: all the PMTs")
+                 help="List of PMTs. Defalt value: all the PMTs"),
+    strax.Option('entropy_template_tpc',
+                 default='flat', track=True,
+                 help='Template data is compared with in conditional entropy. Can be either "flat" or an template array.'),
+    strax.Option('entropy_square_data_tpc',
+                 default=False, track=True,
+                 help='Parameter which decides if data is first squared before normalized and compared to the template.'),
 )
 
 class LoneHitlets(strax.Plugin):
@@ -230,7 +239,7 @@ class LoneHitlets(strax.Plugin):
     parallel   = 'process'
     compressor = 'lz4'
 
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
            
     def infer_dtype(self):
         self.dtype = strax.hitlet_dtype()
@@ -251,7 +260,17 @@ class LoneHitlets(strax.Plugin):
         if len(res) != np.sum(res):
             mes = f'Lh and records do not match {len(res)} and {np.sum(res)}.'
             raise ValueError(mes)
-                        
+            
+        # Merge concatenate overlapping  within a channel. This is important
+        # in case hits were split by record boundaries. In case we
+        # accidentally concatenate two PMT signals we split them later again. 
+        lone_hits = strax.concat_overlapping_hits(lone_hits,
+                                                  self.config['save_outside_hits'],
+                                                  straxen.contexts.xnt_common_config['channel_map']['tpc'],
+                                                  start,
+                                                  end)
+        lone_hits = strax.sort_by_time(lone_hits)
+               
         # Now convert hits into temp_hitlets including the data field:
         if len(lone_hits):
             nsamples = lone_hits['length'].max()
@@ -265,7 +284,7 @@ class LoneHitlets(strax.Plugin):
         strax.refresh_hit_to_hitlets(lone_hits, temp_hitlets)
         del lone_hits
 
-        # Get hitlet data and split hitlets:
+        # Get hitlet data:
         strax.get_hitlets_data(temp_hitlets, records, to_pe=self.to_pe)
 
         # Compute other hitlet properties:
