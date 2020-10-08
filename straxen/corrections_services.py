@@ -36,7 +36,7 @@ class CmtServices():
         elif self.username.endswith('analysis'):
             self.password = straxen.get_secret('rundb_password')
         else:
-            raise ValueError('No password for {user_name}')
+            raise ValueError(f'No password for {user_name}')
         # Initialize DBs
         if host is None:
             mongo_connections = [default_mongo_url, *backup_mongo_urls]
@@ -88,7 +88,10 @@ class CmtServices():
         elif len(config_model) == 2:
             model_type, global_version = config_model
             xenon1t = False
-
+        else:
+            raise ValueError(f'config_model {config_model} most be of length '
+                             f'model_type, global_version, xenon1t or '
+                             f'model_type, global_version')
         if correction == 'pmt_gains':
             to_pe = self.get_pmt_gains(run_id, model_type, global_version, xenon1t)
             return to_pe
@@ -98,6 +101,7 @@ class CmtServices():
         else:
             raise ValueError(f'{correction} not found')
 
+    # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, global_version, xenon1t=False):
         """
@@ -173,7 +177,7 @@ class CmtServices():
             n_tpc_pmts = straxen.n_tpc_pmts
             if xenon1t:
                 n_tpc_pmts = 248
-            if not isinstance(global_version, float) and not isinstance(global_version, np.ndarray):
+            if not isinstance(global_version, (float, np.ndarray)):
                 raise ValueError(
                         f'User specify a model type {model_type} '
                         f'and provide a {type(global_version)} to be used')
@@ -190,7 +194,7 @@ class CmtServices():
         Smart logic to return light collection eff map values.
         :param run_id: run id from runDB
         :param s: S1 map or S2 map
-        :param postion: event position
+        :param position: event position
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         """
         raise NotImplementedError
@@ -211,7 +215,6 @@ class CmtServices():
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: run start time
         """
-        runsdb_collection = pymongo.MongoClient()
         if xenon1t:
             runsdb_collection = self.collection_1t
         else:
