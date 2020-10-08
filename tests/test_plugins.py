@@ -58,6 +58,7 @@ forbidden_plugins = tuple([p for p in
 
 def _run_plugins(st,
                  make_all=False,
+                 run_id=run_id,
                  **proces_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
@@ -154,7 +155,8 @@ def test_nT(ncores=1):
     st = straxen.contexts.xenonnt_online(_database_init=False)
     offline_gain_model = ('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')
     _update_context(st, ncores, fallback_gains=offline_gain_model)
-    _run_plugins(st, make_all=True, max_wokers=ncores)
+    # Lets take an abandoned run where we actually have gains for in the CMT
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
     print(st.context_config)
 
 

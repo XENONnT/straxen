@@ -22,7 +22,7 @@ xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=("CMT_model", ("to_pe_model", "v1", False)),
+    gain_model=("CMT_model", ("to_pe_model", "ONLINE", False)),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
