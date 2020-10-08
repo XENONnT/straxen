@@ -109,9 +109,9 @@ def _update_context(st, max_workers, fallback_gains=None):
     st.register(DummyRawRecords)
     try:
         straxen.get_secret('rundb_password')
-        # For the moment, let's always raise an ValueError as the CMT is
-        # slow and doesn't know run 0.
-        raise ValueError
+        # If you want to have quicker checks: always raise an ValueError as
+        # the CMT does take quite long to load the right corrections.
+        # ValueError
     except ValueError:
         # Okay so we cannot initize the runs-database. Let's just use some
         # fallback values if they are specified.

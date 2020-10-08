@@ -29,7 +29,7 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         # Somebody messed up
         raise RuntimeError("Attempt to use a disabled gain model")
     if model_type == 'CMT_model':
-        if not isinstance(model_conf, tuple) or len(model_conf) != 3:
+        if not isinstance(model_conf, tuple) or len(model_conf) != 2:
             # Raise a value error if the condition is not met. We should have:
             # ("CMT_model", -> To specify that we want to use the online
             #                  corrections management tool
