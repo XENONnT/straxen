@@ -123,6 +123,8 @@ def test_1T(ncores=1):
         print('-- 1T lazy mode --')
     st = straxen.contexts.xenon1t_dali()
     _update_context(st, ncores)
+    # Register the 1T plugins for this test as well
+    st.register_all(straxen.plugins.x1t_cuts)
     _run_plugins(st, make_all=False, max_wokers=ncores)
     print(st.context_config)
 
