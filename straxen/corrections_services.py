@@ -13,31 +13,37 @@ from .rundb import default_mongo_url, backup_mongo_urls
 export, __all__ = strax.exporter()
 
 
+# TODO inherit the patent class
 @export
-class CmtServices():
+class CorrectionsManagementServices():
     """
     A class that returns corrections
     Corrections are set of parameters to be applied in the analysis
     stage to remove detector effects. Information on the strax implementation
     can be found at https://github.com/AxFoundation/strax/blob/master/strax/corrections.py
     """
-    def __init__(self, host=None, username='nt_analysis', password=None):
+    def __init__(self, host=None, username='nt_analysis', password=None, is_nt=True):
         """
         :param host: corrections DB host
         :param username: corrections DB username
             nt_analysis user has read only permission to corrections DB
             cmt user has r/w permission to corrections DB and read permission to runsDB
         :param password: DB password
+        :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
+        # TODO not needed? Should it ever be not None??
         self.host = host
         self.username = username
+        self.is_nt = is_nt
+
         if password is not None:
             self.password = password
         elif self.username.endswith('analysis'):
             self.password = straxen.get_secret('rundb_password')
         else:
-            raise ValueError(f'No password for {user_name}')
-        # Initialize DBs
+            raise ValueError(f'No password for {username}')
+        # TODO avoid duplicate code with RunDB.py
+        # Initialize runDB to get start-times
         if host is None:
             mongo_connections = [default_mongo_url, *backup_mongo_urls]
             for url in mongo_connections:
@@ -45,6 +51,7 @@ class CmtServices():
                     if self.username.endswith('analysis'):
                         mongo_url = f'mongodb://{url}'
                     else:
+                        # TODO make this cleaner
                         mongo_url = url[:-14]
                     # Initialize correction DB
                     self.interface = strax.CorrectionsInterface(
@@ -55,11 +62,15 @@ class CmtServices():
                     # Initialize runs DB
                     runsdb_user = straxen.get_secret('rundb_username')
                     runsdb_mongo_url = f'mongodb://{runsdb_user}@{url}'
-                    self.collection = pymongo.MongoClient(
+                    if self.is_nt:
+                        # TODO make cleaner
+                        self.collection = pymongo.MongoClient(
                             runsdb_mongo_url,
                             password=straxen.get_secret(
                                 'rundb_password'))['xenonnt']['runs']
-                    self.collection_1t = pymongo.MongoClient(
+                    else:
+                        # TODO make cleaner
+                        self.collection = pymongo.MongoClient(
                             runsdb_mongo_url,
                             password=straxen.get_secret(
                                 'rundb_password'))['run']['runs_new']
@@ -72,6 +83,9 @@ class CmtServices():
         else:
             raise PermissionError(f'Trying to use an invalid host(non xenon host)')
 
+    def __repr__(self):
+        return str(f'{"XENONnT " if self.is_nt else "XENON1T"}-Corrections_Management_Services')
+
     def get_corrections_config(self, run_id, correction=None, config_model=None):
         """
         Get context configuration for a given correction
@@ -81,26 +95,28 @@ class CmtServices():
         :return: correction value(s)
         """
 
-        if not isinstance(config_model, tuple):
+        if not isinstance(config_model, (tuple, list)) or not (2 <= len(config_model) <= 3):
             raise ValueError(f'config_model {config_model} must be a tuple')
         if len(config_model) == 3:
+            # TODO
+            #  Fix this because we shouldn't be mixing 1t and nT
             model_type, global_version, xenon1t = config_model
         elif len(config_model) == 2:
             model_type, global_version = config_model
+            # TODO obsolete
             xenon1t = False
-        else:
-            raise ValueError(f'config_model {config_model} most be of length '
-                             f'model_type, global_version, xenon1t or '
-                             f'model_type, global_version')
+
         if correction == 'pmt_gains':
-            to_pe = self.get_pmt_gains(run_id, model_type, global_version, xenon1t)
+            to_pe = self.get_pmt_gains(run_id, model_type, global_version, xenon1t=not self.is_nt)
             return to_pe
         elif correction == 'elife':
-            elife = self.get_elife(run_id, model_type, global_version, xenon1t)
+            elife = self.get_elife(run_id, model_type, global_version, xenon1t=not self.is_nt)
             return elife
         else:
             raise ValueError(f'{correction} not found')
 
+    # TODO add option to extract 'when', the start time might not be the best
+    #  entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, global_version, xenon1t=False):
@@ -112,8 +128,8 @@ class CmtServices():
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: correction value(s)
         """
-        when = self.get_time(run_id, xenon1t)
-        if xenon1t:
+        when = self.get_start_time(run_id, not self.is_nt)
+        if not self.is_nt:
             df_global = self.interface.read('global_xenon1t')
         else:
             df_global = self.interface.read('global')
@@ -137,17 +153,18 @@ class CmtServices():
         """
         Smart logic to return electron lifetime correction
         :param run_id: run id from runDB
+        :param model_type: choose either elife_model or elife_constant
         :param global_version: global version
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: electron lifetime correction value
         """
         if model_type == 'elife_model':
-            elife = self._get_correction(run_id, 'elife', global_version, xenon1t)
+            elife = self._get_correction(run_id, 'elife', global_version, not self.is_nt)
             return elife
         elif model_type == 'elife_constant':
             if not isinstance(global_version, float):
                 raise ValueError(
-                    f'User specify a model type {model_type} '
+                    f'User must specify a model type {model_type} '
                     f'and provide a {type(global_version)} to be used')
             cte_value = global_version
             elife = float(cte_value)
@@ -159,12 +176,13 @@ class CmtServices():
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
+        :param model_type: Choose either to_pe_model or to_pe_constant
         :param global_version: global version
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: array of pmt gains to PE values
         """
         if model_type == 'to_pe_model':
-            to_pe = self._get_correction(run_id, 'pmt', global_version, xenon1t)
+            to_pe = self._get_correction(run_id, 'pmt', global_version, not self.is_nt)
             # be cautious with very early runs
             test = np.isnan(to_pe)
             if test.all():
@@ -175,7 +193,7 @@ class CmtServices():
             return to_pe
         elif model_type == 'to_pe_constant':
             n_tpc_pmts = straxen.n_tpc_pmts
-            if xenon1t:
+            if not self.is_nt:
                 n_tpc_pmts = 248
             if not isinstance(global_version, (float, np.ndarray)):
                 raise ValueError(
@@ -194,6 +212,7 @@ class CmtServices():
         Smart logic to return light collection eff map values.
         :param run_id: run id from runDB
         :param s: S1 map or S2 map
+        :param global_version:
         :param position: event position
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         """
@@ -204,26 +223,26 @@ class CmtServices():
         Smart logic to return field distortion map values.
         :param run_id: run id from runDB
         :param position: event position
+        :param global_version:
         :param xenon1t: boolean xenon1t data=False/True
         """
         raise NotImplementedError
 
-    def get_time(self, run_id, xenon1t=False):
+    # TODO change to st.estimate_start_time
+    def get_start_time(self, run_id, xenon1t=False):
         """
         Smart logic to return start time from runsDB
         :param run_id: run id from runDB
         :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: run start time
         """
-        if xenon1t:
-            runsdb_collection = self.collection_1t
-        else:
+
+        if self.is_nt:
             # xenonnt use int
             run_id = int(run_id)
-            runsdb_collection = self.collection
 
-        rundoc = runsdb_collection.find_one(
-                {'name' if xenon1t else 'number': run_id, 'end': {'$exists': 1}},
+        rundoc = self.collection.find_one(
+                {'number' if self.is_nt else 'name': run_id},
                 {'start': 1})
         if rundoc is None:
             raise ValueError(f'run_id = {run_id} not found')
