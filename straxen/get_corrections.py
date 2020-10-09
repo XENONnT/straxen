@@ -38,6 +38,8 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         return to_pe
 
     elif model_type == 'to_pe_per_run':
+        warn("to_pe_per_run will be replaced by CorrectionsManagementSevices",
+             DeprecationWarning, 2)
         # Load a npy file specifying a run_id -> to_pe array
         to_pe_file = model_conf
         x = straxen.get_resource(to_pe_file, fmt='npy')
@@ -48,19 +50,18 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         to_pe = x[run_index[0]]['to_pe']
 
     elif model_type == 'to_pe_constant':
+        warn("to_pe_constant_run will be replaced by CorrectionsManagementSevices",
+             DeprecationWarning, 2)
         if model_conf in FIXED_TO_PE:
             return FIXED_TO_PE[model_conf]
 
         # Uniform gain, specified as a to_pe factor
         to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
-
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
     if len(to_pe) != n_tpc_pmts:
-        warn("get_to_pe will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
-        raise ValueError(
+       raise ValueError(
             f"Gain model {gain_model} resulted in a to_pe "
             f"of length {len(to_pe)}, but n_tpc_pmts is {n_tpc_pmts}!")
     return to_pe
