@@ -1,16 +1,12 @@
+
 import numpy as np
 
 import strax
 import straxen
-from functools import lru_cache
+from warnings import warn
 
 export, __all__ = strax.exporter()
-__all__ += ['ADC_TO_E', 'FIXED_TO_PE']
-
-# Convert from ADC * samples to electrons emitted by PMT
-# see pax.dsputils.adc_to_pe for calculation
-ADC_TO_E  = 17142.81741
-
+__all__ += ['FIXED_TO_PE']
 
 @export
 def get_to_pe(run_id, gain_model, n_tpc_pmts):
@@ -20,10 +16,6 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         raise ValueError(f"gain_model must have two elements: "
                          f"the model type and its specific configuration")
     model_type, model_conf = gain_model
-    
-    # Convert from ADC * samples to electrons emitted by PMT
-    # see pax.dsputils.adc_to_pe for calculation
-    adc_to_e  = 17142.81741
 
     if model_type == 'disabled':
         # Somebody messed up
@@ -43,9 +35,10 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         is_nt = n_tpc_pmts == straxen.n_tpc_pmts
         corrections = straxen.CorrectionsManagementServices(is_nt=is_nt)
         to_pe = corrections.get_corrections_config(run_id, 'pmt_gains', model_conf)
+        return to_pe
 
     elif model_type == 'to_pe_per_run':
-        # Load a npy file specifing a run_id -> to_pe array
+        # Load a npy file specifying a run_id -> to_pe array
         to_pe_file = model_conf
         x = straxen.get_resource(to_pe_file, fmt='npy')
         run_index = np.where(x['run_id'] == int(run_id))[0]
@@ -65,6 +58,8 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
     if len(to_pe) != n_tpc_pmts:
+        warn("get_to_pe will be replaced by CorrectionsManagementSevices",
+             DeprecationWarning, 2)
         raise ValueError(
             f"Gain model {gain_model} resulted in a to_pe "
             f"of length {len(to_pe)}, but n_tpc_pmts is {n_tpc_pmts}!")
@@ -110,6 +105,9 @@ def get_elife(run_id, elife_conf):
                                        elife_conf[:2])
 
     elif isinstance(elife_conf, str):
+        warn("get_elife will be replaced by CorrectionsManagementSevices",
+             DeprecationWarning, 2)
+        # Let's remove these functions and only rely on the CMT in the future
         x = straxen.get_resource(elife_conf, fmt='npy')
         run_index = np.where(x['run_id'] == int(run_id))[0]
         if not len(run_index):

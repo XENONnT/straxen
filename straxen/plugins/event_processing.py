@@ -3,7 +3,7 @@ import strax
 import numpy as np
 
 from straxen.common import pax_file, get_resource, first_sr1_run
-from straxen.gain_elife_models import get_elife
+from straxen.get_corrections import get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
