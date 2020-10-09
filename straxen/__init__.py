@@ -7,7 +7,7 @@ from .matplotlib_utils import *
 from .mini_analysis import *
 from .misc import *
 
-from .gain_models import *
+from .get_corrections import *
 from .hitfinder_thresholds import *
 from .corrections_services import *
 

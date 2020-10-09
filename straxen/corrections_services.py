@@ -14,63 +14,73 @@ export, __all__ = strax.exporter()
 
 
 @export
-class CmtServices():
+class CorrectionsManagementServices():
     """
     A class that returns corrections
     Corrections are set of parameters to be applied in the analysis
     stage to remove detector effects. Information on the strax implementation
     can be found at https://github.com/AxFoundation/strax/blob/master/strax/corrections.py
     """
-    def __init__(self, host=None, username='nt_analysis', password=None):
+    def __init__(self, username='nt_analysis', password=None, is_nt=True):
         """
         :param host: corrections DB host
         :param username: corrections DB username
             nt_analysis user has read only permission to corrections DB
             cmt user has r/w permission to corrections DB and read permission to runsDB
         :param password: DB password
+        :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
-        self.host = host
         self.username = username
+        self.is_nt = is_nt
+
         if password is not None:
             self.password = password
         elif self.username.endswith('analysis'):
             self.password = straxen.get_secret('rundb_password')
         else:
-            raise ValueError(f'No password for {user_name}')
-        # Initialize DBs
-        if host is None:
-            mongo_connections = [default_mongo_url, *backup_mongo_urls]
-            for url in mongo_connections:
-                try:
-                    if self.username.endswith('analysis'):
-                        mongo_url = f'mongodb://{url}'
-                    else:
-                        mongo_url = url[:-14]
-                    # Initialize correction DB
-                    self.interface = strax.CorrectionsInterface(
-                        host=mongo_url,
-                        username=self.username,
-                        password=self.password,
-                        database_name='corrections')
-                    # Initialize runs DB
-                    runsdb_user = straxen.get_secret('rundb_username')
-                    runsdb_mongo_url = f'mongodb://{runsdb_user}@{url}'
+            raise ValueError(f'No password for {username}')
+
+        # TODO avoid duplicate code with RunDB.py
+        # Initialize runDB to get start-times
+        mongo_connections = [default_mongo_url, *backup_mongo_urls]
+        for url in mongo_connections:
+            try:
+                if self.username.endswith('analysis'):
+                    mongo_url = f'mongodb://{url}'
+                else:
+                    # TODO make this cleaner
+                    mongo_url = url[:-14]
+                # Initialize correction DB
+                self.interface = strax.CorrectionsInterface(
+                    host=mongo_url,
+                    username=self.username,
+                    password=self.password,
+                    database_name='corrections')
+                # Initialize runs DB
+                runsdb_user = straxen.get_secret('rundb_username')
+                runsdb_mongo_url = f'mongodb://{runsdb_user}@{url}'
+                if self.is_nt:
+                    # TODO make cleaner
                     self.collection = pymongo.MongoClient(
-                            runsdb_mongo_url,
-                            password=straxen.get_secret(
-                                'rundb_password'))['xenonnt']['runs']
-                    self.collection_1t = pymongo.MongoClient(
-                            runsdb_mongo_url,
-                            password=straxen.get_secret(
-                                'rundb_password'))['run']['runs_new']
-                    break
-                except pymongo.errors.ServerSelectionTimeoutError:
-                    warn(f'Cannot connect to to Mongo url: {url}')
-                    if url == mongo_connections[-1]:
-                        raise pymongo.errors.ServerSelectionTimeoutError(
-                            'Cannot connect to any Mongo url')
-        else:
-            raise PermissionError(f'Trying to use an invalid host(non xenon host)')
+                        runsdb_mongo_url,
+                        password=straxen.get_secret(
+                            'rundb_password'))['xenonnt']['runs']
+                else:
+                    # TODO make cleaner
+                    self.collection = pymongo.MongoClient(
+                        runsdb_mongo_url,
+                        password=straxen.get_secret(
+                            'rundb_password'))['run']['runs_new']
+                break
+            except pymongo.errors.ServerSelectionTimeoutError:
+                warn(f'Cannot connect to to Mongo url: {url}')
+                if url == mongo_connections[-1]:
+                    raise pymongo.errors.ServerSelectionTimeoutError(
+                        'Cannot connect to any Mongo url')
+
+    def __repr__(self):
+        return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
+                   f'-Corrections_Management_Services')
 
     def get_corrections_config(self, run_id, correction=None, config_model=None):
         """
@@ -81,42 +91,32 @@ class CmtServices():
         :return: correction value(s)
         """
 
-        if not isinstance(config_model, tuple):
+        if not isinstance(config_model, (tuple, list)) or len(config_model) != 2:
             raise ValueError(f'config_model {config_model} must be a tuple')
-        if len(config_model) == 3:
-            model_type, global_version, xenon1t = config_model
-        elif len(config_model) == 2:
-            model_type, global_version = config_model
-            xenon1t = False
-        else:
-            raise ValueError(f'config_model {config_model} most be of length '
-                             f'model_type, global_version, xenon1t or '
-                             f'model_type, global_version')
+        model_type, global_version = config_model
+
         if correction == 'pmt_gains':
-            to_pe = self.get_pmt_gains(run_id, model_type, global_version, xenon1t)
-            return to_pe
+            return self.get_pmt_gains(run_id, model_type, global_version)
         elif correction == 'elife':
-            elife = self.get_elife(run_id, model_type, global_version, xenon1t)
-            return elife
+            return self.get_elife(run_id, model_type, global_version)
         else:
             raise ValueError(f'{correction} not found')
 
+    # TODO add option to extract 'when'. Also, the start time might not be the best
+    #  entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
-    def _get_correction(self, run_id, correction, global_version, xenon1t=False):
+    def _get_correction(self, run_id, correction, global_version):
         """
         Smart logic to get correction from DB
         :param run_id: run id from runDB
         :param correction: correction's name, key word (str type)
         :param global_version: global version (str type)
-        :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: correction value(s)
         """
-        when = self.get_time(run_id, xenon1t)
-        if xenon1t:
-            df_global = self.interface.read('global_xenon1t')
-        else:
-            df_global = self.interface.read('global')
+        when = self.get_start_time(run_id)
+        df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
+
         try:
             values = []
             for it_correction, version in df_global.iloc[-1][global_version].items():
@@ -124,106 +124,116 @@ class CmtServices():
                     df = self.interface.read(it_correction)
                     df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
-                corrections = np.asarray(values)
+            corrections = np.asarray(values)
         except KeyError:
             raise ValueError(f'Global version {global_version} not found for correction {correction}')
+
         # for single value corrections, e.g. elife correction
         if len(corrections) == 1:
             return float(corrections)
         else:
             return corrections
 
-    def get_elife(self, run_id, model_type, global_version, xenon1t=False):
+    def get_elife(self, run_id, model_type, global_version):
         """
         Smart logic to return electron lifetime correction
         :param run_id: run id from runDB
+        :param model_type: choose either elife_model or elife_constant
         :param global_version: global version
-        :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: electron lifetime correction value
         """
         if model_type == 'elife_model':
-            elife = self._get_correction(run_id, 'elife', global_version, xenon1t)
-            return elife
+            return self._get_correction(run_id, 'elife', global_version)
+
         elif model_type == 'elife_constant':
+            # This is nothing more than just returning the value we put in
             if not isinstance(global_version, float):
-                raise ValueError(
-                    f'User specify a model type {model_type} '
-                    f'and provide a {type(global_version)} to be used')
-            cte_value = global_version
-            elife = float(cte_value)
-            return elife
+                raise ValueError(f'User must specify a model type {model_type} '
+                                 f'and provide a float to be used. Got: '
+                                 f'{type(global_version)}')
+            return float(global_version)
+
         else:
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
-    def get_pmt_gains(self, run_id, model_type, global_version, xenon1t=False):
+    # TODO create a propper dict for 'to_pe_constant' and 'global_version' as
+    #  the 'global_version' is not a version but an array/float for
+    #  model_type = 'to_pe_constant'
+    def get_pmt_gains(self, run_id, model_type, global_version):
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
-        :param global_version: global version
-        :param xenon1t: boolean, whether you are processing xenon1t data or not
+        :param model_type: Choose either to_pe_model or to_pe_constant
+        :param global_version: global version or a constant value (if
+        model_type == to_pe_constant).
         :return: array of pmt gains to PE values
         """
         if model_type == 'to_pe_model':
-            to_pe = self._get_correction(run_id, 'pmt', global_version, xenon1t)
-            # be cautious with very early runs
-            test = np.isnan(to_pe)
-            if test.all():
+            to_pe = self._get_correction(run_id, 'pmt', global_version)
+            # be cautious with very early runs, check that not all are None
+            if np.isnan(to_pe).all():
                 raise ValueError(
                         f'to_pe(PMT gains) values are NaN, no data available'
-                        f' for {run_id} in the gain model with version {global_version},'
-                        f' please set a cte values for {run_id}')
-            return to_pe
+                        f' for {run_id} in the gain model with version '
+                        f'{global_version}, please set constant values for '
+                        f'{run_id}')
+
         elif model_type == 'to_pe_constant':
             n_tpc_pmts = straxen.n_tpc_pmts
-            if xenon1t:
+            if not self.is_nt:
+                # TODO can we prevent these kind of hard codes using the context?
                 n_tpc_pmts = 248
-            if not isinstance(global_version, (float, np.ndarray)):
-                raise ValueError(
-                        f'User specify a model type {model_type} '
-                        f'and provide a {type(global_version)} to be used')
-            cte_value = global_version
-            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * cte_value
+
+            if not isinstance(global_version, (float, np.ndarray, int)):
+                raise ValueError(f'User must specify a model type {model_type} '
+                                 f'and provide a float/array to be used. Got: '
+                                 f'{type(global_version)}')
+
+            # Generate an array of values and multiply by the 'global_version'
+            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * global_version
             if len(to_pe) != n_tpc_pmts:
-                raise ValueError(f'to_pe length does not match {n_tpc_pmts}')
-            return to_pe
+                raise ValueError(f'to_pe length does not match {n_tpc_pmts}. '
+                                 f'Check that {global_version} is either of '
+                                 f'length {n_tpc_pmts} or a float')
+
         else:
             raise ValueError(f'{model_type} not implemented for to_pe values')
 
-    def get_lce(self, run_id, s, position, global_version='v1', xenon1t=False):
+        return to_pe
+
+    def get_lce(self, run_id, s, position, global_version='v1'):
         """
         Smart logic to return light collection eff map values.
         :param run_id: run id from runDB
         :param s: S1 map or S2 map
+        :param global_version:
         :param position: event position
-        :param xenon1t: boolean, whether you are processing xenon1t data or not
         """
         raise NotImplementedError
 
-    def get_fdc(self, run_id, position, global_version='v1', xenon1t=False):
+    def get_fdc(self, run_id, position, global_version='v1'):
         """
         Smart logic to return field distortion map values.
         :param run_id: run id from runDB
         :param position: event position
-        :param xenon1t: boolean xenon1t data=False/True
+        :param global_version: global version (str type)
         """
         raise NotImplementedError
 
-    def get_time(self, run_id, xenon1t=False):
+    # TODO change to st.estimate_start_time
+    def get_start_time(self, run_id):
         """
         Smart logic to return start time from runsDB
         :param run_id: run id from runDB
-        :param xenon1t: boolean, whether you are processing xenon1t data or not
         :return: run start time
         """
-        if xenon1t:
-            runsdb_collection = self.collection_1t
-        else:
+
+        if self.is_nt:
             # xenonnt use int
             run_id = int(run_id)
-            runsdb_collection = self.collection
 
-        rundoc = runsdb_collection.find_one(
-                {'name' if xenon1t else 'number': run_id, 'end': {'$exists': 1}},
+        rundoc = self.collection.find_one(
+                {'number' if self.is_nt else 'name': run_id},
                 {'start': 1})
         if rundoc is None:
             raise ValueError(f'run_id = {run_id} not found')
