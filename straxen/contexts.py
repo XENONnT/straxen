@@ -39,8 +39,8 @@ xnt_common_config = dict(
     nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
 
-# Some datakinds are only available for the nT context. Remove any plugins that
-# contain any of the following strings:
+# Some datakinds are only available for the nT context. Remove any datakinds
+# from the 1T contexts if a plugin contains any of the following strings:
 nt_only_datakind = ('_he', '_nv', 'aqmon', 'veto_intervals')
 
 ##
