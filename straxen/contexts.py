@@ -1,7 +1,6 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-import numpy as np
 
 common_opts = dict(
     register_all=[
