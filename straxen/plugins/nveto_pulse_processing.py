@@ -82,16 +82,19 @@ def clean_up_empty_records(records, record_links, only_last=True):
     """
     indicies_to_keep = np.zeros(len(records), dtype=np.int32)
     n_indicies = 0
-    for ind, r in enumerate(records):
+    for rind, r in enumerate(records):
         if only_last:
-            m_last_fragment = (r['record_i'] > 0) and (r['length'] < len(r['data']))
-            if m_last_fragment:
-                indicies_to_keep[n_indicies] = ind
+            m_first = record_links[0][rind] == strax.NO_RECORD_LINK  #
+            m_in_between = record_links[1][rind] != strax.NO_RECORD_LINK
+            if m_first or m_in_between:
+            # we are not the last record as we don't have a link on the left (i.e. are first) or have a link on the
+            # right
+                indicies_to_keep[n_indicies] = rind
                 n_indicies += 1
                 continue
 
         if np.any(r['data'] != 0):
-            indicies_to_keep[n_indicies] = ind
+            indicies_to_keep[n_indicies] = rind
             n_indicies += 1
             continue
 
@@ -99,21 +102,28 @@ def clean_up_empty_records(records, record_links, only_last=True):
         # Hence we have to update the pulse_lengths accordingly:
         length = r['length']
 
-        TRIAL_COUNTER = 500  # Do not want to be stuck forever
-        for neighbors in record_links:
-            neighbor_i = ind
+        MAX_RECORD_I  = 500  # Do not want to be stuck forever
+
+        left_links, right_links = record_links  # Just to make for loop more explicit
+        for ind, neighbors in enumerate((left_links, right_links)):
+            if only_last & ind:
+                continue
+
+            neighbor_i = rind
             ntries = 0
 
-            while ntries < TRIAL_COUNTER:
+            # Looping over all left/right neighbors and update pulse_length
+            while ntries < MAX_RECORD_I:
                 neighbor_i = neighbors[neighbor_i]
-                if neighbor_i == -1:
+                if neighbor_i == strax.NO_RECORD_LINK:
                     # No neighbor anymore
                     break
                 else:
                     records[neighbor_i]['pulse_length'] -= length
                 ntries += 1
-            if ntries == TRIAL_COUNTER:
-                mes = 'Tried to correct the pulse_length for more than 500 fragments of a single pulse, this is odd.'
+            if ntries == MAX_RECORD_I:
+                mes = 'Found more than 500 links for a single pulse this is odd.'
+
                 raise TimeoutError(mes)
 
     return records[indicies_to_keep[:n_indicies]]
