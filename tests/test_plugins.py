@@ -146,6 +146,8 @@ def test_1T(ncores=1):
     # Register the 1T plugins for this test as well
     st.register_all(straxen.plugins.x1t_cuts)
     _run_plugins(st, make_all=False, max_wokers=ncores)
+    # Test issue #233
+    st.search_field('cs1')
     print(st.context_config)
 
 
@@ -157,6 +159,8 @@ def test_nT(ncores=1):
     _update_context(st, ncores, fallback_gains=offline_gain_model)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
+     # Test issue #233
+    st.search_field('cs1')
     print(st.context_config)
 
 
@@ -164,7 +168,8 @@ def test_nT_mutlticore():
     print('nT multicore')
     test_nT(2)
 
-
-def test_1T_mutlticore():
-    print('1T multicore')
-    test_1T(2)
+# Disable the test below as it saves some time in travis and gives limited new
+# information as most development is on nT-plugins.
+# def test_1T_mutlticore():
+#     print('1T multicore')
+#     test_1T(2)
