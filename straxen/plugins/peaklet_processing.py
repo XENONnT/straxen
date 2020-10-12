@@ -242,6 +242,11 @@ def peak_saturation_correction(records, peaks, to_pe,
     :param use_classification: Choice to use peak type
     """
 
+    if not len(records):
+        return
+    if not len(peaks):
+        return
+
     # Search for peaks with saturated channels
     mask = peaks['n_saturated_channels'] > 0
     if use_classification:
