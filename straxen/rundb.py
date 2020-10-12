@@ -276,7 +276,17 @@ class RunDB(strax.StorageFrontend):
 
 
 def get_mongo_url(hostname):
+    """
+    Read url for mongo by reading the username and password from
+    straxen.get_secret.
+
+    :param hostname: The name of the host currently working on. If
+    this is an event-builder, we can use the gateway to
+    authenticate. Else we use either of the hosts in
+    default_mongo_url and backup_mongo_urls.
+    """
     if hostname.endswith('xenon.local'):
+        # So we are running strax on an event builder
         username = straxen.get_secret('mongo_rdb_username')
         password = straxen.get_secret('mongo_rdb_password')
         url_base = 'xenon1t-daq:27017'
