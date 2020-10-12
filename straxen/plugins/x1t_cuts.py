@@ -216,7 +216,7 @@ class S1LowEnergyRange(strax.CutPlugin):
 
 
 class SR1Cuts(strax.MergeOnlyPlugin):
-    depends_on = ['fiducial_cylinder_1t', 'cut_s1_max_pmt', 'cut_s1_low_energy_range']
+    depends_on = ['cut_fiducial_cylinder_1t', 'cut_s1_max_pmt', 'cut_s1_low_energy_range']
     save_when = strax.SaveWhen.ALWAYS
 
 

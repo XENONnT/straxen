@@ -9,11 +9,7 @@ common_opts = dict(
         straxen.peaklet_processing,
         straxen.peak_processing,
         straxen.event_processing,
-        straxen.double_scatter,
-        straxen.nveto_recorder,
-        straxen.nveto_pulse_processing,
-        straxen.nveto_hitlets,
-        straxen.acqmon_processing],
+        straxen.double_scatter],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',
@@ -39,9 +35,16 @@ xnt_common_config = dict(
     nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
 
+# Plugins in these files are nT only
+xnt_only_plugins = [straxen.nveto_recorder,
+                    straxen.nveto_pulse_processing,
+                    straxen.nveto_hitlets,
+                    straxen.acqmon_processing,
+                    ]
+
 # Some datakinds are only available for the nT context. Remove any datakinds
 # from the 1T contexts if a plugin contains any of the following strings:
-nt_only_datakind = ('_he', '_nv', 'aqmon', 'veto_intervals')
+nt_only_datakinds_contain = ('_he',)
 
 ##
 # XENONnT
@@ -60,6 +63,7 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
+    st.register_all(xnt_only_plugins)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
     st.storage = [straxen.RunDB(
@@ -126,7 +130,7 @@ def xenonnt_simulation(output_folder='./strax_data'):
 def strip_nt_plugins(st):
     """Remove nt datakinds from 1T contexts"""
     for plugin in list(st._plugin_class_registry.keys()):
-        if np.any([nt in plugin for nt in nt_only_datakind]):
+        if np.any([nt in plugin for nt in nt_only_datakinds_contain]):
             del st._plugin_class_registry[plugin]
     return st
 
