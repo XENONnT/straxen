@@ -5,11 +5,10 @@ import numpy as np
 
 common_opts = dict(
     register_all=[
-        # straxen.pulse_processing,
-        # straxen.peaklet_processing,
-        # straxen.peak_processing,
         straxen.event_processing,
         straxen.double_scatter],
+    # Register all peak/pulse processing by hand as 1T does not need to have
+    # the high-energy plugins.
     register=[
         straxen.PulseProcessing,
         straxen.Peaklets,
@@ -44,7 +43,8 @@ xnt_common_config = dict(
     nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
 
-# Plugins in these files are nT only
+# Plugins in these files are nT only (NB: pulse&peak(let) processing are
+# registered for High Energy plugins.)
 xnt_only_plugins = [straxen.nveto_recorder,
                     straxen.nveto_pulse_processing,
                     straxen.nveto_hitlets,
@@ -52,10 +52,6 @@ xnt_only_plugins = [straxen.nveto_recorder,
                     straxen.pulse_processing,
                     straxen.peaklet_processing,
                     ]
-
-# Some datakinds are only available for the nT context. Remove any datakinds
-# from the 1T contexts if a plugin contains any of the following strings:
-nt_only_datakinds_contain = ('_he',)
 
 ##
 # XENONnT
