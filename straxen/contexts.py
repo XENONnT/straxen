@@ -19,7 +19,7 @@ common_opts = dict(
         straxen.PeakProximity],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
-        'name', 'number', 'tags.name',
+        'name', 'number',
         'start', 'end', 'livetime', 'mode'))
 
 xnt_common_config = dict(
