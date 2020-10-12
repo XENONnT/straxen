@@ -5,11 +5,20 @@ import numpy as np
 
 common_opts = dict(
     register_all=[
-        straxen.pulse_processing,
-        straxen.peaklet_processing,
-        straxen.peak_processing,
+        # straxen.pulse_processing,
+        # straxen.peaklet_processing,
+        # straxen.peak_processing,
         straxen.event_processing,
         straxen.double_scatter],
+    register=[
+        straxen.PulseProcessing,
+        straxen.Peaklets,
+        straxen.PeakletClassification,
+        straxen.MergedS2s,
+        straxen.Peaks,
+        straxen.PeakBasics,
+        straxen.PeakPositions,
+        straxen.PeakProximity],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number', 'tags.name',
@@ -40,6 +49,8 @@ xnt_only_plugins = [straxen.nveto_recorder,
                     straxen.nveto_pulse_processing,
                     straxen.nveto_hitlets,
                     straxen.acqmon_processing,
+                    straxen.pulse_processing,
+                    straxen.peaklet_processing,
                     ]
 
 # Some datakinds are only available for the nT context. Remove any datakinds
@@ -99,12 +110,13 @@ def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
     st.context_config['check_available'] = ('raw_records', 'led_calibration')
     # Return a new context with only raw_records and led_calibration registered
-    return st.new_context(
+    st = st.new_context(
         replace=True,
-        register=[straxen.DAQReader, straxen.LEDCalibration],
         config=st.config,
         storage=st.storage,
         **st.context_config)
+    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    return st
 
 
 # This gain model is a temporary solution until we have a nice stable one
@@ -112,27 +124,20 @@ def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     xnt_common_config['gain_model'] = ('to_pe_per_run',
                                        straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
-    return strax.Context(
+    st = strax.Context(
         storage=strax.DataDirectory(output_folder),
-        register=wfsim.RawRecordsFromFaxNT,
         config=dict(detector='XENONnT',
                     fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.common_opts)
+    st.register(wfsim.RawRecordsFromFaxNT)
+    return st
 
 
 ##
 # XENON1T
 ##
-
-
-def strip_nt_plugins(st):
-    """Remove nt datakinds from 1T contexts"""
-    for plugin in list(st._plugin_class_registry.keys()):
-        if np.any([nt in plugin for nt in nt_only_datakinds_contain]):
-            del st._plugin_class_registry[plugin]
-    return st
 
 
 x1t_context_config = {
@@ -187,11 +192,11 @@ def demo():
                                      deep_scan=True,
                                      provide_run_metadata=True,
                                      readonly=True)],
-        register=straxen.RecordsFromPax,
         forbid_creation_of=straxen.daqreader.DAQReader.provides,
         config=dict(**x1t_common_config),
         **x1t_context_config)
-    return strip_nt_plugins(st)
+    st.register(straxen.RecordsFromPax)
+    return st
 
 
 def fake_daq():
@@ -208,9 +213,9 @@ def fake_daq():
                     n_readout_threads=8,
                     daq_overlap_chunk_duration=int(2e8),
                     **x1t_common_config),
-        register=straxen.Fake1TDAQReader,
         **x1t_context_config)
-    return strip_nt_plugins(st)
+    st.register(straxen.Fake1TDAQReader)
+    return st
 
 
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
@@ -229,7 +234,6 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
                 '/dali/lgrandi/xenon1t/strax_converted/processed',
                 readonly=True),
             strax.DataDirectory(output_folder)],
-        register=straxen.RecordsFromPax,
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
@@ -237,7 +241,8 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
             straxen.daqreader.DAQReader.provides if build_lowlevel
             else straxen.daqreader.DAQReader.provides + ('records', 'peaklets')),
         **context_options)
-    return strip_nt_plugins(st)
+    st.register(straxen.RecordsFromPax)
+    return st
 
 
 def xenon1t_led(**kwargs):
@@ -246,21 +251,21 @@ def xenon1t_led(**kwargs):
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(
         replace=True,
-        register=[straxen.RecordsFromPax, straxen.LEDCalibration],
         config=st.config,
         storage=st.storage,
         **st.context_config)
-    return strip_nt_plugins(st)
+    st.register([straxen.RecordsFromPax, straxen.LEDCalibration])
+    return st
 
 
 def xenon1t_simulation(output_folder='./strax_data'):
     import wfsim
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
-        register=wfsim.RawRecordsFromFax1T,
         config=dict(
             fax_config=straxen.aux_repo + '1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
             detector='XENON1T',
             **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
-    return strip_nt_plugins(st)
+    st.register(wfsim.RawRecordsFromFax1T)
+    return st
