@@ -4,6 +4,8 @@ from straxen.contexts import *
 
 
 def import_wfsim():
+    """Check if we can test the wfsim-related contexts. This is not the case
+    for e.g. travis checks as we don't install wfsim by default."""
     try:
         import wfsim
         return True
@@ -45,6 +47,7 @@ def test_demo():
     st = demo()
     st.search_field('time')
 
+
 def test_fake_daq():
     st = fake_daq()
     st.search_field('time')
@@ -53,6 +56,7 @@ def test_fake_daq():
 def test_xenon1t_led():
     st = xenon1t_led()
     st.search_field('time')
+
 
 def xenon_xenon1t_simulation():
     if import_wfsim():
