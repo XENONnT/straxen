@@ -18,35 +18,11 @@ common_opts = dict(
         'name', 'number', 'tags.name',
         'start', 'end', 'livetime', 'mode'))
 
-xnt_common_config = dict(
-    n_nveto_pmts=120,
-    n_tpc_pmts=straxen.n_tpc_pmts,
-    n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
-    channel_map=immutabledict(
-        # (Minimum channel, maximum channel)
-        # Channels must be listed in a ascending order!
-        tpc=(0, 493),
-        he=(500, 752),  # high energy
-        aqmon=(790, 807),
-        aqmon_nv=(808, 815),  # nveto acquisition monitor
-        tpc_blank=(999, 999),
-        mv=(1000, 1083),
-        mv_blank=(1999, 1999),
-        nveto=(2000, 2119),
-        nveto_blank=(2999, 2999)),
-    nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
-
-
-##
-# XENONnT
-##
-
-
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
+                   _minimum_run_number=9271,
                    _database_init=True,
+
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
@@ -60,6 +36,7 @@ def xenonnt_online(output_folder='./strax_data',
 
     st.storage = [straxen.RunDB(
         readonly=not we_are_the_daq,
+        minimum_run_number=_minimum_run_number,
         runid_field='number',
         new_data_path=output_folder,
         rucio_path='/dali/lgrandi/rucio/'), ] if _database_init else []
@@ -86,6 +63,42 @@ def xenonnt_online(output_folder='./strax_data',
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
     return st
 
+
+##
+# XENONnT
+##
+
+
+xnt_common_config = dict(
+    n_nveto_pmts=120,
+    n_tpc_pmts=straxen.n_tpc_pmts,
+    n_top_pmts=straxen.n_top_pmts,
+    gain_model=('to_pe_constant', 'SOME 1300 V gains'),
+    channel_map=immutabledict(
+        # (Minimum channel, maximum channel)
+        # Channels must be listed in a ascending order!
+        tpc=(0, 493),
+        he=(500, 752),  # high energy
+        aqmon=(790, 807),
+        aqmon_nv=(808, 815),  # nveto acquisition monitor
+        tpc_blank=(999, 999),
+        mv=(1000, 1083),
+        mv_blank=(1999, 1999),
+        nveto=(2000, 2119),
+        nveto_blank=(2999, 2999)),
+    nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
+
+
+def xenonnt_gxe_phase(**kwargs):
+    """
+    XENONnT context for initial gas phase of the detector. These are runs
+    7157-9271.
+    """
+    st = xenonnt_online(_minimum_run_number=7157, **kwargs)
+    st.set_config(dict(
+        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')))
+    return st
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
