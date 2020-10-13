@@ -98,7 +98,7 @@ def xenonnt_online(output_folder='./strax_data',
     # Only the online monitor backend for the DAQ
     elif _database_init:
         st.storage += [straxen.OnlineMonitor(
-            readonly=not we_are_the_daq,
+            readonly=we_are_the_daq,
             take_only=('pulse_counts', 'pulse_counts_he', 'veto_intervals'))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
