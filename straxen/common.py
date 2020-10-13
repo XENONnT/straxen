@@ -415,8 +415,9 @@ def remap_old(data, targets, works_on_target=''):
         pass
     elif len(data):
         # select the old data and do the remapping for this
-        warn('Correcting data of runs with mis-cabled PMTs. \nSee: https://'
-             'xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap')
+        warn("Correcting data of runs with mis-cabled PMTs. \nSee: https://"
+             "xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap. "
+             "Don't use '' selection_str='channel == xx' '' (github.com/XENONnT/straxen/issues/239)")
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
         data[mask] = remap_channels(data[mask])
     return data
