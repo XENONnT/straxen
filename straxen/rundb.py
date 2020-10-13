@@ -143,17 +143,25 @@ class RunDB(strax.StorageFrontend):
             dq = {
                 'data': {
                     '$elemMatch': {
+                        # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
                         'protocol': 'rucio'}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
                 datum = doc['data'][0]
-                return datum['protocol'], str(key.run_id) + '-' + datum['did'].split(':')[1]
-        
+                _type, _lineage_hash = datum['did'].split(':')[1].split('-')
+                if _lineage_hash == key.lineage_hash:
+                    backend_name, backend_key = datum['protocol'], f'{key.run_id}-{_type}-{_lineage_hash}'
+                    return backend_name, backend_key
+                else:
+                    # We don't have it stored in rucio, perhaps we have it in
+                    # our output-path? Explicit pass->look elsewhere.
+                    pass
+
         dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq},
-                                      projection=dq)
+                                       projection=dq)
 
         if doc is None:
             # Data was not found
