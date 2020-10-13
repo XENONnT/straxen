@@ -51,7 +51,7 @@ class AqmonHits(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('min_veto_gap', default=1, type=int,
+    strax.Option('min_veto_gap', default=int(1e6), type=int,
                  help='Minimum separation between veto stop and start pulses [ns]'),
     strax.Option('max_veto_gap', default=int(5e8), type=int,
                  help='Maximum separation between veto stop and start pulses [ns]'),
