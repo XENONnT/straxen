@@ -225,8 +225,7 @@ class Peaklets(strax.Plugin):
                 p['length'] = (end - p['time']) // p['dt']
 
 
-@export
-@numba.jit(nopython=True, nogil=True, cache=True)
+#  @numba.jit(nopython=True, nogil=True, cache=True)
 def peak_saturation_correction(records, peaks, to_pe,
                                reference_length=100,
                                min_reference_length=20,
