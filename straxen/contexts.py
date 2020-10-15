@@ -4,40 +4,54 @@ import straxen
 
 common_opts = dict(
     register_all=[
-        straxen.pulse_processing,
-        straxen.peaklet_processing,
-        straxen.peak_processing,
         straxen.event_processing,
-        straxen.double_scatter,
-        straxen.nveto_recorder,
-        straxen.nveto_pulse_processing,
-        straxen.nveto_hitlets],
+        straxen.double_scatter],
+    # Register all peak/pulse processing by hand as 1T does not need to have
+    # the high-energy plugins.
+    register=[
+        straxen.PulseProcessing,
+        straxen.Peaklets,
+        straxen.PeakletClassification,
+        straxen.MergedS2s,
+        straxen.Peaks,
+        straxen.PeakBasics,
+        straxen.PeakPositions,
+        straxen.PeakProximity],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
-        'name', 'number', 'tags.name',
+        'name', 'number',
         'start', 'end', 'livetime', 'mode'))
-
 
 xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', '1300V_20200428'),
+    gain_model=('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
     channel_map=immutabledict(
-         # (Minimum channel, maximum channel)
-         # Channels must be listed in a ascending order!
-         tpc=(0, 493),
-         he=(500, 752),  # high energy
-         aqmon=(790, 807),
-         aqmon_nv=(808, 815),  # nveto acquisition monitor
-         tpc_blank=(999, 999),
-         mv=(1000, 1083),
-         mv_blank=(1999, 1999),
-         nveto=(2000, 2119),
-         nveto_blank=(2999, 2999)),
-    nn_architecture=straxen.aux_repo+ 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=straxen.aux_repo+'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',)
+        # (Minimum channel, maximum channel)
+        # Channels must be listed in a ascending order!
+        tpc=(0, 493),
+        he=(500, 752),  # high energy
+        aqmon=(790, 807),
+        aqmon_nv=(808, 815),  # nveto acquisition monitor
+        tpc_blank=(999, 999),
+        mv=(1000, 1083),
+        mv_blank=(1999, 1999),
+        nveto=(2000, 2119),
+        nveto_blank=(2999, 2999)),
+    nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
 
+# Plugins in these files are nT only (NB: pulse&peak(let) processing are
+# registered for High Energy plugins.)
+xnt_only_plugins = [straxen.nveto_recorder,
+                    straxen.nveto_pulse_processing,
+                    straxen.nveto_hitlets,
+                    straxen.acqmon_processing,
+                    straxen.pulse_processing,
+                    straxen.peaklet_processing,
+                    straxen.peak_processing,
+                    ]
 
 ##
 # XENONnT
@@ -46,7 +60,9 @@ xnt_common_config = dict(
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
+                   _minimum_run_number=9271,
                    _database_init=True,
+
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
@@ -56,13 +72,16 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
+    st.register_all(xnt_only_plugins)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
     st.storage = [straxen.RunDB(
         readonly=not we_are_the_daq,
+        minimum_run_number=_minimum_run_number,
         runid_field='number',
         new_data_path=output_folder,
-        rucio_path='/dali/lgrandi/rucio/'), ] if _database_init else []
+        rucio_path='/dali/lgrandi/rucio/')
+        ] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
@@ -77,9 +96,30 @@ def xenonnt_online(output_folder='./strax_data',
                 strax.DataDirectory(output_folder))
 
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
+    # Only the online monitor backend for the DAQ
+    elif _database_init:
+        st.storage += [straxen.OnlineMonitor(
+            readonly=not we_are_the_daq,
+            take_only=('pulse_counts', 'pulse_counts_he', 'veto_intervals'))]
 
-    # Remap the data if it is before channel swap.
+    # Remap the data if it is before channel swap (because of wrongly cabled
+    # signal cable connectors) These are runs older than run 8797, before
+    # commissioning. Runs newer than 8796 are not affected. See:
+    # https://github.com/XENONnT/straxen/pull/166 and
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
+    return st
+
+
+def xenonnt_initial_commissioning(**kwargs):
+    """
+    First phase of the commissioning of XENONnT.
+    These are runs 7157-9271.
+    xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts
+    """
+    st = xenonnt_online(_minimum_run_number=7157, **kwargs)
+    st.set_config(dict(
+        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')))
     return st
 
 
@@ -87,38 +127,41 @@ def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
     st.context_config['check_available'] = ('raw_records', 'led_calibration')
     # Return a new context with only raw_records and led_calibration registered
-    return st.new_context(
+    st = st.new_context(
         replace=True,
-        register=[straxen.DAQReader, straxen.LEDCalibration],
         config=st.config,
         storage=st.storage,
         **st.context_config)
+    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    return st
 
 
-# This gain model is a temp solution untill we have a nice stable one
+# This gain model is a temporary solution until we have a nice stable one
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     xnt_common_config['gain_model'] = ('to_pe_per_run',
-                                        straxen.aux_repo+'58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
-    return strax.Context(
+                                       straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+    st = strax.Context(
         storage=strax.DataDirectory(output_folder),
-        register=wfsim.RawRecordsFromFaxNT,
         config=dict(detector='XENONnT',
-                    fax_config=straxen.aux_repo+'4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
                     **straxen.contexts.xnt_common_config,
-                     ),
+                    ),
         **straxen.contexts.common_opts)
+    st.register(wfsim.RawRecordsFromFaxNT)
+    return st
 
 
 ##
 # XENON1T
 ##
 
+
 x1t_context_config = {
     **common_opts,
     **dict(
         check_available=('raw_records', 'records', 'peaklets',
-                             'events', 'event_info'),
+                         'events', 'event_info'),
         free_options=('channel_map',),
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
@@ -159,21 +202,23 @@ x1t_common_config = dict(
 def demo():
     """Return strax context used in the straxen demo notebook"""
     straxen.download_test_data()
-    return strax.Context(
-            storage=[strax.DataDirectory('./strax_data'),
-                     strax.DataDirectory('./strax_test_data',
-                                         deep_scan=True,
-                                         provide_run_metadata=True,
-                                         readonly=True)],
-            register=straxen.RecordsFromPax,
-            forbid_creation_of=straxen.daqreader.DAQReader.provides,
-            config=dict(**x1t_common_config),
-            **x1t_context_config)
+
+    st = strax.Context(
+        storage=[strax.DataDirectory('./strax_data'),
+                 strax.DataDirectory('./strax_test_data',
+                                     deep_scan=True,
+                                     provide_run_metadata=True,
+                                     readonly=True)],
+        forbid_creation_of=straxen.daqreader.DAQReader.provides,
+        config=dict(**x1t_common_config),
+        **x1t_context_config)
+    st.register(straxen.RecordsFromPax)
+    return st
 
 
 def fake_daq():
     """Context for processing fake DAQ data in the current directory"""
-    return strax.Context(
+    st = strax.Context(
         storage=[strax.DataDirectory('./strax_data'),
                  # Fake DAQ puts run doc JSON in same folder:
                  strax.DataDirectory('./from_fake_daq',
@@ -185,16 +230,17 @@ def fake_daq():
                     n_readout_threads=8,
                     daq_overlap_chunk_duration=int(2e8),
                     **x1t_common_config),
-        register=straxen.Fake1TDAQReader,
         **x1t_context_config)
+    st.register(straxen.Fake1TDAQReader)
+    return st
 
 
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
     context_options = {
         **x1t_context_config,
         **kwargs}
-    
-    return strax.Context(
+
+    st = strax.Context(
         storage=[
             strax.DataDirectory(
                 '/dali/lgrandi/xenon1t/strax_converted/raw',
@@ -205,7 +251,6 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
                 '/dali/lgrandi/xenon1t/strax_converted/processed',
                 readonly=True),
             strax.DataDirectory(output_folder)],
-        register=straxen.RecordsFromPax,
         config=dict(**x1t_common_config),
         # When asking for runs that don't exist, throw an error rather than
         # starting the pax converter
@@ -213,25 +258,31 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
             straxen.daqreader.DAQReader.provides if build_lowlevel
             else straxen.daqreader.DAQReader.provides + ('records', 'peaklets')),
         **context_options)
+    st.register(straxen.RecordsFromPax)
+    return st
+
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
     st.context_config['check_available'] = ('raw_records', 'led_calibration')
     # Return a new context with only raw_records and led_calibration registered
-    return st.new_context(
+    st = st.new_context(
         replace=True,
-        register=[straxen.RecordsFromPax, straxen.LEDCalibration],
         config=st.config,
         storage=st.storage,
         **st.context_config)
+    st.register([straxen.RecordsFromPax, straxen.LEDCalibration])
+    return st
 
 
 def xenon1t_simulation(output_folder='./strax_data'):
     import wfsim
-    return strax.Context(
+    st = strax.Context(
         storage=strax.DataDirectory(output_folder),
-        register=wfsim.RawRecordsFromFax1T,
-        config=dict(fax_config=straxen.aux_repo+'1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
-                    detector='XENON1T',
-                    **straxen.contexts.x1t_common_config),
+        config=dict(
+            fax_config=straxen.aux_repo + '1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
+            detector='XENON1T',
+            **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
+    st.register(wfsim.RawRecordsFromFax1T)
+    return st
