@@ -159,7 +159,7 @@ class Peaklets(strax.Plugin):
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
         if self.config['saturation_correction_on']:
-            corrected_peaklet_list = peak_saturation_correction(
+            peak_saturation_correction(
                 r, peaklets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'],)
@@ -238,7 +238,7 @@ def peak_saturation_correction(records, peaks, to_pe,
     to correct saturated samples
     :param min_reference_length: Minimum number of reference sample used
     to correct saturated samples
-    :param use_classification: Choice to use peak type
+    :param use_classification: Option of using classification to pick only S2
     """
 
     if not len(records):
@@ -261,15 +261,15 @@ def peak_saturation_correction(records, peaks, to_pe,
     # Create temporary arrays for calculation
     dt = records[0]['dt']
     n_channels = len(peaks[0]['saturated_channel'])
-    len_buffer = np.max(peaks['length'] * peaks['dt']) // dt
-    max_nrecord = len_buffer // strax.DEFAULT_RECORD_LENGTH + 1
+    len_buffer = np.max(peaks['length'] * peaks['dt']) // dt + 1
+    max_nrecord = len_buffer // len(records[0]['data']) + 1
 
     # Buff the sum wf [pe] of non-saturated channels
     b_sumwf = np.zeros(len_buffer, dtype=np.float32)
     # Buff the records data [ADC] in saturated channels
     b_pulse = np.zeros((n_channels, len_buffer), dtype=np.int16)
     # Buff the corresponding record index of saturated channels
-    b_index = np.zeros((n_channels, len_buffer), dtype=np.int32)
+    b_index = np.zeros((n_channels, len_buffer), dtype=np.int64)
 
     # Main
     for ix, peak_i in enumerate(peak_list):
@@ -304,7 +304,6 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['dt'] = dt
 
     strax.sum_waveform(peaks, records, to_pe, peak_list)
-    return peak_list
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
@@ -313,8 +312,8 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
                                       reference_length=100,
                                       min_reference_length=20,
                                       ):
-    """Would be the thrid level loop in peak_saturation_correction
-    Its not ideal for numba, thus this function
+    """Would add a thrid level loop in peak_saturation_correction
+    Which is not ideal for numba, thus this function is written
     :param channel_saturated: (bool, n_channels)
     :param p: One peak/peaklet
     :param b_sumwf, b_pulse, b_index: Filled buffers
