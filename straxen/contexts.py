@@ -50,6 +50,7 @@ xnt_only_plugins = [straxen.nveto_recorder,
                     straxen.acqmon_processing,
                     straxen.pulse_processing,
                     straxen.peaklet_processing,
+                    straxen.peak_processing,
                     ]
 
 ##
