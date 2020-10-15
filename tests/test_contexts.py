@@ -24,6 +24,11 @@ def test_xenonnt_online():
     st.search_field('time')
 
 
+def test_xenonnt_initial_commissioning():
+    st = xenonnt_initial_commissioning(_database_init=False)
+    st.search_field('time')
+
+
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False)
     st.search_field('time')
