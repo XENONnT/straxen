@@ -78,6 +78,7 @@ class Peaklets(strax.Plugin):
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
+    chunk_target_size_mb = 400
 
     __version__ = '0.3.5'
 
