@@ -3,7 +3,9 @@ dist: xenial
 python:
 - '3.6'
 - '3.7'
+- '3.8'
 install:
+- pip install tensorflow>=2.3
 - pip install -r requirements.txt
 script:
 - python setup.py test
