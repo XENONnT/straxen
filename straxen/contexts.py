@@ -19,14 +19,14 @@ common_opts = dict(
         straxen.PeakProximity],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
-        'name', 'number', 'tags.name',
+        'name', 'number',
         'start', 'end', 'livetime', 'mode'))
 
 xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
+    gain_model=('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -50,6 +50,7 @@ xnt_only_plugins = [straxen.nveto_recorder,
                     straxen.acqmon_processing,
                     straxen.pulse_processing,
                     straxen.peaklet_processing,
+                    straxen.peak_processing,
                     ]
 
 ##
@@ -59,7 +60,9 @@ xnt_only_plugins = [straxen.nveto_recorder,
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
+                   _minimum_run_number=9271,
                    _database_init=True,
+
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
@@ -74,6 +77,7 @@ def xenonnt_online(output_folder='./strax_data',
 
     st.storage = [straxen.RunDB(
         readonly=not we_are_the_daq,
+        minimum_run_number=_minimum_run_number,
         runid_field='number',
         new_data_path=output_folder,
         rucio_path='/dali/lgrandi/rucio/')
@@ -104,6 +108,18 @@ def xenonnt_online(output_folder='./strax_data',
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
+    return st
+
+
+def xenonnt_initial_commissioning(**kwargs):
+    """
+    First phase of the commissioning of XENONnT.
+    These are runs 7157-9271.
+    xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts
+    """
+    st = xenonnt_online(_minimum_run_number=7157, **kwargs)
+    st.set_config(dict(
+        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')))
     return st
 
 
