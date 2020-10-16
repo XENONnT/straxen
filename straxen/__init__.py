@@ -1,5 +1,9 @@
 __version__ = '0.11.0'
 
+# load configuration file using utilix
+from utilix.config import Config
+uconfig = Config()
+
 from .common import *
 from .itp_map import *
 from .rundb import *
@@ -19,3 +23,6 @@ from . import analyses
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
+
+
+

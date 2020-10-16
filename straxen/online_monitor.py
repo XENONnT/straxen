@@ -1,11 +1,9 @@
-from straxen.rundb import get_mongo_url, default_mongo_dbname
 from strax import MongoFrontend, exporter
-from socket import getfqdn
+from straxen import uconfig
 
 export, __all__ = exporter()
 
 default_online_collection = 'online_monitor'
-
 
 @export
 class OnlineMonitor(MongoFrontend):
@@ -13,10 +11,11 @@ class OnlineMonitor(MongoFrontend):
     Online monitor Frontend for Saving data temporarily to the
     database
     """
+
     def __init__(self,
                  uri=None,
                  take_only=None,
-                 database=default_mongo_dbname,
+                 database=uconfig.get('RunDB', 'pymongo_database'),
                  col_name=default_online_collection,
                  read_only=True,
                  *args, **kwargs):
@@ -24,8 +23,7 @@ class OnlineMonitor(MongoFrontend):
             raise ValueError(f'Specify which data_types to accept! Otherwise '
                              f'the DataBase will be overloaded')
         if uri is None:
-            host = getfqdn()
-            uri = get_mongo_url(host)
+            uri = uconfig.get('RunDB', 'pymongo_url')
 
         super().__init__(uri=uri,
                          database=database,
