@@ -9,6 +9,7 @@ from functools import lru_cache
 import strax
 import straxen
 from .rundb import default_mongo_url, backup_mongo_urls
+from straxen.contexts import x1t_common_config
 
 export, __all__ = strax.exporter()
 
@@ -139,7 +140,7 @@ class CorrectionsManagementServices():
         Smart logic to return electron lifetime correction
         :param run_id: run id from runDB
         :param model_type: choose either elife_model or elife_constant
-        :param global_version: global version
+        :param global_version: global version, or float (if model_type == elife_constant) 
         :return: electron lifetime correction value
         """
         if model_type == 'elife_model':
@@ -148,8 +149,8 @@ class CorrectionsManagementServices():
         elif model_type == 'elife_constant':
             # This is nothing more than just returning the value we put in
             if not isinstance(global_version, float):
-                raise ValueError(f'User must specify a model type {model_type} '
-                                 f'and provide a float to be used. Got: '
+                raise ValueError(f'User specify a model type {model_type} '
+                                 f'and should provide a float. Got: '
                                  f'{type(global_version)}')
             return float(global_version)
 
@@ -164,8 +165,8 @@ class CorrectionsManagementServices():
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
         :param model_type: Choose either to_pe_model or to_pe_constant
-        :param global_version: global version or a constant value (if
-        model_type == to_pe_constant).
+        :param global_version: global version or a constant value or an array (if
+        model_type == to_pe_constant)
         :return: array of pmt gains to PE values
         """
         if model_type == 'to_pe_model':
@@ -182,7 +183,7 @@ class CorrectionsManagementServices():
             n_tpc_pmts = straxen.n_tpc_pmts
             if not self.is_nt:
                 # TODO can we prevent these kind of hard codes using the context?
-                n_tpc_pmts = 248
+                n_tpc_pmts = x1t_common_config['n_tpc_pmts']
 
             if not isinstance(global_version, (float, np.ndarray, int)):
                 raise ValueError(f'User must specify a model type {model_type} '
