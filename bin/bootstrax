@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.7'
+__version__ = '0.5.8'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -525,7 +525,7 @@ def log_warning(message, priority='warning', run_id=None):
                  fatal=4,
                  ).get(priority.lower(), 3)}
     if run_id is not None:
-        warning_message.update({'runid': run_id})
+        warning_message.update({'runid': int(run_id)})
     log_coll.insert_one(warning_message)
 
 
@@ -654,11 +654,11 @@ def infer_mode(rd):
     if rd.get('bootstrax', {}).get('n_failures', 0) >= lower_resources_after_n_failures:
         result = dict(cores=max(4, result['cores'] // 2),
                       max_messages=max(4, result['max_messages'] // 2),
-                      timeout=min(1000, result['timeout']* 1.5)
+                      timeout=min(1000, result['timeout'] * 1.5)
                       )
         log_warning(f'infer_mode::\tRepeated failures. Lowering mode to {result}. This '
                     f'may indicated a sub-optimal state of {hostname}!',
-                    priority='warning',
+                    priority='info',
                     run_id=f'{rd["number"]:06}')
 
     return result
@@ -1009,7 +1009,7 @@ def consider_run(query, return_new_doc=True, test_counter=0):
             return None
 
 
-def fail_run(rd, reason):
+def fail_run(rd, reason, error_traceback=''):
     """Mark the run represented by run doc rd as failed with reason"""
     if 'number' not in rd:
         long_run_id = f"run <no run number!!?>:{rd['_id']}"
@@ -1039,7 +1039,7 @@ def fail_run(rd, reason):
     # as it changes the run state back away from 'considering', so another
     # bootstrax could conceivably pick it up again.
     set_run_state(rd, 'failed',
-                  reason=reason,
+                  reason=reason + error_traceback,
                   next_retry=(
                       now(plus=(timeouts['retry_run']
                                 * np.random.uniform(0.5, 1.5)
@@ -1047,7 +1047,7 @@ def fail_run(rd, reason):
                                 * 5 ** min(rd['bootstrax'].get('n_failures', 0), 3)
                                 ))))
 
-    # Report to DAQ log and screen
+    # Report to DAQ log and screen. Let's not also add the entire traceback
     log_warning(f"{fail_name} on {long_run_id}: {reason}",
                 priority=failure_message_level,
                 run_id=f'{rd["number"]:06}')
@@ -1169,9 +1169,9 @@ def process_run(rd, send_heartbeats=args.production):
     class RunFailed(Exception):
         pass
 
-    def fail(reason):
+    def fail(reason, **kwargs):
         if args.production:
-            fail_run(rd, reason)
+            fail_run(rd, reason, **kwargs)
         else:
             log.warning(reason)
         raise RunFailed
@@ -1316,8 +1316,7 @@ def process_run(rd, send_heartbeats=args.production):
                         ):
                             break
                 except Exception:
-                    fail("Processing succeeded, but metadata not readable: "
-                         + traceback.format_exc())
+                    fail("Processing succeeded, but metadata not readable", error_traceback=traceback.format_exc())
                 if not len(md['chunks']):
                     fail("Processing succeeded, but no chunks were written!")
 
@@ -1365,11 +1364,7 @@ def process_run(rd, send_heartbeats=args.production):
                         exc_info = '[No exception info known, exception file was empty?!]'
                 else:
                     exc_info = "[No exception info known, exception file not found?!]"
-                fail(f"Strax exited with exit code {ec}. Exception info: {exc_info}")
-
-            # TODO: Strax should update run db with metadata
-            # currently it doesn't, even if processing succeeds...
-
+                fail(f"Strax exited with exit code {ec}.", error_traceback=f'Exception info: {exc_info}')
     except RunFailed:
         return
 
