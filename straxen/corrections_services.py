@@ -8,8 +8,7 @@ from functools import lru_cache
 
 import strax
 import straxen
-from .rundb import default_mongo_url, backup_mongo_urls
-from straxen.contexts import x1t_common_config
+from straxen.rundb import default_mongo_url, backup_mongo_urls
 
 export, __all__ = strax.exporter()
 
@@ -24,7 +23,6 @@ class CorrectionsManagementServices():
     """
     def __init__(self, username='nt_analysis', password=None, is_nt=True):
         """
-        :param host: corrections DB host
         :param username: corrections DB username
             nt_analysis user has read only permission to corrections DB
             cmt user has r/w permission to corrections DB and read permission to runsDB
@@ -41,43 +39,21 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'No password for {username}')
 
-        # TODO avoid duplicate code with RunDB.py
-        # Initialize runDB to get start-times
-        mongo_connections = [default_mongo_url, *backup_mongo_urls]
-        for url in mongo_connections:
-            try:
-                if self.username.endswith('analysis'):
-                    mongo_url = f'mongodb://{url}'
-                else:
-                    # TODO make this cleaner
-                    mongo_url = url[:-14]
-                # Initialize correction DB
-                self.interface = strax.CorrectionsInterface(
-                    host=mongo_url,
-                    username=self.username,
-                    password=self.password,
-                    database_name='corrections')
-                # Initialize runs DB
-                runsdb_user = straxen.get_secret('rundb_username')
-                runsdb_mongo_url = f'mongodb://{runsdb_user}@{url}'
-                if self.is_nt:
-                    # TODO make cleaner
-                    self.collection = pymongo.MongoClient(
-                        runsdb_mongo_url,
-                        password=straxen.get_secret(
-                            'rundb_password'))['xenonnt']['runs']
-                else:
-                    # TODO make cleaner
-                    self.collection = pymongo.MongoClient(
-                        runsdb_mongo_url,
-                        password=straxen.get_secret(
-                            'rundb_password'))['run']['runs_new']
-                break
-            except pymongo.errors.ServerSelectionTimeoutError:
-                warn(f'Cannot connect to to Mongo url: {url}')
-                if url == mongo_connections[-1]:
-                    raise pymongo.errors.ServerSelectionTimeoutError(
-                        'Cannot connect to any Mongo url')
+        # Get the readonly account for the rundb using hostname = ''
+        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname='')
+
+        _, _url = runsdb_mongo_url.split('@')
+        self.interface = strax.CorrectionsInterface(
+            host=f'mongodb://{_url}',
+            username=self.username,
+            password=self.password,
+            database_name='corrections')
+        # Initialize runs DB to get start-times
+        client = pymongo.MongoClient(runsdb_mongo_url)
+        if self.is_nt:
+            self.collection = client['xenonnt']['runs']
+        else:
+            self.collection = client['run']['runs_new']
 
     def __repr__(self):
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
@@ -183,7 +159,7 @@ class CorrectionsManagementServices():
             n_tpc_pmts = straxen.n_tpc_pmts
             if not self.is_nt:
                 # TODO can we prevent these kind of hard codes using the context?
-                n_tpc_pmts = x1t_common_config['n_tpc_pmts']
+                n_tpc_pmts = straxen.contexts.x1t_common_config['n_tpc_pmts']
 
             if not isinstance(global_version, (float, np.ndarray, int)):
                 raise ValueError(f'User must specify a model type {model_type} '
