@@ -8,8 +8,7 @@ from functools import lru_cache
 
 import strax
 import straxen
-from .rundb import default_mongo_url, backup_mongo_urls
-from straxen.contexts import x1t_common_config
+from straxen.rundb import default_mongo_url, backup_mongo_urls
 
 export, __all__ = strax.exporter()
 
@@ -160,7 +159,7 @@ class CorrectionsManagementServices():
             n_tpc_pmts = straxen.n_tpc_pmts
             if not self.is_nt:
                 # TODO can we prevent these kind of hard codes using the context?
-                n_tpc_pmts = x1t_common_config['n_tpc_pmts']
+                n_tpc_pmts = straxen.contexts.x1t_common_config['n_tpc_pmts']
 
             if not isinstance(global_version, (float, np.ndarray, int)):
                 raise ValueError(f'User must specify a model type {model_type} '
