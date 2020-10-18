@@ -335,7 +335,7 @@ class EventPositions(strax.Plugin):
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
-        'elife_model',
+        'elife_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
         help='Electron lifetime model '
              'To use a constant value, provide a link (as this default) To use'
