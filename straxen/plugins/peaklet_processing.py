@@ -162,7 +162,7 @@ class Peaklets(strax.Plugin):
             peak_saturation_correction(
                 r, peaklets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
-                min_reference_length=self.config['saturation_min_reference_length'],)
+                min_reference_length=self.config['saturation_min_reference_length'])
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -234,6 +234,7 @@ def peak_saturation_correction(records, peaks, to_pe,
     """Correct the area and per pmt area of peaks from saturation
     :param records: Records
     :param peaks: Peaklets / Peaks
+    :param to_pe: adc to PE conversion (length should equal number of PMTs)
     :param reference_length: Maximum number of reference sample used
     to correct saturated samples
     :param min_reference_length: Minimum number of reference sample used
@@ -266,13 +267,14 @@ def peak_saturation_correction(records, peaks, to_pe,
 
     # Buff the sum wf [pe] of non-saturated channels
     b_sumwf = np.zeros(len_buffer, dtype=np.float32)
-    # Buff the records data [ADC] in saturated channels
-    b_pulse = np.zeros((n_channels, len_buffer), dtype=np.int16)
+    # Buff the records 'data' [ADC] in saturated channels
+    b_pulse = np.zeros((n_channels, max_nrecord), dtype=np.int16)
     # Buff the corresponding record index of saturated channels
     b_index = np.zeros((n_channels, len_buffer), dtype=np.int64)
 
     # Main
     for ix, peak_i in enumerate(peak_list):
+        # reset buffers
         b_sumwf[:] = 0
         b_pulse[:] = 0
         b_index[:] = -1
@@ -312,7 +314,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
                                       reference_length=100,
                                       min_reference_length=20,
                                       ):
-    """Would add a thrid level loop in peak_saturation_correction
+    """Would add a third level loop in peak_saturation_correction
     Which is not ideal for numba, thus this function is written
     :param channel_saturated: (bool, n_channels)
     :param p: One peak/peaklet
@@ -326,7 +328,8 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
             continue
         b = b_pulse[ch]
         r0 = records[b_index[ch][0]]
-        saturated_index0 = s0 = np.argmax(b >= r0['baseline'])
+        # Index of first saturation
+        s0 = np.argmax(b >= r0['baseline'])
         ref = slice(max(0, s0-reference_length), s0)
 
         # Continue if the length of ref is shorter than minimum length
@@ -370,6 +373,10 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
                       "energy channels"),
     strax.Option('peak_min_pmts_he', default=2, child_option=True, track=True,
                  help="Minimum number of contributing PMTs needed to define a peak"),
+    strax.Option('saturation_correction_on_he', default=False, child_option=True,
+                 track=True,
+                 help='On off switch for saturation correction for High Energy'
+                      ' channels'),
     *HITFINDER_OPTIONS_he
 )
 class PeakletsHighEnergy(Peaklets):
