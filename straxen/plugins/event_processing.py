@@ -370,7 +370,7 @@ class CorrectedAreas(strax.Plugin):
             get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
-        self.elife = get_elife(self.run_id, self.config['elife_model'])
+        self.elife = get_elife(self.run_id, self.config['elife_file'])
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.
