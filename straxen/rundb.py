@@ -215,7 +215,10 @@ class RunDB(strax.StorageFrontend):
         projection = dq.copy()
         projection.update({
             k: True
-            for k in 'name number data.protocol data.location'.split()})
+            for k in 'name number'.split()})
+        # Also make sure the following nested projections are true:
+        # data.protocol data.location
+        projection.update({'data': {'protocol': True, 'location':True}})
 
         results_dict = dict()
         for doc in self.collection.find(
@@ -252,9 +255,14 @@ class RunDB(strax.StorageFrontend):
             query = {'number': {'$gt': self.minimum_run_number}}
         else:
             query = {}
+        projection = strax.to_str_tuple(list(store_fields))
+        # Replace fields by their subfields if requested only take the most
+        # "specific" projection
+        projection = [f1 for f1 in projection
+                      if not any([f2.startswith(f1+".") for f2 in projection])]
         cursor = self.collection.find(
             filter=query,
-            projection=strax.to_str_tuple(list(store_fields)))
+            projection=projection)
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
                         total=cursor.count()):
             del doc['_id']

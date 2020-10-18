@@ -162,7 +162,7 @@ def clean_ceph():
             clean_ceph()
 
     # Finally, check that there is no old data on ceph that is also not in the rundoc.
-    clean_unregistered(delete_live=True)
+    # clean_unregistered(delete_live=True)
 
 
 def clean_high_level_data():
