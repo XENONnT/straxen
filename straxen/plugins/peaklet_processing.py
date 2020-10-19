@@ -268,9 +268,9 @@ def peak_saturation_correction(records, peaks, to_pe,
     # Buff the sum wf [pe] of non-saturated channels
     b_sumwf = np.zeros(len_buffer, dtype=np.float32)
     # Buff the records 'data' [ADC] in saturated channels
-    b_pulse = np.zeros((n_channels, max_nrecord), dtype=np.int16)
+    b_pulse = np.zeros((n_channels, len_buffer), dtype=np.int16)
     # Buff the corresponding record index of saturated channels
-    b_index = np.zeros((n_channels, len_buffer), dtype=np.int64)
+    b_index = np.zeros((n_channels, max_nrecord), dtype=np.int64)
 
     # Main
     for ix, peak_i in enumerate(peak_list):
