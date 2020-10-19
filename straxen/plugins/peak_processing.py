@@ -21,7 +21,7 @@ class PeakBasics(strax.Plugin):
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.0.7"
+    __version__ = "0.0.8"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -72,8 +72,6 @@ class PeakBasics(strax.Plugin):
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
 
-        r['center_time'] = p['time'] + self.compute_center_times(peaks)
-
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Negative-area peaks get NaN AFT
@@ -81,6 +79,10 @@ class PeakBasics(strax.Plugin):
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
+        
+        # Negative or zero-area peaks have centertime at startime
+        r['center_time'] = p['time']
+        r['center_time'][m] += self.compute_center_times(peaks)
         return r
 
     @staticmethod
