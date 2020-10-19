@@ -6,7 +6,7 @@ from warnings import warn
 import botocore.client
 from tqdm import tqdm
 import pymongo
-
+from copy import deepcopy
 import strax
 import straxen
 export, __all__ = strax.exporter()
@@ -104,8 +104,6 @@ class RunDB(strax.StorageFrontend):
             strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
         ]
-        if self.rucio_path is not None:
-            self.backends.append(strax.rucio(self.rucio_path))
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
@@ -117,6 +115,12 @@ class RunDB(strax.StorageFrontend):
         for host_alias, regex in self.hosts.items():
             if re.match(regex, self.hostname):
                 self.available_query.append({'host': host_alias})
+
+        if self.rucio_path is not None:
+            self.backends.append(strax.rucio(self.rucio_path))
+            # When querying for rucio, add that it should be dali-userdisk
+            self.available_query.append({'host': 'rucio-catalogue',
+                                         'location': 'UC_DALI_USERDISK'})
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key"""
@@ -140,24 +144,21 @@ class RunDB(strax.StorageFrontend):
 
         # Check that we are in rucio backend
         if self.rucio_path is not None:
+            rucio_key = self.key_to_rucio_did(key)
             dq = {
                 'data': {
                     '$elemMatch': {
                         # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
+                        'did': rucio_key,
                         'protocol': 'rucio'}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
                 datum = doc['data'][0]
-                _type, _lineage_hash = datum['did'].split(':')[1].split('-')
-                if _lineage_hash == key.lineage_hash:
-                    backend_name, backend_key = datum['protocol'], f'{key.run_id}-{_type}-{_lineage_hash}'
-                    return backend_name, backend_key
-                else:
-                    # We don't have it stored in rucio, perhaps we have it in
-                    # our output-path? Explicit pass->look elsewhere.
-                    pass
+                assert datum.get('did', '') == rucio_key, f'Expected {rucio_key} got data on {datum["location"]}'
+                backend_name, backend_key = datum['protocol'], f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
+                return backend_name, backend_key
 
         dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq},
@@ -209,31 +210,30 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {'name': {'$in': [int(key.run_id) for key in keys]}}
+            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys]}}
         dq = self._data_query(keys[0])
 
-        projection = dq.copy()
+        # dict.copy is sometimes not sufficient for nested dictionary
+        projection = deepcopy(dq)
         projection.update({
             k: True
-            for k in 'name number'.split()})
-        # Also make sure the following nested projections are true:
-        # data.protocol data.location
-        projection.update({'data': {'protocol': True, 'location':True}})
+            for k in f'name number'.split()})
 
         results_dict = dict()
         for doc in self.collection.find(
                 {**run_query, **dq}, projection=projection):
+            # If you get a key error here there might be something off with the
+            # projection
             datum = doc['data'][0]
 
             if self.runid_field == 'name':
                 dk = doc['name']
             else:
-                dk = doc['number']
-            results_dict[dk] = datum['protocol'], datum['location']
+                dk = f'{doc["number"]:06}'
 
-        return [
-            results_dict.get(k.run_id, False)
-            for k in keys]
+            results_dict[dk] = datum['protocol'], datum['location']
+        return [results_dict.get(k.run_id, False)
+                for k in keys]
 
     def _list_available(self, key: strax.DataKey,
               allow_incomplete, fuzzy_for, fuzzy_for_options):
@@ -289,6 +289,11 @@ class RunDB(strax.StorageFrontend):
         if self.reader_ini_name_is_mode:
             doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         return doc
+
+    @staticmethod
+    def key_to_rucio_did(key: strax.DataKey):
+        """Convert a strax.datakey to a rucio did field in rundoc"""
+        return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
 
 
 def get_mongo_url(hostname):
