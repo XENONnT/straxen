@@ -82,7 +82,7 @@ class PeakBasics(strax.Plugin):
         
         # Negative or zero-area peaks have centertime at startime
         r['center_time'] = p['time']
-        r['center_time'][m] += self.compute_center_times(peaks)
+        r['center_time'][m] += self.compute_center_times(peaks[m])
         return r
 
     @staticmethod
