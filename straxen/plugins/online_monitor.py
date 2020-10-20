@@ -69,5 +69,5 @@ class OnlinePeakMonitor(strax.Plugin):
             bins=self.config['area_vs_width_nbins'])
         res['area_vs_width_hist_clean'] = clean_hist.T
 
-        del hist, clean_hist, _, _
+        del hist, clean_hist
         return res
