@@ -24,7 +24,7 @@ import strax
 
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts','n_hard_aqmon_start']
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -36,6 +36,10 @@ n_tpc_pmts = 494
 n_top_pmts = 253
 n_hard_aqmon_start = 800
 
+# Convert from ADC * samples to electrons emitted by PMT
+# see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
+# it's needed in analyses
+ADC_TO_E = 17142.81741
 
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
@@ -169,18 +173,6 @@ def get_resource(x, fmt='text'):
     _resource_cache[x] = result
 
     return result
-
-
-@export
-def get_elife(run_id,elife_file):
-    x = get_resource(elife_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        e = 623e3
-    else:
-        e = x[run_index[0]]['e_life']
-    return e
 
 
 @export
