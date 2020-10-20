@@ -101,10 +101,10 @@ def xenonnt_online(output_folder='./strax_data',
     elif _database_init:
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
-            take_only=('pulse_counts',
-                       'pulse_counts_he',
+            take_only=(#'pulse_counts',
+                       #'pulse_counts_he',
                        'veto_intervals',
-                       'online_peak_monitor'))]
+                       #'online_peak_monitor'))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797, before
