@@ -8,7 +8,8 @@ from functools import lru_cache
 
 import strax
 import straxen
-from straxen.rundb import default_mongo_url, backup_mongo_urls
+from straxen import uconfig
+# from straxen.rundb import default_mongo_url, backup_mongo_urls
 
 export, __all__ = strax.exporter()
 
@@ -35,12 +36,12 @@ class CorrectionsManagementServices():
         if password is not None:
             self.password = password
         elif self.username.endswith('analysis'):
-            self.password = straxen.get_secret('rundb_password')
+            self.password = uconfig.get('RunDB', 'pymongo_password')
         else:
             raise ValueError(f'No password for {username}')
 
         # Get the readonly account for the rundb using hostname = ''
-        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname='')
+        runsdb_mongo_url = uconfig.get('RunDB', 'pymongo_url')
 
         _, _url = runsdb_mongo_url.split('@')
         self.interface = strax.CorrectionsInterface(
