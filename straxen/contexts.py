@@ -104,7 +104,7 @@ def xenonnt_online(output_folder='./strax_data',
             take_only=(#'pulse_counts',
                        #'pulse_counts_he',
                        'veto_intervals',
-                       #'online_peak_monitor'
+                       'online_peak_monitor'
                        ))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
