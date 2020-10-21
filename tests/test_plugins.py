@@ -4,6 +4,7 @@ import straxen
 import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
+import utilix
 
 # Number of chunks for the dummy raw records we are writing here
 N_CHUNKS = 2
@@ -108,7 +109,8 @@ def _update_context(st, max_workers, fallback_gains=None):
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
     st.register(DummyRawRecords)
     try:
-        straxen.get_secret('rundb_password')
+        config = utilix.config.Config()
+        #straxen.get_secret('rundb_password')
         # If you want to have quicker checks: always raise an ValueError as
         # the CMT does take quite long to load the right corrections.
         # ValueError
