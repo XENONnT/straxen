@@ -1,3 +1,5 @@
+Before you submit this PR: make sure to put all operations-related information in a wiki-note, a PR should be about code and is publicly accessible
+
 **What is the problem / what does the code in this PR do**
 
 **Can you briefly describe how it works?**

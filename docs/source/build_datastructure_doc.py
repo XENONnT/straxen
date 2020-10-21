@@ -162,11 +162,7 @@ def get_context():
         appropriate passwords.
     :return: straxen context that mimics the xenonnt_online context without the rundb init
     """
-    # Alternatively, it might be better to make the rundb init optional to circumvent it
-    st = strax.Context(
-        config=straxen.contexts.xnt_common_config,
-        **straxen.contexts.common_opts,)
-    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    st = straxen.contexts.xenonnt_online(_database_init=False)
     st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
     return st
 

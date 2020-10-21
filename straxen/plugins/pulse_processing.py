@@ -140,11 +140,10 @@ class PulseProcessing(strax.Plugin):
                 (self.config['hev_gain_model'][0] != 'disabled')
                 and self.config['tail_veto_threshold'])
         if self.hev_enabled:
-            self.to_pe = straxen.get_to_pe(
-                self.run_id,
-                self.config['hev_gain_model'],
-                n_tpc_pmts=self.config['n_tpc_pmts'])
-
+            self.to_pe = straxen.get_to_pe(self.run_id,
+                                           self.config['hev_gain_model'],
+                                           n_tpc_pmts=self.config['n_tpc_pmts'])
+        
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
             check_overlaps(raw_records, n_channels=3000)
@@ -176,7 +175,7 @@ class PulseProcessing(strax.Plugin):
 
         if len(r) and self.hev_enabled:
             r, r_vetoed, veto_regions = software_he_veto(
-                r, self.to_pe,
+                r, self.to_pe, end,
                 area_threshold=self.config['tail_veto_threshold'],
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
@@ -257,7 +256,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
 
 
 @export
-def software_he_veto(records, to_pe,
+def software_he_veto(records, to_pe, chunk_end,
                      area_threshold=int(1e5),
                      veto_length=int(3e6),
                      veto_res=int(1e3),
@@ -275,6 +274,7 @@ def software_he_veto(records, to_pe,
 
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
+    :param chunk_end: Endtime of chunk to set as maximum ceiling for the veto period
     :param area_threshold: Minimum peak area to trigger the veto.
     Note we use a much rougher clustering than in later processing.
     :param veto_length: Time in ns to veto after the peak
@@ -308,11 +308,10 @@ def software_he_veto(records, to_pe,
     #  - Have a fixed maximum length (else we can't use the strax hitfinder on them)
     #  - Never extend beyond the current chunk
     #  - Do not overlap
-    # TODO: pass the chunk endtime! For now we just use the last record endtime
     veto_start = peaks['time']
     veto_end = np.clip(peaks['time'] + veto_length,
                        None,
-                       strax.endtime(records[-1]))
+                       chunk_end)
     veto_end[:-1] = np.clip(veto_end[:-1], None, veto_start[1:])
 
     # 2b. Convert these into strax record-like objects

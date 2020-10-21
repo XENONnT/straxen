@@ -1,15 +1,17 @@
-__version__ = '0.10.1'
+__version__ = '0.11.0'
 
 from .common import *
 from .itp_map import *
 from .rundb import *
+from .online_monitor import *
 from .matplotlib_utils import *
 from .mini_analysis import *
 from .misc import *
 from .scada import *
 
-from .gain_models import *
+from .get_corrections import *
 from .hitfinder_thresholds import *
+from .corrections_services import *
 
 from . import plugins
 from .plugins import *

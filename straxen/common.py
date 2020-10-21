@@ -21,7 +21,7 @@ from warnings import warn
 import strax
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts']
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -31,7 +31,12 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 n_tpc_pmts = 494
 n_top_pmts = 253
+n_hard_aqmon_start = 800
 
+# Convert from ADC * samples to electrons emitted by PMT
+# see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
+# it's needed in analyses
+ADC_TO_E = 17142.81741
 
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
@@ -165,18 +170,6 @@ def get_resource(x, fmt='text'):
     _resource_cache[x] = result
 
     return result
-
-
-@export
-def get_elife(run_id,elife_file):
-    x = get_resource(elife_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        e = 623e3
-    else:
-        e = x[run_index[0]]['e_life']
-    return e
 
 
 @export
@@ -412,10 +405,11 @@ def remap_old(data, targets, works_on_target=''):
     elif not np.any([match(works_on_target, t) for t in strax.to_str_tuple(targets)]):
         # None of the targets are such that we want to remap
         pass
-    else:
+    elif len(data):
         # select the old data and do the remapping for this
-        warn('Correcting data of runs with mis-cabled PMTs. \nSee: https://'
-             'xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap')
+        warn("Correcting data of runs with mis-cabled PMTs. \nSee: https://"
+             "xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap. "
+             "Don't use '' selection_str='channel == xx' '' (github.com/XENONnT/straxen/issues/239)")
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
         data[mask] = remap_channels(data[mask])
     return data
