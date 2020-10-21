@@ -2,7 +2,8 @@ import strax
 
 import numpy as np
 
-from straxen.common import pax_file, get_resource, get_elife, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.get_corrections import get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
@@ -336,7 +337,13 @@ class EventPositions(strax.Plugin):
    strax.Option(
         'elife_file',
         default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
-        help='link to the electron lifetime'))
+        help='Electron lifetime model '
+             'To use a constant value, provide a link (as this default) To use'
+             'the corrections management tools specify the following:'
+             'Specify as (model_type->str, model_config->str, is_nT->bool) '
+             'where model_type can be "elife_model" or "elife_constant" '
+             'and model_config can be a version'  # TODO or something else?
+   ))
 class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
@@ -363,7 +370,7 @@ class CorrectedAreas(strax.Plugin):
             get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
             get_resource(self.config['s2_relative_lce_map']))
-        self.elife = get_elife(self.run_id,self.config['elife_file'])
+        self.elife = get_elife(self.run_id, self.config['elife_file'])
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.

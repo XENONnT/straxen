@@ -12,6 +12,7 @@ N_CHUNKS = 2
 # Tools
 ##
 
+
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False)
 )
@@ -19,7 +20,10 @@ class DummyRawRecords(strax.Plugin):
     """
     Provide dummy raw records for the mayor raw_record types
     """
-    provides = ('raw_records', 'raw_records_he', 'raw_records_nv',)
+    provides = ('raw_records',
+                'raw_records_he',
+                'raw_records_nv',
+                'raw_records_aqmon')
     parallel = 'process'
     depends_on = tuple()
     data_kind = immutabledict(zip(provides, provides))
@@ -45,6 +49,7 @@ class DummyRawRecords(strax.Plugin):
                for p in self.provides}
         return res
 
+
 # Don't concern ourselves with rr_aqmon et cetera
 forbidden_plugins = tuple([p for p in
                            straxen.daqreader.DAQReader.provides
@@ -53,6 +58,7 @@ forbidden_plugins = tuple([p for p in
 
 def _run_plugins(st,
                  make_all=False,
+                 run_id=run_id,
                  **proces_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
@@ -97,10 +103,28 @@ def _run_plugins(st,
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
-def _update_context(st, max_workers):
+def _update_context(st, max_workers, fallback_gains=None):
     # Change config to allow for testing both multiprocessing and lazy mode
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
     st.register(DummyRawRecords)
+    try:
+        straxen.get_secret('rundb_password')
+        # If you want to have quicker checks: always raise an ValueError as
+        # the CMT does take quite long to load the right corrections.
+        # ValueError
+    except ValueError:
+        # Okay so we cannot initize the runs-database. Let's just use some
+        # fallback values if they are specified.
+        if ('gain_model' in st.config and
+                st.config['gain_model'][0] == 'CMT_model'):
+            if fallback_gains is None:
+                # If you run into this error, go to the test_nT() - test and
+                # see for example how it is done there.
+                raise ValueError('Context uses CMT_model but no fallback_gains '
+                                 'are specified in test_plugins.py for this '
+                                 'context being tested')
+            else:
+                st.set_config({'gain_model': fallback_gains})
     if max_workers - 1:
         st.set_context_config({
             'allow_multiprocess': True,
@@ -118,7 +142,12 @@ def test_1T(ncores=1):
         print('-- 1T lazy mode --')
     st = straxen.contexts.xenon1t_dali()
     _update_context(st, ncores)
+
+    # Register the 1T plugins for this test as well
+    st.register_all(straxen.plugins.x1t_cuts)
     _run_plugins(st, make_all=False, max_wokers=ncores)
+    # Test issue #233
+    st.search_field('cs1')
     print(st.context_config)
 
 
@@ -126,8 +155,12 @@ def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
     st = straxen.contexts.xenonnt_online(_database_init=False)
-    _update_context(st, ncores)
-    _run_plugins(st, make_all=True, max_wokers=ncores)
+    offline_gain_model = ('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')
+    _update_context(st, ncores, fallback_gains=offline_gain_model)
+    # Lets take an abandoned run where we actually have gains for in the CMT
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
+     # Test issue #233
+    st.search_field('cs1')
     print(st.context_config)
 
 
@@ -135,7 +168,8 @@ def test_nT_mutlticore():
     print('nT multicore')
     test_nT(2)
 
-
-def test_1T_mutlticore():
-    print('1T multicore')
-    test_1T(2)
+# Disable the test below as it saves some time in travis and gives limited new
+# information as most development is on nT-plugins.
+# def test_1T_mutlticore():
+#     print('1T multicore')
+#     test_1T(2)
