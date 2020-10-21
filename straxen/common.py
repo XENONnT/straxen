@@ -195,7 +195,7 @@ def get_secret(x):
         return config.get('straxen', x)
 
     except:
-        message += (f"nor was there a valid field in your xenon_config at {config.config_path}, ")
+        message += (f"nor was there a valid field in your utilix configuration file, ")
         raise
 
         # If on midway, try loading a standard secrets file instead
