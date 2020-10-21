@@ -216,8 +216,40 @@ class PulseProcessing(strax.Plugin):
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
+@export
+@strax.takes_config(
+    strax.Option('n_he_pmts', track=False, default=752,
+                 help="Maximum channel of the he channels"),
+    strax.Option('record_length', default=110, track=False, type=int,
+                 help="Number of samples per raw_record"),
+    *HITFINDER_OPTIONS_he)
+class PulseProcessingHighEnergy(PulseProcessing):
+    __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
+    __version__ = '0.0.1'
+    provides = ('records_he', 'pulse_counts_he')
+    data_kind = {k: k for k in provides}
+    rechunk_on_save = immutabledict(
+        records_he=False,
+        pulse_counts_he=True)
+    depends_on = 'raw_records_he'
+    compressor = 'lz4'
+    child_ends_with = '_he'
 
-#
+    def infer_dtype(self):
+        dtype = dict()
+        dtype['records_he'] = strax.record_dtype(self.config["record_length"])
+        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
+        return dtype
+
+    def setup(self):
+        self.hev_enabled = False
+        self.config['n_tpc_pmts'] = self.config['n_he_pmts']
+        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
+
+    def compute(self, raw_records_he, start, end):
+        result = super().compute(raw_records_he, start, end)
+        return dict(records_he=result['records'],
+                    pulse_counts_he=result['pulse_counts'])
 
 ##
 # Software HE Veto
