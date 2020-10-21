@@ -62,7 +62,11 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
         'tail_veto_pass_extend',
         default=3,
         help="Extend pass veto by this many samples (tail_veto_resolution!)"),
-
+    strax.Option(
+        'fractional_pass',
+        default=0,
+        help="Optionally pass a HE peak this often (b/n 0 and 1."
+             "(if performing a hard veto, can keep a few statistics.)"),
     # PMT pulse processing options
     strax.Option(
         'pmt_pulse_filter',
@@ -72,11 +76,9 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
         'save_outside_hits',
         default=(3, 20),
         help='Save (left, right) samples besides hits; cut the rest'),
-
     strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
-
     strax.Option(
         'check_raw_record_overlaps',
         default=True, track=False,
@@ -87,27 +89,25 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
         default=False, track=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
-
     *HITFINDER_OPTIONS)
-class PulseProcessing(strax.Plugin):
+class PulseProcessingLXe(strax.Plugin):
     """
     1. Split raw_records into:
      - (tpc) records
      - aqmon_records
      - pulse_counts
-
     For TPC records, apply basic processing:
         1. Flip, baseline, and integrate the waveform
         2. Apply software HE veto after high-energy peaks.
         3. Find hits, apply linear filter, and zero outside hits.
-    
+
     pulse_counts holds some average information for the individual PMT
     channels for each chunk of raw_records. This includes e.g.
     number of recorded pulses, lone_pulses (pulses which do not
     overlap with any other pulse), or mean values of baseline and
     baseline rms channel.
     """
-    __version__ = '0.2.2'
+    __version__ = '0.2.3'
 
     parallel = 'process'
     rechunk_on_save = immutabledict(
@@ -140,10 +140,11 @@ class PulseProcessing(strax.Plugin):
                 (self.config['hev_gain_model'][0] != 'disabled')
                 and self.config['tail_veto_threshold'])
         if self.hev_enabled:
-            self.to_pe = straxen.get_to_pe(self.run_id,
-                                           self.config['hev_gain_model'],
-                                           n_tpc_pmts=self.config['n_tpc_pmts'])
-        
+            self.to_pe = straxen.get_to_pe(
+                self.run_id,
+                self.config['hev_gain_model'],
+                n_tpc_pmts=self.config['n_tpc_pmts'])
+
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
             check_overlaps(raw_records, n_channels=3000)
@@ -180,7 +181,8 @@ class PulseProcessing(strax.Plugin):
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
                 pass_veto_fraction=self.config['tail_veto_pass_fraction'],
-                pass_veto_extend=self.config['tail_veto_pass_extend'])
+                pass_veto_extend=self.config['tail_veto_pass_extend'],
+                fractional_pass=self.config['fractional_pass'])
 
             # In the future, we'll probably want to sum the waveforms
             # inside the vetoed regions, so we can still save the "peaks".
@@ -214,41 +216,8 @@ class PulseProcessing(strax.Plugin):
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
-    
-@export
-@strax.takes_config(
-    strax.Option('n_he_pmts', track=False, default=752,
-                 help="Maximum channel of the he channels"),
-    strax.Option('record_length', default=110, track=False, type=int,
-                 help="Number of samples per raw_record"),
-    *HITFINDER_OPTIONS_he)
-class PulseProcessingHighEnergy(PulseProcessing):
-    __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
-    __version__ = '0.0.1'
-    provides = ('records_he', 'pulse_counts_he')
-    data_kind = {k: k for k in provides}
-    rechunk_on_save = immutabledict(
-        records_he=False,
-        pulse_counts_he=True)
-    depends_on = 'raw_records_he'
-    compressor = 'lz4'
-    child_ends_with = '_he'
 
-    def infer_dtype(self):
-        dtype = dict()
-        dtype['records_he'] = strax.record_dtype(self.config["record_length"])
-        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
-        return dtype
-
-    def setup(self):
-        self.hev_enabled = False
-        self.config['n_tpc_pmts'] = self.config['n_he_pmts']
-        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
-
-    def compute(self, raw_records_he, start, end):
-        result = super().compute(raw_records_he, start, end)
-        return dict(records_he=result['records'],
-                    pulse_counts_he=result['pulse_counts'])
+#
 
 ##
 # Software HE Veto
@@ -261,17 +230,15 @@ def software_he_veto(records, to_pe, chunk_end,
                      veto_length=int(3e6),
                      veto_res=int(1e3),
                      pass_veto_fraction=0.01,
-                     pass_veto_extend=3):
+                     pass_veto_extend=3,
+                     fractional_pass=0, ):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
-
     Further large peaks inside the veto regions are still passed:
     We sum the waveform inside the veto region (with time resolution
     veto_res in ns) and pass regions within pass_veto_extend samples
     of samples with amplitude above pass_veto_fraction times the maximum.
-
     :returns: (preserved records, vetoed records, veto intervals).
-
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
     :param chunk_end: Endtime of chunk to set as maximum ceiling for the veto period
@@ -285,6 +252,9 @@ def software_he_veto(records, to_pe, chunk_end,
     trigger veto passing of further peaks
     :param pass_veto_extend: samples to extend (left and right) the pass veto
     regions.
+    :param fractional_pass: if >0, randomly pass some peaks that otherwise
+    would be vetoed (for example, in early commissioning to ensure no weird
+    behavior.
     """
     veto_res = int(veto_res)
     if veto_res > np.iinfo(np.int16).max:
@@ -296,9 +266,9 @@ def software_he_veto(records, to_pe, chunk_end,
     # This will actually return big agglomerations of peaks and their tails
     peaks = strax.find_peaks(
         records, to_pe,
-        gap_threshold=1,
-        left_extension=0,
-        right_extension=0,
+        gap_threshold=350,
+        left_extension=30,
+        right_extension=200,
         min_channels=100,
         min_area=area_threshold,
         result_dtype=strax.peak_dtype(n_channels=len(to_pe),
@@ -341,7 +311,13 @@ def software_he_veto(records, to_pe, chunk_end,
     rough_sum(regions, records, to_pe, veto_n, veto_res)
     regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
 
-    pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
+    # This will ensure the actual peaks get passed, but the stuff around them
+    # Like missplit peaks, will not.
+    # This should be used if trying to keep some peaks you'd otherwise cut.
+    if fractional_pass > 0 and np.random.choice(2, 1, p=[fractional_pass, 1 - fractional_pass]) == 0:
+        pass_veto = strax.find_hits(regions, min_amplitude=0.9)  # a tiny grace margin
+    else:
+        pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
 
     # 4. Extend these by a few samples and inverse to find veto regions
     regions['data'] = 1
@@ -431,6 +407,8 @@ def count_pulses(records, n_channels):
 
 
 NO_PULSE_COUNTS = -9999  # Special value required by average_baseline in case counts = 0
+
+
 @numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
@@ -460,7 +438,7 @@ def _count_pulses(records, n_channels, result):
         if r['record_i'] == 0:
             count[ch] += 1
             baseline_buffer[ch] += r['baseline']
-            baseline_rms_buffer[ch] += r['baseline_rms'] 
+            baseline_rms_buffer[ch] += r['baseline_rms']
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] * r['dt'] < next_start):
@@ -483,10 +461,10 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
-    means = (baseline_buffer/count)
+    means = (baseline_buffer / count)
     means[np.isnan(means)] = NO_PULSE_COUNTS
     res['baseline_mean'][:] = means[:]
-    res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
+    res['baseline_rms_mean'][:] = (baseline_rms_buffer / count)[:]
 
 
 ##
@@ -508,7 +486,6 @@ def channel_split(rr, first_other_ch):
 @export
 def check_overlaps(records, n_channels):
     """Raise a ValueError if any of the pulses in records overlap
-
     Assumes records is already sorted by time.
     """
     last_end = np.zeros(n_channels, dtype=np.int64)
