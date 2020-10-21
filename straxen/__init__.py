@@ -4,7 +4,7 @@ __version__ = '0.11.0'
 try:
     from utilix.config import Config
     uconfig = Config()
-except:
+except RuntimeError:
     uconfig = None
     print("Warning: no xenon configuration file found")
 
