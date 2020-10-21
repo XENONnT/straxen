@@ -4,9 +4,9 @@ __version__ = '0.11.0'
 try:
     from utilix.config import Config
     uconfig = Config()
-except FileNotFoundError:
+except:
+    uconfig = None
     print("Warning: no xenon configuration file found")
-
 
 from .common import *
 from .itp_map import *
