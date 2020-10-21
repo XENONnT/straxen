@@ -1,3 +1,13 @@
+0.11.0 / 2020-10-15
+--------------------
+- Separate context for fist commissioning data (#246)
+- Online Monitor storage frontend (#216)
+- Add Acquisition-monitor plugins (#207)
+- Many (bug)fixes (#221, #223, #224, #226, #236, #238, #240, #241, #241, #245)
+- Use CutPlugin class (#225)
+- Bootstrax updates (#232)
+
+
 0.10.1 / 2020-09-11
 --------------------
 - Added pytest to travis which builds data for all registered nT plugins (#193)
