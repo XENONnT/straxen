@@ -144,21 +144,6 @@ def _query_single_parameter(start,
 
     :returns: DataFrame with a time and parameter_key column.
     """
-    query = SCADA_SECRETS
-    query["StartDateUnix"] = start // 10**9
-    query["EndDateUnix"] = end // 10**9
-    query['name'] = parameter_name
-    query = urllib.parse.urlencode(query)
-    values = requests.get(SCData_URL + query)
-
-    # Step 1.: Get the Scada values:
-    # TODO: If no value can be found this will throw an error...
-    # TODO: If parameter name does not exist will throw a different type of error.
-    # Solution query first last value since which returns last value
-    # + time stamp. If timestamp before start then do not query SCData:
-    temp_df = pd.read_json(values.text)
-
-    # Step 2.: Fill dataframe with 1 seconds spacing:
     if value_every_seconds < 1:
         mes = ("Scada takes only values every second. Cannot ask for a"
                " higher sampling rate than one value per second. However"
@@ -171,18 +156,46 @@ def _query_single_parameter(start,
     # the sampling frequency of scada:
     # TODO: Add a check in case user queries to many values. If yes read
     #  the data in chunks. How much are too many?
-    seconds = np.arange(start, end, 10**9)
+    seconds = np.arange(start, end+1, 10**9) #+1 to make sure endtime is included
     df = pd.DataFrame()
     df.loc[:, 'time'] = seconds
     df['time'] = df['time'].astype('<M8[ns]')
     df.set_index('time', inplace=True)
-
-    df.loc[temp_df['timestampseconds'], parameter_key] = temp_df.loc[:, 'value'].values
-
-    # Fill the very first values if needed:
-    # TODO: Replace me with something meaningful, use GetSCLast for it....
-    # TODO: Move this function before GetSCData, will help to avoid no data in time range error.
-    df.iloc[0, 0] = 0
+    
+    # Check if first value is in requested range:
+    query = SCADA_SECRETS.copy()
+    query['name'] = parameter_name
+    query['EndDateUnix'] = (start//10**9) + 1  # +1 since it is end before exclusive
+    query = urllib.parse.urlencode(query)
+    values = requests.get(SCLastValue_URL + query)
+    
+    try:
+        temp_df = pd.read_json(values.text)
+    except:
+        mes = values.text # retunrs a dictionary as a string
+        mes = eval(mes)  
+        raise ValueError(f'SCADA raised the following error "{mes["message"]}" '
+                         f'when looking for your parameter "{parameter_name}"')
+    
+    # Store value as first value in our df
+    df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
+    
+    
+    # Query values between start+1 and end time:
+    query = SCADA_SECRETS.copy()
+    query["StartDateUnix"] = (start//10**9) + 1
+    query["EndDateUnix"] = (end//10**9)
+    query['name'] = parameter_name
+    query = urllib.parse.urlencode(query)
+    values = requests.get(SCData_URL + query)
+    
+    try:
+        # Here we cannot do any better since the Error message returned
+        # by the scada api is always the same...
+        temp_df = pd.read_json(values.text)
+        df.loc[temp_df['timestampseconds'], parameter_key] = temp_df.loc[:, 'value'].values
+    except:
+        pass
 
     # Now fill values in between like Scada would do:
     df.ffill(inplace=True)
@@ -198,7 +211,6 @@ def _query_single_parameter(start,
         df[parameter_key] = nv
 
     return df
-
 
 @numba.njit
 def _downsample_scada(times, values, nvalues):
