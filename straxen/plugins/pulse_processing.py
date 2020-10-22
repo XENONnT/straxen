@@ -96,6 +96,7 @@ class PulseProcessing(strax.Plugin):
      - (tpc) records
      - aqmon_records
      - pulse_counts
+     
     For TPC records, apply basic processing:
         1. Flip, baseline, and integrate the waveform
         2. Apply software HE veto after high-energy peaks.
@@ -266,10 +267,12 @@ def software_he_veto(records, to_pe, chunk_end,
                      fractional_pass=0, ):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
+    
     Further large peaks inside the veto regions are still passed:
     We sum the waveform inside the veto region (with time resolution
     veto_res in ns) and pass regions within pass_veto_extend samples
     of samples with amplitude above pass_veto_fraction times the maximum.
+    
     :returns: (preserved records, vetoed records, veto intervals).
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
@@ -298,9 +301,9 @@ def software_he_veto(records, to_pe, chunk_end,
     # This will actually return big agglomerations of peaks and their tails
     peaks = strax.find_peaks(
         records, to_pe,
-        gap_threshold=350,
-        left_extension=30,
-        right_extension=200,
+        gap_threshold=1,
+        left_extension=0,
+        right_extension=0,
         min_channels=100,
         min_area=area_threshold,
         result_dtype=strax.peak_dtype(n_channels=len(to_pe),
