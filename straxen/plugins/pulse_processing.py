@@ -76,19 +76,23 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
         'save_outside_hits',
         default=(3, 20),
         help='Save (left, right) samples besides hits; cut the rest'),
+
     strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
+
     strax.Option(
         'check_raw_record_overlaps',
         default=True, track=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
+
     strax.Option(
         'allow_sloppy_chunking',
         default=False, track=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
+
     *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
@@ -96,16 +100,12 @@ class PulseProcessing(strax.Plugin):
      - (tpc) records
      - aqmon_records
      - pulse_counts
-<<<<<<< HEAD
 
-||||||| dec3643
-=======
-     
->>>>>>> 7155551ce36f0be3479e302a918adbc2d892d603
     For TPC records, apply basic processing:
         1. Flip, baseline, and integrate the waveform
         2. Apply software HE veto after high-energy peaks.
         3. Find hits, apply linear filter, and zero outside hits.
+
     pulse_counts holds some average information for the individual PMT
     channels for each chunk of raw_records. This includes e.g.
     number of recorded pulses, lone_pulses (pulses which do not
@@ -275,23 +275,14 @@ def software_he_veto(records, to_pe, chunk_end,
                      fractional_pass=0, ):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
-<<<<<<< HEAD
 
-||||||| dec3643
-=======
-    
->>>>>>> 7155551ce36f0be3479e302a918adbc2d892d603
     Further large peaks inside the veto regions are still passed:
     We sum the waveform inside the veto region (with time resolution
     veto_res in ns) and pass regions within pass_veto_extend samples
     of samples with amplitude above pass_veto_fraction times the maximum.
-<<<<<<< HEAD
 
-||||||| dec3643
-=======
-    
->>>>>>> 7155551ce36f0be3479e302a918adbc2d892d603
     :returns: (preserved records, vetoed records, veto intervals).
+
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
     :param chunk_end: Endtime of chunk to set as maximum ceiling for the veto period
@@ -540,7 +531,8 @@ def channel_split(rr, first_other_ch):
 
 @export
 def check_overlaps(records, n_channels):
-    """Raise a ValueError if any of the pulses in records overlap
+    """
+    Raise a ValueError if any of the pulses in records overlap
     Assumes records is already sorted by time.
     """
     last_end = np.zeros(n_channels, dtype=np.int64)
