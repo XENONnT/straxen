@@ -96,12 +96,16 @@ class PulseProcessing(strax.Plugin):
      - (tpc) records
      - aqmon_records
      - pulse_counts
+<<<<<<< HEAD
+
+||||||| dec3643
+=======
      
+>>>>>>> 7155551ce36f0be3479e302a918adbc2d892d603
     For TPC records, apply basic processing:
         1. Flip, baseline, and integrate the waveform
         2. Apply software HE veto after high-energy peaks.
         3. Find hits, apply linear filter, and zero outside hits.
-
     pulse_counts holds some average information for the individual PMT
     channels for each chunk of raw_records. This includes e.g.
     number of recorded pulses, lone_pulses (pulses which do not
@@ -217,6 +221,7 @@ class PulseProcessing(strax.Plugin):
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
+
 @export
 @strax.takes_config(
     strax.Option('n_he_pmts', track=False, default=752,
@@ -252,10 +257,13 @@ class PulseProcessingHighEnergy(PulseProcessing):
         return dict(records_he=result['records'],
                     pulse_counts_he=result['pulse_counts'])
 
+
 ##
 # Software HE Veto
 ##
 
+# Reproducible random state for HE Veto function
+prng = np.random.RandomState(123)
 
 @export
 def software_he_veto(records, to_pe, chunk_end,
@@ -267,12 +275,22 @@ def software_he_veto(records, to_pe, chunk_end,
                      fractional_pass=0, ):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
+<<<<<<< HEAD
+
+||||||| dec3643
+=======
     
+>>>>>>> 7155551ce36f0be3479e302a918adbc2d892d603
     Further large peaks inside the veto regions are still passed:
     We sum the waveform inside the veto region (with time resolution
     veto_res in ns) and pass regions within pass_veto_extend samples
     of samples with amplitude above pass_veto_fraction times the maximum.
+<<<<<<< HEAD
+
+||||||| dec3643
+=======
     
+>>>>>>> 7155551ce36f0be3479e302a918adbc2d892d603
     :returns: (preserved records, vetoed records, veto intervals).
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
@@ -349,8 +367,10 @@ def software_he_veto(records, to_pe, chunk_end,
     # This will ensure the actual peaks get passed, but the stuff around them
     # Like missplit peaks, will not.
     # This should be used if trying to keep some peaks you'd otherwise cut.
-    if fractional_pass > 0 and np.random.choice(2, 1, p=[fractional_pass, 1 - fractional_pass]) == 0:
-        pass_veto = strax.find_hits(regions, min_amplitude=0.9)  # a tiny grace margin
+    if fractional_pass > 0 and prng.random() < fractional_pass:
+        # a tiny grace margin for the main peak of 0.9 applied (so forget the veto for this peak)
+        pass_veto = strax.find_hits(regions, min_amplitude=0.9)
+
     else:
         pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
 
