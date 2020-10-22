@@ -25,7 +25,6 @@ class PeakBasics(strax.Plugin):
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
-    chunk_target_size_mb = 25  # Set small for online monitor
     dtype = [
         (('Start time of the peak (ns since unix epoch)',
           'time'), np.int64),
