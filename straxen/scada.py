@@ -5,7 +5,12 @@ import numba
 import numpy as np
 
 import strax
-from .SCADA_SECRETS import SCData_URL, SCLastValue_URL, SCADA_SECRETS
+import straxen
+# Getting secrets:
+SCData_URL = straxen.get_secret('SCData_URL')
+SCLastValue_URL = straxen.get_secret('SCLastValue_URL')
+SCADA_SECRETS = straxen.get_secret('SCADA_SECRETS')
+
 
 export, __all__ = strax.exporter()
 
