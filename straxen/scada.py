@@ -102,6 +102,7 @@ def get_scada_values(parameters,
         # User specified a valid context and run_id, so get the start
         # and end time for our query:
         if isinstance(run_id, (list, tuple)):
+            run_id = np.sort(run_id)  # Do not trust the user's
             start, _ = context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
             _, end = context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
         else:
