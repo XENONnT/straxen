@@ -213,9 +213,9 @@ def _query_single_parameter(start,
 
     # Step 4. Down-sample data if asked for:
     if value_every_seconds > 1:
-        nt, nv = _downsample_scada(df['time'].astype(np.int64).values,
-                                   df[parameter_key].values,
-                                   value_every_seconds)
+        nt, nv = _average_scada(df['time'].astype(np.int64).values,
+                                df[parameter_key].values,
+                                value_every_seconds)
         df = pd.DataFrame()
         df['time'] = nt.astype('<M8[ns]')
         df[parameter_key] = nv
@@ -224,7 +224,7 @@ def _query_single_parameter(start,
 
 
 @numba.njit
-def _downsample_scada(times, values, nvalues):
+def _average_scada(times, values, nvalues):
     """
     Function which down samples scada values.
 
