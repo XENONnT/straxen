@@ -6,13 +6,19 @@ import numpy as np
 
 import strax
 import straxen
-# Getting secrets:
-SCData_URL = straxen.get_secret('SCData_URL')
-SCLastValue_URL = straxen.get_secret('SCLastValue_URL')
-SCADA_SECRETS = straxen.get_secret('SCADA_SECRETS')
 
+try:
+    # Getting secrets:
+    SCData_URL = straxen.get_secret('SCData_URL')
+    SCLastValue_URL = straxen.get_secret('SCLastValue_URL')
+    SCADA_SECRETS = straxen.get_secret('SCADA_SECRETS')
+except ValueError:
+    # We cannot import scada (presumably because we don't have the right
+    # xenon_sectets.py file.
+    SCData_URL = SCLastValue_URL = SCADA_SECRETS = None
 
 export, __all__ = strax.exporter()
+
 
 @export
 def convert_time_zone(df, tz):
@@ -161,7 +167,7 @@ def _query_single_parameter(start,
     # the sampling frequency of scada:
     # TODO: Add a check in case user queries to many values. If yes read
     #  the data in chunks. How much are too many?
-    seconds = np.arange(start, end+1, 10**9) #+1 to make sure endtime is included
+    seconds = np.arange(start, end+1, 10**9)  # +1 to make sure endtime is included
     df = pd.DataFrame()
     df.loc[:, 'time'] = seconds
     df['time'] = df['time'].astype('<M8[ns]')
@@ -177,15 +183,14 @@ def _query_single_parameter(start,
     try:
         temp_df = pd.read_json(values.text)
     except:
-        mes = values.text # retunrs a dictionary as a string
+        mes = values.text  # returns a dictionary as a string
         mes = eval(mes)  
         raise ValueError(f'SCADA raised the following error "{mes["message"]}" '
                          f'when looking for your parameter "{parameter_name}"')
     
     # Store value as first value in our df
     df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
-    
-    
+
     # Query values between start+1 and end time:
     query = SCADA_SECRETS.copy()
     query["StartDateUnix"] = (start//10**9) + 1
@@ -206,7 +211,7 @@ def _query_single_parameter(start,
     df.ffill(inplace=True)
     df.reset_index(inplace=True)
 
-    # Step 4. Downsample data if asked for:
+    # Step 4. Down-sample data if asked for:
     if value_every_seconds > 1:
         nt, nv = _downsample_scada(df['time'].astype(np.int64).values,
                                    df[parameter_key].values,
@@ -216,6 +221,7 @@ def _query_single_parameter(start,
         df[parameter_key] = nv
 
     return df
+
 
 @numba.njit
 def _downsample_scada(times, values, nvalues):
