@@ -6,7 +6,7 @@ from warnings import warn
 import botocore.client
 from tqdm import tqdm
 import pymongo
-
+from copy import deepcopy
 import strax
 import straxen
 export, __all__ = strax.exporter()
@@ -90,29 +90,7 @@ class RunDB(strax.StorageFrontend):
                     retries=dict(max_attempts=10)))
 
         if mongo_url is None:
-            if self.hostname.endswith('xenon.local'):
-                username = straxen.get_secret('mongo_rdb_username')
-                password = straxen.get_secret('mongo_rdb_password')
-                url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
-                mongo_url = f"mongodb://{username}:{password}@{url_base}"
-            else:
-                username = straxen.get_secret('rundb_username')
-                password = straxen.get_secret('rundb_password')
-
-                # try connection to the mongo database in this order
-                mongo_connections = [default_mongo_url, *backup_mongo_urls]
-                for url_base in mongo_connections:
-                    try:
-                        mongo_url = f"mongodb://{username}:{password}@{url_base}"
-                        # Force server timeout if we cannot connect ot this url. If this
-                        # does not raise an error, break and use this url
-                        pymongo.MongoClient(mongo_url).server_info()
-                        break
-                    except pymongo.errors.ServerSelectionTimeoutError:
-                        warn(f'Cannot connect to to Mongo url: {url_base}')
-                        if url_base == mongo_connections[-1]:
-                            raise pymongo.errors.ServerSelectionTimeoutError(
-                                'Cannot connect to any Mongo url')
+            mongo_url = get_mongo_url(self.hostname)
 
         self.client = pymongo.MongoClient(mongo_url)
 
@@ -126,8 +104,6 @@ class RunDB(strax.StorageFrontend):
             strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
         ]
-        if self.rucio_path is not None:
-            self.backends.append(strax.rucio(self.rucio_path))
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
@@ -139,6 +115,12 @@ class RunDB(strax.StorageFrontend):
         for host_alias, regex in self.hosts.items():
             if re.match(regex, self.hostname):
                 self.available_query.append({'host': host_alias})
+
+        if self.rucio_path is not None:
+            self.backends.append(strax.rucio(self.rucio_path))
+            # When querying for rucio, add that it should be dali-userdisk
+            self.available_query.append({'host': 'rucio-catalogue',
+                                         'location': 'UC_DALI_USERDISK'})
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key"""
@@ -162,24 +144,21 @@ class RunDB(strax.StorageFrontend):
 
         # Check that we are in rucio backend
         if self.rucio_path is not None:
+            rucio_key = self.key_to_rucio_did(key)
             dq = {
                 'data': {
                     '$elemMatch': {
                         # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
+                        'did': rucio_key,
                         'protocol': 'rucio'}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
                 datum = doc['data'][0]
-                _type, _lineage_hash = datum['did'].split(':')[1].split('-')
-                if _lineage_hash == key.lineage_hash:
-                    backend_name, backend_key = datum['protocol'], f'{key.run_id}-{_type}-{_lineage_hash}'
-                    return backend_name, backend_key
-                else:
-                    # We don't have it stored in rucio, perhaps we have it in
-                    # our output-path? Explicit pass->look elsewhere.
-                    pass
+                assert datum.get('did', '') == rucio_key, f'Expected {rucio_key} got data on {datum["location"]}'
+                backend_name, backend_key = datum['protocol'], f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
+                return backend_name, backend_key
 
         dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq},
@@ -231,28 +210,30 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {'name': {'$in': [int(key.run_id) for key in keys]}}
+            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys]}}
         dq = self._data_query(keys[0])
 
-        projection = dq.copy()
+        # dict.copy is sometimes not sufficient for nested dictionary
+        projection = deepcopy(dq)
         projection.update({
             k: True
-            for k in 'name number data.protocol data.location'.split()})
+            for k in f'name number'.split()})
 
         results_dict = dict()
         for doc in self.collection.find(
                 {**run_query, **dq}, projection=projection):
+            # If you get a key error here there might be something off with the
+            # projection
             datum = doc['data'][0]
 
             if self.runid_field == 'name':
                 dk = doc['name']
             else:
-                dk = doc['number']
-            results_dict[dk] = datum['protocol'], datum['location']
+                dk = f'{doc["number"]:06}'
 
-        return [
-            results_dict.get(k.run_id, False)
-            for k in keys]
+            results_dict[dk] = datum['protocol'], datum['location']
+        return [results_dict.get(k.run_id, False)
+                for k in keys]
 
     def _list_available(self, key: strax.DataKey,
               allow_incomplete, fuzzy_for, fuzzy_for_options):
@@ -274,9 +255,14 @@ class RunDB(strax.StorageFrontend):
             query = {'number': {'$gt': self.minimum_run_number}}
         else:
             query = {}
+        projection = strax.to_str_tuple(list(store_fields))
+        # Replace fields by their subfields if requested only take the most
+        # "specific" projection
+        projection = [f1 for f1 in projection
+                      if not any([f2.startswith(f1+".") for f2 in projection])]
         cursor = self.collection.find(
             filter=query,
-            projection=strax.to_str_tuple(list(store_fields)))
+            projection=projection)
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
                         total=cursor.count()):
             del doc['_id']
@@ -303,3 +289,45 @@ class RunDB(strax.StorageFrontend):
         if self.reader_ini_name_is_mode:
             doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         return doc
+
+    @staticmethod
+    def key_to_rucio_did(key: strax.DataKey):
+        """Convert a strax.datakey to a rucio did field in rundoc"""
+        return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
+
+
+def get_mongo_url(hostname):
+    """
+    Read url for mongo by reading the username and password from
+    straxen.get_secret.
+
+    :param hostname: The name of the host currently working on. If
+    this is an event-builder, we can use the gateway to
+    authenticate. Else we use either of the hosts in
+    default_mongo_url and backup_mongo_urls.
+    """
+    if hostname.endswith('xenon.local'):
+        # So we are running strax on an event builder
+        username = straxen.get_secret('mongo_rdb_username')
+        password = straxen.get_secret('mongo_rdb_password')
+        url_base = 'xenon1t-daq:27017'
+        mongo_url = f"mongodb://{username}:{password}@{url_base}"
+    else:
+        username = straxen.get_secret('rundb_username')
+        password = straxen.get_secret('rundb_password')
+
+        # try connection to the mongo database in this order
+        mongo_connections = [default_mongo_url, *backup_mongo_urls]
+        for url_base in mongo_connections:
+            try:
+                mongo_url = f"mongodb://{username}:{password}@{url_base}"
+                # Force server timeout if we cannot connect ot this url. If this
+                # does not raise an error, break and use this url
+                pymongo.MongoClient(mongo_url).server_info()
+                break
+            except pymongo.errors.ServerSelectionTimeoutError:
+                warn(f'Cannot connect to to Mongo url: {url_base}')
+                if url_base == mongo_connections[-1]:
+                    raise pymongo.errors.ServerSelectionTimeoutError(
+                        'Cannot connect to any Mongo url')
+    return mongo_url
