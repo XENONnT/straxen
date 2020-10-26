@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import numba
 import numpy as np
+import warnings
 
 import strax
 import straxen
@@ -116,6 +117,16 @@ def get_scada_values(parameters,
                'a valid start and end time.')
         raise ValueError(mes)
 
+    now = np.datetime64('now').astype(np.int64)
+    if end > now:
+        mes = ('You are asking for an endtime which is in the future,'
+               ' I may be written by a physicist, but I am neither self-'
+               'aware nor can I predict the future like they can. You '
+               f'asked for the endtime: {end} but current utc time is '
+               f'{now}. I will return for the corresponding times nans '
+               'instead.')
+        warnings.warn(mes)
+
     # Now loop over specified parameters and get the values for those.
     for ind, (k, p) in enumerate(parameters.items()):
         print(f'Start to query {k}: {p}')
@@ -205,7 +216,7 @@ def _query_single_parameter(start,
         # by the scada api is always the same...
         temp_df = pd.read_json(values.text)
         df.loc[temp_df['timestampseconds'], parameter_key] = temp_df.loc[:, 'value'].values
-    except:
+    except ValueError:
         pass
 
     # Now fill values in between like Scada would do:
@@ -220,6 +231,10 @@ def _query_single_parameter(start,
         df = pd.DataFrame()
         df['time'] = nt.astype('<M8[ns]')
         df[parameter_key] = nv
+
+    now = np.datetime64('now').astype(np.int64)
+    if end < now:
+        df.loc[now//10**9:,  :] = np.nan
 
     return df
 
