@@ -117,8 +117,8 @@ def get_scada_values(parameters,
                'a valid start and end time.')
         raise ValueError(mes)
 
-    now = np.datetime64('now').astype(np.int64)
-    if end > now:
+    now = np.datetime64('now')
+    if (end//10**9) > now.astype(np.int64):
         mes = ('You are asking for an endtime which is in the future,'
                ' I may be written by a physicist, but I am neither self-'
                'aware nor can I predict the future like they can. You '
@@ -145,6 +145,11 @@ def get_scada_values(parameters,
     df.set_index('time', inplace=True)
     df = df.tz_localize(tz='UTC')
     df.index.rename('time UTC', inplace=True)
+    
+    # In case some values are in the future:
+    if (end//10**9) > now.astype(np.int64):
+        df.loc[now:, :] = np.nan
+    
     return df
 
 
@@ -231,10 +236,6 @@ def _query_single_parameter(start,
         df = pd.DataFrame()
         df['time'] = nt.astype('<M8[ns]')
         df[parameter_key] = nv
-
-    now = np.datetime64('now')
-    if (end//10**9) < now.astype(np.int64):
-        df.loc[now:, :] = np.nan
 
     return df
 
