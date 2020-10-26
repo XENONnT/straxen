@@ -1530,10 +1530,13 @@ if __name__ == '__main__':
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as fatal_error:
-                log.error(f'Fatal warning:\tran into {fatal_error}')
+                log.error(f'Fatal warning:\tran into {fatal_error}. Try '
+                          f'logging error and restart bootstrax')
                 try:
                     log_warning(f'Fatal warning:\tran into {fatal_error}',
                                 priority='error')
                 except Exception as warning_error:
                     log.error(f'Fatal warning:\tcould not log {warning_error}')
+                # This usually only takes a minute or two
+                time.sleep(60)
                 log.warning('Restarting main loop')
