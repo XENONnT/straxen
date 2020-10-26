@@ -233,7 +233,7 @@ def _query_single_parameter(start,
         df[parameter_key] = nv
 
     now = np.datetime64('now')
-    if end < now.astype(np.int64):
+    if (end//10**9) < now.astype(np.int64):
         df.loc[now:, :] = np.nan
 
     return df
