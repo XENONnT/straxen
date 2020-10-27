@@ -75,13 +75,20 @@ class SCADAInterface:
                 _, end = self.st.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
                 start, end = self.st.to_absolute_time_range(run_id, **time_selection_kwargs)
+        elif np.any(run_id):
+            mes = ('You are trying to query slow control data via run_ids' 
+                  ' but you have not specified the context you are '
+                   'working with. Please set the context either via '
+                   '.st = YOURCONTEXT, or when initializing the '
+                   'interface.')
+            raise ValueError(mes)
 
         if not np.all((start, end)):
             # User has not specified any vaild start and end time
             mes = ('You have to specify either a run_id and context.'
-                   ' E.g. call get_scada_values(parameters, run_id=run,'
-                   ' target="raw_records") or you have to specifiy'
-                   'a valid start and end time in utc unix time ns.')
+                   ' E.g. call get_scada_values(parameters, run_id=run)'
+                   ' or you have to specifiy a valid start and end time '
+                   'in utc unix time ns.')
             raise ValueError(mes)
 
         now = np.datetime64('now')
