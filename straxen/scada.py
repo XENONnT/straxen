@@ -14,20 +14,26 @@ export, __all__ = strax.exporter()
 @export
 class SCADAInterface:
 
-    def __init__(self):
+    def __init__(self, context=None):
+        """
+        Interface to excess the XENONnT slow control data via python.
+
+        :param context: Context you are using e.g. st. This is needed
+            if you would like to query data via run_ids.
+        """
         try:
             self.SCData_URL = straxen.get_secret('SCData_URL')
             self.SCLastValue_URL = straxen.get_secret('SCLastValue_URL')
-            self.CADA_SECRETS = straxen.get_secret('SCADA_SECRETS')
+            self.SCADA_SECRETS = straxen.get_secret('SCADA_SECRETS')
         except ValueError:
             raise ValueError('Cannot load SCADA information, from xenon'
                              ' secrets. SCADAInterface cannot be used.')
+        self.st = context
 
     def get_scada_values(self,
                          parameters,
                          start=None,
                          end=None,
-                         context=None,
                          run_id=None,
                          time_selection_kwargs={'full_range': True},
                          value_every_seconds=1):
@@ -44,7 +50,6 @@ class SCADAInterface:
         :param start: int representing the start time of the interval in ns
             unix time.
         :param end: same as start but as end.
-        :param context: Context you are working with (e.g. st).
         :param run_id: Id of the run. Can also be specified as a list or
             tuble of two run ids. In this case we will return the time
             range lasting between the start of the first and endtime of the
@@ -61,31 +66,31 @@ class SCADAInterface:
             mes = 'The argument "parameters" has to be specified as a dict.'
             raise ValueError(mes)
 
-        if np.all((run_id, context)):
+        if np.all((run_id, self.st)):
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
                 run_id = np.sort(run_id)  # Do not trust the user's
-                start, _ = context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
-                _, end = context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
+                start, _ = self.st.to_absolute_time_range(run_id[0], **time_selection_kwargs)
+                _, end = self.st.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
-                start, end = context.to_absolute_time_range(run_id, **time_selection_kwargs)
+                start, end = self.st.to_absolute_time_range(run_id, **time_selection_kwargs)
 
         if not np.all((start, end)):
             # User has not specified any vaild start and end time
             mes = ('You have to specify either a run_id and context.'
                    ' E.g. call get_scada_values(parameters, run_id=run,'
-                   ' target=raw_records", context=st) or you have to specifiy'
-                   'a valid start and end time.')
+                   ' target="raw_records") or you have to specifiy'
+                   'a valid start and end time in utc unix time ns.')
             raise ValueError(mes)
 
-        now = np.datetime64('now').astype(np.int64)
-        if end > now:
+        now = np.datetime64('now')
+        if (end // 10**9) > now.astype(np.int64):
             mes = ('You are asking for an endtime which is in the future,'
                    ' I may be written by a physicist, but I am neither self-'
                    'aware nor can I predict the future like they can. You '
                    f'asked for the endtime: {end // 10**9} but current utc '
-                   f'time is {now}. I will return for the values for the '
+                   f'time is {now.astype(np.int64)}. I will return for the values for the '
                    'corresponding times as nans instead.')
             warnings.warn(mes)
 
@@ -107,6 +112,10 @@ class SCADAInterface:
         df.set_index('time', inplace=True)
         df = df.tz_localize(tz='UTC')
         df.index.rename('time UTC', inplace=True)
+
+        if (end // 10**9) > now.astype(np.int64):
+            df.loc[now:, :] = np.nan
+
         return df
 
     def _query_single_parameter(self,
@@ -194,14 +203,11 @@ class SCADAInterface:
             df['time'] = nt.astype('<M8[ns]')
             df[parameter_key] = nv
 
-        now = np.datetime64('now')
-        if (end // 10**9) < now.astype(np.int64):
-            df.loc[now:, :] = np.nan
         return df
 
     def find_scada_parameter(self):
         # TODO: Add function which returns SCADA sensor names by short Name
-         raise NotImplementedError('Feature not implemented yet.')
+        raise NotImplementedError('Feature not implemented yet.')
 
 
 @export
