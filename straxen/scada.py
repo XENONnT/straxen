@@ -38,22 +38,22 @@ class SCADAInterface:
                          time_selection_kwargs={'full_range': True},
                          value_every_seconds=1):
         """
-        Function which returns XENONnT slow control values for a given set
-        of parameters and time range.
+        Function which returns XENONnT slow control values for a given
+        set of parameters and time range.
 
-        The time range can be either defined by a start and end time or via
-        the run_id, target and context.
+        The time range can be either defined by a start and end time or
+        via the run_id, target and context.
 
-        :param parameters: dictionary containing the names of the requested
-            scada-parameters. The keys are used as identifier of the
-            parameters in the returned pandas.DataFrame.
-        :param start: int representing the start time of the interval in ns
-            unix time.
+        :param parameters: dictionary containing the names of the
+            requested scada-parameters. The keys are used as identifier
+            of the parameters in the returned pandas.DataFrame.
+        :param start: int representing the start time of the interval
+            in ns unix time.
         :param end: same as start but as end.
         :param run_id: Id of the run. Can also be specified as a list or
-            tuble of two run ids. In this case we will return the time
-            range lasting between the start of the first and endtime of the
-            second run.
+            tuple of two run ids. In this case we will return the time
+            range lasting between the start of the first and endtime
+            of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
             st.to_absolute_time_range(). Default: full_range=True.
         :param value_every_seconds: Defines with which time difference
