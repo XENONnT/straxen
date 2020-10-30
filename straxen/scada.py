@@ -36,8 +36,8 @@ class SCADAInterface:
                          end=None,
                          run_id=None,
                          time_selection_kwargs={'full_range': True},
-                         filling_kwargs={},
                          interpolation=False,
+                         filling_kwargs={},
                          down_sampling=False,
                          value_every_seconds=1):
         """
@@ -59,6 +59,13 @@ class SCADAInterface:
             of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
             st.to_absolute_time_range(). Default: full_range=True.
+        :param interpolation: Boolean which decided to either forward
+            fill empty values or to interpolate between existing ones.
+        :param filling_kwargs: Kwargs applied to pandas .ffill() or
+            .interpolate().
+        :param down_sampling: Boolean which indicates whether to
+            donw_sample result or to apply moving average. Moving average
+            is deactivated in case of interpolated data.
         :param value_every_seconds: Defines with which time difference
             values should be returned. Must be an integer!
             Default: one value per 1 seconds.
