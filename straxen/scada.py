@@ -28,7 +28,7 @@ class SCADAInterface:
         except ValueError:
             raise ValueError('Cannot load SCADA information, from xenon'
                              ' secrets. SCADAInterface cannot be used.')
-        self.st = context
+        self.context = context
 
     def get_scada_values(self,
                          parameters,
@@ -66,15 +66,15 @@ class SCADAInterface:
             mes = 'The argument "parameters" has to be specified as a dict.'
             raise ValueError(mes)
 
-        if np.all((run_id, self.st)):
+        if np.all((run_id, self.context)):
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
                 run_id = np.sort(run_id)  # Do not trust the user's
-                start, _ = self.st.to_absolute_time_range(run_id[0], **time_selection_kwargs)
-                _, end = self.st.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
+                start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
+                _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
-                start, end = self.st.to_absolute_time_range(run_id, **time_selection_kwargs)
+                start, end = self.context.to_absolute_time_range(run_id, **time_selection_kwargs)
         elif np.any(run_id):
             mes = ('You are trying to query slow control data via run_ids' 
                   ' but you have not specified the context you are '
