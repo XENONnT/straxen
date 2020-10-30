@@ -437,14 +437,12 @@ class MergedS2sHighEnergy(MergedS2s):
 class Peaks(strax.Plugin):
     """
     Merge peaklets and merged S2s such that we obtain our peaks
-    (replacing all peaklets that were later re-merged as S2s). As this
-    step is computationally trivial, never save this plugin.
+    (replacing all peaklets that were later re-merged as S2s).
     """
     depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
-    save_when = strax.SaveWhen.NEVER
 
     __version__ = '0.1.1'
 
