@@ -36,6 +36,9 @@ class SCADAInterface:
                          end=None,
                          run_id=None,
                          time_selection_kwargs={'full_range': True},
+                         interpolation=False,
+                         filling_kwargs={},
+                         down_sampling=False,
                          value_every_seconds=1):
         """
         Function which returns XENONnT slow control values for a given
@@ -56,6 +59,13 @@ class SCADAInterface:
             of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
             st.to_absolute_time_range(). Default: full_range=True.
+        :param interpolation: Boolean which decided to either forward
+            fill empty values or to interpolate between existing ones.
+        :param filling_kwargs: Kwargs applied to pandas .ffill() or
+            .interpolate().
+        :param down_sampling: Boolean which indicates whether to
+            donw_sample result or to apply moving average. Moving average
+            is deactivated in case of interpolated data.
         :param value_every_seconds: Defines with which time difference
             values should be returned. Must be an integer!
             Default: one value per 1 seconds.
@@ -104,7 +114,13 @@ class SCADAInterface:
         # Now loop over specified parameters and get the values for those.
         for ind, (k, p) in enumerate(parameters.items()):
             print(f'Start to query {k}: {p}')
-            temp_df = self._query_single_parameter(start, end, k, p, value_every_seconds)
+            temp_df = self._query_single_parameter(start, end,
+                                                   k, p,
+                                                   value_every_seconds=value_every_seconds,
+                                                   interpolation=interpolation,
+                                                   filling_kwargs=filling_kwargs,
+                                                   down_sampling=down_sampling
+                                                   )
 
             if ind:
                 m = np.all(df.loc[:, 'time'] == temp_df.loc[:, 'time'])
@@ -130,6 +146,9 @@ class SCADAInterface:
                                 end,
                                 parameter_key,
                                 parameter_name,
+                                interpolation,
+                                filling_kwargs,
+                                down_sampling,
                                 value_every_seconds=1):
         """
         Function to query the values of a single parameter from SCData.
@@ -197,18 +216,30 @@ class SCADAInterface:
         except ValueError:
             pass
 
-        # Now fill values in between like Scada would do:
-        df.ffill(inplace=True)
+        # Let user decided whether to ffill or interpolate:
+        if interpolation:
+            df.interpolate(**filling_kwargs, inplace=True)
+        else:
+            # Now fill values in between like Scada would do:
+            df.ffill(**filling_kwargs, inplace=True)
         df.reset_index(inplace=True)
 
         # Step 4. Down-sample data if asked for:
         if value_every_seconds > 1:
-            nt, nv = _average_scada(df['time'].astype(np.int64).values,
-                                    df[parameter_key].values,
-                                    value_every_seconds)
-            df = pd.DataFrame()
-            df['time'] = nt.astype('<M8[ns]')
-            df[parameter_key] = nv
+            if interpolation and not down_sampling:
+                warnings.warn('Cannot use interpolation and running average at the same time.'
+                              ' Deactivated the running average, switch to down_sampling instead.')
+                down_sampling = True
+
+            if down_sampling:
+                df = df[::value_every_seconds]
+            else:
+                nt, nv = _average_scada(df['time'].astype(np.int64).values,
+                                        df[parameter_key].values,
+                                        value_every_seconds)
+                df = pd.DataFrame()
+                df['time'] = nt.astype('<M8[ns]')
+                df[parameter_key] = nv
 
         return df
 
