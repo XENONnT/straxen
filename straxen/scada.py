@@ -54,7 +54,7 @@ class SCADAInterface:
             in ns unix time.
         :param end: same as start but as end.
         :param run_id: Id of the run. Can also be specified as a list or
-            tuple of two run ids. In this case we will return the time
+            tuple of run ids. In this case we will return the time
             range lasting between the start of the first and endtime
             of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
