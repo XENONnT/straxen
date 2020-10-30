@@ -28,7 +28,7 @@ class SCADAInterface:
         except ValueError:
             raise ValueError('Cannot load SCADA information, from xenon'
                              ' secrets. SCADAInterface cannot be used.')
-        self.st = context
+        self.context = context
 
     def get_scada_values(self,
                          parameters,
@@ -38,22 +38,22 @@ class SCADAInterface:
                          time_selection_kwargs={'full_range': True},
                          value_every_seconds=1):
         """
-        Function which returns XENONnT slow control values for a given set
-        of parameters and time range.
+        Function which returns XENONnT slow control values for a given
+        set of parameters and time range.
 
-        The time range can be either defined by a start and end time or via
-        the run_id, target and context.
+        The time range can be either defined by a start and end time or
+        via the run_id, target and context.
 
-        :param parameters: dictionary containing the names of the requested
-            scada-parameters. The keys are used as identifier of the
-            parameters in the returned pandas.DataFrame.
-        :param start: int representing the start time of the interval in ns
-            unix time.
+        :param parameters: dictionary containing the names of the
+            requested scada-parameters. The keys are used as identifier
+            of the parameters in the returned pandas.DataFrame.
+        :param start: int representing the start time of the interval
+            in ns unix time.
         :param end: same as start but as end.
         :param run_id: Id of the run. Can also be specified as a list or
-            tuble of two run ids. In this case we will return the time
-            range lasting between the start of the first and endtime of the
-            second run.
+            tuple of two run ids. In this case we will return the time
+            range lasting between the start of the first and endtime
+            of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
             st.to_absolute_time_range(). Default: full_range=True.
         :param value_every_seconds: Defines with which time difference
@@ -66,15 +66,15 @@ class SCADAInterface:
             mes = 'The argument "parameters" has to be specified as a dict.'
             raise ValueError(mes)
 
-        if np.all((run_id, self.st)):
+        if np.all((run_id, self.context)):
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
                 run_id = np.sort(run_id)  # Do not trust the user's
-                start, _ = self.st.to_absolute_time_range(run_id[0], **time_selection_kwargs)
-                _, end = self.st.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
+                start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
+                _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
-                start, end = self.st.to_absolute_time_range(run_id, **time_selection_kwargs)
+                start, end = self.context.to_absolute_time_range(run_id, **time_selection_kwargs)
         elif np.any(run_id):
             mes = ('You are trying to query slow control data via run_ids' 
                   ' but you have not specified the context you are '
