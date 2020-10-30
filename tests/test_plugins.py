@@ -95,8 +95,8 @@ def _run_plugins(st,
                                  **proces_kwargs)
 
                     # Check for types that we want to save that they are stored.
-                    if (int(st._plugin_class_registry['peaks'].save_when) >
-                            int(strax.SaveWhen.TARGET)):
+                    if (int(st._plugin_class_registry[p].save_when) > int(
+                            strax.SaveWhen.TARGET)):
                         is_stored = st.is_stored(run_id, p)
                         assert is_stored, f"{p} did not save correctly!"
 
