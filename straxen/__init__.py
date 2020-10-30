@@ -7,6 +7,7 @@ from .online_monitor import *
 from .matplotlib_utils import *
 from .mini_analysis import *
 from .misc import *
+from .scada import *
 
 from .get_corrections import *
 from .hitfinder_thresholds import *
