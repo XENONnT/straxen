@@ -126,6 +126,94 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             result = np.zeros(0, dtype=dtype)
         return result
 
+@export
+@strax.takes_config(
+    strax.Option('max_gps_gap', default = int(21e9),
+                 help = 'Maximum separation between two gps pulses [ns]'),
+    strax.Option('channel_map', track = False, type = immutabledict, 
+                 help = 'immutabledict mapping subdetector to (min, max)'
+                      'channel number.'),
+    strax.Option('gps_channel', default = 801,
+                help = 'Channel number of mv_sync.'),
+    strax.Option('gps_module_string', default = '#@1',
+                 help = 'String identifier on the ASCII gps file'),
+    strax.Option('gps_file_path', default = '/dali/lgrandi/peres/gps_sync/gps_files/',
+                help = 'Path to gps files. TODO: make it fetch the RunDB'),
+    strax.Option('gps_verbose', default = True,
+                help = 'Debug prints for help help she cried.')
+                )
+
+class GPS_aqmon(strax.OverlapWindowPlugin):
+    """ Find the TTL GPS pulses coming into the AM from the gps 
+    module and their pairs in the ASCII file.
+    """
+        
+    __version__ ='0.0.6'
+    depends_on = ('aqmon_hits') 
+    provides  = ('gps_aqmon')
+    data_kind = ('gps_aqmon')
+    
+    def infer_dtype(self):
+        dtype = [(('GPS start time since unix epoch [ns]', 'time'), np.int64),
+                 (('GPS end time since unix epoch [ns]', 'endtime'), np.int64),
+                 (('GPS module pulse time (corrected)[ns]','gps_pulse'),np.int64)
+                ]
+        return dtype
+    
+    def get_window_size(self):
+        # Give a very wide window
+        return (self.config['max_gps_gap']*1000)
+    
+    def get_gpsdata(self):
+        '''Function to fetch the gps file from the given source.
+        Could be RunDB or directory with all the files.'''
+        #in test mode
+        return [(self.config['gps_file_path'] + '_test.dat')]
+    
+    def get_gps_time_array(self):
+        gps_file_list = self.get_gpsdata()
+
+        if self.config['gps_verbose'] == True:
+            print('Files to load:', gps_file_list)
+        #print('the list hete:',gps_file_list)
+        gpsdata = np.array([])
+        for gps_file in gps_file_list:
+            #print(gps_file)
+            if self.config['gps_verbose'] == True:
+                print('File loaded:', gps_file)
+            with open(gps_file,'r',newline='') as dest_f:
+                data_iter = csv.reader(dest_f,
+                                   delimiter = '\t',
+                                   quotechar = '"')
+                data = [int(line[1]) for line in data_iter if line[0]==self.config['gps_module_string']]
+            gpsdata = np.concatenate((gpsdata,np.asarray(data)))
+
+        return np.array(gpsdata)
+    
+    def compute(self, aqmon_hits): 
+        hits = aqmon_hits
+        
+        ans_temp = dict()
+        
+        gps_hits = hits[hits['channel'] == self.config['gps_channel']]
+
+        # Check that we found a GPS pulse in aqmon and update the resulting dict
+        if len(gps_hits):
+            ans_temp.setdefault("time",[]).extend(gps_hits['time'])
+            ans_temp.setdefault("endtime",[]).extend(gps_hits['time'] + gps_hits['length'] * gps_hits['dt'])
+            #print('len gps_hits:',len(gps_hits['time']))
+        
+        ans = strax.dict_to_rec(ans_temp, dtype=self.dtype)
+        ans.sort(order = 'time') 
+        
+        
+        gps_module_pulses = self.get_gps_time_array()
+        if self.config['gps_file_bool'] == True:
+            print('len gps_module_pulses', len(gps_module_pulses))
+
+        ans['gps_pulse'] = gps_module_pulses
+
+        return ans
 
 @numba.njit
 def channel_select(rr, ch_stop, ch_start):
