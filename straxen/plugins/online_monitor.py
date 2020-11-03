@@ -14,7 +14,7 @@ export, __all__ = strax.exporter()
              'NB: this is a 2D histogram'),
     strax.Option(
         'area_vs_width_bounds',
-        type=tuple, default=((0, 6), (0, 6)),
+        type=tuple, default=((0, 5), (0, 5)),
         help='Boundaries of log-log histogram of area vs width'),
     strax.Option(
         'area_vs_width_min_gap',
