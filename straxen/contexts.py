@@ -27,6 +27,11 @@ xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model=('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
+    tail_veto_threshold=1500.,  # PE
+    tail_veto_pass_fraction=1000.,  # fraction of area
+    tail_veto_resolution=100,  # ns
+    tail_veto_duration=1e5,  # ns
+
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -96,7 +101,7 @@ def xenonnt_online(output_folder='./strax_data',
             st.storage.append(
                 strax.DataDirectory(output_folder))
 
-        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
+        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
     # Only the online monitor backend for the DAQ
     elif _database_init:
         st.storage += [straxen.OnlineMonitor(
