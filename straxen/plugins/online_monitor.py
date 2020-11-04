@@ -228,50 +228,29 @@ class OnlinePeakMonitor(strax.Plugin):
         return hist.T
 
 
-class OnlineVetoMonitor(strax.Plugin):
+class OnlineMonitor(strax.LoopPlugin):
     """
-    TODO
+    Loop over the online-monitor chunks, get the veto intervals that are within
+    each of these chunks. Compute the live-time within each of the chunks.
     """
-    depends_on = 'veto_intervals'
-    provides = 'online_veto_monitor'
-    __version__ = '0.0.1'
-    # data_kind = 'online_monitor'
+    depends_on = ('online_peak_monitor', 'veto_intervals')
+    provides = 'online_monitor'
+    __version__ = '0.0.4'
 
     def infer_dtype(self):
-        dtype = [
-            (('Start time of the chunk', 'time'),
-             np.int64),
-            (('End time of the chunk', 'endtime'),
-             np.int64),
-            (('Live time', 'live_time'),
-             np.float64),
-
-        ]
+        dtype = strax.unpack_dtype(self.deps['online_peak_monitor'].dtype_for('online_peak_monitor'))
+        dtype += [(('Live time', 'live_time'),
+                   np.float64),]
         return dtype
 
-    def compute(self, veto_intervals, start, end):
-        # if not len(veto_intervals):
-        #     return np.empty(0, dtype=self.dtype)
-        res = np.ones(1, dtype=self.dtype)
-        res['time'] = start
-        res['endtime'] = end
-        if end-start > 0:
-            res['live_time'] = 1 - np.sum(veto_intervals['veto_interval']) / (end-start)
+    def compute_loop(self, peaks, veto_intervals):
+        res = {}
+        for d in peaks.dtype.names:
+            res[d] = peaks[d]
+        dt = strax.endtime(peaks) - peaks['time']
+        assert not np.iterable(dt) or len(dt) == 1
+        if dt > 0:
+            res['live_time'] = 1 - np.sum(veto_intervals['veto_interval'])/dt
+        else:
+            res['live_time'] = 1
         return res
-
-
-# class OnlineMonitor(strax.LoopPlugin):
-#     """
-#     TODO
-#     placeholder to merge the online_veto_monitor and online_peak_monitor
-#     """
-#     depends_on = ['online_veto_monitor', 'online_peak_monitor', ]
-#     # save_when = strax.SaveWhen.NEVER
-#     provides = 'online_monitor'
-#     __version__ = '0.0.3'
-#     dtype = strax.dtypes.time_fields
-#
-#     def compute_loop(self, online_monitor, peaks):
-#         res = dict(time=online_monitor['time'],
-#                    endtime=strax.endtime(online_monitor))
-#         return res
