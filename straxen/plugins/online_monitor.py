@@ -234,7 +234,7 @@ class OnlineVetoMonitor(strax.Plugin):
     """
     depends_on = 'veto_intervals'
     provides = 'online_veto_monitor'
-    __version__ = '0.0.0'
+    __version__ = '0.0.1'
     data_kind = 'online_monitor'
 
     def infer_dtype(self):
@@ -250,26 +250,27 @@ class OnlineVetoMonitor(strax.Plugin):
         return dtype
 
     def compute(self, veto_intervals, start, end):
-        if not len(veto_intervals):
-            return np.empty(0, dtype=self.dtype)
-        res = np.zeros(1, dtype=self.dtype)
+        # if not len(veto_intervals):
+        #     return np.empty(0, dtype=self.dtype)
+        res = np.ones(1, dtype=self.dtype)
         res['time'] = start
         res['endtime'] = end
-        res['live_time'] = np.sum(veto_intervals['veto_interval']) / (end-start)
+        if end-start > 0:
+            res['live_time'] = 1 - np.sum(veto_intervals['veto_interval']) / (end-start)
         return res
 
 
-class OnlineMonitor(strax.Plugin):
+class OnlineMonitor(strax.LoopPlugin):
     """
     TODO
     placeholder to merge the online_veto_monitor and online_peak_monitor
     """
-    depends_on = ['online_peak_monitor', 'online_veto_monitor']
-    save_when = strax.SaveWhen.NEVER
+    depends_on = ['online_veto_monitor', 'online_peak_monitor', ]
+    # save_when = strax.SaveWhen.NEVER
     provides = 'online_monitor'
-    __version__ = '0.0.0'
+    __version__ = '0.0.1'
     dtype = strax.dtypes.time_fields
 
-    def compute(self, peaks, online_monitor, start, end):
+    def compute_loop(self, online_monitor, peaks):
         res = np.empty(0, self.dtype)
         return res
