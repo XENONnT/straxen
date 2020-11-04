@@ -79,6 +79,7 @@ class OnlinePeakMonitor(strax.Plugin):
     __version__ = '0.0.4'
     # TODO make new datakind:
     # data_kind = 'online_monitor'
+    rechunk_on_save = False
 
     def infer_dtype(self):
         n_bins_area_width = self.config['area_vs_width_nbins']
@@ -236,6 +237,7 @@ class OnlineMonitor(strax.LoopPlugin):
     depends_on = ('online_peak_monitor', 'veto_intervals')
     provides = 'online_monitor'
     __version__ = '0.0.4'
+    rechunk_on_save = False
 
     def infer_dtype(self):
         dtype = strax.unpack_dtype(self.deps['online_peak_monitor'].dtype_for('online_peak_monitor'))
