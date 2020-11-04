@@ -77,6 +77,8 @@ class OnlinePeakMonitor(strax.Plugin):
     depends_on = ('peak_basics', 'lone_hits')
     provides = 'online_peak_monitor'
     __version__ = '0.0.3'
+    # TODO make new datakind:
+    # data_kind = 'online_monitor'
 
     def infer_dtype(self):
         n_bins_area_width = self.config['area_vs_width_nbins']
@@ -224,3 +226,49 @@ class OnlinePeakMonitor(strax.Plugin):
             range=self.config['area_vs_width_bounds'],
             bins=self.config['area_vs_width_nbins'])
         return hist.T
+
+
+class OnlineVetoMonitor(strax.Plugin):
+    """
+    TODO
+    """
+    depends_on = 'veto_intervals'
+    provides = 'online_veto_monitor'
+    __version__ = '0.0.0'
+    data_kind = 'online_monitor'
+
+    def infer_dtype(self):
+        dtype = [
+            (('Start time of the chunk', 'time'),
+             np.int64),
+            (('End time of the chunk', 'endtime'),
+             np.int64),
+            (('Live time', 'live_time'),
+             np.float64),
+
+        ]
+        return dtype
+
+    def compute(self, veto_intervals, start, end):
+        if not len(veto_intervals):
+            return np.empty(0, dtype=self.dtype)
+        res = np.zeros(1, dtype=self.dtype)
+        res['time'] = start
+        res['endtime'] = end
+        res['live_time'] = np.sum(veto_intervals['veto_interval']) / (end-start)
+
+
+class OnlineMonitor(strax.Plugin):
+    """
+    TODO
+    placeholder to merge the online_veto_monitor and online_peak_monitor
+    """
+    depends_on = ['online_peak_monitor', 'online_veto_monitor']
+    save_when = strax.SaveWhen.NEVER
+    provides = 'online_monitor'
+    __version__ = '0.0.0'
+    dtype = strax.dtypes.time_fields
+
+    def compute(self, peaks, online_monitor, start, end):
+        res = np.empty(0, self.dtype)
+        return res
