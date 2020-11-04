@@ -256,6 +256,7 @@ class OnlineVetoMonitor(strax.Plugin):
         res['time'] = start
         res['endtime'] = end
         res['live_time'] = np.sum(veto_intervals['veto_interval']) / (end-start)
+        return res
 
 
 class OnlineMonitor(strax.Plugin):
