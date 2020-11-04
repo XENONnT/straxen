@@ -6,6 +6,8 @@ python:
 - '3.8'
 install:
 - pip install tensorflow>=2.3
+- git clone https://github.com/AxFoundation/strax.git ../strax
+- pip install ../strax
 - pip install -r requirements.txt
 script:
 - python setup.py test
