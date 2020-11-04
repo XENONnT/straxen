@@ -79,6 +79,7 @@ def xenonnt_online(output_folder='./strax_data',
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
     st.set_config({
+        'hev_gain_model':('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
         'tail_veto_threshold': 1500.,  # PE
         'tail_veto_pass_fraction': 1000.,  # fraction of area
         'tail_veto_resolution': 100,  # ns
@@ -131,7 +132,8 @@ def xenonnt_initial_commissioning(**kwargs):
     """
     st = xenonnt_online(_minimum_run_number=7157, **kwargs)
     st.set_config(dict(
-        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')))
+        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
+        hev_gain_model=('disabled', None)))
     return st
 
 
@@ -144,6 +146,8 @@ def xenonnt_led(**kwargs):
         config=st.config,
         storage=st.storage,
         **st.context_config)
+    st.set_config(dict(
+        hev_gain_model=('disabled', None))
     st.register([straxen.DAQReader, straxen.LEDCalibration])
     return st
 
