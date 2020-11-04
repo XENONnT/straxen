@@ -42,17 +42,18 @@ xnt_common_config = dict(
     nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
 
-# Plugins in these files are nT only (NB: pulse&peak(let) processing are
-# registered for High Energy plugins.)
-xnt_only_plugins = [straxen.nveto_recorder,
-                    straxen.nveto_pulse_processing,
-                    straxen.nveto_hitlets,
-                    straxen.acqmon_processing,
-                    straxen.pulse_processing,
-                    straxen.peaklet_processing,
-                    straxen.peak_processing,
-                    straxen.online_monitor,
-                    ]
+# Plugins in these files have nT plugins, E.g. in pulse&peak(let)
+# processing there are plugins for High Energy plugins. Therefore do not
+# st.register_all in 1T contexts.
+have_nT_plugins = [straxen.nveto_recorder,
+                   straxen.nveto_pulse_processing,
+                   straxen.nveto_hitlets,
+                   straxen.acqmon_processing,
+                   straxen.pulse_processing,
+                   straxen.peaklet_processing,
+                   straxen.peak_processing,
+                   straxen.online_monitor,
+                   ]
 
 ##
 # XENONnT
@@ -73,7 +74,7 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register_all(xnt_only_plugins)
+    st.register_all(have_nT_plugins)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
     st.storage = [straxen.RunDB(
