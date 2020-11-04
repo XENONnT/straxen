@@ -43,8 +43,8 @@ export, __all__ = strax.exporter()
     strax.Option(
         'near_s1_hists_cut_string',
         type=str,
-        default='(n_channels > 50) & (n_channels < 200) & (area < 1000) & '
-                '(area > 0) & (rise_time < 100)',
+        default='(n_channels > 20) & (n_channels < 400) & (area < 1000) & '
+                '(area > 5) & (rise_time < 100) & (type == 1)',
         help='Selection (like selection_str) applied to data for '
              '"near_s1_hists", cuts should be separated using "&"'
              'For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)'
@@ -76,7 +76,7 @@ class OnlinePeakMonitor(strax.Plugin):
     """
     depends_on = ('peak_basics', 'lone_hits')
     provides = 'online_peak_monitor'
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
     # TODO make new datakind:
     # data_kind = 'online_monitor'
 
@@ -178,21 +178,21 @@ class OnlinePeakMonitor(strax.Plugin):
         res['n_channel_bounds'] = n_cont_b
 
         # -- Experimental Kr selection --
+        # We first apply a basic selection on the peaks to e.g. get S1s
+        mask = self._config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
+        peaks_sel = peaks[mask]
         # We select peaks where the peak before or the peak after it is within
         # near_s1_max_time_diff ns. TODO: Do we want another hist for this?
-        time_diff = peaks[1:]['time'] - strax.endtime(peaks)[:-1]
+        time_diff = peaks_sel[1:]['time'] - strax.endtime(peaks_sel)[:-1]
         is_close = time_diff < self.config['near_s1_max_time_diff']
-        time_mask = np.zeros(len(peaks), dtype=np.bool_)
+        time_mask = np.zeros(len(peaks_sel), dtype=np.bool_)
         # Either the previous or the next peak can be close, take both into account
         time_mask[:-1] = is_close
         time_mask[1:] = time_mask[1:] | is_close
-        # Let's also apply the cut string
-        mask = self._config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
-        mask &= time_mask
 
         # Make the area hist
         near_s1_bound = self.config['near_s1_hists_bounds']
-        near_s1_hist, _ = np.histogram(peaks['area'][mask], bins=n_bins, range=near_s1_bound)
+        near_s1_hist, _ = np.histogram(peaks_sel['area'][time_mask], bins=n_bins, range=near_s1_bound)
         res['near_s1_area_hist'] = near_s1_hist
         res['near_s1_area_bounds'] = near_s1_bound
 
