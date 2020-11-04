@@ -104,7 +104,7 @@ def xenonnt_online(output_folder='./strax_data',
             st.storage.append(
                 strax.DataDirectory(output_folder))
 
-        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
+        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
     # Only the online monitor backend for the DAQ
     elif _database_init:
         st.storage += [straxen.OnlineMonitor(
