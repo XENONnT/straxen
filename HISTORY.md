@@ -1,3 +1,23 @@
+0.11.1 / 2020-11-05
+--------------------
+- Corrections management tool CMT (#220, #251)
+- Add Online Monitor plugins (#257, #265, #267)
+- Add Scada interface for slow control data (#217)
+- Documentation-updates (#246, #248)
+- Update Rucio frontend (#254)
+- Several (bug)fixes (#253, #262, #256)
+
+
+0.11.0 / 2020-10-15
+--------------------
+- Separate context for fist commissioning data (#246)
+- Online Monitor storage frontend (#216)
+- Add Acquisition-monitor plugins (#207)
+- Many (bug)fixes (#221, #223, #224, #226, #236, #238, #240, #241, #241, #245)
+- Use CutPlugin class (#225)
+- Bootstrax updates (#232)
+
+
 0.10.1 / 2020-09-11
 --------------------
 - Added pytest to travis which builds data for all registered nT plugins (#193)
