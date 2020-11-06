@@ -292,7 +292,7 @@ def get_mongo_url(hostname):
         # So we are running strax on an event builder
         username = straxen.get_secret('mongo_rdb_username')
         password = straxen.get_secret('mongo_rdb_password')
-        url_base = 'xenon1t-daq:27017'
+        url_base = 'gw:27017'
         mongo_url = f"mongodb://{username}:{password}@{url_base}"
     else:
         username = straxen.get_secret('rundb_username')

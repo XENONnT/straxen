@@ -3,12 +3,11 @@
 import pytz
 import pymongo
 import numpy as np
-from warnings import warn
+from socket import getfqdn
 from functools import lru_cache
 
 import strax
 import straxen
-from straxen.rundb import default_mongo_url, backup_mongo_urls
 
 export, __all__ = strax.exporter()
 
@@ -40,7 +39,7 @@ class CorrectionsManagementServices():
             raise ValueError(f'No password for {username}')
 
         # Get the readonly account for the rundb using hostname = ''
-        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname='')
+        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname=getfqdn())
 
         _, _url = runsdb_mongo_url.split('@')
         self.interface = strax.CorrectionsInterface(
