@@ -1,4 +1,4 @@
-__version__ = '0.11.0'
+__version__ = '0.11.1'
 
 from .common import *
 from .itp_map import *
@@ -7,6 +7,7 @@ from .online_monitor import *
 from .matplotlib_utils import *
 from .mini_analysis import *
 from .misc import *
+from .scada import *
 
 from .get_corrections import *
 from .hitfinder_thresholds import *
