@@ -114,7 +114,7 @@ def _update_context(st, max_workers, fallback_gains=None):
         # If you want to have quicker checks: always raise an ValueError as
         # the CMT does take quite long to load the right corrections.
         # ValueError
-    except ValueError:
+    except:
         # Okay so we cannot initize the runs-database. Let's just use some
         # fallback values if they are specified.
         if ('gain_model' in st.config and
