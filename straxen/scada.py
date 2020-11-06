@@ -8,6 +8,8 @@ import warnings
 import strax
 import straxen
 
+from straxen import uconfig
+
 export, __all__ = strax.exporter()
 
 
@@ -22,12 +24,15 @@ class SCADAInterface:
             if you would like to query data via run_ids.
         """
         try:
-            self.SCData_URL = straxen.get_secret('SCData_URL')
-            self.SCLastValue_URL = straxen.get_secret('SCLastValue_URL')
-            self.SCADA_SECRETS = straxen.get_secret('SCADA_SECRETS')
+            self.SCData_URL = uconfig.get('scada', 'scdata_url')
+            self.SCLastValue_URL = uconfig.get('scada', 'sclastvalue_url')
+            self.SCADA_SECRETS = dict(QueryType=uconfig.get('scada', 'querytype'),
+                                      username=uconfig.get('scada', 'username'),
+                                      api_key=uconfig.get('scada', 'api_key')
+                                      )
         except ValueError:
-            raise ValueError('Cannot load SCADA information, from xenon'
-                             ' secrets. SCADAInterface cannot be used.')
+            raise ValueError(f'Cannot load SCADA information, from xenon'
+                             ' config at {uconfig.config_path}. SCADAInterface cannot be used.')
         self.context = context
 
     def get_scada_values(self,

@@ -198,27 +198,6 @@ def get_secret(x):
         message += (f"nor was there a valid field in your utilix configuration file, ")
         raise
 
-        # If on midway, try loading a standard secrets file instead
-        if 'rcc' in socket.getfqdn():
-            path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
-            if os.path.exists(path_to_secrets):
-                sys.path.append(osp.dirname(path_to_secrets))
-                import xenon_secrets
-                sys.path.pop()
-            else:
-                raise ValueError(
-                    message + ' nor could we load the secrets module from '
-                              f'{path_to_secrets}, even though you seem '
-                              'to be on the midway analysis hub.')
-
-        else:
-            raise ValueError(
-                message + 'nor are you on the midway analysis hub.')
-
-    if hasattr(xenon_secrets, x):
-        return getattr(xenon_secrets, x)
-    raise ValueError(message + " and the secret is not in xenon_secrets.py")
-
 
 @export
 def download_test_data():
