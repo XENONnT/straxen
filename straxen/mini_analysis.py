@@ -73,7 +73,7 @@ def mini_analysis(requires=tuple(),
             kwargs.setdefault('time_selection', default_time_selection)
             kwargs.setdefault('selection_str', None)
 
-            kwargs['t_reference'] = context.estimate_run_start(
+            kwargs['t_reference'], _ = context.estimate_run_start_and_end(
                 run_id, requires)
 
             if warn_beyond_sec is not None and not kwargs.get('ignore_time_warning'):

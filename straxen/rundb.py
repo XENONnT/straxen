@@ -16,8 +16,6 @@ export, __all__ = strax.exporter()
 @export
 class RunDB(strax.StorageFrontend):
     """Frontend that searches RunDB MongoDB for data.
-
-    Loads appropriate backends ranging from Files to S3.
     """
     # Dict of alias used in rundb: regex on hostname
     hosts = {
@@ -29,7 +27,6 @@ class RunDB(strax.StorageFrontend):
     def __init__(self,
                  minimum_run_number=7157,
                  runid_field='name',
-                 s3_kwargs=None,
                  local_only=False,
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
@@ -43,7 +40,6 @@ class RunDB(strax.StorageFrontend):
             Defaults to None: do not write new data
             New files will be registered in the runs db!
             TODO: register under hostname alias (e.g. 'dali')
-        :param s3_kwargs: Arguments to initialize S3 backend (including auth)
         :param runid_field: Rundb field to which strax's run_id concept
             corresponds. Can be either
             - 'name': values must be strings, for XENON1T
@@ -53,7 +49,6 @@ class RunDB(strax.StorageFrontend):
 
         Other (kw)args are passed to StorageFrontend.__init__
 
-        TODO: disable S3 if secret keys not known
         """
         super().__init__(*args, **kwargs)
         self.local_only = local_only
@@ -70,28 +65,15 @@ class RunDB(strax.StorageFrontend):
 
         self.hostname = socket.getfqdn()
 
-        if s3_kwargs is None:
-            s3_kwargs = dict(
-                aws_access_key_id=straxen.get_secret('s3_access_key_id'),
-                aws_secret_access_key=straxen.get_secret('s3_secret_access_key'),      # noqa
-                endpoint_url='http://ceph-s3.mwt2.org',
-                service_name='s3',
-                config=botocore.client.Config(
-                    connect_timeout=5,
-                    retries=dict(max_attempts=10)))
-
         self.collection = utilix.rundb.pymongo_collection(**kwargs)
 
         self.backends = [
-            strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
         ]
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
         self.available_query = [{'host': self.hostname}]
-        if not self.local_only:
-            self.available_query.append({'host': 'ceph-s3'})
 
         # Go through known host aliases
         for host_alias, regex in self.hosts.items():
@@ -276,39 +258,3 @@ class RunDB(strax.StorageFrontend):
         """Convert a strax.datakey to a rucio did field in rundoc"""
         return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
 
-
-# def get_mongo_url(hostname):
-#     """
-#     Read url for mongo by reading the username and password from
-#     straxen.get_secret.
-#
-#     :param hostname: The name of the host currently working on. If
-#     this is an event-builder, we can use the gateway to
-#     authenticate. Else we use either of the hosts in
-#     default_mongo_url and backup_mongo_urls.
-#     """
-#     if hostname.endswith('xenon.local'):
-#         # So we are running strax on an event builder
-#         username = straxen.get_secret('mongo_rdb_username')
-#         password = straxen.get_secret('mongo_rdb_password')
-#         url_base = 'xenon1t-daq:27017'
-#         mongo_url = f"mongodb://{username}:{password}@{url_base}"
-#     else:
-#         username = straxen.get_secret('rundb_username')
-#         password = straxen.get_secret('rundb_password')
-#
-#         # try connection to the mongo database in this order
-#         mongo_connections = [default_mongo_url, *backup_mongo_urls]
-#         for url_base in mongo_connections:
-#             try:
-#                 mongo_url = f"mongodb://{username}:{password}@{url_base}"
-#                 # Force server timeout if we cannot connect ot this url. If this
-#                 # does not raise an error, break and use this url
-#                 pymongo.MongoClient(mongo_url).server_info()
-#                 break
-#             except pymongo.errors.ServerSelectionTimeoutError:
-#                 warn(f'Cannot connect to to Mongo url: {url_base}')
-#                 if url_base == mongo_connections[-1]:
-#                     raise pymongo.errors.ServerSelectionTimeoutError(
-#                         'Cannot connect to any Mongo url')
-#     return mongo_url

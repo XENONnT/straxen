@@ -625,13 +625,13 @@ def infer_mode(rd):
     run_settings = {
         'new_eb':
             {'low_rate': dict(cores=24, max_messages=20, timeout=200),
-             'med_rate': dict(cores=24, max_messages=20, timeout=300),
+             'med_rate': dict(cores=24, max_messages=20, timeout=400),
              'high_rate': dict(cores=20, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
              'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
         'old_eb':
             {'low_rate': dict(cores=30, max_messages=20, timeout=200),
-             'med_rate': dict(cores=20, max_messages=15, timeout=300),
+             'med_rate': dict(cores=20, max_messages=15, timeout=400),
              'high_rate': dict(cores=10, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
              'max_rate': dict(cores=8, max_messages=10, timeout=2000)}}
@@ -1530,10 +1530,13 @@ if __name__ == '__main__':
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as fatal_error:
-                log.error(f'Fatal warning:\tran into {fatal_error}')
+                log.error(f'Fatal warning:\tran into {fatal_error}. Try '
+                          f'logging error and restart bootstrax')
                 try:
                     log_warning(f'Fatal warning:\tran into {fatal_error}',
                                 priority='error')
                 except Exception as warning_error:
                     log.error(f'Fatal warning:\tcould not log {warning_error}')
+                # This usually only takes a minute or two
+                time.sleep(60)
                 log.warning('Restarting main loop')
