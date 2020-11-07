@@ -3,12 +3,11 @@
 import pytz
 import pymongo
 import numpy as np
-from warnings import warn
+from socket import getfqdn
 from functools import lru_cache
 
 import strax
 import straxen
-from straxen.rundb import default_mongo_url, backup_mongo_urls
 
 export, __all__ = strax.exporter()
 
@@ -39,17 +38,22 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'No password for {username}')
 
-        # Get the readonly account for the rundb using hostname = ''
-        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname='')
-
+        # Get the mongo url
+        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname=getfqdn())
         _, _url = runsdb_mongo_url.split('@')
+
+        # Never use the admin authentication here.
+        _url = _url.replace('/admin', '/xenonnt')
+
         self.interface = strax.CorrectionsInterface(
             host=f'mongodb://{_url}',
             username=self.username,
             password=self.password,
             database_name='corrections')
-        # Initialize runs DB to get start-times
-        client = pymongo.MongoClient(runsdb_mongo_url)
+
+        # Use the same client as the CorrectionsInterface
+        client = self.interface.client
+
         if self.is_nt:
             self.collection = client['xenonnt']['runs']
         else:
