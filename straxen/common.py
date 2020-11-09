@@ -20,6 +20,7 @@ from warnings import warn
 
 import utilix
 import strax
+from straxen import uconfig
 
 
 export, __all__ = strax.exporter()
@@ -184,6 +185,7 @@ def get_secret(x):
       * A standard xenon_secrets.py located on the midway analysis hub
         (if you are running on midway)
     """
+
     env_name = x.upper()
     if env_name in os.environ:
         return os.environ[env_name]
@@ -197,6 +199,58 @@ def get_secret(x):
     except:
         message += (f"nor was there a valid field in your utilix configuration file, ")
         raise
+
+@export
+def get_secret(x):
+    """Return secret key x. In order of priority, we search:
+      * Environment variable: uppercase version of x
+      * xenon_secrets.py (if included with your straxen installation)
+      * A standard xenon_secrets.py located on the midway analysis hub
+        (if you are running on midway)
+    """
+    warn("xenon_secrets is deprecated, and will be replaced with utilix configuration file instead. "
+         "See https://github.com/XENONnT/utilix")
+    env_name = x.upper()
+    if env_name in os.environ:
+        return os.environ[env_name]
+
+    message = (f"Secret {x} requested, but there is no environment "
+               f"variable {env_name}, ")
+
+    # now try using utilix
+    # this will be main method in a future release
+    if uconfig.has_option('straxen', x):
+        return uconfig.get('straxen', x)
+
+    # if that doesn't work, revert to xenon_secrets
+    else:
+        try:
+            from . import xenon_secrets
+        except ImportError:
+            message += ("nor was there a valid xenon_secrets.py "
+                        "included with your straxen installation, ")
+
+
+            # If on midway, try loading a standard secrets file instead
+            if 'rcc' in socket.getfqdn():
+                path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
+                if os.path.exists(path_to_secrets):
+                    sys.path.append(osp.dirname(path_to_secrets))
+                    import xenon_secrets
+                    sys.path.pop()
+                else:
+                    raise ValueError(
+                        message + ' nor could we load the secrets module from '
+                                  f'{path_to_secrets}, even though you seem '
+                                  'to be on the midway analysis hub.')
+
+            else:
+                raise ValueError(
+                    message + 'nor are you on the midway analysis hub.')
+
+        if hasattr(xenon_secrets, x):
+            return getattr(xenon_secrets, x)
+        raise ValueError(message + " and the secret is not in xenon_secrets.py")
 
 
 @export
