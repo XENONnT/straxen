@@ -4,7 +4,9 @@ __version__ = '0.11.1'
 try:
     from utilix.config import Config
     uconfig = Config()
-except:
+# if no utilix config, get a RuntimeError
+# we don't want this to break straxen, but it does print a warning statement
+except RuntimeError:
     uconfig = None
 
 from .common import *

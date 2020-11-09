@@ -31,8 +31,8 @@ class SCADAInterface:
                                       api_key=uconfig.get('scada', 'api_key')
                                       )
         except ValueError:
-            raise ValueError(f'Cannot load SCADA information, from xenon'
-                             ' config at {uconfig.config_path}. SCADAInterface cannot be used.')
+            raise ValueError(f'Cannot load SCADA information, from your xenon'
+                             ' config. SCADAInterface cannot be used.')
         self.context = context
 
     def get_scada_values(self,
