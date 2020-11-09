@@ -31,6 +31,10 @@ class RunDB(strax.StorageFrontend):
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
                  rucio_path=None,
+                 mongo_url=None,
+                 mongo_user=None,
+                 mongo_password=None,
+                 mongo_database=None,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -65,7 +69,14 @@ class RunDB(strax.StorageFrontend):
 
         self.hostname = socket.getfqdn()
 
-        self.collection = utilix.rundb.pymongo_collection(**kwargs)
+        # setup mongo kwargs... this is a bit messy
+        mongo_kwargs = {}
+        for mongo_arg, mongo_val in zip(['url', 'user', 'password', 'database'],
+                                        [mongo_url, mongo_user, mongo_password, mongo_database]
+                                        ):
+            if mongo_val:
+                mongo_kwargs[mongo_arg] = mongo_val
+        self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
         self.backends = [
             strax.FileSytemBackend(),
