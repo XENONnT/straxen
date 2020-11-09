@@ -2,14 +2,6 @@ from immutabledict import immutabledict
 import strax
 import straxen
 
-# list of contexts that gets tracked in runDB context collection
-# needs to be maintained for each straxen release
-context_list = ['xenonnt_led', 
-                'xenonnt_online',
-                'xenonnt_initial_commissioning',
-                'xenonnt_simulation'
-               ]
-
 common_opts = dict(
     register_all=[
         straxen.event_processing,

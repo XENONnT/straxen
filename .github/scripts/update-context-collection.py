@@ -4,6 +4,13 @@ from straxen.contexts import *
 from utilix import db
 import datetime
 
+# list of contexts that gets tracked in runDB context collection
+# needs to be maintained for each straxen release
+context_list = ['xenonnt_led',
+                'xenonnt_online',
+                'xenonnt_initial_commissioning',
+               ]
+
 
 # returns the list of dtype, hashes for a given strax context
 def get_hashes(st):
