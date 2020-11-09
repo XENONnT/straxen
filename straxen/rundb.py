@@ -70,6 +70,14 @@ class RunDB(strax.StorageFrontend):
         self.hostname = socket.getfqdn()
 
         # setup mongo kwargs... this is a bit messy
+        # utilix.rundb.pymongo_collection will take the following variables as kwargs
+        # url: mongo url, including auth
+        # user: the user
+        # password: the password for the above user
+        # database: the mongo database name
+        # finally, it takes the collection name as an arg (not a kwarg).
+        # if no collection arg is passed, it defaults to the runsDB collection
+        # See https://github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
         mongo_kwargs = {}
         for mongo_arg, mongo_val in zip(['url', 'user', 'password', 'database'],
                                         [mongo_url, mongo_user, mongo_password, mongo_database]
