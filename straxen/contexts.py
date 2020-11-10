@@ -27,7 +27,6 @@ xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model=('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
-
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -41,19 +40,26 @@ xnt_common_config = dict(
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
     nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
+    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
+    hev_gain_model=('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
+    tail_veto_threshold=1500.,  # PE
+    tail_veto_pass_fraction=1000.,  # fraction of area
+    tail_veto_resolution=100,  # ns
+    tail_veto_duration=1e5,  # ns
+)
 
-# Plugins in these files are nT only (NB: pulse&peak(let) processing are
-# registered for High Energy plugins.)
-xnt_only_plugins = [straxen.nveto_recorder,
-                    straxen.nveto_pulse_processing,
-                    straxen.nveto_hitlets,
-                    straxen.acqmon_processing,
-                    straxen.pulse_processing,
-                    straxen.peaklet_processing,
-                    straxen.peak_processing,
-                    straxen.online_monitor,
-                    ]
+# Plugins in these files have nT plugins, E.g. in pulse&peak(let)
+# processing there are plugins for High Energy plugins. Therefore do not
+# st.register_all in 1T contexts.
+have_nT_plugins = [straxen.nveto_recorder,
+                   straxen.nveto_pulse_processing,
+                   straxen.nveto_hitlets,
+                   straxen.acqmon_processing,
+                   straxen.pulse_processing,
+                   straxen.peaklet_processing,
+                   straxen.peak_processing,
+                   straxen.online_monitor,
+                   ]
 
 ##
 # XENONnT
@@ -74,9 +80,8 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register_all(xnt_only_plugins)
+    st.register_all(have_nT_plugins)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
-
     st.set_config({
         'hev_gain_model':('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
         'tail_veto_threshold': 1500.,  # PE
@@ -84,7 +89,6 @@ def xenonnt_online(output_folder='./strax_data',
         'tail_veto_resolution': 100,  # ns
         'tail_veto_duration': 1e5,  # ns
         })
-
     st.storage = [straxen.RunDB(
         readonly=not we_are_the_daq,
         minimum_run_number=_minimum_run_number,
@@ -111,7 +115,8 @@ def xenonnt_online(output_folder='./strax_data',
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
-                       'online_peak_monitor'))]
+                       'online_peak_monitor',
+                       'online_veto_monitor',))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797, before
@@ -120,20 +125,6 @@ def xenonnt_online(output_folder='./strax_data',
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
     return st
-
-
-def xenonnt_initial_commissioning(**kwargs):
-    """
-    First phase of the commissioning of XENONnT.
-    These are runs 7157-9271.
-    xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts
-    """
-    st = xenonnt_online(_minimum_run_number=7157, **kwargs)
-    st.set_config(dict(
-        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300'),
-        hev_gain_model=('disabled', None)))
-    return st
-
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)

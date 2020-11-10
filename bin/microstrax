@@ -59,7 +59,7 @@ def get_data(
 
     if max_n <= 0:
         max_n = None
-    t0 = st.estimate_run_start(run_id, target)
+    t0, _ = st.estimate_run_start_and_end(run_id, target)
     if start is None or end is None:
         time_range = None
     else:
