@@ -65,7 +65,7 @@ class PeakBasics(strax.Plugin):
         for q in 'time length dt area type'.split():
             r[q] = p[q]
         r['endtime'] = p['time'] + p['dt'] * p['length']
-        r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
+        r['n_channels'] = (p['area_per_channel'] != 0).sum(axis=1)
         r['range_50p_area'] = p['width'][:, 5]
         r['range_90p_area'] = p['width'][:, 9]
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
