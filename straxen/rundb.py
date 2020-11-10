@@ -276,4 +276,3 @@ class RunDB(strax.StorageFrontend):
     def key_to_rucio_did(key: strax.DataKey):
         """Convert a strax.datakey to a rucio did field in rundoc"""
         return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
-

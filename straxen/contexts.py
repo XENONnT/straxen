@@ -26,7 +26,7 @@ xnt_common_config = dict(
     n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=('to_pe_constant', 'gain_2e6HVmap_cutoff_1310'),
+    gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -62,7 +62,7 @@ have_nT_plugins = [straxen.nveto_recorder,
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
-                   _minimum_run_number=9271,
+                   _minimum_run_number=7157,
                    _database_init=True,
 
                    **kwargs):
@@ -107,23 +107,11 @@ def xenonnt_online(output_folder='./strax_data',
                        'online_veto_monitor',))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
-    # signal cable connectors) These are runs older than run 8797, before
-    # commissioning. Runs newer than 8796 are not affected. See:
+    # signal cable connectors) These are runs older than run 8797. Runs
+    # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
-    return st
-
-
-def xenonnt_initial_commissioning(**kwargs):
-    """
-    First phase of the commissioning of XENONnT.
-    These are runs 7157-9271.
-    xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts
-    """
-    st = xenonnt_online(_minimum_run_number=7157, **kwargs)
-    st.set_config(dict(
-        gain_model=('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')))
     return st
 
 
@@ -155,6 +143,11 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st.register(wfsim.RawRecordsFromFaxNT)
     return st
 
+
+def xenonnt_initial_commissioning(*args, **kwargs):
+    raise ValueError(
+        'Use xenonnt_online. See' 
+        'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts#update_09_nov_20')
 
 ##
 # XENON1T
