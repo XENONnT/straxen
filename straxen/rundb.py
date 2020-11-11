@@ -22,8 +22,6 @@ default_mongo_collname = 'runs'
 @export
 class RunDB(strax.StorageFrontend):
     """Frontend that searches RunDB MongoDB for data.
-
-    Loads appropriate backends ranging from Files to S3.
     """
     # Dict of alias used in rundb: regex on hostname
     hosts = {
@@ -38,7 +36,6 @@ class RunDB(strax.StorageFrontend):
                  mongo_collname=None,
                  minimum_run_number=7157,
                  runid_field='name',
-                 s3_kwargs=None,
                  local_only=False,
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
@@ -52,7 +49,6 @@ class RunDB(strax.StorageFrontend):
             Defaults to None: do not write new data
             New files will be registered in the runs db!
             TODO: register under hostname alias (e.g. 'dali')
-        :param s3_kwargs: Arguments to initialize S3 backend (including auth)
         :param runid_field: Rundb field to which strax's run_id concept
             corresponds. Can be either
             - 'name': values must be strings, for XENON1T
@@ -62,7 +58,6 @@ class RunDB(strax.StorageFrontend):
 
         Other (kw)args are passed to StorageFrontend.__init__
 
-        TODO: disable S3 if secret keys not known
         """
         super().__init__(*args, **kwargs)
         self.local_only = local_only
@@ -79,16 +74,6 @@ class RunDB(strax.StorageFrontend):
 
         self.hostname = socket.getfqdn()
 
-        if s3_kwargs is None:
-            s3_kwargs = dict(
-                aws_access_key_id=straxen.get_secret('s3_access_key_id'),
-                aws_secret_access_key=straxen.get_secret('s3_secret_access_key'),      # noqa
-                endpoint_url='http://ceph-s3.mwt2.org',
-                service_name='s3',
-                config=botocore.client.Config(
-                    connect_timeout=5,
-                    retries=dict(max_attempts=10)))
-
         if mongo_url is None:
             mongo_url = get_mongo_url(self.hostname)
 
@@ -101,15 +86,12 @@ class RunDB(strax.StorageFrontend):
         self.collection = self.client[mongo_dbname][mongo_collname]
 
         self.backends = [
-            strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
         ]
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
         self.available_query = [{'host': self.hostname}]
-        if not self.local_only:
-            self.available_query.append({'host': 'ceph-s3'})
 
         # Go through known host aliases
         for host_alias, regex in self.hosts.items():
@@ -310,7 +292,7 @@ def get_mongo_url(hostname):
         # So we are running strax on an event builder
         username = straxen.get_secret('mongo_rdb_username')
         password = straxen.get_secret('mongo_rdb_password')
-        url_base = 'xenon1t-daq:27017'
+        url_base = 'gw:27017/admin'
         mongo_url = f"mongodb://{username}:{password}@{url_base}"
     else:
         username = straxen.get_secret('rundb_username')

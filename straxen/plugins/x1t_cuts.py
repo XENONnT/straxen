@@ -1,3 +1,16 @@
+"""
+XENON1T cuts
+
+How to apply:
+ - First register the plugins:
+ st.register_all(straxen.plugins.x1t_cuts)
+ - Load events and the cuts you want to apply:
+ events = st.get_array(run_id,
+                       targets=('event_info', 'cut_s2_width', 'cut_s2_threshold'))
+ - Apply the selection of events that pass the cut like:
+ selected_events = events[events['cut_s2_threshold'] == True]
+"""
+
 import numpy as np
 from scipy.stats import chi2
 import strax
