@@ -10,6 +10,7 @@ try:
 except (RuntimeError, FileNotFoundError):
     # We might be on a travis job
     pass
+from straxen import uconfig
 
 export, __all__ = strax.exporter()
 
@@ -70,6 +71,12 @@ class RunDB(strax.StorageFrontend):
             raise ValueError("Unrecognized runid_field option %s" % self.runid_field)
 
         self.hostname = socket.getfqdn()
+        if not self.readonly and self.hostname.endswith('xenon.local'):
+            # We want admin access to start writing data!
+            mongo_url = uconfig.get('rundb_admin', 'mongo_rdb_url')
+            mongo_user = uconfig.get('rundb_admin', 'mongo_rdb_username')
+            mongo_password = uconfig.get('rundb_admin', 'mongo_rdb_password')
+            mongo_database = uconfig.get('rundb_admin', 'mongo_rdb_database')
 
         # setup mongo kwargs...
         # utilix.rundb.pymongo_collection will take the following variables as kwargs
@@ -85,6 +92,9 @@ class RunDB(strax.StorageFrontend):
                         'password': mongo_password,
                         'database': mongo_database}
         self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
+
+        # Do not delete the client!
+        self.cient = self.collection.client
 
         self.backends = [
             strax.FileSytemBackend(),

@@ -852,21 +852,24 @@ if __name__ == '__main__':
             raise IOError(f'main::\tNo writing access to {f}')
 
     # Runs database
-    run_dbname = 'xenonnt'
     run_collname = 'runs'
-    run_db_username = straxen.get_secret('mongo_rdb_username'.lower())
-    run_db_password = straxen.get_secret('mongo_rdb_password'.lower())
-    run_client = pymongo.MongoClient(
-        f"mongodb://{run_db_username}:{run_db_password}@gw:27017/admin")
+    run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
+    run_uri = straxen.get_mongo_uri(header='rundb_admin',
+                                    user_key='mongo_rdb_username',
+                                    pwd_key='mongo_rdb_password',
+                                    url_key='mongo_rdb_url')
+    run_client = pymongo.MongoClient(run_uri)
     run_db = run_client[run_dbname]
     run_coll = run_db[run_collname]
     run_db.command('ping')
 
     # DAQ database
     daq_db_name = 'daq'
-    daq_db_password = straxen.get_secret('MONGO_DAQ_PASSWORD'.lower())
-    daq_db_username = straxen.get_secret('MONGO_DAQ_USERNAME'.lower())
-    daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@gw:27020/admin")
+    daq_uri = straxen.get_mongo_uri(header='rundb_admin',
+                                    user_key='mongo_daq_username',
+                                    pwd_key='mongo_daq_password',
+                                    url_key='mongo_daq_url')
+    daq_client = pymongo.MongoClient(daq_uri)
     daq_db = daq_client[daq_db_name]
     log_coll = daq_db['log']
     daq_db.command('ping')
