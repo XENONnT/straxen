@@ -3,9 +3,13 @@ import re
 import typing
 import socket
 from tqdm import tqdm
-import utilix
 from copy import deepcopy
 import strax
+try:
+    import utilix
+except (ImportError, ModuleNotFoundError):
+    # We might be on a travis job
+    pass
 
 export, __all__ = strax.exporter()
 
@@ -67,7 +71,7 @@ class RunDB(strax.StorageFrontend):
 
         self.hostname = socket.getfqdn()
 
-        # setup mongo kwargs... 
+        # setup mongo kwargs...
         # utilix.rundb.pymongo_collection will take the following variables as kwargs
         # url: mongo url, including auth
         # user: the user
@@ -100,7 +104,6 @@ class RunDB(strax.StorageFrontend):
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK'})
-
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key"""
