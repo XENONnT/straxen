@@ -18,7 +18,7 @@ class OnlineMonitor(MongoFrontend):
                  take_only=None,
                  database=default_mongo_dbname,
                  col_name=default_online_collection,
-                 read_only=True,
+                 readonly=True,
                  *args, **kwargs):
         if take_only is None:
             raise ValueError(f'Specify which data_types to accept! Otherwise '
@@ -32,4 +32,4 @@ class OnlineMonitor(MongoFrontend):
                          take_only=take_only,
                          col_name=col_name,
                          *args, **kwargs)
-        self.readonly = read_only
+        self.readonly = readonly

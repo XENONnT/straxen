@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.8'
+__version__ = '0.5.9'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -267,7 +267,7 @@ st = new_context()
 daq_db_name = 'daq'
 daq_db_password = straxen.get_secret('MONGO_DAQ_PASSWORD'.lower())
 daq_db_username = straxen.get_secret('MONGO_DAQ_USERNAME'.lower())
-daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
+daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@gw:27020/admin")
 daq_db = daq_client[daq_db_name]
 bs_coll = daq_db['eb_monitor']
 ag_stat_coll = daq_db['aggregate_status']
@@ -283,7 +283,7 @@ else:
     run_db_username = straxen.get_secret('RUNDB_USERNAME'.lower())
     run_db_password = straxen.get_secret('RUNDB_PASSWORD'.lower())
     run_client = pymongo.MongoClient(
-        f"mongodb://{run_db_username}:{run_db_password}@xenon1t-daq:27017/xenonnt")
+        f"mongodb://{run_db_username}:{run_db_password}@gw:27017/xenonnt")
     run_db = run_client[run_dbname]
 run_coll = run_db[run_collname]
 
@@ -625,13 +625,13 @@ def infer_mode(rd):
     run_settings = {
         'new_eb':
             {'low_rate': dict(cores=24, max_messages=20, timeout=200),
-             'med_rate': dict(cores=24, max_messages=20, timeout=300),
+             'med_rate': dict(cores=24, max_messages=20, timeout=400),
              'high_rate': dict(cores=20, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
              'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
         'old_eb':
             {'low_rate': dict(cores=30, max_messages=20, timeout=200),
-             'med_rate': dict(cores=20, max_messages=15, timeout=300),
+             'med_rate': dict(cores=20, max_messages=15, timeout=400),
              'high_rate': dict(cores=10, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
              'max_rate': dict(cores=8, max_messages=10, timeout=2000)}}
@@ -1530,10 +1530,13 @@ if __name__ == '__main__':
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as fatal_error:
-                log.error(f'Fatal warning:\tran into {fatal_error}')
+                log.error(f'Fatal warning:\tran into {fatal_error}. Try '
+                          f'logging error and restart bootstrax')
                 try:
                     log_warning(f'Fatal warning:\tran into {fatal_error}',
                                 priority='error')
                 except Exception as warning_error:
                     log.error(f'Fatal warning:\tcould not log {warning_error}')
+                # This usually only takes a minute or two
+                time.sleep(60)
                 log.warning('Restarting main loop')

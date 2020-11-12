@@ -3,12 +3,11 @@
 import pytz
 import pymongo
 import numpy as np
-from warnings import warn
+from socket import getfqdn
 from functools import lru_cache
 
 import strax
 import straxen
-from straxen.rundb import default_mongo_url, backup_mongo_urls
 
 export, __all__ = strax.exporter()
 
@@ -39,21 +38,29 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'No password for {username}')
 
-        # Get the readonly account for the rundb using hostname = ''
-        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname='')
-
+        # Get the mongo url
+        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname=getfqdn())
         _, _url = runsdb_mongo_url.split('@')
+
+        # Never use the admin authentication here.
+        _url = _url.replace('/admin', '/xenonnt')
+
         self.interface = strax.CorrectionsInterface(
             host=f'mongodb://{_url}',
             username=self.username,
             password=self.password,
             database_name='corrections')
-        # Initialize runs DB to get start-times
-        client = pymongo.MongoClient(runsdb_mongo_url)
+
+        # Use the same client as the CorrectionsInterface
+        client = self.interface.client
+
         if self.is_nt:
             self.collection = client['xenonnt']['runs']
         else:
             self.collection = client['run']['runs_new']
+
+    def __str__(self):
+        return self.__repr__()
 
     def __repr__(self):
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
@@ -136,13 +143,14 @@ class CorrectionsManagementServices():
     # TODO create a propper dict for 'to_pe_constant' and 'global_version' as
     #  the 'global_version' is not a version but an array/float for
     #  model_type = 'to_pe_constant'
-    def get_pmt_gains(self, run_id, model_type, global_version):
+    def get_pmt_gains(self, run_id, model_type, global_version, gain_dtype = np.float32):
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
         :param model_type: Choose either to_pe_model or to_pe_constant
         :param global_version: global version or a constant value or an array (if
         model_type == to_pe_constant)
+        :param gain_dtype: dtype of the gains to be returned as array
         :return: array of pmt gains to PE values
         """
         if model_type == 'to_pe_model':
@@ -167,7 +175,7 @@ class CorrectionsManagementServices():
                                  f'{type(global_version)}')
 
             # Generate an array of values and multiply by the 'global_version'
-            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * global_version
+            to_pe = np.ones(n_tpc_pmts, dtype=gain_dtype) * global_version
             if len(to_pe) != n_tpc_pmts:
                 raise ValueError(f'to_pe length does not match {n_tpc_pmts}. '
                                  f'Check that {global_version} is either of '
@@ -176,6 +184,17 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'{model_type} not implemented for to_pe values')
 
+        # Double check the dtype of the gains
+        to_pe = np.array(to_pe, dtype=gain_dtype)
+
+        # Double check that all the gains are found, None is not allowed
+        # since strax processing does not handle this well. If a PMT is
+        # off it's gain should be 0.
+        if np.any(np.isnan(to_pe)):
+            pmts_affected = np.argwhere(np.isnan(to_pe))[:, 0]
+            raise GainsNotFoundError(
+                f'Gains returned by CMT are None for PMT_i = {pmts_affected}. '
+                f'Cannot proceed with processing. Report to CMT-maintainers.')
         return to_pe
 
     def get_lce(self, run_id, s, position, global_version='v1'):
@@ -216,3 +235,8 @@ class CorrectionsManagementServices():
             raise ValueError(f'run_id = {run_id} not found')
         time = rundoc['start']
         return time.replace(tzinfo=pytz.utc)
+
+
+class GainsNotFoundError(Exception):
+    """Fatal error if a None value is returned by the corrections"""
+    pass
