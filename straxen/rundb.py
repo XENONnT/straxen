@@ -7,7 +7,7 @@ from copy import deepcopy
 import strax
 try:
     import utilix
-except (ImportError, ModuleNotFoundError):
+except (RuntimeError, FileNotFoundError):
     # We might be on a travis job
     pass
 
