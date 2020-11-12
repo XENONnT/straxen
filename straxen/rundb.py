@@ -2,26 +2,17 @@ import os
 import re
 import typing
 import socket
-from warnings import warn
-import botocore.client
 from tqdm import tqdm
-import pymongo
+import utilix
 from copy import deepcopy
 import strax
-import straxen
-
-try:
-    import utilix
-except:
-    pass
-
 
 export, __all__ = strax.exporter()
 
-
 @export
 class RunDB(strax.StorageFrontend):
-    """Frontend that searches RunDB MongoDB for data.
+    """
+    Frontend that searches RunDB MongoDB for data.
     """
     # Dict of alias used in rundb: regex on hostname
     hosts = {
@@ -58,7 +49,8 @@ class RunDB(strax.StorageFrontend):
         field with 'reader.ini.name'.
 
         Other (kw)args are passed to StorageFrontend.__init__
-
+        #TODO
+        Add mongo_* to the docstring
         """
         super().__init__(*args, **kwargs)
         self.local_only = local_only
@@ -75,7 +67,7 @@ class RunDB(strax.StorageFrontend):
 
         self.hostname = socket.getfqdn()
 
-        # setup mongo kwargs... this is a bit messy
+        # setup mongo kwargs... 
         # utilix.rundb.pymongo_collection will take the following variables as kwargs
         # url: mongo url, including auth
         # user: the user
@@ -84,12 +76,10 @@ class RunDB(strax.StorageFrontend):
         # finally, it takes the collection name as an arg (not a kwarg).
         # if no collection arg is passed, it defaults to the runsDB collection
         # See https://github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
-        mongo_kwargs = {}
-        for mongo_arg, mongo_val in zip(['url', 'user', 'password', 'database'],
-                                        [mongo_url, mongo_user, mongo_password, mongo_database]
-                                        ):
-            if mongo_val:
-                mongo_kwargs[mongo_arg] = mongo_val
+        mongo_kwargs = {'url': mongo_url,
+                        'user': mongo_user,
+                        'password': mongo_password,
+                        'database': mongo_database}
         self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
         self.backends = [
@@ -110,6 +100,7 @@ class RunDB(strax.StorageFrontend):
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK'})
+
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key"""
@@ -224,7 +215,7 @@ class RunDB(strax.StorageFrontend):
                 for k in keys]
 
     def _list_available(self, key: strax.DataKey,
-              allow_incomplete, fuzzy_for, fuzzy_for_options):
+                        allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
         if allow_incomplete:
@@ -282,4 +273,3 @@ class RunDB(strax.StorageFrontend):
     def key_to_rucio_did(key: strax.DataKey):
         """Convert a strax.datakey to a rucio did field in rundoc"""
         return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
-
