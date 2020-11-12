@@ -18,7 +18,6 @@ from re import match
 import numba
 from warnings import warn
 
-import utilix
 import strax
 from straxen import uconfig
 

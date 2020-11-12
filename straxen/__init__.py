@@ -2,11 +2,11 @@ __version__ = '0.11.1'
 
 # load configuration file using utilix
 try:
-    from utilix.config import Config
-    uconfig = Config()
+    from utilix import uconfig
 # if no utilix config, get a RuntimeError
 # we don't want this to break straxen, but it does print a warning statement
-except RuntimeError:
+except (FileNotFoundError, RuntimeError) as e:
+    print('Warning, utilix config file not loaded properly.')
     uconfig = None
 
 from .common import *
