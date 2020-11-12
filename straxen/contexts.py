@@ -40,7 +40,10 @@ xnt_common_config = dict(
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
     nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', )
+    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', 
+    # Clustering/classification parameters
+    s1_max_rise_time=100,
+)
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
