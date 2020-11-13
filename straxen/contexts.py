@@ -67,7 +67,6 @@ def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _database_init=True,
-
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
