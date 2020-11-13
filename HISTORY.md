@@ -1,3 +1,8 @@
+0.12.1 / 2020-11-13
+--------------------
+- CMT tweak before launch: ffill ONLINE corrections (#275)
+
+
 0.12.0 / 2020-11-13
 --------------------
 - DAQReader for 2ns digitizers (#270)
