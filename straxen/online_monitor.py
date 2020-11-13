@@ -7,8 +7,8 @@ default_online_collection = 'online_monitor'
 
 
 @export
-def get_mongo_uri(user_key='mongo_user',
-                  pwd_key='mongo_password',
+def get_mongo_uri(user_key='pymongo_user',
+                  pwd_key='pymongo_password',
                   url_key='pymongo_url',
                   header='RunDB'):
     user = uconfig.get(header, user_key)
