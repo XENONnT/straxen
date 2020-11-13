@@ -105,7 +105,13 @@ class CorrectionsManagementServices():
             for it_correction, version in df_global.iloc[-1][global_version].items():
                 if correction in it_correction:
                     df = self.interface.read(it_correction)
-                    df = self.interface.interpolate(df, when)
+                    if global_version == 'ONLINE':
+                        # We don't want to have different versions based
+                        # on when something was processed therefore
+                        # don't interpolate but forward fill.
+                        df = self.interface.interpolate(df, when, how='fill')
+                    else:
+                        df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
         except KeyError:
