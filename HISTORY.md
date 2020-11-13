@@ -1,3 +1,12 @@
+0.12.0 / 2020-11-13
+--------------------
+- DAQReader for 2ns digitizers (#270)
+- Activate CMT for PMT gains (#271)
+- Desaturation correction (#244)
+- Rise time requirement change (#273)
+- Replace xenon_sectrets by ini file (#163)
+
+
 0.11.1 / 2020-11-05
 --------------------
 - Corrections management tool CMT (#220, #251)
