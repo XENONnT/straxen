@@ -94,7 +94,7 @@ class RunDB(strax.StorageFrontend):
         self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
         # Do not delete the client!
-        self.cient = self.collection.client
+        self.client = self.collection.client
 
         self.backends = [
             strax.FileSytemBackend(),
