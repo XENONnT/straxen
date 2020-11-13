@@ -17,11 +17,12 @@ import pandas as pd
 from re import match
 import numba
 from warnings import warn
-
 import strax
+from straxen import uconfig
+
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts','n_hard_aqmon_start']
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -33,6 +34,10 @@ n_tpc_pmts = 494
 n_top_pmts = 253
 n_hard_aqmon_start = 800
 
+# Convert from ADC * samples to electrons emitted by PMT
+# see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
+# it's needed in analyses
+ADC_TO_E = 17142.81741
 
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
@@ -169,32 +174,32 @@ def get_resource(x, fmt='text'):
 
 
 @export
-def get_elife(run_id,elife_file):
-    x = get_resource(elife_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        e = 623e3
-    else:
-        e = x[run_index[0]]['e_life']
-    return e
-
-
-@export
 def get_secret(x):
     """Return secret key x. In order of priority, we search:
-
       * Environment variable: uppercase version of x
       * xenon_secrets.py (if included with your straxen installation)
       * A standard xenon_secrets.py located on the midway analysis hub
         (if you are running on midway)
     """
+    warn("xenon_secrets is deprecated, and will be replaced with utilix"
+         "configuration file instead. See https://github.com/XENONnT/utilix")
     env_name = x.upper()
     if env_name in os.environ:
         return os.environ[env_name]
 
     message = (f"Secret {x} requested, but there is no environment "
                f"variable {env_name}, ")
+
+    # now try using utilix. We need to check that it is not None first!
+    # this will be main method in a future release
+    if uconfig is not None and uconfig.has_option('straxen', x):
+        try:
+            return uconfig.get('straxen', x)
+        except configparser.NoOptionError:
+            warn(f'uconfig does not have {x}')
+            pass
+
+    # if that doesn't work, revert to xenon_secrets
     try:
         from . import xenon_secrets
     except ImportError:
