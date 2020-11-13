@@ -298,7 +298,7 @@ def peak_saturation_correction(records, peaks, to_pe,
 
         _peak_saturation_correction_inner(
             channel_saturated, records, p,
-            b_sumwf, b_pulse, b_index,
+            to_pe, b_sumwf, b_pulse, b_index,
             reference_length, min_reference_length)
 
         # Back track sum wf downsampling
@@ -310,7 +310,7 @@ def peak_saturation_correction(records, peaks, to_pe,
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _peak_saturation_correction_inner(channel_saturated, records, p,
-                                      b_sumwf, b_pulse, b_index,
+                                      to_pe, b_sumwf, b_pulse, b_index,
                                       reference_length=100,
                                       min_reference_length=20,
                                       ):
@@ -318,6 +318,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
     Which is not ideal for numba, thus this function is written
     :param channel_saturated: (bool, n_channels)
     :param p: One peak/peaklet
+    :param to_pe: adc to PE conversion (length should equal number of PMTs)
     :param b_sumwf, b_pulse, b_index: Filled buffers
     """
     dt = records['dt'][0]
@@ -328,16 +329,27 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
             continue
         b = b_pulse[ch]
         r0 = records[b_index[ch][0]]
-        # Index of first saturation
+
+        # Define the reference region as reference_length before the first saturation point
+        # unless there are not enough samples
         s0 = np.argmax(b >= r0['baseline'])
         ref = slice(max(0, s0-reference_length), s0)
 
-        # Continue if the length of ref is shorter than minimum length
-        if s0 < min_reference_length:
+        if (b[ref] * to_pe[ch] > 1).sum() < min_reference_length:
+            # the pulse is saturated, but there are not enough reference samples to get a good ratio
+            # This actually distinguished between S1 and S2 and will only correct S2 signals
+            continue
+        if (b_sumwf[ref] > 1).sum() < min_reference_length:
+            # the same condition applies to the waveform model
+            continue
+        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) < 1:
+            # The pulse is saturated, but insufficient information is available in the other channels
+            # to reliably reconstruct it
             continue
 
         scale = np.sum(b[ref]) / np.sum(b_sumwf[ref])
 
+        # Loop over the record indices of the saturated channel (saved in b_index buffer)
         for record_i in b_index[ch]:
             r = records[record_i]
             r_slice, b_slice = strax.overlap_indices(
@@ -347,6 +359,9 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
             if r_slice[1] == r_slice[0]:  # This record proceeds saturation
                 continue
             b_slice = b_slice[0] + s0, b_slice[1] + s0
+
+            # First is finding the highest point in the desaturated record
+            # because we need to bit shift the whole record if it exceeds int16 range
             apax = scale * max(b_sumwf[slice(*b_slice)])
 
             if np.int32(apax) >= 2**15:  # int16(2**15) is -2**15
@@ -361,6 +376,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
             else:
                 r['data'][slice(*r_slice)] = b_sumwf[slice(*b_slice)] * scale
                 r['area'] = np.sum(r['data'])
+
 
 @export
 @strax.takes_config(
