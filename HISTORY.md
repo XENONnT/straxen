@@ -1,3 +1,8 @@
+0.12.3 / 2020-11-14
+--------------------
+- bugfix in desaturation correction (#279)
+
+
 0.12.1 / 2020-11-13
 --------------------
 - CMT tweak before launch: ffill ONLINE corrections (#275)
