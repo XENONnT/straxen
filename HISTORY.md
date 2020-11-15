@@ -1,3 +1,13 @@
+0.11.1 / 2020-11-05
+--------------------
+- Corrections management tool CMT (#220, #251)
+- Add Online Monitor plugins (#257, #265, #267)
+- Add Scada interface for slow control data (#217)
+- Documentation-updates (#246, #248)
+- Update Rucio frontend (#254)
+- Several (bug)fixes (#253, #262, #256)
+
+
 0.11.0 / 2020-10-15
 --------------------
 - Separate context for fist commissioning data (#246)
