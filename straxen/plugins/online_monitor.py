@@ -178,7 +178,7 @@ class OnlinePeakMonitor(strax.Plugin):
         res['n_channel_hist'] = n_cont_hist
         res['n_channel_bounds'] = n_cont_b
 
-        # -- Experimental Kr selection --
+        # -- Experimental selection --
         # We first apply a basic selection on the peaks to e.g. get S1s
         mask = self._config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
         peaks_sel = peaks[mask]
