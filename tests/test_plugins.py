@@ -108,10 +108,13 @@ def _update_context(st, max_workers, fallback_gains=None):
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
     st.register(DummyRawRecords)
     try:
-        straxen.get_secret('rundb_password')
-        # If you want to have quicker checks: always raise an ValueError as
-        # the CMT does take quite long to load the right corrections.
-        # ValueError
+        if straxen.uconfig is None:
+            raise ValueError('uconfig did not import')
+        # If you want to have quicker checks: always raise an ValueError
+        # as the CMT does take quite long to load the right corrections.
+        if max_workers > 1 and fallback_gains is not None:
+            raise ValueError(
+                'Use fallback gains for multicore to save time on tests')
     except ValueError:
         # Okay so we cannot initize the runs-database. Let's just use some
         # fallback values if they are specified.

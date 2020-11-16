@@ -2,26 +2,22 @@ import os
 import re
 import typing
 import socket
-from warnings import warn
-import botocore.client
 from tqdm import tqdm
-import pymongo
 from copy import deepcopy
 import strax
-import straxen
+try:
+    import utilix
+except (RuntimeError, FileNotFoundError):
+    # We might be on a travis job
+    pass
+from straxen import uconfig
+
 export, __all__ = strax.exporter()
-
-
-default_mongo_url = 'xenon-rundb.grid.uchicago.edu:27017/xenonnt'
-backup_mongo_urls = ('fried.rice.edu:27017/xenonnt',
-                     'xenon1t-daq.lngs.infn.it:27017/xenonnt')
-default_mongo_dbname = 'xenonnt'
-default_mongo_collname = 'runs'
-
 
 @export
 class RunDB(strax.StorageFrontend):
-    """Frontend that searches RunDB MongoDB for data.
+    """
+    Frontend that searches RunDB MongoDB for data.
     """
     # Dict of alias used in rundb: regex on hostname
     hosts = {
@@ -31,15 +27,16 @@ class RunDB(strax.StorageFrontend):
     provide_run_metadata = True
 
     def __init__(self,
-                 mongo_url=None,
-                 mongo_dbname=None,
-                 mongo_collname=None,
                  minimum_run_number=7157,
                  runid_field='name',
                  local_only=False,
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
                  rucio_path=None,
+                 mongo_url=None,
+                 mongo_user=None,
+                 mongo_password=None,
+                 mongo_database=None,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -57,7 +54,8 @@ class RunDB(strax.StorageFrontend):
         field with 'reader.ini.name'.
 
         Other (kw)args are passed to StorageFrontend.__init__
-
+        #TODO
+        Add mongo_* to the docstring
         """
         super().__init__(*args, **kwargs)
         self.local_only = local_only
@@ -73,17 +71,30 @@ class RunDB(strax.StorageFrontend):
             raise ValueError("Unrecognized runid_field option %s" % self.runid_field)
 
         self.hostname = socket.getfqdn()
+        if not self.readonly and self.hostname.endswith('xenon.local'):
+            # We want admin access to start writing data!
+            mongo_url = uconfig.get('rundb_admin', 'mongo_rdb_url')
+            mongo_user = uconfig.get('rundb_admin', 'mongo_rdb_username')
+            mongo_password = uconfig.get('rundb_admin', 'mongo_rdb_password')
+            mongo_database = uconfig.get('rundb_admin', 'mongo_rdb_database')
 
-        if mongo_url is None:
-            mongo_url = get_mongo_url(self.hostname)
+        # setup mongo kwargs...
+        # utilix.rundb.pymongo_collection will take the following variables as kwargs
+        # url: mongo url, including auth
+        # user: the user
+        # password: the password for the above user
+        # database: the mongo database name
+        # finally, it takes the collection name as an arg (not a kwarg).
+        # if no collection arg is passed, it defaults to the runsDB collection
+        # See https://github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
+        mongo_kwargs = {'url': mongo_url,
+                        'user': mongo_user,
+                        'password': mongo_password,
+                        'database': mongo_database}
+        self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
-        self.client = pymongo.MongoClient(mongo_url)
-
-        if mongo_dbname is None:
-            mongo_dbname = default_mongo_dbname
-        if mongo_collname is None:
-            mongo_collname = default_mongo_collname
-        self.collection = self.client[mongo_dbname][mongo_collname]
+        # Do not delete the client!
+        self.client = self.collection.database.client
 
         self.backends = [
             strax.FileSytemBackend(),
@@ -143,8 +154,7 @@ class RunDB(strax.StorageFrontend):
                 return backend_name, backend_key
 
         dq = self._data_query(key)
-        doc = self.collection.find_one({**run_query, **dq},
-                                       projection=dq)
+        doc = self.collection.find_one({**run_query, **dq}, projection=dq)
 
         if doc is None:
             # Data was not found
@@ -218,7 +228,7 @@ class RunDB(strax.StorageFrontend):
                 for k in keys]
 
     def _list_available(self, key: strax.DataKey,
-              allow_incomplete, fuzzy_for, fuzzy_for_options):
+                        allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
         if allow_incomplete:
@@ -276,40 +286,3 @@ class RunDB(strax.StorageFrontend):
     def key_to_rucio_did(key: strax.DataKey):
         """Convert a strax.datakey to a rucio did field in rundoc"""
         return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
-
-
-def get_mongo_url(hostname):
-    """
-    Read url for mongo by reading the username and password from
-    straxen.get_secret.
-
-    :param hostname: The name of the host currently working on. If
-    this is an event-builder, we can use the gateway to
-    authenticate. Else we use either of the hosts in
-    default_mongo_url and backup_mongo_urls.
-    """
-    if hostname.endswith('xenon.local'):
-        # So we are running strax on an event builder
-        username = straxen.get_secret('mongo_rdb_username')
-        password = straxen.get_secret('mongo_rdb_password')
-        url_base = 'gw:27017/admin'
-        mongo_url = f"mongodb://{username}:{password}@{url_base}"
-    else:
-        username = straxen.get_secret('rundb_username')
-        password = straxen.get_secret('rundb_password')
-
-        # try connection to the mongo database in this order
-        mongo_connections = [default_mongo_url, *backup_mongo_urls]
-        for url_base in mongo_connections:
-            try:
-                mongo_url = f"mongodb://{username}:{password}@{url_base}"
-                # Force server timeout if we cannot connect ot this url. If this
-                # does not raise an error, break and use this url
-                pymongo.MongoClient(mongo_url).server_info()
-                break
-            except pymongo.errors.ServerSelectionTimeoutError:
-                warn(f'Cannot connect to to Mongo url: {url_base}')
-                if url_base == mongo_connections[-1]:
-                    raise pymongo.errors.ServerSelectionTimeoutError(
-                        'Cannot connect to any Mongo url')
-    return mongo_url
