@@ -127,3 +127,37 @@ def clean_up_empty_records(records, record_links, only_last=True):
                 raise TimeoutError(mes)
 
     return records[indicies_to_keep[:n_indicies]]
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'save_outside_hits_mv',
+        default=(2, 5), track=True,
+        help='Save (left, right) samples besides hits; cut the rest'),
+    strax.Option(
+        'baseline_samples_mv',
+        default=10, track=True,
+        help='Number of samples to use at the start of the pulse to determine '
+             'the baseline'),
+    strax.Option(
+        'hit_min_amplitude_mv',
+        default=20, track=True,
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_nveto_pmts, or a number.'),
+)
+class muVETOPulseProcessing(nVETOPulseProcessing):
+    __version__ = '0.0.1'
+    depends_on = 'raw_records_mv'
+    provides = 'records_mv'
+    data_kind = 'records_mv'
+    child_ends_with = '_mv'
+
+    def infer_dtype(self):
+        record_length = strax.record_length_from_dtype(
+            self.deps['raw_records_mv'].dtype_for('raw_records_mv'))
+        dtype = strax.record_dtype(record_length)
+        return dtype
+
+    def compute(self, raw_records_mv):
+        return super().compute(raw_records_mv)
