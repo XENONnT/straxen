@@ -69,6 +69,7 @@ import pytz
 import strax
 import straxen
 import threading
+import utilix
 
 logging.basicConfig(level=logging.INFO,
                     format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
@@ -124,7 +125,8 @@ args = parser.parse_args()
 print(f'---\n bootstrax version {__version__}\n---')
 
 # The folder that can be used for testing bootstrax (i.e. non production mode). It will be written to:
-test_data_folder = ('/nfs/scratch/bootstrax/' if os.path.exists('/nfs/scratch/bootstrax/')
+test_data_folder = ('/nfs/scratch/bootstrax/' if
+                    os.path.exists('/nfs/scratch/bootstrax/')
                     else './bootstrax/')
 
 # Timeouts in seconds
@@ -265,26 +267,29 @@ st = new_context()
 
 # DAQ database
 daq_db_name = 'daq'
-daq_db_password = straxen.get_secret('MONGO_DAQ_PASSWORD'.lower())
-daq_db_username = straxen.get_secret('MONGO_DAQ_USERNAME'.lower())
-daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@gw:27020/admin")
+daq_uri = straxen.get_mongo_uri(header='rundb_admin',
+                                user_key='mongo_daq_username',
+                                pwd_key='mongo_daq_password',
+                                url_key='mongo_daq_url')
+daq_client = pymongo.MongoClient(daq_uri)
 daq_db = daq_client[daq_db_name]
 bs_coll = daq_db['eb_monitor']
 ag_stat_coll = daq_db['aggregate_status']
 log_coll = daq_db['log']
 
 # Runs database
-run_dbname = 'xenonnt'
+run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
 run_collname = 'runs'
 if args.production:
     run_db = st.storage[0].client[run_dbname]
 else:
     # Please note, this is a read only account on the rundb
-    run_db_username = straxen.get_secret('RUNDB_USERNAME'.lower())
-    run_db_password = straxen.get_secret('RUNDB_PASSWORD'.lower())
-    run_client = pymongo.MongoClient(
-        f"mongodb://{run_db_username}:{run_db_password}@gw:27017/xenonnt")
+    run_uri = straxen.get_mongo_uri()
+    run_client = pymongo.MongoClient(run_uri)
     run_db = run_client[run_dbname]
+run_coll = run_db[run_collname]
+run_db.command('ping')
+
 run_coll = run_db[run_collname]
 
 # Ping the databases to ensure the mongo connections are working
@@ -624,13 +629,13 @@ def infer_mode(rd):
     #  decrease timeout later. Unsure why needed now.
     run_settings = {
         'new_eb':
-            {'low_rate': dict(cores=24, max_messages=20, timeout=200),
+            {'low_rate': dict(cores=24, max_messages=20, timeout=400),
              'med_rate': dict(cores=24, max_messages=20, timeout=400),
              'high_rate': dict(cores=20, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
              'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
         'old_eb':
-            {'low_rate': dict(cores=30, max_messages=20, timeout=200),
+            {'low_rate': dict(cores=30, max_messages=20, timeout=400),
              'med_rate': dict(cores=20, max_messages=15, timeout=400),
              'high_rate': dict(cores=10, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
