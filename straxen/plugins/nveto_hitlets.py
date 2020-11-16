@@ -159,3 +159,57 @@ def drop_data_field(old_hitlets, new_hitlets):
         n['left'] = o['left']
         n['low_left'] = o['low_left']
         n['record_i'] = o['record_i']
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'save_outside_hits_mv',
+        default=(2, 5), track=True,
+        help='Save (left, right) samples besides hits; cut the rest'),
+    strax.Option(
+        'hit_min_amplitude_mv',
+        default=20, track=True,
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_nveto_pmts, or a number.'),
+    strax.Option(
+        'min_split_mv',
+        default=100, track=True,
+        help='Minimum height difference pe/sample between local minimum and maximum, '
+             'that a pulse get split.'),
+    strax.Option(
+        'min_split_ratio_mv',
+        default=0, track=True,
+        help='Min ratio between local maximum and minimum to split pulse (zero to switch this off).'),
+    strax.Option(
+        'entropy_template_mv',
+        default='flat', track=True,
+        help='Template data is compared with in conditional entropy. Can be either "flat" or an template array.'),
+    strax.Option(
+        'entropy_square_data_mv',
+        default=False, track=True,
+        help='Parameter which decides if data is first squared before normalized and compared to the template.'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."),
+    strax.Option(
+        'to_pe_file_mv',
+        default=straxen.aux_repo + '/c5800ea686f06f0149af30b2db9c08b6216ecb36/n_veto_gains.npy?raw=true',  # noqa
+        help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
+)
+class muVETOHitlets(nVETOHitlets):
+    __version__ = '0.0.1'
+    depends_on = 'records_mv'
+
+    provides = 'hitlets_mv'
+    data_kind = 'hitlets_mv'
+    child_ends_with = '_mv'
+
+    dtype = strax.hitlet_dtype()
+
+    def setup(self):
+        # TODO: Unify with TPC and add adc thresholds
+        self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
+
+    def compute(self, records_mv, start, end):
+        return super().compute(records_mv, start, end)
