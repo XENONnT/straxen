@@ -50,7 +50,7 @@ xnt_common_config = dict(
 # st.register_all in 1T contexts.
 have_nT_plugins = [straxen.nveto_recorder,
                    straxen.veto_pulse_processing,
-                   straxen.nveto_hitlets,
+                   straxen.veto_hitlets,
                    straxen.acqmon_processing,
                    straxen.pulse_processing,
                    straxen.peaklet_processing,
