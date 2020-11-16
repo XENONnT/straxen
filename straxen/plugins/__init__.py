@@ -27,8 +27,8 @@ from . import x1t_cuts
 from . import nveto_recorder
 from .nveto_recorder import *
 
-from . import nveto_pulse_processing
-from .nveto_pulse_processing import *
+from . import veto_pulse_processing
+from .veto_pulse_processing import *
 
 from . import nveto_hitlets
 from .nveto_hitlets import *

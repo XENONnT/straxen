@@ -49,7 +49,7 @@ xnt_common_config = dict(
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 have_nT_plugins = [straxen.nveto_recorder,
-                   straxen.nveto_pulse_processing,
+                   straxen.veto_pulse_processing,
                    straxen.nveto_hitlets,
                    straxen.acqmon_processing,
                    straxen.pulse_processing,
