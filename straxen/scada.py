@@ -31,7 +31,7 @@ class SCADAInterface:
                                       )
 
             # Better to cache the file since is not large:
-            with open(self.uconfig.get('scada', 'pmt_parameter_names')) as f:
+            with open(uconfig.get('scada', 'pmt_parameter_names')) as f:
                 self.pmt_file = json.load(f)
 
 
@@ -274,6 +274,10 @@ class SCADAInterface:
         if isinstance(pmts, np.ndarray):
             # convert to a simple list since otherwise we get ambiguous errors
             pmts = list(pmts)
+            
+        if not hasattr(pmts, '__iter__'):
+            # If single PMT convert it to itterable
+            pmts = [pmts]
 
         if pmts:
             res = {k: v for k, v in self.pmt_file.items() if int(k[3:]) in pmts}
