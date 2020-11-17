@@ -6,8 +6,9 @@ name: Update context collection
 
 # Trigger this code when a new release is published
 on:
+  workflow_dispatch:
   release:
-    types: [published]
+    types: [created]
  
 jobs:
   update:
