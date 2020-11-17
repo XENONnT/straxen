@@ -165,35 +165,32 @@ def drop_data_field(old_hitlets, new_hitlets):
 @strax.takes_config(
     strax.Option(
         'save_outside_hits_mv',
-        default=(2, 5), track=True,
+        default=(2, 5), track=True, child_option=True,
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=20, track=True,
+        default=20, track=True, child_option=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option(
-        'min_split_mv',
-        default=100, track=True,
+        'min_split_mv', 
+        default=100, track=True, child_option=True,
         help='Minimum height difference pe/sample between local minimum and maximum, '
              'that a pulse get split.'),
     strax.Option(
         'min_split_ratio_mv',
-        default=0, track=True,
+        default=0, track=True, child_option=True,
         help='Min ratio between local maximum and minimum to split pulse (zero to switch this off).'),
     strax.Option(
         'entropy_template_mv',
-        default='flat', track=True,
+        default='flat', track=True, child_option=True,
         help='Template data is compared with in conditional entropy. Can be either "flat" or an template array.'),
     strax.Option(
         'entropy_square_data_mv',
-        default=False, track=True,
+        default=False, track=True, child_option=True,
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
-    strax.Option('channel_map', track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number."),
     strax.Option(
-        'to_pe_file_mv',
+        'to_pe_file_mv', child_option=True,
         default=straxen.aux_repo + '/c5800ea686f06f0149af30b2db9c08b6216ecb36/n_veto_gains.npy?raw=true',  # noqa
         help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
 )
@@ -204,6 +201,7 @@ class muVETOHitlets(nVETOHitlets):
     provides = 'hitlets_mv'
     data_kind = 'hitlets_mv'
     child_ends_with = '_mv'
+    overwrite_parents_end = '_nv'
 
     dtype = strax.hitlet_dtype()
 
