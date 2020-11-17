@@ -62,6 +62,11 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
         'tail_veto_pass_extend',
         default=3,
         help="Extend pass veto by this many samples (tail_veto_resolution!)"),
+    strax.Option(
+        'max_veto_value',
+        default=None,
+        help="Optionally pass a HE peak that exceeds this absolute area. "
+             "(if performing a hard veto, can keep a few statistics.)"),
 
     # PMT pulse processing options
     strax.Option(
@@ -174,13 +179,15 @@ class PulseProcessing(strax.Plugin):
         pulse_counts['endtime'] = end
 
         if len(r) and self.hev_enabled:
+
             r, r_vetoed, veto_regions = software_he_veto(
                 r, self.to_pe, end,
                 area_threshold=self.config['tail_veto_threshold'],
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
+                pass_veto_extend=self.config['tail_veto_pass_extend'],
                 pass_veto_fraction=self.config['tail_veto_pass_fraction'],
-                pass_veto_extend=self.config['tail_veto_pass_extend'])
+                max_veto_value=self.config['max_veto_value'])
 
             # In the future, we'll probably want to sum the waveforms
             # inside the vetoed regions, so we can still save the "peaks".
@@ -261,7 +268,7 @@ def software_he_veto(records, to_pe, chunk_end,
                      veto_length=int(3e6),
                      veto_res=int(1e3),
                      pass_veto_fraction=0.01,
-                     pass_veto_extend=3):
+                     max_veto_value=None):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
 
@@ -285,6 +292,8 @@ def software_he_veto(records, to_pe, chunk_end,
     trigger veto passing of further peaks
     :param pass_veto_extend: samples to extend (left and right) the pass veto
     regions.
+    :param max_veto_value: if not None, pass peaks that exceed this area
+    no matter what.
     """
     veto_res = int(veto_res)
     if veto_res > np.iinfo(np.int16).max:
@@ -339,9 +348,11 @@ def software_he_veto(records, to_pe, chunk_end,
     # For this we compute a rough sum waveform (at low resolution,
     # without looping over the pulse data)
     rough_sum(regions, records, to_pe, veto_n, veto_res)
-    regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
-
-    pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
+    if max_veto_value is not None:
+        pass_veto = strax.find_hits(regions, min_amplitude=max_veto_value)
+    else:
+        regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
+        pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
 
     # 4. Extend these by a few samples and inverse to find veto regions
     regions['data'] = 1
@@ -358,7 +369,6 @@ def software_he_veto(records, to_pe, chunk_end,
     # 5. Apply the veto and return results
     veto_mask = strax.fully_contained_in(records, veto) == -1
     return tuple(list(mask_and_not(records, veto_mask)) + [veto])
-
 
 @numba.njit(cache=True, nogil=True)
 def rough_sum(regions, records, to_pe, n, dt):
