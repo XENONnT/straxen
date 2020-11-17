@@ -69,7 +69,7 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
 
 FIXED_TO_PE = {
     # just some dummy placeholder for nT gains
-    'gain_placeholder': np.repeat(0.001, 494)
+    'gain_placeholder': np.repeat(0.0085, 494)
 }
 
 @export
