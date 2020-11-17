@@ -260,9 +260,10 @@ class SCADAInterface:
     def find_pmt_names(self, pmts=None):
         """
         Function which returns a list of PMT parameter names to be
-        called in SCADAInterface.get_scada_values.
+        called in SCADAInterface.get_scada_values. The names refer to
+        the high voltage of the PMTs, not their current.
 
-        Thanks to Giovanni who provided the file.
+        Thanks to Hagar and Giovanni who provided the file.
 
         :param pmts: Optional parameter to specify which PMT parameters
             should be returned. Can be either a list or array of channels
