@@ -4,9 +4,9 @@ import pandas as pd
 import numba
 import numpy as np
 import warnings
+import json
 
 import strax
-import straxen
 
 from straxen import uconfig
 export, __all__ = strax.exporter()
@@ -29,6 +29,8 @@ class SCADAInterface:
                                       username=uconfig.get('scada', 'username'),
                                       api_key=uconfig.get('scada', 'api_key')
                                       )
+            self.pmt_file = uconfig.get('scada', 'pmt_parameter_names')
+
         except ValueError:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
                              ' config. SCADAInterface cannot be used.')
@@ -250,6 +252,33 @@ class SCADAInterface:
     def find_scada_parameter(self):
         # TODO: Add function which returns SCADA sensor names by short Name
         raise NotImplementedError('Feature not implemented yet.')
+
+
+    def find_pmt_names(self, pmts=None):
+        """
+        Function which returns a list of PMT parameter names to be
+        called in SCADAInterface.get_scada_values.
+
+        Thanks to Giovanni who provided the file.
+
+        :param pmts: Optional parameter to specify which PMT parameters
+            should be returned. Can be either a list or array of channels
+            or just a single one.
+        :return: dictionary containing short names as keys and scada
+            parameter names as values.
+        """
+        with open(self.pmt_file) as f:
+            data = json.load(f)
+
+        if isinstance(pmts, np.ndarray):
+            # convert to a simple list since otherwise we get ambiguous errors
+            pmts = list(pmts)
+
+        if pmts:
+            res = {k: v for k, v in data.items() if int(k[3:]) in pmts}
+        else:
+            res = data
+        return res
 
 
 @export
