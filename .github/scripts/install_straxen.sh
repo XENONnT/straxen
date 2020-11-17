@@ -1,4 +1,8 @@
 #!/bin/bash
 
-cd straxen
+cd straxen/straxen
+ls
+
 python setup.py install
+
+cd ~
