@@ -29,7 +29,11 @@ class SCADAInterface:
                                       username=uconfig.get('scada', 'username'),
                                       api_key=uconfig.get('scada', 'api_key')
                                       )
-            self.pmt_file = uconfig.get('scada', 'pmt_parameter_names')
+
+            # Better to cache the file since is not large:
+            with open(self.uconfig.get('scada', 'pmt_parameter_names')) as f:
+                self.pmt_file = json.load(f)
+
 
         except ValueError:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
@@ -253,7 +257,6 @@ class SCADAInterface:
         # TODO: Add function which returns SCADA sensor names by short Name
         raise NotImplementedError('Feature not implemented yet.')
 
-
     def find_pmt_names(self, pmts=None):
         """
         Function which returns a list of PMT parameter names to be
@@ -267,17 +270,15 @@ class SCADAInterface:
         :return: dictionary containing short names as keys and scada
             parameter names as values.
         """
-        with open(self.pmt_file) as f:
-            data = json.load(f)
 
         if isinstance(pmts, np.ndarray):
             # convert to a simple list since otherwise we get ambiguous errors
             pmts = list(pmts)
 
         if pmts:
-            res = {k: v for k, v in data.items() if int(k[3:]) in pmts}
+            res = {k: v for k, v in self.pmt_file.items() if int(k[3:]) in pmts}
         else:
-            res = data
+            res = self.pmt_file
         return res
 
 
