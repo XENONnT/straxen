@@ -32,6 +32,10 @@ jobs:
         RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
         RUNDB_API_USER: ${{ secrets.RUNDB_API_USER }}
         RUNDB_API_PASSWORD: ${{ secrets.RUNDB_API_PASSWORD }}
+	PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
+	PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
+	PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
+	PYMONGO_DATABSE: ${{ secrets.PYMONGO_DATABASE }}
     - name: Update context
       run: |
            python .github/scripts/update-context-collection.py
