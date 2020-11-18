@@ -146,6 +146,9 @@ def main(args):
         st.storage += [
             strax.DataDirectory('./strax_data')]
     if args.add_folder != '':
+        for sf in st.storage:
+            # Set all others to read only
+            sf.readonly = True
         if os.path.exists(args.add_folder):
             st.storage += [strax.DataDirectory(args.add_folder)]
 
