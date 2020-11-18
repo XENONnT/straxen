@@ -158,7 +158,7 @@ class CorrectionsManagementServices():
         :param model_type: Choose either to_pe_model or to_pe_constant
         :param global_version: global version or a constant value or an array (if
         model_type == to_pe_constant)
-        :param cacheable_versions: versions that are allowed to be cashed in ./resource_cache
+        :param cacheable_versions: versions that are allowed to be cached in ./resource_cache
         :param gain_dtype: dtype of the gains to be returned as array
         :return: array of pmt gains to PE values
         """
@@ -171,7 +171,6 @@ class CorrectionsManagementServices():
                 cache_name = cacheable_naming(run_id, model_type, global_version)
                 try:
                     to_pe = straxen.get_resource(cache_name, fmt='npy')
-                    print(f'using {cache_name}')
                 except (ValueError, FileNotFoundError):
                     pass
 
@@ -269,7 +268,7 @@ class CorrectionsManagementServices():
 
 
 def cacheable_naming(*args, format='.npy', base='./resource_cache/'):
-    """Convert args to consistent naming convention for array to be cashed"""
+    """Convert args to consistent naming convention for array to be cached"""
     if not os.path.exists(base):
         try:
             os.mkdir(base)
