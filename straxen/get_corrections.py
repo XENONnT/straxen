@@ -52,9 +52,12 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         if model_conf in FIXED_TO_PE:
             return FIXED_TO_PE[model_conf]
 
-        # Uniform gain, specified as a to_pe factor
-        to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
-
+        try:
+            # Uniform gain, specified as a to_pe factor
+            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
+        except np.core._exceptions.UFuncTypeError as e:
+            raise(str(e) +
+                  f'\nTried multiplying by {model_conf}. Insert a number instead.')
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
