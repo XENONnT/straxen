@@ -149,9 +149,8 @@ class CorrectionsManagementServices():
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
-        :param model_type: Choose either to_pe_model or to_pe_constant
-        :param global_version: global version or a constant value or an array (if
-        model_type == to_pe_constant)
+        :param model_type: to_pe_model (gain model)
+        :param global_version: global version
         :param gain_dtype: dtype of the gains to be returned as array
         :return: array of pmt gains to PE values
         """
