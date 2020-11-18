@@ -13,7 +13,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='0.9.2',
+                 version='0.12.3',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',

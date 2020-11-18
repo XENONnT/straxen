@@ -32,3 +32,9 @@ from .nveto_pulse_processing import *
 
 from . import nveto_hitlets
 from .nveto_hitlets import *
+
+from . import acqmon_processing
+from .acqmon_processing import *
+
+from . import online_monitor
+from .online_monitor import *

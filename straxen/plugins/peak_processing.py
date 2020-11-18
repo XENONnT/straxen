@@ -9,14 +9,19 @@ import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
-
+from .pulse_processing import  HE_PREAMBLE
 
 @export
 @strax.takes_config(
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"))
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.7"
+    """
+    Compute the basic peak-properties, thereby dropping structured
+    arrays.
+    NB: This plugin can therefore be loaded as a pandas DataFrame.
+    """
+    __version__ = "0.0.8"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -67,8 +72,6 @@ class PeakBasics(strax.Plugin):
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
 
-        r['center_time'] = p['time'] + self.compute_center_times(peaks)
-
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Negative-area peaks get NaN AFT
@@ -76,6 +79,10 @@ class PeakBasics(strax.Plugin):
         r['area_fraction_top'][m] = area_top[m]/p['area'][m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
+        
+        # Negative or zero-area peaks have centertime at startime
+        r['center_time'] = p['time']
+        r['center_time'][m] += self.compute_center_times(peaks[m])
         return r
 
     @staticmethod
@@ -91,7 +98,8 @@ class PeakBasics(strax.Plugin):
 
 
 @export
-class PeakBasicsHe(PeakBasics):
+class PeakBasicsHighEnergy(PeakBasics):
+    __doc__ = HE_PREAMBLE + PeakBasics.__doc__
     __version__ = '0.0.1'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
@@ -122,6 +130,7 @@ class PeakBasicsHe(PeakBasics):
                  help="Number of top PMTs")
 )
 class PeakPositions(strax.Plugin):
+    """Compute the S2 (x,y)-position based on a neural net."""
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
              ('y', np.float32,
@@ -208,6 +217,10 @@ class PeakPositions(strax.Plugin):
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
+    """
+    Look for peaks around a peak to determine how many peaks are in
+    proximity (in time) of a peak.
+    """
     depends_on = ('peak_basics',)
     dtype = [
         ('n_competing', np.int32,

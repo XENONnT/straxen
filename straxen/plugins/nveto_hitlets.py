@@ -39,12 +39,25 @@ export, __all__ = strax.exporter()
                       "channel number."),
     strax.Option(
         'to_pe_file_nv',
-        default='/dali/lgrandi/wenz/strax_data/HdMdata_strax_v0_9_0/swt_gains.npy',  # noqa
+        default=straxen.aux_repo + '/c5800ea686f06f0149af30b2db9c08b6216ecb36/n_veto_gains.npy?raw=true',  # noqa
         help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
 )
 class nVETOHitlets(strax.Plugin):
     """
     Plugin which computes the nveto hitlets and their parameters.
+    
+    Hitlets are an extension of regular hits. They include the left
+    and right extension. The plugin does the following:
+        1. Generate hitlets which includes these sub-steps:
+            * Apply left and right hit extension and concatenate
+            overlapping hits.
+            * Generate temp. hitelts and look for their waveforms in
+            their corresponding records.
+            * Split hitlets if they satisfy the set criteria.
+        2. Compute the properties of the hitlets.
+
+    Note:
+        Hitlets are getting chopped if extended in not recorded regions.
     """
     __version__ = '0.0.2'
 
@@ -125,8 +138,8 @@ def drop_data_field(old_hitlets, new_hitlets):
     :param new_hitlets:
     :return:
     """
-    n = len(old_hitlets)
-    for i in range(n):
+    n_hitlets = len(old_hitlets)
+    for i in range(n_hitlets):
         o = old_hitlets[i]
         n = new_hitlets[i]
 
