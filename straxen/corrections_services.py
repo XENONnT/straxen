@@ -7,7 +7,7 @@ import configparser
 import strax
 import straxen
 from straxen import uconfig
-
+from threading import Thread
 export, __all__ = strax.exporter()
 
 
