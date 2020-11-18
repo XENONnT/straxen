@@ -268,6 +268,7 @@ def software_he_veto(records, to_pe, chunk_end,
                      veto_length=int(3e6),
                      veto_res=int(1e3),
                      pass_veto_fraction=0.01,
+                     pass_veto_extend=3,
                      max_veto_value=None):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
