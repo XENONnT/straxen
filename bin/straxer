@@ -91,6 +91,10 @@ def parse_args():
         '--only_strax_data',
         action='store_true',
         help='Only use ./strax_data (if not on dali).')
+    parser.add_argument(
+        '--add_folder',
+        default='',
+        help='Also add folder to st.storage')
     return parser.parse_args()
 
 
@@ -141,19 +145,25 @@ def main(args):
         #  should we check that it doesn't exist already?
         st.storage += [
             strax.DataDirectory('./strax_data')]
+    if args.add_folder != '':
+        if os.path.exists(args.add_folder):
+            st.storage += [strax.DataDirectory(args.add_folder)]
 
     if st.is_stored(args.run_id, args.target):
-        print("This data is already available.")
+        logging.info("This data is already available.")
         return 1
 
-    md = st.run_metadata(args.run_id)
-    t_start = md['start'].replace(tzinfo=datetime.timezone.utc).timestamp()
-    t_end = md['end'].replace(tzinfo=datetime.timezone.utc).timestamp()
+    try:
+        md = st.run_metadata(args.run_id)
+        t_start = md['start'].replace(tzinfo=datetime.timezone.utc).timestamp()
+        t_end = md['end'].replace(tzinfo=datetime.timezone.utc).timestamp()
+        st.config['run_start_time'] = md['start'].timestamp()
+        st.context_config['free_options'] = tuple(
+            list(st.context_config['free_options']) + ['run_start_time'])
+    except strax.RunMetadataNotAvailable:
+        t_start, t_end = st.estimate_run_start_and_end(args.run_id, 'raw_records')
+        t_start, t_end = t_start/1e9, t_end/1e9
     run_duration = t_end - t_start
-
-    st.config['run_start_time'] = md['start'].timestamp()
-    st.context_config['free_options'] = tuple(
-        list(st.context_config['free_options']) + ['run_start_time'])
 
     process = psutil.Process(os.getpid())
     peak_ram = 0
@@ -176,7 +186,7 @@ def main(args):
         peak_ram = max(mem_mb, peak_ram)
 
         if not len(d):
-            print(f"Got chunk {i}, but it is empty! Using {mem_mb:.1f} MB RAM.")
+            logging.info(f"Got chunk {i}, but it is empty! Using {mem_mb:.1f} MB RAM.")
             continue
 
         # Compute detector/data time left
@@ -197,7 +207,7 @@ def main(args):
 
         print(msg, flush=True)
 
-    print(f"\nStraxer is done! "
+    logging.info(f"\nStraxer is done! "
           f"We took {time.time() - clock_start:.1f} seconds, "
           f"peak RAM usage was around {peak_ram:.1f} MB.")
 
@@ -206,7 +216,12 @@ def json_to_dict(path:str):
     if not os.path.exists(path):
         raise FileNotFoundError(f'{path} does not exist')
     with open(path, mode='r') as f:
-        return json.loads(f.read())
+        res = json.loads(f.read())
+    for k, v in res.copy().items():
+        if type(v) == list:
+            # Remove lists to tuples
+            res[k] = tuple(_v if type(_v) != list else tuple(_v) for _v in v)
+    return res
 
 
 if __name__ == '__main__':
