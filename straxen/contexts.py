@@ -138,6 +138,7 @@ def xenonnt_simulation(output_folder='./strax_data'):
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
                     fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.common_opts)
@@ -280,6 +281,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config=straxen.aux_repo + '1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
             detector='XENON1T',
+            check_raw_record_overlaps=False,
             **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFax1T)
