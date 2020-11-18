@@ -10,6 +10,7 @@ import os.path as osp
 import platform
 import psutil
 import sys
+import json
 
 
 def parse_args():
@@ -29,6 +30,9 @@ def parse_args():
         '--target',
         default='event_info',
         help='Target final data type to produce')
+    parser.add_argument(
+        '--config_from_json', default='',
+        help='Use a json-file to load the config from')
     parser.add_argument(
         '--from_scratch',
         action='store_true',
@@ -108,6 +112,9 @@ def main(args):
     st = getattr(straxen.contexts, args.context)()
     if args.diagnose_sorting:
         st.set_config(dict(diagnose_sorting=True))
+    if args.config_from_json != '':
+        conf = json_to_dict(args.config_from_json)
+        st.set_config(conf)
     st.context_config['allow_multiprocess'] = args.multiprocess
     st.context_config['allow_shm'] = args.shm
     st.context_config['allow_lazy'] = not (args.notlazy is True)
@@ -116,6 +123,8 @@ def main(args):
     st.context_config['max_messages'] = args.max_messages
     if args.build_lowlevel:
         st.context_config['forbid_creation_of'] = tuple()
+    else:
+        st.context_config['forbid_creation_of'] = straxen.DAQReader.provides
 
     if args.from_scratch:
         for q in st.storage:
@@ -125,10 +134,14 @@ def main(args):
                                 overwrite='always',
                                 provide_run_metadata=False))
     if args.only_strax_data:
-        st.storage = [
-            strax.DataDirectory('./strax_data',
-                                # overwrite='always',
-                                provide_run_metadata=True)]
+        for sf in st.storage:
+            # Set all others to read only
+            sf.readonly = True
+        # TODO
+        #  should we check that it doesn't exist already?
+        st.storage += [
+            strax.DataDirectory('./strax_data')]
+
     if st.is_stored(args.run_id, args.target):
         print("This data is already available.")
         return 1
@@ -187,6 +200,13 @@ def main(args):
     print(f"\nStraxer is done! "
           f"We took {time.time() - clock_start:.1f} seconds, "
           f"peak RAM usage was around {peak_ram:.1f} MB.")
+
+
+def json_to_dict(path:str):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'{path} does not exist')
+    with open(path, mode='r') as f:
+        return json.loads(f.read())
 
 
 if __name__ == '__main__':
