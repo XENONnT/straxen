@@ -145,9 +145,6 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
-    # TODO create a propper dict for 'to_pe_constant' and 'global_version' as
-    #  the 'global_version' is not a version but an array/float for
-    #  model_type = 'to_pe_constant'
     def get_pmt_gains(self, run_id, model_type, global_version, gain_dtype = np.float32):
         """
         Smart logic to return pmt gains to PE values.
@@ -167,24 +164,6 @@ class CorrectionsManagementServices():
                         f' for {run_id} in the gain model with version '
                         f'{global_version}, please set constant values for '
                         f'{run_id}')
-
-        elif model_type == 'to_pe_constant':
-            n_tpc_pmts = straxen.n_tpc_pmts
-            if not self.is_nt:
-                # TODO can we prevent these kind of hard codes using the context?
-                n_tpc_pmts = straxen.contexts.x1t_common_config['n_tpc_pmts']
-
-            if not isinstance(global_version, (float, np.ndarray, int)):
-                raise ValueError(f'User must specify a model type {model_type} '
-                                 f'and provide a float/array to be used. Got: '
-                                 f'{type(global_version)}')
-
-            # Generate an array of values and multiply by the 'global_version'
-            to_pe = np.ones(n_tpc_pmts, dtype=gain_dtype) * global_version
-            if len(to_pe) != n_tpc_pmts:
-                raise ValueError(f'to_pe length does not match {n_tpc_pmts}. '
-                                 f'Check that {global_version} is either of '
-                                 f'length {n_tpc_pmts} or a float')
 
         else:
             raise ValueError(f'{model_type} not implemented for to_pe values')

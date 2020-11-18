@@ -49,8 +49,6 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         to_pe = x[run_index[0]]['to_pe']
 
     elif model_type == 'to_pe_constant':
-        warn("to_pe_constant_run will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
         if model_conf in FIXED_TO_PE:
             return FIXED_TO_PE[model_conf]
 
@@ -69,7 +67,7 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
 
 FIXED_TO_PE = {
     # just some dummy placeholder for nT gains
-    'gain_placeholder': np.repeat(0.001, 494)
+    'gain_placeholder': np.repeat(0.0085, 494)
 }
 
 @export
