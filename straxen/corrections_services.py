@@ -89,7 +89,8 @@ class CorrectionsManagementServices():
     #  entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
-    def _get_correction(self, run_id, correction, global_version):
+    def _get_correction(self, run_id, correction, global_version,
+                        correction_dtype=np.float64):
         """
         Smart logic to get correction from DB
         :param run_id: run id from runDB
@@ -101,19 +102,31 @@ class CorrectionsManagementServices():
         df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
 
         try:
-            values = []
-            for it_correction, version in df_global.iloc[-1][global_version].items():
-                if correction in it_correction:
-                    df = self.interface.read(it_correction)
-                    if global_version == 'ONLINE':
-                        # We don't want to have different versions based
-                        # on when something was processed therefore
-                        # don't interpolate but forward fill.
-                        df = self.interface.interpolate(df, when, how='fill')
-                    else:
-                        df = self.interface.interpolate(df, when)
-                    values.append(df.loc[df.index == when, version].values[0])
-            corrections = np.asarray(values)
+            items = df_global.iloc[-1][global_version].items()
+            # Remove all corrections that do not contain the string
+            # correction (e.g. 'pmt' in 'pmt_209_gain_xenon1t')
+            items = [(k, v) for (k, v) in items if correction in k]
+
+            if len(items) == 1:
+                # For a single item we don't use multi-threading.
+                value_buffer = np.asarray([self._read_and_interpolate(*items[0], when)])
+            else:
+                # Let's thread out multiple queries. Each of the threads
+                # fills it's associated index in the buffer.
+                value_buffer = np.zeros(len(items), dtype=correction_dtype)
+                threads = []
+                for c_idx, (it_correction, version) in enumerate(items):
+                    t = Thread(target=self._read_and_interpolate,
+                               args=(it_correction, version,  when),
+                               kwargs=dict(buffer=value_buffer,
+                                           buffer_idx=c_idx),
+                               name=f'get_{it_correction}_{version}',)
+                    t.start()
+                    threads.append(t)
+                # Wait for all of the threads to finish
+                [t.join() for t in threads]
+            # just making the correction explicit here
+            corrections = value_buffer
         except KeyError:
             raise ValueError(f'Global version {global_version} not found for correction {correction}')
 
@@ -122,6 +135,29 @@ class CorrectionsManagementServices():
             return float(corrections)
         else:
             return corrections
+
+    def _read_and_interpolate(self, it_correction, version,  when, buffer=None, buffer_idx=None):
+        """
+
+        :param it_correction: correction item e.g. pmt_209_gain_xenon1t
+        :param version: version of correction e.g. ONLINE or v1
+        :param when: datetime object at which to interpolate
+        :param buffer: optional, if provided will fill value at buffer_idx
+        :param buffer_idx: index where tho store result in the buffer
+        :return: single value (if no buffer is specified, if there is a
+        buffer, fill it).
+        """
+        itp_kwargs = {}
+        if version == "ONLINE":
+            itp_kwargs['how'] = 'fill'
+        df = self.interface.read(it_correction)
+        df = self.interface.interpolate(df, when, **itp_kwargs)
+        if buffer is None:
+            return df.loc[df.index == when, version].values[0]
+        elif buffer_idx is not None:
+            buffer[buffer_idx] = (df.loc[df.index == when, version].values[0])
+        else:
+            raise ValueError('Provided "buffer" but no "buffer_idx" to fill at')
 
     def get_elife(self, run_id, model_type, global_version):
         """
