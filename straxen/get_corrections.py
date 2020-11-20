@@ -70,10 +70,10 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
 
 FIXED_TO_PE = {
     # just some dummy placeholder for nT gains
-    'gain_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts)
-    'adc_tpc' = np.ones(straxen.n_tpc_pmts),
-    'adc_mv' = np.ones(straxen.n_muveto_pmts),
-    'adc_nv' = np.ones(straxen.n_nveto_pmts)
+    'gain_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
+    'adc_tpc': np.ones(straxen.n_tpc_pmts),
+    'adc_mv': np.ones(straxen.n_mveto_pmts),
+    'adc_nv': np.ones(straxen.n_nveto_pmts)
 }
 
 @export
