@@ -72,10 +72,14 @@ class nVETOHitlets(strax.Plugin):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model_nv'],
-                                       n_tpc_pmts=straxen.n_nveto_pmts)
+        to_pe = straxen.get_to_pe(self.run_id,
+                                  self.config['gain_model_nv'],
+                                  n_tpc_pmts=straxen.n_nveto_pmts)
         self.channel = self.config['channel_map']['nveto']
+        
+        # Create to_pe array of size max channel:
+        self.to_pe = np.zeros(self.channel[1]+1, dtype=np.float32)
+        self.to_pe[self.channel[0]:] = to_pe[:]
 
     def compute(self, records_nv, start, end):
         # Search again for hits in records:
@@ -189,7 +193,7 @@ def drop_data_field(old_hitlets, new_hitlets):
         'entropy_square_data_mv',
         default=False, track=True, child_option=True,
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
-    strax.Option('gain_model_mv',
+    strax.Option('gain_model_mv', child_option=True,
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
@@ -204,10 +208,14 @@ class muVETOHitlets(nVETOHitlets):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model_mv'],
-                                       n_tpc_pmts=straxen.n_mveto_pmts)
-        self.channel = self.config['channel_map']['he']
+        to_pe = straxen.get_to_pe(self.run_id,
+                                  self.config['gain_model_mv'],
+                                  n_tpc_pmts=straxen.n_mveto_pmts)
+        self.channel = self.config['channel_map']['mv']
+        
+        # Create to_pe array of size max channel:
+        self.to_pe = np.zeros(self.channel[1]+1, dtype=np.float32)
+        self.to_pe[self.channel[0]:] = to_pe[:]
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)
