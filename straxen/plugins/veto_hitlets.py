@@ -7,6 +7,8 @@ import straxen
 export, __all__ = strax.exporter()
 
 
+MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+
 @export
 @strax.takes_config(
     strax.Option(
@@ -197,6 +199,7 @@ def drop_data_field(old_hitlets, new_hitlets):
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
+    __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
     __version__ = '0.0.2'
     depends_on = 'records_mv'
 
