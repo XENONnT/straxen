@@ -58,7 +58,7 @@ class nVETOHitlets(strax.Plugin):
     Note:
         Hitlets are getting chopped if extended in not recorded regions.
     """
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -193,7 +193,7 @@ def drop_data_field(old_hitlets, new_hitlets):
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = 'records_mv'
 
     provides = 'hitlets_mv'
