@@ -23,10 +23,11 @@ common_opts = dict(
         'start', 'end', 'livetime', 'mode'))
 
 xnt_common_config = dict(
-    n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
+    gain_mode_nv=("to_pe_constant", "adc_nv"),
+    gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
