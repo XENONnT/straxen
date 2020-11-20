@@ -75,17 +75,17 @@ class nVETOHitlets(strax.Plugin):
     def setup(self):
         # TODO: Unify with TPC and add adc thresholds
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
+        self.channel = self.config['channel_map']['nveto']
 
     def compute(self, records_nv, start, end):
         # Search again for hits in records:
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
-
         # Merge concatenate overlapping  within a channel. This is important
         # in case hits were split by record boundaries. In case we
         # accidentally concatenate two PMT signals we split them later again.
         hits = strax.concat_overlapping_hits(hits,
                                              self.config['save_outside_hits_nv'],
-                                             self.config['channel_map']['nveto'],
+                                             self.channel,
                                              start,
                                              end)
         hits = strax.sort_by_time(hits)
@@ -208,6 +208,7 @@ class muVETOHitlets(nVETOHitlets):
     def setup(self):
         # TODO: Unify with TPC and add adc thresholds
         self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
+        self.channel = self.config['channel_map']['he']
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)
