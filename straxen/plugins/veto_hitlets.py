@@ -6,6 +6,7 @@ import strax
 import straxen
 export, __all__ = strax.exporter()
 
+
 @export
 @strax.takes_config(
     strax.Option(
@@ -37,10 +38,8 @@ export, __all__ = strax.exporter()
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
-    strax.Option(
-        'to_pe_file_nv',
-        default=straxen.aux_repo + '/c5800ea686f06f0149af30b2db9c08b6216ecb36/n_veto_gains.npy?raw=true',  # noqa
-        help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
+    strax.Option('gain_model_nv',
+             help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class nVETOHitlets(strax.Plugin):
     """
@@ -73,8 +72,9 @@ class nVETOHitlets(strax.Plugin):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
-        # TODO: Unify with TPC and add adc thresholds
-        self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model_nv'],
+                                       n_tpc_pmts=straxen.n_nveto_pmts)
         self.channel = self.config['channel_map']['nveto']
 
     def compute(self, records_nv, start, end):
@@ -189,10 +189,8 @@ def drop_data_field(old_hitlets, new_hitlets):
         'entropy_square_data_mv',
         default=False, track=True, child_option=True,
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
-    strax.Option(
-        'to_pe_file_mv', child_option=True,
-        default=straxen.aux_repo + '/c5800ea686f06f0149af30b2db9c08b6216ecb36/n_veto_gains.npy?raw=true',  # noqa
-        help='URL of the to_pe conversion factors. Expect gains in units ADC/sample.'),
+    strax.Option('gain_model_mv',
+             help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
     __version__ = '0.0.1'
@@ -206,8 +204,9 @@ class muVETOHitlets(nVETOHitlets):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
-        # TODO: Unify with TPC and add adc thresholds
-        self.to_pe = straxen.get_resource(self.config['to_pe_file_nv'], fmt='npy')
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model_mv'],
+                                       n_tpc_pmts=straxen.n_mveto_pmts)
         self.channel = self.config['channel_map']['he']
 
     def compute(self, records_mv, start, end):
