@@ -34,6 +34,9 @@ n_tpc_pmts = 494
 n_top_pmts = 253
 n_hard_aqmon_start = 800
 
+n_nveto_pmts = 120
+n_muveto_pmts = 84
+
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
 # it's needed in analyses
