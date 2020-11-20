@@ -81,6 +81,7 @@ class DAQReader(strax.Plugin):
         'raw_records_aqmon',
         'raw_records_nv',  # nveto raw_records (will not be stored long term)
         'raw_records_aqmon_nv',
+        'raw_records_aux_mv',
         'raw_records_mv',    # mveto has to be last due to lineage
     )
 
