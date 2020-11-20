@@ -3,6 +3,8 @@ import numpy as np
 import numba
 export, __all__ = strax.exporter()
 
+MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+
 @export
 @strax.takes_config(
     strax.Option(
@@ -152,6 +154,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
 )
 class muVETOPulseProcessing(nVETOPulseProcessing):
+    __doc__ = MV_PREAMBLE + nVETOPulseProcessing.__doc__
     __version__ = '0.0.1'
     depends_on = 'raw_records_mv'
     provides = 'records_mv'
