@@ -22,7 +22,12 @@ export, __all__ = strax.exporter()
 )
 class nVETOPulseProcessing(strax.Plugin):
     """
-    nVETO equivalent of pulse processing. Not much more to say about.
+    nVETO equivalent of pulse processing. The following steps are
+    applied:
+
+        1. Flip, baseline and integrate waveforms.
+        2. Find hits and apply ZLE
+        3. Remove empty fragments.
     """
     __version__ = '0.0.5'
 
