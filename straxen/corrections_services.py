@@ -155,9 +155,8 @@ class CorrectionsManagementServices():
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
-        :param model_type: Choose either to_pe_model or to_pe_constant
-        :param global_version: global version or a constant value or an array (if
-        model_type == to_pe_constant)
+        :param model_type: to_pe_model (gain model)
+        :param global_version: global version
         :param cacheable_versions: versions that are allowed to be cached in ./resource_cache
         :param gain_dtype: dtype of the gains to be returned as array
         :return: array of pmt gains to PE values
@@ -184,24 +183,6 @@ class CorrectionsManagementServices():
                         f' for {run_id} in the gain model with version '
                         f'{global_version}, please set constant values for '
                         f'{run_id}')
-
-        elif model_type == 'to_pe_constant':
-            n_tpc_pmts = straxen.n_tpc_pmts
-            if not self.is_nt:
-                # TODO can we prevent these kind of hard codes using the context?
-                n_tpc_pmts = straxen.contexts.x1t_common_config['n_tpc_pmts']
-
-            if not isinstance(global_version, (float, np.ndarray, int)):
-                raise ValueError(f'User must specify a model type {model_type} '
-                                 f'and provide a float/array to be used. Got: '
-                                 f'{type(global_version)}')
-
-            # Generate an array of values and multiply by the 'global_version'
-            to_pe = np.ones(n_tpc_pmts, dtype=gain_dtype) * global_version
-            if len(to_pe) != n_tpc_pmts:
-                raise ValueError(f'to_pe length does not match {n_tpc_pmts}. '
-                                 f'Check that {global_version} is either of '
-                                 f'length {n_tpc_pmts} or a float')
 
         else:
             raise ValueError(f'{model_type} not implemented for to_pe values')
