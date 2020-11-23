@@ -55,7 +55,6 @@ forbidden_plugins = tuple([p for p in
                            straxen.daqreader.DAQReader.provides
                            if p not in DummyRawRecords.provides])
 
-
 def _run_plugins(st,
                  make_all=False,
                  run_id=run_id,
@@ -89,7 +88,7 @@ def _run_plugins(st,
         if make_all:
             # Now make sure we can get some data for all plugins
             for p in list(st._plugin_class_registry.keys()):
-                if p not in forbidden_plugins:
+                if p not in forbidden_plugins and not p.__class__.__name__.endswith('_nv'):
                     st.get_array(run_id=run_id,
                                  targets=p,
                                  **proces_kwargs)
