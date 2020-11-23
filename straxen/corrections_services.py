@@ -3,11 +3,12 @@
 import pytz
 import numpy as np
 from functools import lru_cache
-import configparser
 import strax
-import straxen
-from straxen import uconfig
-import utilix
+try:
+    import utilix
+except (RuntimeError, FileNotFoundError):
+    # We might be on a travis job
+    pass
 export, __all__ = strax.exporter()
 
 
