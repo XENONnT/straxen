@@ -23,7 +23,10 @@ class DummyRawRecords(strax.Plugin):
     provides = ('raw_records',
                 'raw_records_he',
                 'raw_records_nv',
-                'raw_records_aqmon')
+                'raw_records_aqmon',
+                'raw_records_aux_mv',
+                'raw_records_mv'
+                )
     parallel = 'process'
     depends_on = tuple()
     data_kind = immutabledict(zip(provides, provides))
