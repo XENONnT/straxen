@@ -88,7 +88,7 @@ def _run_plugins(st,
         if make_all:
             # Now make sure we can get some data for all plugins
             for p in list(st._plugin_class_registry.keys()):
-                if p not in forbidden_plugins and not p.__class__.__name__.endswith('_nv'):
+                if p not in forbidden_plugins:
                     st.get_array(run_id=run_id,
                                  targets=p,
                                  **proces_kwargs)
