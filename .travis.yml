@@ -18,6 +18,7 @@ install:
 script:
 - python setup.py test
 - pip install coveralls
+- coverage run setup.py test
 deploy:
   provider: pypi
   skip_existing: true
