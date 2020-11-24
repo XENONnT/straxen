@@ -140,9 +140,6 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
-    # TODO create a propper dict for 'to_pe_constant' and 'global_version' as
-    #  the 'global_version' is not a version but an array/float for
-    #  model_type = 'to_pe_constant'
     def get_pmt_gains(self, run_id, model_type, global_version,
                       cacheable_versions=('ONLINE',),
                       gain_dtype=np.float32):
@@ -151,7 +148,8 @@ class CorrectionsManagementServices():
         :param run_id: run id from runDB
         :param model_type: to_pe_model (gain model)
         :param global_version: global version
-        :param cacheable_versions: versions that are allowed to be cached in ./resource_cache
+        :param cacheable_versions: versions that are allowed to be
+        cached in ./resource_cache
         :param gain_dtype: dtype of the gains to be returned as array
         :return: array of pmt gains to PE values
         """
