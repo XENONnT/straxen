@@ -3,12 +3,14 @@
 import pytz
 import numpy as np
 from functools import lru_cache
-import configparser
 import strax
+try:
+    import utilix
+except (RuntimeError, FileNotFoundError):
+    # We might be on a travis job
+    pass
 import straxen
-from straxen import uconfig
 import os
-
 export, __all__ = strax.exporter()
 
 
@@ -30,34 +32,26 @@ class CorrectionsManagementServices():
         :param password: DB password
         :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
-        # TODO avoid duplicated code with the RunDB.py?
-        # Basic setup
-        if username is not None:
-            self.username = username
-        else:
-            self.username = uconfig.get('RunDB', 'pymongo_user')
-        if password is not None:
-            self.password = password
-        else:
-            self.password = uconfig.get('RunDB', 'pymongo_password')
 
-        if mongo_url is None:
-            mongo_url = uconfig.get('RunDB', 'pymongo_url')
+        mongo_kwargs = {'url': mongo_url,
+                        'user': username,
+                        'password': password,
+                        'database': 'corrections'}
+        corrections_collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
+
+        # Do not delete the client!
+        self.client = corrections_collection.database.client
 
         # Setup the interface
         self.interface = strax.CorrectionsInterface(
-            host=f'mongodb://{mongo_url}',
-            username=self.username,
-            password=self.password,
+            self.client,
             database_name='corrections')
-        # Use the same client as the CorrectionsInterface
-        client = self.interface.client
 
         self.is_nt = is_nt
         if self.is_nt:
-            self.collection = client['xenonnt']['runs']
+            self.collection = self.client['xenonnt']['runs']
         else:
-            self.collection = client['run']['runs_new']
+            self.collection = self.client['run']['runs_new']
 
     def __str__(self):
         return self.__repr__()
