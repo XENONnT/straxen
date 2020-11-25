@@ -55,7 +55,6 @@ forbidden_plugins = tuple([p for p in
                            straxen.daqreader.DAQReader.provides
                            if p not in DummyRawRecords.provides])
 
-
 def _run_plugins(st,
                  make_all=False,
                  run_id=run_id,
