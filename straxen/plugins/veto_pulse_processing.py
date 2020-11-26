@@ -40,6 +40,7 @@ class nVETOPulseProcessing(strax.Plugin):
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
     data_kind = 'records_nv'
+    ends_with = '_nv'
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -159,8 +160,8 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
     depends_on = 'raw_records_mv'
     provides = 'records_mv'
     data_kind = 'records_mv'
-    child_ends_with = '_mv'
-    overwrite_parents_end = '_nv'
+    ends_with = '_mv'
+    child_plugin = True
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
