@@ -67,43 +67,38 @@ def _run_plugins(st,
     """
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        try:
-            st.storage = [strax.DataDirectory(temp_dir)]
+        st.storage = [strax.DataDirectory(temp_dir)]
 
-            # As we use a temporary directory we should have a clean start
-            assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
+        # As we use a temporary directory we should have a clean start
+        assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
 
-            # Create event info
-            target = 'event_info'
-            st.make(run_id=run_id,
-                    targets=target,
-                    **proces_kwargs)
+        # Create event info
+        target = 'event_info'
+        st.make(run_id=run_id,
+                targets=target,
+                **proces_kwargs)
 
-            # The stuff should be there
-            assert st.is_stored(run_id, target), f'Could not make {target}'
+        # The stuff should be there
+        assert st.is_stored(run_id, target), f'Could not make {target}'
 
-            # I'm only going to do this for nT because:
-            #  A) Doing this many more times does not give us much more
-            #     info (everything above already worked fine)
-            #  B) Most development will be on nT, 1T may get less changes
-            #     in the near future
-            if make_all:
-                # Now make sure we can get some data for all plugins
-                for p in list(st._plugin_class_registry.keys()):
-                    if p not in forbidden_plugins:
-                        st.get_array(run_id=run_id,
-                                     targets=p,
-                                     **proces_kwargs)
+        # I'm only going to do this for nT because:
+        #  A) Doing this many more times does not give us much more
+        #     info (everything above already worked fine)
+        #  B) Most development will be on nT, 1T may get less changes
+        #     in the near future
+        if make_all:
+            # Now make sure we can get some data for all plugins
+            for p in list(st._plugin_class_registry.keys()):
+                if p not in forbidden_plugins:
+                    st.get_array(run_id=run_id,
+                                 targets=p,
+                                 **proces_kwargs)
 
-                        # Check for types that we want to save that they are stored.
-                        if (int(st._plugin_class_registry['peaks'].save_when) >
-                                int(strax.SaveWhen.TARGET)):
-                            is_stored = st.is_stored(run_id, p)
-                            assert is_stored, f"{p} did not save correctly!"
-        finally:
-            # On windows, you cannot delete the current process'
-            # working directory, so we have to chdir out first.
-            os.chdir('..')
+                    # Check for types that we want to save that they are stored.
+                    if (int(st._plugin_class_registry['peaks'].save_when) >
+                            int(strax.SaveWhen.TARGET)):
+                        is_stored = st.is_stored(run_id, p)
+                        assert is_stored, f"{p} did not save correctly!"
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
