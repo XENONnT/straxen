@@ -70,6 +70,7 @@ class nVETOHitlets(strax.Plugin):
 
     provides = 'hitlets_nv'
     data_kind = 'hitlets_nv'
+    ends_with = '_nv'
 
     dtype = strax.hitlet_dtype()
 
@@ -205,8 +206,8 @@ class muVETOHitlets(nVETOHitlets):
 
     provides = 'hitlets_mv'
     data_kind = 'hitlets_mv'
-    child_ends_with = '_mv'
-    overwrite_parents_end = '_nv'
+    ends_with = '_mv'
+    child_plugin = True
 
     dtype = strax.hitlet_dtype()
 
