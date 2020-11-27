@@ -34,6 +34,16 @@ def test_secret():
         pass
 
 
+# If one of the test below fail, perhaps these values need to be updated.
+# They were added on 27/11/2020 and may be outdated by now
+EXPECTED_OUTCOMES_TEST_SEVERAL = {
+    'n_peaks': 138,
+    'n_s1': 4,
+    'run_live_time': 0.17933107,
+    'n_events': 2
+}
+
+
 def test_several():
     """
     Test several other functions in straxen. Is kind of messy but saves
@@ -44,17 +54,34 @@ def test_several():
         try:
             print("Temporary directory is ", temp_dir)
             os.chdir(temp_dir)
-            print("Downloading test data (if needed)")
 
-            print("Get peaks")
+            print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+            print("Get peaks")
             p = st.get_array(test_run_id, 'peaks')
+
+            # Do checks on there number of peaks
+            assertion_statement = ("Got /more peaks than expected, perhaps "
+                                   "the test is outdated or clustering has "
+                                   "really changed")
+            assert np.abs(len(p) -
+                          EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
+
             print("Check live-time")
-            straxen.get_livetime_sec(st, test_run_id, things=p)
+            live_time = straxen.get_livetime_sec(st, test_run_id, things=p)
+            assertion_statement = ("Live-time calculation is wrong")
+            assert live_time == EXPECTED_OUTCOMES_TEST_SEVERAL['run_live_time'], assertion_statement
+
+            print('Check the peak_basics')
+            df = st.get_df(test_run_id, 'peak_basics')
+            assertion_statement = ("Got less/more S1s than expected, perhaps "
+                                   "the test is outdated or classification "
+                                   "has really changed.")
+            assert np.abs(np.sum(df['type'] == 1) -
+                          EXPECTED_OUTCOMES_TEST_SEVERAL['n_s1']) < 2, assertion_statement
+            df = df[:10]
 
             print("Check that we can write nice wiki dfs")
-            df = st.get_df(test_run_id, 'peak_basics')
-            df = df[:10]
             straxen.dataframe_to_wiki(df)
 
             print("Abbuse the peaks to show that _average_scada works")
@@ -63,9 +90,14 @@ def test_several():
                 p['time']/1e9,
                 p['time'],
                 1)
-
             assert len(p_a) == len(p), 'Scada deleted some of my 10 peaks!'
 
+            print('Check the number of events')
+            events = st.get_array(test_run_id, 'event_info')
+            assertion_statement = ("Got less/ore events than expected, "
+                                   "perhaps the test is outdated or something "
+                                   "changed in the processing.")
+            assert len(events) == EXPECTED_OUTCOMES_TEST_SEVERAL['n_events'], assertion_statement
         # On windows, you cannot delete the current process'
         # working directory, so we have to chdir out first.
         finally:
