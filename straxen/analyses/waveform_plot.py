@@ -280,8 +280,11 @@ def plot_wf(st: strax.Context,
     :param time_fmt: format fo the timestamp (datetime.strftime format)
     :param kwargs: kwargs for plot_peaks
     """
-    p = containers  # usually peaks
 
+    if not isinstance(run_id, str):
+        raise ValueError(f'Insert single run_id, not {run_id}')
+
+    p = containers  # usually peaks
     run_start, _ = st.estimate_run_start_and_end(run_id)
     t_range = np.array([p['time'].min(), strax.endtime(p).max()])
 

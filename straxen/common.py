@@ -197,7 +197,6 @@ def get_secret(x):
             return uconfig.get('straxen', x)
         except configparser.NoOptionError:
             warn(f'uconfig does not have {x}')
-            pass
 
     # if that doesn't work, revert to xenon_secrets
     try:
