@@ -50,6 +50,19 @@ export, __all__ = strax.exporter()
              'For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)'
              'Default is no selection (other than "area_vs_width_min_gap")'),
     strax.Option(
+        'lone_hits_cut_string',
+        type=str,
+        default='(n_channels > 20) & (n_channels < 400) & (area < 1000) & '
+                '(area > 5) & (rise_time < 100) & (type == 1)',
+        help='Selection (like selection_str) applied to data for '
+             '"lone-hits", cuts should be separated using "&")'),
+    strax.Option(
+        'lone_hits_min_gap',
+        type=int,
+        default=50_000,
+        help='Minimal gap [ns] between consecutive lone-hits. To turn off '
+             'this cut, set to 0.'),
+    strax.Option(
         'near_s1_hists_bounds',
         type=tuple,
         default=(0, 1000),
@@ -154,17 +167,27 @@ class OnlinePeakMonitor(strax.Plugin):
         del sel
 
         # -- Lone hit properties --
+        # Make a mask with the cuts
+        mask = self._config_as_selection_str(
+            self.config['lone_hits_cut_string'], lone_hits)
+        mask &= np.hstack([0, np.diff(lone_hits['time'])]
+                          ) > self.config['lone_hits_min_gap']
+        mask &= np.hstack([np.diff(lone_hits['time']), 0]
+                          ) > self.config['lone_hits_min_gap']
+
         # Make histogram of ADC counts
-        lone_hit_areas, _ = np.histogram(lone_hits['area'],
+        lone_hit_areas, _ = np.histogram(lone_hits[mask]['area'],
                                          bins=n_bins,
                                          range=self.config['lone_hits_area_bounds'])
 
-        lone_hit_channel_count, _ = np.histogram(lone_hits['channel'],
+        lone_hit_channel_count, _ = np.histogram(lone_hits[mask]['channel'],
                                                  bins=n_pmt,
                                                  range=[0, n_pmt])
         # Count number of lone-hits per PMT
         res['lone_hits_area_hist'] = lone_hit_areas
         res['lone_hits_per_channel'] = lone_hit_channel_count
+        # Clear mask, don't re-use
+        del mask
 
         # -- AFT histogram --
         aft_b = [0, 1]
