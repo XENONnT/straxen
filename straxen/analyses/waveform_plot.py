@@ -303,45 +303,29 @@ def plot_wf(st: strax.Context,
     t_range = t_range / 10 ** 9
     t_range = np.clip(t_range, 0, np.inf)
 
-    try:
-        if hit_pattern:
-            plt.figure(figsize=(14, 11))
-            plt.subplot(212)
-        else:
-            plt.figure(figsize=(14, 5))
-        # Plot the wf
-        plot_peaks(st, run_id, seconds_range=t_range, single_figure=False, **kwargs)
 
-        if timestamp:
-            _ax = plt.gca()
-            t_stamp = datetime.datetime.fromtimestamp(
-                containers['time'].min() / 10 ** 9).strftime(time_fmt)
-            _ax.text(0.975, 0.925, t_stamp,
-                     horizontalalignment='right',
-                     verticalalignment='top',
-                     transform=_ax.transAxes)
-        # Select the additional two panels to show the top and bottom arrays
-        if hit_pattern:
-            axes = plt.subplot(221), plt.subplot(222)
-            plot_hit_pattern(st, run_id,
-                             seconds_range=t_range,
-                             axes=axes,
-                             vmin=1 if plot_log else None,
-                             log_scale=plot_log,
-                             label='Area per channel [PE]')
+    if hit_pattern:
+        plt.figure(figsize=(14, 11))
+        plt.subplot(212)
+    else:
+        plt.figure(figsize=(14, 5))
+    # Plot the wf
+    plot_peaks(st, run_id, seconds_range=t_range, single_figure=False, **kwargs)
 
-    # This can be somewhat hairy, as explained in AxFoundation/strax#247
-    # there is a bug in strax that may yield the errors below. For now
-    # we will retry once without the plot extension.
-    except (ValueError,
-            ZeroDivisionError,
-            strax.mailbox.MailboxKilled,
-            RuntimeError) as e:
-        if np.all(plot_extension == 0):
-            warnings.warn(f'Failed despite 0 ns extension. Ran into {e}')
-            plt.clf()
-            return
-        else:
-            warnings.warn('Failed to deliver. Trying with no extension')
-            return plot_wf(st, containers, run_id, plot_log=plot_log, plot_extension=0,
-                           hit_pattern=hit_pattern, **kwargs)
+    if timestamp:
+        _ax = plt.gca()
+        t_stamp = datetime.datetime.fromtimestamp(
+            containers['time'].min() / 10 ** 9).strftime(time_fmt)
+        _ax.text(0.975, 0.925, t_stamp,
+                 horizontalalignment='right',
+                 verticalalignment='top',
+                 transform=_ax.transAxes)
+    # Select the additional two panels to show the top and bottom arrays
+    if hit_pattern:
+        axes = plt.subplot(221), plt.subplot(222)
+        plot_hit_pattern(st, run_id,
+                         seconds_range=t_range,
+                         axes=axes,
+                         vmin=1 if plot_log else None,
+                         log_scale=plot_log,
+                         label='Area per channel [PE]')
