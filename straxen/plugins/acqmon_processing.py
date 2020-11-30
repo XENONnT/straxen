@@ -1,8 +1,11 @@
+import sys
 import strax
 import straxen
 import numba
 import numpy as np
 from immutabledict import immutabledict
+from collections import defaultdict
+
 
 export, __all__ = strax.exporter()
 
@@ -130,4 +133,82 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 @numba.njit
 def channel_select(rr, ch_stop, ch_start):
     """Return data in between stop and start channels of the acquisition monitor (AM)"""
-    return rr[((rr['channel'] == ch_stop) | (rr['channel'] == ch_start))] 
+    return rr[((rr['channel'] == ch_stop) | (rr['channel'] == ch_start))]
+
+
+
+class VetoProximity(strax.Plugin):
+    """ 
+    Find the closest next/previous veto start and end to each event center.
+    
+    previous_x: Time in ns between the time center of an event and the previous x
+    next_x: Time in ns between the time center of an event and the next x
+    This also considers any x inside the event. x could be either:
+        - busy_x: busy on/off signal
+        - he_x:   high energy channels busy on/off signal
+        - hev_x:  high energy veto on/off signal
+    """
+        
+    __version__ = '0.0.1'
+    depends_on = ('veto_intervals','events') 
+    provides  = ('veto_proximity')
+    data_kind = ('veto_proximity')
+    
+    veto_names = ['busy', 'he', 'hev']
+    
+    def infer_dtype(self):
+        dtype = []
+        for n in self.veto_names:
+            dtype.append((('Time to previous %s veto start [ns]' %n, 'previous_%s_on' %n), np.int64))
+            dtype.append((('Time to previous %s veto end [ns]' %n, 'previous_%s_off' %n), np.int64))
+            dtype.append((('Time to next %s veto start [ns]' %n, 'next_%s_on' %n), np.int64))
+            dtype.append((('Time to next %s veto end [ns]' %n, 'next_%s_off' %n), np.int64))
+        
+        dtype += strax.time_fields
+
+        return dtype
+    
+    def setup(self):
+        self.states = ['on', 'off']
+        
+    def compute(self, events, veto_intervals):
+        res = defaultdict(list)
+        
+        t_event_centers = (events['time'] + events['endtime'])//2
+
+        for n, name in enumerate(self.veto_names):
+            veto_selection = veto_intervals[veto_intervals['veto_type'] == ('%s_veto' %name)]
+            
+            # For each state find the next and previous veto
+            for state in self.states:
+                prev = 'previous_%s_%s' %(name, state)
+                nxt = 'next_%s_%s' %(name, state)
+                
+                if state == 'on':
+                    veto_start_time_selection = veto_selection['time']
+                else:
+                    veto_start_time_selection = veto_selection['endtime']
+                    
+                for t, time in enumerate(t_event_centers):
+                    inx = np.searchsorted(veto_start_time_selection, time, side = 'left')
+                    
+                    # Time to previous veto on/off
+                    # Just using maxsize as a huge value that will not fit in any potential VetoCut range
+                    if inx == 0:
+                        res[prev].append(sys.maxsize)
+                    else:
+                        res[prev].append(time - veto_start_time_selection[inx - 1]) 
+            
+                    # Time to next veto on/off
+                    if inx == len(veto_selection):
+                        res[nxt].append(sys.maxsize)
+                    else:
+                        res[nxt].append(veto_start_time_selection[inx] - time)
+
+        # Add the event time and endtime to the final result
+        res['time'].extend(events['time'])
+        res['endtime'].extend(events['endtime'])
+
+        result = strax.dict_to_rec(res, self.dtype)
+        
+        return result
