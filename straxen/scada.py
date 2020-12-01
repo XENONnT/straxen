@@ -5,7 +5,7 @@ import numba
 import numpy as np
 import warnings
 import json
-
+import ast
 import strax
 
 import sys
@@ -209,8 +209,11 @@ class SCADAInterface:
         try:
             temp_df = pd.read_json(values.text)
         except ValueError as e:
-            raise ValueError(f'SCADA raised a value error when looking for your '
-                             f'parameter "{parameter_name}"') from e
+            mes = values.text
+            query_message = ast.literal_eval(mes)
+            raise ValueError(f'SCADA raised a value error when looking for '
+                             f'your parameter "{parameter_name}". The error '
+                             f'was {query_message}') from e
 
         # Store value as first value in our df
         df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
