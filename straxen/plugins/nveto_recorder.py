@@ -63,8 +63,6 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end):
-        strax.zero_out_of_bounds(raw_records_nv)
-
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
