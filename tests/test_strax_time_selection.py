@@ -7,18 +7,17 @@ For more info see:
 https://github.com/AxFoundation/strax/pull/345
 """
 
-import strax
 import straxen
-import pandas
 import os
 import tempfile
 from .test_basics import test_run_id
-import numpy as np
+
 
 # Offending peak-timestamps. These were causing the issues described in
 # https://github.com/AxFoundation/strax/pull/345. They were hand picked
-# time ranges that caused issues in the past (e.g. strax v0.12.4,
-# straxen v0.12.3).
+# time ranges that caused issues in the past  when strax was unable to
+# unify the time ranges of the input chunks(e.g. strax v0.12.4, straxen
+# v0.12.3).
 OFFENDING_PEAK_TIMESTAMPS = [(1518690942041190780, 1518690942041191160),
                              (1518690942041191060, 1518690942041191550),
                              (1518690942090637380, 1518690942090637900),
@@ -43,14 +42,18 @@ def test_time_selection():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+
             print("Making peak basics")
             st.make(test_run_id, 'peak_basics')
+
             print("Making sure that we have the data")
             for t in ('peaklets', 'peak_basics'):
                 assert st.is_stored(test_run_id, t), t
+
             print("Testing if we can open the offending time ranges")
             for t0, t1 in OFFENDING_PEAK_TIMESTAMPS:
                 st.get_array(test_run_id, targets='peaks', time_range=(t0, t1))
+
         # On windows, you cannot delete the current process'
         # working directory, so we have to chdir out first.
         finally:
