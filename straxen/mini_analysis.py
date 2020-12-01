@@ -112,7 +112,9 @@ def mini_analysis(requires=tuple(),
                             # Arguments for new context, if needed
                             config=kwargs.get('config'),
                             register=kwargs.get('register'),
-                            storage=kwargs.get('storage', tuple()))
+                            storage=kwargs.get('storage', tuple()),
+                            progress_bar=False,
+                        )
 
                 # If user did not give time kwargs, but the function expects
                 # a time_range, try to add one based on the time range of the data
