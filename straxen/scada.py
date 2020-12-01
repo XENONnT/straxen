@@ -208,11 +208,9 @@ class SCADAInterface:
 
         try:
             temp_df = pd.read_json(values.text)
-        except ValueError:
-            mes = values.text  # returns a dictionary as a string
-            mes = eval(mes)
-            raise ValueError(f'SCADA raised the following error "{mes["message"]}" '
-                             f'when looking for your parameter "{parameter_name}"')
+        except ValueError as e:
+            raise ValueError(f'SCADA raised a value error when looking for your '
+                             f'parameter "{parameter_name}"') from e
 
         # Store value as first value in our df
         df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
