@@ -35,7 +35,7 @@ OFFENDING_PEAK_TIMESTAMPS = [(1518690942041190780, 1518690942041191160),
 
 
 def test_time_selection():
-    """Forcefully run into a"""
+    """Forcefully run into an error if strax #345 is not merged."""
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             print("Temporary directory is ", temp_dir)
@@ -43,10 +43,12 @@ def test_time_selection():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+            print("Making peak basics")
             st.make(test_run_id, 'peak_basics')
+            print("Making sure that we have the data")
             for t in ('peaklets', 'peak_basics'):
                 assert st.is_stored(test_run_id, t), t
-
+            print("Testing if we can open the offending time ranges")
             for t0, t1 in OFFENDING_PEAK_TIMESTAMPS:
                 st.get_array(test_run_id, targets='peaks', time_range=(t0, t1))
         # On windows, you cannot delete the current process'
