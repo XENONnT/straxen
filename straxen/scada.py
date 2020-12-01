@@ -8,6 +8,14 @@ import json
 
 import strax
 
+import sys
+if any('jupyter' in arg for arg in sys.argv):
+    # In some cases we are not using any notebooks,
+    # Taken from 44952863 on stack overflow thanks!
+    from tqdm import tqdm_notebook as tqdm
+else:
+    from tqdm import tqdm
+
 from straxen import uconfig
 export, __all__ = strax.exporter()
 
@@ -122,8 +130,7 @@ class SCADAInterface:
             warnings.warn(mes)
 
         # Now loop over specified parameters and get the values for those.
-        for ind, (k, p) in enumerate(parameters.items()):
-            print(f'Start to query {k}: {p}')
+        for ind, (k, p) in tqdm(enumerate(parameters.items()), total=len(parameters)):
             temp_df = self._query_single_parameter(start, end,
                                                    k, p,
                                                    value_every_seconds=value_every_seconds,
@@ -257,7 +264,7 @@ class SCADAInterface:
         # TODO: Add function which returns SCADA sensor names by short Name
         raise NotImplementedError('Feature not implemented yet.')
 
-    def find_pmt_names(self, pmts=None):
+    def find_pmt_names(self, pmts=None, hv=True, current=False):
         """
         Function which returns a list of PMT parameter names to be
         called in SCADAInterface.get_scada_values. The names refer to
@@ -268,9 +275,15 @@ class SCADAInterface:
         :param pmts: Optional parameter to specify which PMT parameters
             should be returned. Can be either a list or array of channels
             or just a single one.
+        :param hv: Bool if true names of high voltage channels are
+            returned.
+        :param current: Bool if true names for the current channels are
+            returned.
         :return: dictionary containing short names as keys and scada
             parameter names as values.
         """
+        if not (hv or current):
+            raise ValueError('Either one "hv" or "current" must be true.')
 
         if isinstance(pmts, np.ndarray):
             # convert to a simple list since otherwise we get ambiguous errors
@@ -280,10 +293,21 @@ class SCADAInterface:
             # If single PMT convert it to itterable
             pmts = [pmts]
 
+        # Getting parameter names for all PMTs:
+        # The file contains the names for the HV channels
         if pmts:
-            res = {k: v for k, v in self.pmt_file.items() if int(k[3:]) in pmts}
+            pmts_v = {k: v for k, v in self.pmt_file.items() if int(k[3:]) in pmts}
         else:
-            res = self.pmt_file
+            pmts_v = self.pmt_file
+
+        res = {}
+        # Now get all relevant names:
+        for key, value in pmts_v.items():
+            if hv:
+                res[key+'_HV'] = value
+            if current:
+                res[key+'_I'] = value[:-4] + 'IMON'
+
         return res
 
 
