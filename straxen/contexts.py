@@ -139,7 +139,7 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    fax_config=straxen.aux_repo + '17e83b1a8c02f56066081ebaefe5f625ebb2e287/fax_files/fax_config_nt.json',
                     check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
