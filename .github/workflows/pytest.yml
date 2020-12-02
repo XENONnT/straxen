@@ -1,0 +1,39 @@
+# Test straxen on each PR
+name: Test package
+
+# Trigger this code when a new release is published
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+  pull_request:
+    branches:
+      - master
+      - stable
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.6'
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Install python dependencies
+        uses: py-actions/py-dependency-install@v2
+      - name: Install peak_matching
+        run: bash .github/scripts/install_pema.sh
+      - name: Install pytest and hypothesis
+        run: pip install pytest hypothesis flake8 pytest-cov
+      - name: Test package
+        run: |
+          pytest
+      - name: Build coverage file
+        run: |
+          pytest --cache-clear --cov=straxen > pytest-coverage.txt
+      - name: Comment coverage
+        uses: coroo/pytest-coverage-commentator@v1.0.2
+      - name: goodbye
+        run: echo goodbye
