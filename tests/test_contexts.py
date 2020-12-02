@@ -35,6 +35,11 @@ def xenon_xenonnt_simulation():
         st.search_field('time')
 
 
+def xenonnt_temporary_five_pmts():
+    st = xenonnt_temporary_five_pmts(_database_init=False)
+    st.search_field('time')
+
+
 ##
 # XENON1T
 ##

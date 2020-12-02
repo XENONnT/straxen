@@ -148,31 +148,28 @@ def xenonnt_simulation(output_folder='./strax_data'):
     return st
 
 
-def xenonnt_temporary_five_pmts(selected_pmts=(257, 313, 355, 416, 455),
-                                gains_from_run='010523',
-                                **kwargs):
-    """Temporary context for PMTs 257, 313, 355, 416, 455"""
+def xenonnt_temporary_five_pmts(**kwargs):
+    """Temporary context for selected PMTs"""
     # Start from the online context
-    st = xenonnt_online(**kwargs)
-    gain_key = f'five_pmts_{gains_from_run}'
+    st_online = xenonnt_online(**kwargs)
 
-    # Get the correct gains from CMT
-    cmt_gains = straxen.get_to_pe(gains_from_run, st.config['gain_model'], straxen.n_tpc_pmts)
-    pmt_list = list(selected_pmts)
+    temporary_five_pmts_config = {
+        'gain_model': ('CMT_model', ("to_pe_model", "xenonnt_temporary_five_pmts")),
+        'peak_min_pmts': 2,
+        'peaklet_gap_threshold': 300,
+    }
+    # If there are any config overwrites in the kwargs, us those,
+    # otherwise use the config as in the dict above.
 
-    # Let's set all the gains to zero except the gains of the PMTs we just specified
-    five_gains = np.zeros(straxen.n_tpc_pmts)
-    five_gains[pmt_list] = cmt_gains[pmt_list]
-    straxen.FIXED_TO_PE[gain_key] = five_gains
+    for k in list(temporary_five_pmts_config.keys()):
+        if k in kwargs:
+            temporary_five_pmts_config[k] = kwargs[k]
 
-    # Create a new context and set the gains to the values we have just created
-    st_five_pmts = st.new_context()
-    st_five_pmts.set_config({'gain_model': ('to_pe_constant', gain_key),
-                             'peak_min_pmts': 2,
-                             'peaklet_gap_threshold': 300,
-                             })
+    # Copy the online context and change the configuration here
+    st = st_online.new_context()
+    st.set_config(temporary_five_pmts_config)
 
-    return st_five_pmts
+    return st
 
 
 def xenonnt_initial_commissioning(*args, **kwargs):
