@@ -5,7 +5,7 @@ import numba
 import numpy as np
 import warnings
 import json
-
+import ast
 import strax
 
 import sys
@@ -37,15 +37,21 @@ class SCADAInterface:
                                       username=uconfig.get('scada', 'username'),
                                       api_key=uconfig.get('scada', 'api_key')
                                       )
-
-            # Better to cache the file since is not large:
-            with open(uconfig.get('scada', 'pmt_parameter_names')) as f:
-                self.pmt_file = json.load(f)
-
-
         except ValueError:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
                              ' config. SCADAInterface cannot be used.')
+            
+        try:
+            # Better to cache the file since is not large:
+            with open(uconfig.get('scada', 'pmt_parameter_names')) as f:
+                self.pmt_file = json.load(f)
+        except (FileNotFoundError, ValueError):
+            warnings.warn(('Cannot load PMT parameter names from parameter file.' 
+                          ' "find_pmt_names" is disabled for this session.'))
+            self.pmt_file = None
+
+
+
         self.context = context
 
     def get_scada_values(self,
@@ -191,8 +197,6 @@ class SCADAInterface:
 
         # First we have to create an array where we can fill values with
         # the sampling frequency of scada:
-        # TODO: Add a check in case user queries to many values. If yes read
-        #  the data in chunks. How much are too many?
         seconds = np.arange(start, end + 1, 10**9)  # +1 to make sure endtime is included
         df = pd.DataFrame()
         df.loc[:, 'time'] = seconds
@@ -208,11 +212,12 @@ class SCADAInterface:
 
         try:
             temp_df = pd.read_json(values.text)
-        except ValueError:
-            mes = values.text  # returns a dictionary as a string
-            mes = eval(mes)
-            raise ValueError(f'SCADA raised the following error "{mes["message"]}" '
-                             f'when looking for your parameter "{parameter_name}"')
+        except ValueError as e:
+            mes = values.text
+            query_message = ast.literal_eval(mes)
+            raise ValueError(f'SCADA raised a value error when looking for '
+                             f'your parameter "{parameter_name}". The error '
+                             f'was {query_message}') from e
 
         # Store value as first value in our df
         df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
@@ -261,7 +266,6 @@ class SCADAInterface:
         return df
 
     def find_scada_parameter(self):
-        # TODO: Add function which returns SCADA sensor names by short Name
         raise NotImplementedError('Feature not implemented yet.')
 
     def find_pmt_names(self, pmts=None, hv=True, current=False):
@@ -282,6 +286,10 @@ class SCADAInterface:
         :return: dictionary containing short names as keys and scada
             parameter names as values.
         """
+        if not self.pmt_file:
+            raise ValueError(('Cannot load PMT parameter names from parameter file.' 
+                          ' "find_pmt_names" is disabled in this session.'))
+        
         if not (hv or current):
             raise ValueError('Either one "hv" or "current" must be true.')
 
