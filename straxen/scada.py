@@ -49,7 +49,6 @@ class SCADAInterface:
             warnings.warn(('Cannot load PMT parameter names from parameter file.' 
                           ' "find_pmt_names" is disabled for this session.'))
             self.pmt_file = None
-        
         try: 
             with open(uconfig.get('scada', 'parameter_readout_rate')) as f:
                 self.read_out_rates = json.load(f)
