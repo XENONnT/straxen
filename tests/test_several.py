@@ -5,7 +5,8 @@ import os
 import tempfile
 from .test_basics import test_run_id
 import numpy as np
-
+import strax
+from matplotlib.pyplot import clf as plt_clf
 
 def test_pmt_pos_1t():
     """
@@ -66,6 +67,35 @@ def test_several():
                                    "really changed")
             assert np.abs(len(p) -
                           EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
+
+            st.make(test_run_id, 'event_info')
+            print('plot wf')
+            peak_i = 0
+            st.plot_waveform(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            plt_clf()
+
+            print('plot hit pattern')
+            peak_i = 1
+            st.plot_hit_pattern(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])), xenon1t=True)
+            plt_clf()
+
+            print('plot records matrix')
+            peak_i = 2
+            assert st.is_stored(test_run_id, 'records'), "no records"
+            st.plot_records_matrix(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            plt_clf()
+
+            print('plot aft')
+            st.plot_peaks_aft_histogram(test_run_id)
+            plt_clf()
+
+            print('plot event scatter')
+            st.event_scatter(test_run_id)
+            plt_clf()
+
+            print('plot event scatter')
+            st.plot_energy_spectrum(test_run_id)
+            plt_clf()
 
             print("Check live-time")
             live_time = straxen.get_livetime_sec(st, test_run_id, things=p)
