@@ -67,7 +67,7 @@ class SCADAInterface:
                          interpolation=False,
                          filling_kwargs={},
                          down_sampling=False,
-                         value_every_seconds=1):
+                         every_nth_value=1):
         """
         Function which returns XENONnT slow control values for a given
         set of parameters and time range.
@@ -94,9 +94,9 @@ class SCADAInterface:
         :param down_sampling: Boolean which indicates whether to
             donw_sample result or to apply average. The averaging
             is deactivated in case of interpolated data.
-        :param value_every_seconds: Defines with which time difference
-            values should be returned. Must be an integer!
-            Default: one value per 1 seconds.
+        :param every_nth_value: Defines over how many values we compute
+            the average or the nthed sample in case we down sample the
+            data.
         :return: pandas.DataFrame containing the data of the specified
             parameters.
         """
@@ -166,7 +166,7 @@ class SCADAInterface:
         for ind, (k, p) in tqdm(enumerate(parameters.items()), total=len(parameters)):
             temp_df = self._query_single_parameter(start, end,
                                                    k, p,
-                                                   value_every_seconds=value_every_seconds,
+                                                   every_nth_value=every_nth_value,
                                                    interpolation=interpolation,
                                                    filling_kwargs=filling_kwargs,
                                                    down_sampling=down_sampling
@@ -199,27 +199,27 @@ class SCADAInterface:
                                 interpolation,
                                 filling_kwargs,
                                 down_sampling,
-                                value_every_seconds=1):
+                                every_nth_value=1):
         """
         Function to query the values of a single parameter from SCData.
 
         :param start: Start time in ns unix time
         :param end: End time in ns unix time
-        :param parameter_key: Key to identify queryed parameter in the
+        :param parameter_key: Key to identify queried parameter in the
             DataFrame
         :param parameter_name: Parameter name in Scada/historian database.
-        :param value_every_seconds: Defines with which time difference
-            values should be returned. Must be an integer!
-            Default: one value per 1 seconds.
+        :param every_nth_value: Defines over how many values we compute
+            the average or the nthed sample in case we down sample the
+            data.
 
         :returns: DataFrame with a time and parameter_key column.
         """
-        if value_every_seconds < 1:
-            mes = ("Scada takes only values every second. Cannot ask for a"
+        if every_nth_value < 1:
+            mes = ("SCADA takes only values every second. Cannot ask for a"
                    " higher sampling rate than one value per second. However"
-                   f" you asked for one value every {value_every_seconds} seconds.")
+                   f" you asked for one value every {every_nth_value} seconds.")
             raise ValueError(mes)
-        if not isinstance(value_every_seconds, int):
+        if not isinstance(every_nth_value, int):
             raise ValueError('"value_every_seconds" must be an int!')
 
         # First we have to create an array where we can fill values with
@@ -265,8 +265,7 @@ class SCADAInterface:
             df.loc[temp_df['timestampseconds'], parameter_key] = temp_df.loc[:, 'value'].values
         except ValueError:
             pass
-        
-        
+
         # Let user decided whether to ffill or interpolate:
         if interpolation:
             df.interpolate(**filling_kwargs, inplace=True)
@@ -286,18 +285,18 @@ class SCADAInterface:
 
         # Step 4. Down-sample data if asked for:
         df.reset_index(inplace=True)
-        if value_every_seconds > 1:
+        if every_nth_value > 1:
             if interpolation and not down_sampling:
                 warnings.warn('Cannot use interpolation and running average at the same time.'
                               ' Deactivated the running average, switch to down_sampling instead.')
                 down_sampling = True
 
             if down_sampling:
-                df = df[::value_every_seconds]
+                df = df[::every_nth_value]
             else:
                 nt, nv = _average_scada(df['time'].astype(np.int64).values,
                                         df[parameter_key].values,
-                                        value_every_seconds)
+                                        every_nth_value)
                 df = pd.DataFrame()
                 df['time'] = nt.astype('<M8[ns]')
                 df[parameter_key] = nv
