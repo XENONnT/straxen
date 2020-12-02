@@ -49,8 +49,12 @@ class SCADAInterface:
             warnings.warn(('Cannot load PMT parameter names from parameter file.' 
                           ' "find_pmt_names" is disabled for this session.'))
             self.pmt_file = None
-
-
+        
+        try: 
+            with open(uconfig.get('scada', 'parameter_readout_rate')) as f:
+                self.read_out_rates = json.load(f)
+        except (FileNotFoundError, ValueError):
+            raise FileNotFoundError(('Cannot load file containing parameter sampling rates.'))
 
         self.context = context
 
@@ -88,7 +92,7 @@ class SCADAInterface:
         :param filling_kwargs: Kwargs applied to pandas .ffill() or
             .interpolate().
         :param down_sampling: Boolean which indicates whether to
-            donw_sample result or to apply moving average. Moving average
+            donw_sample result or to apply average. The averaging
             is deactivated in case of interpolated data.
         :param value_every_seconds: Defines with which time difference
             values should be returned. Must be an integer!
@@ -109,7 +113,7 @@ class SCADAInterface:
                 _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
                 start, end = self.context.to_absolute_time_range(run_id, **time_selection_kwargs)
-        elif np.any(run_id):
+        elif run_id:
             mes = ('You are trying to query slow control data via run_ids' 
                   ' but you have not specified the context you are '
                    'working with. Please set the context either via '
@@ -134,6 +138,29 @@ class SCADAInterface:
                    f'time is {now.astype(np.int64)}. I will return for the values for the '
                    'corresponding times as nans instead.')
             warnings.warn(mes)
+            
+        # Check if queried parameters share the same readout rate if not raise error:
+        for rate, parameter_names in self.read_out_rates.items():
+            if not hasattr(parameter_names, '__iter__'):
+                parameter_names = [parameter_names]
+            # Loop over different readout rates. If they belong to the same readout rate...
+            input_parameter_names = np.array([v for v in parameters.values()])
+            m = np.isin(input_parameter_names, parameter_names)
+
+            if not (np.all(m) or np.all(~m)):
+                # ...either all parameters are true or false. 
+                same_rate = input_parameter_names[m]
+                not_same_rate = input_parameter_names[~m]
+                raise ValueError(('Not all parameters of your inquiry share the same readout rates. '
+                                  f'The parameters {same_rate} are read out every {rate} seconds while '
+                                  f'{not_same_rate} are not. For the your and the developers sanity please make '
+                                  'two separate inquiries.'))
+            elif np.all(m):
+                # Yes all parameters share the same readout rate:
+                self.readout_rate = int(rate)
+                self.base = 0
+            else:
+                self.readout_rate = None
 
         # Now loop over specified parameters and get the values for those.
         for ind, (k, p) in tqdm(enumerate(parameters.items()), total=len(parameters)):
@@ -234,19 +261,31 @@ class SCADAInterface:
             # Here we cannot do any better since the Error message returned
             # by the scada api is always the same...
             temp_df = pd.read_json(values.text)
+            self._raw_data = temp_df
             df.loc[temp_df['timestampseconds'], parameter_key] = temp_df.loc[:, 'value'].values
         except ValueError:
             pass
-
+        
+        
         # Let user decided whether to ffill or interpolate:
         if interpolation:
             df.interpolate(**filling_kwargs, inplace=True)
         else:
             # Now fill values in between like Scada would do:
             df.ffill(**filling_kwargs, inplace=True)
-        df.reset_index(inplace=True)
+        
+        # Step 3.5 In case the sampling rate is not 1 s we have to drop values 
+        # and but all columns to the same base:
+        if self.readout_rate:
+            if not self.base:
+                self.base = temp_df['timestampseconds']  # Only contains values which changed
+                # In case there are earlier values, but nothing was record we have to go back
+                # according to the readout rate to find the true base
+                self.base = df[temp_df['timestampseconds'][0]::-self.readout_rate].index.values[-1]
+            df = df[self.base::self.readout_rate]
 
         # Step 4. Down-sample data if asked for:
+        df.reset_index(inplace=True)
         if value_every_seconds > 1:
             if interpolation and not down_sampling:
                 warnings.warn('Cannot use interpolation and running average at the same time.'
