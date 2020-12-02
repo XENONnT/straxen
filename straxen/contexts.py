@@ -1,6 +1,8 @@
 from immutabledict import immutabledict
 import strax
 import straxen
+import numpy as np
+
 
 common_opts = dict(
     register_all=[
@@ -144,6 +146,33 @@ def xenonnt_simulation(output_folder='./strax_data'):
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
     return st
+
+
+def xenonnt_temporary_five_pmts(selected_pmts=(257, 313, 355, 416, 455),
+                                gains_from_run='010523',
+                                **kwargs):
+    """Temporary context for PMTs 257, 313, 355, 416, 455"""
+    # Start from the online context
+    st = xenonnt_online(**kwargs)
+    gain_key = f'five_pmts_{gains_from_run}'
+
+    # Get the correct gains from CMT
+    cmt_gains = straxen.get_to_pe(gains_from_run, st.config['gain_model'], straxen.n_tpc_pmts)
+    pmt_list = list(selected_pmts)
+
+    # Let's set all the gains to zero except the gains of the PMTs we just specified
+    five_gains = np.zeros(straxen.n_tpc_pmts)
+    five_gains[pmt_list] = cmt_gains[pmt_list]
+    straxen.FIXED_TO_PE[gain_key] = five_gains
+
+    # Create a new context and set the gains to the values we have just created
+    st_five_pmts = st.new_context()
+    st_five_pmts.set_config({'gain_model': ('to_pe_constant', gain_key),
+                             'peak_min_pmts': 2,
+                             'peaklet_gap_threshold': 300,
+                             })
+
+    return st_five_pmts
 
 
 def xenonnt_initial_commissioning(*args, **kwargs):
