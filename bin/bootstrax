@@ -1330,10 +1330,12 @@ def process_run(rd, send_heartbeats=args.production):
                     pass
                 else:
                     try:
-                        # Sometimes we have only he channels or mv channels, try loading one
-                        # until we get one with chunks.
-                        for rr_type in ('raw_records', 'raw_records_he', 'raw_records_mv',
-                                        # 'raw_records_nv' # not in the DAQ-reader yet.
+                        # Sometimes we have only he channels or mv channels,
+                        # try loading one until we get one with chunks.
+                        for rr_type in ('raw_records',
+                                        'raw_records_he',
+                                        'raw_records_mv',
+                                        'raw_records_nv'
                                         ):
                             md = st.get_meta(run_id, rr_type)
                             if len(md['chunks']) and (
@@ -1342,7 +1344,8 @@ def process_run(rd, send_heartbeats=args.production):
                             ):
                                 break
                     except Exception:
-                        fail("Processing succeeded, but metadata not readable", error_traceback=traceback.format_exc())
+                        fail("Processing succeeded, but metadata not readable",
+                             error_traceback=traceback.format_exc())
                     if not len(md['chunks']):
                         fail("Processing succeeded, but no chunks were written!")
 
