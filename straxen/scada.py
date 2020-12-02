@@ -137,29 +137,8 @@ class SCADAInterface:
                    f'time is {now.astype(np.int64)}. I will return for the values for the '
                    'corresponding times as nans instead.')
             warnings.warn(mes)
-            
-        # Check if queried parameters share the same readout rate if not raise error:
-        for rate, parameter_names in self.read_out_rates.items():
-            if not hasattr(parameter_names, '__iter__'):
-                parameter_names = [parameter_names]
-            # Loop over different readout rates. If they belong to the same readout rate...
-            input_parameter_names = np.array([v for v in parameters.values()])
-            m = np.isin(input_parameter_names, parameter_names)
 
-            if not (np.all(m) or np.all(~m)):
-                # ...either all parameters are true or false. 
-                same_rate = input_parameter_names[m]
-                not_same_rate = input_parameter_names[~m]
-                raise ValueError(('Not all parameters of your inquiry share the same readout rates. '
-                                  f'The parameters {same_rate} are read out every {rate} seconds while '
-                                  f'{not_same_rate} are not. For the your and the developers sanity please make '
-                                  'two separate inquiries.'))
-            elif np.all(m):
-                # Yes all parameters share the same readout rate:
-                self.readout_rate = int(rate)
-                self.base = 0
-            else:
-                self.readout_rate = None
+        self._test_sampling_rate(parameters)
 
         # Now loop over specified parameters and get the values for those.
         for ind, (k, p) in tqdm(enumerate(parameters.items()), total=len(parameters)):
@@ -189,6 +168,38 @@ class SCADAInterface:
             df.loc[now:, :] = np.nan
 
         return df
+
+    def _test_sampling_rate(self, parameters):
+        """
+        Function which test if the specified parameters share all the
+        same sampling rates. If not they cannot be put into a single
+        DataFrame and an error is raised.
+
+        :param parameters: input parameter names.
+        """
+        # Check if queried parameters share the same readout rate if not raise error:
+        for rate, parameter_names in self.read_out_rates.items():
+            if not hasattr(parameter_names, '__iter__'):
+                parameter_names = [parameter_names]
+            # Loop over different readout rates. If they belong to the same readout rate...
+            input_parameter_names = np.array([v for v in parameters.values()])
+            m = np.isin(input_parameter_names, parameter_names)
+
+            if not (np.all(m) or np.all(~m)):
+                # ...either all parameters are true or false.
+                same_rate = input_parameter_names[m]
+                not_same_rate = input_parameter_names[~m]
+                raise ValueError(('Not all parameters of your inquiry share the same readout rates. '
+                                  f'The parameters {same_rate} are read out every {rate} seconds while '
+                                  f'{not_same_rate} are not. For the your and the developers sanity please make '
+                                  'two separate inquiries.'))
+
+            if np.all(m):
+                # Yes all parameters share the same readout rate:
+                self.readout_rate = int(rate)
+                self.base = 0
+            else:
+                self.readout_rate = None
 
     def _query_single_parameter(self,
                                 start,
