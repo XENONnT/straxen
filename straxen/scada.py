@@ -95,7 +95,7 @@ class SCADAInterface:
             donw_sample result or to apply average. The averaging
             is deactivated in case of interpolated data.
         :param every_nth_value: Defines over how many values we compute
-            the average or the nthed sample in case we down sample the
+            the average or the nth sample in case we down sample the
             data.
         :return: pandas.DataFrame containing the data of the specified
             parameters.
