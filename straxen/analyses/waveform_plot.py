@@ -69,8 +69,13 @@ def plot_waveform(context,
     requires=('peaks', 'peak_basics'),
     default_time_selection='touching',
     warn_beyond_sec=60)
-def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
-               single_figure=True, figsize=(10, 4), xaxis=True):
+def plot_peaks(peaks,
+               seconds_range,
+               t_reference,
+               show_largest=100,
+               single_figure=True,
+               figsize=(10, 4),
+               xaxis=True):
     if single_figure:
         plt.figure(figsize=figsize)
     plt.axhline(0, c='k', alpha=0.2)
@@ -100,19 +105,23 @@ def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
     requires=('peaks', 'peak_basics'),
     default_time_selection='touching',
     warn_beyond_sec=60)
-def plot_hit_pattern(peaks, seconds_range, t_reference,
+def plot_hit_pattern(peaks,
+                     seconds_range,
+                     t_reference,
                      axes=None,
                      vmin=None,
                      log_scale=False,
                      label=None,
                      single_figure=False,
+                     xenon1t=False,
                      figsize=(10, 4), ):
     if single_figure:
         plt.figure(figsize=figsize)
     if len(peaks) > 1:
         print(f'warning showing total area of {len(peaks)} peaks')
     straxen.plot_pmts(np.sum(peaks['area_per_channel'], axis=0),
-                      axes=axes, vmin=vmin, log_scale=log_scale, label=label)
+                      axes=axes, vmin=vmin, log_scale=log_scale, label=label,
+                      xenon1t=xenon1t)
 
 
 @straxen.mini_analysis()
