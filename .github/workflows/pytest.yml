@@ -37,10 +37,5 @@ jobs:
       - name: Test package
         run: |
           pytest
-      - name: Build coverage file
-        run: |
-          pytest --cache-clear --cov=straxen > pytest-coverage.txt
-      - name: Comment coverage
-        uses: coroo/pytest-coverage-commentator@v1.0.2
       - name: goodbye
         run: echo goodbye
