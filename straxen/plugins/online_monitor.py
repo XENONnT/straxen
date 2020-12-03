@@ -169,10 +169,12 @@ class OnlinePeakMonitor(strax.Plugin):
         # Make a mask with the cuts
         mask = self._config_as_selection_str(
             self.config['lone_hits_cut_string'], lone_hits)
-        mask &= np.hstack([0, np.diff(lone_hits['time'])]
-                          ) > self.config['lone_hits_min_gap']
-        mask &= np.hstack([np.diff(lone_hits['time']), 0]
-                          ) > self.config['lone_hits_min_gap']
+        # Now only take lone hits that are separated in time.
+        lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
+        # Hits on the left are far away? (assume first is because of chunk bound)
+        mask &= np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
+        # Hits on the right are far away? (assume last is because of chunk bound)
+        mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
 
         # Make histogram of ADC counts
         lone_hit_areas, _ = np.histogram(lone_hits[mask]['area'],
