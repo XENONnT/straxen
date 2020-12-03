@@ -18,9 +18,13 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.6'
+          python-version: ['3.6', '3.8']
       - name: Checkout repo
         uses: actions/checkout@v2
+      - name: Install strax
+        run: |
+            git clone https://github.com/AxFoundation/strax.git ../strax
+            pip install ../strax
       - name: Install python dependencies
         uses: py-actions/py-dependency-install@v2
       - name: Install straxen
