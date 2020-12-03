@@ -4,6 +4,7 @@ import straxen
 import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
+import os
 
 # Number of chunks for the dummy raw records we are writing here
 N_CHUNKS = 2
@@ -58,7 +59,6 @@ forbidden_plugins = tuple([p for p in
                            straxen.daqreader.DAQReader.provides
                            if p not in DummyRawRecords.provides])
 
-
 def _run_plugins(st,
                  make_all=False,
                  run_id=run_id,
@@ -102,7 +102,6 @@ def _run_plugins(st,
                             int(strax.SaveWhen.TARGET)):
                         is_stored = st.is_stored(run_id, p)
                         assert is_stored, f"{p} did not save correctly!"
-
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
