@@ -37,9 +37,9 @@ class SCADAInterface:
                                       username=uconfig.get('scada', 'username'),
                                       api_key=uconfig.get('scada', 'api_key')
                                       )
-        except ValueError:
+        except ValueError as e:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
-                             ' config. SCADAInterface cannot be used.')
+                             ' config. SCADAInterface cannot be used.') from e
             
         try:
             # Better to cache the file since is not large:
@@ -52,8 +52,9 @@ class SCADAInterface:
         try: 
             with open(uconfig.get('scada', 'parameter_readout_rate')) as f:
                 self.read_out_rates = json.load(f)
-        except (FileNotFoundError, ValueError):
-            raise FileNotFoundError(('Cannot load file containing parameter sampling rates.'))
+        except (FileNotFoundError, ValueError) as e:
+            raise FileNotFoundError(
+                'Cannot load file containing parameter sampling rates.') from e
 
         self.context = context
 
@@ -62,9 +63,9 @@ class SCADAInterface:
                          start=None,
                          end=None,
                          run_id=None,
-                         time_selection_kwargs={'full_range': True},
+                         time_selection_kwargs=None,
                          interpolation=False,
-                         filling_kwargs={},
+                         filling_kwargs=None,
                          down_sampling=False,
                          every_nth_value=1):
         """
@@ -85,7 +86,7 @@ class SCADAInterface:
             range lasting between the start of the first and endtime
             of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
-            st.to_absolute_time_range(). Default: full_range=True.
+            st.to_absolute_time_range(). Default: {"full_range": True}
         :param interpolation: Boolean which decided to either forward
             fill empty values or to interpolate between existing ones.
         :param filling_kwargs: Kwargs applied to pandas .ffill() or
@@ -99,6 +100,12 @@ class SCADAInterface:
         :return: pandas.DataFrame containing the data of the specified
             parameters.
         """
+        if not filling_kwargs:
+            filling_kwargs = {}
+
+        if not time_selection_kwargs:
+            time_selection_kwargs = {'full_range': True}
+
         if not isinstance(parameters, dict):
             mes = 'The argument "parameters" has to be specified as a dict.'
             raise ValueError(mes)
@@ -114,17 +121,17 @@ class SCADAInterface:
                 start, end = self.context.to_absolute_time_range(run_id, **time_selection_kwargs)
         elif run_id:
             mes = ('You are trying to query slow control data via run_ids' 
-                  ' but you have not specified the context you are '
+                   ' but you have not specified the context you are '
                    'working with. Please set the context either via '
                    '.st = YOURCONTEXT, or when initializing the '
                    'interface.')
             raise ValueError(mes)
 
         if not np.all((start, end)):
-            # User has not specified any vaild start and end time
+            # User has not specified any valid start and end time
             mes = ('You have to specify either a run_id and context.'
                    ' E.g. call get_scada_values(parameters, run_id=run)'
-                   ' or you have to specifiy a valid start and end time '
+                   ' or you have to specify a valid start and end time '
                    'in utc unix time ns.')
             raise ValueError(mes)
 
