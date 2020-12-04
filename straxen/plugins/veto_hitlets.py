@@ -203,6 +203,7 @@ def drop_data_field(old_hitlets, new_hitlets):
         child_option=True, parent_option_name='entropy_square_data_nv',
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
     strax.Option('gain_model_mv',
+                 child_option=True, parent_option_name='gain_model_nv',
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
