@@ -21,7 +21,7 @@ HITFINDER_OPTIONS_he = tuple([
     strax.Option(
         'hit_min_amplitude_he', track=True,
         default="pmt_commissioning_initial_he",
-        child_option=True,
+        child_option=True, parent_option_name='hit_min_amplitude',
         help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
              'See straxen.hit_min_amplitude for options.'
     )])
