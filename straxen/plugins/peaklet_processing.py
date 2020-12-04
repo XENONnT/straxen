@@ -404,7 +404,7 @@ class PeakletsHighEnergy(Peaklets):
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
@@ -481,7 +481,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
@@ -599,7 +599,7 @@ class MergedS2sHighEnergy(MergedS2s):
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))

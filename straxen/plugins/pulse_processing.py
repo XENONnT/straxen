@@ -232,7 +232,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
     compressor = 'lz4'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         dtype = dict()
