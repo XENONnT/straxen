@@ -141,16 +141,19 @@ def clean_up_empty_records(records, record_links, only_last=True):
 @strax.takes_config(
     strax.Option(
         'save_outside_hits_mv',
-        default=(2, 5), track=True, child_option=True,
+        default=(2, 5), track=True,
+        child_option=True, parent_option_name='save_outside_hits_nv',
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_mv',
-        default=10, track=True, child_option=True,
+        default=10, track=True,
+        child_option=True, parent_option_name='baseline_samples_nv',
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=20, track=True, child_option=True,
+        default=20, track=True,
+        child_option=True, parent_option_name='hit_min_amplitude_nv',
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
 )
