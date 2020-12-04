@@ -49,14 +49,15 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
         to_pe = x[run_index[0]]['to_pe']
 
     elif model_type == 'to_pe_constant':
-        warn("to_pe_constant_run will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
         if model_conf in FIXED_TO_PE:
             return FIXED_TO_PE[model_conf]
 
-        # Uniform gain, specified as a to_pe factor
-        to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
-
+        try:
+            # Uniform gain, specified as a to_pe factor
+            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
+        except np.core._exceptions.UFuncTypeError as e:
+            raise(str(e) +
+                  f'\nTried multiplying by {model_conf}. Insert a number instead.')
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
@@ -69,7 +70,7 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
 
 FIXED_TO_PE = {
     # just some dummy placeholder for nT gains
-    'gain_placeholder': np.repeat(0.0085, 494)
+    'gain_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts)
 }
 
 @export
