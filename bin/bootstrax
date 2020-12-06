@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.10'
+__version__ = '0.5.11'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -645,14 +645,14 @@ def infer_mode(rd):
     #  decrease timeout later. Unsure why needed now.
     run_settings = {
         'new_eb':
-            {'low_rate': dict(cores=24, max_messages=20, timeout=400),
-             'med_rate': dict(cores=24, max_messages=20, timeout=400),
+            {'low_rate': dict(cores=24, max_messages=20, timeout=500),
+             'med_rate': dict(cores=24, max_messages=20, timeout=600),
              'high_rate': dict(cores=20, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
              'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
         'old_eb':
-            {'low_rate': dict(cores=30, max_messages=20, timeout=400),
-             'med_rate': dict(cores=20, max_messages=15, timeout=400),
+            {'low_rate': dict(cores=30, max_messages=20, timeout=500),
+             'med_rate': dict(cores=20, max_messages=15, timeout=600),
              'high_rate': dict(cores=10, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
              'max_rate': dict(cores=8, max_messages=10, timeout=2000)}}
