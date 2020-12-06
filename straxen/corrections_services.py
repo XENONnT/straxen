@@ -100,7 +100,7 @@ class CorrectionsManagementServices():
             for it_correction, version in df_global.iloc[-1][global_version].items():
                 if correction in it_correction:
                     df = self.interface.read(it_correction)
-                    if global_version == 'ONLINE':
+                    if global_version in ('ONLINE', 'xenonnt_temporary_five_pmts'):
                         # We don't want to have different versions based
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
