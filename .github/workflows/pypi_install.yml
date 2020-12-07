@@ -3,6 +3,8 @@
 # wrong with travis upon uploading, then it will not continue until the next
 # release is made.
 # Mostly based on https://github.com/marketplace/actions/pypi-publish
+name: Manual pipy install
+
 on:
   workflow_dispatch:
 
