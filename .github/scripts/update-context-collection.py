@@ -8,6 +8,7 @@ import datetime
 # needs to be maintained for each straxen release
 context_list = ['xenonnt_led',
                 'xenonnt_online',
+                'xenonnt_temporary_five_pmts',
                ]
 
 
