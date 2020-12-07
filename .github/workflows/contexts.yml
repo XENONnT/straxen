@@ -6,8 +6,9 @@ name: Update context collection
 
 # Trigger this code when a new release is published
 on:
+  workflow_dispatch:
   release:
-    types: [published]
+    types: [created]
  
 jobs:
   update:
@@ -21,6 +22,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Install python dependencies
       uses: py-actions/py-dependency-install@v2
+    - name: Install straxen
+      run: bash .github/scripts/install_straxen.sh
     # writes a utilix configuration file. Uses the secret functionality of GitHub.
     - name: Write utilix config
       run: | 
@@ -29,6 +32,10 @@ jobs:
         RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
         RUNDB_API_USER: ${{ secrets.RUNDB_API_USER }}
         RUNDB_API_PASSWORD: ${{ secrets.RUNDB_API_PASSWORD }}
+        PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
+        PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
+        PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
+        PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
     - name: Update context
       run: |
            python .github/scripts/update-context-collection.py

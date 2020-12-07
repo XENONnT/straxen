@@ -1,3 +1,26 @@
+0.12.4 / 2020-12-06
+--------------------
+- Add temporary context (#302)
+- Scada interface updates (#297, #301)
+- Waveform plotting in minianalyses (#172)
+- Update online_monitor for lone hits (#294)
+- Tests for time selection fix strax/345 and more (#298)
+- Add more tests to straxen (#292)
+- Pytest on github actions (#303)
+- Add coveralls to straxen (#290)
+- Use github actions to update context collection (#282)
+- Update simulation contexts (#286, #300)
+- Remove to_pe_constant from CMT (#283)
+- Use utilix for client in CMT (#288)
+- Update straxer (#285)
+- Bootstrax updates (#289)
+
+
+0.12.3 / 2020-11-14
+--------------------
+- bugfix in desaturation correction (#279)
+
+
 0.12.1 / 2020-11-13
 --------------------
 - CMT tweak before launch: ffill ONLINE corrections (#275)

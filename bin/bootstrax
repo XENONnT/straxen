@@ -46,7 +46,7 @@ Additionally, bootstrax tracks information with each run in the 'bootstrax' fiel
 Finally, bootstrax outputs the load on the eventbuilder machine(s) whereon it is running to a collection in the DAQ database into the capped collection 'eb_monitor'. This collection contains information on what bootstrax is thinking of at the moment
   - **disk_used**: used part of the disk whereto this bootstrax instance is writing to (in percent)
 """
-__version__ = '0.5.9'
+__version__ = '0.5.11'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -76,45 +76,60 @@ logging.basicConfig(level=logging.INFO,
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
-parser.add_argument('--debug', action='store_true',
-                    help="Start strax processes with debug logging.")
-parser.add_argument('--profile', type=str, default='false',
-                    help="Option to run strax in profiling mode. "
-                         "argument specifies the name of the profile if not 'false'. Use e.g. 'date'.prof")
-parser.add_argument('--cores', type=int, default=8,
-                    help="Maximum number of workers to use in a strax process. "
-                         "Set to -1 for all available cores")
-parser.add_argument('--target', default='event_info',
-                    help="Strax data type name that should be produced")
-parser.add_argument('--fix_target', action='store_true',
-                    help="Don't allow bootstrax to switch to a different target for special runs")
-parser.add_argument('--infer_mode', action='store_true',
-                    help="Determine best number max-messages and cores for each run automatically. "
-                         "Overrides --cores and --max_messages")
-parser.add_argument('--delete_live', action='store_true',
-                    help="Delete live_data after successful processing of the run.")
-parser.add_argument('--production', action='store_true',
-                    help="Run bootstrax in production mode. Assuming test mode otherwise to prevent "
-                         "interactions with the runs-database")
-parser.add_argument('--undying', action='store_true',
-                    help="Except any error and ignore it")
-parser.add_argument('--sub_d_targets', nargs='*',
-                    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv'],
-                    help="Target(s) for other sub-detectors. If not produced automatically "
-                         "when processing tpc data, st.make the requested data later.")
-parser.add_argument('--max_messages', type=int,
-                    default=10,
-                    help="number of max mailbox messages")
+parser.add_argument(
+    '--debug', action='store_true',
+    help="Start strax processes with debug logging.")
+parser.add_argument(
+    '--profile', type=str, default='false',
+    help="Option to run strax in profiling mode. argument specifies the name "
+         "of the profile if not 'false'. Use e.g. 'date'.prof")
+parser.add_argument(
+    '--cores', type=int, default=8,
+    help="Maximum number of workers to use in a strax process. Set to -1 for "
+         "all available cores")
+parser.add_argument(
+    '--target', default='event_info',
+    help="Strax data type name that should be produced")
+parser.add_argument(
+    '--fix_target', action='store_true',
+    help="Don't allow bootstrax to switch to a different target for special runs")
+parser.add_argument(
+    '--infer_mode', action='store_true',
+    help="Determine best number max-messages and cores for each run "
+         "automatically. Overrides --cores and --max_messages")
+parser.add_argument(
+    '--delete_live', action='store_true',
+    help="Delete live_data after successful processing of the run.")
+parser.add_argument(
+    '--production', action='store_true',
+    help="Run bootstrax in production mode. Assuming test mode otherwise to "
+         "prevent interactions with the runs-database")
+parser.add_argument(
+    '--ignore_checks', action='store_true',
+    help="Do not use! This disables checks on e.g. the timestamps! Should only "
+         "be used if some run is very valuable but some checks are failing.")
+parser.add_argument(
+    '--undying', action='store_true',
+    help="Except any error and ignore it")
+parser.add_argument(
+    '--sub_d_targets', nargs='*',
+    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv'],
+    help="Target(s) for other sub-detectors. If not produced automatically "
+         "when processing tpc data, st.make the requested data later.")
+parser.add_argument(
+    '--max_messages', type=int, default=10,
+    help="number of max mailbox messages")
 
 actions = parser.add_mutually_exclusive_group()
-actions.add_argument('--process', type=int, metavar='NUMBER',
-                     help="Process a single run, regardless of its status.")
-actions.add_argument('--fail', nargs='+',
-                     metavar=('NUMBER', 'REASON'),
-                     help="Fail run number, optionally with reason")
-actions.add_argument('--abandon', nargs='+',
-                     metavar=('NUMBER', 'REASON'),
-                     help="Abandon run number, optionally with reason")
+actions.add_argument(
+    '--process', type=int, metavar='NUMBER',
+    help="Process a single run, regardless of its status.")
+actions.add_argument(
+    '--fail', nargs='+', metavar=('NUMBER', 'REASON'),
+    help="Fail run number, optionally with reason")
+actions.add_argument(
+    '--abandon', nargs='+', metavar=('NUMBER', 'REASON'),
+    help="Abandon run number, optionally with reason")
 
 args = parser.parse_args()
 
@@ -124,7 +139,8 @@ args = parser.parse_args()
 
 print(f'---\n bootstrax version {__version__}\n---')
 
-# The folder that can be used for testing bootstrax (i.e. non production mode). It will be written to:
+# The folder that can be used for testing bootstrax (i.e. non production
+# mode). It will be written to:
 test_data_folder = ('/nfs/scratch/bootstrax/' if
                     os.path.exists('/nfs/scratch/bootstrax/')
                     else './bootstrax/')
@@ -629,14 +645,14 @@ def infer_mode(rd):
     #  decrease timeout later. Unsure why needed now.
     run_settings = {
         'new_eb':
-            {'low_rate': dict(cores=24, max_messages=20, timeout=200),
-             'med_rate': dict(cores=24, max_messages=20, timeout=400),
+            {'low_rate': dict(cores=24, max_messages=20, timeout=500),
+             'med_rate': dict(cores=24, max_messages=20, timeout=600),
              'high_rate': dict(cores=20, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
              'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
         'old_eb':
-            {'low_rate': dict(cores=30, max_messages=20, timeout=200),
-             'med_rate': dict(cores=20, max_messages=15, timeout=400),
+            {'low_rate': dict(cores=30, max_messages=20, timeout=500),
+             'med_rate': dict(cores=20, max_messages=15, timeout=600),
              'high_rate': dict(cores=10, max_messages=15, timeout=1000),
              'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
              'max_rate': dict(cores=8, max_messages=10, timeout=2000)}}
@@ -1308,45 +1324,53 @@ def process_run(rd, send_heartbeats=args.production):
             elif ec == 0:
                 log.info(f"Strax done on run {run_id}, performing basic data quality check")
 
-                try:
-                    # Sometimes we have only he channels or mv channels, try loading one
-                    # until we get one with chunks.
-                    for rr_type in ('raw_records', 'raw_records_he', 'raw_records_mv',
-                            # 'raw_records_nv' # not in the DAQ-reader yet.
-                                    ):
-                        md = st.get_meta(run_id, rr_type)
-                        if len(md['chunks']) and (
-                                'first_time' in md['chunks'][0] and
-                                'last_endtime' in md['chunks'][0]
-                        ):
-                            break
-                except Exception:
-                    fail("Processing succeeded, but metadata not readable", error_traceback=traceback.format_exc())
-                if not len(md['chunks']):
-                    fail("Processing succeeded, but no chunks were written!")
+                if args.ignore_checks:
+                    # I hope you know what you are doing, we are not going to
+                    # do any of the checks below
+                    pass
+                else:
+                    try:
+                        # Sometimes we have only he channels or mv channels,
+                        # try loading one until we get one with chunks.
+                        for rr_type in ('raw_records',
+                                        'raw_records_he',
+                                        'raw_records_mv',
+                                        'raw_records_nv'
+                                        ):
+                            md = st.get_meta(run_id, rr_type)
+                            if len(md['chunks']) and (
+                                    'first_time' in md['chunks'][0] and
+                                    'last_endtime' in md['chunks'][0]
+                            ):
+                                break
+                    except Exception:
+                        fail("Processing succeeded, but metadata not readable",
+                             error_traceback=traceback.format_exc())
+                    if not len(md['chunks']):
+                        fail("Processing succeeded, but no chunks were written!")
 
-                rd = get_run(mongo_id=rd['_id'])
-                if 'end' not in rd:
-                    fail("Processing succeeded, but run hasn't yet ended!")
+                    rd = get_run(mongo_id=rd['_id'])
+                    if 'end' not in rd:
+                        fail("Processing succeeded, but run hasn't yet ended!")
 
-                # Check that the data written covers the run
-                # (at least up to some fudge factor)
-                # Since chunks can be empty, and we don't want to crash,
-                # this has to be done with some care...
-                # Lets assume some ridiculous timestamp (in ns): 10e9*1e9
-                t_covered = timedelta(
-                    seconds=(max([x.get('last_endtime', 0) for x in md['chunks']]) -
-                             min([x.get('first_time', 10e9*1e9) for x in md['chunks']])) / 1e9)
-                run_duration = rd['end'] - rd['start']
-                if not (0 < t_covered.seconds < float('inf')):
-                    fail(f"Processed data covers {t_covered} sec")
-                if not (timedelta(seconds=-max_timetamp_diff)
-                        < (run_duration - t_covered)
-                        < timedelta(seconds=max_timetamp_diff)):
-                    fail(f"Processing covered {t_covered.seconds}, "
-                         f"but run lasted {run_duration.seconds}!")
-                if not all_files_saved(rd):
-                    fail("Not all files in the rundoc for this run are saved")
+                    # Check that the data written covers the run
+                    # (at least up to some fudge factor)
+                    # Since chunks can be empty, and we don't want to crash,
+                    # this has to be done with some care...
+                    # Lets assume some ridiculous timestamp (in ns): 10e9*1e9
+                    t_covered = timedelta(
+                        seconds=(max([x.get('last_endtime', 0) for x in md['chunks']]) -
+                                 min([x.get('first_time', 10e9*1e9) for x in md['chunks']])) / 1e9)
+                    run_duration = rd['end'] - rd['start']
+                    if not (0 < t_covered.seconds < float('inf')):
+                        fail(f"Processed data covers {t_covered} sec")
+                    if not (timedelta(seconds=-max_timetamp_diff)
+                            < (run_duration - t_covered)
+                            < timedelta(seconds=max_timetamp_diff)):
+                        fail(f"Processing covered {t_covered.seconds}, "
+                             f"but run lasted {run_duration.seconds}!")
+                    if not all_files_saved(rd):
+                        fail("Not all files in the rundoc for this run are saved")
 
                 log.info(f"Run {run_id} processed successfully")
                 if args.production:
