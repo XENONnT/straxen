@@ -24,9 +24,9 @@ copyright = '2018, straxen contributors and the XENON collaboration'
 author = 'straxen contributors and the XENON collaboration'
 
 # The short X.Y version
-version = straxen.__verision__
+version = straxen.__version__
 # The full version, including alpha/beta/rc tags
-release = straxen.__verision__
+release = straxen.__version__
 
 
 # -- General configuration ---------------------------------------------------
