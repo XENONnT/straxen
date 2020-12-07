@@ -137,6 +137,7 @@ def _update_context(st, max_workers, fallback_gains=None):
             'timeout': 60,  # we don't want to build travis for ever
         })
 
+
 def _test_child_options(st):
     """
     Test which checks if child options are handled correctly.

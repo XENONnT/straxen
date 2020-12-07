@@ -40,6 +40,8 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
+    strax.Option('n_nveto_pmts', type=int, track=False,
+                 help='Number of muVETO PMTs'),
     strax.Option('gain_model_nv',
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
@@ -77,12 +79,12 @@ class nVETOHitlets(strax.Plugin):
     def setup(self):
         to_pe = straxen.get_to_pe(self.run_id,
                                   self.config['gain_model_nv'],
-                                  n_tpc_pmts=straxen.n_nveto_pmts)
-        self.channel = self.config['channel_map']['nveto']
+                                  n_tpc_pmts= self.config['n_nveto_pmts'])
+        self.channel_range = self.config['channel_map']['nveto']
         
         # Create to_pe array of size max channel:
-        self.to_pe = np.zeros(self.channel[1]+1, dtype=np.float32)
-        self.to_pe[self.channel[0]:] = to_pe[:]
+        self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
+        self.to_pe[self.channel_range[0]:] = to_pe[:]
 
     def compute(self, records_nv, start, end):
         # Search again for hits in records:
@@ -92,7 +94,7 @@ class nVETOHitlets(strax.Plugin):
         # accidentally concatenate two PMT signals we split them later again.
         hits = strax.concat_overlapping_hits(hits,
                                              self.config['save_outside_hits_nv'],
-                                             self.channel,
+                                             self.channel_range,
                                              start,
                                              end)
         hits = strax.sort_by_time(hits)
@@ -205,6 +207,8 @@ def drop_data_field(old_hitlets, new_hitlets):
     strax.Option('gain_model_mv',
                  child_option=True, parent_option_name='gain_model_nv',
              help='PMT gain model. Specify as (model_type, model_config)'),
+    strax.Option('n_mveto_pmts', type=int, track=False,
+                 help='Number of muVETO PMTs'),
 )
 class muVETOHitlets(nVETOHitlets):
     __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
@@ -213,7 +217,6 @@ class muVETOHitlets(nVETOHitlets):
 
     provides = 'hitlets_mv'
     data_kind = 'hitlets_mv'
-    ends_with = '_mv'
     child_plugin = True
 
     dtype = strax.hitlet_dtype()
@@ -222,11 +225,11 @@ class muVETOHitlets(nVETOHitlets):
         to_pe = straxen.get_to_pe(self.run_id,
                                   self.config['gain_model_mv'],
                                   n_tpc_pmts=straxen.n_mveto_pmts)
-        self.channel = self.config['channel_map']['mv']
+        self.channel_range = self.config['channel_map']['mv']
         
         # Create to_pe array of size max channel:
-        self.to_pe = np.zeros(self.channel[1]+1, dtype=np.float32)
-        self.to_pe[self.channel[0]:] = to_pe[:]
+        self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
+        self.to_pe[self.channel_range[0]:] = to_pe[:]
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)

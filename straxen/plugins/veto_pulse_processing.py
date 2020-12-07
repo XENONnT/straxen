@@ -163,7 +163,6 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
     depends_on = 'raw_records_mv'
     provides = 'records_mv'
     data_kind = 'records_mv'
-    ends_with = '_mv'
     child_plugin = True
 
     def infer_dtype(self):
