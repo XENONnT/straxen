@@ -1,3 +1,50 @@
+0.12.4 / 2020-12-06
+--------------------
+- Add temporary context (#302)
+- Scada interface updates (#297, #301)
+- Waveform plotting in minianalyses (#172)
+- Update online_monitor for lone hits (#294)
+- Tests for time selection fix strax/345 and more (#298)
+- Add more tests to straxen (#292)
+- Pytest on github actions (#303)
+- Add coveralls to straxen (#290)
+- Use github actions to update context collection (#282)
+- Update simulation contexts (#286, #300)
+- Remove to_pe_constant from CMT (#283)
+- Use utilix for client in CMT (#288)
+- Update straxer (#285)
+- Bootstrax updates (#289)
+
+
+0.12.3 / 2020-11-14
+--------------------
+- bugfix in desaturation correction (#279)
+
+
+0.12.1 / 2020-11-13
+--------------------
+- CMT tweak before launch: ffill ONLINE corrections (#275)
+
+
+0.12.0 / 2020-11-13
+--------------------
+- DAQReader for 2ns digitizers (#270)
+- Activate CMT for PMT gains (#271)
+- Desaturation correction (#244)
+- Rise time requirement change (#273)
+- Replace xenon_sectrets by ini file (#163)
+
+
+0.11.1 / 2020-11-05
+--------------------
+- Corrections management tool CMT (#220, #251)
+- Add Online Monitor plugins (#257, #265, #267)
+- Add Scada interface for slow control data (#217)
+- Documentation-updates (#246, #248)
+- Update Rucio frontend (#254)
+- Several (bug)fixes (#253, #262, #256)
+
+
 0.11.0 / 2020-10-15
 --------------------
 - Separate context for fist commissioning data (#246)

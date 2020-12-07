@@ -1,15 +1,16 @@
 """Return corrections from corrections DB
 """
 import pytz
-import pymongo
 import numpy as np
-from warnings import warn
 from functools import lru_cache
-
 import strax
+try:
+    import utilix
+except (RuntimeError, FileNotFoundError):
+    # We might be on a travis job
+    pass
 import straxen
-from straxen.rundb import default_mongo_url, backup_mongo_urls
-
+import os
 export, __all__ = strax.exporter()
 
 
@@ -21,39 +22,39 @@ class CorrectionsManagementServices():
     stage to remove detector effects. Information on the strax implementation
     can be found at https://github.com/AxFoundation/strax/blob/master/strax/corrections.py
     """
-    def __init__(self, username='nt_analysis', password=None, is_nt=True):
+    def __init__(self, username=None, password=None, mongo_url=None, is_nt=True):
         """
         :param username: corrections DB username
-            nt_analysis user has read only permission to corrections DB
-            cmt user has r/w permission to corrections DB and read permission to runsDB
+            read the .xenon_config for the users "pymongo_user" has
+            readonly permissions to the corrections DB
+            the "CMT admin user" has r/w permission to corrections DB
+            and read permission to runsDB
         :param password: DB password
         :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
-        self.username = username
-        self.is_nt = is_nt
 
-        if password is not None:
-            self.password = password
-        elif self.username.endswith('analysis'):
-            self.password = straxen.get_secret('rundb_password')
-        else:
-            raise ValueError(f'No password for {username}')
+        mongo_kwargs = {'url': mongo_url,
+                        'user': username,
+                        'password': password,
+                        'database': 'corrections'}
+        corrections_collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
-        # Get the readonly account for the rundb using hostname = ''
-        runsdb_mongo_url = straxen.rundb.get_mongo_url(hostname='')
+        # Do not delete the client!
+        self.client = corrections_collection.database.client
 
-        _, _url = runsdb_mongo_url.split('@')
+        # Setup the interface
         self.interface = strax.CorrectionsInterface(
-            host=f'mongodb://{_url}',
-            username=self.username,
-            password=self.password,
+            self.client,
             database_name='corrections')
-        # Initialize runs DB to get start-times
-        client = pymongo.MongoClient(runsdb_mongo_url)
+
+        self.is_nt = is_nt
         if self.is_nt:
-            self.collection = client['xenonnt']['runs']
+            self.collection = self.client['xenonnt']['runs']
         else:
-            self.collection = client['run']['runs_new']
+            self.collection = self.client['run']['runs_new']
+
+    def __str__(self):
+        return self.__repr__()
 
     def __repr__(self):
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
@@ -99,7 +100,13 @@ class CorrectionsManagementServices():
             for it_correction, version in df_global.iloc[-1][global_version].items():
                 if correction in it_correction:
                     df = self.interface.read(it_correction)
-                    df = self.interface.interpolate(df, when)
+                    if global_version in ('ONLINE', 'xenonnt_temporary_five_pmts'):
+                        # We don't want to have different versions based
+                        # on when something was processed therefore
+                        # don't interpolate but forward fill.
+                        df = self.interface.interpolate(df, when, how='fill')
+                    else:
+                        df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
         except KeyError:
@@ -133,20 +140,34 @@ class CorrectionsManagementServices():
         else:
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
-    # TODO create a propper dict for 'to_pe_constant' and 'global_version' as
-    #  the 'global_version' is not a version but an array/float for
-    #  model_type = 'to_pe_constant'
-    def get_pmt_gains(self, run_id, model_type, global_version):
+    def get_pmt_gains(self, run_id, model_type, global_version,
+                      cacheable_versions=('ONLINE',),
+                      gain_dtype=np.float32):
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
-        :param model_type: Choose either to_pe_model or to_pe_constant
-        :param global_version: global version or a constant value or an array (if
-        model_type == to_pe_constant)
+        :param model_type: to_pe_model (gain model)
+        :param global_version: global version
+        :param cacheable_versions: versions that are allowed to be
+        cached in ./resource_cache
+        :param gain_dtype: dtype of the gains to be returned as array
         :return: array of pmt gains to PE values
         """
+        to_pe = None
+        cache_name = None
+
         if model_type == 'to_pe_model':
-            to_pe = self._get_correction(run_id, 'pmt', global_version)
+            if global_version in cacheable_versions:
+                # Try to load from cache, if it does not exist it will be created below
+                cache_name = cacheable_naming(run_id, model_type, global_version)
+                try:
+                    to_pe = straxen.get_resource(cache_name, fmt='npy')
+                except (ValueError, FileNotFoundError):
+                    pass
+
+            if to_pe is None:
+                to_pe = self._get_correction(run_id, 'pmt', global_version)
+
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
                 raise ValueError(
@@ -155,27 +176,28 @@ class CorrectionsManagementServices():
                         f'{global_version}, please set constant values for '
                         f'{run_id}')
 
-        elif model_type == 'to_pe_constant':
-            n_tpc_pmts = straxen.n_tpc_pmts
-            if not self.is_nt:
-                # TODO can we prevent these kind of hard codes using the context?
-                n_tpc_pmts = straxen.contexts.x1t_common_config['n_tpc_pmts']
-
-            if not isinstance(global_version, (float, np.ndarray, int)):
-                raise ValueError(f'User must specify a model type {model_type} '
-                                 f'and provide a float/array to be used. Got: '
-                                 f'{type(global_version)}')
-
-            # Generate an array of values and multiply by the 'global_version'
-            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * global_version
-            if len(to_pe) != n_tpc_pmts:
-                raise ValueError(f'to_pe length does not match {n_tpc_pmts}. '
-                                 f'Check that {global_version} is either of '
-                                 f'length {n_tpc_pmts} or a float')
-
         else:
             raise ValueError(f'{model_type} not implemented for to_pe values')
 
+        # Double check the dtype of the gains
+        to_pe = np.array(to_pe, dtype=gain_dtype)
+
+        # Double check that all the gains are found, None is not allowed
+        # since strax processing does not handle this well. If a PMT is
+        # off it's gain should be 0.
+        if np.any(np.isnan(to_pe)):
+            pmts_affected = np.argwhere(np.isnan(to_pe))[:, 0]
+            raise GainsNotFoundError(
+                f'Gains returned by CMT are None for PMT_i = {pmts_affected}. '
+                f'Cannot proceed with processing. Report to CMT-maintainers.')
+
+        if (cache_name is not None
+                and global_version in cacheable_versions
+                and not os.path.exists(cache_name)):
+            # This is an array we can save since it's in the cacheable
+            # versions but it has not been saved yet. Next time we need
+            # it, we can get it from our cache.
+            np.save(cache_name, to_pe, allow_pickle=False)
         return to_pe
 
     def get_lce(self, run_id, s, position, global_version='v1'):
@@ -216,3 +238,21 @@ class CorrectionsManagementServices():
             raise ValueError(f'run_id = {run_id} not found')
         time = rundoc['start']
         return time.replace(tzinfo=pytz.utc)
+
+
+def cacheable_naming(*args, format='.npy', base='./resource_cache/'):
+    """Convert args to consistent naming convention for array to be cached"""
+    if not os.path.exists(base):
+        try:
+            os.mkdir(base)
+        except (FileExistsError, PermissionError):
+            pass
+    for arg in args:
+        if not type(arg) == str:
+            raise TypeError(f'One or more args of {args} are not strings')
+    return base + '_'.join(args) + format
+
+
+class GainsNotFoundError(Exception):
+    """Fatal error if a None value is returned by the corrections"""
+    pass

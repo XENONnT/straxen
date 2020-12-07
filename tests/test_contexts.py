@@ -24,11 +24,6 @@ def test_xenonnt_online():
     st.search_field('time')
 
 
-def test_xenonnt_initial_commissioning():
-    st = xenonnt_initial_commissioning(_database_init=False)
-    st.search_field('time')
-
-
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False)
     st.search_field('time')
@@ -38,6 +33,11 @@ def xenon_xenonnt_simulation():
     if import_wfsim():
         st = xenonnt_simulation()
         st.search_field('time')
+
+
+def xenonnt_temporary_five_pmts():
+    st = xenonnt_temporary_five_pmts(_database_init=False)
+    st.search_field('time')
 
 
 ##

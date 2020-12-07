@@ -4,6 +4,7 @@ import straxen
 import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
+import os
 
 # Number of chunks for the dummy raw records we are writing here
 N_CHUNKS = 2
@@ -55,7 +56,6 @@ forbidden_plugins = tuple([p for p in
                            straxen.daqreader.DAQReader.provides
                            if p not in DummyRawRecords.provides])
 
-
 def _run_plugins(st,
                  make_all=False,
                  run_id=run_id,
@@ -99,7 +99,6 @@ def _run_plugins(st,
                             int(strax.SaveWhen.TARGET)):
                         is_stored = st.is_stored(run_id, p)
                         assert is_stored, f"{p} did not save correctly!"
-
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
@@ -108,10 +107,13 @@ def _update_context(st, max_workers, fallback_gains=None):
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
     st.register(DummyRawRecords)
     try:
-        straxen.get_secret('rundb_password')
-        # If you want to have quicker checks: always raise an ValueError as
-        # the CMT does take quite long to load the right corrections.
-        # ValueError
+        if straxen.uconfig is None:
+            raise ValueError('uconfig did not import')
+        # If you want to have quicker checks: always raise an ValueError
+        # as the CMT does take quite long to load the right corrections.
+        if max_workers > 1 and fallback_gains is not None:
+            raise ValueError(
+                'Use fallback gains for multicore to save time on tests')
     except ValueError:
         # Okay so we cannot initize the runs-database. Let's just use some
         # fallback values if they are specified.
@@ -155,7 +157,7 @@ def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
     st = straxen.contexts.xenonnt_online(_database_init=False)
-    offline_gain_model = ('to_pe_constant', 'TemporaryGXe_1500V_PMT116_1300_PMT195_1300')
+    offline_gain_model = ('to_pe_constant', 'gain_placeholder')
     _update_context(st, ncores, fallback_gains=offline_gain_model)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')

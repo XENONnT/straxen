@@ -17,8 +17,9 @@ import pandas as pd
 from re import match
 import numba
 from warnings import warn
-
 import strax
+from straxen import uconfig
+
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
             'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E']
@@ -175,18 +176,29 @@ def get_resource(x, fmt='text'):
 @export
 def get_secret(x):
     """Return secret key x. In order of priority, we search:
-
       * Environment variable: uppercase version of x
       * xenon_secrets.py (if included with your straxen installation)
       * A standard xenon_secrets.py located on the midway analysis hub
         (if you are running on midway)
     """
+    warn("xenon_secrets is deprecated, and will be replaced with utilix"
+         "configuration file instead. See https://github.com/XENONnT/utilix")
     env_name = x.upper()
     if env_name in os.environ:
         return os.environ[env_name]
 
     message = (f"Secret {x} requested, but there is no environment "
                f"variable {env_name}, ")
+
+    # now try using utilix. We need to check that it is not None first!
+    # this will be main method in a future release
+    if uconfig is not None and uconfig.has_option('straxen', x):
+        try:
+            return uconfig.get('straxen', x)
+        except configparser.NoOptionError:
+            warn(f'uconfig does not have {x}')
+
+    # if that doesn't work, revert to xenon_secrets
     try:
         from . import xenon_secrets
     except ImportError:
@@ -242,6 +254,7 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
 
 @export
 def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
