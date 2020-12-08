@@ -387,9 +387,12 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
     strax.Option('le_to_he_amplification', default=20, track=True,
                  help="Difference in amplification between low energy and high "
                       "energy channels"),
-    strax.Option('peak_min_pmts_he', default=2, child_option=True, track=True,
+    strax.Option('peak_min_pmts_he', default=2,
+                 child_option=True, parent_option_name='peak_min_pmts',
+                 track=True,
                  help="Minimum number of contributing PMTs needed to define a peak"),
-    strax.Option('saturation_correction_on_he', default=False, child_option=True,
+    strax.Option('saturation_correction_on_he', default=False,
+                 child_option=True, parent_option_name='saturation_correction_on',
                  track=True,
                  help='On off switch for saturation correction for High Energy'
                       ' channels'),
@@ -401,7 +404,7 @@ class PeakletsHighEnergy(Peaklets):
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
@@ -478,7 +481,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
@@ -596,7 +599,7 @@ class MergedS2sHighEnergy(MergedS2s):
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))

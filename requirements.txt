@@ -8,7 +8,6 @@ multihist>=0.6.3
 matplotlib
 packaging
 immutabledict
-numpy>1.18.0
 numba>=0.50.0
 strax>=0.12.5
 requests
