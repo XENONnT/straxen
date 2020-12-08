@@ -1,6 +1,8 @@
 from immutabledict import immutabledict
 import strax
 import straxen
+import numpy as np
+
 
 common_opts = dict(
     register_all=[
@@ -137,11 +139,36 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    fax_config=straxen.aux_repo + '17e83b1a8c02f56066081ebaefe5f625ebb2e287/fax_files/fax_config_nt.json',
+                    check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
+    return st
+
+
+def xenonnt_temporary_five_pmts(**kwargs):
+    """Temporary context for selected PMTs"""
+    # Start from the online context
+    st_online = xenonnt_online(**kwargs)
+
+    temporary_five_pmts_config = {
+        'gain_model': ('CMT_model', ("to_pe_model", "xenonnt_temporary_five_pmts")),
+        'peak_min_pmts': 2,
+        'peaklet_gap_threshold': 300,
+    }
+    # If there are any config overwrites in the kwargs, us those,
+    # otherwise use the config as in the dict above.
+
+    for k in list(temporary_five_pmts_config.keys()):
+        if k in kwargs:
+            temporary_five_pmts_config[k] = kwargs[k]
+
+    # Copy the online context and change the configuration here
+    st = st_online.new_context()
+    st.set_config(temporary_five_pmts_config)
+
     return st
 
 
@@ -280,6 +307,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config=straxen.aux_repo + '1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
             detector='XENON1T',
+            check_raw_record_overlaps=False,
             **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFax1T)

@@ -197,7 +197,6 @@ def get_secret(x):
             return uconfig.get('straxen', x)
         except configparser.NoOptionError:
             warn(f'uconfig does not have {x}')
-            pass
 
     # if that doesn't work, revert to xenon_secrets
     try:
@@ -255,6 +254,7 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
 
 @export
 def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):

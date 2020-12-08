@@ -18,15 +18,15 @@
 
 
 # -- Project information -----------------------------------------------------
-
+import straxen
 project = 'straxen'
 copyright = '2018, straxen contributors and the XENON collaboration'
 author = 'straxen contributors and the XENON collaboration'
 
 # The short X.Y version
-version = '0.0.1'
+version = straxen.__version__
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = straxen.__version__
 
 
 # -- General configuration ---------------------------------------------------
