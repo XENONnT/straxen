@@ -109,9 +109,6 @@ parser.add_argument(
     help="Do not use! This disables checks on e.g. the timestamps! Should only "
          "be used if some run is very valuable but some checks are failing.")
 parser.add_argument(
-    '--undying', action='store_true',
-    help="Except any error and ignore it")
-parser.add_argument(
     '--sub_d_targets', nargs='*',
     default=['raw_records_he', 'raw_records_nv', 'raw_records_mv'],
     help="Target(s) for other sub-detectors. If not produced automatically "
@@ -130,7 +127,9 @@ actions.add_argument(
 actions.add_argument(
     '--abandon', nargs='+', metavar=('NUMBER', 'REASON'),
     help="Abandon run number, optionally with reason")
-
+actions.add_argument(
+    '--undying', action='store_true',
+    help="Except any error and ignore it")
 args = parser.parse_args()
 
 ##
@@ -359,10 +358,6 @@ def main():
 
 def main_loop():
     """Infinite loop looking for runs to process"""
-
-    # Wait for mongo connection
-    ping_dbs()
-
     # Ensure we're the only bootstrax on this host
     any_other_running = list(bs_coll.find({'host': hostname,
                                            'pid': {'$ne': os.getpid()}}))
@@ -483,8 +478,6 @@ def set_state(state, update_fields=None):
 
     if state is None, leave state unchanged, just update heartbeat time
     """
-    ping_dbs()
-
     # Find the last message of this host
     previous_entry = bs_coll.find_one({'host': hostname},
                                       sort=[('time', pymongo.DESCENDING)])
@@ -529,7 +522,6 @@ def log_warning(message, priority='warning', run_id=None):
         <any other valid python logging level, e.g. error or fatal>: 3
     :param run_id: optional run id.
     """
-    ping_dbs()
     if not args.production:
         return
     getattr(log, priority)(message)
@@ -558,8 +550,6 @@ def eb_can_process():
       - Eb3-5 should be busy processing for a substantial time.
     :returns: bool if this host should process a run"""
 
-    # Check mongo connection
-    ping_dbs()
 
     # eb3-5 always process.
     if hostname in ['eb3.xenon.local', 'eb4.xenon.local', 'eb5.xenon.local']:
@@ -712,9 +702,6 @@ def delete_temp_files():
     """
     removes _temp files from output_folder if successfully processed
     """
-    # Check mongo connection
-    ping_dbs()
-
     temp_files = [f for f in os.listdir(output_folder) if f.endswith('_temp')]
     for f in temp_files:
         run_id = int(f.split('-')[0])
@@ -745,7 +732,6 @@ def delete_live_data(rd, live_data_path):
 def _delete_data(rd, path, data_type):
     """After completing the processing and updating the runsDB, remove the
     live_data"""
-    ping_dbs()
 
     if data_type == 'live' and not args.delete_live and args.production:
         message = 'Unsafe operation. Trying to delete live data!'
@@ -819,8 +805,9 @@ def ping_dbs():
             daq_db.command('ping')
             break
         except Exception as ping_error:
-            log.warning(f'Failed to connect to Mongo. Ran into {ping_error}. Sleep for a '
-                        f'minute.')
+            log_warning(
+                f'Failed to connect to Mongo. Ran into {ping_error}. Sleep '
+                f'for a minute.', priority='warning')
             time.sleep(60)
 
 
@@ -831,7 +818,6 @@ def get_run(*, mongo_id=None, number=None, full_doc=False):
     :param full_doc: If true (default is False), return the full run doc
         rather than just fields used by bootstrax.
     """
-    ping_dbs()
     if number is not None:
         query = {'number': number}
     elif mongo_id is not None:
@@ -850,7 +836,6 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
 
     Any additional kwargs will be added to the bootstrax field.
     """
-    ping_dbs()
     if not args.production:
         return run_coll.find_one({'_id': rd['_id']})
 
@@ -1000,9 +985,6 @@ def abandon(*, mongo_id=None, number=None):
 
 def consider_run(query, return_new_doc=True, test_counter=0):
     """Return one run doc matching query, and simultaneously set its bootstraxstate to 'considering'"""
-    # Check mongo connection
-    ping_dbs()
-
     # We must first do an atomic find-and-update to set the run's state
     # to "considering", to ensure the run doesn't get picked up by a
     # bootstrax on another host.
@@ -1179,9 +1161,6 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
 
 
 def process_run(rd, send_heartbeats=args.production):
-    # Check mongo connection
-    ping_dbs()  # TODO obsolete?
-
     log.info(f"Starting processing of run {rd['number']}")
     if rd is None:
         raise RuntimeError("Pass a valid rundoc, not None!")
@@ -1410,9 +1389,6 @@ def clean_run(*, mongo_id=None, number=None, force=False):
     Does NOT remove temporary folders,
     nor data that isn't registered to the run db.
     """
-    # Check mongo connection
-    ping_dbs()
-
     # We need to get the full data docs here, since I was too lazy to write
     # a surgical update below
     rd = get_run(mongo_id=mongo_id, number=number, full_doc=True)
