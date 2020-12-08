@@ -200,13 +200,14 @@ def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
     st = straxen.contexts.xenonnt_online(_database_init=False)
-    _test_child_options(st)
     offline_gain_model = ('to_pe_constant', 'gain_placeholder')
     _update_context(st, ncores, fallback_gains=offline_gain_model)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
     # Test issue #233
     st.search_field('cs1')
+    # Test of child plugins:
+    _test_child_options(st)
     print(st.context_config)
 
 
