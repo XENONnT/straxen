@@ -9,5 +9,5 @@ matplotlib
 packaging
 immutabledict
 numba>=0.50.0
-strax>=0.12.5
+strax>=0.12.6
 requests
