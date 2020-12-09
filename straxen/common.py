@@ -17,11 +17,13 @@ import pandas as pd
 from re import match
 import numba
 from warnings import warn
-
 import strax
+from straxen import uconfig
+
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts']
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E', 
+            'n_nveto_pmts', 'n_mveto_pmts']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -31,7 +33,15 @@ aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
 n_tpc_pmts = 494
 n_top_pmts = 253
+n_hard_aqmon_start = 800
 
+n_nveto_pmts = 120
+n_mveto_pmts = 84
+
+# Convert from ADC * samples to electrons emitted by PMT
+# see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
+# it's needed in analyses
+ADC_TO_E = 17142.81741
 
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
@@ -168,32 +178,31 @@ def get_resource(x, fmt='text'):
 
 
 @export
-def get_elife(run_id,elife_file):
-    x = get_resource(elife_file, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Gains not known: using placeholders
-        e = 623e3
-    else:
-        e = x[run_index[0]]['e_life']
-    return e
-
-
-@export
 def get_secret(x):
     """Return secret key x. In order of priority, we search:
-
       * Environment variable: uppercase version of x
       * xenon_secrets.py (if included with your straxen installation)
       * A standard xenon_secrets.py located on the midway analysis hub
         (if you are running on midway)
     """
+    warn("xenon_secrets is deprecated, and will be replaced with utilix"
+         "configuration file instead. See https://github.com/XENONnT/utilix")
     env_name = x.upper()
     if env_name in os.environ:
         return os.environ[env_name]
 
     message = (f"Secret {x} requested, but there is no environment "
                f"variable {env_name}, ")
+
+    # now try using utilix. We need to check that it is not None first!
+    # this will be main method in a future release
+    if uconfig is not None and uconfig.has_option('straxen', x):
+        try:
+            return uconfig.get('straxen', x)
+        except configparser.NoOptionError:
+            warn(f'uconfig does not have {x}')
+
+    # if that doesn't work, revert to xenon_secrets
     try:
         from . import xenon_secrets
     except ImportError:
@@ -249,6 +258,7 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
 
 @export
 def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
@@ -412,10 +422,11 @@ def remap_old(data, targets, works_on_target=''):
     elif not np.any([match(works_on_target, t) for t in strax.to_str_tuple(targets)]):
         # None of the targets are such that we want to remap
         pass
-    else:
+    elif len(data):
         # select the old data and do the remapping for this
-        warn('Correcting data of runs with mis-cabled PMTs. \nSee: https://'
-             'xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap')
+        warn("Correcting data of runs with mis-cabled PMTs. \nSee: https://"
+             "xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap. "
+             "Don't use '' selection_str='channel == xx' '' (github.com/XENONnT/straxen/issues/239)")
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
         data[mask] = remap_channels(data[mask])
     return data

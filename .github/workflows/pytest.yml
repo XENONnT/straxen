@@ -1,0 +1,41 @@
+# Test straxen on each PR
+name: Test package
+
+# Trigger this code when a new release is published
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+  pull_request:
+    branches:
+      - master
+      - stable
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.8]
+    steps:
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Install strax
+        run: |
+            git clone https://github.com/AxFoundation/strax.git ../strax
+            pip install ../strax
+      - name: Install python dependencies
+        uses: py-actions/py-dependency-install@v2
+      - name: Install straxen
+        run: bash .github/scripts/install_straxen.sh
+      - name: Install pytest and hypothesis
+        run: pip install pytest hypothesis flake8 boltons tensorflow
+      - name: Test package
+        run: |
+          pytest
+      - name: goodbye
+        run: echo goodbye

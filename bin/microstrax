@@ -59,7 +59,7 @@ def get_data(
 
     if max_n <= 0:
         max_n = None
-    t0 = st.estimate_run_start(run_id, target)
+    t0, _ = st.estimate_run_start_and_end(run_id, target)
     if start is None or end is None:
         time_range = None
     else:
@@ -134,9 +134,11 @@ def _set_state():
     """
     # DAQ database
     daq_db_name = 'daq'
-    daq_db_password = straxen.get_secret('MONGO_DAQ_PASSWORD'.lower())
-    daq_db_username = straxen.get_secret('MONGO_DAQ_USERNAME'.lower())
-    daq_client = pymongo.MongoClient(f"mongodb://{daq_db_username}:{daq_db_password}@xenon1t-daq:27017/admin")
+    daq_uri = straxen.get_mongo_uri(header='rundb_admin',
+                                    user_key='mongo_daq_username',
+                                    pwd_key='mongo_daq_password',
+                                    url_key='mongo_daq_url')
+    daq_client = pymongo.MongoClient(daq_uri)
     daq_db = daq_client[daq_db_name]
     bs_coll = daq_db['eb_monitor']
     while True:
@@ -155,7 +157,7 @@ def _set_state():
         except Exception as timeout_error:
             print(f"Ran into {timeout_error}. Can be bad. Let's take a nap")
         bs_coll.insert_one(microstrax_state)
-        time.sleep(60)
+        time.sleep(9)
 
 
 def set_state():

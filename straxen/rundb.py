@@ -2,28 +2,22 @@ import os
 import re
 import typing
 import socket
-from warnings import warn
-import botocore.client
 from tqdm import tqdm
-import pymongo
-
+from copy import deepcopy
 import strax
-import straxen
+try:
+    import utilix
+except (RuntimeError, FileNotFoundError):
+    # We might be on a travis job
+    pass
+from straxen import uconfig
+
 export, __all__ = strax.exporter()
-
-
-default_mongo_url = 'xenon-rundb.grid.uchicago.edu:27017/xenonnt'
-backup_mongo_urls = ('fried.rice.edu:27017/xenonnt',
-                     'xenon1t-daq.lngs.infn.it:27017/xenonnt')
-default_mongo_dbname = 'xenonnt'
-default_mongo_collname = 'runs'
-
 
 @export
 class RunDB(strax.StorageFrontend):
-    """Frontend that searches RunDB MongoDB for data.
-
-    Loads appropriate backends ranging from Files to S3.
+    """
+    Frontend that searches RunDB MongoDB for data.
     """
     # Dict of alias used in rundb: regex on hostname
     hosts = {
@@ -33,16 +27,16 @@ class RunDB(strax.StorageFrontend):
     provide_run_metadata = True
 
     def __init__(self,
-                 mongo_url=None,
-                 mongo_dbname=None,
-                 mongo_collname=None,
                  minimum_run_number=7157,
                  runid_field='name',
-                 s3_kwargs=None,
                  local_only=False,
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
                  rucio_path=None,
+                 mongo_url=None,
+                 mongo_user=None,
+                 mongo_password=None,
+                 mongo_database=None,
                  *args, **kwargs):
         """
         :param mongo_url: URL to Mongo runs database (including auth)
@@ -52,7 +46,6 @@ class RunDB(strax.StorageFrontend):
             Defaults to None: do not write new data
             New files will be registered in the runs db!
             TODO: register under hostname alias (e.g. 'dali')
-        :param s3_kwargs: Arguments to initialize S3 backend (including auth)
         :param runid_field: Rundb field to which strax's run_id concept
             corresponds. Can be either
             - 'name': values must be strings, for XENON1T
@@ -61,8 +54,8 @@ class RunDB(strax.StorageFrontend):
         field with 'reader.ini.name'.
 
         Other (kw)args are passed to StorageFrontend.__init__
-
-        TODO: disable S3 if secret keys not known
+        #TODO
+        Add mongo_* to the docstring
         """
         super().__init__(*args, **kwargs)
         self.local_only = local_only
@@ -78,67 +71,49 @@ class RunDB(strax.StorageFrontend):
             raise ValueError("Unrecognized runid_field option %s" % self.runid_field)
 
         self.hostname = socket.getfqdn()
+        if not self.readonly and self.hostname.endswith('xenon.local'):
+            # We want admin access to start writing data!
+            mongo_url = uconfig.get('rundb_admin', 'mongo_rdb_url')
+            mongo_user = uconfig.get('rundb_admin', 'mongo_rdb_username')
+            mongo_password = uconfig.get('rundb_admin', 'mongo_rdb_password')
+            mongo_database = uconfig.get('rundb_admin', 'mongo_rdb_database')
 
-        if s3_kwargs is None:
-            s3_kwargs = dict(
-                aws_access_key_id=straxen.get_secret('s3_access_key_id'),
-                aws_secret_access_key=straxen.get_secret('s3_secret_access_key'),      # noqa
-                endpoint_url='http://ceph-s3.mwt2.org',
-                service_name='s3',
-                config=botocore.client.Config(
-                    connect_timeout=5,
-                    retries=dict(max_attempts=10)))
+        # setup mongo kwargs...
+        # utilix.rundb.pymongo_collection will take the following variables as kwargs
+        # url: mongo url, including auth
+        # user: the user
+        # password: the password for the above user
+        # database: the mongo database name
+        # finally, it takes the collection name as an arg (not a kwarg).
+        # if no collection arg is passed, it defaults to the runsDB collection
+        # See https://github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
+        mongo_kwargs = {'url': mongo_url,
+                        'user': mongo_user,
+                        'password': mongo_password,
+                        'database': mongo_database}
+        self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
-        if mongo_url is None:
-            if self.hostname.endswith('xenon.local'):
-                username = straxen.get_secret('mongo_rdb_username')
-                password = straxen.get_secret('mongo_rdb_password')
-                url_base = 'xenon1t-daq:27017,old-gw:27017/admin'
-                mongo_url = f"mongodb://{username}:{password}@{url_base}"
-            else:
-                username = straxen.get_secret('rundb_username')
-                password = straxen.get_secret('rundb_password')
-
-                # try connection to the mongo database in this order
-                mongo_connections = [default_mongo_url, *backup_mongo_urls]
-                for url_base in mongo_connections:
-                    try:
-                        mongo_url = f"mongodb://{username}:{password}@{url_base}"
-                        # Force server timeout if we cannot connect ot this url. If this
-                        # does not raise an error, break and use this url
-                        pymongo.MongoClient(mongo_url).server_info()
-                        break
-                    except pymongo.errors.ServerSelectionTimeoutError:
-                        warn(f'Cannot connect to to Mongo url: {url_base}')
-                        if url_base == mongo_connections[-1]:
-                            raise pymongo.errors.ServerSelectionTimeoutError(
-                                'Cannot connect to any Mongo url')
-
-        self.client = pymongo.MongoClient(mongo_url)
-
-        if mongo_dbname is None:
-            mongo_dbname = default_mongo_dbname
-        if mongo_collname is None:
-            mongo_collname = default_mongo_collname
-        self.collection = self.client[mongo_dbname][mongo_collname]
+        # Do not delete the client!
+        self.client = self.collection.database.client
 
         self.backends = [
-            strax.S3Backend(**s3_kwargs),
             strax.FileSytemBackend(),
         ]
-        if self.rucio_path is not None:
-            self.backends.append(strax.rucio(self.rucio_path))
 
         # Construct mongo query for runs with available data.
         # This depends on the machine you're running on.
         self.available_query = [{'host': self.hostname}]
-        if not self.local_only:
-            self.available_query.append({'host': 'ceph-s3'})
 
         # Go through known host aliases
         for host_alias, regex in self.hosts.items():
             if re.match(regex, self.hostname):
                 self.available_query.append({'host': host_alias})
+
+        if self.rucio_path is not None:
+            self.backends.append(strax.rucio(self.rucio_path))
+            # When querying for rucio, add that it should be dali-userdisk
+            self.available_query.append({'host': 'rucio-catalogue',
+                                         'location': 'UC_DALI_USERDISK'})
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key"""
@@ -162,20 +137,24 @@ class RunDB(strax.StorageFrontend):
 
         # Check that we are in rucio backend
         if self.rucio_path is not None:
+            rucio_key = self.key_to_rucio_did(key)
             dq = {
                 'data': {
                     '$elemMatch': {
+                        # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
+                        'did': rucio_key,
                         'protocol': 'rucio'}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
                 datum = doc['data'][0]
-                return datum['protocol'], str(key.run_id) + '-' + datum['did'].split(':')[1]
-        
+                assert datum.get('did', '') == rucio_key, f'Expected {rucio_key} got data on {datum["location"]}'
+                backend_name, backend_key = datum['protocol'], f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
+                return backend_name, backend_key
+
         dq = self._data_query(key)
-        doc = self.collection.find_one({**run_query, **dq},
-                                      projection=dq)
+        doc = self.collection.find_one({**run_query, **dq}, projection=dq)
 
         if doc is None:
             # Data was not found
@@ -223,31 +202,33 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {'name': {'$in': [int(key.run_id) for key in keys]}}
+            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys]}}
         dq = self._data_query(keys[0])
 
-        projection = dq.copy()
+        # dict.copy is sometimes not sufficient for nested dictionary
+        projection = deepcopy(dq)
         projection.update({
             k: True
-            for k in 'name number data.protocol data.location'.split()})
+            for k in f'name number'.split()})
 
         results_dict = dict()
         for doc in self.collection.find(
                 {**run_query, **dq}, projection=projection):
+            # If you get a key error here there might be something off with the
+            # projection
             datum = doc['data'][0]
 
             if self.runid_field == 'name':
                 dk = doc['name']
             else:
-                dk = doc['number']
-            results_dict[dk] = datum['protocol'], datum['location']
+                dk = f'{doc["number"]:06}'
 
-        return [
-            results_dict.get(k.run_id, False)
-            for k in keys]
+            results_dict[dk] = datum['protocol'], datum['location']
+        return [results_dict.get(k.run_id, False)
+                for k in keys]
 
     def _list_available(self, key: strax.DataKey,
-              allow_incomplete, fuzzy_for, fuzzy_for_options):
+                        allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
         if allow_incomplete:
@@ -266,9 +247,14 @@ class RunDB(strax.StorageFrontend):
             query = {'number': {'$gt': self.minimum_run_number}}
         else:
             query = {}
+        projection = strax.to_str_tuple(list(store_fields))
+        # Replace fields by their subfields if requested only take the most
+        # "specific" projection
+        projection = [f1 for f1 in projection
+                      if not any([f2.startswith(f1+".") for f2 in projection])]
         cursor = self.collection.find(
             filter=query,
-            projection=strax.to_str_tuple(list(store_fields)))
+            projection=projection)
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
                         total=cursor.count()):
             del doc['_id']
@@ -295,3 +281,8 @@ class RunDB(strax.StorageFrontend):
         if self.reader_ini_name_is_mode:
             doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         return doc
+
+    @staticmethod
+    def key_to_rucio_did(key: strax.DataKey):
+        """Convert a strax.datakey to a rucio did field in rundoc"""
+        return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
