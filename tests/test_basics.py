@@ -23,11 +23,15 @@ def test_straxen():
 
             print("Test processing")
             df = st.get_df(run_id, 'event_info')
+
             assert len(df) > 0
             assert 'cs1' in df.columns
             assert df['cs1'].sum() > 0
             assert not np.all(np.isnan(df['x'].values))
 
+            print('Test common.get_livetime_sec')
+            events = st.get_array(run_id, 'peaks')
+            straxen.get_livetime_sec(st, test_run_id, things=events)
             # TODO: find a way to break up the tests
             # surely pytest has common startup/cleanup?
 
