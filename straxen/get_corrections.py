@@ -32,10 +32,7 @@ def get_to_pe(run_id, gain_model, n_pmts):
                              '("CMT_model", ("to_pe_model", "v1"). Instead got:'
                              f'{model_conf}')
         # is this the best way to do this?
-        if n_pmts == straxen.n_tpc_pmts or n_pmts == straxen.n_nveto_pmts or n_pmts == straxen.n_mveto_pmts:
-            is_nt = True
-        else:
-            is_nt = False
+        is_nt = n_pmts == straxen.n_tpc_pmts or n_pmts == straxen.n_nveto_pmts or n_pmts == straxen.n_mveto_pmts
 
         corrections = straxen.CorrectionsManagementServices(is_nt=is_nt)
         if n_pmts == straxen.n_tpc_pmts:
