@@ -8,7 +8,7 @@ __all__ += ['FIXED_TO_PE']
 
 
 @export
-def get_to_pe(run_id, gain_model, n_tpc_pmts):
+def get_to_pe(run_id, gain_model, n_pmts):
     if not isinstance(gain_model, tuple):
         raise ValueError(f"gain_model must be a tuple")
     if not len(gain_model) == 2:
@@ -31,9 +31,20 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
             raise ValueError('CMT gain model should be similar to:'
                              '("CMT_model", ("to_pe_model", "v1"). Instead got:'
                              f'{model_conf}')
-        is_nt = n_tpc_pmts == straxen.n_tpc_pmts
+        # is this the best way to do this?
+        if n_pmts == straxen.n_tpc_pmts or n_pmts == straxen.n_nveto_pmts or n_pmts == straxen.n_mveto_pmts:
+            is_nt = True
+        else:
+            is_nt = False
+
         corrections = straxen.CorrectionsManagementServices(is_nt=is_nt)
-        to_pe = corrections.get_corrections_config(run_id, 'pmt_gains', model_conf)
+        if n_pmts == straxen.n_tpc_pmts:
+            to_pe = corrections.get_corrections_config(run_id, 'pmt_gains', model_conf)
+        elif n_pmts == straxen.n_nveto_pmts:
+            to_pe = corrections.get_corrections_config(run_id, 'n_veto_pmt_gains', model_conf)
+        elif n_pmts == straxen.n_mveto_pmts:
+            to_pe = corrections.get_corrections_config(run_id, 'mu_veto_pmt_gains', model_conf)
+
         return to_pe
 
     elif model_type == 'to_pe_per_run':
@@ -54,17 +65,17 @@ def get_to_pe(run_id, gain_model, n_tpc_pmts):
 
         try:
             # Uniform gain, specified as a to_pe factor
-            to_pe = np.ones(n_tpc_pmts, dtype=np.float32) * model_conf
+            to_pe = np.ones(n_pmts, dtype=np.float32) * model_conf
         except np.core._exceptions.UFuncTypeError as e:
             raise(str(e) +
                   f'\nTried multiplying by {model_conf}. Insert a number instead.')
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
-    if len(to_pe) != n_tpc_pmts:
+    if len(to_pe) != n_pmts:
        raise ValueError(
             f"Gain model {gain_model} resulted in a to_pe "
-            f"of length {len(to_pe)}, but n_tpc_pmts is {n_tpc_pmts}!")
+            f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
     return to_pe
 
 

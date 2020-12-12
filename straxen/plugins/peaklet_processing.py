@@ -98,7 +98,7 @@ class Peaklets(strax.Plugin):
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
-                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+                                       self.config['n_tpc_pmts'])
 
     def compute(self, records, start, end):
         r = records
