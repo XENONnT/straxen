@@ -157,7 +157,7 @@ def get_resource(x: str, fmt='text'):
             path = downloader.download_single(x)
             return open_resource(path, fmt=fmt)
     # 4. load from URL
-    elif '://' in x:
+    if '://' in x:
         return resource_from_url(x, fmt=fmt)
     raise FileNotFoundError(
         f'Cannot open {x} because it is either not stored or we '
