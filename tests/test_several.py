@@ -8,7 +8,6 @@ import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
 
-
 def test_pmt_pos_1t():
     """
     Test if we can get the 1T PMT positions
@@ -59,7 +58,6 @@ def test_several():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
-
             print("Get peaks")
             p = st.get_array(test_run_id, 'peaks')
 
