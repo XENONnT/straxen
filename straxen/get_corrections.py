@@ -35,12 +35,7 @@ def get_to_pe(run_id, gain_model, n_pmts):
         is_nt = n_pmts == straxen.n_tpc_pmts or n_pmts == straxen.n_nveto_pmts or n_pmts == straxen.n_mveto_pmts
 
         corrections = straxen.CorrectionsManagementServices(is_nt=is_nt)
-        if n_pmts == straxen.n_tpc_pmts:
-            to_pe = corrections.get_corrections_config(run_id, 'pmt_gains', model_conf)
-        elif n_pmts == straxen.n_nveto_pmts:
-            to_pe = corrections.get_corrections_config(run_id, 'n_veto_pmt_gains', model_conf)
-        elif n_pmts == straxen.n_mveto_pmts:
-            to_pe = corrections.get_corrections_config(run_id, 'mu_veto_pmt_gains', model_conf)
+        to_pe = corrections.get_corrections_config(run_id, model_conf)
 
         return to_pe
 
@@ -86,6 +81,7 @@ FIXED_TO_PE = {
     'adc_nv': np.ones(straxen.n_nveto_pmts)
 }
 
+
 @export
 def get_elife(run_id, elife_conf):
     if isinstance(elife_conf, tuple) and len(elife_conf) == 3:
@@ -93,8 +89,7 @@ def get_elife(run_id, elife_conf):
         is_nt = elife_conf[-1]
         cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
 
-        e = cmt.get_corrections_config(run_id, 'elife',
-                                       elife_conf[:2])
+        e = cmt.get_corrections_config(run_id, elife_conf[:2])
 
     elif isinstance(elife_conf, str):
         warn("get_elife will be replaced by CorrectionsManagementSevices",

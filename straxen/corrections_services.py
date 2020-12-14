@@ -60,11 +60,10 @@ class CorrectionsManagementServices():
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
                    f'-Corrections_Management_Services')
 
-    def get_corrections_config(self, run_id, correction=None, config_model=None):
+    def get_corrections_config(self, run_id, config_model=None):
         """
         Get context configuration for a given correction
         :param run_id: run id from runDB
-        :param correction: correction's name (str type)
         :param config_model: configuration model (tuple type)
         :return: correction value(s)
         """
@@ -73,19 +72,15 @@ class CorrectionsManagementServices():
             raise ValueError(f'config_model {config_model} must be a tuple')
         model_type, global_version = config_model
 
-        if correction == 'pmt_gains':
-            return self.get_pmt_gains(run_id, model_type, global_version, 'tpc')
-        elif correction == 'n_veto_pmt_gains':
-            return self.get_pmt_gains(run_id, model_type, global_version, 'n_veto')
-        elif correction == 'mu_veto_pmt_gains':
-            return self.get_pmt_gains(run_id, model_type, global_version, 'mu_veto')
-        elif correction == 'elife':
+        if 'to_pe_model' in model_type:
+            return self.get_pmt_gains(run_id, model_type, global_version)
+        elif 'elife' in model_type:
             return self.get_elife(run_id, model_type, global_version)
         else:
             raise ValueError(f'{correction} not found')
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
-    #  entry for e.g. for super runs
+    # entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, global_version):
@@ -127,7 +122,7 @@ class CorrectionsManagementServices():
         Smart logic to return electron lifetime correction
         :param run_id: run id from runDB
         :param model_type: choose either elife_model or elife_constant
-        :param global_version: global version, or float (if model_type == elife_constant) 
+        :param global_version: global version, or float (if model_type == elife_constant)
         :return: electron lifetime correction value
         """
         if model_type == 'elife_model':
@@ -145,7 +140,7 @@ class CorrectionsManagementServices():
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
     def get_pmt_gains(self, run_id, model_type, global_version,
-                      detector, cacheable_versions=('ONLINE',),
+                      cacheable_versions=('ONLINE',),
                       gain_dtype=np.float32):
         """
         Smart logic to return pmt gains to PE values.
@@ -160,22 +155,25 @@ class CorrectionsManagementServices():
         to_pe = None
         cache_name = None
 
-        if model_type == 'to_pe_model':
+        if 'to_pe_model' in model_type:
+            # Get the detector name based on the requested model_type
+            # This also will be used to the cachable name convention
+            # pmt == TPC, n_veto == n_veto's PMT, etc
+            detector_names = {'to_pe_model': 'pmt',
+                              'to_pe_model_nv': 'n_veto',
+                              'to_pe_model_mv': 'mu_veto'}
+            target_detector = detector_names[model_type]
+
             if global_version in cacheable_versions:
                 # Try to load from cache, if it does not exist it will be created below
-                cache_name = cacheable_naming(run_id, model_type, global_version, detector)
+                cache_name = cacheable_naming(run_id, model_type, global_version, target_detector)
                 try:
                     to_pe = straxen.get_resource(cache_name, fmt='npy')
                 except (ValueError, FileNotFoundError):
                     pass
 
-            if to_pe is None:
-                if detector == 'tpc':
-                    to_pe = self._get_correction(run_id, 'pmt', global_version)
-                elif detector == 'n_veto':
-                    to_pe = self._get_correction(run_id, 'n_veto', global_version)
-                elif detector == 'mu_veto':
-                    to_pe = self._get_correction(run_id, 'mu_veto', global_version)
+                if to_pe is None:
+                    to_pe = self._get_correction(run_id, target_detector, global_version)
 
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
