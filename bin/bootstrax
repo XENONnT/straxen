@@ -567,7 +567,7 @@ def eb_can_process():
     max_queue_new_runs = 2
 
     # Count number of runs untouched by bootstrax.
-    n_untouched_runs = run_coll.count_documents({'bootstrax': {'$exists': 0}})
+    n_untouched_runs = run_coll.count_documents({'bootstrax': {'state': None}})
 
     # Check that eb3-5 are all busy for at least some time.
     n_ebs_running = 0
@@ -1465,8 +1465,7 @@ def cleanup_db():
     # Mark them as failed.
     failure_queries = [
         ({'bootstrax.state': 'done',
-          'end': {
-              '$exists': False}},
+          'end': None},
          'Bootstrax state was done, but run did not yet end'),
 
         ({'bootstrax.state': 'done',
