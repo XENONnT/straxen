@@ -166,7 +166,7 @@ class CorrectionsManagementServices():
 
             if global_version in cacheable_versions:
                 # Try to load from cache, if it does not exist it will be created below
-                cache_name = cacheable_naming(run_id, model_type, global_versionr)
+                cache_name = cacheable_naming(run_id, model_type, global_version)
                 try:
                     to_pe = straxen.get_resource(cache_name, fmt='npy')
                 except (ValueError, FileNotFoundError):
