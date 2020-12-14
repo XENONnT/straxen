@@ -117,9 +117,7 @@ class GridFsInterface:
         :return: bool, is this config name stored in the database
         """
         query = self.get_query_config(config)
-        if self.collection.count_documents(query):
-            return True
-        return False
+        return self.collection.count_documents(query) > 0
 
     def md5_stored(self, abs_path):
         """
@@ -134,9 +132,7 @@ class GridFsInterface:
             # A file that does not exist does not have the same MD5
             return False
         query = {'md5': self.compute_md5(abs_path)}
-        if self.collection.count_documents(query):
-            return True
-        return False
+        return self.collection.count_documents(query) > 0
 
     def test_find(self):
         """

@@ -18,7 +18,7 @@ from re import match
 import numba
 from warnings import warn
 import strax
-import straxen # from straxen import uconfig, MongoDownloader
+import straxen
 
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
@@ -76,77 +76,20 @@ _resource_cache = dict()
 # Formats for which the original file is text, not binary
 _text_formats = ['text', 'csv', 'json']
 
-
-# Depricated placeholder for resource management system in the future?
-def resource_from_url(x, fmt='text'):
-    """Return contents of file or URL x
-    :param fmt: Format to parse contents into
-
-    Do NOT mutate the result you get. Make a copy if you're not sure.
-    If you mutate resources it will corrupt the cache, cause terrible bugs in
-    unrelated code, tears unnumbered ye shall shed, not even the echo of
-    your lamentations shall pass over the mountains, etc.
+@export
+def open_resource(file_name: str, fmt='text'):
     """
-    warn("Loading files from a URL is deprecated, and will be replaced "
-         "by loading from the database. See:"
-         "https://github.com/XENONnT/straxen/pull/311",
-         DeprecationWarning)
-
-    if '://' in x:
-        # Web resource; look first in on-disk cache
-        # to prevent repeated downloads.
-        cache_fn = strax.utils.deterministic_hash(x)
-        cache_folders = ['./resource_cache',
-                         '/tmp/straxen_resource_cache',
-                         '/dali/lgrandi/strax/resource_cache']
-        for cache_folder in cache_folders:
-            try:
-                os.makedirs(cache_folder, exist_ok=True)
-            except (PermissionError, OSError):
-                continue
-            cf = osp.join(cache_folder, cache_fn)
-            if osp.exists(cf):
-                result = open_resource(cf, fmt=fmt)
-                break
-        else:
-            print(f'Did not find {cache_fn} in cache, downloading {x}')
-            result = urllib.request.urlopen(x).read()
-            is_binary = fmt not in _text_formats
-            if not is_binary:
-                result = result.decode()
-
-            # Store in as many caches as possible
-            m = 'wb' if is_binary else 'w'
-            available_cf = None
-            for cache_folder in cache_folders:
-                if not osp.exists(cache_folder):
-                    continue
-                cf = osp.join(cache_folder, cache_fn)
-                try:
-                    with open(cf, mode=m) as f:
-                        f.write(result)
-                except Exception:
-                    pass
-                else:
-                    available_cf = cf
-            if available_cf is None:
-                raise RuntimeError(
-                    f"Could not store {x} in on-disk cache,"
-                    "none of the cache directories are writeable??")
-
-            # Retrieve result from file-cache
-            # (so we only need one format-parsing logic)
-            result = open_resource(available_cf, fmt=fmt)
-        return result
-
-
-def open_resource(x, fmt='text'):
-    if x in _resource_cache:
+    Open file
+    :param file_name: str, file to open
+    :param fmt: format of the file
+    :return: opened file
+    """
+    if file_name in _resource_cache:
         # Retrieve from in-memory cache
-        return _resource_cache[x]
+        return _resource_cache[file_name]
     # File resource
     if fmt in ['npy', 'npy_pickle']:
-        result = np.load(x, allow_pickle=fmt == 'npy_pickle')
+        result = np.load(file_name, allow_pickle=fmt == 'npy_pickle')
         if isinstance(result, np.lib.npyio.NpzFile):
             # Slurp the arrays in the file, so the result can be copied,
             # then close the file so its descriptors does not leak.
@@ -154,56 +97,139 @@ def open_resource(x, fmt='text'):
             result.close()
             result = result_slurped
     elif fmt == 'pkl':
-        with open(x, 'rb') as f:
+        with open(file_name, 'rb') as f:
             result = pickle.load(f)
     elif fmt == 'pkl.gz':
-        with gzip.open(x, 'rb') as f:
+        with gzip.open(file_name, 'rb') as f:
             result = pickle.load(f)
     elif fmt == 'json.gz':
-        with gzip.open(x, 'rb') as f:
+        with gzip.open(file_name, 'rb') as f:
             result = json.load(f)
     elif fmt == 'json':
-        with open(x, mode='r') as f:
+        with open(file_name, mode='r') as f:
             result = json.load(f)
     elif fmt == 'binary':
-        with open(x, mode='rb') as f:
+        with open(file_name, mode='rb') as f:
             result = f.read()
     elif fmt == 'text':
-        with open(x, mode='r') as f:
+        with open(file_name, mode='r') as f:
             result = f.read()
     elif fmt == 'csv':
-        result = pd.read_csv(x)
+        result = pd.read_csv(file_name)
     else:
         raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
-    _resource_cache[x] = result
+    _resource_cache[file_name] = result
 
     return result
 
 
 @export
-def get_resource(x, fmt='text'):
+def get_resource(x: str, fmt='text'):
     """
-    Get the resource from an online source to be opened here.
-    :param x:
-    :param fmt:
-    :return:
+    Get the resource from an online source to be opened here. We will
+        sequentially try the following:
+            1. Load if from memory if we asked for it before;
+            2. load it from a file if the path exists;
+            3. (preferred option) Load it from our database
+            4. Load the file from some URL (e.g. raw github content)
+
+    :param x: str, either it is :
+        A.) a path to the file;
+        B.) the identifier of the file as it's stored under in the database;
+        C.) A URL to the file (e.g. raw github content).
+
+    :param fmt: str, format of the resource x
+    :return: the opened resource file x opened according to the
+        specified format
     """
-    if straxen.uconfig is not None:
+    # 1. load from memory
+    if x in _resource_cache:
+        return _resource_cache[x]
+    # 2. load from file
+    elif os.path.exists(x):
+        return open_resource(x, fmt=fmt)
+    # 3. load from database
+    elif straxen.uconfig is not None:
         downloader = straxen.MongoDownloader()
         if x in downloader.list_files():
             path = downloader.download_single(x)
             return open_resource(path, fmt=fmt)
-
-    # We are either:
-    #   not able to access the database (e.g. a travis job) or
-    #   the file is not available in the database; or
-    #   we are using deprecated methods to access files.
-    if '://' in x:
+    # 4. load from URL
+    elif '://' in x:
         return resource_from_url(x, fmt=fmt)
+    raise FileNotFoundError(
+        f'Cannot open {x} because it is either not stored or we '
+        f'cannot download it from anywhere.')
+
+
+# Deprecated placeholder for resource management system in the future?
+def resource_from_url(html: str, fmt='text'):
+    """
+    Return contents of file or URL html
+    :param html: str, html to the file you are requesting e.g. raw github content
+    :param fmt: str, format to parse contents into
+
+    Do NOT mutate the result you get. Make a copy if you're not sure.
+    If you mutate resources it will corrupt the cache, cause terrible bugs in
+    unrelated code, tears unnumbered ye shall shed, not even the echo of
+    your lamentations shall pass over the mountains, etc.
+    :return: The file opened as specified per it's format
+    """
+    warn("Loading files from a URL is deprecated, and will be replaced "
+         "by loading from the database. See:"
+         "https://github.com/XENONnT/straxen/pull/311",
+         DeprecationWarning)
+
+    if '://' not in html:
+        raise ValueError('Can only open urls!')
+
+    # Web resource; look first in on-disk cache
+    # to prevent repeated downloads.
+    cache_fn = strax.utils.deterministic_hash(html)
+    cache_folders = ['./resource_cache',
+                     '/tmp/straxen_resource_cache',
+                     '/dali/lgrandi/strax/resource_cache']
+    for cache_folder in cache_folders:
+        try:
+            os.makedirs(cache_folder, exist_ok=True)
+        except (PermissionError, OSError):
+            continue
+        cf = osp.join(cache_folder, cache_fn)
+        if osp.exists(cf):
+            result = open_resource(cf, fmt=fmt)
+            break
     else:
-        return open_resource(x, fmt=fmt)
+        print(f'Did not find {cache_fn} in cache, downloading {html}')
+        result = urllib.request.urlopen(html).read()
+        is_binary = fmt not in _text_formats
+        if not is_binary:
+            result = result.decode()
+
+        # Store in as many caches as possible
+        m = 'wb' if is_binary else 'w'
+        available_cf = None
+        for cache_folder in cache_folders:
+            if not osp.exists(cache_folder):
+                continue
+            cf = osp.join(cache_folder, cache_fn)
+            try:
+                with open(cf, mode=m) as f:
+                    f.write(result)
+            except Exception:
+                pass
+            else:
+                available_cf = cf
+        if available_cf is None:
+            raise RuntimeError(
+                f"Could not store {html} in on-disk cache,"
+                "none of the cache directories are writeable??")
+
+        # Retrieve result from file-cache
+        # (so we only need one format-parsing logic)
+        result = open_resource(available_cf, fmt=fmt)
+    return result
 
 
 @export
