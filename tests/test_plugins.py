@@ -24,7 +24,10 @@ class DummyRawRecords(strax.Plugin):
     provides = ('raw_records',
                 'raw_records_he',
                 'raw_records_nv',
-                'raw_records_aqmon')
+                'raw_records_aqmon',
+                'raw_records_aux_mv',
+                'raw_records_mv'
+                )
     parallel = 'process'
     depends_on = tuple()
     data_kind = immutabledict(zip(provides, provides))
@@ -134,6 +137,45 @@ def _update_context(st, max_workers, fallback_gains=None):
             'timeout': 60,  # we don't want to build travis for ever
         })
 
+
+def _test_child_options(st):
+    """
+    Test which checks if child options are handled correctly.
+    """
+    # Register all used plugins
+    plugins = []
+    already_seen = []
+    for data_type in st._plugin_class_registry.keys():
+        if data_type in already_seen or data_type in straxen.DAQReader.provides:
+            continue
+
+        p = st.get_single_plugin('0', data_type)
+        plugins.append(p)
+        already_seen += p.provides
+
+    # Loop over all plugins and check if child options were propagated to the parent:
+    for p in plugins:
+        for option_name, option in p.takes_config.items():
+            # Check if option is a child option:
+            if option.child_option:
+                # Get corresponding parent option. Do not have to test if
+                # parent option name is defined this is already done in strax
+                parent_name = option.parent_option_name
+
+                # Now check if parent config was replaced with child:
+                t = p.config[parent_name] == p.config[option_name]
+                assert t, (f'This is strange the child option "{option_name}" was set to '
+                           f'{p.config[option_name]}, but the corresponding parent config'
+                           f' "{parent_name}" has the value {p.config[parent_name]}. '
+                           f'Please check the options of {p.__class__.__name__} and if '
+                           'it is a child plugin (child_plugin=True)!')
+
+                # Test if parent names were removed from the lineage:
+                t = parent_name in p.lineage[p.provides[-1]][2]
+                assert not t, (f'Found "{parent_name}" in the lineage of {p.__class__.__name__}. '
+                               f'This should not have happend since "{parent_name}" is a child of '
+                               f'"{option_name}"!')
+
 ##
 # Tests
 ##
@@ -143,6 +185,7 @@ def test_1T(ncores=1):
     if ncores == 1:
         print('-- 1T lazy mode --')
     st = straxen.contexts.xenon1t_dali()
+    _test_child_options(st)
     _update_context(st, ncores)
 
     # Register the 1T plugins for this test as well
@@ -161,8 +204,10 @@ def test_nT(ncores=1):
     _update_context(st, ncores, fallback_gains=offline_gain_model)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
-     # Test issue #233
+    # Test issue #233
     st.search_field('cs1')
+    # Test of child plugins:
+    _test_child_options(st)
     print(st.context_config)
 
 
