@@ -1,3 +1,9 @@
+0.12.5 / 2020-12-09
+--------------------
+- Muveto (#287)
+- fix lone hit cut for online monitor (#308)
+
+
 0.12.4 / 2020-12-06
 --------------------
 - Add temporary context (#302)

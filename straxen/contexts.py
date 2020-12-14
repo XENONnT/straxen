@@ -25,10 +25,13 @@ common_opts = dict(
         'start', 'end', 'livetime', 'mode'))
 
 xnt_common_config = dict(
-    n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
+    n_mveto_pmts=straxen.n_mveto_pmts,
+    n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
+    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -38,6 +41,7 @@ xnt_common_config = dict(
         aqmon_nv=(808, 815),  # nveto acquisition monitor
         tpc_blank=(999, 999),
         mv=(1000, 1083),
+        aux_mv=(1084, 1087),  # Aux mv channel 2 empty  1 pulser  and 1 GPS
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
@@ -51,8 +55,8 @@ xnt_common_config = dict(
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 have_nT_plugins = [straxen.nveto_recorder,
-                   straxen.nveto_pulse_processing,
-                   straxen.nveto_hitlets,
+                   straxen.veto_pulse_processing,
+                   straxen.veto_hitlets,
                    straxen.acqmon_processing,
                    straxen.pulse_processing,
                    straxen.peaklet_processing,
