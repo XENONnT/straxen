@@ -240,7 +240,7 @@ class CorrectionsManagementServices():
         return time.replace(tzinfo=pytz.utc)
 
 
-def cacheable_naming(*args, format='.npy', base='./resource_cache/'):
+def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
     """Convert args to consistent naming convention for array to be cached"""
     if not os.path.exists(base):
         try:
@@ -250,7 +250,7 @@ def cacheable_naming(*args, format='.npy', base='./resource_cache/'):
     for arg in args:
         if not type(arg) == str:
             raise TypeError(f'One or more args of {args} are not strings')
-    return base + '_'.join(args) + format
+    return base + '_'.join(args) + fmt
 
 
 class GainsNotFoundError(Exception):
