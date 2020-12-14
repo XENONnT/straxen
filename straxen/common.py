@@ -47,6 +47,7 @@ ADC_TO_E = 17142.81741
 LAST_MISCABLED_RUN = 8796
 TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
+
 @export
 def pmt_positions(xenon1t=False):
     """Return pandas dataframe with PMT positions
@@ -75,6 +76,7 @@ _resource_cache = dict()
 
 # Formats for which the original file is text, not binary
 _text_formats = ['text', 'csv', 'json']
+
 
 @export
 def open_resource(file_name: str, fmt='text'):

@@ -13,7 +13,9 @@ N_CHUNKS = 2
 # Tools
 ##
 
-# Some configs are better obtained from the strax_auxiliary_files repo
+# Some configs are better obtained from the strax_auxiliary_files repo.
+# Let's use small files, we don't want to spend a lot of time downloading
+# some file.
 testing_config_nT = dict(
     nn_architecture=
     straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
@@ -25,12 +27,8 @@ testing_config_nT = dict(
 )
 
 testing_config_1T = dict(
-    hev_gain_model=
-    ('to_pe_per_run',
-     straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
-    gain_model=
-    ('to_pe_per_run',
-     straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
+    hev_gain_model=('to_pe_constant', 0.0085),
+    gain_model=('to_pe_constant', 0.0085)
 )
 
 

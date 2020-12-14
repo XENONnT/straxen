@@ -255,6 +255,7 @@ class MongoDownloader(GridFsInterface):
         # either specified by the user or we use these defaults:
         if store_files_at is None:
             store_files_at = ('./resource_cache',
+                              '/tmp/straxen_resource_cache/' 
                               '/dali/lgrandi/strax/resource_cache',
                               )
         elif not isinstance(store_files_at, (tuple, str, list)):
