@@ -257,11 +257,7 @@ class MongoDownloader(GridFsInterface):
         # We are going to set a place where to store the files. It's 
         # either specified by the user or we use these defaults:
         if store_files_at is None:
-            # Disable check for "Probable insecure usage of temp
-            # file/directory." In CodeFactor.
-            # bandit: disable=B108
             store_files_at = ('./resource_cache',
-                              '/tmp/straxen_resource_cache',
                               '/dali/lgrandi/strax/resource_cache',
                               )
         elif not isinstance(store_files_at, (tuple, str, list)):
