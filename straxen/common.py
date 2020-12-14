@@ -18,7 +18,7 @@ from re import match
 import numba
 from warnings import warn
 import strax
-from straxen import uconfig
+import straxen # from straxen import uconfig, MongoDownloader
 
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
@@ -56,7 +56,7 @@ def pmt_positions(xenon1t=False):
         # Get PMT positions from the XENON1T config without PAX
         config = configparser.ConfigParser()
         config.read_string(
-            get_resource('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
+            resource_from_url('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
         pmt_config = ast.literal_eval(config['DEFAULT']['pmts'])
         return pd.DataFrame([
             dict(x=q['position']['x'],
@@ -65,7 +65,7 @@ def pmt_positions(xenon1t=False):
                  array=q.get('array','other'))
             for q in pmt_config[:248]])
     else:
-        return get_resource(
+        return resource_from_url(
             aux_repo + '874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv',
             fmt='csv')
 
@@ -77,9 +77,8 @@ _resource_cache = dict()
 _text_formats = ['text', 'csv', 'json']
 
 
-# Placeholder for resource management system in the future?
-@export
-def get_resource(x, fmt='text'):
+# Depricated placeholder for resource management system in the future?
+def resource_from_url(x, fmt='text'):
     """Return contents of file or URL x
     :param fmt: Format to parse contents into
 
@@ -88,9 +87,10 @@ def get_resource(x, fmt='text'):
     unrelated code, tears unnumbered ye shall shed, not even the echo of
     your lamentations shall pass over the mountains, etc.
     """
-    if x in _resource_cache:
-        # Retrieve from in-memory cache
-        return _resource_cache[x]
+    warn("Loading files from a URL is deprecated, and will be replaced "
+         "by loading from the database. See:"
+         "https://github.com/XENONnT/straxen/pull/311",
+         DeprecationWarning)
 
     if '://' in x:
         # Web resource; look first in on-disk cache
@@ -106,7 +106,7 @@ def get_resource(x, fmt='text'):
                 continue
             cf = osp.join(cache_folder, cache_fn)
             if osp.exists(cf):
-                result = get_resource(cf, fmt=fmt)
+                result = open_resource(cf, fmt=fmt)
                 break
         else:
             print(f'Did not find {cache_fn} in cache, downloading {x}')
@@ -136,45 +136,74 @@ def get_resource(x, fmt='text'):
 
             # Retrieve result from file-cache
             # (so we only need one format-parsing logic)
-            result = get_resource(available_cf, fmt=fmt)
+            result = open_resource(available_cf, fmt=fmt)
+        return result
 
+
+def open_resource(x, fmt='text'):
+    if x in _resource_cache:
+        # Retrieve from in-memory cache
+        return _resource_cache[x]
+    # File resource
+    if fmt in ['npy', 'npy_pickle']:
+        result = np.load(x, allow_pickle=fmt == 'npy_pickle')
+        if isinstance(result, np.lib.npyio.NpzFile):
+            # Slurp the arrays in the file, so the result can be copied,
+            # then close the file so its descriptors does not leak.
+            result_slurped = {k: v[:] for k, v in result.items()}
+            result.close()
+            result = result_slurped
+    elif fmt == 'pkl':
+        with open(x, 'rb') as f:
+            result = pickle.load(f)
+    elif fmt == 'pkl.gz':
+        with gzip.open(x, 'rb') as f:
+            result = pickle.load(f)
+    elif fmt == 'json.gz':
+        with gzip.open(x, 'rb') as f:
+            result = json.load(f)
+    elif fmt == 'json':
+        with open(x, mode='r') as f:
+            result = json.load(f)
+    elif fmt == 'binary':
+        with open(x, mode='rb') as f:
+            result = f.read()
+    elif fmt == 'text':
+        with open(x, mode='r') as f:
+            result = f.read()
+    elif fmt == 'csv':
+        result = pd.read_csv(x)
     else:
-        # File resource
-        if fmt in ['npy', 'npy_pickle']:
-            result = np.load(x, allow_pickle=fmt == 'npy_pickle')
-            if isinstance(result, np.lib.npyio.NpzFile):
-                # Slurp the arrays in the file, so the result can be copied,
-                # then close the file so its descriptors does not leak.
-                result_slurped = {k: v[:] for k, v in result.items()}
-                result.close()
-                result = result_slurped
-        elif fmt == 'pkl':
-            with open(x, 'rb') as f:
-                result = pickle.load(f)
-        elif fmt == 'pkl.gz':
-            with gzip.open(x, 'rb') as f:
-                result = pickle.load(f)
-        elif fmt == 'json.gz':
-            with gzip.open(x, 'rb') as f:
-                result = json.load(f)
-        elif fmt == 'json':
-            with open(x, mode='r') as f:
-                result = json.load(f)
-        elif fmt == 'binary':
-            with open(x, mode='rb') as f:
-                result = f.read()
-        elif fmt == 'text':
-            with open(x, mode='r') as f:
-                result = f.read()
-        elif fmt == 'csv':
-            result = pd.read_csv(x)
-        else:
-            raise ValueError(f"Unsupported format {fmt}!")
+        raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
     _resource_cache[x] = result
 
     return result
+
+
+@export
+def get_resource(x, fmt='text'):
+    """
+    Get the resource from an online source to be opened here.
+    :param x:
+    :param fmt:
+    :return:
+    """
+    if straxen.uconfig is not None:
+        downloader = straxen.MongoDownloader()
+        if x in downloader.list_files():
+            path = downloader.download_single(x)
+            return open_resource(path, fmt=fmt)
+
+    # We are either:
+    #   not able to access the database (e.g. a travis job) or
+    #   the file is not available in the database; or
+    #   we are using deprecated methods to access files.
+    if '://' in x:
+        return resource_from_url(x, fmt=fmt)
+    else:
+        return open_resource(x, fmt=fmt)
 
 
 @export
@@ -196,11 +225,11 @@ def get_secret(x):
 
     # now try using utilix. We need to check that it is not None first!
     # this will be main method in a future release
-    if uconfig is not None and uconfig.has_option('straxen', x):
+    if straxen.uconfig is not None and straxen.uconfig.has_option('straxen', x):
         try:
-            return uconfig.get('straxen', x)
+            return straxen.uconfig.get('straxen', x)
         except configparser.NoOptionError:
-            warn(f'uconfig does not have {x}')
+            warn(f'straxen.uconfig does not have {x}')
 
     # if that doesn't work, revert to xenon_secrets
     try:

@@ -157,6 +157,7 @@ class GridFsInterface:
                 self.collection.find(
                     projection=
                     {self.config_identifier: 1})
+                if self.config_identifier in doc
                 ]
 
     @staticmethod
