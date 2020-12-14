@@ -3,7 +3,7 @@ import tempfile
 from datetime import datetime
 from warnings import warn
 import pytz
-from strax import exporter
+from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm
 from shutil import move
@@ -143,8 +143,6 @@ class GridFsInterface:
         Test the connection to the self.collection to see if we can 
             perform a collection.find operation. 
         """
-        return
-        # TODO activate this error
         if self.collection.find_one(projection="_id") is None:
             raise ConnectionError('Could not find any data in this collection')
 
@@ -169,11 +167,15 @@ class GridFsInterface:
         :param abs_path: str, absolute path to a file
         :return: str, the md5-hash of the requested file
         """
+        # This function is copied from:
+        # stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+
         if not os.path.exists(abs_path):
             # if there is no file, there is nothing to compute
             return ""
-        # See
-        # stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+        # Also, disable all the  Use of insecure MD2, MD4, MD5, or SHA1
+        # hash function violations in this function.
+        # pylint: disable=B303
         hash_md5 = hashlib.md5()
         with open(abs_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
@@ -182,7 +184,7 @@ class GridFsInterface:
 
 
 @export
-class Uploader(GridFsInterface):
+class MongoUploader(GridFsInterface):
     """
     Class to upload files to GridFs
     """
@@ -242,7 +244,7 @@ class Uploader(GridFsInterface):
 
 
 @export
-class Downloader(GridFsInterface):
+class MongoDownloader(GridFsInterface):
     """
     Class to download files from GridFs
     """
@@ -259,14 +261,23 @@ class Downloader(GridFsInterface):
                               '/tmp/straxen_resource_cache',
                               '/dali/lgrandi/strax/resource_cache',
                               )
+        elif not isinstance(store_files_at, (tuple, str, list)):
+            raise ValueError(f'{store_files_at} should be tuple of paths!')
+        elif isinstance(store_files_at, str):
+            store_files_at = to_str_tuple(store_files_at)
 
-        # Sort out which folder is willing to take any data. 
-        self.storage = self._check_store_files_at(store_files_at)
+        self.storage_options = store_files_at
 
-    def download_single(self, config_name):
+    def download_single(self,
+                        config_name: str,
+                        human_readable_file_name=False):
         """
         Download the config_name if it exists
         :param config_name: str, the name under which the file is stored
+        :param human_readable_file_name: bool, store the file also under
+            it's human readable name. It is better not to use this as
+            the user might not know if the version of the file is the
+            latest.
         :return: str, the absolute path of the file requested
         """
         if self.config_exists(config_name):
@@ -283,20 +294,28 @@ class Downloader(GridFsInterface):
             # Ok, so we can open it. We will store the file under it's 
             # md5-hash as that allows to easily compare if we already 
             # have the correct file.
-            object_hash = fs_object.md5
-            destination_path = os.path.join(self.storage,
-                                            object_hash)
+            if human_readable_file_name:
+                target_file_name = config_name
+            else:
+                target_file_name = fs_object.md5
 
-            if os.path.exists(destination_path):
-                # Great! This already exists. Let's just return where it
-                # is stored.
-                return destination_path
+            for cache_folder in self.storage_options:
+                possible_path = os.path.join(cache_folder, target_file_name)
+                if os.path.exists(possible_path):
+                    # Great! This already exists. Let's just return
+                    # where it is stored.
+                    return possible_path
+
+            # Apparently the file does not exist, let's find a place to
+            # store the file and download it.
+            store_files_at = self._check_store_files_at(self.storage_options)
+            destination_path = os.path.join(store_files_at, target_file_name)
 
             # Let's open a temporary directory, download the file, and
             # try moving it to the destination_path. This prevents
             # simultaneous writes of the same file.
             with tempfile.TemporaryDirectory() as temp_directory_name:
-                temp_path = os.path.join(temp_directory_name, object_hash)
+                temp_path = os.path.join(temp_directory_name, target_file_name)
 
                 with open(temp_path, 'wb') as stored_file:
                     # This is were we do the actual downloading!
@@ -305,9 +324,6 @@ class Downloader(GridFsInterface):
                 if not os.path.exists(destination_path):
                     # Move the file to the place we want to store it.
                     move(temp_path, destination_path)
-
-                # TODO
-                #  Do we also want a human readable copy of the filename?
             return destination_path
 
         else:
@@ -320,6 +336,8 @@ class Downloader(GridFsInterface):
     def download_all(self):
         """Download all the files that are stored in the mongo collection"""
         raise NotImplementedError('This feature is disabled for now')
+        # Disable the inspection of `Unreachable code`
+        # pylint: disable=unreachable
         for config in self.list_files():
             self.download_single(config)
 
@@ -350,9 +368,13 @@ class Downloader(GridFsInterface):
 
 class CouldNotLoadError(Exception):
     """Raise if we cannot load this kind of data"""
+    # Disable the inspection of 'Unnecessary pass statement'
+    # pylint: disable=unnecessary-pass
     pass
 
 
 class ConfigTooLargeError(Exception):
     """Raise if the data is to large to be uploaded into mongo"""
+    # Disable the inspection of 'Unnecessary pass statement'
+    # pylint: disable=unnecessary-pass
     pass
