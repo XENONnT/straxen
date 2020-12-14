@@ -13,6 +13,26 @@ N_CHUNKS = 2
 # Tools
 ##
 
+# Some configs are better obtained from the strax_auxiliary_files repo
+testing_config_nT = dict(
+    nn_architecture=
+    straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    nn_weights=
+    straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
+    gain_model=
+    ('to_pe_per_run',
+     straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+)
+
+testing_config_1T = dict(
+    hev_gain_model=
+    ('to_pe_per_run',
+     straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
+    gain_model=
+    ('to_pe_per_run',
+     straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
+)
+
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False)
@@ -58,6 +78,7 @@ class DummyRawRecords(strax.Plugin):
 forbidden_plugins = tuple([p for p in
                            straxen.daqreader.DAQReader.provides
                            if p not in DummyRawRecords.provides])
+
 
 def _run_plugins(st,
                  make_all=False,
@@ -105,10 +126,14 @@ def _run_plugins(st,
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
-def _update_context(st, max_workers, fallback_gains=None):
+def _update_context(st, max_workers, fallback_gains=None, nt=True):
     # Change config to allow for testing both multiprocessing and lazy mode
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
     st.register(DummyRawRecords)
+    if nt:
+        st.set_config(testing_config_nT)
+    else:
+        st.set_config(testing_config_1T)
     try:
         if straxen.uconfig is None:
             raise ValueError('uconfig did not import')
@@ -185,14 +210,14 @@ def test_1T(ncores=1):
     if ncores == 1:
         print('-- 1T lazy mode --')
     st = straxen.contexts.xenon1t_dali()
-    _test_child_options(st)
-    _update_context(st, ncores)
+    _update_context(st, ncores, nt=False)
 
     # Register the 1T plugins for this test as well
     st.register_all(straxen.plugins.x1t_cuts)
     _run_plugins(st, make_all=False, max_wokers=ncores)
     # Test issue #233
     st.search_field('cs1')
+    _test_child_options(st)
     print(st.context_config)
 
 
@@ -201,7 +226,7 @@ def test_nT(ncores=1):
         print('-- nT lazy mode --')
     st = straxen.contexts.xenonnt_online(_database_init=False)
     offline_gain_model = ('to_pe_constant', 'gain_placeholder')
-    _update_context(st, ncores, fallback_gains=offline_gain_model)
+    _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
     # Test issue #233
