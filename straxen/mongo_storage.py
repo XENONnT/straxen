@@ -175,7 +175,7 @@ class GridFsInterface:
             return ""
         # Also, disable all the  Use of insecure MD2, MD4, MD5, or SHA1
         # hash function violations in this function.
-        # pylint: disable=B303
+        # bandit: disable=B303
         hash_md5 = hashlib.md5()
         with open(abs_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
@@ -190,7 +190,7 @@ class MongoUploader(GridFsInterface):
     """
 
     def __init__(self, readonly=False, *args, **kwargs):
-        # Same as parent. Just check the redonly_argument
+        # Same as parent. Just check the readonly_argument
         if readonly:
             raise PermissionError(
                 "How can you upload if you want to operate in readonly?")
@@ -257,6 +257,9 @@ class MongoDownloader(GridFsInterface):
         # We are going to set a place where to store the files. It's 
         # either specified by the user or we use these defaults:
         if store_files_at is None:
+            # Disable check for "Probable insecure usage of temp
+            # file/directory." In CodeFactor.
+            # bandit: disable=B108
             store_files_at = ('./resource_cache',
                               '/tmp/straxen_resource_cache',
                               '/dali/lgrandi/strax/resource_cache',
