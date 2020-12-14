@@ -2,7 +2,7 @@ import strax
 
 import numpy as np
 
-from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
 from straxen.get_corrections import get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
@@ -336,7 +336,7 @@ class EventPositions(strax.Plugin):
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
         'elife_file',
-        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
+        default=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
         help='Electron lifetime model '
              'To use a constant value, provide a link (as this default) To use'
              'the corrections management tools specify the following:'
