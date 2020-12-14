@@ -342,7 +342,7 @@ class EventPositions(strax.Plugin):
              'the corrections management tools specify the following:'
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife_model" or "elife_constant" '
-             'and model_config can be a version'  # TODO or something else?
+             'and model_config can be a version'
    ))
 class CorrectedAreas(strax.Plugin):
     """
