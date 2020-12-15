@@ -19,6 +19,11 @@ Straxen is the analysis framework for XENONnT, built on top of the generic [stra
 
 .. toctree::
     :maxdepth: 1
+    :caption: Storage
+    config_storage
+
+.. toctree::
+    :maxdepth: 1
     :caption: Reference
 
     reference/datastructure
