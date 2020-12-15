@@ -219,7 +219,7 @@ timeouts = {
 wait_diskspace_max_space_percent = 90
 wait_diskspace_n_max = 60 * 24 * 7  # times
 wait_diskspace_dt = 60  # seconds
-if timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt:
+if timeouts['bootstrax_presumed_dead'] < wait_diskspace_dt:
     raise ValueError("wait_diskspace_dt too large")
 
 # Fields in the run docs that bootstrax uses
