@@ -1,6 +1,8 @@
 from immutabledict import immutabledict
 import strax
 import straxen
+import numpy as np
+
 
 common_opts = dict(
     register_all=[
@@ -23,10 +25,13 @@ common_opts = dict(
         'start', 'end', 'livetime', 'mode'))
 
 xnt_common_config = dict(
-    n_nveto_pmts=120,
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
+    n_mveto_pmts=straxen.n_mveto_pmts,
+    n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
+    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -36,6 +41,7 @@ xnt_common_config = dict(
         aqmon_nv=(808, 815),  # nveto acquisition monitor
         tpc_blank=(999, 999),
         mv=(1000, 1083),
+        aux_mv=(1084, 1087),  # Aux mv channel 2 empty  1 pulser  and 1 GPS
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
@@ -49,8 +55,8 @@ xnt_common_config = dict(
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 have_nT_plugins = [straxen.nveto_recorder,
-                   straxen.nveto_pulse_processing,
-                   straxen.nveto_hitlets,
+                   straxen.veto_pulse_processing,
+                   straxen.veto_hitlets,
                    straxen.acqmon_processing,
                    straxen.pulse_processing,
                    straxen.peaklet_processing,
@@ -137,12 +143,36 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config=straxen.aux_repo + '4e71b8a2446af772c83a8600adc77c0c3b7e54d1/fax_files/fax_config_nt.json',
+                    fax_config=straxen.aux_repo + '17e83b1a8c02f56066081ebaefe5f625ebb2e287/fax_files/fax_config_nt.json',
                     check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
+    return st
+
+
+def xenonnt_temporary_five_pmts(**kwargs):
+    """Temporary context for selected PMTs"""
+    # Start from the online context
+    st_online = xenonnt_online(**kwargs)
+
+    temporary_five_pmts_config = {
+        'gain_model': ('CMT_model', ("to_pe_model", "xenonnt_temporary_five_pmts")),
+        'peak_min_pmts': 2,
+        'peaklet_gap_threshold': 300,
+    }
+    # If there are any config overwrites in the kwargs, us those,
+    # otherwise use the config as in the dict above.
+
+    for k in list(temporary_five_pmts_config.keys()):
+        if k in kwargs:
+            temporary_five_pmts_config[k] = kwargs[k]
+
+    # Copy the online context and change the configuration here
+    st = st_online.new_context()
+    st.set_config(temporary_five_pmts_config)
+
     return st
 
 

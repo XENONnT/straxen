@@ -6,15 +6,11 @@ jobs:
       env: PYTHON=3.7 DEPLOY_ME=true
     - name: "Python 3.7 numbaless (for coverage)"
       env: PYTHON=3.7 NUMBA_DISABLE_JIT=1
-    - name: "Python 3.6 (legacy)"
-      env: PYTHON=3.6
-    - name: "Python 3.8 (beta)"
-      env: PYTHON=3.8
 install:
-- pip install tensorflow>=2.3
 - git clone https://github.com/AxFoundation/strax.git ../strax
 - pip install ../strax
 - pip install -r requirements.txt
+- pip install tensorflow>=2.3
 script:
 - python setup.py test
 - pip install coveralls
