@@ -7,16 +7,12 @@ jobs:
     - name: "Python 3.7 numbaless (for coverage)"
       env: PYTHON=3.7 NUMBA_DISABLE_JIT=1
 install:
-- wget -O base_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt
-- pip install -r base_requirements.txt
-- yes | pip uninstall strax straxen
+- pip install numpy==1.18.5 pytest==6.2.0 hypothesis==5.43.3 boltons==20.2.1 pytest-runner coveralls tensorflow==2.3.1
 - git clone https://github.com/AxFoundation/strax.git ../strax
 - pip install ../strax
 - pip install -r requirements.txt
-- pip install tensorflow>=2.3
 script:
 - python setup.py install
-- pip install coveralls
 - coverage run --source=straxen setup.py test
 deploy:
   provider: pypi
