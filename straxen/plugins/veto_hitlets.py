@@ -79,7 +79,7 @@ class nVETOHitlets(strax.Plugin):
     def setup(self):
         to_pe = straxen.get_to_pe(self.run_id,
                                   self.config['gain_model_nv'],
-                                  n_tpc_pmts= self.config['n_nveto_pmts'])
+                                  self.config['n_nveto_pmts'])
         self.channel_range = self.config['channel_map']['nveto']
         
         # Create to_pe array of size max channel:
@@ -224,7 +224,7 @@ class muVETOHitlets(nVETOHitlets):
     def setup(self):
         to_pe = straxen.get_to_pe(self.run_id,
                                   self.config['gain_model_mv'],
-                                  n_tpc_pmts=straxen.n_mveto_pmts)
+                                  straxen.n_mveto_pmts)
         self.channel_range = self.config['channel_map']['mv']
         
         # Create to_pe array of size max channel:
