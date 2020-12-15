@@ -7,6 +7,9 @@ jobs:
     - name: "Python 3.7 numbaless (for coverage)"
       env: PYTHON=3.7 NUMBA_DISABLE_JIT=1
 install:
+- wget -O base_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt
+- pip install -r base_requirements.txt
+- pip uninstall strax straxen
 - git clone https://github.com/AxFoundation/strax.git ../strax
 - pip install ../strax
 - pip install -r requirements.txt
