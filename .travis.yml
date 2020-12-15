@@ -9,7 +9,7 @@ jobs:
 install:
 - wget -O base_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt
 - pip install -r base_requirements.txt
-- pip uninstall strax straxen
+- yes | pip uninstall strax straxen
 - git clone https://github.com/AxFoundation/strax.git ../strax
 - pip install ../strax
 - pip install -r requirements.txt
