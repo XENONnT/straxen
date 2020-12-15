@@ -9,11 +9,11 @@ jobs:
 install:
 - git clone https://github.com/AxFoundation/strax.git ../strax
 - pip install ../strax
-- pip install -r requirements.txt
-- pip install tensorflow>=2.3
+- pip install -r requirements.txt  --use-feature=2020-resolver
+- pip install tensorflow>=2.3  --use-feature=2020-resolver
 script:
 - python setup.py test
-- pip install coveralls
+- pip install coveralls --use-feature=2020-resolver
 - coverage run --source=straxen setup.py test
 deploy:
   provider: pypi
