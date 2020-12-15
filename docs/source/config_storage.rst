@@ -25,9 +25,11 @@ function. For example, one can download a file:
     simulation_config = straxen.get_resource(config_path, fmt='json')
 
 
-Alternatively, one can rely on the loading of :py:func:`straxen.get_resource`:
+Alternatively, one can rely on the loading of :py:func:`straxen.get_resource` as below:
+
 .. code-block:: python
 
+    import straxen
     simulation_config = straxen.get_resource(requested_file_name, fmt='json')
 
 
