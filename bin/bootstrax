@@ -222,8 +222,8 @@ wait_diskspace_dt = 60  # seconds
 if timeouts['bootstrax_presumed_dead'] < wait_diskspace_dt:
     raise ValueError("wait_diskspace_dt too large")
 
-# Fields in the run docs that bootstrax uses
-bootstrax_projection = ("name start end number bootstrax status mode detectors"
+# Fields in the run docs that bootstrax uses. Pay attention to the taling spaces!
+bootstrax_projection = ("name start end number bootstrax status mode detectors "
                         "data.host "
                         "data.type "
                         "data.location "
