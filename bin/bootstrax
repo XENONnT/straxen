@@ -422,7 +422,7 @@ def main_loop():
         # Check resources are still OK, otherwise crash / reboot program
 
         # Process new runs
-        rd = consider_run({"bootstrax": {"state": None}},
+        rd = consider_run({"bootstrax.state": None},
                           test_counter=new_runs_seen)
         if rd is not None:
             new_runs_seen += 1
@@ -607,7 +607,7 @@ def eb_can_process():
     max_queue_new_runs = 2
 
     # Count number of runs untouched by bootstrax.
-    n_untouched_runs = run_coll.count_documents({'bootstrax': {'state': None}})
+    n_untouched_runs = run_coll.count_documents({'bootstrax.state': None})
 
     # Check that eb3-5 are all busy for at least some time.
     n_ebs_running = 0
