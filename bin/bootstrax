@@ -223,7 +223,7 @@ if timeouts['bootstrax_presumed_dead'] > wait_diskspace_dt:
     raise ValueError("wait_diskspace_dt too large")
 
 # Fields in the run docs that bootstrax uses
-bootstrax_projection = ("name start end number bootstrax status mode "
+bootstrax_projection = ("name start end number bootstrax status mode detectors"
                         "data.host "
                         "data.type "
                         "data.location "
@@ -489,7 +489,7 @@ def override_target(rd):
     """
     Check if the target should be overridden based on the mode of the DAQ for this run
     :param rd: rundoc
-    :return: override": False or LED or raw_records}
+    :return: override False for LED or raw_records
     """
     if args.fix_target:
         return False
@@ -499,10 +499,15 @@ def override_target(rd):
     diagnostic_modes = ['exttrig', 'noise', 'pmtap']
 
     mode = str(rd.get('mode'))
+    detectors = list(rd.get('detectors'))
+
     log.info(f'override_target::\tmode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
         return 'led_calibration'
     elif np.any([m in mode for m in diagnostic_modes]):
+        return 'raw_records'
+    elif 'tpc' not in detectors:
+        # Don't make any high level if we don't have a TPC
         return 'raw_records'
     else:
         return False
