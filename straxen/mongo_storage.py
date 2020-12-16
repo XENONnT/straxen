@@ -213,7 +213,7 @@ class MongoUploader(GridFsInterface):
             # want to upload a new file! Otherwise we could have done 
             # the self.config_exists-query. If it turns out we have the 
             # exact same file, forget about uploading it.
-            if self.md5_stored(abs_path):
+            if self.config_exists(config) and self.md5_stored(abs_path):
                 continue
             else:
                 # This means we are going to upload the file because its
