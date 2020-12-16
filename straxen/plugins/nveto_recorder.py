@@ -53,12 +53,12 @@ class nVETORecorder(strax.Plugin):
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
 
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
-        nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
-        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(self.config['n_nveto_pmts'])
+        self.nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
+        self.nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(self.config['n_nveto_pmts'])
 
         dtypes = [nveto_records_dtype,
-                  nveto_diagnostic_lone_records_dtype,
-                  nveto_lone_records_statistics_dtype]
+                  self.nveto_diagnostic_lone_records_dtype,
+                  self.nveto_lone_records_statistics_dtype]
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
@@ -66,41 +66,47 @@ class nVETORecorder(strax.Plugin):
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
-        intervals = coincidence(raw_records_nv,
-                                self.config['coincidence_level_recorder_nv'],
-                                self.config['resolving_time_recorder_nv'])
-        # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
-        # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
-        if len(intervals):
-            intervals_with_bounds = np.zeros((len(intervals) + 2, 2), dtype=np.int64)
-            intervals_with_bounds[1:-1, :] = intervals
-            intervals_with_bounds[0, :] = start, min(start + self.config['resolving_time_recorder_nv'], intervals[0, 0])
-            intervals_with_bounds[-1, :] = max(end - self.config['resolving_time_recorder_nv'], intervals[-1, 1]), end
-            del intervals
+        if self.config['coincidence_level_recorder_nv'] > 1:
+            intervals = coincidence(raw_records_nv,
+                                    self.config['coincidence_level_recorder_nv'],
+                                    self.config['resolving_time_recorder_nv'])
+            # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
+            # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
+            if len(intervals):
+                intervals_with_bounds = np.zeros((len(intervals) + 2, 2), dtype=np.int64)
+                intervals_with_bounds[1:-1, :] = intervals
+                intervals_with_bounds[0, :] = start, min(start + self.config['resolving_time_recorder_nv'], intervals[0, 0])
+                intervals_with_bounds[-1, :] = max(end - self.config['resolving_time_recorder_nv'], intervals[-1, 1]), end
+                del intervals
+            else:
+                intervals_with_bounds = np.zeros((0, 2), dtype=np.int64)
+
+            neighbors = strax.record_links(raw_records_nv)
+            mask = pulse_in_interval(raw_records_nv, neighbors, *np.transpose(intervals_with_bounds))
+            rr, lone_records = straxen.mask_and_not(raw_records_nv, mask)
+
+            # Compute some properties of the lone_records:
+            # We compute only for lone_records baseline etc. since
+            # raw_records_nv will be deleted, otherwise we could not change
+            # the settings and reprocess the data in case of raw_records_nv
+            lr = strax.raw_to_records(lone_records)
+            del lone_records
+
+            lr = strax.sort_by_time(lr)
+            strax.zero_out_of_bounds(lr)
+            strax.baseline(lr,
+                           baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
+                           flip=True)
+            strax.integrate(lr)
+            lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
+            lrs['time'] = start
+            lrs['endtime'] = end
         else:
-            intervals_with_bounds = np.zeros((0, 2), dtype=np.int64)
-
-        neighbors = strax.record_links(raw_records_nv)
-        mask = pulse_in_interval(raw_records_nv, neighbors, *np.transpose(intervals_with_bounds))
-        rr, lone_records = straxen.mask_and_not(raw_records_nv, mask)
-
-        # Compute some properties of the lone_records:
-        # We compute only for lone_records baseline etc. since
-        # raw_records_nv will be deleted, otherwise we could not change
-        # the settings and reprocess the data in case of raw_records_nv
-        lr = strax.raw_to_records(lone_records)
-        del lone_records
-
-        lr = strax.sort_by_time(lr)
-        strax.zero_out_of_bounds(lr)
-        strax.baseline(lr,
-                       baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
-                       flip=True)
-        strax.integrate(lr)
-        lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
-        lrs['time'] = start
-        lrs['endtime'] = end
-    
+            # If coincidence_level_recorder_nv equals one we keep everything:
+            rr = raw_records_nv
+            lr = np.zeros(0, dtype=self.nveto_diagnostic_lone_records_dtype)
+            lrs = np.zeros(0, dtype=self.nveto_lone_records_statistics_dtype)
+            
         return {'raw_records_coin_nv': rr,
                 'lone_raw_records_nv': lr,
                 'lone_raw_record_statistics_nv': lrs}
