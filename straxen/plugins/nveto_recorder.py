@@ -109,7 +109,7 @@ class nVETORecorder(strax.Plugin):
         lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
         lrs['time'] = start
         lrs['endtime'] = end
-            
+
         return {'raw_records_coin_nv': rr,
                 'lone_raw_records_nv': lr,
                 'lone_raw_record_statistics_nv': lrs}

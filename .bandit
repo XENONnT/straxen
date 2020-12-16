@@ -1,0 +1,5 @@
+[bandit]
+skips: B303
+
+# Disabled:
+# B303, Use of insecure MD2, MD4, MD5, or SHA1 hash function.
