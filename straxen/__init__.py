@@ -1,4 +1,4 @@
-__version__ = '0.12.5'
+__version__ = '0.13.0'
 
 from warnings import warn
 # load configuration file using utilix
