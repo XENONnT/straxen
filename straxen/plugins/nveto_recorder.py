@@ -68,6 +68,9 @@ class nVETORecorder(strax.Plugin):
             rr = raw_records_nv
             lr = np.zeros(0, dtype=self.dtype['lone_raw_records_nv'])
             lrs = np.zeros(0, dtype=self.dtype['lone_raw_record_statistics_nv'])
+            return {'raw_records_coin_nv': rr,
+                    'lone_raw_records_nv': lr,
+                    'lone_raw_record_statistics_nv': lrs}
             
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
