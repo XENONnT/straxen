@@ -60,11 +60,10 @@ class CorrectionsManagementServices():
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
                    f'-Corrections_Management_Services')
 
-    def get_corrections_config(self, run_id, correction=None, config_model=None):
+    def get_corrections_config(self, run_id, config_model=None):
         """
         Get context configuration for a given correction
         :param run_id: run id from runDB
-        :param correction: correction's name (str type)
         :param config_model: configuration model (tuple type)
         :return: correction value(s)
         """
@@ -73,15 +72,15 @@ class CorrectionsManagementServices():
             raise ValueError(f'config_model {config_model} must be a tuple')
         model_type, global_version = config_model
 
-        if correction == 'pmt_gains':
+        if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, global_version)
-        elif correction == 'elife':
+        elif 'elife' in model_type:
             return self.get_elife(run_id, model_type, global_version)
         else:
             raise ValueError(f'{correction} not found')
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
-    #  entry for e.g. for super runs
+    # entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, global_version):
@@ -123,7 +122,7 @@ class CorrectionsManagementServices():
         Smart logic to return electron lifetime correction
         :param run_id: run id from runDB
         :param model_type: choose either elife_model or elife_constant
-        :param global_version: global version, or float (if model_type == elife_constant) 
+        :param global_version: global version, or float (if model_type == elife_constant)
         :return: electron lifetime correction value
         """
         if model_type == 'elife_model':
@@ -156,7 +155,15 @@ class CorrectionsManagementServices():
         to_pe = None
         cache_name = None
 
-        if model_type == 'to_pe_model':
+        if 'to_pe_model' in model_type:
+            # Get the detector name based on the requested model_type
+            # This also will be used to the cachable name convention
+            # pmt == TPC, n_veto == n_veto's PMT, etc
+            detector_names = {'to_pe_model': 'pmt',
+                              'to_pe_model_nv': 'n_veto',
+                              'to_pe_model_mv': 'mu_veto'}
+            target_detector = detector_names[model_type]
+
             if global_version in cacheable_versions:
                 # Try to load from cache, if it does not exist it will be created below
                 cache_name = cacheable_naming(run_id, model_type, global_version)
@@ -166,7 +173,7 @@ class CorrectionsManagementServices():
                     pass
 
             if to_pe is None:
-                to_pe = self._get_correction(run_id, 'pmt', global_version)
+                to_pe = self._get_correction(run_id, target_detector, global_version)
 
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
@@ -240,7 +247,7 @@ class CorrectionsManagementServices():
         return time.replace(tzinfo=pytz.utc)
 
 
-def cacheable_naming(*args, format='.npy', base='./resource_cache/'):
+def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
     """Convert args to consistent naming convention for array to be cached"""
     if not os.path.exists(base):
         try:
@@ -250,7 +257,7 @@ def cacheable_naming(*args, format='.npy', base='./resource_cache/'):
     for arg in args:
         if not type(arg) == str:
             raise TypeError(f'One or more args of {args} are not strings')
-    return base + '_'.join(args) + format
+    return base + '_'.join(args) + fmt
 
 
 class GainsNotFoundError(Exception):

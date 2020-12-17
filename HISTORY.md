@@ -1,3 +1,11 @@
+0.13.0 / 2020-12-16
+--------------------
+- New (configuration)file handling module (#311)
+- Updated documentation for file loading (#311)
+- MV & NV integration using CMT (#312)
+- Improved database interactions Bootstrax (#313, #314)
+- Add 1-coincidence option for NV (#316)
+
 0.12.5 / 2020-12-09
 --------------------
 - Muveto (#287)
