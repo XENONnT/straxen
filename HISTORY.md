@@ -1,3 +1,7 @@
+0.13.1 / 2020-12-21
+--------------------
+- fix requirements for numpy (#318)
+
 0.13.0 / 2020-12-16
 --------------------
 - New (configuration)file handling module (#311)
