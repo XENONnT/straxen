@@ -21,7 +21,7 @@ HITFINDER_OPTIONS_he = tuple([
     strax.Option(
         'hit_min_amplitude_he', track=True,
         default="pmt_commissioning_initial_he",
-        child_option=True,
+        child_option=True, parent_option_name='hit_min_amplitude',
         help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
              'See straxen.hit_min_amplitude for options.'
     )])
@@ -142,7 +142,7 @@ class PulseProcessing(strax.Plugin):
         if self.hev_enabled:
             self.to_pe = straxen.get_to_pe(self.run_id,
                                            self.config['hev_gain_model'],
-                                           n_tpc_pmts=self.config['n_tpc_pmts'])
+                                           self.config['n_tpc_pmts'])
         
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
@@ -232,7 +232,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
     compressor = 'lz4'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         dtype = dict()
