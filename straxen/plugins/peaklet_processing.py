@@ -4,6 +4,7 @@ import numpy as np
 import strax
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
+from strax.processing.general import _touching_windows
 
 export, __all__ = strax.exporter()
 
@@ -49,6 +50,14 @@ export, __all__ = strax.exporter()
                       "a hit a tight coincidence (ns)"),
     strax.Option('n_tpc_pmts', type=int,
                  help='Number of TPC PMTs'),
+    strax.Option('saturation_correction_on', default=True,
+                 help='On off switch for saturation correction'),
+    strax.Option('saturation_reference_length', default=100,
+                 help="Maximum number of reference sample used "
+                      "to correct saturated samples"),
+    strax.Option('saturation_min_reference_length', default=20,
+                 help="Minimum number of reference sample used "
+                      "to correct saturated samples"),
 
     *HITFINDER_OPTIONS,
 )
@@ -79,7 +88,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.5'
+    __version__ = '0.3.7'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -89,7 +98,7 @@ class Peaklets(strax.Plugin):
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
-                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+                                       self.config['n_tpc_pmts'])
 
     def compute(self, records, start, end):
         r = records
@@ -145,6 +154,15 @@ class Peaklets(strax.Plugin):
             filter_wing_width=self.config['peak_split_filter_wing_width'],
             min_area=self.config['peak_split_min_area'],
             do_iterations=self.config['peak_split_iterations'])
+
+        # Saturation correction using non-saturated channels
+        # similar method used in pax
+        # see https://github.com/XENON1T/pax/pull/712
+        if self.config['saturation_correction_on']:
+            peak_saturation_correction(
+                r, peaklets, self.to_pe,
+                reference_length=self.config['saturation_reference_length'],
+                min_reference_length=self.config['saturation_min_reference_length'])
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -207,6 +225,159 @@ class Peaklets(strax.Plugin):
                 p['length'] = (end - p['time']) // p['dt']
 
 
+@numba.jit(nopython=True, nogil=True, cache=True)
+def peak_saturation_correction(records, peaks, to_pe,
+                               reference_length=100,
+                               min_reference_length=20,
+                               use_classification=False,
+                               ):
+    """Correct the area and per pmt area of peaks from saturation
+    :param records: Records
+    :param peaks: Peaklets / Peaks
+    :param to_pe: adc to PE conversion (length should equal number of PMTs)
+    :param reference_length: Maximum number of reference sample used
+    to correct saturated samples
+    :param min_reference_length: Minimum number of reference sample used
+    to correct saturated samples
+    :param use_classification: Option of using classification to pick only S2
+    """
+
+    if not len(records):
+        return
+    if not len(peaks):
+        return
+
+    # Search for peaks with saturated channels
+    mask = peaks['n_saturated_channels'] > 0
+    if use_classification:
+        mask &= peaks['type'] == 2
+    peak_list = np.where(mask)[0]
+    # Look up records that touch each peak
+    record_ranges = _touching_windows(
+        records['time'],
+        strax.endtime(records),
+        peaks[peak_list]['time'],
+        strax.endtime(peaks[peak_list]))
+
+    # Create temporary arrays for calculation
+    dt = records[0]['dt']
+    n_channels = len(peaks[0]['saturated_channel'])
+    len_buffer = np.max(peaks['length'] * peaks['dt']) // dt + 1
+    max_nrecord = len_buffer // len(records[0]['data']) + 1
+
+    # Buff the sum wf [pe] of non-saturated channels
+    b_sumwf = np.zeros(len_buffer, dtype=np.float32)
+    # Buff the records 'data' [ADC] in saturated channels
+    b_pulse = np.zeros((n_channels, len_buffer), dtype=np.int16)
+    # Buff the corresponding record index of saturated channels
+    b_index = np.zeros((n_channels, max_nrecord), dtype=np.int64)
+
+    # Main
+    for ix, peak_i in enumerate(peak_list):
+        # reset buffers
+        b_sumwf[:] = 0
+        b_pulse[:] = 0
+        b_index[:] = -1
+
+        p = peaks[peak_i]
+        channel_saturated = p['saturated_channel'] > 0
+
+        for record_i in range(record_ranges[ix][0], record_ranges[ix][1]):
+            r = records[record_i]
+            r_slice, b_slice = strax.overlap_indices(
+                r['time'] // dt, r['length'],
+                p['time'] // dt, p['length'] * p['dt'] // dt)
+
+            ch = r['channel']
+            if channel_saturated[ch]:
+                b_pulse[ch, slice(*b_slice)] += r['data'][slice(*r_slice)]
+                b_index[ch, np.argmin(b_index[ch])] = record_i
+            else:
+                b_sumwf[slice(*b_slice)] += r['data'][slice(*r_slice)] \
+                    * to_pe[ch]
+
+        _peak_saturation_correction_inner(
+            channel_saturated, records, p,
+            to_pe, b_sumwf, b_pulse, b_index,
+            reference_length, min_reference_length)
+
+        # Back track sum wf downsampling
+        peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
+        peaks[peak_i]['dt'] = dt
+
+    strax.sum_waveform(peaks, records, to_pe, peak_list)
+
+
+@numba.jit(nopython=True, nogil=True, cache=True)
+def _peak_saturation_correction_inner(channel_saturated, records, p,
+                                      to_pe, b_sumwf, b_pulse, b_index,
+                                      reference_length=100,
+                                      min_reference_length=20,
+                                      ):
+    """Would add a third level loop in peak_saturation_correction
+    Which is not ideal for numba, thus this function is written
+    :param channel_saturated: (bool, n_channels)
+    :param p: One peak/peaklet
+    :param to_pe: adc to PE conversion (length should equal number of PMTs)
+    :param b_sumwf, b_pulse, b_index: Filled buffers
+    """
+    dt = records['dt'][0]
+    n_channels = len(channel_saturated)
+
+    for ch in range(n_channels):
+        if not channel_saturated[ch]:
+            continue
+        b = b_pulse[ch]
+        r0 = records[b_index[ch][0]]
+
+        # Define the reference region as reference_length before the first saturation point
+        # unless there are not enough samples
+        s0 = np.argmax(b >= r0['baseline'])
+        ref = slice(max(0, s0-reference_length), s0)
+
+        if (b[ref] * to_pe[ch] > 1).sum() < min_reference_length:
+            # the pulse is saturated, but there are not enough reference samples to get a good ratio
+            # This actually distinguished between S1 and S2 and will only correct S2 signals
+            continue
+        if (b_sumwf[ref] > 1).sum() < min_reference_length:
+            # the same condition applies to the waveform model
+            continue
+        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) < 1:
+            # The pulse is saturated, but insufficient information is available in the other channels
+            # to reliably reconstruct it
+            continue
+
+        scale = np.sum(b[ref]) / np.sum(b_sumwf[ref])
+
+        # Loop over the record indices of the saturated channel (saved in b_index buffer)
+        for record_i in b_index[ch]:
+            r = records[record_i]
+            r_slice, b_slice = strax.overlap_indices(
+                r['time'] // dt, r['length'],
+                p['time'] // dt + s0,  p['length'] * p['dt'] // dt - s0)
+
+            if r_slice[1] == r_slice[0]:  # This record proceeds saturation
+                continue
+            b_slice = b_slice[0] + s0, b_slice[1] + s0
+
+            # First is finding the highest point in the desaturated record
+            # because we need to bit shift the whole record if it exceeds int16 range
+            apax = scale * max(b_sumwf[slice(*b_slice)])
+
+            if np.int32(apax) >= 2**15:  # int16(2**15) is -2**15
+                bshift = int(np.floor(np.log2(apax) - 14))
+
+                tmp = r['data'].astype(np.int32)
+                tmp[slice(*r_slice)] = b_sumwf[slice(*b_slice)] * scale
+
+                r['area'] = np.sum(tmp)  # Auto covert to int64
+                r['data'][:] = np.right_shift(tmp, bshift)
+                r['amplitude_bit_shift'] += bshift
+            else:
+                r['data'][slice(*r_slice)] = b_sumwf[slice(*b_slice)] * scale
+                r['area'] = np.sum(r['data'])
+
+
 @export
 @strax.takes_config(
     strax.Option('n_he_pmts', track=False, default=752,
@@ -216,8 +387,15 @@ class Peaklets(strax.Plugin):
     strax.Option('le_to_he_amplification', default=20, track=True,
                  help="Difference in amplification between low energy and high "
                       "energy channels"),
-    strax.Option('peak_min_pmts_he', default=2, child_option=True, track=True,
+    strax.Option('peak_min_pmts_he', default=2,
+                 child_option=True, parent_option_name='peak_min_pmts',
+                 track=True,
                  help="Minimum number of contributing PMTs needed to define a peak"),
+    strax.Option('saturation_correction_on_he', default=False,
+                 child_option=True, parent_option_name='saturation_correction_on',
+                 track=True,
+                 help='On off switch for saturation correction for High Energy'
+                      ' channels'),
     *HITFINDER_OPTIONS_he
 )
 class PeakletsHighEnergy(Peaklets):
@@ -226,7 +404,7 @@ class PeakletsHighEnergy(Peaklets):
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
@@ -234,7 +412,7 @@ class PeakletsHighEnergy(Peaklets):
     def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
-                                       n_tpc_pmts=self.config['n_tpc_pmts'])
+                                       self.config['n_tpc_pmts'])
 
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
@@ -303,7 +481,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
@@ -421,7 +599,7 @@ class MergedS2sHighEnergy(MergedS2s):
     data_kind = 'merged_s2s_he'
     provides = 'merged_s2s_he'
     __version__ = '0.0.1'
-    child_ends_with = '_he'
+    child_plugin = True
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))

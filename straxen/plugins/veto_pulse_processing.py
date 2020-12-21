@@ -3,6 +3,8 @@ import numpy as np
 import numba
 export, __all__ = strax.exporter()
 
+MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+
 @export
 @strax.takes_config(
     strax.Option(
@@ -22,7 +24,12 @@ export, __all__ = strax.exporter()
 )
 class nVETOPulseProcessing(strax.Plugin):
     """
-    nVETO equivalent of pulse processing. Not much more to say about.
+    nVETO equivalent of pulse processing. The following steps are
+    applied:
+
+        1. Flip, baseline and integrate waveforms.
+        2. Find hits and apply ZLE
+        3. Remove empty fragments.
     """
     __version__ = '0.0.5'
 
@@ -33,6 +40,7 @@ class nVETOPulseProcessing(strax.Plugin):
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
     data_kind = 'records_nv'
+    ends_with = '_nv'
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -127,3 +135,41 @@ def clean_up_empty_records(records, record_links, only_last=True):
                 raise TimeoutError(mes)
 
     return records[indicies_to_keep[:n_indicies]]
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'save_outside_hits_mv',
+        default=(2, 5), track=True,
+        child_option=True, parent_option_name='save_outside_hits_nv',
+        help='Save (left, right) samples besides hits; cut the rest'),
+    strax.Option(
+        'baseline_samples_mv',
+        default=10, track=True,
+        child_option=True, parent_option_name='baseline_samples_nv',
+        help='Number of samples to use at the start of the pulse to determine '
+             'the baseline'),
+    strax.Option(
+        'hit_min_amplitude_mv',
+        default=20, track=True,
+        child_option=True, parent_option_name='hit_min_amplitude_nv',
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_nveto_pmts, or a number.'),
+)
+class muVETOPulseProcessing(nVETOPulseProcessing):
+    __doc__ = MV_PREAMBLE + nVETOPulseProcessing.__doc__
+    __version__ = '0.0.1'
+    depends_on = 'raw_records_mv'
+    provides = 'records_mv'
+    data_kind = 'records_mv'
+    child_plugin = True
+
+    def infer_dtype(self):
+        record_length = strax.record_length_from_dtype(
+            self.deps['raw_records_mv'].dtype_for('raw_records_mv'))
+        dtype = strax.record_dtype(record_length)
+        return dtype
+
+    def compute(self, raw_records_mv):
+        return super().compute(raw_records_mv)
