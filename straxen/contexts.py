@@ -67,7 +67,17 @@ have_nT_plugins = [straxen.nveto_recorder,
 ##
 # XENONnT
 ##
-
+def xenonnt_nveto():
+    st = xenonnt_online()
+    st.set_config({'n_readout_threads': 8,
+                   'daq_chunk_duration': int(5.0*10**9),
+                   'daq_overlap_chunk_duration': int(0.5*10**9),
+                   'record_length': 110,
+                   'daq_input_dir': '/dali/lgrandi/xenonnt/nveto/raw/',
+                   'hit_min_amplitude': 20,
+                   'coincidence_level_recorder_nv': 1
+                  })
+    return st
 
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
