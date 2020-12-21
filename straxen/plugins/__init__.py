@@ -38,3 +38,6 @@ from .acqmon_processing import *
 
 from . import online_monitor
 from .online_monitor import *
+
+from . import s2cnn_processing
+from .s2cnn_processing import *
