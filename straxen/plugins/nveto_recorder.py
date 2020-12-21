@@ -18,11 +18,11 @@ export, __all__ = strax.exporter()
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
+    strax.Option('n_nveto_pmts', type=int, track=False,
+                 help='Number of muVETO PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
-    strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of nVETO PMTs')
 )
 class nVETORecorder(strax.Plugin):
     """
@@ -63,8 +63,15 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end):
-        strax.zero_out_of_bounds(raw_records_nv)
-
+        # Cover the case if we do not want to have any coincidence:
+        if self.config['coincidence_level_recorder_nv'] <= 1:
+            rr = raw_records_nv
+            lr = np.zeros(0, dtype=self.dtype['lone_raw_records_nv'])
+            lrs = np.zeros(0, dtype=self.dtype['lone_raw_record_statistics_nv'])
+            return {'raw_records_coin_nv': rr,
+                    'lone_raw_records_nv': lr,
+                    'lone_raw_record_statistics_nv': lrs}
+            
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
@@ -102,7 +109,7 @@ class nVETORecorder(strax.Plugin):
         lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
         lrs['time'] = start
         lrs['endtime'] = end
-    
+
         return {'raw_records_coin_nv': rr,
                 'lone_raw_records_nv': lr,
                 'lone_raw_record_statistics_nv': lrs}

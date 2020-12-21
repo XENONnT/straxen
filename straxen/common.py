@@ -18,11 +18,12 @@ from re import match
 import numba
 from warnings import warn
 import strax
-from straxen import uconfig
+import straxen
 
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E']
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E', 
+            'n_nveto_pmts', 'n_mveto_pmts']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -34,6 +35,9 @@ n_tpc_pmts = 494
 n_top_pmts = 253
 n_hard_aqmon_start = 800
 
+n_nveto_pmts = 120
+n_mveto_pmts = 84
+
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
 # it's needed in analyses
@@ -42,6 +46,7 @@ ADC_TO_E = 17142.81741
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
 TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
+
 
 @export
 def pmt_positions(xenon1t=False):
@@ -52,7 +57,7 @@ def pmt_positions(xenon1t=False):
         # Get PMT positions from the XENON1T config without PAX
         config = configparser.ConfigParser()
         config.read_string(
-            get_resource('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
+            resource_from_url('https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini'))
         pmt_config = ast.literal_eval(config['DEFAULT']['pmts'])
         return pd.DataFrame([
             dict(x=q['position']['x'],
@@ -61,7 +66,7 @@ def pmt_positions(xenon1t=False):
                  array=q.get('array','other'))
             for q in pmt_config[:248]])
     else:
-        return get_resource(
+        return resource_from_url(
             aux_repo + '874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv',
             fmt='csv')
 
@@ -73,103 +78,159 @@ _resource_cache = dict()
 _text_formats = ['text', 'csv', 'json']
 
 
-# Placeholder for resource management system in the future?
 @export
-def get_resource(x, fmt='text'):
-    """Return contents of file or URL x
-    :param fmt: Format to parse contents into
+def open_resource(file_name: str, fmt='text'):
+    """
+    Open file
+    :param file_name: str, file to open
+    :param fmt: format of the file
+    :return: opened file
+    """
+    if file_name in _resource_cache:
+        # Retrieve from in-memory cache
+        return _resource_cache[file_name]
+    # File resource
+    if fmt in ['npy', 'npy_pickle']:
+        result = np.load(file_name, allow_pickle=fmt == 'npy_pickle')
+        if isinstance(result, np.lib.npyio.NpzFile):
+            # Slurp the arrays in the file, so the result can be copied,
+            # then close the file so its descriptors does not leak.
+            result_slurped = {k: v[:] for k, v in result.items()}
+            result.close()
+            result = result_slurped
+    elif fmt == 'pkl':
+        with open(file_name, 'rb') as f:
+            result = pickle.load(f)
+    elif fmt == 'pkl.gz':
+        with gzip.open(file_name, 'rb') as f:
+            result = pickle.load(f)
+    elif fmt == 'json.gz':
+        with gzip.open(file_name, 'rb') as f:
+            result = json.load(f)
+    elif fmt == 'json':
+        with open(file_name, mode='r') as f:
+            result = json.load(f)
+    elif fmt == 'binary':
+        with open(file_name, mode='rb') as f:
+            result = f.read()
+    elif fmt == 'text':
+        with open(file_name, mode='r') as f:
+            result = f.read()
+    elif fmt == 'csv':
+        result = pd.read_csv(file_name)
+    else:
+        raise ValueError(f"Unsupported format {fmt}!")
+
+    # Store in in-memory cache
+    _resource_cache[file_name] = result
+
+    return result
+
+
+@export
+def get_resource(x: str, fmt='text'):
+    """
+    Get the resource from an online source to be opened here. We will
+        sequentially try the following:
+            1. Load if from memory if we asked for it before;
+            2. load it from a file if the path exists;
+            3. (preferred option) Load it from our database
+            4. Load the file from some URL (e.g. raw github content)
+
+    :param x: str, either it is :
+        A.) a path to the file;
+        B.) the identifier of the file as it's stored under in the database;
+        C.) A URL to the file (e.g. raw github content).
+
+    :param fmt: str, format of the resource x
+    :return: the opened resource file x opened according to the
+        specified format
+    """
+    # 1. load from memory
+    if x in _resource_cache:
+        return _resource_cache[x]
+    # 2. load from file
+    elif os.path.exists(x):
+        return open_resource(x, fmt=fmt)
+    # 3. load from database
+    elif straxen.uconfig is not None:
+        downloader = straxen.MongoDownloader()
+        if x in downloader.list_files():
+            path = downloader.download_single(x)
+            return open_resource(path, fmt=fmt)
+    # 4. load from URL
+    if '://' in x:
+        return resource_from_url(x, fmt=fmt)
+    raise FileNotFoundError(
+        f'Cannot open {x} because it is either not stored or we '
+        f'cannot download it from anywhere.')
+
+
+# Deprecated placeholder for resource management system in the future?
+def resource_from_url(html: str, fmt='text'):
+    """
+    Return contents of file or URL html
+    :param html: str, html to the file you are requesting e.g. raw github content
+    :param fmt: str, format to parse contents into
 
     Do NOT mutate the result you get. Make a copy if you're not sure.
     If you mutate resources it will corrupt the cache, cause terrible bugs in
     unrelated code, tears unnumbered ye shall shed, not even the echo of
     your lamentations shall pass over the mountains, etc.
+    :return: The file opened as specified per it's format
     """
-    if x in _resource_cache:
-        # Retrieve from in-memory cache
-        return _resource_cache[x]
+    warn("Loading files from a URL is deprecated, and will be replaced "
+         "by loading from the database. See:"
+         "https://github.com/XENONnT/straxen/pull/311",
+         DeprecationWarning)
 
-    if '://' in x:
-        # Web resource; look first in on-disk cache
-        # to prevent repeated downloads.
-        cache_fn = strax.utils.deterministic_hash(x)
-        cache_folders = ['./resource_cache',
-                         '/tmp/straxen_resource_cache',
-                         '/dali/lgrandi/strax/resource_cache']
+    if '://' not in html:
+        raise ValueError('Can only open urls!')
+
+    # Web resource; look first in on-disk cache
+    # to prevent repeated downloads.
+    cache_fn = strax.utils.deterministic_hash(html)
+    cache_folders = ['./resource_cache',
+                     '/tmp/straxen_resource_cache',
+                     '/dali/lgrandi/strax/resource_cache']
+    for cache_folder in cache_folders:
+        try:
+            os.makedirs(cache_folder, exist_ok=True)
+        except (PermissionError, OSError):
+            continue
+        cf = osp.join(cache_folder, cache_fn)
+        if osp.exists(cf):
+            result = open_resource(cf, fmt=fmt)
+            break
+    else:
+        print(f'Did not find {cache_fn} in cache, downloading {html}')
+        result = urllib.request.urlopen(html).read()
+        is_binary = fmt not in _text_formats
+        if not is_binary:
+            result = result.decode()
+
+        # Store in as many caches as possible
+        m = 'wb' if is_binary else 'w'
+        available_cf = None
         for cache_folder in cache_folders:
-            try:
-                os.makedirs(cache_folder, exist_ok=True)
-            except (PermissionError, OSError):
+            if not osp.exists(cache_folder):
                 continue
             cf = osp.join(cache_folder, cache_fn)
-            if osp.exists(cf):
-                result = get_resource(cf, fmt=fmt)
-                break
-        else:
-            print(f'Did not find {cache_fn} in cache, downloading {x}')
-            result = urllib.request.urlopen(x).read()
-            is_binary = fmt not in _text_formats
-            if not is_binary:
-                result = result.decode()
+            try:
+                with open(cf, mode=m) as f:
+                    f.write(result)
+            except Exception:
+                pass
+            else:
+                available_cf = cf
+        if available_cf is None:
+            raise RuntimeError(
+                f"Could not store {html} in on-disk cache,"
+                "none of the cache directories are writeable??")
 
-            # Store in as many caches as possible
-            m = 'wb' if is_binary else 'w'
-            available_cf = None
-            for cache_folder in cache_folders:
-                if not osp.exists(cache_folder):
-                    continue
-                cf = osp.join(cache_folder, cache_fn)
-                try:
-                    with open(cf, mode=m) as f:
-                        f.write(result)
-                except Exception:
-                    pass
-                else:
-                    available_cf = cf
-            if available_cf is None:
-                raise RuntimeError(
-                    f"Could not store {x} in on-disk cache,"
-                    "none of the cache directories are writeable??")
-
-            # Retrieve result from file-cache
-            # (so we only need one format-parsing logic)
-            result = get_resource(available_cf, fmt=fmt)
-
-    else:
-        # File resource
-        if fmt in ['npy', 'npy_pickle']:
-            result = np.load(x, allow_pickle=fmt == 'npy_pickle')
-            if isinstance(result, np.lib.npyio.NpzFile):
-                # Slurp the arrays in the file, so the result can be copied,
-                # then close the file so its descriptors does not leak.
-                result_slurped = {k: v[:] for k, v in result.items()}
-                result.close()
-                result = result_slurped
-        elif fmt == 'pkl':
-            with open(x, 'rb') as f:
-                result = pickle.load(f)
-        elif fmt == 'pkl.gz':
-            with gzip.open(x, 'rb') as f:
-                result = pickle.load(f)
-        elif fmt == 'json.gz':
-            with gzip.open(x, 'rb') as f:
-                result = json.load(f)
-        elif fmt == 'json':
-            with open(x, mode='r') as f:
-                result = json.load(f)
-        elif fmt == 'binary':
-            with open(x, mode='rb') as f:
-                result = f.read()
-        elif fmt == 'text':
-            with open(x, mode='r') as f:
-                result = f.read()
-        elif fmt == 'csv':
-            result = pd.read_csv(x)
-        else:
-            raise ValueError(f"Unsupported format {fmt}!")
-
-    # Store in in-memory cache
-    _resource_cache[x] = result
-
+        # Retrieve result from file-cache
+        # (so we only need one format-parsing logic)
+        result = open_resource(available_cf, fmt=fmt)
     return result
 
 
@@ -192,12 +253,11 @@ def get_secret(x):
 
     # now try using utilix. We need to check that it is not None first!
     # this will be main method in a future release
-    if uconfig is not None and uconfig.has_option('straxen', x):
+    if straxen.uconfig is not None and straxen.uconfig.has_option('straxen', x):
         try:
-            return uconfig.get('straxen', x)
+            return straxen.uconfig.get('straxen', x)
         except configparser.NoOptionError:
-            warn(f'uconfig does not have {x}')
-            pass
+            warn(f'straxen.uconfig does not have {x}')
 
     # if that doesn't work, revert to xenon_secrets
     try:
@@ -255,6 +315,7 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
 
 @export
 def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
