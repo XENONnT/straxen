@@ -13,7 +13,7 @@ def _is_connected() -> bool:
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?
     """
-    return straxen.uconfig is None
+    return straxen.uconfig is not None
 
 
 def test_select_runs(check_n_runs=2):
