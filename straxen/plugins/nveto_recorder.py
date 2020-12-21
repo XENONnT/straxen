@@ -38,6 +38,7 @@ class nVETORecorder(strax.Plugin):
     parallel = 'process'
 
     rechunk_on_save = True
+    save_when = 1
     compressor = 'lz4'
 
     depends_on = 'raw_records_nv'
