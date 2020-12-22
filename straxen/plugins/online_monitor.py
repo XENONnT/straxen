@@ -52,7 +52,7 @@ export, __all__ = strax.exporter()
     strax.Option(
         'lone_hits_cut_string',
         type=str,
-        default='(area > 0.2) & (area < 2.0)',
+        default='(area >= 50) & (area <= 250)',
         help='Selection (like selection_str) applied to data for '
              '"lone-hits", cuts should be separated using "&")'),
     strax.Option(
@@ -166,7 +166,8 @@ class OnlinePeakMonitor(strax.Plugin):
         del sel
 
         # -- Lone hit properties --
-        # Make a mask with the cuts
+        # Make a mask with the cuts.
+        # NB: LONE HITS AREA ARE IN ADC!
         mask = self._config_as_selection_str(
             self.config['lone_hits_cut_string'], lone_hits)
         # Now only take lone hits that are separated in time.

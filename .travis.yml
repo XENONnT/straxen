@@ -1,5 +1,7 @@
 language: python
 dist: xenial
+python:
+  - "3.7"
 jobs:
   include:
     - name: "Python 3.7"
@@ -7,13 +9,13 @@ jobs:
     - name: "Python 3.7 numbaless (for coverage)"
       env: PYTHON=3.7 NUMBA_DISABLE_JIT=1
 install:
-- pip install tensorflow>=2.3
 - git clone https://github.com/AxFoundation/strax.git ../strax
+- pip install -r ../strax/requirements.txt
 - pip install ../strax
+- pip install pytest hypothesis boltons pytest-runner coveralls tensorflow>=2.4.0
 - pip install -r requirements.txt
 script:
-- python setup.py test
-- pip install coveralls
+- python setup.py install
 - coverage run --source=straxen setup.py test
 deploy:
   provider: pypi
