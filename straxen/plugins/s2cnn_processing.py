@@ -7,6 +7,7 @@ except ModuleNotFoundError:
     straxfound=False
 import numpy as np
 from copy import deepcopy
+import os 
 
 class DoubleWidthConverter():
     """
@@ -55,7 +56,7 @@ class DoubleWidthConverter():
     
     def get_size(self):
         """ 
-        return sice of the 2D image 
+        return size of the 2D image 
         """
         return(deepcopy(self.size))
     
@@ -86,11 +87,10 @@ if straxfound:
                      help="Number of top PMTs"),
         strax.Option("s2_cnn_model_path", 
                      help="Path to the CNN model in hdf5 format. WARING, this should include the whole model file and not the weights file", 
-                     default=("file:///project2/lgrandi/terliuk/CNNmodels/CNN_models_FRice/"+
-                              "CNN_standard/disk_const_PE/CNN_dw_maxnorm_v2_3L_A_const_100__Z_const_-1.hdf5")
+                     default=("/project2/lgrandi/terliuk/CNNmodels/CNN_defaults/disk_const_PE/CNN_dw_3L_cm_maxnorm_A_const_100__Z_const_-1.hdf5")
                     )
     )
-    class CNNS2PostionReconstruction(strax.Plugin):
+    class CNNS2PosRec(strax.Plugin):
         """
         This pluging provides S2 position reconstruction for top array
         
@@ -108,13 +108,17 @@ if straxfound:
                  ] + strax.time_fields
         depends_on = ('peaks',)
         parallel = False
-        provides = "CNNS2PostionReconstruction"
+        provides = "CNNS2PosRec"
         __version__ = '0.0.0'  
         
         def setup(self):
             import tensorflow as tf
             keras = tf.keras
             self.s2_cnn_model_path = self.config['s2_cnn_model_path']
+            print("CNN S2 reco : trying to load model from : \n\t %s"%self.s2_cnn_model_path)
+            if not os.path.exists(self.s2_cnn_model_path):
+                print("ERROR! Provided model file does not exist!" )
+                raise RuntimeError("Model file not found: %s"%self.s2_cnn_model_path) 
             nn_model = keras.models.load_model(self.s2_cnn_model_path)
             self.cnn_model = nn_model
             self.converter = DoubleWidthConverter()
@@ -125,8 +129,8 @@ if straxfound:
         def compute(self, peaks):
             result = np.ones(len(peaks), dtype=self.dtype)
             result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
-            result['x_TFS2CNN'] *= float('nan')
-            result['y_TFS2CNN'] *= float('nan')
+            result['x_TFS2CNN'] *= np.nan
+            result['y_TFS2CNN'] *= np.nan
             result['patterns'] *=np.nan
 
             peak_mask = peaks['area'] > self.config['min_reconstruction_area']
@@ -139,7 +143,7 @@ if straxfound:
             # renormalizing since CNNs are done normalized to PMT with the largest area   
             result['patterns'][peak_mask] = patterns
             reco_pos = self.cnn_model.predict(patterns)
-            # XXX/FIXME: we have to be careful with units. Should we retrain all the networks to return cm? 
-            result['x_TFS2CNN'][peak_mask] = reco_pos[:, 0]/10.0
-            result['y_TFS2CNN'][peak_mask] = reco_pos[:, 1]/10.0 # CNN is in mm, but here we use cm
+            # XXX: I assume that all the networks return cm
+            result['x_TFS2CNN'][peak_mask] = reco_pos[:, 0]
+            result['y_TFS2CNN'][peak_mask] = reco_pos[:, 1]
             return result
