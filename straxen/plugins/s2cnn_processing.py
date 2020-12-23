@@ -1,5 +1,6 @@
 try:
-    import strax, straxen
+    import strax
+    import straxen
     straxfound=True
 except ModuleNotFoundError:
     print("WARNING! No strax found! Strax module will not be loaded.")
@@ -147,7 +148,7 @@ if straxfound:
             # renormalizing since CNNs are done normalized to PMT with the largest area   
             result['patterns'][peak_mask] = patterns
             reco_pos = self.cnn_model.predict(patterns)
-            # XXX: I assume that all the networks return cm
+            # I assume that all the networks return cm
             result['x_TFS2CNN'][peak_mask] = reco_pos[:, 0]
             result['y_TFS2CNN'][peak_mask] = reco_pos[:, 1]
             return result
