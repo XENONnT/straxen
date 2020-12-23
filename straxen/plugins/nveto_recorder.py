@@ -303,6 +303,7 @@ def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
         strax.interval_dtype e.g. records, hits, peaks...
     :param nfold: coincidence level.
     :param resolving_time: Time window of the coincidence [ns].
+    :param pre_trigger: Pre trigger window which sould be saved
     :return: array containing the start times and end times of the
             corresponding intervals.
 
