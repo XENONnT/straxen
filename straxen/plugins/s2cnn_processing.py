@@ -114,13 +114,17 @@ if straxfound:
         def setup(self):
             import tensorflow as tf
             keras = tf.keras
-            self.s2_cnn_model_path = self.config['s2_cnn_model_path']
+            self.s2_cnn_model_path = str(self.config['s2_cnn_model_path'])
             print("CNN S2 reco : trying to load model from : \n\t %s"%self.s2_cnn_model_path)
             if not os.path.exists(self.s2_cnn_model_path):
-                print("ERROR! Provided model file does not exist!" )
-                raise RuntimeError("Model file not found: %s"%self.s2_cnn_model_path) 
-            nn_model = keras.models.load_model(self.s2_cnn_model_path)
-            self.cnn_model = nn_model
+                print("Local file does not exist, tryin downloading the file." )
+                downloader = straxen.MongoDownloader()
+                if self.s2_cnn_model_path in downloader.list_files():
+                    self.s2_cnn_model_path = downloader.download_single(self.s2_cnn_model_path)
+                    print("Path do downloaded file from database : \n\t : %s"%self.s2_cnn_model_path)
+                else: 
+                    raise RuntimeError("Model file not found (locally or in DB): %s"%self.s2_cnn_model_path) 
+            self.cnn_model = keras.models.load_model(self.s2_cnn_model_path)
             self.converter = DoubleWidthConverter()
             print("====== Loaded TF CNN model =====")
             self.cnn_model.summary()
