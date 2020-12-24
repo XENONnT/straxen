@@ -27,10 +27,10 @@ jobs:
       - name: install pre requirements
         run: |
             wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
-            cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> pre_requirements.txt
-            cat pre_requirements.txt
-            pip install -r pre_requirements.txt
-            rm pre_requirements.txt
+            cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> sel_pre_requirements.txt
+            cat sel_pre_requirements.txt
+            pip install -r sel_pre_requirements.txt
+            rm pre_requirements.txt sel_pre_requirements.txt
       - name: Install strax
         run: |
             git clone https://github.com/AxFoundation/strax.git ../strax
