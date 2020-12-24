@@ -27,12 +27,12 @@ jobs:
       - name: install pre requirements
         run: |
             # Get requirements from the base_env
-            wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt
+            wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
             # Select requirements for troublesome modules and install
             cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> pre_requirements.txt
             cat pre_requirements.txt
             pip install -r pre_requirements.txt
-            rm pre_requirements.txt 
+            rm pre_requirements.txt
       - name: Install strax
         run: |
             git clone https://github.com/AxFoundation/strax.git ../strax
