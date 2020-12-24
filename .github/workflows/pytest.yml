@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Install strax
         run: |
+            pip install scikit-learn
             git clone https://github.com/AxFoundation/strax.git ../strax
             pip install ../strax
       - name: Install python dependencies
