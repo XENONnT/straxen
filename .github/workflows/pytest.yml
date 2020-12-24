@@ -26,9 +26,7 @@ jobs:
         uses: actions/checkout@v2
       - name: install pre requirements
         run: |
-            # Get requirements from the base_env
-            wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
-            # Select requirements for troublesome modules and install
+            wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt
             cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> pre_requirements.txt
             cat pre_requirements.txt
             pip install -r pre_requirements.txt
