@@ -93,6 +93,7 @@ def median_baseline(records):
     """
     # Count number of pulses
     npulses = np.sum(records['record_i'] == 0)
+    fail_counter = 0
     
     if npulses == 1:
         # This case is simple
@@ -108,6 +109,9 @@ def median_baseline(records):
             while ind != -1:
                 inds += [ind]
                 ind = nextr[ind]
+                fail_counter += 1
+                assert fail_counter < 5000, 'Stuck in while-loop pulse is longer than 5000 fragments?!?'
+
             pulse_i.append(inds)
 
         for pi in pulse_i:
