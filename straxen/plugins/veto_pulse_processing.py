@@ -115,9 +115,18 @@ def median_baseline(records):
     return records
 
 
+@numba.njit
 def _correct_baseline(records):
-    bl = np.median(records['data'])
-        
+    wf = np.zeros(records[0]['pulse_length'], dtype=np.int16)
+    for r in records:
+        # np.median(records['data']) does not work for numbafied functions
+        # Hence we have to get the entire waveforms first
+        if r['record_i'] == 0:
+            t0 = r['time']
+        i = (r['time'] - t0) // r['dt']
+        wf[i:i + r['length']] = r['data'][:r['length']]
+
+    bl = np.median(wf)
     for r in records:
         r['data'][:r['length']] = r['data'][:r['length']] - bl
         r['baseline'] -= bl
