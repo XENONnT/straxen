@@ -91,7 +91,7 @@ def median_baseline(records):
     
     :param records: Records 
     """
-    # Count number of pulses and create buffer:
+    # Count number of pulses
     npulses = np.sum(records['record_i'] == 0)
     
     if npulses == 1:

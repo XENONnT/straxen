@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
     strax.Option('coincidence_level_recorder_nv', type=int, default=4,
                  help="Required coincidence level."),
     strax.Option('pre_trigger_time_nv', type=int, default=150,
-                 help="Pretrigger time before coincidence window."),
+                 help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
     strax.Option('nbaseline_samples_lone_records_nv', type=int, default=10, track=False,
