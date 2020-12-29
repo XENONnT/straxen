@@ -1,11 +1,3 @@
-try:
-    import strax
-    import straxen
-    straxfound=True
-except ModuleNotFoundError:
-    print("WARNING! No strax found! Strax module will not be loaded.")
-    print("Double width converter is still available. ")
-    straxfound=False
 import numpy as np
 from copy import deepcopy
 import os 
@@ -77,78 +69,80 @@ class DoubleWidthConverter():
         pattern[:,self.pairs[:,0],self.pairs[:,1] ] = np.array(inarr)
         return(pattern)
 
-if straxfound:
-    export, __all__ = strax.exporter()
-    @export
-    @strax.takes_config(
-        strax.Option('min_reconstruction_area',
-                     help='Skip reconstruction if area (PE) is less than this',
-                     default=10),
-        strax.Option('n_top_pmts', default=straxen.n_top_pmts,
-                     help="Number of top PMTs"),
-        strax.Option("s2_cnn_model_path", 
-                     help="Path to the CNN model in hdf5 format. WARING, this should include the whole model file and not the weights file", 
-                     default=("/project2/lgrandi/terliuk/CNNmodels/CNN_defaults/disk_const_PE/CNN_dw_3L_cm_maxnorm_A_const_100__Z_const_-1.hdf5")
-                    )
-    )
-    class CNNS2PosRec(strax.Plugin):
-        """
-        This pluging provides S2 position reconstruction for top array
-        
-        returns variables : 
-            - x_TFS2CNN - reconstructed X position in [ cm ]
-            - y_TFS2CNN - reconstructed Y position in [ cm ]
-            - patterns - 2D array of normalized areas as used for CNN
-        """
-        dtype = [('x_TFS2CNN', np.float32,
-                  'Reconstructed CNN S2 X position [ cm ] '),
-                 ('y_TFS2CNN', np.float32,
-                  'Reconstructed CNN S2 Y position [ cm ] '), 
-                 (("Patterns after DW transformation normalized to max PMT area",
-                     "patterns"), np.float, (33, 19,)), 
-                 ] + strax.time_fields
-        depends_on = ('peaks',)
-        parallel = False
-        provides = "CNNS2PosRec"
-        __version__ = '0.0.0'  
-        
-        def setup(self):
-            import tensorflow as tf
-            keras = tf.keras
-            self.s2_cnn_model_path = str(self.config['s2_cnn_model_path'])
-            print("CNN S2 reco : trying to load model from : \n\t %s"%self.s2_cnn_model_path)
-            if not os.path.exists(self.s2_cnn_model_path):
-                print("Local file does not exist, tryin downloading the file." )
-                downloader = straxen.MongoDownloader()
-                if self.s2_cnn_model_path in downloader.list_files():
-                    self.s2_cnn_model_path = downloader.download_single(self.s2_cnn_model_path)
-                    print("Path do downloaded file from database : \n\t : %s"%self.s2_cnn_model_path)
-                else: 
-                    raise RuntimeError("Model file not found (locally or in DB): %s"%self.s2_cnn_model_path) 
-            self.cnn_model = keras.models.load_model(self.s2_cnn_model_path)
-            self.converter = DoubleWidthConverter()
-            print("====== Loaded TF CNN model =====")
-            self.cnn_model.summary()
-            print("====== end of model summary =====")
 
-        def compute(self, peaks):
-            result = np.ones(len(peaks), dtype=self.dtype)
-            result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
-            result['x_TFS2CNN'] *= np.nan
-            result['y_TFS2CNN'] *= np.nan
-            result['patterns'] *=np.nan
+import strax
+import straxen
+export, __all__ = strax.exporter()
+@export
+@strax.takes_config(
+    strax.Option('min_reconstruction_area',
+                 help='Skip reconstruction if area (PE) is less than this',
+                 default=10),
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
+                 help="Number of top PMTs"),
+    strax.Option("s2_cnn_model_path", 
+                 help="Path to the CNN model in hdf5 format. WARING, this should include the whole model file and not the weights file", 
+                 default=("CNN_dw_3L_cm_maxnorm_A_lin_5_2000__Z_const_-1.hdf5")
+                )
+)
+class CNNS2PosRec(strax.Plugin):
+    """
+    This pluging provides S2 position reconstruction for top array
+    
+    returns variables : 
+        - x_TFS2CNN - reconstructed X position in [ cm ]
+        - y_TFS2CNN - reconstructed Y position in [ cm ]
+        - patterns - 2D array of normalized areas as used for CNN
+    """
+    dtype = [('x_TFS2CNN', np.float32,
+              'Reconstructed CNN S2 X position [ cm ] '),
+             ('y_TFS2CNN', np.float32,
+              'Reconstructed CNN S2 Y position [ cm ] '), 
+             (("Patterns after DW transformation normalized to max PMT area",
+                 "patterns"), np.float, (33, 19,)), 
+             ] 
+    dtype += strax.time_fields
+    depends_on = ('peaks',)
+    parallel = False
+    provides = "CNNS2PosRec"
+    __version__ = '0.0.0'  
+    
+    def setup(self):
+        import tensorflow as tf
+        keras = tf.keras
+        self.s2_cnn_model_path = str(self.config['s2_cnn_model_path'])
+        print("CNN S2 reco : trying to load model from : \n\t %s"%self.s2_cnn_model_path)
+        if not os.path.exists(self.s2_cnn_model_path):
+            print("Local file does not exist, tryin downloading the file." )
+            downloader = straxen.MongoDownloader()
+            if self.s2_cnn_model_path in downloader.list_files():
+                self.s2_cnn_model_path = downloader.download_single(self.s2_cnn_model_path)
+                print("Path do downloaded file from database : \n\t : %s"%self.s2_cnn_model_path)
+            else: 
+                raise RuntimeError("Model file not found (locally or in DB): %s"%self.s2_cnn_model_path) 
+        self.cnn_model = keras.models.load_model(self.s2_cnn_model_path)
+        self.converter = DoubleWidthConverter()
+        print("====== Loaded TF CNN model =====")
+        self.cnn_model.summary()
+        print("====== end of model summary =====")
 
-            peak_mask = peaks['area'] > self.config['min_reconstruction_area']
-            if not np.sum(peak_mask):
-                # Nothing to do, and .predict crashes on empty arrays
-                return result        
-            areas  = peaks['area_per_channel'][peak_mask,0:self.config['n_top_pmts']]
-            patterns = self.converter.convert_multiple_patterns(areas)
-            patterns = patterns/patterns.max(axis=(1,2))[:,None,None]  
-            # renormalizing since CNNs are done normalized to PMT with the largest area   
-            result['patterns'][peak_mask] = patterns
-            reco_pos = self.cnn_model.predict(patterns)
-            # I assume that all the networks return cm
-            result['x_TFS2CNN'][peak_mask] = reco_pos[:, 0]
-            result['y_TFS2CNN'][peak_mask] = reco_pos[:, 1]
+    def compute(self, peaks):
+        result = np.ones(len(peaks), dtype=self.dtype)
+        result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
+        result['x_TFS2CNN'] *= np.nan
+        result['y_TFS2CNN'] *= np.nan
+        result['patterns'] *= np.nan
+        peak_mask = peaks['area'] > self.config['min_reconstruction_area']
+        if not np.sum(peak_mask):
+            # Nothing to do, and .predict crashes on empty arrays
             return result
+        areas  = peaks['area_per_channel'][peak_mask,0:self.config['n_top_pmts']]
+        patterns = self.converter.convert_multiple_patterns(areas)
+        patterns = patterns/patterns.max(axis=(1,2))[:,None,None]
+        # renormalizing since CNNs are done normalized to PMT with the largest area
+        result['patterns'][peak_mask] = patterns
+        reco_pos = self.cnn_model.predict(patterns)
+        # I assume that all the networks return cm
+        result['x_TFS2CNN'][peak_mask] = reco_pos[:, 0]
+        result['y_TFS2CNN'][peak_mask] = reco_pos[:, 1]
+        return result
