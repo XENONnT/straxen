@@ -127,12 +127,11 @@ class CNNS2PosRec(strax.Plugin):
         print("====== end of model summary =====")
 
     def compute(self, peaks):
-        result = np.ones(len(peaks), dtype=self.dtype)
+        result = np.empty(len(peaks), dtype=self.dtype)
+        result[:] = np.nan
         result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
-        result['x_TFS2CNN'] *= np.nan
-        result['y_TFS2CNN'] *= np.nan
-        result['patterns'] *= np.nan
-        peak_mask = peaks['area'] > self.config['min_reconstruction_area']
+        peak_mask = ((peaks['area'] > self.config['min_reconstruction_area'])*
+                     (peaks['type']==2))
         if not np.sum(peak_mask):
             # Nothing to do, and .predict crashes on empty arrays
             return result
