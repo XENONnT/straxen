@@ -98,7 +98,7 @@ class CNNS2PosRec(strax.Plugin):
               'Reconstructed CNN S2 X position [ cm ] '),
              ('y_TFS2CNN', np.float32,
               'Reconstructed CNN S2 Y position [ cm ] '), 
-             (("Patterns after DW transformation normalized to max PMT area",
+             (("Patterns after DW transformation and normalization as used in CNN model",
                  "patterns"), np.float, (33, 19,)), 
              ] 
     dtype += strax.time_fields
