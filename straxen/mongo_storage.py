@@ -29,6 +29,7 @@ class GridFsInterface:
     
     This class does the basic shared initiation of the downloader and 
     uploader classes.
+
     """
 
     def __init__(self,
@@ -38,14 +39,16 @@ class GridFsInterface:
                  collection=None,
                  ):
         """
+        GridFsInterface
+
         :param readonly: bool, can one read or also write to the
             database.
         :param file_database: str, name of the database. Default should
             not be changed.
-        :param config_identifier: str, header of the files that are 
-            saved in Gridfs        
-        :param collection: pymongo.collection.Collection, (Optional) 
-            PyMongo DataName Collection to bypass normal initiation 
+        :param config_identifier: str, header of the files that are
+            saved in Gridfs
+        :param collection: pymongo.collection.Collection, (Optional)
+            PyMongo DataName Collection to bypass normal initiation
             using utilix. Should be an object of the form:
                 pymongo.MongoClient(..).DATABASE_NAME.COLLECTION_NAME
         """
@@ -93,6 +96,7 @@ class GridFsInterface:
         """
         Generate identifier to query against. This is just the configs 
         name.
+
         :param config: str,  name of the file of interest
         :return: dict, that can be used in queries
         """
@@ -101,6 +105,7 @@ class GridFsInterface:
     def document_format(self, config):
         """
         Format of the document to upload
+
         :param config: str,  name of the file of interest
         :return: dict, that will be used to add the document
         """
@@ -113,6 +118,7 @@ class GridFsInterface:
     def config_exists(self, config):
         """
         Quick check if this config is already saved in the collection
+
         :param config: str,  name of the file of interest
         :return: bool, is this config name stored in the database
         """
@@ -121,12 +127,14 @@ class GridFsInterface:
 
     def md5_stored(self, abs_path):
         """
-        NB: RAM intensive operation! 
+        NB: RAM intensive operation!
         Carefully compare if the MD5 identifier is the same as the file 
-            as stored under abs_path.
+        as stored under abs_path.
+
         :param abs_path: str, absolute path to the file name
-        :return: bool, returns if the exact same file is already stored 
+        :return: bool, returns if the exact same file is already stored
             in the database
+
         """
         if not os.path.exists(abs_path):
             # A file that does not exist does not have the same MD5
@@ -137,7 +145,7 @@ class GridFsInterface:
     def test_find(self):
         """
         Test the connection to the self.collection to see if we can 
-            perform a collection.find operation. 
+        perform a collection.find operation.
         """
         if self.collection.find_one(projection="_id") is None:
             raise ConnectionError('Could not find any data in this collection')
@@ -145,8 +153,10 @@ class GridFsInterface:
     def list_files(self):
         """
         Get a complete list of files that are stored in the database
-        :return: list, list of the names of the items stored in this 
+
+        :return: list, list of the names of the items stored in this
             database
+
         """
         return [doc[self.config_identifier]
                 for doc in
@@ -161,6 +171,7 @@ class GridFsInterface:
         """
         NB: RAM intensive operation!
         Get the md5 hash of a file stored under abs_path
+
         :param abs_path: str, absolute path to a file
         :return: str, the md5-hash of the requested file
         """
@@ -196,9 +207,11 @@ class MongoUploader(GridFsInterface):
     def upload_from_dict(self, file_path_dict):
         """
         Upload all files in the dictionary to the database.
+
         :param file_path_dict: dict, dictionary of paths to upload. The 
             dict should be of the format:
             file_path_dict = {'config_name':  '/the_config_path', ...}
+
         :return: None
         """
         if not isinstance(file_path_dict, dict):
@@ -227,8 +240,10 @@ class MongoUploader(GridFsInterface):
     def upload_single(self, config, abs_path):
         """
         Upload a single file to gridfs
-        :param config: str, the name under which this file should be 
+
+        :param config: str, the name under which this file should be
             stored
+
         :param abs_path: str, the absolute path of the file 
         """
         doc = self.document_format(config)
@@ -270,11 +285,14 @@ class MongoDownloader(GridFsInterface):
                         human_readable_file_name=False):
         """
         Download the config_name if it exists
+
         :param config_name: str, the name under which the file is stored
+
         :param human_readable_file_name: bool, store the file also under
             it's human readable name. It is better not to use this as
             the user might not know if the version of the file is the
             latest.
+
         :return: str, the absolute path of the file requested
         """
         if self.config_exists(config_name):
@@ -344,8 +362,10 @@ class MongoDownloader(GridFsInterface):
         Iterate over the options in cache_options until we find a folder
             where we can store data. Order does matter as we iterate
             until we find one folder that is willing.
+
         :param cache_folder_alternatives: tuple, this tuple must be a
             list of paths one can try to store the downloaded data
+
         :return: str, the folder that we can write to.
         """
         if not isinstance(cache_folder_alternatives, (tuple, list)):
