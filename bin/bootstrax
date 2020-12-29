@@ -1169,7 +1169,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                     config=strax_config,
                     max_workers=process_mode['cores'])
 
-            if (target != 'raw_records' and n_fails == 0) or args.fix_target:
+            if (target != 'raw_records' and n_fails <= 3) or args.fix_target:
                 # Make the nv, he, and mv data type only if we are:
                 #  - Not processing up to raw_records (that means we are in some recovery mode)
                 #  - We haven't failed this run before.
