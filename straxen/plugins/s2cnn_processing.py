@@ -80,6 +80,9 @@ export, __all__ = strax.exporter()
                  default=10),
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"),
+    strax.Option('min_reconstruction_area',
+                 help='Skip reconstruction if area (PE) is less than this',
+                 default=10),
     strax.Option("s2_cnn_model_path", 
                  help="Path to the CNN model in hdf5 format. WARING, this should include the whole model file and not the weights file", 
                  default=("CNN_dw_3L_cm_maxnorm_A_lin_5_2000__Z_const_-1.hdf5")
