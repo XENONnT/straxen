@@ -296,10 +296,23 @@ else:
                     "'--infer_mode'\nplease restart bootstrax")
 
 
-def new_context(cores=args.cores, max_messages=args.max_messages, timeout=300):
+def new_context(cores=args.cores,
+                max_messages=args.max_messages,
+                timeout=300,
+                targets=strax.to_str_tuple(args.target),
+                ):
     """Create strax context that can access the runs db"""
     # We use exactly the same logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
+    class MergeTargets(strax.Plugin):
+        depends_on = targets
+        provides = 'multiple'
+        save_when = strax.SaveWhen.NEVER
+        dtype = strax.time_fields
+
+        def compute(self, **kwargs):
+            return np.empty(0, dtype=self.dtype)
+
     context = straxen.contexts.xenonnt_online(
         output_folder=output_folder,
         we_are_the_daq=True,
@@ -309,6 +322,8 @@ def new_context(cores=args.cores, max_messages=args.max_messages, timeout=300):
         timeout=timeout)
     if not args.production:
         context.storage = [strax.DataDirectory(output_folder)]
+
+    context.register(MergeTargets)
     return context
 
 
@@ -1149,7 +1164,11 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                 process_mode['timeout'] = process_mode['timeout'] * 5
             target = target_override
 
-        st = new_context(**process_mode)
+        # Create multiple targets
+        plugin_targets = strax.to_str_tuple(target)
+        if (target != 'raw_records' and n_fails <= 3) or args.fix_target:
+            plugin_targets += strax.to_str_tuple(args.sub_d_targets)
+        st = new_context(**process_mode, targets=plugin_targets)
 
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
@@ -1165,7 +1184,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 check_raw_record_overlaps=False,
                                 )
 
-            st.make(run_id, target,
+            st.make(run_id, 'multiple',
                     config=strax_config,
                     max_workers=process_mode['cores'])
 
@@ -1353,6 +1372,7 @@ def process_run(rd, send_heartbeats=args.production):
                     # do any of the checks below
                     pass
                 else:
+                    log.info(f"Open metadata")
                     try:
                         # Sometimes we have only he channels or mv channels,
                         # try loading one until we get one with chunks.
@@ -1366,6 +1386,7 @@ def process_run(rd, send_heartbeats=args.production):
                                     'first_time' in md['chunks'][0] and
                                     'last_endtime' in md['chunks'][0]
                             ):
+                                log.info(f"Using {rr_type}-metadata")
                                 break
                     except Exception:
                         fail("Processing succeeded, but metadata not readable",
@@ -1373,10 +1394,12 @@ def process_run(rd, send_heartbeats=args.production):
                     if not len(md['chunks']):
                         fail("Processing succeeded, but no chunks were written!")
 
+                    log.info(f"Check that run has ended")
                     rd = get_run(mongo_id=rd['_id'])
                     if 'end' not in rd or rd['end'] is None:
                         fail("Processing succeeded, but run hasn't yet ended!")
 
+                    log.info(f"Check the processing time of the run")
                     # Check that the data written covers the run
                     # (at least up to some fudge factor)
                     # Since chunks can be empty, and we don't want to crash,
@@ -1386,6 +1409,7 @@ def process_run(rd, send_heartbeats=args.production):
                         seconds=(max([x.get('last_endtime', 0) for x in md['chunks']]) -
                                  min([x.get('first_time', 10e9 * 1e9) for x in
                                       md['chunks']])) / 1e9)
+                    log.info(f"Compute runtime")
                     run_duration = rd['end'] - rd['start']
                     if not (0 < t_covered.seconds < float('inf')):
                         fail(f"Processed data covers {t_covered} sec")
@@ -1394,8 +1418,11 @@ def process_run(rd, send_heartbeats=args.production):
                             < timedelta(seconds=max_timetamp_diff)):
                         fail(f"Processing covered {t_covered.seconds}, "
                              f"but run lasted {run_duration.seconds}!")
-                    if not all_files_saved(rd):
-                        fail("Not all files in the rundoc for this run are saved")
+                    if args.production:
+                        # Only check rundoc for files written in production mode
+                        log.info(f"Check files saved")
+                        if not all_files_saved(rd):
+                            fail("Not all files in the rundoc for this run are saved")
 
                 log.info(f"Run {run_id} processed successfully")
                 if args.production:
