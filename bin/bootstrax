@@ -1102,7 +1102,7 @@ def fail_run(rd, reason, error_traceback=''):
     # as it changes the run state back away from 'considering', so another
     # bootstrax could conceivably pick it up again.
     set_run_state(rd, 'failed',
-                  reason=reason + error_traceback,
+                  reason=f'{hostname}:\n{reason}\n{error_traceback}',
                   next_retry=(
                       now(plus=(timeouts['retry_run']
                                 * np.random.uniform(0.5, 1.5)
