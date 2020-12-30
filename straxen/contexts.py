@@ -45,8 +45,8 @@ xnt_common_config = dict(
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
-    nn_architecture=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5', 
+    nn_architecture='mlp_model.json',
+    nn_weights='mlp_model.h5',
     # Clustering/classification parameters
     s1_max_rise_time=100,
 )
@@ -150,12 +150,11 @@ def xenonnt_ap(**kwargs):
 # This gain model is a temporary solution until we have a nice stable one
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
-    xnt_common_config['gain_model'] = ('to_pe_per_run',
-                                       straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+    xnt_common_config['gain_model'] = ('to_pe_per_run', 'to_pe_nt.npy')
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config=straxen.aux_repo + '17e83b1a8c02f56066081ebaefe5f625ebb2e287/fax_files/fax_config_nt.json',
+                    fax_config='fax_config_nt.json',
                     check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
@@ -219,9 +218,9 @@ x1t_common_config = dict(
         diagnostic=(248, 253),
         aqmon=(254, 999)),
     hev_gain_model=('to_pe_per_run',
-                    'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+                    'to_pe.npy'),
     gain_model=('to_pe_per_run',
-                'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
+                'to_pe.npy'),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
@@ -253,6 +252,14 @@ def demo():
         forbid_creation_of=straxen.daqreader.DAQReader.provides,
         config=dict(**x1t_common_config),
         **x1t_context_config)
+
+    # Use configs that are always available
+    st.set_config(dict(
+        hev_gain_model=('to_pe_per_run', straxen.aux_repo +
+                        '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
+        gain_model=('to_pe_per_run', straxen.aux_repo +
+                    '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
+    ))
     st.register(straxen.RecordsFromPax)
     return st
 
@@ -352,7 +359,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(
-            fax_config=straxen.aux_repo + '1c5793b7d6c1fdb7f99a67926ee3c16dd3aa944f/fax_files/fax_config_1t.json',
+            fax_config='fax_config_1t.json',
             detector='XENON1T',
             check_raw_record_overlaps=False,
             **straxen.contexts.x1t_common_config),

@@ -1,3 +1,21 @@
+0.14.0 / 2020-12-21
+--------------------
+- Bump version PulseProcessing for baseline fix (#317)
+- Lower peak_min_pmts to 2 for nT (#299)
+- Allow flexible SHEV (#266)
+
+0.13.1 / 2020-12-21
+--------------------
+- fix requirements for numpy (#318)
+
+0.13.0 / 2020-12-16
+--------------------
+- New (configuration)file handling module (#311)
+- Updated documentation for file loading (#311)
+- MV & NV integration using CMT (#312)
+- Improved database interactions Bootstrax (#313, #314)
+- Add 1-coincidence option for NV (#316)
+
 0.12.5 / 2020-12-09
 --------------------
 - Muveto (#287)
