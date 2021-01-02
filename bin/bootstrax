@@ -1166,7 +1166,7 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
 
         # Create multiple targets
         plugin_targets = strax.to_str_tuple(target)
-        if (target != 'raw_records' and n_fails <= 3) or args.fix_target:
+        if (target != 'raw_records' and target != 'led_calibration' and n_fails <= 3) or args.fix_target:
             plugin_targets += strax.to_str_tuple(args.sub_d_targets)
         st = new_context(**process_mode, targets=plugin_targets)
 
