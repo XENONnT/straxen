@@ -1,3 +1,7 @@
+0.14.1 / 2020-01-04
+--------------------
+- bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
+
 0.14.0 / 2020-12-21
 --------------------
 - Bump version PulseProcessing for baseline fix (#317)
