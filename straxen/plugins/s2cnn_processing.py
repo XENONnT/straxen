@@ -85,8 +85,11 @@ export, __all__ = strax.exporter()
                  default=10),
     strax.Option("s2_cnn_model_path", 
                  help="Path to the CNN model in hdf5 format. WARING, this should include the whole model file and not the weights file", 
-                 default=("CNN_dw_3L_cm_maxnorm_A_lin_5_2000__Z_const_-1.hdf5")
-                )
+                 default="CNN_dw_3L_cm_maxnorm_A_lin_5_2000__Z_const_-1.hdf5"
+                ),
+    strax.Option("store_cnn_patterns",
+                 help="Store patterns as used by CNN",
+                 default=True)
 )
 class CNNS2PosRec(strax.Plugin):
     """
@@ -97,18 +100,22 @@ class CNNS2PosRec(strax.Plugin):
         - y_TFS2CNN - reconstructed Y position in [ cm ]
         - patterns - 2D array of normalized areas as used for CNN
     """
-    dtype = [('x_TFS2CNN', np.float32,
-              'Reconstructed CNN S2 X position [ cm ] '),
-             ('y_TFS2CNN', np.float32,
-              'Reconstructed CNN S2 Y position [ cm ] '), 
-             (("Patterns after DW transformation and normalization as used in CNN model",
-                 "patterns"), np.float, (33, 19,)), 
-             ] 
-    dtype += strax.time_fields
+
     depends_on = ('peaks',)
     parallel = False
     provides = "CNNS2PosRec"
-    __version__ = '0.0.0'  
+    __version__ = '0.0.1'
+    def infer_dtype(self):
+        dtype = [('x_TFS2CNN', np.float32,
+                  'Reconstructed CNN S2 X position [ cm ] '),
+                 ('y_TFS2CNN', np.float32,
+                  'Reconstructed CNN S2 Y position [ cm ] '),
+                 ]
+        if self.config['store_cnn_patterns']:
+            dtype.append( (("Patterns after DW transformation and normalization as used in CNN model",
+                     "patterns"), np.float, (33, 19,)) )
+        dtype += strax.time_fields
+        return dtype
     
     def setup(self):
         import tensorflow as tf
@@ -120,7 +127,7 @@ class CNNS2PosRec(strax.Plugin):
             downloader = straxen.MongoDownloader()
             if self.s2_cnn_model_path in downloader.list_files():
                 self.s2_cnn_model_path = downloader.download_single(self.s2_cnn_model_path)
-                print("Path do downloaded file from database : \n\t : %s"%self.s2_cnn_model_path)
+                print("Path to downloaded file from database : \n\t : %s"%self.s2_cnn_model_path)
             else: 
                 raise RuntimeError("Model file not found (locally or in DB): %s"%self.s2_cnn_model_path) 
         self.cnn_model = keras.models.load_model(self.s2_cnn_model_path)
@@ -142,9 +149,38 @@ class CNNS2PosRec(strax.Plugin):
         patterns = self.converter.convert_multiple_patterns(areas)
         patterns = patterns/patterns.max(axis=(1,2))[:,None,None]
         # renormalizing since CNNs are done normalized to PMT with the largest area
-        result['patterns'][peak_mask] = patterns
         reco_pos = self.cnn_model.predict(patterns)
+        if self.config['store_cnn_patterns']:
+            result['patterns'][peak_mask] = patterns
         # I assume that all the networks return cm
         result['x_TFS2CNN'][peak_mask] = reco_pos[:, 0]
         result['y_TFS2CNN'][peak_mask] = reco_pos[:, 1]
+        return result
+
+@export
+class CNNS2PeakPositions(strax.Plugin):
+    """
+    This pluging puts XY for S2 peaks as peak_positions
+
+    returns variables :
+        - x - reconstructed X position in [ cm ]
+        - y - reconstructed Y position in [ cm ]
+    """
+    depends_on = ('CNNS2PosRec',)
+    parallel = False
+    provides = 'peak_positions'
+    __version__ = '0.0.1'
+    dtype = [('x', np.float32,
+                  'Reconstructed CNN S2 X position [ cm ] '),
+             ('y', np.float32,
+              'Reconstructed CNN S2 Y position [ cm ] '),
+                 ]
+    dtype += strax.time_fields
+
+    def compute(self, peaks):
+        result = np.empty(len(peaks), dtype=self.dtype)
+        result[:] = np.nan
+        result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
+        result['x'] = peaks['x_TFS2CNN']
+        result['y'] = peaks['y_TFS2CNN']
         return result
