@@ -4,9 +4,9 @@ import pandas as pd
 import numba
 import numpy as np
 import warnings
-import json
 import ast
 import strax
+import straxen
 
 import sys
 if any('jupyter' in arg for arg in sys.argv):
@@ -23,12 +23,13 @@ export, __all__ = strax.exporter()
 @export
 class SCADAInterface:
 
-    def __init__(self, context=None):
+    def __init__(self, context=None, use_progress_bar=True):
         """
         Interface to excess the XENONnT slow control data via python.
 
         :param context: Context you are using e.g. st. This is needed
             if you would like to query data via run_ids.
+        :param use_progress_bar: Use a progress bar in the Scada interface
         """
         try:
             self.SCData_URL = uconfig.get('scada', 'scdata_url')
@@ -37,25 +38,19 @@ class SCADAInterface:
                                       username=uconfig.get('scada', 'username'),
                                       api_key=uconfig.get('scada', 'api_key')
                                       )
+
+            # Load parameters from the database.
+            self.pmt_file = straxen.get_resource('PMTmap_SCADA.json',
+                                                 fmt='json')
+            self.read_out_rates = straxen.get_resource('readout_rates.json',
+                                                       fmt='json')
         except ValueError as e:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
                              ' config. SCADAInterface cannot be used.') from e
-            
-        try:
-            # Better to cache the file since is not large:
-            with open(uconfig.get('scada', 'pmt_parameter_names')) as f:
-                self.pmt_file = json.load(f)
-        except (FileNotFoundError, ValueError):
-            warnings.warn(('Cannot load PMT parameter names from parameter file.' 
-                          ' "find_pmt_names" is disabled for this session.'))
-            self.pmt_file = None
-        try: 
-            with open(uconfig.get('scada', 'parameter_readout_rate')) as f:
-                self.read_out_rates = json.load(f)
-        except (FileNotFoundError, ValueError) as e:
-            raise FileNotFoundError(
-                'Cannot load file containing parameter sampling rates.') from e
 
+        # Use a tqdm progress bar if requested. If a user does not want
+        # a progress bar, just wrap it by a tuple
+        self._use_progress_bar = use_progress_bar
         self.context = context
 
     def get_scada_values(self,
@@ -148,7 +143,11 @@ class SCADAInterface:
         self._test_sampling_rate(parameters)
 
         # Now loop over specified parameters and get the values for those.
-        for ind, (k, p) in tqdm(enumerate(parameters.items()), total=len(parameters)):
+        iterator = enumerate(parameters.items())
+        if self._use_progress_bar:
+            # wrap using progress bar
+            iterator = tqdm(iterator, total=len(parameters))
+        for ind, (k, p) in iterator:
             temp_df = self._query_single_parameter(start, end,
                                                    k, p,
                                                    every_nth_value=every_nth_value,
@@ -341,10 +340,6 @@ class SCADAInterface:
         :return: dictionary containing short names as keys and scada
             parameter names as values.
         """
-        if not self.pmt_file:
-            raise ValueError(('Cannot load PMT parameter names from parameter file.' 
-                          ' "find_pmt_names" is disabled in this session.'))
-        
         if not (hv or current):
             raise ValueError('Either one "hv" or "current" must be true.')
 
