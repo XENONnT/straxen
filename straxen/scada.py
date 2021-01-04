@@ -146,7 +146,7 @@ class SCADAInterface:
         iterator = enumerate(parameters.items())
         if self._use_progress_bar:
             # wrap using progress bar
-            iterator = tqdm(iterator, total=len(parameters))
+            iterator = tqdm(iterator, total=len(parameters), desc='Load parameters')
         for ind, (k, p) in iterator:
             temp_df = self._query_single_parameter(start, end,
                                                    k, p,
