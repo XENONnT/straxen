@@ -589,7 +589,7 @@ def remove_run_from_host(number, delete_live=False, force=False):
         elif 'host' in ddoc and ddoc['host'] == 'daq':
             # This is the live_data
             if not delete_live:
-                log.info(f'prevent {ddoc["loc"]} from being deleted. Do so with --delete_live')
+                log.info(f'prevent {ddoc["location"]} from being deleted. Do so with --delete_live')
                 # If you want to delete processed data you shouldn't consider this ddoc
                 continue
 
