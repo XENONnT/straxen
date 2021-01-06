@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '0.5.13'
+__version__ = '0.6.0'
 
 import argparse
 from datetime import datetime, timedelta, timezone
