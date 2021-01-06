@@ -217,6 +217,7 @@ timeouts = {
 # hence, we can check if there is sufficient diskspace and if not, wait a while.
 # Below are the max number of times and number of seconds bootstrax will wait.
 wait_diskspace_max_space_percent = 90
+min_disk_space_tb = 1.0  # Terabytes
 wait_diskspace_n_max = 60 * 24 * 7  # times
 wait_diskspace_dt = 60  # seconds
 if timeouts['bootstrax_presumed_dead'] < wait_diskspace_dt:
@@ -425,25 +426,20 @@ def main_loop():
     new_runs_seen, failed_runs_seen = 0, 1
     while True:
         log.info(f'bootstrax running for {(now() - t_start).seconds} seconds')
+        # Check resources are still OK, otherwise crash / reboot program
         sufficient_diskspace()
         log.info("Looking for work")
-        if not eb_can_process():
-            # Nothing to do, let's do some cleanup and set to idle
-            delete_temp_files()
-            set_state('idle')
-            time.sleep(timeouts['idle_nap'])
-            continue
         set_state('busy')
-        # Check resources are still OK, otherwise crash / reboot program
+        if eb_can_process():
+            # Process new runs
+            rd = consider_run({"bootstrax.state": None},
+                              test_counter=new_runs_seen)
+            if rd is not None:
+                new_runs_seen += 1
+                process_run(rd)
+                continue
 
-        # Process new runs
-        rd = consider_run({"bootstrax.state": None},
-                          test_counter=new_runs_seen)
-        if rd is not None:
-            new_runs_seen += 1
-            process_run(rd)
-            continue
-
+        # There is either no new run or we are an old eventbuilder.
         # Scan DB for runs with unusual problems
         if now() > next_cleanup_time:
             cleanup_db()
@@ -454,7 +450,8 @@ def main_loop():
         rd = consider_run({"bootstrax.state": 'failed',
                            "bootstrax.n_failures": {'$lt': max_n_retry},
                            "bootstrax.next_retry": {'$lt': now()}
-                           }, test_counter=failed_runs_seen)
+                           },
+                          test_counter=failed_runs_seen)
         if rd is not None:
             failed_runs_seen += 1
             process_run(rd)
@@ -738,8 +735,11 @@ def infer_mode(rd):
 def sufficient_diskspace():
     """Check if there is sufficient space available on the local disk to write to"""
     for i in range(wait_diskspace_n_max):
-        disk_pct = disk_usage(output_folder).percent
-        if disk_pct < wait_diskspace_max_space_percent:
+        du = disk_usage(output_folder)
+        disk_pct = du.percent
+        disk_free = du.free/(1024**4)
+        if (disk_pct < wait_diskspace_max_space_percent and
+            disk_free > min_disk_space_tb):
             log.info(f'Check disk space: {disk_pct:.1f}% full')
             # Sufficient space to write to, let's continue
             return
