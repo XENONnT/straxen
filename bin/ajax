@@ -60,7 +60,7 @@ ajax_thresholds = {
 # The low level data is taken care of by admix so we don't have to delete this. All other
 # data-types are deleted in the clean_high_level_data routine
 low_level_data = ['raw_records*', 'records*',
-                  'lone_hits', 'veto_regions', 'pulse_counts', 'led_calibration',
+                  'veto_regions', 'pulse_counts', 'led_calibration',
                   'peaklets']
 
 # Open deletion threads with this prefix (and also look for these before quiting ajax)
