@@ -99,13 +99,16 @@ def median_baseline(records):
         # This case is simple
         records = _correct_baseline(records)
     else:
-        # Now the more complicated case in which we have multiple pulses:
+        # Now the more complicated case in which we have multiple pulses
+        # First we have to group our record fragments into their
+        # pulses. Hence get record links and group indicies:
         _, nextr = strax.record_links(records)
-
         pulse_i = []
+        # Loop over the begining of every pulse and get all next indicies.
         for i in np.where(records['record_i'] == 0)[0]:
             inds = [i]
             ind = nextr[i]
+            # Always look for next index as long there are some
             while ind != -1:
                 inds += [ind]
                 ind = nextr[ind]

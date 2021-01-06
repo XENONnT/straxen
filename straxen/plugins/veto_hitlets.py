@@ -156,7 +156,6 @@ def drop_data_field(old_hitlets, new_hitlets):
         n['length'] = o['length']
         n['dt'] = o['dt']
         n['channel'] = o['channel']
-        n['hit_length'] = o['hit_length']
         n['area'] = o['area']
         n['amplitude'] = o['amplitude']
         n['time_amplitude'] = o['time_amplitude']
@@ -167,7 +166,6 @@ def drop_data_field(old_hitlets, new_hitlets):
         n['fwtm'] = o['fwtm']
         n['left'] = o['left']
         n['low_left'] = o['low_left']
-        n['record_i'] = o['record_i']
 
 
 @export
