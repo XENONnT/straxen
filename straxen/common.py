@@ -31,7 +31,7 @@ straxen_dir = os.path.dirname(os.path.abspath(
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 tpc_r = 66.4   # [CM], Not really radius, but apothem: from MC paper draft 1.0
-tpc_z = 148.5  # [CM], cathode to gate  +/- 2mm
+tpc_z = 148.6515  # [CM], distance between the bottom of gate and top of cathode wires
 n_tpc_pmts = 494
 n_top_pmts = 253
 n_hard_aqmon_start = 800
