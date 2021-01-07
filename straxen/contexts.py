@@ -45,9 +45,9 @@ xnt_common_config = dict(
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
-#     nn_architecture='mlp_model.json',
-#     nn_weights='mlp_model.h5',
-    nn_file = "xnt_gcn_wfsim_20201203.tar.gz",
+    nn_architecture=None,
+    nn_weights=None,
+    nn_file="xnt_gcn_wfsim_20201203.tar.gz",
     # Clustering/classification parameters
     s1_max_rise_time=100,
 )

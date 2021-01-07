@@ -125,7 +125,8 @@ class PeakBasicsHighEnergy(PeakBasics):
             (0, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr0.h5')),
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
     strax.Option("nn_file", 
-                 help="Name of saved neural network model file in the aux file data base. The file contains both structure and weights.", 
+                 help="Name of saved neural network model file in the aux file "
+                      "data base. The file contains both structure and weights.",
                  default=None
                     ),
     strax.Option('min_reconstruction_area',
@@ -157,45 +158,44 @@ class PeakPositions(strax.Plugin):
         import tensorflow as tf
         keras = tf.keras
         
-        #XENONnT
+        # XENONnT
         if self.config['nn_file']:
-            from tensorflow.keras.models import load_model
             downloader = straxen.MongoDownloader()
-            
             tf.keras.backend.set_floatx('float32')
             
             nn_file = downloader.download_single(self.config['nn_file'])
             
             with tempfile.TemporaryDirectory() as tmpdirname:
-                tar = tarfile.open(nn_file, mode = "r:gz")
-                tar.extractall(path = tmpdirname)
-                self.nn = load_model(tmpdirname)
-        
-        #XENON1T
-        else:    
-            nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
-            # badPMTList was inserted by a very clever person into the keras json
-            # file. Let's delete it to prevent future keras versions from crashing.
-            # Do NOT try `del nn_conf['badPMTList']`! See get_resource docstring
-            # for the gruesome details.
-            bad_pmts = nn_conf['badPMTList']
-            nn = keras.models.model_from_json(json.dumps({
-                k: v
-                for k, v in nn_conf.items()
-                if k != 'badPMTList'}))
-            self.pmt_mask = ~np.in1d(np.arange(self.config['n_top_pmts']),
-                                     bad_pmts)
+                tar = tarfile.open(nn_file, mode="r:gz")
+                tar.extractall(path=tmpdirname)
+                self.nn = tf.keras.models.load_model(tmpdirname)
+            # Done, let's return
+            return
 
-            # Keras needs a file to load its weights. We can't put the load
-            # inside the context, then it would break on Windows,
-            # because there temporary files cannot be opened again.
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(get_resource(self.config['nn_weights'],
-                                     fmt='binary'))
-                fname = f.name
-            nn.load_weights(fname)
-            os.remove(fname)
-            self.nn = nn
+        # XENON1T
+        nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
+        # badPMTList was inserted by a very clever person into the keras json
+        # file. Let's delete it to prevent future keras versions from crashing.
+        # Do NOT try `del nn_conf['badPMTList']`! See get_resource docstring
+        # for the gruesome details.
+        bad_pmts = nn_conf['badPMTList']
+        nn = keras.models.model_from_json(json.dumps({
+            k: v
+            for k, v in nn_conf.items()
+            if k != 'badPMTList'}))
+        self.pmt_mask = ~np.in1d(np.arange(self.config['n_top_pmts']),
+                                 bad_pmts)
+
+        # Keras needs a file to load its weights. We can't put the load
+        # inside the context, then it would break on Windows,
+        # because there temporary files cannot be opened again.
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(get_resource(self.config['nn_weights'],
+                                 fmt='binary'))
+            fname = f.name
+        nn.load_weights(fname)
+        os.remove(fname)
+        self.nn = nn
 
     def compute(self, peaks):
         result = np.ones(len(peaks), dtype=self.dtype)
@@ -209,15 +209,15 @@ class PeakPositions(strax.Plugin):
             # Nothing to do, and .predict crashes on empty arrays
             return result
         
-        #XENONnT
+        # XENONnT
         if self.config['nn_file']:
-            _in  = peaks['area_per_channel'][peak_mask,0:self.config['n_top_pmts']]
+            _in = peaks['area_per_channel'][peak_mask, 0:self.config['n_top_pmts']]
             with np.errstate(divide='ignore', invalid='ignore'):
-                _in = _in / np.max(_in, axis = 1).reshape(-1, 1)
+                _in = _in / np.max(_in, axis=1).reshape(-1, 1)
             _in = _in.reshape(-1, self.config['n_top_pmts'])
             _out = self.nn.predict(_in)
         
-        #XENON1T
+        # XENON1T
         else:
             # Input: normalized hitpatterns in good top PMTs
             _in = peaks['area_per_channel'][peak_mask, :]
