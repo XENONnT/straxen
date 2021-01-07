@@ -4,7 +4,6 @@ import pandas as pd
 import numba
 import numpy as np
 import warnings
-import ast
 import strax
 import straxen
 
@@ -42,8 +41,6 @@ class SCADAInterface:
             # Load parameters from the database.
             self.pmt_file = straxen.get_resource('PMTmap_SCADA.json',
                                                  fmt='json')
-            self.read_out_rates = straxen.get_resource('readout_rates.json',
-                                                       fmt='json')
         except ValueError as e:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
                              ' config. SCADAInterface cannot be used.') from e
@@ -59,7 +56,7 @@ class SCADAInterface:
                          end=None,
                          run_id=None,
                          time_selection_kwargs=None,
-                         interpolation=False,
+                         fill_gaps=None,
                          filling_kwargs=None,
                          down_sampling=False,
                          every_nth_value=1):
@@ -82,8 +79,13 @@ class SCADAInterface:
             of the second run.
         :param time_selection_kwargs: Keyword arguments taken by
             st.to_absolute_time_range(). Default: {"full_range": True}
-        :param interpolation: Boolean which decided to either forward
-            fill empty values or to interpolate between existing ones.
+        :param fill_gaps: Decides how to fill gaps in which no data was
+            recorded. Can be either None, "interpolation" or "forwardfill".
+            None keeps the gaps (default), "interpolation" uses
+            pandas.interpolate and "forwardfill" pandas.ffill. See
+            https://pandas.pydata.org/docs/ for more information. You
+            can change the filling options of the methods with the
+            filling_kwargs.
         :param filling_kwargs: Kwargs applied to pandas .ffill() or
             .interpolate().
         :param down_sampling: Boolean which indicates whether to
@@ -130,6 +132,11 @@ class SCADAInterface:
                    'in utc unix time ns.')
             raise ValueError(mes)
 
+        _fill_gaps = [None, 'None', 'interpolation', 'forwardfill']
+        mes = (f'Wrong argument for "fill_gaps", must be either {_fill_gaps}.' 
+               f' You specified "{fill_gaps}"')
+        assert fill_gaps in _fill_gaps, mes
+
         now = np.datetime64('now')
         if (end // 10**9) > now.astype(np.int64):
             mes = ('You are asking for an endtime which is in the future,'
@@ -140,8 +147,6 @@ class SCADAInterface:
                    'corresponding times as nans instead.')
             warnings.warn(mes)
 
-        self._test_sampling_rate(parameters)
-
         # Now loop over specified parameters and get the values for those.
         iterator = enumerate(parameters.items())
         if self._use_progress_bar:
@@ -151,7 +156,7 @@ class SCADAInterface:
             temp_df = self._query_single_parameter(start, end,
                                                    k, p,
                                                    every_nth_value=every_nth_value,
-                                                   interpolation=interpolation,
+                                                   fill_gaps=fill_gaps,
                                                    filling_kwargs=filling_kwargs,
                                                    down_sampling=down_sampling
                                                    )
@@ -175,44 +180,13 @@ class SCADAInterface:
 
         return df
 
-    def _test_sampling_rate(self, parameters):
-        """
-        Function which test if the specified parameters share all the
-        same sampling rates. If not they cannot be put into a single
-        DataFrame and an error is raised.
-
-        :param parameters: input parameter names.
-        """
-        # Check if queried parameters share the same readout rate if not raise error:
-        for rate, parameter_names in self.read_out_rates.items():
-            if not hasattr(parameter_names, '__iter__'):
-                parameter_names = [parameter_names]
-            # Loop over different readout rates. If they belong to the same readout rate...
-            input_parameter_names = np.array([v for v in parameters.values()])
-            m = np.isin(input_parameter_names, parameter_names)
-
-            if not (np.all(m) or np.all(~m)):
-                # ...either all parameters are true or false.
-                same_rate = input_parameter_names[m]
-                not_same_rate = input_parameter_names[~m]
-                raise ValueError(('Not all parameters of your inquiry share the same readout rates. '
-                                  f'The parameters {same_rate} are read out every {rate} seconds while '
-                                  f'{not_same_rate} are not. For the your and the developers sanity please make '
-                                  'two separate inquiries.'))
-
-            if np.all(m):
-                # Yes all parameters share the same readout rate:
-                self.readout_rate = int(rate)
-                self.base = 0
-            else:
-                self.readout_rate = None
 
     def _query_single_parameter(self,
                                 start,
                                 end,
                                 parameter_key,
                                 parameter_name,
-                                interpolation,
+                                fill_gaps,
                                 filling_kwargs,
                                 down_sampling,
                                 every_nth_value=1):
@@ -224,6 +198,9 @@ class SCADAInterface:
         :param parameter_key: Key to identify queried parameter in the
             DataFrame
         :param parameter_name: Parameter name in Scada/historian database.
+        :param fill_gaps:
+        :param filling_kwargs: Keyword arguments forwarded to pandas.ffill
+            or pandas.interpolate.
         :param every_nth_value: Defines over how many values we compute
             the average or the nthed sample in case we down sample the
             data.
@@ -238,75 +215,57 @@ class SCADAInterface:
         if not isinstance(every_nth_value, int):
             raise ValueError('"value_every_seconds" must be an int!')
 
-        # First we have to create an array where we can fill values with
-        # the sampling frequency of scada:
-        seconds = np.arange(start, end + 1, 10**9)  # +1 to make sure endtime is included
+        # First we have to create an array where we can fill values:
+        seconds = np.arange(start, end+1, 10**9)  # +1 to make sure endtime is included
         df = pd.DataFrame()
         df.loc[:, 'time'] = seconds
         df['time'] = df['time'].astype('<M8[ns]')
         df.set_index('time', inplace=True)
 
-        # Check if first value is in requested range:
-        query = self.SCADA_SECRETS.copy()
+        # Init parameter query:
+        query = self.SCADA_SECRETS.copy()  # Have to copy dict since it is not immutable
         query['name'] = parameter_name
-        query['EndDateUnix'] = (start // 10**9) + 1  # +1 since it is end before exclusive
-        query = urllib.parse.urlencode(query)
-        values = requests.get(self.SCLastValue_URL + query)
 
-        try:
-            temp_df = pd.read_json(values.text)
-        except ValueError as e:
-            mes = values.text
-            query_message = ast.literal_eval(mes)
-            raise ValueError(f'SCADA raised a value error when looking for '
-                             f'your parameter "{parameter_name}". The error '
-                             f'was {query_message}') from e
+        # Check if first value is in requested range:
+        temp_df = self._query(query,
+                              self.SCLastValue_URL,
+                              end=(start // 10**9) + 1)  # +1 since it is end before exclusive
 
         # Store value as first value in our df
         df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
 
-        # Query values between start+1 and end time:
-        query = self.SCADA_SECRETS.copy()
-        query["StartDateUnix"] = (start // 10**9) + 1
-        query["EndDateUnix"] = (end // 10**9)
-        query['name'] = parameter_name
-        query = urllib.parse.urlencode(query)
-        values = requests.get(self.SCData_URL + query)
+        # Query values between start+1 and endtime:
+        offset = 0
+        ntries = 0
+        max_tries = 40000  # This corresponds to ~23 years
+        while ntries < max_tries:
+            temp_df = self._query(query,
+                                  self.SCData_URL,
+                                  start=(start//10**9)+1+offset,
+                                  end=(end//10**9)+1)  # +1 since it is end before exclusive
+            times = (temp_df['timestampseconds'].values*10**9).astype('<M8[ns]')
+            df.loc[times, parameter_key] = temp_df.loc[:, 'value'].values
 
-        try:
-            # Here we cannot do any better since the Error message returned
-            # by the scada api is always the same...
-            temp_df = pd.read_json(values.text)
-            self._raw_data = temp_df
-            df.loc[temp_df['timestampseconds'], parameter_key] = temp_df.loc[:, 'value'].values
-        except ValueError:
-            pass
+            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
+            offset += len(temp_df)
+            ntries += 1
+            if not (len(temp_df) == 35000 and endtime != end // 10**9):
+                # Max query are 35000 values, if end is reached the
+                # length of the dataframe is either smaller or the last
+                # time value is equivalent to queried range.
+                break
 
-        # Let user decided whether to ffill or interpolate:
-        if interpolation:
+        # Let user decided whether to ffill, interpolate or keep gaps:
+        if fill_gaps == 'interpolation':
             df.interpolate(**filling_kwargs, inplace=True)
-        else:
+
+        if fill_gaps == 'forwardfill':
             # Now fill values in between like Scada would do:
             df.ffill(**filling_kwargs, inplace=True)
-        
-        # Step 3.5 In case the sampling rate is not 1 s we have to drop values 
-        # and but all columns to the same base:
-        if self.readout_rate:
-            if not self.base:
-                self.base = temp_df['timestampseconds']  # Only contains values which changed
-                # In case there are earlier values, but nothing was record we have to go back
-                # according to the readout rate to find the true base
-                self.base = df[temp_df['timestampseconds'][0]::-self.readout_rate].index.values[-1]
-            df = df[self.base::self.readout_rate]
 
         # Step 4. Down-sample data if asked for:
         df.reset_index(inplace=True)
         if every_nth_value > 1:
-            if interpolation and not down_sampling:
-                warnings.warn('Cannot use interpolation and running average at the same time.'
-                              ' Deactivated the running average, switch to down_sampling instead.')
-                down_sampling = True
-
             if down_sampling:
                 df = df[::every_nth_value]
             else:
@@ -318,6 +277,31 @@ class SCADAInterface:
                 df[parameter_key] = nv
 
         return df
+
+    @staticmethod
+    def _query(query, api, start=None, end=None):
+        """
+        Helper to reduce code. Asks for data and returns result. Raises error
+        if api returns error.
+        """
+        if start:
+            query["StartDateUnix"] = start
+        if end:
+            query['EndDateUnix'] = end
+
+        query_url = urllib.parse.urlencode(query)
+        values = requests.get(api + query_url)
+        values = values.json()
+
+        if isinstance(values, dict):
+            query_status = values['status']
+            query_message = values['mes']
+            raise ValueError(f'SCADAapi has not returned values for the '
+                             f'parameter "{query["name"]}". It returned the '
+                             f'status "{query_status}" with the message "{query_message}".')
+        if isinstance(values, list):
+            temp_df = pd.DataFrame(values)
+            return temp_df
 
     def find_scada_parameter(self):
         raise NotImplementedError('Feature not implemented yet.')
