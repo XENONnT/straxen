@@ -295,7 +295,7 @@ class SCADAInterface:
 
         if isinstance(values, dict):
             query_status = values['status']
-            query_message = values['mes']
+            query_message = values['message']
             raise ValueError(f'SCADAapi has not returned values for the '
                              f'parameter "{query["name"]}". It returned the '
                              f'status "{query_status}" with the message "{query_message}".')
