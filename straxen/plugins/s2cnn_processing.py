@@ -243,7 +243,6 @@ class S2CNNEventPositionFromEventAreas(strax.Plugin):
         self.cnn_model.summary()
         print("====== end of model summary =====")
 
-
     def compute(self, events):
         result = np.empty(len(events), dtype=self.dtype)
         result[:] = np.nan
