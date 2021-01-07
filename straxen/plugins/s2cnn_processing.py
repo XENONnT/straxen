@@ -250,7 +250,8 @@ class S2CNNEventPositionFromEventAreas(strax.Plugin):
         for type_ in ['s2', 'alt_s2']:
             peak_mask = (events[type_+'_area'] > self.config['min_reconstruction_area'])
             areas = events[type_+"_area_per_channel"][peak_mask,0:self.config['n_top_pmts']]
-            if not np.sum(peak_mask):continue          
+            if not np.sum(peak_mask):
+                continue
             patterns = self.converter.convert_multiple_patterns(areas)
             patterns = patterns/patterns.max(axis=(1,2))[:,None,None]
             reco_pos = self.cnn_model.predict(patterns)
