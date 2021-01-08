@@ -340,8 +340,7 @@ def plot_wf(st: strax.Context,
                          label='Area per channel [PE]')
 
 
-@export
-@straxen.mini_analysis(requires=('events_info',))
+@straxen.mini_analysis(requires=('event_info',))
 def event_display(context,
                   run_id,
                   events,
@@ -349,6 +348,7 @@ def event_display(context,
                   s2_fuzz=50,
                   s1_fuzz=0,
                   max_peaks=500,
+                  xenon1t=False,
                   ):
     """
     Make a wf-display of a given event. Requires events, peaks and
@@ -362,6 +362,7 @@ def event_display(context,
     :param s2_fuzz: extra time around main S2 [ns]
     :param s1_fuzz: extra time around main S1 [ns]
     :param max_peaks: max peaks for plotting in the wf plot
+    :param xenon1t: True: is 1T, False: is nT
     :return: axes used for plotting:
         - ax_s1, the main S1 peak axis
         - ax_s2, the main S2 peak axis
@@ -418,6 +419,7 @@ def event_display(context,
                                              events['s1_endtime']),
                                  keep_columns=('area_per_channel', 'time', 'dt', 'length'))
         straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
+                                         xenon1t=xenon1t,
                                          array='bottom',
                                          cmap='Blues')
     if events['s2_area'] > 0:
@@ -434,6 +436,7 @@ def event_display(context,
                                  keep_columns=('area_per_channel', 'time', 'dt', 'length'))
         straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
                                          array='top',
+                                         xenon1t=xenon1t,
                                          cmap='Greens')
 
     plt.sca(ax_ev)
@@ -458,7 +461,6 @@ def event_display(context,
     return ax_s1, ax_s2, ax_s1_hp, ax_s2_hp, ax_s1_hp, ax_rec
 
 
-@export
 def plot_single_event(context: strax.Context,
                       run_id,
                       events,
@@ -478,10 +480,9 @@ def plot_single_event(context: strax.Context,
     """
     if event_number is not None:
         events = events[events['event_number'] == event_number]
-    if len(events) > 1:
-        raise ValueError('Either provide an event number or a single event')
-    elif len(events) == 0:
-        raise ValueError('No event found')
+    if len(events) > 1 or len(events) == 0:
+        raise ValueError(f'Make sure to provide an event number or a single '
+                         f'event. Got {len(events)} events')
 
     return context.event_display(run_id,
                                  time_range=(events[0]['time'],
