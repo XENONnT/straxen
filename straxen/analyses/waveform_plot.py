@@ -467,17 +467,17 @@ def event_display(context,
             plt.scatter(events[0]['x'], events[0]['y'], marker='X', s=100, c='r')
 
     # Fill pannels with peak/event info
-    for it, (ax, labels_and_unit) in enumerate([(ax_event_info,display_event_info),
+    for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
                                                 (ax_peak_info, display_peak_info)]):
         for i, label in enumerate(labels_and_unit):
             _lab, _unit = label
-            coord = 0.01, 0.9-0.9*i/len(labels_and_unit),
+            coord = 0.01, 0.9-0.9*i/len(labels_and_unit)
             ax.text(*coord, _lab, va='top', zorder=-10)
             ax.text(coord[0]+0.5, coord[1],
                     _unit.format(v=events[0][_lab]), va='top', zorder=-10)
             ax.set_xticks([])
             ax.set_yticks([])
-            [s.set_visible(False) for s in ax.spines.values()]
+            _ = [s.set_visible(False) for s in ax.spines.values()]
 
     if events['s2_area'] > 0:
         plt.sca(ax_s2)

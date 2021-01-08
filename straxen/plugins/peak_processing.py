@@ -138,7 +138,6 @@ class PeakPositions(strax.Plugin):
              ] + strax.time_fields
     depends_on = ('peaks',)
 
-    # TODO
     # Parallelization doesn't seem to make it go faster
     # Is there much pure-python stuff in tensorflow?
     # Process-level paralellization might work, but you'd have to do setup
