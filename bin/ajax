@@ -826,7 +826,7 @@ def set_state(state):
     if state is None, leave state unchanged, just update heartbeat time
     """
     ajax_state = dict(
-        host=hostname,
+        host='ajax.' + hostname,
         pid=os.getpid(),
         time=now(),
         state=state,
