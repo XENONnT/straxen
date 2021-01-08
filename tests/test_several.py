@@ -68,7 +68,7 @@ def test_several():
             assert np.abs(len(p) -
                           EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
 
-            st.make(test_run_id, 'event_info')
+            events = st.get_array(test_run_id, 'event_info')
             print('plot wf')
             peak_i = 0
             st.plot_waveform(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
@@ -83,6 +83,10 @@ def test_several():
             peak_i = 2
             assert st.is_stored(test_run_id, 'records'), "no records"
             st.plot_records_matrix(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            plt_clf()
+
+            print('plot event display')
+            straxen.plot_single_event(st, test_run_id, events, event_number=0, records_matrix=True)
             plt_clf()
 
             print('plot aft')

@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import warnings
 import strax
 import straxen
@@ -312,7 +313,6 @@ def plot_wf(st: strax.Context,
     t_range = t_range / 10 ** 9
     t_range = np.clip(t_range, 0, np.inf)
 
-
     if hit_pattern:
         plt.figure(figsize=(14, 11))
         plt.subplot(212)
@@ -338,3 +338,152 @@ def plot_wf(st: strax.Context,
                          vmin=1 if plot_log else None,
                          log_scale=plot_log,
                          label='Area per channel [PE]')
+
+
+@export
+@straxen.mini_analysis(requires=('events_info',))
+def event_display(context,
+                  run_id,
+                  events,
+                  records_matrix=False,
+                  s2_fuzz=50,
+                  s1_fuzz=0,
+                  max_peaks=500,
+                  ):
+    """
+    Make a wf-display of a given event. Requires events, peaks and
+        peaklets.  NB: time selection should return only one event!
+
+    :param context: strax.Context provided by the minianalysis wrapper
+    :param run_id: run-id of the event
+    :param events: events, provided by the minianalysis wrapper
+    :param records_matrix: False (no record matrix), True, or "raw"
+        (show raw-record matrix)
+    :param s2_fuzz: extra time around main S2 [ns]
+    :param s1_fuzz: extra time around main S1 [ns]
+    :param max_peaks: max peaks for plotting in the wf plot
+    :return: axes used for plotting:
+        - ax_s1, the main S1 peak axis
+        - ax_s2, the main S2 peak axis
+        - ax_s1_hp, the axis of the S1 bottom hit pattern
+        - ax_s2_hp, the axis of the S2 bottom hit pattern
+        - ax_ev, the axis of the wf of the entire event
+        - ax_rec, the axis of the (raw)record matrix (if any otherwise
+            it's None)
+    """
+    if len(events) > 1:
+        raise ValueError(f'Found {len(events)} only request one')
+    if records_matrix not in ('raw', True, False):
+        raise ValueError('Choose either "raw", True or False for records_matrix')
+
+    fig = plt.figure(figsize=(25, 5.5 * (2 + int(records_matrix))),
+                     facecolor='white')
+    grid = plt.GridSpec((2 + int(records_matrix)), 1,
+                        hspace=0.35,
+                        height_ratios=[0.75, 0.5, 0.5][:2 + int(records_matrix)]
+                        )
+
+    # S1, S2, hit patterns
+    gss_0 = gridspec.GridSpecFromSubplotSpec(1, 4, subplot_spec=grid[0], wspace=0.15)
+    ax_s1 = fig.add_subplot(gss_0[0])
+    ax_s2 = fig.add_subplot(gss_0[1])
+    ax_s1_hp = fig.add_subplot(gss_0[2])
+    ax_s2_hp = fig.add_subplot(gss_0[3])
+
+    # Peaks over time
+    gss_1 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[1])
+    ax_ev = fig.add_subplot(gss_1[0])
+
+    # titles
+    ax_s1.set_title('Main S1')
+    ax_s1_hp.set_title('S1 bottom')
+    ax_s2.set_title('Main S2')
+    ax_s2_hp.set_title('S2 top')
+    ax_rec = None
+
+    if records_matrix:
+        gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
+        ax_rec = fig.add_subplot(gss_2[0])
+
+    if events['s1_area'] > 0:
+        plt.sca(ax_s1)
+        context.plot_peaks(run_id,
+                           time_range=(events['s1_time'] - s1_fuzz,
+                                       events['s1_endtime'] + s1_fuzz),
+                           single_figure=False)
+
+        plt.sca(ax_s1_hp)
+        area = context.get_array(run_id, 'peaklets',
+                                 time_range=(events['s1_time'],
+                                             events['s1_endtime']),
+                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'))
+        straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
+                                         array='bottom',
+                                         cmap='Blues')
+    if events['s2_area'] > 0:
+        plt.sca(ax_s2)
+        context.plot_peaks(run_id,
+                           time_range=(events['s2_time'] - s2_fuzz,
+                                       events['s2_endtime'] + s2_fuzz),
+                           single_figure=False)
+
+        plt.sca(ax_s2_hp)
+        area = context.get_array(run_id, 'peaklets',
+                                 time_range=(events['s2_time'],
+                                             events['s2_endtime']),
+                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'))
+        straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
+                                         array='top',
+                                         cmap='Greens')
+
+    plt.sca(ax_ev)
+    context.plot_peaks(run_id,
+                       time_range=(events['time'], events['endtime']),
+                       show_largest=max_peaks,
+                       single_figure=False)
+
+    if records_matrix:
+        plt.sca(ax_rec)
+        context.plot_records_matrix(run_id,
+                                    raw=records_matrix == 'raw',
+                                    time_range=(events['time'],
+                                                events['endtime']),
+                                    single_figure=False)
+        ax_rec.tick_params(axis='x', rotation=0)
+    # Final tweaks
+    ax_s2.tick_params(axis='x', rotation=45)
+    ax_s1.tick_params(axis='x', rotation=45)
+    ax_ev.tick_params(axis='x', rotation=0)
+    plt.suptitle(f'Run {run_id}. Time {str(events["time"])[:-9]}.{str(events["time"])[-9:]}', y=0.95)
+    return ax_s1, ax_s2, ax_s1_hp, ax_s2_hp, ax_s1_hp, ax_rec
+
+
+@export
+def plot_single_event(context: strax.Context,
+                      run_id,
+                      events,
+                      event_number=None,
+                      **kwargs):
+    """
+    Wrapper for event_display
+
+    :param context: strax.context
+    :param run_id: run id
+    :param events: dataframe / numpy array of events. Should either be
+        length 1 or the event_number argument should be provided
+    :param event_number: (optional) int, if provided, only show this
+        event number
+    :param kwargs: kwargs for events_display
+    :return: see events_display
+    """
+    if event_number is not None:
+        events = events[events['event_number'] == event_number]
+    if len(events) > 1:
+        raise ValueError('Either provide an event number or a single event')
+    elif len(events) == 0:
+        raise ValueError('No event found')
+
+    return context.event_display(run_id,
+                                 time_range=(events[0]['time'],
+                                             events[0]['endtime']),
+                                 **kwargs)
