@@ -234,7 +234,7 @@ def seconds_range_xaxis(seconds_range, t0=None):
         plt.xlabel("Time [ns]")
 
 
-def plot_peak(p, t0=None, **kwargs):
+def plot_peak(p, t0=None, center_time=True, **kwargs):
     x, y = time_and_samples(p, t0=t0)
     kwargs.setdefault('linewidth', 1)
 
@@ -250,6 +250,13 @@ def plot_peak(p, t0=None, **kwargs):
     # Mark extent with thin black line
     plt.plot([x[0], x[-1]], [y.max(), y.max()],
              c='k', alpha=0.3, linewidth=1)
+
+    # Mark center time with thin black line
+    if center_time:
+        if t0 is None:
+            t0 = p['time']
+        ct = (p['center_time'] - t0) / int(1e9)
+        plt.axvline(ct, c='k', alpha=0.4, linewidth=1, linestyle='--')
 
 
 def time_and_samples(p, t0=None):
@@ -351,7 +358,7 @@ PEAK_DISPLAY_DEFAULT_INFO = sum([[(k.format(i=s_i), u) for k, u in
                                    ('s{i}_n_channels', '{v}'),
                                    ('s{i}_area_fraction_top', '{v:.2f}'),
                                    ('s{i}_range_50p_area', '{v:.1f}'),
-                                   )] for s_i in (1,2)], [])
+                                   )] for s_i in (1, 2)], [])
 EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
                               ('endtime', '{v} ns'),
                               ('event_number', '{v}'),
@@ -373,11 +380,14 @@ def event_display(context,
                   max_peaks=500,
                   xenon1t=False,
                   display_peak_info=PEAK_DISPLAY_DEFAULT_INFO,
-                  display_event_info=EVENT_DISPLAY_DEFAULT_INFO
+                  display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
+                  s1_hp_kwargs=None,
+                  s2_hp_kwargs=None,
                   ):
     """
-    Make a wf-display of a given event. Requires events, peaks and
-        peaklets.  NB: time selection should return only one event!
+    Make a waveform-display of a given event. Requires events, peaks and
+        peaklets (optionally: records). NB: time selection should return
+        only one event!
 
     :param context: strax.Context provided by the minianalysis wrapper
     :param run_id: run-id of the event
@@ -388,18 +398,28 @@ def event_display(context,
     :param s1_fuzz: extra time around main S1 [ns]
     :param max_peaks: max peaks for plotting in the wf plot
     :param xenon1t: True: is 1T, False: is nT
+    :param display_peak_info: tuple, items that will be extracted from
+        event and displayed in the event info panel see above for format
+    :param display_event_info: tuple, items that will be extracted from
+        event and displayed in the peak info panel see above for format
+    :param s1_hp_kwargs: dict, optional kwargs for S1 hitpatterns
+    :param s2_hp_kwargs: dict, optional kwargs for S2 hitpatterns
     :return: axes used for plotting:
-        - ax_s1, the main S1 peak axis
-        - ax_s2, the main S2 peak axis
-        - ax_s1_hp_t, the axis of the S1 top hit pattern
-        - ax_s1_hp_b, the axis of the S1 bottom hit pattern
-        - ax_s2_hp_t, the axis of the S2 top hit pattern
-        - ax_s2_hp_b, the axis of the S2 bottom hit pattern
-        - ax_event_info, axis with text on the event
-        - ax_peak_info, axis with text on the main S1 S2
-        - ax_ev, the axis of the wf of the entire event
-        - ax_rec, the axis of the (raw)record matrix (if any otherwise
-            it's None)
+        ax_s1, ax_s2, ax_s1_hp_t, ax_s1_hp_b,
+        ax_event_info, ax_peak_info, ax_s2_hp_t, ax_s2_hp_b,
+        ax_ev,
+        ax_rec
+        Where those panels (axes) are:
+            - ax_s1, main S1 peak
+            - ax_s2, main S2 peak
+            - ax_s1_hp_t, S1 top hit pattern
+            - ax_s1_hp_b, S1 bottom hit pattern
+            - ax_s2_hp_t, S2 top hit pattern
+            - ax_s2_hp_b, S2 bottom hit pattern
+            - ax_event_info, text info on the event
+            - ax_peak_info, text info on the main S1 and S2
+            - ax_ev, waveform of the entire event
+            - ax_rec, (raw)record matrix (if any otherwise None)
     """
     if len(events) > 1:
         raise ValueError(f'Found {len(events)} only request one')
@@ -442,49 +462,62 @@ def event_display(context,
     ax_s2_hp_b.set_title('S2 bottom')
     ax_rec = None
 
+    # (raw)records matrix (optional)
     if records_matrix:
         gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
         ax_rec = fig.add_subplot(gss_2[0])
 
+    # Parse the hit pattern options
+    # Convert to dict (not at function definition because of mutable defaults)
+    if s1_hp_kwargs in None:
+        s1_hp_kwargs = {}
+    if s2_hp_kwargs is None:
+        s2_hp_kwargs = {}
+    # Hit patterns options:
+    for hp_opt, color_map in ((s1_hp_kwargs, "Blues"), (s2_hp_kwargs, "Greens")):
+        hp_opt.update(_common_opt)
+        _common_opt = dict(xenon1t=xenon1t,
+                           pmt_label_color='lightgrey',
+                           log_scale=True,
+                           vmin=0.1,
+                           s=(250 if records_matrix else 220),
+                           pmt_label_size=7,
+                           edgecolor='grey',
+                           cmap=color_map)
+        # Is there a better way to do this update?
+        _update = hp_opt.copy()
+        hp_opt.update(_update)
+
+    # S1
     if events['s1_area'] > 0:
         plt.sca(ax_s1)
         context.plot_peaks(run_id,
                            time_range=(events['s1_time'] - s1_fuzz,
                                        events['s1_endtime'] + s1_fuzz),
                            single_figure=False)
+
+        # Hit pattern plots
         area = context.get_array(run_id, 'peaklets',
                                  time_range=(events['s1_time'],
                                              events['s1_endtime']),
-                                 keep_columns=('area_per_channel', 'time', 'dt', 'length')
-                                 )
-
+                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'))
         for ax, array in ((ax_s1_hp_t, 'top'), (ax_s1_hp_b, 'bottom')):
             plt.sca(ax)
             straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
                                              array_name=array,
-                                             xenon1t=xenon1t,
-                                             cmap='Blues')
+                                             **s1_hp_kwargs)
+            # Mark reconstructed position
             plt.scatter(events[0]['x'], events[0]['y'], marker='X', s=100, c='r')
 
-    # Fill pannels with peak/event info
-    for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
-                                                (ax_peak_info, display_peak_info)]):
-        for i, label in enumerate(labels_and_unit):
-            _lab, _unit = label
-            coord = 0.01, 0.9-0.9*i/len(labels_and_unit)
-            ax.text(*coord, _lab, va='top', zorder=-10)
-            ax.text(coord[0]+0.5, coord[1],
-                    _unit.format(v=events[0][_lab]), va='top', zorder=-10)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            _ = [s.set_visible(False) for s in ax.spines.values()]
-
+    # S2
     if events['s2_area'] > 0:
         plt.sca(ax_s2)
         context.plot_peaks(run_id,
                            time_range=(events['s2_time'] - s2_fuzz,
                                        events['s2_endtime'] + s2_fuzz),
                            single_figure=False)
+
+        # Hit pattern plots
         area = context.get_array(run_id, 'peaklets',
                                  time_range=(events['s2_time'],
                                              events['s2_endtime']),
@@ -493,9 +526,22 @@ def event_display(context,
             plt.sca(ax)
             straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
                                              array_name=array,
-                                             xenon1t=xenon1t,
-                                             cmap='Greens')
+                                             **s2_hp_kwargs)
+            # Mark reconstructed position
             plt.scatter(events[0]['x'], events[0]['y'], marker='X', s=100, c='r')
+
+    # Fill panels with peak/event info
+    for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
+                                                (ax_peak_info, display_peak_info)]):
+        for i, (_lab, _unit) in enumerate(labels_and_unit):
+            coord = 0.01, 0.9 - 0.9 * i / len(labels_and_unit)
+            ax.text(*coord, _lab, va='top', zorder=-10)
+            ax.text(coord[0] + 0.5, coord[1],
+                    _unit.format(v=events[0][_lab]), va='top', zorder=-10)
+            # Remove axes and labels from panel
+            ax.set_xticks([])
+            ax.set_yticks([])
+            _ = [s.set_visible(False) for s in ax.spines.values()]
 
     # Plot peaks in event
     plt.sca(ax_ev)
@@ -503,6 +549,7 @@ def event_display(context,
                        time_range=(events['time'], events['endtime']),
                        show_largest=max_peaks,
                        single_figure=False)
+    ev_range = plt.xlim()
 
     if records_matrix:
         plt.sca(ax_rec)
@@ -515,14 +562,21 @@ def event_display(context,
         if not xenon1t:
             # Top vs bottom division
             ax_rec.axhline(straxen.n_top_pmts, c='k')
+        plt.xlim(*ev_range)
 
     # Final tweaks
     ax_s2.tick_params(axis='x', rotation=45)
     ax_s1.tick_params(axis='x', rotation=45)
     ax_ev.tick_params(axis='x', rotation=0)
-    plt.suptitle(f'Run {run_id}. Time {str(events["time"])[:-9]}.{str(events["time"])[-9:]}', y=0.95)
-    return (ax_s1, ax_s2, ax_s1_hp_t, ax_s1_hp_b, ax_s2_hp_t, ax_s2_hp_b,
-            ax_event_info, ax_peak_info, ax_rec)
+    title = (f'Run {run_id}. Time '
+             f'{str(events["time"])[:-9]}.{str(events["time"])[-9:]}\n'
+             f'{datetime.fromtimestamp(events["time"]/1e9)}')
+    plt.suptitle(title, y=0.95)
+    # NB: reflects panels order
+    return (ax_s1, ax_s2, ax_s1_hp_t, ax_s1_hp_b,
+            ax_event_info, ax_peak_info, ax_s2_hp_t, ax_s2_hp_b,
+            ax_ev,
+            ax_rec)
 
 
 def plot_single_event(context: strax.Context,
