@@ -7,8 +7,7 @@ import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
 from datetime import datetime
-import pandas as pd
-
+import pytz
 from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
@@ -355,6 +354,7 @@ def plot_wf(st: strax.Context,
 PEAK_DISPLAY_DEFAULT_INFO = sum([[(k.format(i=s_i), u) for k, u in
                                   (('cs{i}', '{v:.2f} PE'),
                                    ('s{i}_area', '{v:.2f} PE'),
+                                   ('alt_cs{i}', '{v:.2f} PE'),
                                    ('s{i}_n_channels', '{v}'),
                                    ('s{i}_area_fraction_top', '{v:.2f}'),
                                    ('s{i}_range_50p_area', '{v:.1f}'),
@@ -367,6 +367,9 @@ EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
                               ('z', '{v:.2f} cm'),
                               ('r', '{v:.2f} cm'),
                               ('theta', '{v:.2f} rad'),
+                              ('drift_time', '{v} ns'),
+                              ('alt_s1_interaction_drift_time', '{v} ns'),
+                              ('alt_s2_interaction_drift_time', '{v} ns')
                               )
 
 
@@ -421,8 +424,9 @@ def event_display(context,
             - ax_ev, waveform of the entire event
             - ax_rec, (raw)record matrix (if any otherwise None)
     """
-    if len(events) > 1:
+    if len(events) != 1:
         raise ValueError(f'Found {len(events)} only request one')
+    event = events[0]
     if records_matrix not in ('raw', True, False):
         raise ValueError('Choose either "raw", True or False for records_matrix')
     if ((records_matrix == 'raw' and not context.is_stored(run_id, 'raw_records')) or
@@ -460,6 +464,8 @@ def event_display(context,
     ax_s2.set_title('Main S2')
     ax_s2_hp_t.set_title('S2 top')
     ax_s2_hp_b.set_title('S2 bottom')
+    ax_event_info.set_title('Event info')
+    ax_peak_info.set_title('Peak info')
     ax_rec = None
 
     # (raw)records matrix (optional)
@@ -469,13 +475,12 @@ def event_display(context,
 
     # Parse the hit pattern options
     # Convert to dict (not at function definition because of mutable defaults)
-    if s1_hp_kwargs in None:
+    if s1_hp_kwargs is None:
         s1_hp_kwargs = {}
     if s2_hp_kwargs is None:
         s2_hp_kwargs = {}
     # Hit patterns options:
     for hp_opt, color_map in ((s1_hp_kwargs, "Blues"), (s2_hp_kwargs, "Greens")):
-        hp_opt.update(_common_opt)
         _common_opt = dict(xenon1t=xenon1t,
                            pmt_label_color='lightgrey',
                            log_scale=True,
@@ -485,6 +490,7 @@ def event_display(context,
                            edgecolor='grey',
                            cmap=color_map)
         # Is there a better way to do this update?
+        hp_opt.update(_common_opt)
         _update = hp_opt.copy()
         hp_opt.update(_update)
 
@@ -507,7 +513,7 @@ def event_display(context,
                                              array_name=array,
                                              **s1_hp_kwargs)
             # Mark reconstructed position
-            plt.scatter(events[0]['x'], events[0]['y'], marker='X', s=100, c='r')
+            plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
 
     # S2
     if events['s2_area'] > 0:
@@ -528,7 +534,7 @@ def event_display(context,
                                              array_name=array,
                                              **s2_hp_kwargs)
             # Mark reconstructed position
-            plt.scatter(events[0]['x'], events[0]['y'], marker='X', s=100, c='r')
+            plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
 
     # Fill panels with peak/event info
     for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
@@ -537,7 +543,7 @@ def event_display(context,
             coord = 0.01, 0.9 - 0.9 * i / len(labels_and_unit)
             ax.text(*coord, _lab, va='top', zorder=-10)
             ax.text(coord[0] + 0.5, coord[1],
-                    _unit.format(v=events[0][_lab]), va='top', zorder=-10)
+                    _unit.format(v=event[_lab]), va='top', zorder=-10)
             # Remove axes and labels from panel
             ax.set_xticks([])
             ax.set_yticks([])
@@ -570,7 +576,7 @@ def event_display(context,
     ax_ev.tick_params(axis='x', rotation=0)
     title = (f'Run {run_id}. Time '
              f'{str(events["time"])[:-9]}.{str(events["time"])[-9:]}\n'
-             f'{datetime.fromtimestamp(events["time"]/1e9)}')
+             f'{datetime.fromtimestamp(event["time"]/1e9, tz=pytz.utc)}')
     plt.suptitle(title, y=0.95)
     # NB: reflects panels order
     return (ax_s1, ax_s2, ax_s1_hp_t, ax_s1_hp_b,
