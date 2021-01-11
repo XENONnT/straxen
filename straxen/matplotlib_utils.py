@@ -16,6 +16,7 @@ def plot_pmts(
         xenon1t=False,
         show_tpc=True,
         extend='neither', vmin=None, vmax=None,
+        save=False,
         **kwargs):
     """Plot the PMT arrays side-by-side, coloring the PMTS with c.
 
@@ -25,7 +26,8 @@ def plot_pmts(
     :param extend: same as plt.colorbar(extend=...)
     :param vmin: Minimum of color scale
     :param vmax: maximum of color scale
-
+    :param save: if True return the figure
+    
     Other arguments are passed to plot_on_single_pmt_array.
     """
     if vmin is None:
@@ -58,6 +60,9 @@ def plot_pmts(
     plt.tight_layout()
     plt.subplots_adjust(wspace=0)
     plt.colorbar(ax=axes, extend=extend, label=label)
+    if save: 
+        plt.close()
+        return f
 
 
 
