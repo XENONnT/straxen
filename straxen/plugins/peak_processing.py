@@ -112,6 +112,115 @@ class PeakBasicsHighEnergy(PeakBasics):
 
 @export
 @strax.takes_config(
+    strax.Option('min_reconstruction_area',
+                 help='Skip reconstruction if area (PE) is less than this',
+                 default=10),
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
+                 help="Number of top PMTs")
+)
+class PeakPositionsBaseNT(strax.Plugin):
+    """
+    Base class for reconstructions
+    """
+    depends_on = ('peaks',)
+    algorithm=None
+    parallel = False
+    __version__= '0.0.0' 
+
+    def infer_dtype(self):
+        dtype = [('x_'+self.algorithm, np.float32,
+              'Reconstructed S2 X position (cm), uncorrected'),
+                 ('y_'+self.algorithm, np.float32,
+              'Reconstructed S2 Y position (cm), uncorrected')]
+        dtype+= strax.time_fields
+        return dtype   
+
+    def setup(self):
+        import tensorflow as tf
+        keras = tf.keras
+        self.model_file = str(self.config["file_"+self.algorithm])
+        print("Trying to load {0} model from file : {1}".format(self.algorithm, self.model_file))   
+        self.model =None
+        if os.path.exists(self.model_file):
+            print("Path is local. Loading model locally from disk.")
+        else:
+            print("Loading file from DB")
+            downloader = straxen.MongoDownloader()
+            if self.model_file in downloader.list_files():
+                self.model_file = downloader.download_single(self.model_file)
+                print("Downloaded file from DB : %s"%self.model_file)
+            else:
+                raise RuntimeError("Model files {0} is not found".format(self.model_file))
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tar = tarfile.open(self.model_file, mode="r:gz")
+            tar.extractall(path=tmpdirname)
+            self.model = tf.keras.models.load_model(tmpdirname)
+        print("-"*5 , "{0} model summary".format(self.algorithm) , "-"*5)
+        self.model.summary()
+        print("-"*20)
+        return 
+    def compute(self, peaks):
+        result = np.ones(len(peaks), dtype=self.dtype)
+        result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
+        result['x_'+self.algorithm] *= float('nan')
+        result['y_'+self.algorithm] *= float('nan')
+        # Keep large peaks only
+        peak_mask = peaks['area'] > self.config['min_reconstruction_area']
+        if not np.sum(peak_mask):
+            # Nothing to do, and .predict crashes on empty arrays
+            return result
+        
+        # Getting actual position reconstruction
+        _in = peaks['area_per_channel'][peak_mask, 0:self.config['n_top_pmts']]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            _in = _in / np.max(_in, axis=1).reshape(-1, 1)
+        _in = _in.reshape(-1, self.config['n_top_pmts'])
+        _out = self.model.predict(_in) 
+                
+        # writing output to the result 
+        result['x_'+self.algorithm][peak_mask] = _out[:, 0]
+        result['y_'+self.algorithm][peak_mask] = _out[:, 1]              
+        return result
+        
+@export 
+@strax.takes_config(
+    strax.Option("file_mlp", 
+                 help="Name of saved MLP model file in the aux file data base."
+                      "The file contains both structure and weights.",
+                 default=None
+                    )
+)
+class PeakPositionsMLP(PeakPositionsBaseNT):
+    algorithm="mlp"
+    provides = "peak_positions_mlp"
+    
+@export 
+@strax.takes_config(
+    strax.Option("file_gcn", 
+                 help="Name of saved GCN model file in the aux file data base."
+                      "The file contains both structure and weights.",
+                 default=None
+                    )
+)
+class PeakPositionsGCN(PeakPositionsBaseNT):
+    algorithm="gcn"
+    provides = "peak_positions_gcn"
+
+@export 
+@strax.takes_config(
+    strax.Option("file_cnn", 
+                 help="Name of saved CNN model file in the aux file data base."
+                      "The file contains both structure and weights.",
+                 default=None
+                    )
+)
+class PeakPositionsCNN(PeakPositionsBaseNT):
+    algorithm="cnn"
+    provides = "peak_positions_cnn"
+
+
+@export
+@strax.takes_config(
     strax.Option(
         'nn_architecture',
         help='Path to JSON of neural net architecture',
