@@ -541,7 +541,7 @@ def event_display(context,
                                                 (ax_peak_info, display_peak_info)]):
         for i, (_lab, _unit) in enumerate(labels_and_unit):
             coord = 0.01, 0.9 - 0.9 * i / len(labels_and_unit)
-            ax.text(*coord, _lab, va='top', zorder=-10)
+            ax.text(*coord, _lab[:24], va='top', zorder=-10)
             ax.text(coord[0] + 0.5, coord[1],
                     _unit.format(v=event[_lab]), va='top', zorder=-10)
             # Remove axes and labels from panel
