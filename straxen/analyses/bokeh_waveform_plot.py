@@ -449,5 +449,3 @@ def _make_event_title(event, run_id, width='1600px'):
                              sizing_mode='scale_both',
                              )
     return title
-
-
