@@ -9,10 +9,8 @@ COLORS = ('gray', 'blue', 'green')
 LEGENDS = ('Unknown', 'S1', 'S2')
 
 
-@straxen.mini_analysis(requires=('events', 'event_basics',
-                                 'peaks', 'peak_basics', 'peak_positions')
-                       )
-def event_display_interactive(events, peaks, to_pe, run_id):
+@straxen.mini_analysis(requires=('events', 'event_basics'))
+def event_display_interactive(events, to_pe, run_id, context):
     """
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
@@ -37,6 +35,9 @@ def event_display_interactive(events, peaks, to_pe, run_id):
         raise ValueError('The time range you specified contains more'
                          ' than a single event. The event display only'
                          ' works with individual events for now.')
+    peaks = context.get_array(run_id,
+                         ('peaks', 'peak_basics', 'peak_positions'),
+                         time_range=(events[0]['time'], events[0]['endtime']))
 
     # Select main/alt S1/S2s based on time and endtime in event:
     m_other_peaks = np.ones(len(peaks), dtype=np.bool_)  # To select non-event peaks
