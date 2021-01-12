@@ -131,8 +131,12 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     st.register(DummyRawRecords)
     if nt:
         st.set_config(testing_config_nT)
-        if straxen.uconfig is None:
+        if straxen.uconfig is None or True:
+            del st._plugin_class_registry['peak_positions_mlp']
+            del st._plugin_class_registry['peak_positions_cnn']
+            del st._plugin_class_registry['peak_positions_gcn']
             st.register(straxen.PeakPositions1T)
+            print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
     else:
         st.set_config(testing_config_1T)
     try:
@@ -162,6 +166,9 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
             'allow_lazy': False,
             'timeout': 60,  # we don't want to build travis for ever
         })
+    print('--- Plugins ---')
+    for k, v in st._plugin_class_registry.items():
+        print(k, v)
 
 
 def _test_child_options(st):
