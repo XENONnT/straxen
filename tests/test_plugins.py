@@ -131,6 +131,8 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     st.register(DummyRawRecords)
     if nt:
         st.set_config(testing_config_nT)
+        if straxen.uconfig is None:
+            st.register(straxen.PeakPositions1T)
     else:
         st.set_config(testing_config_1T)
     try:

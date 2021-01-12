@@ -12,6 +12,7 @@ from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 from .pulse_processing import  HE_PREAMBLE
 
+
 @export
 @strax.takes_config(
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
@@ -120,48 +121,50 @@ class PeakBasicsHighEnergy(PeakBasics):
 )
 class PeakPositionsBaseNT(strax.Plugin):
     """
-    Base class for reconstructions
+    Base class for reconstructions.
+    This class should only be used when
     """
     depends_on = ('peaks',)
-    algorithm=None
-    parallel = False
-    __version__= '0.0.0' 
+    algorithm = None
+    # TODO
+    #  check that this works properly, significant loading/saving penalty for three plugins!
+    parallel = 'process'
+    __version__ = '0.0.0'
 
     def infer_dtype(self):
+        if self.algorithm is None:
+            raise NotImplementedError(f'Base class should not be used without '
+                                      f'algorithm as done in {__class__}')
         dtype = [('x_'+self.algorithm, np.float32,
-              'Reconstructed S2 X position (cm), uncorrected'),
+                  f'Reconstructed {self.algorithm} S2 X position (cm), uncorrected'),
                  ('y_'+self.algorithm, np.float32,
-              'Reconstructed S2 Y position (cm), uncorrected')]
-        dtype+= strax.time_fields
-        return dtype   
+                  f'Reconstructed {self.algorithm} S2 Y position (cm), uncorrected')]
+        dtype += strax.time_fields
+        return dtype
 
     def setup(self):
+        if self.config["file_"+self.algorithm] is None:
+            raise ValueError(f'No file provided to reconstruction with for {self.algorithm}')
         import tensorflow as tf
-        keras = tf.keras
         self.model_file = str(self.config["file_"+self.algorithm])
-        print("Trying to load {0} model from file : {1}".format(self.algorithm, self.model_file))   
-        self.model =None
+        self.model = None
         if os.path.exists(self.model_file):
-            print("Path is local. Loading model locally from disk.")
+            print(f"Path is local. Loading {self.algorithm} TF model locally from disk.")
         else:
-            print("Loading file from DB")
             downloader = straxen.MongoDownloader()
             if self.model_file in downloader.list_files():
                 self.model_file = downloader.download_single(self.model_file)
-                print("Downloaded file from DB : %s"%self.model_file)
             else:
                 raise RuntimeError("Model files {0} is not found".format(self.model_file))
         with tempfile.TemporaryDirectory() as tmpdirname:
             tar = tarfile.open(self.model_file, mode="r:gz")
             tar.extractall(path=tmpdirname)
             self.model = tf.keras.models.load_model(tmpdirname)
-        print("-"*5 , "{0} model summary".format(self.algorithm) , "-"*5)
-        self.model.summary()
-        print("-"*20)
-        return 
+
     def compute(self, peaks):
         result = np.ones(len(peaks), dtype=self.dtype)
         result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
+
         result['x_'+self.algorithm] *= float('nan')
         result['y_'+self.algorithm] *= float('nan')
         # Keep large peaks only
@@ -181,30 +184,33 @@ class PeakPositionsBaseNT(strax.Plugin):
         result['x_'+self.algorithm][peak_mask] = _out[:, 0]
         result['y_'+self.algorithm][peak_mask] = _out[:, 1]              
         return result
-        
+
+
 @export 
 @strax.takes_config(
     strax.Option("file_mlp", 
                  help="Name of saved MLP model file in the aux file data base."
                       "The file contains both structure and weights.",
                  default=None
-                    )
+                 )
 )
 class PeakPositionsMLP(PeakPositionsBaseNT):
-    algorithm="mlp"
     provides = "peak_positions_mlp"
-    
+    algorithm = "mlp"
+
+
 @export 
 @strax.takes_config(
     strax.Option("file_gcn", 
                  help="Name of saved GCN model file in the aux file data base."
                       "The file contains both structure and weights.",
                  default=None
-                    )
+                 )
 )
 class PeakPositionsGCN(PeakPositionsBaseNT):
-    algorithm="gcn"
     provides = "peak_positions_gcn"
+    algorithm = "gcn"
+
 
 @export 
 @strax.takes_config(
@@ -212,11 +218,39 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
                  help="Name of saved CNN model file in the aux file data base."
                       "The file contains both structure and weights.",
                  default=None
-                    )
+                 )
 )
 class PeakPositionsCNN(PeakPositionsBaseNT):
-    algorithm="cnn"
     provides = "peak_positions_cnn"
+    algorithm = "cnn"
+
+
+@export
+@strax.takes_config(
+    strax.Option("default_reconstruction_algorithm",
+                 help="default reconstruction algorithm that provides (x,y)",
+                 default="mlp",
+                 )
+)
+class PeakPositionsNT(strax.MergeOnlyPlugin):
+    provides = "peak_positions"
+    depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn")
+    save_when = strax.SaveWhen.NEVER
+
+    def infer_dtype(self):
+        dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])
+        dtype += [('x', np.float32, 'Reconstructed S2 X position (cm), uncorrected'),
+                  ('y', np.float32, 'Reconstructed S2 Y position (cm), uncorrected')]
+        return dtype
+
+    def compute(self, peaks):
+        result = {dtype: peaks[dtype] for dtype in peaks.dtype.names}
+        algorithm = self.config['default_reconstruction_algorithm']
+        if not 'x_' + algorithm in peaks.dtype.names:
+            raise ValueError
+        for xy in ('x', 'y'):
+            result[xy] = peaks[f'{xy}_{algorithm}']
+        return result
 
 
 @export
@@ -233,7 +267,7 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr0.h5')),
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
-    strax.Option("nn_file", 
+    strax.Option("nn_file",
                  help="Name of saved neural network model file in the aux file "
                       "data base. The file contains both structure and weights.",
                  default=None
@@ -244,7 +278,7 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
-class PeakPositions(strax.Plugin):
+class PeakPositions1T(strax.Plugin):
     """Compute the S2 (x,y)-position based on a neural net."""
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -252,6 +286,7 @@ class PeakPositions(strax.Plugin):
               'Reconstructed S2 Y position (cm), uncorrected')
              ] + strax.time_fields
     depends_on = ('peaks',)
+    provides = "peak_positions"
 
     # TODO
     # Parallelization doesn't seem to make it go faster
@@ -266,14 +301,14 @@ class PeakPositions(strax.Plugin):
     def setup(self):
         import tensorflow as tf
         keras = tf.keras
-        
+
         # XENONnT
         if self.config['nn_file']:
             downloader = straxen.MongoDownloader()
             tf.keras.backend.set_floatx('float32')
-            
+
             nn_file = downloader.download_single(self.config['nn_file'])
-            
+
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tar = tarfile.open(nn_file, mode="r:gz")
                 tar.extractall(path=tmpdirname)
@@ -317,7 +352,7 @@ class PeakPositions(strax.Plugin):
         if not np.sum(peak_mask):
             # Nothing to do, and .predict crashes on empty arrays
             return result
-        
+
         # XENONnT
         if self.config['nn_file']:
             _in = peaks['area_per_channel'][peak_mask, 0:self.config['n_top_pmts']]
@@ -325,7 +360,7 @@ class PeakPositions(strax.Plugin):
                 _in = _in / np.max(_in, axis=1).reshape(-1, 1)
             _in = _in.reshape(-1, self.config['n_top_pmts'])
             _out = self.nn.predict(_in)
-        
+
         # XENON1T
         else:
             # Input: normalized hitpatterns in good top PMTs
