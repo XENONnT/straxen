@@ -4,6 +4,7 @@ utilix>=0.3.3
 # holoviews          # Optional, to enable wf display
 # bokeh              # Optional, to enable wf display
 # datashader         # Optional, to enable wf display
+bokeh>=2.2.3
 multihist>=0.6.3
 matplotlib
 packaging
