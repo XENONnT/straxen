@@ -89,7 +89,7 @@ def test_several():
             plt_clf()
 
             print('plot event display')
-            straxen.analyses.waveform_plot.plot_single_event(st, test_run_id, events, xenon1t=True,
+            straxen.analyses.event_display.plot_single_event(st, test_run_id, events, xenon1t=True,
                                                              event_number=0, records_matrix=True)
             plt_clf()
 
