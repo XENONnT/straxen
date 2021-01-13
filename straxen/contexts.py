@@ -44,9 +44,6 @@ xnt_common_config = dict(
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
-    file_gcn="xnt_gcn_wfsim_20201203.tar.gz",
-    file_mlp="xnt_gcn_wfsim_20201203.tar.gz",
-    file_cnn='xnt_gcn_wfsim_20201203.tar.gz',  # TODO upload the right file!
     # Clustering/classification parameters
     s1_max_rise_time=100,
 )

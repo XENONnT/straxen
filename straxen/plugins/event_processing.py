@@ -107,7 +107,7 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.5.3'
+    __version__ = '0.5.4'
 
     depends_on = ('events',
                   'peak_basics',
@@ -155,16 +155,27 @@ class EventBasics(strax.LoopPlugin):
                 (f'alt_s{i}_delay', np.int32,
                  f'Time between main and alternate S{i} [ns]')]
 
-        # S2 positions
-        dtype += [('s2_x', np.float32,
-                   'Main S2 reconstructed X position, uncorrected [cm]'),
-                  ('s2_y', np.float32,
-                   'Main S2 reconstructed Y position, uncorrected [cm]'),
-                  ('alt_s2_x', np.float32,
-                   'Alternate S2 reconstructed X position, uncorrected [cm]'),
-                  ('alt_s2_y', np.float32,
-                   'Alternate S2 reconstructed Y position, uncorrected [cm]')]
+        # parse x_mlp et cetera if needed to get the algorithms used.
+        pos_rec_algorithms = set(d.split('_')[-1] for d in
+                                 self.deps['peak_positions'].dtype_for('peak_positions').names
+                                 if 'x_' in d)
+        # Add "''" for "'x'" and "'_mlp'" for "'x_mlp'"
+        self.pos_rec_labels = [''] + [f'_{p}' for p in pos_rec_algorithms]
 
+        for algo in self.pos_rec_labels:
+            # S2 positions
+            dtype += [(f's2_x{algo}', np.float32,
+                       f'Main S2{algo.replace("_","-")} reconstructed '
+                       f'X position, uncorrected [cm]'),
+                      (f's2_y{algo}', np.float32,
+                       f'Main S2{algo.replace("_","-")} reconstructed '
+                       f'Y position, uncorrected [cm]'),
+                      (f'alt_s2_x{algo}', np.float32,
+                       f'Alternate S2{algo.replace("_","-")} reconstructed '
+                       f'X position, uncorrected [cm]'),
+                      (f'alt_s2_y{algo}', np.float32,
+                       f'Alternate S2{algo.replace("_","-")} reconstructed '
+                       f'Y position, uncorrected [cm]')]
         return dtype
 
     def compute_loop(self, event, peaks):
@@ -182,7 +193,8 @@ class EventBasics(strax.LoopPlugin):
             # Which properties do we need?
             to_store = [name for name, _, _ in self.peak_properties]
             if s_i == 2:
-                to_store += ['x', 'y']
+                to_store += ([f'x{algo}' for algo in self.pos_rec_labels] +
+                             [f'y{algo}' for algo in self.pos_rec_labels])
 
             # Find all peaks of this type (S1 or S2)
             s_mask = peaks['type'] == s_i
