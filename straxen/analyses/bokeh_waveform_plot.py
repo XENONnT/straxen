@@ -88,10 +88,13 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
             p.visible = False
 
     # Add also position for alt S2 and other S2s:
-    fig_top, p = plot_posS2s(signal['alt_s2'][0], label=labels['alt_s2'], fig=fig_top, s2_type=1)
-    p.visible = False
+    if signal['alt_s2'].shape[0]:
+        fig_top, p = plot_posS2s(signal['alt_s2'][0], label=labels['alt_s2'], fig=fig_top, s2_type=1)
+        p.visible = False
+    
     m_other_s2 = m_other_peaks & (peaks['type'] == 2)
-    fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type=2)
+    if np.any(m_others_s2):
+        fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type=2)
     p.visible = False
 
     # Same for bottom array, but without S2 pos:
