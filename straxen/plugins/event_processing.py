@@ -185,9 +185,7 @@ class EventBasics(strax.LoopPlugin):
                  f'Alternate S2 {algo}-reconstructed X position, uncorrected [cm]'),
                 (f'alt_s2_y_{algo}', np.float32,
                  f'Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]')]
-        for d in posrec_many_dtype:
-            print(d)
-        print()
+
         return {'event_basics': basics_dtype,
                 'event_posrec_many': posrec_many_dtype}
 
