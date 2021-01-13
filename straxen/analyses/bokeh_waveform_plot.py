@@ -10,7 +10,7 @@ LEGENDS = ('Unknown', 'S1', 'S2')
 
 
 @straxen.mini_analysis(requires=('events', 'event_basics'))
-def event_display_interactive(events, to_pe, run_id, context):
+def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
     """
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
@@ -31,13 +31,17 @@ def event_display_interactive(events, to_pe, run_id, context):
 
     :return: bokeh.plotting.figure instance.
     """
-    if len(events) > 1:
-        raise ValueError('The time range you specified contains more'
-                         ' than a single event. The event display only'
-                         ' works with individual events for now.')
+    if len(events) != 1:
+        raise ValueError('The time range you specified contains more or'
+                         ' less than a single event. The event display '
+                         ' only works with individual events for now.')
+        
+       
     peaks = context.get_array(run_id,
-                         ('peaks', 'peak_basics', 'peak_positions'),
-                         time_range=(events[0]['time'], events[0]['endtime']))
+                              ('peaks', 'peak_basics', 'peak_positions'),
+                              time_range=(events[0]['time'], events[0]['endtime']),
+                              progress_bar=False
+                             )
 
     # Select main/alt S1/S2s based on time and endtime in event:
     m_other_peaks = np.ones(len(peaks), dtype=np.bool_)  # To select non-event peaks
@@ -52,7 +56,7 @@ def event_display_interactive(events, to_pe, run_id, context):
 
     mes = 'This is odd was not able to find S1 and S2 for the specified event.'
     assert signal['s1'].shape[0] & signal['s2'].shape[0], mes
-    print(signal['s1']['time'], signal['s1']['center_time'])
+    
     # Use consistent labels:
     labels = {'s1': 'MS1', 'alt_s1': 'AS1', 's2': 'MS2', 'alt_s2': 'AS2'}
 
@@ -76,11 +80,11 @@ def event_display_interactive(events, to_pe, run_id, context):
 
         if not ind:
             # Main S2:
-            fig_top, p, mapper = plot_pmt_array(signal[k][0], 'top', to_pe, label=labels[k])
+            fig_top, p, mapper = plot_pmt_array(signal[k][0], 'top', to_pe, label=labels[k], xenon1t=xenon1t)
             fig_top, p = plot_posS2s(signal[k][0], label=labels[k], fig=fig_top, s2_type=0)
         else:
             # Alt S2 and main/alt S1
-            fig_top, p, _ = plot_pmt_array(signal[k][0], 'top', to_pe, label=labels[k], fig=fig_top)
+            fig_top, p, _ = plot_pmt_array(signal[k][0], 'top', to_pe, label=labels[k], fig=fig_top, xenon1t=xenon1t)
             p.visible = False
 
     # Add also position for alt S2 and other S2s:
@@ -98,10 +102,10 @@ def event_display_interactive(events, to_pe, run_id, context):
 
         if not ind:
             # Main S1:
-            fig_bottom, p, mapper = plot_pmt_array(signal[k][0], 'bottom', to_pe, label=labels[k])
+            fig_bottom, p, mapper = plot_pmt_array(signal[k][0], 'bottom', to_pe, label=labels[k], xenon1t=xenon1t)
         else:
             # Alt S1 and main/alt S2
-            fig_bottom, p, _ = plot_pmt_array(signal[k][0], 'bottom', to_pe, label=labels[k], fig=fig_bottom)
+            fig_bottom, p, _ = plot_pmt_array(signal[k][0], 'bottom', to_pe, label=labels[k], fig=fig_bottom, xenon1t=xenon1t)
             p.visible = False
 
     # Main Plot:
@@ -109,6 +113,9 @@ def event_display_interactive(events, to_pe, run_id, context):
     waveform = plot_peaks(peaks, time_scaler=1000)
     # Hightlight main and alternate S1/S2:
     start = peaks[0]['time']
+    # Workaround did not manage to scale via pixels...
+    ymax = np.max(peaks['data']) 
+    ymax -= 0.1*ymax
     for s, p in signal.items():
         if p.shape[0]:
             pos = (p[0]['center_time'] - start) / 1000
@@ -117,8 +124,7 @@ def event_display_interactive(events, to_pe, run_id, context):
                                      line_alpha=0.6,
                                      )
             vline_label = bokeh.models.Label(x=pos,
-                                             y=300,
-                                             y_units='screen',
+                                             y=ymax,
                                              angle=np.pi / 2,
                                              text=labels[s],
                                              )
@@ -132,12 +138,17 @@ def event_display_interactive(events, to_pe, run_id, context):
     # Put everything together:
     upper_row = bokeh.layouts.Row(children=[fig_s1, fig_s2, fig_top, fig_bottom])
 
-    event_display = bokeh.layouts.gridplot(children=[title, upper_row, waveform],
+    plots = bokeh.layouts.gridplot(children=[upper_row, waveform],
                                            sizing_mode='scale_both',
                                            ncols=1,
                                            merge_tools=True,
-                                           toolbar_location='right',
+                                           toolbar_location='above',
                                            )
+    event_display = bokeh.layouts.Column(children=[title, plots],
+                                         sizing_mode='scale_both',
+                                         max_width=1600,
+                                        )
+    
 
     return event_display
 
@@ -225,8 +236,7 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
                                                       relative_start=peaks[0]['time'],
                                                       time_scaler=time_scaler,
                                                       )
-        if i == 1:
-            print(source.data['time'], source.data['center_time'])
+
         fig.patches(source=source,
                     fill_color=COLORS[i],
                     fill_alpha=0.2,
@@ -250,7 +260,7 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
     return fig
 
 
-def plot_pmt_array(peak, array_type, to_pe, fig=None, label=''):
+def plot_pmt_array(peak, array_type, to_pe, xenon1t=False, fig=None, label=''):
     """
     Plots top or bottom PMT array for given peak.
 
@@ -286,7 +296,7 @@ def plot_pmt_array(peak, array_type, to_pe, fig=None, label=''):
     fig = _plot_tpc(fig)
 
     # Plotting PMTs:
-    pmts = straxen.pmt_positions()
+    pmts = straxen.pmt_positions(xenon1t)
     m = to_pe == 0
     pmts_on = pmts[~m]
     pmts_on = pmts_on[pmts_on['array'] == array_type]
@@ -379,6 +389,9 @@ def plot_posS2s(peaks, label='', fig=None, s2_type=0):
     :param s2_type: 0 plots main S2 style, 1 for alt S2 and
         2 for other S2s (e.g. single electrons).
     """
+    if not peaks.shape:
+        peaks = np.array([peaks])
+    
     if not np.all(peaks['type'] == 2):
         raise ValueError('All peaks must be S2!')
 
@@ -420,7 +433,7 @@ def plot_posS2s(peaks, label='', fig=None, s2_type=0):
     return fig, p
 
 
-def _make_event_title(event, run_id, width='1600px'):
+def _make_event_title(event, run_id, width=1600):
     """
     Function which makes the title of the plot for the specified event.
 
@@ -443,10 +456,14 @@ def _make_event_title(event, run_id, width='1600px'):
             f' {start_ns} ns - {end_ns} ns </h2>')
 
     title = bokeh.models.Div(text=text,
-                             style={'text-align': 'center',
-                                    'width': width,
+                             style={'text-align': 'left',
                                     },
                              sizing_mode='scale_both',
+                             width = width,
+                             default_size=width,
+                             orientation='vertical',
+                             width_policy='fit',
+                             margin=(0,0,-30, 50)
                              )
     return title
 
