@@ -115,12 +115,41 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
 
     # Main Plot:
     title = _make_event_title(events[0], run_id)
+    waveform = plot_event(peaks, signal, labels)
+
+    # Put everything together:
+    upper_row = bokeh.layouts.Row(children=[fig_s1, fig_s2, fig_top, fig_bottom])
+
+    plots = bokeh.layouts.gridplot(children=[upper_row, waveform],
+                                           sizing_mode='scale_both',
+                                           ncols=1,
+                                           merge_tools=True,
+                                           toolbar_location='above',
+                                           )
+    event_display = bokeh.layouts.Column(children=[title, plots],
+                                         sizing_mode='scale_both',
+                                         max_width=1600,
+                                        )
+    
+
+    return event_display
+
+
+def plot_event(peaks, signal, labels):
+    """
+    Wrapper for plot peaks to highlight main/alt. S1/S2
+
+    :param peaks: Peaks in event
+    :param signal: Dictionary containing main/alt. S1/S2
+    :param labels: dict with labels to be used
+    :return: bokeh.plotting.figure instance
+    """
     waveform = plot_peaks(peaks, time_scaler=1000)
     # Hightlight main and alternate S1/S2:
     start = peaks[0]['time']
     # Workaround did not manage to scale via pixels...
-    ymax = np.max(peaks['data']) 
-    ymax -= 0.1*ymax
+    ymax = np.max(peaks['data'])
+    ymax -= 0.1 * ymax
     for s, p in signal.items():
         if p.shape[0]:
             pos = (p[0]['center_time'] - start) / 1000
@@ -139,23 +168,7 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
                 main.line_dash = 'dashed'
             waveform.add_layout(main)
             waveform.add_layout(vline_label)
-
-    # Put everything together:
-    upper_row = bokeh.layouts.Row(children=[fig_s1, fig_s2, fig_top, fig_bottom])
-
-    plots = bokeh.layouts.gridplot(children=[upper_row, waveform],
-                                           sizing_mode='scale_both',
-                                           ncols=1,
-                                           merge_tools=True,
-                                           toolbar_location='above',
-                                           )
-    event_display = bokeh.layouts.Column(children=[title, plots],
-                                         sizing_mode='scale_both',
-                                         max_width=1600,
-                                        )
-    
-
-    return event_display
+    return waveform
 
 
 def plot_peak_detail(peak, time_scaler=1, label='', fig=None):
