@@ -27,8 +27,8 @@ class PeakPositionsBaseNT(strax.Plugin):
     """
     depends_on = ('peaks',)
     algorithm = None
-    # TODO
-    #  check that this works properly, significant loading/saving penalty for three plugins!
+    # check that this works properly, significant loading/saving penalty
+    # for three plugins!
     parallel = 'process'
     __version__ = '0.0.0'
 
