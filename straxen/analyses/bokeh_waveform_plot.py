@@ -97,7 +97,7 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
     m_other_s2 = m_other_peaks & (peaks['type'] == 2)
     if np.any(m_other_s2):
         fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type=2)
-    p.visible = False
+        p.visible = False
 
     # Same for bottom array, but without S2 pos:
     for ind, k in enumerate(keys):
