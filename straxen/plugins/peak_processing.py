@@ -139,7 +139,6 @@ class PeakPositions1T(strax.Plugin):
     depends_on = ('peaks',)
     provides = "peak_positions"
 
-    # TODO
     # Parallelization doesn't seem to make it go faster
     # Is there much pure-python stuff in tensorflow?
     # Process-level paralellization might work, but you'd have to do setup
