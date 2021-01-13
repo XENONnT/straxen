@@ -12,6 +12,7 @@ class DistinctChannels(strax.LoopPlugin):
     """
     __version__ = '0.1.1'
     depends_on = ('event_basics', 'peaks')
+    loop_over = 'events'
     dtype = [
         ('alt_s1_distinct_channels',
          np.int32,
