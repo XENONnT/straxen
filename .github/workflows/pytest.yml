@@ -24,6 +24,17 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v2
+      - name: install pre requirements
+        run: |
+            echo "download requirements from base_environment"
+            wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
+            echo "select important dependencies for strax(en)"
+            cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> sel_pre_requirements.txt
+            echo "Will pre-install:"
+            cat sel_pre_requirements.txt
+            echo "Start preinstall and rm pre-requirements:"
+            pip install -r sel_pre_requirements.txt
+            rm pre_requirements.txt sel_pre_requirements.txt
       - name: Install strax
         run: |
             git clone https://github.com/AxFoundation/strax.git ../strax

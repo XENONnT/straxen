@@ -466,5 +466,3 @@ def _make_event_title(event, run_id, width=1600):
                              margin=(0,0,-30, 50)
                              )
     return title
-
-
