@@ -140,15 +140,15 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
 class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
     Merge the reconstructed algorithms of the different algorithms 
-        into a single one that can be used in Event Basics.
+    into a single one that can be used in Event Basics.
     
     Select one of the plugins to provide the 'x' and 'y' to be used 
-        further down the chain. Since we already have the information
-        needed here, there is no need to wait until events to make the
-        decision.
+    further down the chain. Since we already have the information
+    needed here, there is no need to wait until events to make the
+    decision.
     
     Since the computation is trivial as it only combined the three 
-        input plugins, don't save this plugins output.
+    input plugins, don't save this plugins output.
     """
     provides = "peak_positions"
     depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn")
