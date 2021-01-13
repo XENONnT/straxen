@@ -342,4 +342,3 @@ def plot_wf(st: strax.Context,
                          vmin=1 if plot_log else None,
                          log_scale=plot_log,
                          label='Area per channel [PE]')
-
