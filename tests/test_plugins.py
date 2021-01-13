@@ -127,6 +127,8 @@ def _run_plugins(st,
 def _update_context(st, max_workers, fallback_gains=None, nt=True):
     # Change config to allow for testing both multiprocessing and lazy mode
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
+    # Ignore strax-internal warnings
+    st.set_context_config({'free_options': tuple(st.config.keys())})
     st.register(DummyRawRecords)
     if nt:
         st.set_config(testing_config_nT)
