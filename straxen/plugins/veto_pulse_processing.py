@@ -91,10 +91,8 @@ def median_baseline(records):
     
     :param records: Records 
     """
-    # Count number of pulses and create buffer:
+    # Count number of pulses
     npulses = np.sum(records['record_i'] == 0)
-    buffer = np.zeros(npulses, dtype=[('channel', np.int16), 
-                                      ('data', np.float32, records['pulse_length'].max())])
     
     if npulses == 1:
         # This case is simple
@@ -115,17 +113,26 @@ def median_baseline(records):
         for pi in pulse_i:
             records[pi] = _correct_baseline(records[pi])
     return records
-       
+
+
+@numba.njit
 def _correct_baseline(records):
-    bl = np.median(records['data'])
-        
+    wf = np.zeros(records[0]['pulse_length'], dtype=np.int16)
+    for r in records:
+        # np.median(records['data']) does not work for numbafied functions
+        # Hence we have to get the entire waveforms first
+        if r['record_i'] == 0:
+            t0 = r['time']
+        i = (r['time'] - t0) // r['dt']
+        wf[i:i + r['length']] = r['data'][:r['length']]
+
+    bl = np.median(wf)
     for r in records:
         r['data'][:r['length']] = r['data'][:r['length']] - bl
         r['baseline'] -= bl
     return records
     
-    
-    
+
 @export
 @numba.njit(cache=True, nogil=True)
 def clean_up_empty_records(records, record_links, only_last=True):
@@ -134,6 +141,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
     zero.
 
     :param records: Records which shall be checked.
+    :param record_links: Tuple of previous and next records.
     :param only_last: If true only last fragments of a pulse are deleted.
     :return: non-empty records
 
