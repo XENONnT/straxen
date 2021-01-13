@@ -42,7 +42,9 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
                               time_range=(events[0]['time'], events[0]['endtime']),
                               progress_bar=False
                              )
-
+    if peaks.shape[0] == 0:
+        raise ValueError('Found an event without peaks this should not had have happened.')
+    
     # Select main/alt S1/S2s based on time and endtime in event:
     m_other_peaks = np.ones(len(peaks), dtype=np.bool_)  # To select non-event peaks
     endtime = strax.endtime(peaks)
@@ -93,7 +95,7 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
         p.visible = False
     
     m_other_s2 = m_other_peaks & (peaks['type'] == 2)
-    if np.any(m_others_s2):
+    if np.any(m_other_s2):
         fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type=2)
     p.visible = False
 
@@ -234,7 +236,9 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
 
     for i in range(0, 3):
         _ind = np.where(peaks['type'] == i)[0]
-
+        if not len(_ind):
+            continue
+        
         source = straxen.bokeh_utils.get_peaks_source(peaks[_ind],
                                                       relative_start=peaks[0]['time'],
                                                       time_scaler=time_scaler,
