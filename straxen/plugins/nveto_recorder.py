@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('coincidence_level_recorder_nv', type=int, default=4,
+    strax.Option('coincidence_level_recorder_nv', type=int, default=3,
                  help="Required coincidence level."),
     strax.Option('pre_trigger_time_nv', type=int, default=150,
                  help="Pretrigger time before coincidence window in ns."),
