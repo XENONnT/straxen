@@ -55,7 +55,6 @@ class SCADAInterface:
                          start=None,
                          end=None,
                          run_id=None,
-                         query_type_lab=False,
                          time_selection_kwargs=None,
                          fill_gaps=None,
                          filling_kwargs=None,
@@ -105,6 +104,8 @@ class SCADAInterface:
         :return: pandas.DataFrame containing the data of the specified
             parameters.
         """
+        query_type_lab=False,
+
         if not filling_kwargs:
             filling_kwargs = {}
 
