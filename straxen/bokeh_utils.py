@@ -90,25 +90,23 @@ def peak_tool_tip(peak_type):
                 }
 
     # Now ns/µs parameters for S1 and S2
-    if peak_type == 2:
-        tool_tip['time_dynamic'] = ("time [µs]", "$x")
-        tool_tip['rel_center_time'] = ('center time [µs]', '@rel_center_time')
-        tool_tip['range_50p_width'] = ('50% width [µs]', '@width_50')
-        tool_tip['range_90p_width'] = ('90% width [µs]', '@width_90')
-        tool_tip['rise_time'] = ('rise time [µs]', '@rise')
-    else:
-        tool_tip['time_dynamic'] = ("time [ns]", "$x")
-        tool_tip['rel_center_time'] = ('center time [ns]', '@rel_center_time')
-        tool_tip['range_50p_width'] = ('50% width [ns]', '@width_50')
-        tool_tip['range_90p_width'] = ('90% width [ns]', '@width_90')
-        tool_tip['rise_time'] = ('rise time [ns]', '@rise')
+    tool_tip['time_dynamic'] = ("time [ns]", "$x")
+    tool_tip['rel_center_time'] = ('center time [ns]', '@rel_center_time')
+    tool_tip['range_50p_width'] = ('50% width [ns]', '@width_50')
+    tool_tip['range_90p_width'] = ('90% width [ns]', '@width_90')
+    tool_tip['rise_time'] = ('rise time [ns]', '@rise')
 
     # Add non-time parameters (results in an ordered tooltip)
     tool_tip['amplitude'] = ("Amplitude [pe/ns]", "$y")
     tool_tip["area"] = ('area [pe]', '@area')
     tool_tip["aft"] = ('AFT', '@aft')
     tool_tip["nhits"] = ('nhits', '@nhits')
-
+    
+    if peak_type == 2:
+        for k, i in tool_tip.items():
+            if k not in ["time_static", "center_time", "endtime"]:
+                tool_tip[k] = (i[0].replace('[ns]', '[µs]'), i[1])
+    
     return tool_tip
 
 
