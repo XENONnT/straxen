@@ -92,8 +92,7 @@ def test_several():
             straxen.analyses.event_display.plot_single_event(st, test_run_id, events, xenon1t=True,
                                                              event_number=0, records_matrix=True)
             st.event_display_interactive(test_run_id, time_range=(events[0]['time'],
-                                                                  events[0]['endtime']),
-                                        xenon1t=True)
+                                                                  events[0]['endtime']))
             plt_clf()
 
             print('plot aft')
