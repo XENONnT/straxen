@@ -6,8 +6,6 @@ import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
 from datetime import datetime
-import pandas as pd
-
 from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
@@ -233,7 +231,7 @@ def seconds_range_xaxis(seconds_range, t0=None):
         plt.xlabel("Time [ns]")
 
 
-def plot_peak(p, t0=None, **kwargs):
+def plot_peak(p, t0=None, center_time=True, **kwargs):
     x, y = time_and_samples(p, t0=t0)
     kwargs.setdefault('linewidth', 1)
 
@@ -249,6 +247,13 @@ def plot_peak(p, t0=None, **kwargs):
     # Mark extent with thin black line
     plt.plot([x[0], x[-1]], [y.max(), y.max()],
              c='k', alpha=0.3, linewidth=1)
+
+    # Mark center time with thin black line
+    if center_time:
+        if t0 is None:
+            t0 = p['time']
+        ct = (p['center_time'] - t0) / int(1e9)
+        plt.axvline(ct, c='k', alpha=0.4, linewidth=1, linestyle='--')
 
 
 def time_and_samples(p, t0=None):
@@ -311,7 +316,6 @@ def plot_wf(st: strax.Context,
     t_range -= run_start
     t_range = t_range / 10 ** 9
     t_range = np.clip(t_range, 0, np.inf)
-
 
     if hit_pattern:
         plt.figure(figsize=(14, 11))
