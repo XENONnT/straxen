@@ -113,6 +113,9 @@ class EventBasics(strax.LoopPlugin):
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
+    provides = ('event_basics', 'event_posrec_many')
+    data_kind = {k: 'events' for k in provides}
+    loop_over = 'events'
 
     # Properties to store for each peak (main and alternate S1 and S2)
     peak_properties = (
@@ -128,15 +131,15 @@ class EventBasics(strax.LoopPlugin):
 
     def infer_dtype(self):
         # Basic event properties
-        dtype = []
-        dtype += strax.time_fields
-        dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
-                  ('drift_time', np.int32,
-                   'Drift time between main S1 and S2 in ns')]
+        basics_dtype = []
+        basics_dtype += strax.time_fields
+        basics_dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
+                         ('drift_time', np.int32,
+                          'Drift time between main S1 and S2 in ns')]
 
         for i in [1, 2]:
             # Peak indices
-            dtype += [
+            basics_dtype += [
                 (f's{i}_index', np.int32,
                  f'Main S{i} peak index in event'),
                 (f'alt_s{i}_index', np.int32,
@@ -144,44 +147,58 @@ class EventBasics(strax.LoopPlugin):
 
             # Peak properties
             for name, dt, comment in self.peak_properties:
-                dtype += [
+                basics_dtype += [
                     (f's{i}_{name}', dt, f'Main S{i} {comment}'),
                     (f'alt_s{i}_{name}', dt, f'Alternate S{i} {comment}')]
 
             # Drifts and delays
-            dtype += [
+            basics_dtype += [
                 (f'alt_s{i}_interaction_drift_time', np.int32,
                  f'Drift time using alternate S{i} [ns]'),
                 (f'alt_s{i}_delay', np.int32,
                  f'Time between main and alternate S{i} [ns]')]
 
+        basics_dtype += [
+            (f's2_x', np.float32,
+             f'Main S2 reconstructed X position, uncorrected [cm]'),
+            (f's2_y', np.float32,
+             f'Main S2 reconstructed Y position, uncorrected [cm]'),
+            (f'alt_s2_x', np.float32,
+             f'Alternate S2 reconstructed X position, uncorrected [cm]'),
+            (f'alt_s2_y', np.float32,
+             f'Alternate S2 reconstructed Y position, uncorrected [cm]')]
+
+        posrec_many_dtype = list(strax.time_fields)
         # parse x_mlp et cetera if needed to get the algorithms used.
-        pos_rec_algorithms = set(d.split('_')[-1] for d in
-                                 self.deps['peak_positions'].dtype_for('peak_positions').names
-                                 if 'x_' in d)
-        # Add "''" for "'x'" and "'_mlp'" for "'x_mlp'"
-        self.pos_rec_labels = [''] + [f'_{p}' for p in pos_rec_algorithms]
+        self.pos_rec_labels = set(d.split('_')[-1] for d in
+                                  self.deps['peak_positions'].dtype_for('peak_positions').names
+                                  if 'x_' in d)
 
         for algo in self.pos_rec_labels:
             # S2 positions
-            dtype += [(f's2_x{algo}', np.float32,
-                       f'Main S2{algo.replace("_","-")} reconstructed '
-                       f'X position, uncorrected [cm]'),
-                      (f's2_y{algo}', np.float32,
-                       f'Main S2{algo.replace("_","-")} reconstructed '
-                       f'Y position, uncorrected [cm]'),
-                      (f'alt_s2_x{algo}', np.float32,
-                       f'Alternate S2{algo.replace("_","-")} reconstructed '
-                       f'X position, uncorrected [cm]'),
-                      (f'alt_s2_y{algo}', np.float32,
-                       f'Alternate S2{algo.replace("_","-")} reconstructed '
-                       f'Y position, uncorrected [cm]')]
-        return dtype
+            posrec_many_dtype += [
+                (f's2_x_{algo}', np.float32,
+                 f'Main S2 {algo}-reconstructed X position, uncorrected [cm]'),
+                (f's2_y_{algo}', np.float32,
+                 f'Main S2 {algo}-reconstructed Y position, uncorrected [cm]'),
+                (f'alt_s2_x_{algo}', np.float32,
+                 f'Alternate S2 {algo}-reconstructed X position, uncorrected [cm]'),
+                (f'alt_s2_y_{algo}', np.float32,
+                 f'Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]')]
+
+        return {'event_basics': basics_dtype,
+                'event_posrec_many': posrec_many_dtype}
 
     def compute_loop(self, event, peaks):
         result = dict(n_peaks=len(peaks),
                       time=event['time'],
                       endtime=strax.endtime(event))
+        posrec_result = dict(time=event['time'],
+                             endtime=strax.endtime(event))
+        posrec_save = (d.replace("s2_", "").replace("alt_", "")
+                       for d in self.dtype_for('event_posrec_many').names if
+                       'time' not in d)
+
         if not len(peaks):
             return result
         main_s = dict()
@@ -193,8 +210,7 @@ class EventBasics(strax.LoopPlugin):
             # Which properties do we need?
             to_store = [name for name, _, _ in self.peak_properties]
             if s_i == 2:
-                to_store += ([f'x{algo}' for algo in self.pos_rec_labels] +
-                             [f'y{algo}' for algo in self.pos_rec_labels])
+                to_store += ['x', 'y']
 
             # Find all peaks of this type (S1 or S2)
             s_mask = peaks['type'] == s_i
@@ -227,6 +243,10 @@ class EventBasics(strax.LoopPlugin):
                 result[f's{s_i}_index'] = s_indices[_main_i]
                 for name in to_store:
                     result[f's{s_i}_{name}'] = main_s[s_i][name]
+                if s_i == 2:
+                    for name in posrec_save:
+                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
+
 
             # Store alternate signal properties
             if _alt_i is None:
@@ -236,7 +256,9 @@ class EventBasics(strax.LoopPlugin):
                 result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
                 for name in to_store:
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
-
+                if s_i == 2:
+                    for name in posrec_save:
+                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
                 # Compute delay time properties
                 result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
                                                - main_s[s_i]['center_time'])
@@ -252,7 +274,8 @@ class EventBasics(strax.LoopPlugin):
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
-        return result
+        return {'event_basics': result,
+                'event_posrec_many': posrec_result}
 
 
 @export
