@@ -11,12 +11,14 @@ LEGENDS = ('Unknown', 'S1', 'S2')
 
 @straxen.mini_analysis(requires=('events', 'event_basics', 'peaks', 'peak_basics', 'peak_positions'), 
                        warn_beyond_sec=0.05)
-def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=False):
+def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=False, log=True):
     """
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
     in a given event.
-    If used with 1T data xenon1t flag must be True.
+    
+    :param xenin1T: Flag to use event display with 1T data.
+    :param log: If true color sclae is used for hitpattern plots.
 
     Note:
         How to use:
@@ -89,7 +91,8 @@ def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=Fal
                 continue
 
             fig, p, _ = plot_pmt_array(signal[k][0], parray, to_pe,
-                                       label=labels[k], xenon1t=xenon1t, fig=fig)
+                                       label=labels[k], xenon1t=xenon1t, fig=fig, 
+                                       log=log)
             if ind:
                 # Not main S1 or S2
                 p.visible = False
@@ -274,13 +277,15 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
     return fig
 
 
-def plot_pmt_array(peak, array_type, to_pe, xenon1t=False, fig=None, label=''):
+def plot_pmt_array(peak, array_type, to_pe, log=False, xenon1t=False, fig=None, label=''):
     """
     Plots top or bottom PMT array for given peak.
 
     :param peak: Peak for which the hit pattern should be plotted.
     :param array_type: String which specifies if "top" or "bottom"
         PMT array should be plotted
+    :param to_pe: PMT gains.
+    :param log: If true use a log-scale for the colorscale.
     :param fig: Instance of bokeh.plotting.figure if None one will be
         created via straxen.bokeh.utils.default_figure().
     :param label: Label of the peak which should be used for the
@@ -321,15 +326,23 @@ def plot_pmt_array(peak, array_type, to_pe, xenon1t=False, fig=None, label=''):
         fig = _plot_off_pmts(pmts_off, fig)
 
     area_per_channel = peak['area_per_channel'][pmts_on['i']]
-
-    mapper = bokeh.transform.linear_cmap(field_name='area',
+    
+    if log==True:
+        area_plot = np.log10(area_per_channel)
+        # Manually set infs to zero since cmap cannot handle it.
+        area_plot = np.where(area_plot==-np.inf, 0, area_plot)  
+    else:
+        area_plot = area_per_channel
+        
+    mapper = bokeh.transform.linear_cmap(field_name='area_plot',
                                          palette="Viridis256",
-                                         low=min(area_per_channel),
-                                         high=max(area_per_channel))
+                                         low=min(area_plot),
+                                         high=max(area_plot))
 
     source_on = bklt.ColumnDataSource(data={'x': pmts_on['x'],
                                             'y': pmts_on['y'],
                                             'area': area_per_channel,
+                                            'area_plot': area_plot,
                                             'pmt': pmts_on['i']
                                             }
                                       )
