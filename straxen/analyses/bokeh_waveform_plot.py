@@ -147,7 +147,7 @@ def plot_event(peaks, signal, labels):
     # Hightlight main and alternate S1/S2:
     start = peaks[0]['time']
     # Workaround did not manage to scale via pixels...
-    ymax = np.max(peaks['data'])
+    ymax = np.max((peaks['data'].T/peaks['dt']).T)
     ymax -= 0.1 * ymax
     for s, p in signal.items():
         if p.shape[0]:
