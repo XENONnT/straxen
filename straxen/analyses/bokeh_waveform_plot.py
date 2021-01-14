@@ -9,8 +9,9 @@ COLORS = ('gray', 'blue', 'green')
 LEGENDS = ('Unknown', 'S1', 'S2')
 
 
-@straxen.mini_analysis(requires=('events', 'event_basics'))
-def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
+@straxen.mini_analysis(requires=('events', 'event_basics', 'peaks', 'peak_basics', 'peak_positions'), 
+                       warn_beyond_sec=0.05)
+def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=False):
     """
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
@@ -20,11 +21,11 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
     Note:
         How to use:
 
-        > straxen.event_display(context,
-        >                       run_id,
-        >                       time_range=(event['time'],
-        >                                   event['endtime'])
-        >                      )
+        > st.event_display(context,
+        >                  run_id,
+        >                  time_range=(event['time'],
+        >                              event['endtime'])
+        >                  )
 
     Warning:
         Raises an error if the user queries a time range which contains
@@ -37,12 +38,6 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
                          ' less than a single event. The event display '
                          ' only works with individual events for now.')
         
-       
-    peaks = context.get_array(run_id,
-                              ('peaks', 'peak_basics', 'peak_positions'),
-                              time_range=(events[0]['time'], events[0]['endtime']),
-                              progress_bar=False
-                             )
     if peaks.shape[0] == 0:
         raise ValueError('Found an event without peaks this should not had have happened.')
     
@@ -56,23 +51,28 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
         m = (peaks['time'] == events[f'{s}_time']) & (endtime == events[f'{s}_endtime'])
         signal[s] = peaks[m]
         m_other_peaks &= ~m
-
-    mes = 'This is odd was not able to find S1 and S2 for the specified event.'
-    assert signal['s1'].shape[0] & signal['s2'].shape[0], mes
     
     # Use consistent labels:
     labels = {'s1': 'MS1', 'alt_s1': 'AS1', 's2': 'MS2', 'alt_s2': 'AS2'}
 
     # Detail plot S1/S2:
-    fig_s1, _ = plot_peak_detail(signal['s1'], label=labels['s1'])
-    if signal['alt_s1'].shape[0]:
-        fig_s1, ps1 = plot_peak_detail(signal['alt_s1'], label=labels['alt_s1'], fig=fig_s1)
-        ps1.visible = False
-
-    fig_s2, _ = plot_peak_detail(signal['s2'], time_scaler=1000, label=labels['s2'])
-    if signal['alt_s2'].shape[0]:
-        fig_s2, ps2 = plot_peak_detail(signal['alt_s2'], time_scaler=1000, label=labels['alt_s2'], fig=fig_s2)
-        ps2.visible = False
+    fig_s1 = straxen.bokeh_utils.default_fig(title='Main/Alt S1')
+    fig_s2 = straxen.bokeh_utils.default_fig(title='Main/Alt S2')
+    for fig, peak_types in zip([fig_s1, fig_s2], (keys[:2], keys[2:])):
+        
+        for ind, peak_type in enumerate(peak_types):
+            if 's2' in peak_type:
+                time_scalar = 1000
+            else:
+                time_scalar = 1
+            if signal[peak_type].shape[0]:
+                fig, p = plot_peak_detail(signal[peak_type], 
+                                          time_scaler=time_scalar,
+                                          label=labels[peak_type], 
+                                          fig=fig)
+            if ind:
+                # Not main S1/S2
+                p.visible = False
 
     # PMT arrays:
     # TOP
@@ -80,7 +80,7 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
     fig_bottom = straxen.bokeh_utils.default_fig(title='bottom array')
     pmt_arrays = {'top': (fig_top, keys[2:] + keys[:2]),
                   'bottom': (fig_bottom, keys)}
-    for parray, v in pmt_arrays:
+    for parray, v in pmt_arrays.items():
         fig, peak_type = v
 
         for ind, k in enumerate(peak_type):
@@ -90,21 +90,21 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
 
             fig, p, _ = plot_pmt_array(signal[k][0], parray, to_pe,
                                        label=labels[k], xenon1t=xenon1t, fig=fig)
-            if not ind:
+            if ind:
                 # Not main S1 or S2
                 p.visible = False
 
             if parray == 'top' and 's2' in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
                 fig, p = plot_posS2s(signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind)
-                if not ind:
+                if ind:
                     # Not main S2
                     p.visible = False
 
     # Now we only have to add all other S2 to the top pmt array
     m_other_s2 = m_other_peaks & (peaks['type'] == 2)
     if np.any(m_other_s2):
-        fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type=2)
+        fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type_style_id=2)
         p.visible = False
 
     # Main Plot:
@@ -295,7 +295,7 @@ def plot_pmt_array(peak, array_type, to_pe, xenon1t=False, fig=None, label=''):
     tool_tip = [('Plot', '$name'),
                 ('Channel', '@pmt'),
                 ('X-Position [cm]', '$x'),
-                ('Y-Position [cn]', '$y'),
+                ('Y-Position [cm]', '$y'),
                 ('area [pe]', '@area')
                 ]
 
