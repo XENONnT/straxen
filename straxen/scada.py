@@ -55,6 +55,7 @@ class SCADAInterface:
                          start=None,
                          end=None,
                          run_id=None,
+                         query_type_lab=False,
                          time_selection_kwargs=None,
                          fill_gaps=None,
                          filling_kwargs=None,
@@ -77,23 +78,30 @@ class SCADAInterface:
             tuple of run ids. In this case we will return the time
             range lasting between the start of the first and endtime
             of the second run.
+        :param query_type_lab: Mode on how to query data from the historians.
+            Can be either False (default) to get raw data or True to get
+            data which was interpolated by historian. Useful if large
+            time ranges have to be queried.
         :param time_selection_kwargs: Keyword arguments taken by
             st.to_absolute_time_range(). Default: {"full_range": True}
         :param fill_gaps: Decides how to fill gaps in which no data was
-            recorded. Can be either None, "interpolation" or "forwardfill".
-            None keeps the gaps (default), "interpolation" uses
-            pandas.interpolate and "forwardfill" pandas.ffill. See
+            recorded. Only needed for query_type_lab=False. Can be either
+            None, "interpolation" or "forwardfill".None keeps the gaps
+            (default), "interpolation" uses pandas.interpolate and
+            "forwardfill" pandas.ffill. See
             https://pandas.pydata.org/docs/ for more information. You
             can change the filling options of the methods with the
             filling_kwargs.
         :param filling_kwargs: Kwargs applied to pandas .ffill() or
-            .interpolate().
+            .interpolate(). Only needed for query_type_lab=False.
         :param down_sampling: Boolean which indicates whether to
             donw_sample result or to apply average. The averaging
-            is deactivated in case of interpolated data.
+            is deactivated in case of interpolated data. Only needed
+            for query_type_lab=False.
         :param every_nth_value: Defines over how many values we compute
             the average or the nth sample in case we down sample the
-            data.
+            data. In case query_type_lab=True every nth second is
+            returned.
         :return: pandas.DataFrame containing the data of the specified
             parameters.
         """
@@ -158,7 +166,8 @@ class SCADAInterface:
                                                    every_nth_value=every_nth_value,
                                                    fill_gaps=fill_gaps,
                                                    filling_kwargs=filling_kwargs,
-                                                   down_sampling=down_sampling
+                                                   down_sampling=down_sampling,
+                                                   query_type_lab=query_type_lab
                                                    )
 
             if ind:
@@ -180,7 +189,6 @@ class SCADAInterface:
 
         return df
 
-
     def _query_single_parameter(self,
                                 start,
                                 end,
@@ -189,6 +197,7 @@ class SCADAInterface:
                                 fill_gaps,
                                 filling_kwargs,
                                 down_sampling,
+                                query_type_lab=False,
                                 every_nth_value=1):
         """
         Function to query the values of a single parameter from SCData.
@@ -216,7 +225,13 @@ class SCADAInterface:
             raise ValueError('"value_every_seconds" must be an int!')
 
         # First we have to create an array where we can fill values:
-        seconds = np.arange(start, end+1, 10**9)  # +1 to make sure endtime is included
+        if query_type_lab:
+            # In the lab case we get interpolated data without nans so the df can be set
+            # accordingly.
+            seconds = np.arange(start, end + 1, 10**9, every_nth_value)
+        else:
+            seconds = np.arange(start, end + 1, 10**9)  # +1 to make sure endtime is included
+
         df = pd.DataFrame()
         df.loc[:, 'time'] = seconds
         df['time'] = df['time'].astype('<M8[ns]')
@@ -242,7 +257,10 @@ class SCADAInterface:
             temp_df = self._query(query,
                                   self.SCData_URL,
                                   start=(start//10**9)+1+offset,
-                                  end=(end//10**9)+1)  # +1 since it is end before exclusive
+                                  end=(end//10**9)+1,
+                                  query_type_lab=query_type_lab,
+                                  seconds_interval=every_nth_value
+                                  )  # +1 since it is end before exclusive
             times = (temp_df['timestampseconds'].values*10**9).astype('<M8[ns]')
             df.loc[times, parameter_key] = temp_df.loc[:, 'value'].values
 
@@ -279,7 +297,7 @@ class SCADAInterface:
         return df
 
     @staticmethod
-    def _query(query, api, start=None, end=None):
+    def _query(query, api, start=None, end=None, query_type_lab=False, seconds_interval=None):
         """
         Helper to reduce code. Asks for data and returns result. Raises error
         if api returns error.
@@ -288,6 +306,13 @@ class SCADAInterface:
             query["StartDateUnix"] = start
         if end:
             query['EndDateUnix'] = end
+
+        if query_type_lab:
+            query['QueryType'] = 'lab'
+            query['interval'] = seconds_interval
+        else:
+            query['QueryType'] = 'rawbytime'
+            query.pop('interval', None)  # Interval only works with lab
 
         query_url = urllib.parse.urlencode(query)
         values = requests.get(api + query_url)
