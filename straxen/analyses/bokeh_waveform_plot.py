@@ -254,6 +254,7 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
         source = straxen.bokeh_utils.get_peaks_source(peaks[_ind],
                                                       relative_start=peaks[0]['time'],
                                                       time_scaler=time_scaler,
+                                                      keep_amplitude_per_sample=False
                                                       )
 
         fig.patches(source=source,
@@ -271,7 +272,7 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
 
     fig.xaxis.axis_label = 'Time [µs]'
     fig.xaxis.axis_label_text_font_size = '14pt'
-    fig.yaxis.axis_label = "Amplitude [pe/sample]"
+    fig.yaxis.axis_label = "Amplitude [pe/ns]"
     fig.yaxis.axis_label_text_font_size = '14pt'
 
     fig.legend.location = "top_left"
