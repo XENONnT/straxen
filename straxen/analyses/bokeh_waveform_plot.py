@@ -61,8 +61,9 @@ def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=Fal
     fig_s1 = straxen.bokeh_utils.default_fig(title='Main/Alt S1')
     fig_s2 = straxen.bokeh_utils.default_fig(title='Main/Alt S2')
     for fig, peak_types in zip([fig_s1, fig_s2], (keys[:2], keys[2:])):
-        
-        for ind, peak_type in enumerate(peak_types):
+        pi = 0
+        for peak_type in peak_types:
+            p = None
             if 's2' in peak_type:
                 time_scalar = 1000
             else:
@@ -72,10 +73,11 @@ def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=Fal
                                           time_scaler=time_scalar,
                                           label=labels[peak_type], 
                                           fig=fig)
-            if ind:
+            if pi and p:
                 # Not main S1/S2
                 p.visible = False
-
+            pi += 1
+            
     # PMT arrays:
     # TOP
     fig_top = straxen.bokeh_utils.default_fig(title='top array')
