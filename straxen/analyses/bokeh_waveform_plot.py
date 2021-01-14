@@ -15,6 +15,7 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
     in a given event.
+    If used with 1T data xenon1t flag must be True.
 
     Note:
         How to use:
@@ -75,43 +76,36 @@ def event_display_interactive(events, to_pe, run_id, context, xenon1t=False):
 
     # PMT arrays:
     # TOP
-    for ind, k in enumerate(keys[2:] + keys[:2]):
-        if not signal[k].shape[0]:
-            # alt S1/S2 does not exist
-            continue
+    fig_top = straxen.bokeh_utils.default_fig(title='top array')
+    fig_bottom = straxen.bokeh_utils.default_fig(title='bottom array')
+    pmt_arrays = {'top': (fig_top, keys[2:] + keys[:2]),
+                  'bottom': (fig_bottom, keys)}
+    for parray, v in pmt_arrays:
+        fig, peak_type = v
 
-        if not ind:
-            # Main S2:
-            fig_top, p, mapper = plot_pmt_array(signal[k][0], 'top', to_pe, label=labels[k], xenon1t=xenon1t)
-            fig_top, p = plot_posS2s(signal[k][0], label=labels[k], fig=fig_top, s2_type=0)
-        else:
-            # Alt S2 and main/alt S1
-            fig_top, p, _ = plot_pmt_array(signal[k][0], 'top', to_pe, label=labels[k], fig=fig_top, xenon1t=xenon1t)
-            p.visible = False
+        for ind, k in enumerate(peak_type):
+            if not signal[k].shape[0]:
+                # alt S1/S2 does not exist
+                continue
 
-    # Add also position for alt S2 and other S2s:
-    if signal['alt_s2'].shape[0]:
-        fig_top, p = plot_posS2s(signal['alt_s2'][0], label=labels['alt_s2'], fig=fig_top, s2_type=1)
-        p.visible = False
-    
+            fig, p, _ = plot_pmt_array(signal[k][0], parray, to_pe,
+                                       label=labels[k], xenon1t=xenon1t, fig=fig)
+            if not ind:
+                # Not main S1 or S2
+                p.visible = False
+
+            if parray == 'top' and 's2' in k:
+                # In case of the top PMT array we also have to plot the S2 positions:
+                fig, p = plot_posS2s(signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind)
+                if not ind:
+                    # Not main S2
+                    p.visible = False
+
+    # Now we only have to add all other S2 to the top pmt array
     m_other_s2 = m_other_peaks & (peaks['type'] == 2)
     if np.any(m_other_s2):
         fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type=2)
         p.visible = False
-
-    # Same for bottom array, but without S2 pos:
-    for ind, k in enumerate(keys):
-        if not signal[k].shape[0]:
-            # alt S1/S2 does not exist
-            continue
-
-        if not ind:
-            # Main S1:
-            fig_bottom, p, mapper = plot_pmt_array(signal[k][0], 'bottom', to_pe, label=labels[k], xenon1t=xenon1t)
-        else:
-            # Alt S1 and main/alt S2
-            fig_bottom, p, _ = plot_pmt_array(signal[k][0], 'bottom', to_pe, label=labels[k], fig=fig_bottom, xenon1t=xenon1t)
-            p.visible = False
 
     # Main Plot:
     title = _make_event_title(events[0], run_id)
@@ -301,7 +295,7 @@ def plot_pmt_array(peak, array_type, to_pe, xenon1t=False, fig=None, label=''):
     tool_tip = [('Plot', '$name'),
                 ('Channel', '@pmt'),
                 ('X-Position [cm]', '$x'),
-                ('Y-Postion [cn]', '$y'),
+                ('Y-Position [cn]', '$y'),
                 ('area [pe]', '@area')
                 ]
 
@@ -317,12 +311,12 @@ def plot_pmt_array(peak, array_type, to_pe, xenon1t=False, fig=None, label=''):
 
     # Plotting PMTs:
     pmts = straxen.pmt_positions(xenon1t)
-    m = to_pe == 0
-    pmts_on = pmts[~m]
+    mask_pmts = to_pe == 0
+    pmts_on = pmts[~mask_pmts]
     pmts_on = pmts_on[pmts_on['array'] == array_type]
 
-    if np.any(m):
-        pmts_off = pmts[m]
+    if np.any(mask_pmts):
+        pmts_off = pmts[mask_pmts]
         pmts_off = pmts_off[pmts_off['array'] == array_type]
         fig = _plot_off_pmts(pmts_off, fig)
 
@@ -398,7 +392,7 @@ def _plot_off_pmts(pmts, fig=None):
     return fig
 
 
-def plot_posS2s(peaks, label='', fig=None, s2_type=0):
+def plot_posS2s(peaks, label='', fig=None, s2_type_style_id=0):
     """
     Plots xy-positions of specified peaks.
 
@@ -406,7 +400,7 @@ def plot_posS2s(peaks, label='', fig=None, s2_type=0):
     :param label: Legend label and plot name (name serves as idenitfier).
     :param fig: bokeh.plotting.figure instance the plot should be plotted
         into. If None creates new instance.
-    :param s2_type: 0 plots main S2 style, 1 for alt S2 and
+    :param s2_type_style_id: 0 plots main S2 style, 1 for alt S2 and
         2 for other S2s (e.g. single electrons).
     """
     if not peaks.shape:
@@ -420,7 +414,7 @@ def plot_posS2s(peaks, label='', fig=None, s2_type=0):
 
     source = straxen.bokeh_utils.get_peaks_source(peaks)
 
-    if s2_type == 0:
+    if s2_type_style_id == 0:
         p = fig.cross(source=source,
                       name=label,
                       legend_label=label,
@@ -428,7 +422,7 @@ def plot_posS2s(peaks, label='', fig=None, s2_type=0):
                       line_width=2,
                       size=12)
 
-    if s2_type == 1:
+    if s2_type_style_id == 1:
         p = fig.cross(source=source,
                       name=label,
                       legend_label=label,
@@ -437,7 +431,7 @@ def plot_posS2s(peaks, label='', fig=None, s2_type=0):
                       line_width=2,
                       size=12)
 
-    if s2_type == 2:
+    if s2_type_style_id == 2:
         p = fig.diamond_cross(source=source,
                               name=label,
                               legend_label=label,
