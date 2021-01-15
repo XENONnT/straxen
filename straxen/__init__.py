@@ -25,6 +25,7 @@ from .mongo_storage import *
 from .online_monitor import *
 from .rundb import *
 from .scada import *
+from .bokeh_utils import *
 
 
 from . import plugins
