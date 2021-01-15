@@ -1,3 +1,7 @@
+0.14.3 / 2020-01-15
+--------------------
+- EventBasics dtype should be ordered (8665256)
+
 0.14.2 / 2020-01-15
 --------------------
 - Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
