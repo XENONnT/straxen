@@ -6,7 +6,7 @@ import tarfile
 import numpy as np
 import strax
 import straxen
-
+from warnings import warn
 export, __all__ = strax.exporter()
 
 
@@ -27,9 +27,10 @@ class PeakPositionsBaseNT(strax.Plugin):
     """
     depends_on = ('peaks',)
     algorithm = None
-    # check that this works properly, significant loading/saving penalty
-    # for three plugins!
-    parallel = 'process'
+    compressor = 'zstd'
+    # Using parallel = 'process' is not allowed as we cannot Pickle
+    # self.model during multiprocessing (to fix?)
+    parallel = True
     __version__ = '0.0.0'
 
     def infer_dtype(self):
@@ -44,20 +45,24 @@ class PeakPositionsBaseNT(strax.Plugin):
         return dtype
 
     def setup(self):
-        if self.config[f'file_{self.algorithm}'] is None:
-            raise ValueError(f'No file provided to reconstruction with for {self.algorithm}')
+        self.model_file = self._get_model_file_name()
+        if self.model_file is None:
+            warn(f'No file provided for {self.algorithm}. Setting all values '
+                 f'for {self.provides} to None.')
+            # No further setup required
+            return
+
+        # Load the tensorflow model
         import tensorflow as tf
-        self.model_file = str(self.config[f'file_{self.algorithm}'])
-        self.model = None
         if os.path.exists(self.model_file):
             print(f"Path is local. Loading {self.algorithm} TF model locally "
                   f"from disk.")
         else:
             downloader = straxen.MongoDownloader()
-            if self.model_file in downloader.list_files():
+            try:
                 self.model_file = downloader.download_single(self.model_file)
-            else:
-                raise RuntimeError(f'Model files {self.model_file} is not found')
+            except straxen.mongo_storage.CouldNotLoadError as e:
+                raise RuntimeError(f'Model files {self.model_file} is not found') from e
         with tempfile.TemporaryDirectory() as tmpdirname:
             tar = tarfile.open(self.model_file, mode="r:gz")
             tar.extractall(path=tmpdirname)
@@ -69,6 +74,11 @@ class PeakPositionsBaseNT(strax.Plugin):
 
         result['x_' + self.algorithm] *= float('nan')
         result['y_' + self.algorithm] *= float('nan')
+
+        if self.model_file is None:
+            # This plugin is disabled since no model is provided
+            return result
+
         # Keep large peaks only
         peak_mask = peaks['area'] > self.config['min_reconstruction_area']
         if not np.sum(peak_mask):
@@ -87,12 +97,21 @@ class PeakPositionsBaseNT(strax.Plugin):
         result['y_' + self.algorithm][peak_mask] = _out[:, 1]
         return result
 
+    def _get_model_file_name(self):
+        config_file = f'file_{self.algorithm}'
+        model_file = self.config.get(config_file, "No file")
+        if model_file == 'No file':
+            raise ValueError(f'{__class__.__name__} should have {config_file} '
+                             f'provided as an option.')
+        return model_file
+
 
 @export
 @strax.takes_config(
     strax.Option("file_mlp",
                  help="Name of saved MLP model file in the aux file data base."
-                      "The file contains both structure and weights.",
+                      "The file contains both structure and weights. Set to "
+                      "None to skip the computation of this plugin.",
                  default="xnt_mlp_wfsim_20201214.tar.gz"
                  )
 )
@@ -106,7 +125,8 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 @strax.takes_config(
     strax.Option("file_gcn",
                  help="Name of saved GCN model file in the aux file data base."
-                      "The file contains both structure and weights.",
+                      "The file contains both structure and weights. Set to "
+                      "None to skip the computation of this plugin.",
                  default="xnt_gcn_wfsim_20201203.tar.gz",
                  )
 )
@@ -120,7 +140,8 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
 @strax.takes_config(
     strax.Option("file_cnn",
                  help="Name of saved CNN model file in the aux file data base."
-                      "The file contains both structure and weights.",
+                      "The file contains both structure and weights. Set to "
+                      "None to skip the computation of this plugin.",
                  default="xnt_cnn_wfsim_A_5_2000_20210112.tar.gz",
                  )
 )

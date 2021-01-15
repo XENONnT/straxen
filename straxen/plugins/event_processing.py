@@ -247,7 +247,6 @@ class EventBasics(strax.LoopPlugin):
                     for name in posrec_save:
                         posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
 
-
             # Store alternate signal properties
             if _alt_i is None:
                 result[f'alt_s{s_i}_index'] = -1
