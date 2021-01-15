@@ -17,7 +17,6 @@ common_opts = dict(
         straxen.MergedS2s,
         straxen.Peaks,
         straxen.PeakBasics,
-        straxen.PeakPositions,
         straxen.PeakProximity],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
@@ -45,8 +44,6 @@ xnt_common_config = dict(
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
-    nn_architecture='mlp_model.json',
-    nn_weights='mlp_model.h5',
     # Clustering/classification parameters
     s1_max_rise_time=100,
 )
@@ -54,15 +51,27 @@ xnt_common_config = dict(
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
-have_nT_plugins = [straxen.nveto_recorder,
-                   straxen.veto_pulse_processing,
-                   straxen.veto_hitlets,
-                   straxen.acqmon_processing,
-                   straxen.pulse_processing,
-                   straxen.peaklet_processing,
-                   straxen.peak_processing,
-                   straxen.online_monitor,
-                   ]
+xnt_common_opts = common_opts.copy()
+xnt_common_opts['register'] = common_opts['register'] + [
+    straxen.PeakPositionsCNN,
+    straxen.PeakPositionsMLP,
+    straxen.PeakPositionsGCN,
+    straxen.PeakPositionsNT,
+    straxen.PeakBasicsHighEnergy,
+    straxen.PeaksHighEnergy,
+    straxen.PeakletsHighEnergy,
+    straxen.PeakletClassificationHighEnergy,
+    straxen.MergedS2sHighEnergy,
+]
+xnt_common_opts['register_all'] = common_opts['register_all'] + [
+    straxen.nveto_recorder,
+    straxen.veto_pulse_processing,
+    straxen.veto_hitlets,
+    straxen.acqmon_processing,
+    straxen.pulse_processing,
+    straxen.peaklet_processing,
+    straxen.online_monitor,
+]
 
 ##
 # XENONnT
@@ -76,13 +85,12 @@ def xenonnt_online(output_folder='./strax_data',
                    **kwargs):
     """XENONnT online processing and analysis"""
     context_options = {
-        **straxen.contexts.common_opts,
+        **straxen.contexts.xnt_common_opts,
         **kwargs}
 
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register_all(have_nT_plugins)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
     st.storage = [straxen.RunDB(
@@ -146,7 +154,7 @@ def xenonnt_simulation(output_folder='./strax_data'):
                     check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
-        **straxen.contexts.common_opts)
+        **straxen.contexts.xnt_common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
     return st
 
@@ -178,7 +186,7 @@ def xenonnt_temporary_five_pmts(**kwargs):
 def xenonnt_initial_commissioning(*args, **kwargs):
     raise ValueError(
         'Use xenonnt_online. See' 
-        'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts#update_09_nov_20')
+        'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts#update_09_nov_20')  # noqa
 
 ##
 # XENON1T
@@ -194,6 +202,11 @@ x1t_context_config = {
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
+x1t_context_config.update(
+    dict(register=common_opts['register'] +
+                  [straxen.PeakPositions1T,
+                   straxen.RecordsFromPax,
+         ]))
 
 x1t_common_config = dict(
     check_raw_record_overlaps=False,
@@ -248,7 +261,6 @@ def demo():
         gain_model=('to_pe_per_run', straxen.aux_repo +
                     '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
     ))
-    st.register(straxen.RecordsFromPax)
     return st
 
 
@@ -294,7 +306,6 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
             straxen.daqreader.DAQReader.provides if build_lowlevel
             else straxen.daqreader.DAQReader.provides + ('records', 'peaklets')),
         **context_options)
-    st.register(straxen.RecordsFromPax)
     return st
 
 
