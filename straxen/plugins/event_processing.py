@@ -107,7 +107,7 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.5.4'
+    __version__ = '0.5.5'
 
     depends_on = ('events',
                   'peak_basics',
@@ -170,9 +170,12 @@ class EventBasics(strax.LoopPlugin):
 
         posrec_many_dtype = list(strax.time_fields)
         # parse x_mlp et cetera if needed to get the algorithms used.
-        self.pos_rec_labels = set(d.split('_')[-1] for d in
-                                  self.deps['peak_positions'].dtype_for('peak_positions').names
-                                  if 'x_' in d)
+        self.pos_rec_labels = list(
+            set(d.split('_')[-1] for d in
+                self.deps['peak_positions'].dtype_for('peak_positions').names
+                if 'x_' in d))
+        # Preserve order. "set" is not ordered and dtypes should always be ordered
+        self.pos_rec_labels.sort()
 
         for algo in self.pos_rec_labels:
             # S2 positions
