@@ -57,7 +57,12 @@ xnt_common_opts['register'] = common_opts['register'] + [
     straxen.PeakPositionsMLP,
     straxen.PeakPositionsGCN,
     straxen.PeakPositionsNT,
-    ]
+    straxen.PeakBasicsHighEnergy,
+    straxen.PeaksHighEnergy,
+    straxen.PeakletsHighEnergy,
+    straxen.PeakletClassificationHighEnergy,
+    straxen.MergedS2sHighEnergy,
+]
 xnt_common_opts['register_all'] = common_opts['register_all'] + [
     straxen.nveto_recorder,
     straxen.veto_pulse_processing,
