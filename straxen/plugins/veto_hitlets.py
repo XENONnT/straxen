@@ -105,13 +105,13 @@ class nVETOHitlets(strax.Plugin):
         else:
             nsamples = 0
         temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
-
+    
         # Generating hitlets and copying relevant information from hits to hitlets.
         # These hitlets are not stored in the end since this array also contains a data
         # field which we will drop later.
         strax.refresh_hit_to_hitlets(hits, temp_hitlets)
         del hits
-
+        
         # Get hitlet data and split hitlets:
         strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
 
@@ -129,7 +129,6 @@ class nVETOHitlets(strax.Plugin):
         strax.hitlet_properties(temp_hitlets)
         entropy = strax.conditional_entropy(temp_hitlets, template='flat', square_data=False)
         temp_hitlets['entropy'][:] = entropy
-        strax.compute_widths(temp_hitlets)
 
         # Remove data field:
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
@@ -160,12 +159,18 @@ def drop_data_field(old_hitlets, new_hitlets):
         n['amplitude'] = o['amplitude']
         n['time_amplitude'] = o['time_amplitude']
         n['entropy'] = o['entropy']
-        n['width'][:] = o['width'][:]
-        n['area_decile_from_midpoint'][:] = o['area_decile_from_midpoint'][:]
         n['fwhm'] = o['fwhm']
         n['fwtm'] = o['fwtm']
+        n['range_50p_area'] = o['range_50p_area']
+        n['range_80p_area'] = o['range_80p_area']
+        n['range_hdr_50p_area'] = o['range_50p_area']
+        n['range_hdr_80p_area'] = o['range_80p_area']
         n['left'] = o['left']
         n['low_left'] = o['low_left']
+        n['left_area'] = o['left_area']
+        n['low_left_area'] = o['low_left_area']
+        n['left_hdr'] = o['left_hdr']
+        n['low_left_hdr'] = o['low_left_hdr']
 
 
 @export
