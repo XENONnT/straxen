@@ -29,13 +29,11 @@ def plot_pulses_nv(context, raw_records_nv, run_id, time_range,
     """
     # Register records plugin to get settings
     p = context.get_single_plugin(run_id, 'records_nv')
-    p.config
 
     if not raw_records_nv.dtype == np.dtype(strax.raw_record_dtype()):
         raise ValueError('"raw_records" mut be of the raw_records dtype!')
 
     # Compute strax baseline and baseline_rms:
-    # TODO: This is a bit stupid maybe change strax.baseline function?
     records = strax.raw_to_records(raw_records_nv)
     records = strax.sort_by_time(records)
     strax.zero_out_of_bounds(records)
