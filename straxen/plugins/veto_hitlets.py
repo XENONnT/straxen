@@ -160,12 +160,18 @@ def drop_data_field(old_hitlets, new_hitlets):
         n['amplitude'] = o['amplitude']
         n['time_amplitude'] = o['time_amplitude']
         n['entropy'] = o['entropy']
-        n['width'][:] = o['width'][:]
-        n['area_decile_from_midpoint'][:] = o['area_decile_from_midpoint'][:]
         n['fwhm'] = o['fwhm']
         n['fwtm'] = o['fwtm']
+        n['range_50p_area'] = o['range_50p_area']
+        n['range_80p_area'] = o['range_80p_area']
+        n['range_hdr_50p_area'] = o['range_50p_area']
+        n['range_hdr_80p_area'] = o['range_80p_area']
         n['left'] = o['left']
         n['low_left'] = o['low_left']
+        n['left_area'] = o['left_area']
+        n['low_left_area'] = o['low_left_area']
+        n['left_hdr'] = o['left_hdr']
+        n['low_left_hdr'] = o['low_left_hdr']
 
 
 @export
