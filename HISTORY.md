@@ -1,3 +1,15 @@
+0.14.3 / 2020-01-15
+--------------------
+- EventBasics dtype should be ordered (8665256)
+
+0.14.2 / 2020-01-15
+--------------------
+- Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
+- Matplotlib event display (#326)
+- Bokeh interactive event display (#330)
+- New tutorials and updated documentation (#322)
+- Scada-interface updates (#321,  #324)
+
 0.14.1 / 2020-01-04
 --------------------
 - bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
