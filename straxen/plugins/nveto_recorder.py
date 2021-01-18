@@ -21,7 +21,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
     strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of muVETO PMTs'),
+                 help='Number of nVETO PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
