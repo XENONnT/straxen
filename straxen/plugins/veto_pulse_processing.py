@@ -23,7 +23,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option(
         'min_samples_alt_baseline_nv',
-        default=500, track=True,
+        default=50000, track=True,
         help='Min. length of pulse before alternative baselineing via '
              'pulse median is applied.'),
 )
