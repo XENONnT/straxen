@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 
-@straxen.mini_analysis(requires=('raw_records_nv'),
+@straxen.mini_analysis(requires=('raw_records_nv',),
                        warn_beyond_sec=5)
-def plot_pulses_nv(context, raw_records, run_id, time_range,
+def plot_pulses_nv(context, raw_records_nv, run_id, time_range,
                    plot_hits=False, plot_median=False,
                    max_plots=20, store_pdf=False, path=''):
     """
@@ -31,12 +31,12 @@ def plot_pulses_nv(context, raw_records, run_id, time_range,
     p = context.get_single_plugin(run_id, 'records_nv')
     p.config
 
-    if not raw_records.dtype == np.dtype(strax.raw_record_dtype()):
+    if not raw_records_nv.dtype == np.dtype(strax.raw_record_dtype()):
         raise ValueError('"raw_records" mut be of the raw_records dtype!')
 
     # Compute strax baseline and baseline_rms:
     # TODO: This is a bit stupid maybe change strax.baseline function?
-    records = strax.raw_to_records(raw_records)
+    records = strax.raw_to_records(raw_records_nv)
     records = strax.sort_by_time(records)
     strax.zero_out_of_bounds(records)
     strax.baseline(records,
@@ -49,9 +49,9 @@ def plot_pulses_nv(context, raw_records, run_id, time_range,
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)
 
-    for inds in _yield_pulse_indices(raw_records):
+    for inds in _yield_pulse_indices(raw_records_nv):
         # Grouped our pulse so now plot:
-        rr_pulse = raw_records[inds]
+        rr_pulse = raw_records_nv[inds]
         r_pulse = records[inds]
 
         fig, axes = straxen.plot_single_pulse(rr_pulse, run_id)
