@@ -58,6 +58,9 @@ def test_several():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+            # Ignore strax-internal warnings
+            st.set_context_config({'free_options': tuple(st.config.keys())})
+
             print("Get peaks")
             p = st.get_array(test_run_id, 'peaks')
 
@@ -68,7 +71,7 @@ def test_several():
             assert np.abs(len(p) -
                           EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
 
-            st.make(test_run_id, 'event_info')
+            events = st.get_array(test_run_id, 'event_info')
             print('plot wf')
             peak_i = 0
             st.plot_waveform(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
@@ -83,6 +86,14 @@ def test_several():
             peak_i = 2
             assert st.is_stored(test_run_id, 'records'), "no records"
             st.plot_records_matrix(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            plt_clf()
+
+            print('plot event displays')
+            straxen.analyses.event_display.plot_single_event(st, test_run_id, events, xenon1t=True,
+                                                             event_number=0, records_matrix=True)
+            st.event_display_interactive(test_run_id, time_range=(events[0]['time'],
+                                                                  events[0]['endtime']),
+                                         xenon1t=True)
             plt_clf()
 
             print('plot aft')

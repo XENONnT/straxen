@@ -1,4 +1,4 @@
-__version__ = '0.14.0'
+__version__ = '0.14.3'
 
 from warnings import warn
 # load configuration file using utilix
@@ -25,6 +25,7 @@ from .mongo_storage import *
 from .online_monitor import *
 from .rundb import *
 from .scada import *
+from .bokeh_utils import *
 
 
 from . import plugins
