@@ -62,7 +62,7 @@ class nVETOHitlets(strax.Plugin):
     Note:
         Hitlets are getting chopped if extended in not recorded regions.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
     parallel = 'process'
     rechunk_on_save = False
