@@ -42,6 +42,8 @@ def test_time_selection():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+            # Ignore strax-internal warnings
+            st.set_context_config({'free_options': tuple(st.config.keys())})
 
             print("Making peak basics")
             st.make(test_run_id, 'peak_basics')
