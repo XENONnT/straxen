@@ -570,14 +570,14 @@ def infer_target(rd):
                     run_id=f'{rd["number"]:06}')
         _t = 'raw_records'
 
+    _t = strax.to_str_tuple(_t)
+    _pp = strax.to_str_tuple(_pp)
     for __check in (_t, _pp):
         if not len(set(__check)) == len(__check):
             log_warning(f'Duplicates in (post) targets {__check}',
                         priority='Fatal')
             raise ValueError(f'Duplicates in (post) targets {__check}')
-
-    return {'targets': strax.to_str_tuple(_t),
-            'post_processing': strax.to_str_tuple(_pp)}
+    return {'targets': _t, 'post_processing': _pp}
 
 
 def set_state(state, update_fields=None):
