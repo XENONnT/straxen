@@ -302,8 +302,8 @@ if os.access(output_folder, os.W_OK) is not True:
 
 def new_context(cores=args.cores,
                 max_messages=args.max_messages,
-                timeout=300,
-                targets=strax.to_str_tuple(args.target),
+                timeout=500,
+                targets=strax.to_str_tuple(args.targets),
                 ):
     """Create strax context that can access the runs db"""
     # We use exactly the same logic of straxen to access the runs DB;
@@ -1164,7 +1164,7 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 # Processing
 ##
 
-def run_strax(run_id, input_dir, targets, n_readout_threads, compressor, 
+def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
               run_start_time, samples_per_record, cores, max_messages, timeout,
               daq_chunk_duration, daq_overlap_chunk_duration, post_processing,
               debug=False):
