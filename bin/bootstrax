@@ -729,9 +729,9 @@ def infer_mode(rd):
         'mbs': [0, 70, 90, 110, 150, 220, 290, 360, 390, 420, 500, 550],
         'cores_old': [39, 35, 35, 30, 30, 20, 12, 12, 10, 10, 10, 8],
         'cores': [24, 24, 24, 24, 18, 15, 15, 15, 15, 15, 15, 10],
-        'max_messages_old': [60, 60, 35, 25, 25, 20, 10, 10, 10, 10, 8, 6],
+        'max_messages_old': [20, 20, 15, 15, 10, 10, 10, 10, 10, 10, 8, 6],
         'max_messages': [60, 60, 35, 30, 25, 25, 25, 25, 20, 15, 12, 12],
-        'timeout': [500, 500, None, None, None, None, None, None, None, None, None, 1200]
+        'timeout': [600, 600, None, None, None, None, None, None, None, None, None, 1200]
     }
     if data_rate and args.infer_mode:
         df = pd.DataFrame(benchmark)
@@ -742,25 +742,25 @@ def infer_mode(rd):
         result = {k: int(v) for k, v in df.loc[data_rate].items()}
         if not is_new_eb:
             for k in ('cores', 'max_messages'):
-                result[k] = result[k+'_old'].copy()
+                result[k] = result[k+'_old']
         del df, benchmark, result['cores_old'], result['max_messages_old']
     else:
         result = dict(cores=args.cores,
                       max_messages=args.max_messages,
                       timeout=1000)
-    log.debug(f'infer_mode::\tInferred mode for {rd["number"]}\t{result}')
     n_fails = rd.get('bootstrax', {}).get('n_failures', 0)
     if n_fails:
         # Exponentially lower resources & increase timeout
         result = dict(
-            cores=np.clip(result['cores']/(1.1**n_fails), 4, 24),
-            max_messages=np.clip(result['max_messages']/(1.1**n_fails), 4, 24),
+            cores=np.clip(result['cores']/(1.1**n_fails), 4, 40),
+            max_messages=np.clip(result['max_messages']/(1.1**n_fails), 4, 100),
             timeout=np.clip(result['timeout']*(1.1**n_fails), 500, 3600)
         )
         log_warning(f'infer_mode::\tRepeated failures on {rd["number"]}@{hostname}. '
                     f'Lowering to {result}',
                     priority='info',
                     run_id=f'{rd["number"]:06}')
+    log.info(f'infer_mode::\tInferred mode for {rd["number"]}\t{result}')
     return {k: int(v) for k, v in result.items()}
 
 
@@ -1205,10 +1205,12 @@ def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
                                 check_raw_record_overlaps=False,
                                 )
 
-            st.make(run_id,
-                    'multiple',
-                    config=strax_config,
-                    max_workers=cores)
+            for i, c in enumerate(st.get_iter(run_id,
+                                              'multiple',
+                                              config=strax_config,
+                                              max_workers=cores)):
+                if not i % 10:
+                    log.info(f'Target plugin - chunk {i}\n\t{c}')
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1326,7 +1328,8 @@ def process_run(rd, send_heartbeats=args.production):
             # Bootstrax does not register in non-production mode
             pass
         try:
-            run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
+            run_strax_config['run_start_time'] = rd['start'].replace(
+                tzinfo=timezone.utc).timestamp()
         except Exception as e:
             fail(f"Could not find start in datetime.datetime object: {str(e)}")
 
