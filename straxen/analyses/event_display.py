@@ -36,7 +36,26 @@ EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
                               )
 
 
-@straxen.mini_analysis(requires=('event_info',))
+def _scatter_rec(event,
+                 recs=('mlp', 'cnn', 'gcn'),
+                 scatter_kwargs=None):
+    """Convienent wrapper to show three algorithms for xenonnt"""
+    assert len(recs) <= 3, "I only got three markers/colors"
+    if scatter_kwargs is None:
+        scatter_kwargs = {}
+    scatter_kwargs.setdefault('s', '100')
+    shapes = ('v', '^', '>', '<')
+    colors = ('brown', 'orange', 'lightcoral')
+    for _i, _r in enumerate(recs):
+        plt.scatter(event[f'x_{_r}'], event[f'y_{_r}'],
+                    marker=shapes[_i],
+                    colors=colors[_i],
+                    label=_r + ' no cor.',
+                    **scatter_kwargs)
+    plt.legend(loc='best')
+
+
+@straxen.mini_analysis(requires=('event_info', 'event_posrec_many'))
 def event_display(context,
                   run_id,
                   events,
@@ -196,13 +215,15 @@ def event_display(context,
                                  time_range=(events['s2_time'],
                                              events['s2_endtime']),
                                  keep_columns=('area_per_channel', 'time', 'dt', 'length'))
-        for ax, array in ((ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')):
+        for axi, (ax, array) in enumerate((ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')):
             plt.sca(ax)
             straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
                                              array_name=array,
                                              **s2_hp_kwargs)
-            # Mark reconstructed position
+            # Mark reconstructed position (corrected)
             plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
+            if not xenon1t and axi == 0:
+                _scatter_rec(events)
 
     # Fill panels with peak/event info
     for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
