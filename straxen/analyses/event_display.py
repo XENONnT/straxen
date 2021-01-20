@@ -93,16 +93,18 @@ def event_display(context,
     if records_matrix not in ('raw', True, False):
         raise ValueError('Choose either "raw", True or False for records_matrix')
     if ((records_matrix == 'raw' and not context.is_stored(run_id, 'raw_records')) or
-            (records_matrix and not context.is_stored(run_id, 'records'))):
+        (isinstance(records_matrix, bool) and records_matrix and not context.is_stored(run_id, 'records'))):   # noqa
         print("(raw)records not stored! Not showing records_matrix")
         records_matrix = False
     if not context.is_stored(run_id, 'peaklets'):
         raise strax.DataNotAvailable(f'peaklets not available for {run_id}')
 
-    fig = plt.figure(figsize=(25, 7 * (2 + int(records_matrix))),
+    # String convert for int(_rr_bool)
+    _rr_bool = bool(records_matrix)
+    fig = plt.figure(figsize=(25, 7 * (2 + int(_rr_bool))),
                      facecolor='white')
-    grid = plt.GridSpec((2 + int(records_matrix)), 1, hspace=0.1,
-                        height_ratios=[1.5, 0.5, 0.5][:2 + int(records_matrix)]
+    grid = plt.GridSpec((2 + int(_rr_bool)), 1, hspace=0.1,
+                        height_ratios=[1.5, 0.5, 0.5][:2 + int(_rr_bool)]
                         )
 
     # S1, S2, hitpatterns
