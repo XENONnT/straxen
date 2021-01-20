@@ -22,7 +22,7 @@ install:
 - git clone https://github.com/AxFoundation/strax.git ../strax
 - pip install -r ../strax/requirements.txt
 - pip install ../strax
-- pip install pytest hypothesis boltons pytest-runner coveralls
+- pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
 - pip install -r requirements.txt
 script:
 - python setup.py install
