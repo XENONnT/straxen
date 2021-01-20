@@ -59,6 +59,7 @@ def _scatter_rec(event,
 def event_display(context,
                   run_id,
                   events,
+                  to_pe,
                   records_matrix=True,
                   s2_fuzz=50,
                   s1_fuzz=0,
@@ -77,6 +78,7 @@ def event_display(context,
     :param context: strax.Context provided by the minianalysis wrapper
     :param run_id: run-id of the event
     :param events: events, provided by the minianalysis wrapper
+    :param to_pe: gains, provided by the minianalysis wrapper
     :param records_matrix: False (no record matrix), True, or "raw"
         (show raw-record matrix)
     :param s2_fuzz: extra time around main S2 [ns]
@@ -165,6 +167,7 @@ def event_display(context,
         s1_hp_kwargs = {}
     if s2_hp_kwargs is None:
         s2_hp_kwargs = {}
+
     # Hit patterns options:
     for hp_opt, color_map in ((s1_hp_kwargs, "Blues"), (s2_hp_kwargs, "Greens")):
         _common_opt = dict(xenon1t=xenon1t,
@@ -174,6 +177,7 @@ def event_display(context,
                            s=(250 if records_matrix else 220),
                            pmt_label_size=7,
                            edgecolor='grey',
+                           dead_pmts=np.argwhere(to_pe == 0),
                            cmap=color_map)
         # update s1 & S2 hit pattern kwargs with _common_opt if not
         # specified by the user

@@ -71,6 +71,7 @@ def plot_on_single_pmt_array(
         pmt_label_color='white',
         show_tpc=True,
         log_scale=False, vmin=None, vmax=None,
+        dead_pmts=None, dead_pmt_color='gray',
         **kwargs):
     """Plot one of the PMT arrays and color it by c.
 
@@ -121,6 +122,13 @@ def plot_on_single_pmt_array(
             linewidth=1))
     else:
         ax.set_axis_off()
+    if dead_pmts is not None:
+        _dead_mask = [pi in dead_pmts for pi in pos['i']]
+        result = plt.scatter(
+            pos[_dead_mask]['x'],
+            pos[_dead_mask]['y'],
+            c=dead_pmt_color,
+            **kwargs)
 
     if pmt_label_size:
         for p in pos:
