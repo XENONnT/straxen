@@ -107,8 +107,7 @@ def plot_on_single_pmt_array(
         pos['x'],
         pos['y'],
         c=c[mask],
-        vmin=vmin, vmax=vmax,
-        norm=matplotlib.colors.LogNorm() if log_scale else None,
+        norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax) if log_scale else None,
         **kwargs)
 
     if show_tpc:

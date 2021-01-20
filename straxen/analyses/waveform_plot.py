@@ -148,9 +148,9 @@ def plot_records_matrix(context, run_id,
 
     plt.pcolormesh(
         ts, ys, wvm.T,
-        norm=matplotlib.colors.LogNorm(),
-        vmin=min(0.1 * wvm.max(), 1e-2),
-        vmax=wvm.max(),
+        norm=matplotlib.colors.LogNorm(
+            vmin=min(0.1 * wvm.max(), 1e-2),
+            vmax=wvm.max(),),
         cmap=plt.cm.inferno)
     plt.xlim(*seconds_range)
 
