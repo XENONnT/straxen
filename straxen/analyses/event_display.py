@@ -215,7 +215,7 @@ def event_display(context,
                                  time_range=(events['s2_time'],
                                              events['s2_endtime']),
                                  keep_columns=('area_per_channel', 'time', 'dt', 'length'))
-        for axi, (ax, array) in enumerate((ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')):
+        for axi, (ax, array) in enumerate([(ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')]):
             plt.sca(ax)
             straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
                                              array_name=array,
