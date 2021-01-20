@@ -23,7 +23,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option(
         'min_samples_alt_baseline_nv',
-        default=50000, track=True,
+        default=None, track=True,
         help='Min. length of pulse before alternative baselineing via '
              'pulse median is applied.'),
 )
@@ -64,11 +64,12 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.baseline(r,
                        baseline_samples=self.config['baseline_samples_nv'],
                        flip=True)
-        
-        m = r['pulse_length'] > self.config['min_samples_alt_baseline_nv']
-        if np.any(m):
-            # Correcting baseline after PMT saturated signals see 
-            r[m] = median_baseline(r[m])
+
+        if self.config['min_samples_alt_baseline_nv']:
+            m = r['pulse_length'] > self.config['min_samples_alt_baseline_nv']
+            if np.any(m):
+                # Correcting baseline after PMT saturated signals
+                r[m] = median_baseline(r[m])
         
         strax.integrate(r)
 
