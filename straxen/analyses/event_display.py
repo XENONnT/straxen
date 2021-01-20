@@ -36,10 +36,38 @@ EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
                               )
 
 
-@straxen.mini_analysis(requires=('event_info',))
+def _scatter_rec(_event,
+                 recs=None,
+                 scatter_kwargs=None):
+    """Convenient wrapper to show posrec of three algorithms for xenonnt"""
+    if recs is None:
+        recs = ('mlp', 'cnn', 'gcn')
+    elif len(recs) > 5:
+        raise ValueError("I only got five markers/colors")
+    if scatter_kwargs is None:
+        scatter_kwargs = {}
+    scatter_kwargs.setdefault('s', 100)
+    scatter_kwargs.setdefault('alpha', 0.8)
+    shapes = ('v', '^', '>', '<', '*', 'D', "P")
+    colors = ('brown', 'orange', 'lightcoral', 'gold', 'lime', 'crimson')
+    for _i, _r in enumerate(recs):
+        x, y = _event[f's2_x_{_r}'], _event[f's2_y_{_r}']
+        if np.isnan(x) or np.isnan(y):
+            continue
+        plt.scatter(x, y,
+                    marker=shapes[_i],
+                    c=colors[_i],
+                    label=_r.upper(),
+                    **scatter_kwargs
+                    )
+    plt.legend(loc='best', fontsize="x-small", markerscale=0.5)
+
+
+@straxen.mini_analysis(requires=('event_info', 'event_posrec_many'))
 def event_display(context,
                   run_id,
                   events,
+                  to_pe,
                   records_matrix=True,
                   s2_fuzz=50,
                   s1_fuzz=0,
@@ -58,6 +86,7 @@ def event_display(context,
     :param context: strax.Context provided by the minianalysis wrapper
     :param run_id: run-id of the event
     :param events: events, provided by the minianalysis wrapper
+    :param to_pe: gains, provided by the minianalysis wrapper
     :param records_matrix: False (no record matrix), True, or "raw"
         (show raw-record matrix)
     :param s2_fuzz: extra time around main S2 [ns]
@@ -93,16 +122,18 @@ def event_display(context,
     if records_matrix not in ('raw', True, False):
         raise ValueError('Choose either "raw", True or False for records_matrix')
     if ((records_matrix == 'raw' and not context.is_stored(run_id, 'raw_records')) or
-            (records_matrix and not context.is_stored(run_id, 'records'))):
+        (isinstance(records_matrix, bool) and not context.is_stored(run_id, 'records'))):   # noqa
         print("(raw)records not stored! Not showing records_matrix")
         records_matrix = False
     if not context.is_stored(run_id, 'peaklets'):
         raise strax.DataNotAvailable(f'peaklets not available for {run_id}')
 
-    fig = plt.figure(figsize=(25, 7 * (2 + int(records_matrix))),
+    # Convert string to int to allow plots to be enlarged for extra panel
+    _rr_resize_int = int(bool(records_matrix))
+    fig = plt.figure(figsize=(25, 21 if _rr_resize_int else 16),
                      facecolor='white')
-    grid = plt.GridSpec((2 + int(records_matrix)), 1, hspace=0.1,
-                        height_ratios=[1.5, 0.5, 0.5][:2 + int(records_matrix)]
+    grid = plt.GridSpec((2 + _rr_resize_int), 1, hspace=0.1+0.1*_rr_resize_int,
+                        height_ratios=[1.5, 0.5, 0.5][:2 + _rr_resize_int]
                         )
 
     # S1, S2, hitpatterns
@@ -144,6 +175,7 @@ def event_display(context,
         s1_hp_kwargs = {}
     if s2_hp_kwargs is None:
         s2_hp_kwargs = {}
+
     # Hit patterns options:
     for hp_opt, color_map in ((s1_hp_kwargs, "Blues"), (s2_hp_kwargs, "Greens")):
         _common_opt = dict(xenon1t=xenon1t,
@@ -153,6 +185,7 @@ def event_display(context,
                            s=(250 if records_matrix else 220),
                            pmt_label_size=7,
                            edgecolor='grey',
+                           dead_pmts=np.argwhere(to_pe == 0),
                            cmap=color_map)
         # update s1 & S2 hit pattern kwargs with _common_opt if not
         # specified by the user
@@ -172,7 +205,9 @@ def event_display(context,
         area = context.get_array(run_id, 'peaklets',
                                  time_range=(events['s1_time'],
                                              events['s1_endtime']),
-                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'))
+                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'),
+                                 progress_bar=False,
+                                 )
         for ax, array in ((ax_s1_hp_t, 'top'), (ax_s1_hp_b, 'bottom')):
             plt.sca(ax)
             straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
@@ -182,7 +217,7 @@ def event_display(context,
             plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
 
     # S2
-    if events['s2_area'] != 0:
+    if event['s2_area'] != 0:
         plt.sca(ax_s2)
         context.plot_peaks(run_id,
                            time_range=(events['s2_time'] - s2_fuzz,
@@ -193,14 +228,18 @@ def event_display(context,
         area = context.get_array(run_id, 'peaklets',
                                  time_range=(events['s2_time'],
                                              events['s2_endtime']),
-                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'))
-        for ax, array in ((ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')):
+                                 keep_columns=('area_per_channel', 'time', 'dt', 'length'),
+                                 progress_bar=False,
+                                 )
+        for axi, (ax, array) in enumerate([(ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')]):
             plt.sca(ax)
             straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
                                              array_name=array,
                                              **s2_hp_kwargs)
-            # Mark reconstructed position
+            # Mark reconstructed position (corrected)
             plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
+            if not xenon1t and axi == 0:
+                _scatter_rec(event)
 
     # Fill panels with peak/event info
     for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
