@@ -749,7 +749,7 @@ def infer_mode(rd):
         result = dict(cores=args.cores,
                       max_messages=args.max_messages,
                       timeout=1000)
-    n_fails = rd.get['bootstrax'].get('n_failures', 0)
+    n_fails = rd['bootstrax'].get('n_failures', 0)
     if n_fails:
         # Exponentially lower resources & increase timeout
         result = dict(
@@ -1349,7 +1349,7 @@ def process_run(rd, send_heartbeats=args.production):
             if send_heartbeats:
                 to_report = ('run_id', 'targets', 'cores', 'max_messages',
                              'timeout', 'post_processing'),
-                update = {k: v for k, v in run_strax_config if k in to_report}
+                update = {k: v for k, v in run_strax_config.items() if k in to_report}
                 send_heartbeat(update)
             ec = strax_proc.exitcode
             if ec is None:
