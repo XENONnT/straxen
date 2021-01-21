@@ -73,7 +73,7 @@ class GridFsInterface:
             }
             # We can safely hard-code the collection as that is always
             # the same with GridFS.
-            collection = utilix.rundb.xent_collection(
+            collection = utilix.rundb.pymongo_collection(
                 **mongo_kwargs,
                 collection='fs.files')
         else:

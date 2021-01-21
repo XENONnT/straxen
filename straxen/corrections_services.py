@@ -37,7 +37,7 @@ class CorrectionsManagementServices():
                         'user': username,
                         'password': password,
                         'database': 'corrections'}
-        corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
+        corrections_collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
 
         # Do not delete the client!
         self.client = corrections_collection.database.client
