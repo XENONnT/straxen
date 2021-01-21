@@ -19,7 +19,7 @@ def plot_pulses_tpc(context, raw_records, run_id, time_range,
 def plot_pulses_mv(context, raw_records_mv, run_id, time_range,
                     plot_hits=False, plot_median=False,
                     max_plots=20, store_pdf=False, path=''):
-    plot_pulses(context, raw_records, run_id, time_range,
+    plot_pulses(context, raw_records_mv, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path, detector_ending='_mv')
 
