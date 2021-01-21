@@ -58,9 +58,6 @@ def plot_pulses(context, raw_records, run_id, time_range,
     # Register records plugin to get settings
     p = context.get_single_plugin(run_id, 'records'+detector_ending)
 
-    if not raw_records.dtype == np.dtype(strax.raw_record_dtype()):
-        raise ValueError('"raw_records" mut be of the raw_records dtype!')
-
     # Compute strax baseline and baseline_rms:
     records = strax.raw_to_records(raw_records)
     records = strax.sort_by_time(records)
