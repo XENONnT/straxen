@@ -562,7 +562,7 @@ def delete_data(rd, path, data_type,
             if k in ['location', 'meta', 'protocol']:
                 ddoc.pop(k)
 
-        ddoc.update({'at': now(), 'by': hostname + '.ajax', 'reason': reason})
+        ddoc.update({'at': now(), 'by': f'ajax.{hostname}', 'reason': reason})
         log.info(f'update with {ddoc}')
         if args.execute and not test:
             if confirm('update rundoc?'):

@@ -254,8 +254,9 @@ max_n_retry = 10
 # an eventbuilder should not process new data.
 max_queue_new_runs = 2
 
-# Remove any targets or post processing targets after the run failed this
-# many times.
+# Remove any targets or post processing targets after the run failed
+# this many times. If high level data is hitting some edge case, we
+# might want to be able to keep the intermediate level data.
 # NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
 remove_target_after_fails = dict(events=2, hitlets=2, peak=3, online=4, ALL=5)
 
@@ -523,7 +524,7 @@ def infer_target(rd):
     if args.fix_target:
         return {'targets': strax.to_str_tuple(_t), 'post_processing': strax.to_str_tuple(_pp)}
 
-    n_fails = rd.get('bootstrax', {}).get('n_failures', 0)
+    n_fails = rd['bootstrax'].get('n_failures', 0)
     if n_fails:
         log.debug(f'override_target::\tdeleting targets')
         for _rm_t, _rm_t_after in remove_target_after_fails.items():
@@ -748,7 +749,7 @@ def infer_mode(rd):
         result = dict(cores=args.cores,
                       max_messages=args.max_messages,
                       timeout=1000)
-    n_fails = rd.get('bootstrax', {}).get('n_failures', 0)
+    n_fails = rd.get['bootstrax'].get('n_failures', 0)
     if n_fails:
         # Exponentially lower resources & increase timeout
         result = dict(
@@ -1122,7 +1123,7 @@ def fail_run(rd, reason, error_traceback=''):
         rd['bootstrax'] = {}
         rd['bootstrax']['n_failures'] = 0
 
-    if 'n_failures' in rd['bootstrax'] and rd['bootstrax']['n_failures'] > 0:
+    if rd['bootstrax'].get('n_failures', 0) > 0:
         fail_name = 'Repeated failure'
         failure_message_level = 'info'
     else:
