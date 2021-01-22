@@ -2,7 +2,7 @@ import strax
 
 import numpy as np
 
-from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
 from straxen.get_corrections import get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
@@ -107,12 +107,15 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.5.3'
+    __version__ = '0.5.5'
 
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
+    provides = ('event_basics', 'event_posrec_many')
+    data_kind = {k: 'events' for k in provides}
+    loop_over = 'events'
 
     # Properties to store for each peak (main and alternate S1 and S2)
     peak_properties = (
@@ -128,15 +131,15 @@ class EventBasics(strax.LoopPlugin):
 
     def infer_dtype(self):
         # Basic event properties
-        dtype = []
-        dtype += strax.time_fields
-        dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
-                  ('drift_time', np.int32,
-                   'Drift time between main S1 and S2 in ns')]
+        basics_dtype = []
+        basics_dtype += strax.time_fields
+        basics_dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
+                         ('drift_time', np.int32,
+                          'Drift time between main S1 and S2 in ns')]
 
         for i in [1, 2]:
             # Peak indices
-            dtype += [
+            basics_dtype += [
                 (f's{i}_index', np.int32,
                  f'Main S{i} peak index in event'),
                 (f'alt_s{i}_index', np.int32,
@@ -144,33 +147,61 @@ class EventBasics(strax.LoopPlugin):
 
             # Peak properties
             for name, dt, comment in self.peak_properties:
-                dtype += [
+                basics_dtype += [
                     (f's{i}_{name}', dt, f'Main S{i} {comment}'),
                     (f'alt_s{i}_{name}', dt, f'Alternate S{i} {comment}')]
 
             # Drifts and delays
-            dtype += [
+            basics_dtype += [
                 (f'alt_s{i}_interaction_drift_time', np.int32,
                  f'Drift time using alternate S{i} [ns]'),
                 (f'alt_s{i}_delay', np.int32,
                  f'Time between main and alternate S{i} [ns]')]
 
-        # S2 positions
-        dtype += [('s2_x', np.float32,
-                   'Main S2 reconstructed X position, uncorrected [cm]'),
-                  ('s2_y', np.float32,
-                   'Main S2 reconstructed Y position, uncorrected [cm]'),
-                  ('alt_s2_x', np.float32,
-                   'Alternate S2 reconstructed X position, uncorrected [cm]'),
-                  ('alt_s2_y', np.float32,
-                   'Alternate S2 reconstructed Y position, uncorrected [cm]')]
+        basics_dtype += [
+            (f's2_x', np.float32,
+             f'Main S2 reconstructed X position, uncorrected [cm]'),
+            (f's2_y', np.float32,
+             f'Main S2 reconstructed Y position, uncorrected [cm]'),
+            (f'alt_s2_x', np.float32,
+             f'Alternate S2 reconstructed X position, uncorrected [cm]'),
+            (f'alt_s2_y', np.float32,
+             f'Alternate S2 reconstructed Y position, uncorrected [cm]')]
 
-        return dtype
+        posrec_many_dtype = list(strax.time_fields)
+        # parse x_mlp et cetera if needed to get the algorithms used.
+        self.pos_rec_labels = list(
+            set(d.split('_')[-1] for d in
+                self.deps['peak_positions'].dtype_for('peak_positions').names
+                if 'x_' in d))
+        # Preserve order. "set" is not ordered and dtypes should always be ordered
+        self.pos_rec_labels.sort()
+
+        for algo in self.pos_rec_labels:
+            # S2 positions
+            posrec_many_dtype += [
+                (f's2_x_{algo}', np.float32,
+                 f'Main S2 {algo}-reconstructed X position, uncorrected [cm]'),
+                (f's2_y_{algo}', np.float32,
+                 f'Main S2 {algo}-reconstructed Y position, uncorrected [cm]'),
+                (f'alt_s2_x_{algo}', np.float32,
+                 f'Alternate S2 {algo}-reconstructed X position, uncorrected [cm]'),
+                (f'alt_s2_y_{algo}', np.float32,
+                 f'Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]')]
+
+        return {'event_basics': basics_dtype,
+                'event_posrec_many': posrec_many_dtype}
 
     def compute_loop(self, event, peaks):
         result = dict(n_peaks=len(peaks),
                       time=event['time'],
                       endtime=strax.endtime(event))
+        posrec_result = dict(time=event['time'],
+                             endtime=strax.endtime(event))
+        posrec_save = (d.replace("s2_", "").replace("alt_", "")
+                       for d in self.dtype_for('event_posrec_many').names if
+                       'time' not in d)
+
         if not len(peaks):
             return result
         main_s = dict()
@@ -215,6 +246,9 @@ class EventBasics(strax.LoopPlugin):
                 result[f's{s_i}_index'] = s_indices[_main_i]
                 for name in to_store:
                     result[f's{s_i}_{name}'] = main_s[s_i][name]
+                if s_i == 2:
+                    for name in posrec_save:
+                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
 
             # Store alternate signal properties
             if _alt_i is None:
@@ -224,7 +258,9 @@ class EventBasics(strax.LoopPlugin):
                 result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
                 for name in to_store:
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
-
+                if s_i == 2:
+                    for name in posrec_save:
+                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
                 # Compute delay time properties
                 result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
                                                - main_s[s_i]['center_time'])
@@ -240,7 +276,8 @@ class EventBasics(strax.LoopPlugin):
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
-        return result
+        return {'event_basics': result,
+                'event_posrec_many': posrec_result}
 
 
 @export
@@ -336,13 +373,13 @@ class EventPositions(strax.Plugin):
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
         'elife_file',
-        default='https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/elife.npy',
+        default=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
         help='Electron lifetime model '
              'To use a constant value, provide a link (as this default) To use'
              'the corrections management tools specify the following:'
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife_model" or "elife_constant" '
-             'and model_config can be a version'  # TODO or something else?
+             'and model_config can be a version'
    ))
 class CorrectedAreas(strax.Plugin):
     """

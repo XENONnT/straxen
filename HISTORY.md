@@ -1,3 +1,80 @@
+0.14.3 / 2020-01-15
+--------------------
+- EventBasics dtype should be ordered (8665256)
+
+0.14.2 / 2020-01-15
+--------------------
+- Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
+- Matplotlib event display (#326)
+- Bokeh interactive event display (#330)
+- New tutorials and updated documentation (#322)
+- Scada-interface updates (#321,  #324)
+
+0.14.1 / 2020-01-04
+--------------------
+- bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
+
+0.14.0 / 2020-12-21
+--------------------
+- Bump version PulseProcessing for baseline fix (#317)
+- Lower peak_min_pmts to 2 for nT (#299)
+- Allow flexible SHEV (#266)
+
+0.13.1 / 2020-12-21
+--------------------
+- fix requirements for numpy (#318)
+
+0.13.0 / 2020-12-16
+--------------------
+- New (configuration)file handling module (#311)
+- Updated documentation for file loading (#311)
+- MV & NV integration using CMT (#312)
+- Improved database interactions Bootstrax (#313, #314)
+- Add 1-coincidence option for NV (#316)
+
+0.12.5 / 2020-12-09
+--------------------
+- Muveto (#287)
+- fix lone hit cut for online monitor (#308)
+
+
+0.12.4 / 2020-12-06
+--------------------
+- Add temporary context (#302)
+- Scada interface updates (#297, #301)
+- Waveform plotting in minianalyses (#172)
+- Update online_monitor for lone hits (#294)
+- Tests for time selection fix strax/345 and more (#298)
+- Add more tests to straxen (#292)
+- Pytest on github actions (#303)
+- Add coveralls to straxen (#290)
+- Use github actions to update context collection (#282)
+- Update simulation contexts (#286, #300)
+- Remove to_pe_constant from CMT (#283)
+- Use utilix for client in CMT (#288)
+- Update straxer (#285)
+- Bootstrax updates (#289)
+
+
+0.12.3 / 2020-11-14
+--------------------
+- bugfix in desaturation correction (#279)
+
+
+0.12.1 / 2020-11-13
+--------------------
+- CMT tweak before launch: ffill ONLINE corrections (#275)
+
+
+0.12.0 / 2020-11-13
+--------------------
+- DAQReader for 2ns digitizers (#270)
+- Activate CMT for PMT gains (#271)
+- Desaturation correction (#244)
+- Rise time requirement change (#273)
+- Replace xenon_sectrets by ini file (#163)
+
+
 0.11.1 / 2020-11-05
 --------------------
 - Corrections management tool CMT (#220, #251)

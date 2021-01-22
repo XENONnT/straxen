@@ -1,12 +1,15 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-
+import warnings
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
-
+from datetime import datetime
 from .records_matrix import DEFAULT_MAX_SAMPLES
+
+export, __all__ = strax.exporter()
+__all__ += ['plot_wf']
 
 
 @straxen.mini_analysis()
@@ -64,8 +67,13 @@ def plot_waveform(context,
     requires=('peaks', 'peak_basics'),
     default_time_selection='touching',
     warn_beyond_sec=60)
-def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
-               single_figure=True, figsize=(10, 4), xaxis=True):
+def plot_peaks(peaks,
+               seconds_range,
+               t_reference,
+               show_largest=100,
+               single_figure=True,
+               figsize=(10, 4),
+               xaxis=True):
     if single_figure:
         plt.figure(figsize=figsize)
     plt.axhline(0, c='k', alpha=0.2)
@@ -78,14 +86,40 @@ def plot_peaks(peaks, seconds_range, t_reference, show_largest=100,
                   t0=t_reference,
                   color={0: 'gray', 1: 'b', 2: 'g'}[p['type']])
 
-    if xaxis:
+    if xaxis == 'since_start':
+        seconds_range_xaxis(seconds_range, t0=seconds_range[0])
+    elif xaxis:
         seconds_range_xaxis(seconds_range)
+        plt.xlim(*seconds_range)
     else:
         plt.xticks([])
-    plt.xlim(*seconds_range)
+        plt.xlim(*seconds_range)
     plt.ylabel("Intensity [PE/ns]")
     if single_figure:
         plt.tight_layout()
+
+
+@straxen.mini_analysis(
+    requires=('peaks', 'peak_basics'),
+    default_time_selection='touching',
+    warn_beyond_sec=60)
+def plot_hit_pattern(peaks,
+                     seconds_range,
+                     t_reference,
+                     axes=None,
+                     vmin=None,
+                     log_scale=False,
+                     label=None,
+                     single_figure=False,
+                     xenon1t=False,
+                     figsize=(10, 4), ):
+    if single_figure:
+        plt.figure(figsize=figsize)
+    if len(peaks) > 1:
+        print(f'warning showing total area of {len(peaks)} peaks')
+    straxen.plot_pmts(np.sum(peaks['area_per_channel'], axis=0),
+                      axes=axes, vmin=vmin, log_scale=log_scale, label=label,
+                      xenon1t=xenon1t)
 
 
 @straxen.mini_analysis()
@@ -114,9 +148,9 @@ def plot_records_matrix(context, run_id,
 
     plt.pcolormesh(
         ts, ys, wvm.T,
-        norm=matplotlib.colors.LogNorm(),
-        vmin=min(0.1 * wvm.max(), 1e-2),
-        vmax=wvm.max(),
+        norm=matplotlib.colors.LogNorm(
+            vmin=min(0.1 * wvm.max(), 1e-2),
+            vmax=wvm.max(),),
         cmap=plt.cm.inferno)
     plt.xlim(*seconds_range)
 
@@ -152,7 +186,7 @@ def plot_records_matrix(context, run_id,
         straxen.quiet_tight_layout()
 
 
-def seconds_range_xaxis(seconds_range):
+def seconds_range_xaxis(seconds_range, t0=None):
     """Make a pretty time axis given seconds_range"""
     plt.xlim(*seconds_range)
     ax = plt.gca()
@@ -160,14 +194,16 @@ def seconds_range_xaxis(seconds_range):
     xticks = plt.xticks()[0]
     if not len(xticks):
         return
-    #xticks[0] = seconds_range[0]
-    #xticks[-1] = seconds_range[-1]
 
     # Format the labels
     # I am not very proud of this code...
     def chop(x):
         return np.floor(x).astype(np.int)
-    xticks_ns = np.round(xticks * int(1e9)).astype(np.int)
+
+    if t0 is None:
+        xticks_ns = np.round(xticks * int(1e9)).astype(np.int)
+    else:
+        xticks_ns = np.round((xticks - xticks[0]) * int(1e9)).astype(np.int)
     sec = chop(xticks_ns // int(1e9))
     ms = chop((xticks_ns % int(1e9)) // int(1e6))
     us = chop((xticks_ns % int(1e6)) // int(1e3))
@@ -177,20 +213,25 @@ def seconds_range_xaxis(seconds_range):
     print_ns = np.any(samples != samples[0])
     print_us = print_ns | np.any(us != us[0])
     print_ms = print_us | np.any(ms != ms[0])
-    if print_ms:
+    if print_ms and t0 is None:
         labels = [l + f'.{ms[i]:03}' for i, l in enumerate(labels)]
         if print_us:
             labels = [l + r' $\bf{' + f'{us[i]:03}' + '}$'
                       for i, l in enumerate(labels)]
             if print_ns:
                 labels = [l + f' {samples[i]:02}0' for i, l in enumerate(labels)]
+        plt.xticks(ticks=xticks, labels=labels, rotation=90)
+    else:
+        labels = list(chop((xticks_ns // 10) * 10))
+        labels[-1] = ""
+        plt.xticks(ticks=xticks, labels=labels, rotation=0)
+    if t0 is None:
+        plt.xlabel("Time since run start [sec]")
+    else:
+        plt.xlabel("Time [ns]")
 
-    plt.xticks(ticks=xticks, labels=labels, rotation=90)
-    plt.xlim(*seconds_range)
-    plt.xlabel("Time since run start [sec]")
 
-
-def plot_peak(p, t0=None, **kwargs):
+def plot_peak(p, t0=None, center_time=True, **kwargs):
     x, y = time_and_samples(p, t0=t0)
     kwargs.setdefault('linewidth', 1)
 
@@ -207,11 +248,17 @@ def plot_peak(p, t0=None, **kwargs):
     plt.plot([x[0], x[-1]], [y.max(), y.max()],
              c='k', alpha=0.3, linewidth=1)
 
+    # Mark center time with thin black line
+    if center_time:
+        if t0 is None:
+            t0 = p['time']
+        ct = (p['center_time'] - t0) / int(1e9)
+        plt.axvline(ct, c='k', alpha=0.4, linewidth=1, linestyle='--')
+
 
 def time_and_samples(p, t0=None):
     """Return (x, y) numpy arrays for plotting the waveform data in p
     using 'steps-pre'.
-
     Where x is the time since t0 in seconds (or another time_scale),
       and y is intensity in PE / ns.
     :param p: Peak or other similar strax data type

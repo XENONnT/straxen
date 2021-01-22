@@ -30,9 +30,9 @@ class ArtificialDeadtimeInserted(UserWarning):
     # DAQ settings -- should match settings given to redax
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),
-    strax.Option('digitizer_sampling_resolution',
+    strax.Option('max_digitizer_sampling_time',
                  default=10, track=False, type=int,
-                 help="Digitizer sampling resolution"),
+                 help="Highest interval time of the digitizer sampling times(s) used."),
     strax.Option('run_start_time', type=float, track=False, default=0,
                  help="time of start run (s since unix epoch)"),
     strax.Option('daq_chunk_duration', track=False,
@@ -81,6 +81,7 @@ class DAQReader(strax.Plugin):
         'raw_records_aqmon',
         'raw_records_nv',  # nveto raw_records (will not be stored long term)
         'raw_records_aqmon_nv',
+        'raw_records_aux_mv',
         'raw_records_mv',    # mveto has to be last due to lineage
     )
 
@@ -89,6 +90,7 @@ class DAQReader(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'lz4'
+    __version__ = '0.0.0'
 
     def infer_dtype(self):
         return {
@@ -98,8 +100,7 @@ class DAQReader(strax.Plugin):
 
     def setup(self):
         self.t0 = int(self.config['run_start_time']) * int(1e9)
-        self.dt = self.config['digitizer_sampling_resolution']
-
+        self.dt_max = self.config['max_digitizer_sampling_time']
         if (self.config['safe_break_in_pulses']
                 > min(self.config['daq_chunk_duration'],
                       self.config['daq_overlap_chunk_duration'])):
@@ -202,7 +203,7 @@ class DAQReader(strax.Plugin):
                         safe_break=min_gap,
                         # Records from the last chunk can extend as far as:
                         not_before=(start
-                                    + self.config['record_length'] * self.dt),
+                                    + self.config['record_length'] * self.dt_max),
                         left=kind == 'post',
                         tolerant=False)
                 except strax.NoBreakFound:
@@ -216,7 +217,7 @@ class DAQReader(strax.Plugin):
                     # Mark the region where data /might/ be removed with
                     # artificial deadtime.
                     dead_time_start = (
-                            break_time - self.config['record_length'] * self.dt)
+                            break_time - self.config['record_length'] * self.dt_max)
                     warnings.warn(
                         f"Data in {path} is so dense that no {min_gap} "
                         f"ns break exists: data loss inevitable. "
@@ -227,7 +228,7 @@ class DAQReader(strax.Plugin):
                     if kind == 'pre':
                         # Give the artificial deadtime past the break
                         result = self._artificial_dead_time(
-                            start=break_time, end=end)
+                            start=break_time, end=end, dt=self.dt_max)
                     else:
                         # Remove data that would stick out
                         result = records[strax.endtime(records) <= break_time]
@@ -236,17 +237,17 @@ class DAQReader(strax.Plugin):
                             np.concatenate([result,
                                             self._artificial_dead_time(
                                                 start=dead_time_start,
-                                                end=break_time)]))
+                                                end=break_time, dt=self.dt_max)]))
 
         if self.config['erase']:
             shutil.rmtree(path)
         return result, break_time
 
-    def _artificial_dead_time(self, start, end):
+    def _artificial_dead_time(self, start, end, dt):
         return strax.dict_to_rec(
             dict(time=[start],
-                 length=[(end - start) // self.dt],
-                 dt=[self.dt],
+                 length=[(end - start) // dt],
+                 dt=[dt],
                  channel=[ARTIFICIAL_DEADTIME_CHANNEL]),
             self.dtype_for('raw_records'))
 
@@ -292,11 +293,6 @@ class DAQReader(strax.Plugin):
             x for x in (r_pre, r_main, r_post)
             if x is not None])
 
-        if len(records):
-            # Convert time to time in ns since unix epoch.
-            # Ensure the offset is a whole digitizer sample
-            records["time"] += self.dt * (self.t0 // self.dt)
-
         # Split records by channel
         result_arrays = split_channel_ranges(
             records,
@@ -306,6 +302,12 @@ class DAQReader(strax.Plugin):
         # Convert to strax chunks
         result = dict()
         for i, subd in enumerate(self.config['channel_map']):
+            if len(result_arrays[i]):
+                # dt may differ per subdetector
+                dt = result_arrays[i]['dt'][0]
+                # Convert time to time in ns since unix epoch.
+                # Ensure the offset is a whole digitizer sample
+                result_arrays[i]["time"] += dt * (self.t0 // dt)
 
             # Ignore data from the 'blank' channels, corresponding to
             # channels that have nothing connected
@@ -325,7 +327,9 @@ class DAQReader(strax.Plugin):
 
         print(f"Read chunk {chunk_i:06d} from DAQ")
         for r in result.values():
-            print(f"\t{r}")
+            # Print data rate / data type if any
+            if r._mbs() > 0:
+                print(f"\t{r}")
         return result
 
 
@@ -361,7 +365,8 @@ def split_channel_ranges(records, channel_ranges):
                 n_in_detector[d_i] += 1
                 break
             else:
-                print(r['time'], r['channel'])
+                # channel_ranges should be sorted ascending.
+                print(r['time'], r['channel'], channel_ranges)
                 raise ValueError(
                     "Bad data from DAQ: data in unknown channel!")
 

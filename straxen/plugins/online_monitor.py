@@ -50,6 +50,18 @@ export, __all__ = strax.exporter()
              'For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)'
              'Default is no selection (other than "area_vs_width_min_gap")'),
     strax.Option(
+        'lone_hits_cut_string',
+        type=str,
+        default='(area >= 50) & (area <= 250)',
+        help='Selection (like selection_str) applied to data for '
+             '"lone-hits", cuts should be separated using "&")'),
+    strax.Option(
+        'lone_hits_min_gap',
+        type=int,
+        default=15_000,
+        help='Minimal gap [ns] between consecutive lone-hits. To turn off '
+             'this cut, set to 0.'),
+    strax.Option(
         'near_s1_hists_bounds',
         type=tuple,
         default=(0, 1000),
@@ -154,17 +166,30 @@ class OnlinePeakMonitor(strax.Plugin):
         del sel
 
         # -- Lone hit properties --
+        # Make a mask with the cuts.
+        # NB: LONE HITS AREA ARE IN ADC!
+        mask = self._config_as_selection_str(
+            self.config['lone_hits_cut_string'], lone_hits)
+        # Now only take lone hits that are separated in time.
+        lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
+        # Hits on the left are far away? (assume first is because of chunk bound)
+        mask &= np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
+        # Hits on the right are far away? (assume last is because of chunk bound)
+        mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+
         # Make histogram of ADC counts
-        lone_hit_areas, _ = np.histogram(lone_hits['area'],
+        lone_hit_areas, _ = np.histogram(lone_hits[mask]['area'],
                                          bins=n_bins,
                                          range=self.config['lone_hits_area_bounds'])
 
-        lone_hit_channel_count, _ = np.histogram(lone_hits['channel'],
+        lone_hit_channel_count, _ = np.histogram(lone_hits[mask]['channel'],
                                                  bins=n_pmt,
                                                  range=[0, n_pmt])
         # Count number of lone-hits per PMT
         res['lone_hits_area_hist'] = lone_hit_areas
         res['lone_hits_per_channel'] = lone_hit_channel_count
+        # Clear mask, don't re-use
+        del mask
 
         # -- AFT histogram --
         aft_b = [0, 1]
