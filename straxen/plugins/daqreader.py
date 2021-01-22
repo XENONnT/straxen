@@ -293,8 +293,6 @@ class DAQReader(strax.Plugin):
             x for x in (r_pre, r_main, r_post)
             if x is not None])
 
-
-
         # Split records by channel
         result_arrays = split_channel_ranges(
             records,
@@ -329,7 +327,9 @@ class DAQReader(strax.Plugin):
 
         print(f"Read chunk {chunk_i:06d} from DAQ")
         for r in result.values():
-            print(f"\t{r}")
+            # Print data rate / data type if any
+            if r._mbs() > 0:
+                print(f"\t{r}")
         return result
 
 
