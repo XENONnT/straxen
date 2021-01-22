@@ -1,3 +1,11 @@
+0.14.4 / 2020-01-22
+--------------------
+- Nveto changes (#319)
+- travis test at pinned environments (#335)
+- Maintance and fixes on Bootstrax and ajax (#337, 96a2858, 84fda21, b09ea49, 1e577d9, 59cfd7d, 46ad1a3, 968a1dc)
+- Some fixes and changes for the passive event display + Plotting tests (#338, 1d1b5b2, 93c7e18, 331b543, 055aa55, 1ce04ff) 
+- Listen to utilix, remove depricated function from straxen #340
+
 0.14.3 / 2020-01-15
 --------------------
 - EventBasics dtype should be ordered (8665256)
