@@ -1,3 +1,45 @@
+0.14.4 / 2020-01-22
+--------------------
+- Nveto changes (#319)
+- travis test at pinned environments (#335)
+- Maintance and fixes on Bootstrax and ajax (#337, 96a2858, 84fda21, b09ea49, 1e577d9, 59cfd7d, 46ad1a3, 968a1dc)
+- Some fixes and changes for the passive event display + Plotting tests (#338, 1d1b5b2, 93c7e18, 331b543, 055aa55, 1ce04ff) 
+- Listen to utilix, remove depricated function from straxen #340
+
+0.14.3 / 2020-01-15
+--------------------
+- EventBasics dtype should be ordered (8665256)
+
+0.14.2 / 2020-01-15
+--------------------
+- Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
+- Matplotlib event display (#326)
+- Bokeh interactive event display (#330)
+- New tutorials and updated documentation (#322)
+- Scada-interface updates (#321,  #324)
+
+0.14.1 / 2020-01-04
+--------------------
+- bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
+
+0.14.0 / 2020-12-21
+--------------------
+- Bump version PulseProcessing for baseline fix (#317)
+- Lower peak_min_pmts to 2 for nT (#299)
+- Allow flexible SHEV (#266)
+
+0.13.1 / 2020-12-21
+--------------------
+- fix requirements for numpy (#318)
+
+0.13.0 / 2020-12-16
+--------------------
+- New (configuration)file handling module (#311)
+- Updated documentation for file loading (#311)
+- MV & NV integration using CMT (#312)
+- Improved database interactions Bootstrax (#313, #314)
+- Add 1-coincidence option for NV (#316)
+
 0.12.5 / 2020-12-09
 --------------------
 - Muveto (#287)

@@ -1,5 +1,7 @@
 language: python
 dist: xenial
+python:
+  - "3.7"
 jobs:
   include:
     - name: "Python 3.7"
@@ -7,13 +9,23 @@ jobs:
     - name: "Python 3.7 numbaless (for coverage)"
       env: PYTHON=3.7 NUMBA_DISABLE_JIT=1
 install:
+- echo "download requirements from base_environment"
+- wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
+- echo "select important dependencies for strax(en)"
+- cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> sel_pre_requirements.txt
+- echo "Will pre-install:"
+- cat sel_pre_requirements.txt
+- echo "Start preinstall and rm pre-requirements:"
+- pip install -r sel_pre_requirements.txt
+- rm pre_requirements.txt sel_pre_requirements.txt
+- echo "strax install"
 - git clone https://github.com/AxFoundation/strax.git ../strax
+- pip install -r ../strax/requirements.txt
 - pip install ../strax
+- pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
 - pip install -r requirements.txt
-- pip install tensorflow>=2.3
 script:
-- python setup.py test
-- pip install coveralls
+- python setup.py install
 - coverage run --source=straxen setup.py test
 deploy:
   provider: pypi

@@ -21,6 +21,11 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         default=20, track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
+    strax.Option(
+        'min_samples_alt_baseline_nv',
+        default=None, track=True,
+        help='Min. length of pulse before alternative baselineing via '
+             'pulse median is applied.'),
 )
 class nVETOPulseProcessing(strax.Plugin):
     """
@@ -31,11 +36,12 @@ class nVETOPulseProcessing(strax.Plugin):
         2. Find hits and apply ZLE
         3. Remove empty fragments.
     """
-    __version__ = '0.0.5'
+    __version__ = '0.0.7'
 
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'lz4'
+    save_when = save_when = strax.SaveWhen.TARGET
 
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
@@ -59,6 +65,13 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.baseline(r,
                        baseline_samples=self.config['baseline_samples_nv'],
                        flip=True)
+
+        if self.config['min_samples_alt_baseline_nv']:
+            m = r['pulse_length'] > self.config['min_samples_alt_baseline_nv']
+            if np.any(m):
+                # Correcting baseline after PMT saturated signals
+                r[m] = median_baseline(r[m])
+        
         strax.integrate(r)
 
         strax.zero_out_of_bounds(r)
@@ -72,6 +85,62 @@ class nVETOPulseProcessing(strax.Plugin):
         rlinks = strax.record_links(r)
         r = clean_up_empty_records(r, rlinks, only_last=True)
         return r
+    
+    
+def median_baseline(records):
+    """
+    Function which computes the baseline according the pulse's median.
+    
+    :param records: Records 
+    """
+    # Count number of pulses
+    npulses = np.sum(records['record_i'] == 0)
+    fail_counter = 0
+    
+    if npulses == 1:
+        # This case is simple
+        records = _correct_baseline(records)
+    else:
+        # Now the more complicated case in which we have multiple pulses
+        # First we have to group our record fragments into their
+        # pulses. Hence get record links and group indicies:
+        _, nextr = strax.record_links(records)
+        pulse_i = []
+        # Loop over the begining of every pulse and get all next indicies.
+        for i in np.where(records['record_i'] == 0)[0]:
+            inds = [i]
+            ind = nextr[i]
+            # Always look for next index as long there are some
+            while ind != -1:
+                inds += [ind]
+                ind = nextr[ind]
+                fail_counter += 1
+                assert fail_counter < 5000, 'Stuck in while-loop pulse is longer than 5000 fragments?!?'
+
+            pulse_i.append(inds)
+
+        for pi in pulse_i:
+            records[pi] = _correct_baseline(records[pi])
+    return records
+
+
+@numba.njit
+def _correct_baseline(records):
+    wf = np.zeros(records[0]['pulse_length'], dtype=np.int16)
+    for r in records:
+        # np.median(records['data']) does not work for numbafied functions
+        # Hence we have to get the entire waveforms first
+        if r['record_i'] == 0:
+            t0 = r['time']
+        i = (r['time'] - t0) // r['dt']
+        wf[i:i + r['length']] = r['data'][:r['length']]
+
+    bl = np.median(wf)
+    for r in records:
+        r['data'][:r['length']] = r['data'][:r['length']] - bl
+        r['baseline'] -= bl
+    return records
+    
 
 @export
 @numba.njit(cache=True, nogil=True)
@@ -81,6 +150,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
     zero.
 
     :param records: Records which shall be checked.
+    :param record_links: Tuple of previous and next records.
     :param only_last: If true only last fragments of a pulse are deleted.
     :return: non-empty records
 
