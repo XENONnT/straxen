@@ -139,6 +139,8 @@ def test_several():
             st.hvdisp_plot_peak_waveforms(test_run_id,
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
+            print('Plot single pulse:')
+            st.plot_pulses_tpc(test_run_id, max_plots=2,  plot_hits=True, ignore_time_warning=True)
 
             print("Check live-time")
             live_time = straxen.get_livetime_sec(st, test_run_id, things=p)
