@@ -1217,7 +1217,7 @@ def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
                 for post_target in post_processing:
                     if post_target not in st._plugin_class_registry:
                         log_warning(f'Trying to make unknown data type {post_target}',
-                                    priority='Error',
+                                    priority='error',
                                     run_id=run_id)
                         continue
                     elif not st.is_stored(run_id, post_target):
