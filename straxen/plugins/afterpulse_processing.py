@@ -60,7 +60,7 @@ dtype_ap = [(('Channel/PMT number','channel'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -72,7 +72,7 @@ class LEDAfterpulses(strax.Plugin):
     
     def setup(self):
         
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], n_tpc_pmts=self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], n_pmts=self.config['n_tpc_pmts'])
         print('setup:\n   plugin version = ', self.__version__,
               '\n   hit_threshold = ', self.config['hit_threshold'],
               '\n   gain_model = ', self.config['gain_model'],
