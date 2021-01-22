@@ -21,22 +21,25 @@ import strax
 import straxen
 
 export, __all__ = strax.exporter()
-__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'aux_repo',
+__all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
             'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E', 
-            'n_nveto_pmts', 'n_mveto_pmts']
+            'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
-tpc_r = 66.4   # Not really radius, but apothem: from MC paper draft 1.0
+tpc_r = 66.4   # [CM], Not really radius, but apothem: from MC paper draft 1.0
+tpc_z = 148.6515  # [CM], distance between the bottom of gate and top of cathode wires
 n_tpc_pmts = 494
 n_top_pmts = 253
 n_hard_aqmon_start = 800
 
 n_nveto_pmts = 120
 n_mveto_pmts = 84
+
+tpc_pmt_radius = 7.62/2  # cm
 
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
