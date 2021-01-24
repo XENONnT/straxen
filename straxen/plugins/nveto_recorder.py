@@ -10,8 +10,10 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('coincidence_level_recorder_nv', type=int, default=4,
+    strax.Option('coincidence_level_recorder_nv', type=int, default=3,
                  help="Required coincidence level."),
+    strax.Option('pre_trigger_time_nv', type=int, default=150,
+                 help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
     strax.Option('nbaseline_samples_lone_records_nv', type=int, default=10, track=False,
@@ -19,7 +21,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
     strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of muVETO PMTs'),
+                 help='Number of nVETO PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
@@ -38,6 +40,7 @@ class nVETORecorder(strax.Plugin):
     parallel = 'process'
 
     rechunk_on_save = True
+    save_when = strax.SaveWhen.TARGET
     compressor = 'lz4'
 
     depends_on = 'raw_records_nv'
@@ -77,7 +80,9 @@ class nVETORecorder(strax.Plugin):
         # does not satisfy the coincidence requirement
         intervals = coincidence(raw_records_nv,
                                 self.config['coincidence_level_recorder_nv'],
-                                self.config['resolving_time_recorder_nv'])
+                                self.config['resolving_time_recorder_nv'],
+                                self.config['pre_trigger_time_nv']
+                               )
         # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
         # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
         if len(intervals):
@@ -289,7 +294,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
 
 @export
-def coincidence(records, nfold=4, resolving_time=300):
+def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
     """
     Checks if n-neighboring events are less apart from each other then
     the specified resolving time.
@@ -298,6 +303,7 @@ def coincidence(records, nfold=4, resolving_time=300):
         strax.interval_dtype e.g. records, hits, peaks...
     :param nfold: coincidence level.
     :param resolving_time: Time window of the coincidence [ns].
+    :param pre_trigger: Pre trigger window which sould be saved
     :return: array containing the start times and end times of the
             corresponding intervals.
 
@@ -308,7 +314,8 @@ def coincidence(records, nfold=4, resolving_time=300):
     """
     if len(records):
         start_times = _coincidence(records, nfold, resolving_time)
-        intervals = _merge_intervals(start_times, resolving_time)
+        intervals = _merge_intervals(start_times-pre_trigger, 
+                                     resolving_time+pre_trigger)
     else:
         intervals = np.zeros((0, 2), np.int64)
     return intervals
