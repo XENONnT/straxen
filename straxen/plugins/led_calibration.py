@@ -47,7 +47,7 @@ class LEDCalibration(strax.Plugin):
     data_kind = 'led_cal' 
     compressor = 'zstd'
     parallel = 'process'
-    rechunk_on_save = False
+    rechunk_on_save = True
     
     dtype = [('area', np.float32, 'Area averaged in integration windows'),
              ('amplitude_led', np.float32, 'Amplitude in LED window'),
