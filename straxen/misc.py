@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
-
+import socket
 import strax
 import straxen
+import sys
 export, __all__ = strax.exporter()
 
 
@@ -35,3 +36,30 @@ def _force_int(df, columns):
     for c in strax.to_str_tuple(columns):
         df[c] = df[c].values.astype(np.int64)
     return df
+
+
+@export
+def print_versions(modules=('strax', 'straxen'), return_string=False):
+    """
+    Print versions of modules installed.
+
+    :param modules: Modules to print, should be str, tuple or list. E.g.
+        print_versions(modules=('strax', 'straxen', 'wfsim',
+        'cutax', 'pema'))
+    :param return_string: optional. Instead of printing the message,
+        return a string
+    :return: optional, the message that would have been printed
+    """
+    message = (f'Working on {socket.getfqdn()} with the following '
+               f'versions and installation paths:')
+    py_version = sys.version.replace(' (', '\t(').replace('\n', '')
+    message += f"\npython\tv{py_version}"
+    for m in strax.to_str_tuple(modules):
+        try:
+            exec(f'import {m}')
+            message += f'\n{m}\tv{eval(m).__version__}\t{eval(m).__path__[0]}'
+        except (ModuleNotFoundError, ImportError):
+            print(f'{m} is not installed')
+    if return_string:
+        return message
+    print(message)
