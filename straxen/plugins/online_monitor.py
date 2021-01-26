@@ -307,21 +307,20 @@ class OnlineEventMonitor(strax.Plugin):
         ]
         return dtype
     
-    def compute(self, event_basics, start, end):
+    def compute(self, events, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
         res['endtime'] = end
-        n_pmt = self.config['n_tpc_pmts']
-        n_bins = self.config['online_monitor_nbins']
+#         n_bins = self.config['online_monitor_nbins']
         
         
         # --- Drift time vs R^2 histogram ---
         res['drift_time_vs_R2_bounds'] = self.config['drift_time_vs_R2_bounds']
         
         mask = self._config_as_selection_str(
-            self.config['drift_time_vs_R2_cut_string'], event_basics)
-        res['drift_time_vs_R2_hist'] = self.drift_time_R2_hist(event_basics[mask])
+            self.config['drift_time_vs_R2_cut_string'], events)
+        res['drift_time_vs_R2_hist'] = self.drift_time_R2_hist(events[mask])
         # Make a new mask, don't re-use
         del mask
         
@@ -347,12 +346,14 @@ class OnlineEventMonitor(strax.Plugin):
 
     def drift_time_R2_hist(self, data):
         """Make area vs width 2D-hist"""
-        hist, _= np.histogram2d(
-            data['s2_x'] ** 2 + data['s2_y'] ** 2,
+        hist, _, _= np.histogram2d(
+            (data['s2_x'] ** 2 + data['s2_y'] ** 2),
             data['drift_time'],
             range=self.config['drift_time_vs_R2_bounds'],
             bins=self.config['online_monitor_nbins'])
         return hist.T
+
+
 
 
 
