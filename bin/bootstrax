@@ -1172,7 +1172,7 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
               run_start_time, samples_per_record, cores, max_messages, timeout,
               daq_chunk_duration, daq_overlap_chunk_duration, post_processing,
-              debug=False):
+              readout_names, debug=False):
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1208,6 +1208,7 @@ def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
                                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                                 n_readout_threads=n_readout_threads,
                                 check_raw_record_overlaps=False,
+                                thread_names=readout_names,
                                 )
 
             for i, c in enumerate(st.get_iter(run_id,
@@ -1306,6 +1307,7 @@ def process_run(rd, send_heartbeats=args.production):
                             run_id=run_id)
             thread_info = dq_conf.get('processing_threads', dict())
             run_strax_config['n_readout_threads'] = sum([v for v in thread_info.values()])
+            run_strax_config['readout_names'] = list(thread_info.keys())
             run_strax_config['daq_chunk_duration'] = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
             run_strax_config['daq_overlap_chunk_duration'] = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
             # note that value in rd in bytes hence //2

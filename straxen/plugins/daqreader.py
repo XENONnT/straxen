@@ -45,6 +45,8 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="Algorithm used for (de)compressing the live data"),
     strax.Option('n_readout_threads', type=int, track=False,
                  help="Number of readout threads producing strax data files"),
+    strax.Option('thread_names', type=tuple, track=False,
+                 help="Names of the threads producing strax data files"),
     strax.Option('daq_input_dir', type=str, track=False,
                  help="Directory where readers put data"),
 
@@ -166,6 +168,10 @@ class DAQReader(strax.Plugin):
                 compressor=self.config["daq_compressor"],
                 dtype=self.dtype_for('raw_records'))
             for fn in sorted(glob.glob(f'{path}/*'))]
+        for chunk_part in os.listdir(path):
+            thread_name = '_'.join(chunk_part.split('_')[-1])
+            if thread_name not in self.config['thread_names']:
+                raise ValueError(f'Bad data for {path}')
         records = np.concatenate(records)
         records = strax.sort_by_time(records)
 
