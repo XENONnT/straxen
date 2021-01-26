@@ -171,7 +171,9 @@ class DAQReader(strax.Plugin):
         for chunk_part in os.listdir(path):
             thread_name = '_'.join(chunk_part.split('_')[-1])
             if thread_name not in self.config['thread_names']:
-                raise ValueError(f'Bad data for {path}')
+                raise ValueError(
+                    f'Bad data for {path}. Expected '
+                    f'{self.config["thread_names"]} but got {thread_name}')
         records = np.concatenate(records)
         records = strax.sort_by_time(records)
 
