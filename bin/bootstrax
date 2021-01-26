@@ -534,7 +534,7 @@ def infer_target(rd):
             _pp = [__pp for __pp in _pp if (_rm_t not in __pp and n_fails < _rm_t_after)]
     if n_fails >= remove_target_after_fails['ALL']:
         _t = 'raw_records'
-        _pp = None
+        _pp = 'raw_records'
         return {'targets': strax.to_str_tuple(_t),
                 'post_processing': strax.to_str_tuple(_pp)}
 
