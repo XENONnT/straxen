@@ -497,8 +497,10 @@ def _remove_veto_from_t(targets, remove=('_mv', '_nv'), _flip=False):
     """Remove veto(s) from targets"""
     start = targets
     remove = strax.to_str_tuple(remove)
+    if targets is None:
+        return None
     for r in remove:
-        targets = [t for t in targets if (r not in t)]
+        targets = [t for t in strax.to_str_tuple(targets) if (r not in t)]
     if _flip:
         targets = [t for i, t in enumerate(start) if not np.in1d(start, targets)[i]]
     return strax.to_str_tuple(targets)
@@ -532,7 +534,7 @@ def infer_target(rd):
             _pp = [__pp for __pp in _pp if (_rm_t not in __pp and n_fails < _rm_t_after)]
     if n_fails >= remove_target_after_fails['ALL']:
         _t = 'raw_records'
-        _pp = tuple()
+        _pp = None
         return {'targets': strax.to_str_tuple(_t),
                 'post_processing': strax.to_str_tuple(_pp)}
 
@@ -545,10 +547,10 @@ def infer_target(rd):
     log.debug(f'override_target::\tmode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
         _t = 'led_calibration'
-        _pp = None
+        _pp = 'raw_records'
     elif np.any([m in mode for m in diagnostic_modes]):
         _t = 'raw_records'
-        _pp = None
+        _pp = 'raw_records'
 
     if detectors == ['tpc']:
         _t = _remove_veto_from_t(_t)
@@ -564,13 +566,15 @@ def infer_target(rd):
                     f'postprocessing to {_pp}',
                     priority='info',
                     run_id=f'{rd["number"]:06}')
-    if not len(_t):
+    if _t is None or not len(_t):
         # can happen for nv
         log_warning(f'Bootstrax error, deleted all targets?!',
                     priority='info',
                     run_id=f'{rd["number"]:06}')
         _t = 'raw_records'
-
+    if _pp is None or not len(_pp):
+        # can happen for nv
+        _pp = 'raw_records'
     _t = strax.to_str_tuple(_t)
     _pp = strax.to_str_tuple(_pp)
     for __check in (_t, _pp):
