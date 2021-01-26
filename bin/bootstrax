@@ -1307,7 +1307,7 @@ def process_run(rd, send_heartbeats=args.production):
                             run_id=run_id)
             thread_info = dq_conf.get('processing_threads', dict())
             run_strax_config['n_readout_threads'] = sum([v for v in thread_info.values()])
-            run_strax_config['readout_names'] = strax.to_str_tuple(thread_info.keys())
+            run_strax_config['readout_names'] = strax.to_str_tuple(list(thread_info.keys()))
             run_strax_config['daq_chunk_duration'] = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
             run_strax_config['daq_overlap_chunk_duration'] = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
             # note that value in rd in bytes hence //2
