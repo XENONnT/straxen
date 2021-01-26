@@ -80,9 +80,9 @@ class OnlinePeakMonitor(strax.Plugin):
     this plugin should be small such as to not overload the runs-
     database.
 
-    This plugin takes 'peaks_basics' and 'lone_hits'. Although they are
+    This plugin takes 'peak_basics' and 'lone_hits'. Although they are
     not strictly related, they are aggregated into a single data_type
-    in order to minimize the number of documents in hte online monitor.
+    in order to minimize the number of documents in the online monitor.
 
     Produces 'online_peak_monitor' with info on the lone-hits and peaks
     """
@@ -252,6 +252,108 @@ class OnlinePeakMonitor(strax.Plugin):
             range=self.config['area_vs_width_bounds'],
             bins=self.config['area_vs_width_nbins'])
         return hist.T
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'drift_time_vs_R2_cut_string',
+        type=str,
+        default='(s2_index > -1) & (s1_index > -1)',
+        help='Selection (like selection_str) applied to data for '
+             '"drift_time_vs_R2", cuts should be separated using "&"'),
+    strax.Option(
+        'drift_time_vs_R2_bounds',
+        type=tuple, default=((0, 5e3), (0, 3e6)),
+        help='Boundaries of histogram of drift time vs R^2.'
+             'y_deges'),
+    strax.Option(
+        'online_monitor_nbins',
+        type=int, default=100,
+        help='Number of bins of histogram of online monitor. Will be used '
+             'for: '
+             'drift_time_vs_R2-histogram, '),
+)
+class OnlineEventMonitor(strax.Plugin):
+    """
+    Plugin to write data to the online-monitor. Data that is written by
+    this plugin should be small such as to not overload the runs-
+    database.
+
+    This plugin takes 'event_basics'.
+
+    Produces 'online_event_monitor' with info on the events.
+    """
+    depends_on = ('event_basics',)
+    provides = 'online_event_monitor'
+    __version__ = '0.0.1'
+    # TODO make new datakind:
+    # data_kind = 'online_monitor'
+    rechunk_on_save = False
+    
+    def infer_dtype(self):
+        n_bins = self.config['online_monitor_nbins']
+        bounds_drift_time_R2 = self.config['drift_time_vs_R2_bounds']
+
+        dtype = [
+            (('Start time of the chunk', 'time'),
+             np.int64),
+            (('End time of the chunk', 'endtime'),
+             np.int64),
+            (('Drift time vs R^2 histogram', 'drift_time_vs_R2_hist'),
+             (np.int64, (n_bins, n_bins))),
+            (('Drift time vs R^2 edges (linear space)', 'drift_time_vs_R2_bounds'),
+             (np.float64, np.shape(bounds_drift_time_R2))),
+        ]
+        return dtype
+    
+    def compute(self, event_basics, start, end):
+        # General setup
+        res = np.zeros(1, dtype=self.dtype)
+        res['time'] = start
+        res['endtime'] = end
+        n_pmt = self.config['n_tpc_pmts']
+        n_bins = self.config['online_monitor_nbins']
+        
+        
+        # --- Drift time vs R^2 histogram ---
+        res['drift_time_vs_R2_bounds'] = self.config['drift_time_vs_R2_bounds']
+        
+        mask = self._config_as_selection_str(
+            self.config['drift_time_vs_R2_cut_string'], event_basics)
+        res['drift_time_vs_R2_hist'] = self.drift_time_R2_hist(event_basics[mask])
+        # Make a new mask, don't re-use
+        del mask
+        
+        #Other event properties?
+        
+        return res
+        
+    @staticmethod
+    def _config_as_selection_str(selection_string, data, pre_sel=None):
+        """Get mask for data base on the selection string"""
+        if pre_sel is None:
+            pre_sel = np.ones(len(data), dtype=np.bool_)
+
+        if selection_string != '':
+            if isinstance(selection_string, (list, tuple)):
+                selection_string = ' & '.join(f'({x})' for x in selection_string)
+
+            mask = numexpr.evaluate(selection_string, local_dict={
+                fn: data[fn]
+                for fn in data.dtype.names})
+            pre_sel &= mask
+        return pre_sel
+
+    def drift_time_R2_hist(self, data):
+        """Make area vs width 2D-hist"""
+        hist, _= np.histogram2d(
+            data['s2_x'] ** 2 + data['s2_y'] ** 2,
+            data['drift_time'],
+            range=self.config['drift_time_vs_R2_bounds'],
+            bins=self.config['online_monitor_nbins'])
+        return hist.T
+
 
 
 class OnlineMonitor(strax.LoopPlugin):
