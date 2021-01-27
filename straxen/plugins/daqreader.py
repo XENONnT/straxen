@@ -156,8 +156,8 @@ class DAQReader(strax.Plugin):
         counted_files = Counter(
             [self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)])
         for thread, n_counts in counted_files.items():
-            if thread in self.config['readout_threads']:
-                raise ValueError(f'Bad data for {path_chunk_i}. Got {thread} ')
+            if thread not in self.config['readout_threads']:
+                raise ValueError(f'Bad data for {path_chunk_i}. Got {thread}')
             if n_counts > self.config['readout_threads'][thread]:
                 raise ValueError(f'{thread} wrote {n_counts}, expected'
                                  f'{self.config["readout_threads"][thread]}')
