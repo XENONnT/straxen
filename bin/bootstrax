@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1304,7 +1304,7 @@ def process_run(rd, send_heartbeats=args.production):
                             f'{run_id}! Using default values.',
                             priority='warning',
                             run_id=run_id)
-            run_strax_config['readout_threads'] = dq_conf['processing_threads']  # Assume no default
+            run_strax_config['readout_threads'] = dq_conf.get('processing_threads', None)
             run_strax_config['daq_chunk_duration'] = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
             run_strax_config['daq_overlap_chunk_duration'] = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
             # note that value in rd in bytes hence //2
@@ -1313,7 +1313,7 @@ def process_run(rd, send_heartbeats=args.production):
         except Exception as e:
             fail(f"Could not find {to_read} in rundoc: {str(e)}")
 
-        if not run_strax_config['n_readout_threads']:
+        if run_strax_config['readout_threads'] is None:
             fail(f"Run doc for {run_id} has no readout thread count info")
 
         # Remove any previous processed data

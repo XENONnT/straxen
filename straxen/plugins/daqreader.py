@@ -102,7 +102,7 @@ class DAQReader(strax.Plugin):
     def setup(self):
         self.t0 = int(self.config['run_start_time']) * int(1e9)
         self.dt_max = self.config['max_digitizer_sampling_time']
-        self.n_readout_treads = sum(self.config['readout_threads'].values())
+        self.n_readout_threads = sum(self.config['readout_threads'].values())
         if (self.config['safe_break_in_pulses']
                 > min(self.config['daq_chunk_duration'],
                       self.config['daq_overlap_chunk_duration'])):
@@ -123,7 +123,7 @@ class DAQReader(strax.Plugin):
         for q in [p + '_pre', p, p + '_post']:
             if os.path.exists(q):
                 n_files = self._count_files_per_chunk(q)
-                if n_files >= self.n_readout_treads:
+                if n_files >= self.n_readout_threads:
                     result.append(q)
                 else:
                     print(f"Found incomplete folder {q}: "
@@ -146,7 +146,7 @@ class DAQReader(strax.Plugin):
     @staticmethod
     def _partial_chunk_to_thread_name(partial_chunk):
         """Convert name of part of the chunk to the thread_name that wrote it"""
-        return '_'.join(partial_chunk.split('_')[-1])
+        return '_'.join(partial_chunk.split('_')[:-1])
 
     def _count_files_per_chunk(self, path_chunk_i):
         """
@@ -168,7 +168,7 @@ class DAQReader(strax.Plugin):
         if not os.path.exists(end_dir):
             return False
         else:
-            return self._count_files_per_chunk(end_dir) >= self.n_readout_treads
+            return self._count_files_per_chunk(end_dir) >= self.n_readout_threads
 
     def is_ready(self, chunk_i):
         ended = self.source_finished()
