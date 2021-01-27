@@ -1169,10 +1169,10 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 # Processing
 ##
 
-def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
+def run_strax(run_id, input_dir, targets, readout_threads, compressor,
               run_start_time, samples_per_record, cores, max_messages, timeout,
               daq_chunk_duration, daq_overlap_chunk_duration, post_processing,
-              readout_names, debug=False):
+              debug=False):
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1206,9 +1206,8 @@ def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
                                 record_length=samples_per_record,
                                 daq_chunk_duration=daq_chunk_duration,
                                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
-                                n_readout_threads=n_readout_threads,
+                                readout_threads=readout_threads,
                                 check_raw_record_overlaps=False,
-                                thread_names=readout_names,
                                 )
 
             for i, c in enumerate(st.get_iter(run_id,
