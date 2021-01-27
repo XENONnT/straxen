@@ -2,7 +2,7 @@ import glob
 import os
 import shutil
 import warnings
-
+from collections import Counter
 from immutabledict import immutabledict
 import numpy as np
 import numba
@@ -43,8 +43,9 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="Duration of intermediate/overlap chunks in ns"),
     strax.Option('daq_compressor', default="lz4", track=False,
                  help="Algorithm used for (de)compressing the live data"),
-    strax.Option('n_readout_threads', type=int, track=False,
-                 help="Number of readout threads producing strax data files"),
+    strax.Option('readout_threads', type=dict, track=False,
+                 help="Dictionary of the readout threads where the keys "
+                      "specify the reader and value the number of threads"),
     strax.Option('daq_input_dir', type=str, track=False,
                  help="Directory where readers put data"),
 
@@ -101,6 +102,7 @@ class DAQReader(strax.Plugin):
     def setup(self):
         self.t0 = int(self.config['run_start_time']) * int(1e9)
         self.dt_max = self.config['max_digitizer_sampling_time']
+        self.n_readout_threads = sum(self.config['readout_threads'].values())
         if (self.config['safe_break_in_pulses']
                 > min(self.config['daq_chunk_duration'],
                       self.config['daq_overlap_chunk_duration'])):
@@ -120,13 +122,13 @@ class DAQReader(strax.Plugin):
         result = []
         for q in [p + '_pre', p, p + '_post']:
             if os.path.exists(q):
-                n_files = len(os.listdir(q))
-                if n_files >= self.config['n_readout_threads']:
+                n_files = self._count_files_per_chunk(q)
+                if n_files >= self.n_readout_threads:
                     result.append(q)
                 else:
                     print(f"Found incomplete folder {q}: "
                           f"contains {n_files} files but expected "
-                          f"{self.config['n_readout_threads']}. "
+                          f"{self.n_readout_threads}. "
                           f"Waiting for more data.")
                     if self.source_finished():
                         # For low rates, different threads might end in a
@@ -141,12 +143,32 @@ class DAQReader(strax.Plugin):
                 result.append(False)
         return tuple(result)
 
+    @staticmethod
+    def _partial_chunk_to_thread_name(partial_chunk):
+        """Convert name of part of the chunk to the thread_name that wrote it"""
+        return '_'.join(partial_chunk.split('_')[:-1])
+
+    def _count_files_per_chunk(self, path_chunk_i):
+        """
+        Check that the files in the chunks have names consistent with
+        the readout threads
+        """
+        counted_files = Counter(
+            [self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)])
+        for thread, n_counts in counted_files.items():
+            if thread not in self.config['readout_threads']:
+                raise ValueError(f'Bad data for {path_chunk_i}. Got {thread}')
+            if n_counts > self.config['readout_threads'][thread]:
+                raise ValueError(f'{thread} wrote {n_counts}, expected'
+                                 f'{self.config["readout_threads"][thread]}')
+        return sum(counted_files.values())
+
     def source_finished(self):
         end_dir = self.config["daq_input_dir"] + '/THE_END'
         if not os.path.exists(end_dir):
             return False
         else:
-            return len(os.listdir(end_dir)) >= self.config['n_readout_threads']
+            return self._count_files_per_chunk(end_dir) >= self.n_readout_threads
 
     def is_ready(self, chunk_i):
         ended = self.source_finished()

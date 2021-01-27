@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1169,7 +1169,7 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
 # Processing
 ##
 
-def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
+def run_strax(run_id, input_dir, targets, readout_threads, compressor,
               run_start_time, samples_per_record, cores, max_messages, timeout,
               daq_chunk_duration, daq_overlap_chunk_duration, post_processing,
               debug=False):
@@ -1206,7 +1206,7 @@ def run_strax(run_id, input_dir, targets, n_readout_threads, compressor,
                                 record_length=samples_per_record,
                                 daq_chunk_duration=daq_chunk_duration,
                                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
-                                n_readout_threads=n_readout_threads,
+                                readout_threads=readout_threads,
                                 check_raw_record_overlaps=False,
                                 )
 
@@ -1304,8 +1304,7 @@ def process_run(rd, send_heartbeats=args.production):
                             f'{run_id}! Using default values.',
                             priority='warning',
                             run_id=run_id)
-            thread_info = dq_conf.get('processing_threads', dict())
-            run_strax_config['n_readout_threads'] = sum([v for v in thread_info.values()])
+            run_strax_config['readout_threads'] = dq_conf.get('processing_threads', None)
             run_strax_config['daq_chunk_duration'] = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
             run_strax_config['daq_overlap_chunk_duration'] = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
             # note that value in rd in bytes hence //2
@@ -1314,7 +1313,7 @@ def process_run(rd, send_heartbeats=args.production):
         except Exception as e:
             fail(f"Could not find {to_read} in rundoc: {str(e)}")
 
-        if not run_strax_config['n_readout_threads']:
+        if run_strax_config['readout_threads'] is None:
             fail(f"Run doc for {run_id} has no readout thread count info")
 
         # Remove any previous processed data
