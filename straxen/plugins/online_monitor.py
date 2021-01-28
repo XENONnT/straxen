@@ -312,7 +312,6 @@ class OnlineEventMonitor(strax.Plugin):
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
         res['endtime'] = end
-#         n_bins = self.config['online_monitor_nbins']
         
         
         # --- Drift time vs R^2 histogram ---
@@ -362,19 +361,23 @@ class OnlineMonitor(strax.LoopPlugin):
     Loop over the online-monitor chunks, get the veto intervals that are within
     each of these chunks. Compute the live-time within each of the chunks.
     """
-    depends_on = ('online_peak_monitor', 'veto_intervals')
+    depends_on = ('online_event_monitor', 'online_peak_monitor', 'veto_intervals')
     provides = 'online_monitor'
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
     rechunk_on_save = False
 
     def infer_dtype(self):
-        dtype = strax.unpack_dtype(self.deps['online_peak_monitor'].dtype_for('online_peak_monitor'))
+        dtype = strax.unpack_dtype(self.deps['online_event_monitor'].dtype_for('online_event_monitor'))
+        dtype += list(set(strax.unpack_dtype(self.deps['online_peak_monitor'].dtype_for('online_peak_monitor'))) 
+                      - set(strax.unpack_dtype(self.deps['online_event_monitor'].dtype_for('online_event_monitor'))))
         dtype += [(('Live time', 'live_time'),
                    np.float64),]
         return dtype
 
-    def compute_loop(self, peaks, veto_intervals):
+    def compute_loop(self, events, peaks, veto_intervals):
         res = {}
+        for d in events.dtype.names:
+            res[d] = events[d]
         for d in peaks.dtype.names:
             res[d] = peaks[d]
         dt = strax.endtime(peaks) - peaks['time']
