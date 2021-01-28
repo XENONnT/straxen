@@ -216,4 +216,3 @@ class VetoProximity(strax.OverlapWindowPlugin):
         result = strax.dict_to_rec(res, self.dtype)
         
         return result
-
