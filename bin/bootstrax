@@ -524,7 +524,8 @@ def infer_target(rd):
     _pp = args.post_process
 
     if args.fix_target:
-        return {'targets': strax.to_str_tuple(_t), 'post_processing': strax.to_str_tuple(_pp)}
+        return {'targets': strax.to_str_tuple(_t),
+                'post_processing': strax.to_str_tuple(_pp)}
 
     n_fails = rd['bootstrax'].get('n_failures', 0)
     if n_fails:
@@ -567,13 +568,8 @@ def infer_target(rd):
                     priority='info',
                     run_id=f'{rd["number"]:06}')
     if _t is None or not len(_t):
-        # can happen for nv
-        log_warning(f'Bootstrax error, deleted all targets?!',
-                    priority='info',
-                    run_id=f'{rd["number"]:06}')
         _t = 'raw_records'
     if _pp is None or not len(_pp):
-        # can happen for nv
         _pp = 'raw_records'
     _t = strax.to_str_tuple(_t)
     _pp = strax.to_str_tuple(_pp)
@@ -785,7 +781,7 @@ def sufficient_diskspace():
             # Sufficient space to write to, let's continue
             return
         else:
-            if not i % 10:
+            if not i % 60:
                 log_warning(
                     f'Insufficient free disk space ({disk_pct:.1f}% full) on '
                     f'{hostname}. Waiting {i}/{wait_diskspace_n_max}',
