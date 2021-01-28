@@ -9,21 +9,24 @@ from collections import defaultdict
 
 export, __all__ = strax.exporter()
 
+__all__ += ['T_NO_VETO_FOUND']
+# Runs are usually 1 hour long, if veto is that far we don't really care
+T_NO_VETO_FOUND = int(3.6e+12) 
 
 # More info about the acquisition monitor can be found here:
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenon1t:alexelykov:acquisition_monitor
 
 @export
-@strax.takes_config(strax.Option('hit_min_amplitude_aqmon', default=50, track=False,
+@strax.takes_config(strax.Option('hit_min_amplitude_aqmon', default=50, track=True,
                                  help='Minimum hit threshold in ADC*counts above baseline'),
-                    strax.Option('baseline_samples_aqmon', default=10, track=False,
+                    strax.Option('baseline_samples_aqmon', default=10, track=True,
                                  help='Number of samples to use at the start of the pulse to determine the baseline'))
 class AqmonHits(strax.Plugin):
     """ Find hits in acquisition monitor data. These hits could be 
         then used by other plugins for deadtime calculations, 
         GPS SYNC analysis, etc.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
     depends_on = ('raw_records_aqmon')
     provides = ('aqmon_hits')
@@ -54,13 +57,11 @@ class AqmonHits(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('min_veto_gap', default=int(1e6), type=int,
-                 help='Minimum separation between veto stop and start pulses [ns]'),
-    strax.Option('max_veto_gap', default=int(5e8), type=int,
+    strax.Option('max_veto_window', default=int(5e8), track = True, type = int,
                  help='Maximum separation between veto stop and start pulses [ns]'),
-    strax.Option('channel_map', track=False, type=immutabledict,
+    strax.Option('channel_map', type = immutabledict, track=False, 
                  help='immutabledict mapping subdetector to (min, max)'
-                      'channel number.'))
+                      'channel number'))
 class VetoIntervals(strax.OverlapWindowPlugin):
     """ Find pairs of veto start and veto stop signals and the veto duration between them
     busy_*  <= V1495 busy veto for tpc channels
@@ -68,7 +69,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     hev_*   <= DDC10 hardware high energy veto
     """
 
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
     depends_on = ('aqmon_hits')
     provides = ('veto_intervals')
     data_kind = ('veto_intervals')
@@ -93,51 +94,49 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         # Give a very wide window
-        return (self.config['max_veto_gap'] * 100)
+        return (self.config['max_veto_window'] * 100)
 
     def compute(self, aqmon_hits):
         hits = aqmon_hits
 
-        # Make a dict to populate later
-        res_temp = dict()
-
-        for i, veto in enumerate(self.veto_names):
-            veto_hits = channel_select(hits, self.channel_map[veto + 'stop'], self.channel_map[veto + 'start'])
-            vetos = self.merge_vetos(veto_hits, gap=self.config['min_veto_gap'], \
-                                     dtype=strax.time_fields, t=0)
-
-            # Check that we found a veto interval and update the resulting dict
-            if len(vetos):
-                res_temp.setdefault("time", []).extend(vetos['time'])
-                res_temp.setdefault("endtime", []).extend(vetos['endtime'])
-                res_temp.setdefault("veto_interval", []).extend((vetos['endtime'] - vetos['time']))
-                res_temp.setdefault("veto_type", []).extend([veto + 'veto'] * len(vetos))
-
-        res = strax.dict_to_rec(res_temp, dtype=self.dtype)
-        res.sort(order='time')
-
-        return res
-
-    @staticmethod
-    def merge_vetos(channels, gap, dtype, t):
-        if len(channels):
-            start, stop = strax.find_peak_groups(channels, gap_threshold=gap)
-            result = np.zeros(len(start), dtype=dtype)
-            result['time'] = start
-            result['endtime'] = stop
-        else:
-            result = np.zeros(0, dtype=dtype)
+        res = defaultdict(list)
+        
+        for n, name in enumerate(self.veto_names):
+            veto_hits_start = channel_select_(hits, self.channel_map[name + 'start'])
+            veto_hits_stop = channel_select_(hits, self.channel_map[name + 'stop'])
+            
+            # Here we rely on the fact that for each start, there is a single stop that 
+            # follows it in time. If this is not true, our hardware does not work. 
+            if len(veto_hits_start):
+                for t, time in enumerate(veto_hits_start['time']): 
+                    # Find the time of stop_j that is closest to time of start_i
+                    inx = np.searchsorted(veto_hits_stop['time'], time, side = 'right') 
+                    
+                    if inx == len(veto_hits_stop['time']):
+                        continue
+                    else:
+                        res['veto_interval'].append(veto_hits_stop['time'][inx] - time)
+                        res["time"].append(time)
+                        res["endtime"].append(veto_hits_stop['time'][inx])
+                        res["veto_type"].append(name + 'veto')
+        
+        result = strax.dict_to_rec(res, self.dtype)
         return result
 
-
 @numba.njit
-def channel_select(rr, ch_stop, ch_start):
-    """Return data in between stop and start channels of the acquisition monitor (AM)"""
-    return rr[((rr['channel'] == ch_stop) | (rr['channel'] == ch_start))]
+def channel_select_(rr, ch):
+    """Return data from start/stop veto channel in the acquisition monitor (AM)"""
+    return rr[rr['channel'] == ch] 
 
 
 
-class VetoProximity(strax.Plugin):
+
+@export
+@strax.takes_config(
+    strax.Option('veto_proximity_window', default=int(5e8), type=int, track=True,
+                 help='Maximum separation between veto stop and start pulses [ns]'))
+
+class VetoProximity(strax.OverlapWindowPlugin):
     """ 
     Find the closest next/previous veto start and end to each event center.
     
@@ -149,12 +148,14 @@ class VetoProximity(strax.Plugin):
         - hev_x:  high energy veto on/off signal
     """
         
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = ('veto_intervals','events') 
     provides  = ('veto_proximity')
     data_kind = ('veto_proximity')
     
     veto_names = ['busy', 'he', 'hev']
+    
+    save_when = strax.SaveWhen.NEVER
     
     def infer_dtype(self):
         dtype = []
@@ -170,6 +171,9 @@ class VetoProximity(strax.Plugin):
     
     def setup(self):
         self.states = ['on', 'off']
+    
+    def get_window_size(self):
+        return (self.config['veto_proximity_window'] * 100)
         
     def compute(self, events, veto_intervals):
         res = defaultdict(list)
@@ -190,22 +194,22 @@ class VetoProximity(strax.Plugin):
                     veto_start_time_selection = veto_selection['endtime']
                     
                 for t, time in enumerate(t_event_centers):
-                    inx = np.searchsorted(veto_start_time_selection, time, side = 'left')
+                    inx = np.searchsorted(veto_start_time_selection, time, side = 'right')
                     
                     # Time to previous veto on/off
                     # Just using maxsize as a huge value that will not fit in any potential VetoCut range
                     if inx == 0:
-                        res[prev].append(sys.maxsize)
+                        res[prev].append(T_NO_VETO_FOUND)
                     else:
                         res[prev].append(time - veto_start_time_selection[inx - 1]) 
             
                     # Time to next veto on/off
                     if inx == len(veto_selection):
-                        res[nxt].append(sys.maxsize)
+                        res[nxt].append(T_NO_VETO_FOUND)
                     else:
                         res[nxt].append(veto_start_time_selection[inx] - time)
 
-        # Add the event time and endtime to the final result
+        # Add the events time and endtime to the final result
         res['time'].extend(events['time'])
         res['endtime'].extend(events['endtime'])
 
