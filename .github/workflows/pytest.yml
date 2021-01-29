@@ -46,7 +46,12 @@ jobs:
       - name: Install pytest and hypothesis
         run: pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
       - name: patch utilix file
-        run: touch ~/.xenon_config
+        run: cat > $HOME/.xenon_config <<EOF
+          [RunDB]
+          pymongo_url = None
+          pymongo_user = None
+          pymongo_password = None
+          EOF
       - name: Test package
         run: |
           pytest
