@@ -24,6 +24,8 @@ install:
 - pip install ../strax
 - pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
 - pip install -r requirements.txt
+- echo "add utilix file to not break imports"
+- touch ~/.xenon_config
 script:
 - python setup.py install
 - coverage run --source=straxen setup.py test

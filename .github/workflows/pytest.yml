@@ -45,6 +45,8 @@ jobs:
         run: bash .github/scripts/install_straxen.sh
       - name: Install pytest and hypothesis
         run: pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
+      - name: patch utilix file
+        run: touch ~/.xenon_config
       - name: Test package
         run: |
           pytest
