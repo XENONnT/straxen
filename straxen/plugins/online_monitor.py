@@ -253,7 +253,22 @@ class OnlinePeakMonitor(strax.Plugin):
         type=int, default=100,
         help='Number of bins of histogram of online monitor. Will be used '
              'for: '
-             'drift_time_vs_R2-histogram, '),
+             'drift_time_vs_R2-histogram, '
+             'drift_time_vs_s2wdith-histogram, '
+             'drift_time_vs_s1aft-histogram, '
+             's1area_vs_s2area-histogram, '),
+    strax.Option(
+        'drift_time_vs_s2width_bounds',
+        type=tuple, default=((0, 3e6), (0, 1.5e4)),
+        help='Boundaries of histogram of drift time vs. s2width'),
+    strax.Option(
+        'drift_time_vs_s1aft_bounds',
+        type=tuple, default=((0, 3e6), (0, 1)),
+        help='Boundaries of histogram of drift time vs. s1aft'),
+    strax.Option(
+        's1area_vs_s2area_bounds',
+        type=tuple, default=((0, 5), (1, 7)),
+        help='Boundaries of the log-log histogram of s1 area vs. s2 area'),
 )
 class OnlineEventMonitor(strax.Plugin):
     """
@@ -284,6 +299,18 @@ class OnlineEventMonitor(strax.Plugin):
              (np.int64, (n_bins, n_bins))),
             (('Drift time vs R^2 edges (linear space)', 'drift_time_vs_R2_bounds'),
              (np.float64, np.shape(bounds_drift_time_R2))),
+            (('Drift time vs. s2width histogram', 'drift_time_vs_s2width_hist'),
+             (np.int64, (n_bins, n_bins))),
+            (('Drift time vs. s2width edges', 'drift_time_vs_s2width_bounds'),
+             (np.float64, np.shape(self.config['drift_time_vs_s2width_bounds']))),
+            (('Drift time vs. s1aft histogram', 'drift_time_vs_s1aft_hist'),
+             (np.int64, (n_bins, n_bins))),
+            (('Drift time vs. s1aft edges', 'drift_time_vs_s1aft_bounds'),
+             (np.float64, np.shape(self.config['drift_time_vs_s1aft_bounds']))),
+            (('S1 area vs. S2 area histogram', 's1area_vs_s2area_hist'),
+             (np.int64, (n_bins, n_bins))),
+            (('S1 area vs. S2 area edges (log-log)', 's1area_vs_s2area_bounds'),
+             (np.float64, np.shape(self.config['s1area_vs_s2area_bounds']))),
         ]
         return dtype
     
@@ -302,16 +329,56 @@ class OnlineEventMonitor(strax.Plugin):
         # Make a new mask, don't re-use
         del mask
 
+        # drift time vs. s2 width histogram
+        res['drift_time_vs_s2width_bounds'] = self.config['drift_time_vs_s2width_bounds']
+        res['drift_time_vs_s2width_hist'] = self.drift_time_s2width_hist(events)
+
+        # drift time vs. s1 aft histogram
+        res['drift_time_vs_s1aft_bounds'] = self.config['drift_time_vs_s1aft_bounds']
+        res['drift_time_vs_s1aft_hist'] = self.drift_time_s1aft_hist(events)
+
+        # s1 area vs. s2 area (log-log)
+        res['s1area_vs_s2area_bounds'] = self.config['s1area_vs_s2area_bounds']
+        res['s1area_vs_s2area_hist'] = self.s1area_s2area_hist(events)
+
         # Other event properties?
         return res
         
     def drift_time_R2_hist(self, data):
-        """Make area vs width 2D-hist"""
+        """Make drift time vs R^2 2D-hist"""
         hist, _, _= np.histogram2d(
             (data['s2_x'] ** 2 + data['s2_y'] ** 2),
             data['drift_time'],
             range=self.config['drift_time_vs_R2_bounds'],
             bins=self.config['online_monitor_nbins'])
+        return hist.T
+
+    def drift_time_s2width_hist(self, data):
+        """Make drift time vs. s2width 2D-hist"""
+        hist, _, _ = np.histogram2d(
+            data['drift_time'],
+            data['s2_range_50p_area'],
+            range=self.config['drift_time_vs_s2width_bounds'],
+            bins=self.config['online_monitor_nbins'])
+        return hist.T
+
+    def drift_time_s1aft_hist(self, data):
+        """Make drift time vs. s1aft 2D-hist"""
+        hist, _, _ = np.histogram2d(
+            data['drift_time'],
+            data['s1_area_fraction_top'],
+            range=self.config['drift_time_vs_s1aft_bounds'],
+            bins=self.config['online_monitor_nbins'])
+        return hist.T
+
+    def s1area_s2area_hist(self, data):
+        """Make s1aft vs. drift time 2D-hist"""
+        hist, _, _ = np.histogram2d(
+            np.log10(data['s1_area']),
+            np.log10(data['s2_area']),
+            range=self.config['s1area_vs_s2area_bounds'],
+            bins=self.config['online_monitor_nbins']
+        )
         return hist.T
 
 
