@@ -246,8 +246,7 @@ class OnlinePeakMonitor(strax.Plugin):
     strax.Option(
         'drift_time_vs_R2_bounds',
         type=tuple, default=((0, 5e3), (0, 3e6)),
-        help='Boundaries of histogram of drift time vs R^2.'
-             'y_deges'),
+        help='Boundaries of histogram of drift time vs R^2.'),
     strax.Option(
         'online_monitor_nbins',
         type=int, default=100,
