@@ -25,12 +25,7 @@ install:
 - pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
 - pip install -r requirements.txt
 - echo "add utilix file to not break imports"
-- cat > $HOME/.xenon_config <<EOF
-  [RunDB]
-  pymongo_url = None
-  pymongo_user = None
-  pymongo_password = None
-  EOF
+- bash .github/scripts/create_empty_utilix_config.sh
 script:
 - python setup.py install
 - coverage run --source=straxen setup.py test
