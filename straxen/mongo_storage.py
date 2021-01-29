@@ -9,12 +9,7 @@ from tqdm import tqdm
 from shutil import move
 import hashlib
 from pymongo.collection import Collection as pymongo_collection
-
-try:
-    import utilix
-except (RuntimeError, FileNotFoundError):
-    # We might be on a travis job
-    pass
+import utilix
 from straxen import uconfig
 
 export, __all__ = exporter()

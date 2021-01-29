@@ -4,11 +4,7 @@ import pytz
 import numpy as np
 from functools import lru_cache
 import strax
-try:
-    import utilix
-except (RuntimeError, FileNotFoundError):
-    # We might be on a travis job
-    pass
+import utilix
 import straxen
 import os
 export, __all__ = strax.exporter()
