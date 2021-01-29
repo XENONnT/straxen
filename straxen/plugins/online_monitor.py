@@ -88,9 +88,8 @@ class OnlinePeakMonitor(strax.Plugin):
     """
     depends_on = ('peak_basics', 'lone_hits')
     provides = 'online_peak_monitor'
+    data_kind = 'online_peak_monitor'
     __version__ = '0.0.4'
-    # TODO make new datakind:
-    # data_kind = 'online_monitor'
     rechunk_on_save = False
 
     def infer_dtype(self):
@@ -160,7 +159,7 @@ class OnlinePeakMonitor(strax.Plugin):
 
         # Also apply the area_vs_width_cut_string like a selection_str
         sel_str = self.config['area_vs_width_cut_string']
-        sel = self._config_as_selection_str(sel_str, peaks, pre_sel=sel)
+        sel = _config_as_selection_str(sel_str, peaks, pre_sel=sel)
         res['area_vs_width_hist_clean'] = self.area_width_hist(peaks[sel])
         # make a new selection don't re-use
         del sel
@@ -168,7 +167,7 @@ class OnlinePeakMonitor(strax.Plugin):
         # -- Lone hit properties --
         # Make a mask with the cuts.
         # NB: LONE HITS AREA ARE IN ADC!
-        mask = self._config_as_selection_str(
+        mask = _config_as_selection_str(
             self.config['lone_hits_cut_string'], lone_hits)
         # Now only take lone hits that are separated in time.
         lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
@@ -205,7 +204,7 @@ class OnlinePeakMonitor(strax.Plugin):
 
         # -- Experimental selection --
         # We first apply a basic selection on the peaks to e.g. get S1s
-        mask = self._config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
+        mask = _config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
         peaks_sel = peaks[mask]
         # We select peaks where the peak before or the peak after it is within
         # near_s1_max_time_diff ns. TODO: Do we want another hist for this?
@@ -225,24 +224,6 @@ class OnlinePeakMonitor(strax.Plugin):
         # Cleanup
         # del hist, clean_hist, lone_hit_areas, lone_hit_channel_count
         return res
-
-    # TODO
-    #  somehow prevent overlap with strax.context.apply_selection
-    @staticmethod
-    def _config_as_selection_str(selection_string, data, pre_sel=None):
-        """Get mask for data base on the selection string"""
-        if pre_sel is None:
-            pre_sel = np.ones(len(data), dtype=np.bool_)
-
-        if selection_string != '':
-            if isinstance(selection_string, (list, tuple)):
-                selection_string = ' & '.join(f'({x})' for x in selection_string)
-
-            mask = numexpr.evaluate(selection_string, local_dict={
-                fn: data[fn]
-                for fn in data.dtype.names})
-            pre_sel &= mask
-        return pre_sel
 
     def area_width_hist(self, data):
         """Make area vs width 2D-hist"""
@@ -287,8 +268,7 @@ class OnlineEventMonitor(strax.Plugin):
     depends_on = ('event_basics',)
     provides = 'online_event_monitor'
     __version__ = '0.0.1'
-    # TODO make new datakind:
-    # data_kind = 'online_monitor'
+    data_kind = 'online_event_monitor'
     rechunk_on_save = False
     
     def infer_dtype(self):
@@ -312,37 +292,19 @@ class OnlineEventMonitor(strax.Plugin):
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
         res['endtime'] = end
-        
-        
+
         # --- Drift time vs R^2 histogram ---
         res['drift_time_vs_R2_bounds'] = self.config['drift_time_vs_R2_bounds']
-        
-        mask = self._config_as_selection_str(
+
+        mask = _config_as_selection_str(
             self.config['drift_time_vs_R2_cut_string'], events)
         res['drift_time_vs_R2_hist'] = self.drift_time_R2_hist(events[mask])
         # Make a new mask, don't re-use
         del mask
-        
-        #Other event properties?
-        
+
+        # Other event properties?
         return res
         
-    @staticmethod
-    def _config_as_selection_str(selection_string, data, pre_sel=None):
-        """Get mask for data base on the selection string"""
-        if pre_sel is None:
-            pre_sel = np.ones(len(data), dtype=np.bool_)
-
-        if selection_string != '':
-            if isinstance(selection_string, (list, tuple)):
-                selection_string = ' & '.join(f'({x})' for x in selection_string)
-
-            mask = numexpr.evaluate(selection_string, local_dict={
-                fn: data[fn]
-                for fn in data.dtype.names})
-            pre_sel &= mask
-        return pre_sel
-
     def drift_time_R2_hist(self, data):
         """Make area vs width 2D-hist"""
         hist, _, _= np.histogram2d(
@@ -353,37 +315,17 @@ class OnlineEventMonitor(strax.Plugin):
         return hist.T
 
 
+def _config_as_selection_str(selection_string, data, pre_sel=None):
+    """Get mask for data base on the selection string"""
+    if pre_sel is None:
+        pre_sel = np.ones(len(data), dtype=np.bool_)
 
+    if selection_string != '':
+        if isinstance(selection_string, (list, tuple)):
+            selection_string = ' & '.join(f'({x})' for x in selection_string)
 
-
-class OnlineMonitor(strax.LoopPlugin):
-    """
-    Loop over the online-monitor chunks, get the veto intervals that are within
-    each of these chunks. Compute the live-time within each of the chunks.
-    """
-    depends_on = ('online_event_monitor', 'online_peak_monitor', 'veto_intervals')
-    provides = 'online_monitor'
-    __version__ = '0.0.5'
-    rechunk_on_save = False
-
-    def infer_dtype(self):
-        dtype = strax.unpack_dtype(self.deps['online_event_monitor'].dtype_for('online_event_monitor'))
-        dtype += list(set(strax.unpack_dtype(self.deps['online_peak_monitor'].dtype_for('online_peak_monitor'))) 
-                      - set(strax.unpack_dtype(self.deps['online_event_monitor'].dtype_for('online_event_monitor'))))
-        dtype += [(('Live time', 'live_time'),
-                   np.float64),]
-        return dtype
-
-    def compute_loop(self, events, peaks, veto_intervals):
-        res = {}
-        for d in events.dtype.names:
-            res[d] = events[d]
-        for d in peaks.dtype.names:
-            res[d] = peaks[d]
-        dt = strax.endtime(peaks) - peaks['time']
-        assert not np.iterable(dt) or len(dt) == 1
-        if dt > 0:
-            res['live_time'] = 1 - np.sum(veto_intervals['veto_interval'])/dt
-        else:
-            res['live_time'] = 1
-        return res
+        mask = numexpr.evaluate(selection_string, local_dict={
+            fn: data[fn]
+            for fn in data.dtype.names})
+        pre_sel &= mask
+    return pre_sel
