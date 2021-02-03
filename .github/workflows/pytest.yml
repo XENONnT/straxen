@@ -47,6 +47,14 @@ jobs:
         run: pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
       - name: patch utilix file
         run: bash .github/scripts/create_empty_utilix_config.sh
+        env:
+          RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
+          RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY}}
+          RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
+          PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
+          PYMONGO_USER_READONLY: ${{ secrets.PYMONGO_USER_READONLY }}
+          PYMONGO_PASSWORD_READONLY: ${{ secrets.PYMONGO_PASSWORD_READONLY }}
+          PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
       - name: Test package
         run: |
           pytest

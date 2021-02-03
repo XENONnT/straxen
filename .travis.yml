@@ -5,9 +5,27 @@ python:
 jobs:
   include:
     - name: "Python 3.7"
-      env: PYTHON=3.7 DEPLOY_ME=true
+      env:
+        PYTHON=3.7
+        DEPLOY_ME=true
+        RUNDB_API_URL=None
+        RUNDB_API_USER_READONLY=None
+        RUNDB_API_PASSWORD_READONLY=None
+        PYMONGO_URL=None
+        PYMONGO_USER_READONLY=None
+        PYMONGO_PASSWORD_READONLY=None
+        PYMONGO_DATABASE=None
     - name: "Python 3.7 numbaless (for coverage)"
-      env: PYTHON=3.7 NUMBA_DISABLE_JIT=1
+      env:
+        PYTHON=3.7
+        NUMBA_DISABLE_JIT=1
+        RUNDB_API_URL=None
+        RUNDB_API_USER_READONLY=None
+        RUNDB_API_PASSWORD_READONLY=None
+        PYMONGO_URL=None
+        PYMONGO_USER_READONLY=None
+        PYMONGO_PASSWORD_READONLY=None
+        PYMONGO_DATABASE=None
 install:
 - echo "download requirements from base_environment"
 - wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
