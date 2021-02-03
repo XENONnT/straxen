@@ -6,8 +6,6 @@ import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
 from datetime import datetime
-import pandas as pd
-
 from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
@@ -150,9 +148,9 @@ def plot_records_matrix(context, run_id,
 
     plt.pcolormesh(
         ts, ys, wvm.T,
-        norm=matplotlib.colors.LogNorm(),
-        vmin=min(0.1 * wvm.max(), 1e-2),
-        vmax=wvm.max(),
+        norm=matplotlib.colors.LogNorm(
+            vmin=min(0.1 * wvm.max(), 1e-2),
+            vmax=wvm.max(),),
         cmap=plt.cm.inferno)
     plt.xlim(*seconds_range)
 
@@ -233,7 +231,7 @@ def seconds_range_xaxis(seconds_range, t0=None):
         plt.xlabel("Time [ns]")
 
 
-def plot_peak(p, t0=None, **kwargs):
+def plot_peak(p, t0=None, center_time=True, **kwargs):
     x, y = time_and_samples(p, t0=t0)
     kwargs.setdefault('linewidth', 1)
 
@@ -250,6 +248,13 @@ def plot_peak(p, t0=None, **kwargs):
     plt.plot([x[0], x[-1]], [y.max(), y.max()],
              c='k', alpha=0.3, linewidth=1)
 
+    # Mark center time with thin black line
+    if center_time:
+        if t0 is None:
+            t0 = p['time']
+        ct = (p['center_time'] - t0) / int(1e9)
+        plt.axvline(ct, c='k', alpha=0.4, linewidth=1, linestyle='--')
+
 
 def time_and_samples(p, t0=None):
     """Return (x, y) numpy arrays for plotting the waveform data in p
@@ -265,76 +270,3 @@ def time_and_samples(p, t0=None):
     x = ((p['time'] - t0) + np.arange(n + 1) * p['dt']) / int(1e9)
     y = p['data'][:n] / p['dt']
     return x, np.concatenate([[y[0]], y])
-
-
-def plot_wf(st: strax.Context,
-            containers,
-            run_id, plot_log=True, plot_extension=0, hit_pattern=True,
-            timestamp=True, time_fmt="%d-%b-%Y (%H:%M:%S)",
-            **kwargs):
-    """
-    Combined waveform plot
-    :param st: strax.Context
-    :param containers: peaks/records/events where from we want to plot
-        all the peaks that are within it's time range +- the
-        plot_extension. For example, you can provide three adjacent
-        peaks and plot them in a single figure.
-    :param run_id: run_id of the containers
-    :param plot_log: Plot the y-scale of the wf in log-space
-    :param plot_extension: include this much nanoseconds around the
-        containers (can be scalar or list of (-left_extension,
-        right_extension).
-    :param hit_pattern: include the hit-pattern in the wf
-    :param timestamp: print the timestamp to the plot
-    :param time_fmt: format fo the timestamp (datetime.strftime format)
-    :param kwargs: kwargs for plot_peaks
-    """
-
-    if not isinstance(run_id, str):
-        raise ValueError(f'Insert single run_id, not {run_id}')
-
-    p = containers  # usually peaks
-    run_start, _ = st.estimate_run_start_and_end(run_id)
-    t_range = np.array([p['time'].min(), strax.endtime(p).max()])
-
-    # Extend the time range if needed.
-    if not np.iterable(plot_extension):
-        t_range += np.array([-plot_extension, plot_extension])
-    elif len(plot_extension) == 2:
-        if not plot_extension[0] < 0:
-            warnings.warn('Left extension is positive (i.e. later than start '
-                          'of container).')
-        t_range += plot_extension
-    else:
-        raise ValueError('Wrong dimensions for plot_extension. Use scalar or '
-                         'object of len( ) == 2')
-    t_range -= run_start
-    t_range = t_range / 10 ** 9
-    t_range = np.clip(t_range, 0, np.inf)
-
-
-    if hit_pattern:
-        plt.figure(figsize=(14, 11))
-        plt.subplot(212)
-    else:
-        plt.figure(figsize=(14, 5))
-    # Plot the wf
-    plot_peaks(st, run_id, seconds_range=t_range, single_figure=False, **kwargs)
-
-    if timestamp:
-        _ax = plt.gca()
-        t_stamp = datetime.datetime.fromtimestamp(
-            containers['time'].min() / 10 ** 9).strftime(time_fmt)
-        _ax.text(0.975, 0.925, t_stamp,
-                 horizontalalignment='right',
-                 verticalalignment='top',
-                 transform=_ax.transAxes)
-    # Select the additional two panels to show the top and bottom arrays
-    if hit_pattern:
-        axes = plt.subplot(221), plt.subplot(222)
-        plot_hit_pattern(st, run_id,
-                         seconds_range=t_range,
-                         axes=axes,
-                         vmin=1 if plot_log else None,
-                         log_scale=plot_log,
-                         label='Area per channel [PE]')

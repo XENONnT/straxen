@@ -13,6 +13,9 @@ from .peaklet_processing import *
 from . import peak_processing
 from .peak_processing import *
 
+from .position_reconstruction import *
+from . import position_reconstruction
+
 from . import event_processing
 from .event_processing import *
 

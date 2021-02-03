@@ -85,7 +85,7 @@ def raw_records_matrix(context, run_id, raw_records, time_range,
     # at the start of the range due to missing zeroth fragments
     records = strax.raw_to_records(raw_records)
     strax.baseline(records, allow_sloppy_chunking=True)
-    strax.zero_outside_bounds(records)
+    strax.zero_out_of_bounds(records)
 
     return context.records_matrix(run_id=run_id,
                                   records=records,
