@@ -130,5 +130,3 @@ def get_NN_file(run_id, nn_conf):
         raise ValueError('Wrong NN configuration')
 
     return nn_file
-
-
