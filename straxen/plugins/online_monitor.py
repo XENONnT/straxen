@@ -33,13 +33,15 @@ export, __all__ = strax.exporter()
         type=tuple, default=(0, 1500),
         help='Boundaries area histogram of lone hits [ADC]'),
     strax.Option(
-        'online_monitor_nbins',
+        'online_peak_monitor_nbins',
         type=int, default=100,
         help='Number of bins of histogram of online monitor. Will be used '
              'for: '
              'lone_hits_area-histogram, '
              'area_fraction_top-histogram, '
-             'near_s1_hists, '),
+             'near_s1_hists, '
+             'online_se_gain estimate (histogram is not stored), '
+    ),
     strax.Option(
         'near_s1_hists_cut_string',
         type=str,
@@ -73,6 +75,11 @@ export, __all__ = strax.exporter()
     strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
+    strax.Option(
+        'online_se_bounds',
+        type=tuple, default=(7, 70),
+        help='Window for online monitor [PE] to look for the SE gain, value'
+    )
 )
 class OnlinePeakMonitor(strax.Plugin):
     """
@@ -96,7 +103,7 @@ class OnlinePeakMonitor(strax.Plugin):
         n_bins_area_width = self.config['area_vs_width_nbins']
         bounds_area_width = self.config['area_vs_width_bounds']
 
-        n_bins = self.config['online_monitor_nbins']
+        n_bins = self.config['online_peak_monitor_nbins']
 
         n_tpc_pmts = self.config['n_tpc_pmts']
         dtype = [
@@ -128,6 +135,8 @@ class OnlinePeakMonitor(strax.Plugin):
              (np.int64, n_bins)),
             (('Near S1 peaks area hist bounds', 'near_s1_area_bounds'),
              (np.float64, 2)),
+            (('Single electron gain', 'online_se_gain'),
+             np.float32),
         ]
         return dtype
 
@@ -137,7 +146,7 @@ class OnlinePeakMonitor(strax.Plugin):
         res['time'] = start
         res['endtime'] = end
         n_pmt = self.config['n_tpc_pmts']
-        n_bins = self.config['online_monitor_nbins']
+        n_bins = self.config['online_peak_monitor_nbins']
 
         # Bounds for histograms
         res['area_vs_width_bounds'] = self.config['area_vs_width_bounds']
@@ -217,12 +226,16 @@ class OnlinePeakMonitor(strax.Plugin):
 
         # Make the area hist
         near_s1_bound = self.config['near_s1_hists_bounds']
-        near_s1_hist, _ = np.histogram(peaks_sel['area'][time_mask], bins=n_bins, range=near_s1_bound)
+        near_s1_hist, _ = np.histogram(peaks_sel['area'][time_mask], bins=n_bins,
+                                       range=near_s1_bound)
         res['near_s1_area_hist'] = near_s1_hist
         res['near_s1_area_bounds'] = near_s1_bound
 
-        # Cleanup
-        # del hist, clean_hist, lone_hit_areas, lone_hit_channel_count
+        # Estimate Single Electron (SE) gain
+        se_hist, se_bins = np.histogram(peaks['area'], bins=n_bins,
+                                        range=self.config['online_se_bounds'])
+        bin_centers = (se_bins[1:] + se_bins[:1]) / 2
+        res['online_se_gain'] = bin_centers[np.argmax(se_hist)]
         return res
 
     def area_width_hist(self, data):
@@ -248,10 +261,10 @@ class OnlinePeakMonitor(strax.Plugin):
         type=tuple, default=((0, 5e3), (0, 3e6)),
         help='Boundaries of histogram of drift time vs R^2.'),
     strax.Option(
-        'online_monitor_nbins',
-        type=int, default=100,
-        help='Number of bins of histogram of online monitor. Will be used '
-             'for: '
+        'online_event_monitor_nbins',
+        type=int, default=60,
+        help='Number of bins of histogram of online monitor. NB: these are 2D '
+             'histograms! Will be used for: '
              'drift_time_vs_R2-histogram, '
              'drift_time_vs_s2wdith-histogram, '
              'drift_time_vs_s1aft-histogram, '
@@ -284,9 +297,9 @@ class OnlineEventMonitor(strax.Plugin):
     __version__ = '0.0.1'
     data_kind = 'online_event_monitor'
     rechunk_on_save = False
-    
+
     def infer_dtype(self):
-        n_bins = self.config['online_monitor_nbins']
+        n_bins = self.config['online_event_monitor_nbins']
         bounds_drift_time_R2 = self.config['drift_time_vs_R2_bounds']
 
         dtype = [
@@ -312,7 +325,7 @@ class OnlineEventMonitor(strax.Plugin):
              (np.float64, np.shape(self.config['s1area_vs_s2area_bounds']))),
         ]
         return dtype
-    
+
     def compute(self, events, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
@@ -342,14 +355,14 @@ class OnlineEventMonitor(strax.Plugin):
 
         # Other event properties?
         return res
-        
+
     def drift_time_R2_hist(self, data):
         """Make drift time vs R^2 2D-hist"""
-        hist, _, _= np.histogram2d(
+        hist, _, _ = np.histogram2d(
             (data['s2_x'] ** 2 + data['s2_y'] ** 2),
             data['drift_time'],
             range=self.config['drift_time_vs_R2_bounds'],
-            bins=self.config['online_monitor_nbins'])
+            bins=self.config['online_event_monitor_nbins'])
         return hist.T
 
     def drift_time_s2width_hist(self, data):
@@ -358,7 +371,7 @@ class OnlineEventMonitor(strax.Plugin):
             data['drift_time'],
             data['s2_range_50p_area'],
             range=self.config['drift_time_vs_s2width_bounds'],
-            bins=self.config['online_monitor_nbins'])
+            bins=self.config['online_event_monitor_nbins'])
         return hist.T
 
     def drift_time_s1aft_hist(self, data):
@@ -367,7 +380,7 @@ class OnlineEventMonitor(strax.Plugin):
             data['drift_time'],
             data['s1_area_fraction_top'],
             range=self.config['drift_time_vs_s1aft_bounds'],
-            bins=self.config['online_monitor_nbins'])
+            bins=self.config['online_event_monitor_nbins'])
         return hist.T
 
     def s1area_s2area_hist(self, data):
@@ -376,7 +389,7 @@ class OnlineEventMonitor(strax.Plugin):
             np.log10(data['s1_area']),
             np.log10(data['s2_area']),
             range=self.config['s1area_vs_s2area_bounds'],
-            bins=self.config['online_monitor_nbins']
+            bins=self.config['online_event_monitor_nbins']
         )
         return hist.T
 
