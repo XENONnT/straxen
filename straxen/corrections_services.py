@@ -76,6 +76,8 @@ class CorrectionsManagementServices():
             return self.get_pmt_gains(run_id, model_type, global_version)
         elif 'elife' in model_type:
             return self.get_elife(run_id, model_type, global_version)
+        elif 'NN_weights' in model_type:
+            return self.get_NN_file(run_id, model_type, global_version)
         else:
             raise ValueError(f'{correction} not found')
 
@@ -112,9 +114,6 @@ class CorrectionsManagementServices():
         except KeyError:
             raise ValueError(f'Global version {global_version} not found for correction {correction}')
 
-        # for single value corrections, e.g. elife correction
-        if len(corrections) == 1:
-            return float(corrections)
         else:
             return corrections
 
@@ -159,7 +158,6 @@ class CorrectionsManagementServices():
                                  f'and should provide a float. Got: '
                                  f'{type(global_version)}')
             return float(global_version)
-
         else:
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
@@ -231,12 +229,32 @@ class CorrectionsManagementServices():
             np.save(cache_name, to_pe, allow_pickle=False)
         return to_pe
 
+    def get_NN_file(self, run_id, model_type, global_version='ONLINE'):
+        """
+        Smart logic to return NN weights file name to be downloader by 
+        straxen.MongoDownloader()
+        :param run_id: run id from runDB
+        :param model_type: model type and neural network type; mlp, gcn, cnn 
+        :param global_version: global version
+        :param return: NN weights file name
+        """
+        if 'NN_weights' in model_type:
+            correction = None
+            if 'mlp' in model_type:
+                correction = 'mlp'
+            elif 'cnn' in model_type:
+                correction = 'cnn'
+            elif 'gcn' in model_type:
+                correction = 'gcn'
+
+            file_name = self._get_correction(run_id, correction, global_version)
+        
+        return file_name
     def get_lce(self, run_id, s, position, global_version='v1'):
         """
         Smart logic to return light collection eff map values.
         :param run_id: run id from runDB
         :param s: S1 map or S2 map
-        :param global_version:
         :param position: event position
         """
         raise NotImplementedError

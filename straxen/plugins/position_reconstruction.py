@@ -18,6 +18,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
+
 class PeakPositionsBaseNT(strax.Plugin):
     """
     Base class for reconstructions.
@@ -54,7 +55,7 @@ class PeakPositionsBaseNT(strax.Plugin):
 
         # Load the tensorflow model
         import tensorflow as tf
-        if os.path.exists(self.model_file):
+        if os.path.dirname(self.model_file):
             print(f"Path is local. Loading {self.algorithm} TF model locally "
                   f"from disk.")
         else:
@@ -98,8 +99,9 @@ class PeakPositionsBaseNT(strax.Plugin):
         return result
 
     def _get_model_file_name(self):
-        config_file = f'file_{self.algorithm}'
-        model_file = self.config.get(config_file, "No file")
+        
+        config_file = f'{self.algorithm}_model'
+        model_file = straxen.get_NN_file(self.run_id, self.config[config_file])
         if model_file == 'No file':
             raise ValueError(f'{__class__.__name__} should have {config_file} '
                              f'provided as an option.')
@@ -108,12 +110,8 @@ class PeakPositionsBaseNT(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option("file_mlp",
-                 help="Name of saved MLP model file in the aux file data base."
-                      "The file contains both structure and weights. Set to "
-                      "None to skip the computation of this plugin.",
-                 default="xnt_mlp_wfsim_20201214.tar.gz"
-                 )
+    strax.Option('mlp_model',
+                 help='Neural network model. Specify as (model_type, model_config)')
 )
 class PeakPositionsMLP(PeakPositionsBaseNT):
     """Multilayer Perceptron (MLP) neural net for position reconstruction"""
@@ -123,12 +121,8 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 
 @export
 @strax.takes_config(
-    strax.Option("file_gcn",
-                 help="Name of saved GCN model file in the aux file data base."
-                      "The file contains both structure and weights. Set to "
-                      "None to skip the computation of this plugin.",
-                 default="xnt_gcn_wfsim_20201203.tar.gz",
-                 )
+    strax.Option('gcn_model',
+                 help='Neural network model. Specify as (model_type, model_config)')
 )
 class PeakPositionsGCN(PeakPositionsBaseNT):
     """Graph Convolutional Network (GCN) neural net for position reconstruction"""
@@ -138,12 +132,8 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
 
 @export
 @strax.takes_config(
-    strax.Option("file_cnn",
-                 help="Name of saved CNN model file in the aux file data base."
-                      "The file contains both structure and weights. Set to "
-                      "None to skip the computation of this plugin.",
-                 default="xnt_cnn_wfsim_A_5_2000_20210112.tar.gz",
-                 )
+    strax.Option('cnn_model',
+                 help='Neural network model. Specify as (model_type, model_config)')
 )
 class PeakPositionsCNN(PeakPositionsBaseNT):
     """Convolutional Neural Network (CNN) neural net for position reconstruction"""
