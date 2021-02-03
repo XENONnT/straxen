@@ -96,7 +96,7 @@ class OnlinePeakMonitor(strax.Plugin):
     depends_on = ('peak_basics', 'lone_hits')
     provides = 'online_peak_monitor'
     data_kind = 'online_peak_monitor'
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
     rechunk_on_save = False
 
     def infer_dtype(self):
