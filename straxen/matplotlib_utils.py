@@ -104,7 +104,9 @@ def plot_on_single_pmt_array(
 
     kwargs.setdefault('s', 280)
     if log_scale:
-        kwargs.setdefault('norm', matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+        kwargs.setdefault('norm',
+                          matplotlib.colors.LogNorm(vmin=vmin,
+                                                    vmax=vmax))
     else:
         kwargs.setdefault('vmin', vmin)
         kwargs.setdefault('vmax', vmax)
