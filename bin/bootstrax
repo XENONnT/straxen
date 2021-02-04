@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -95,10 +95,6 @@ import strax
 import straxen
 import threading
 import pandas as pd
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -263,13 +259,18 @@ remove_target_after_fails = dict(events=2, hitlets=2, peak=3, online=4, ALL=5)
 ##
 # Initialize globals (e.g. rundb connection)
 ##
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
-    datefmt='%m-%d %H:%M')
-log = logging.getLogger()
 hostname = socket.getfqdn()
+
+try:
+    import daqnt
+    log_name = 'bootstrax_' + hostname + ('' if args.production else 'TESTING')
+    log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
+except ModuleNotFoundError:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
+        datefmt='%m-%d %H:%M')
+    log = logging.getLogger()
 
 # Set the output folder
 output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
@@ -1271,6 +1272,9 @@ def process_run(rd, send_heartbeats=args.production):
         if not args.production:
             # We are just testing let's assume its on the usual location
             loc = osp.join('/live_data/xenonnt/', run_id)
+            # or use the test-dir:
+            if not osp.exists(loc):
+                loc = os.path.join('/live_data/xenonnt_test/', run_id)
 
         else:
             for dd in rd['data']:
