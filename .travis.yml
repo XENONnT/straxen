@@ -29,7 +29,7 @@ install:
 - pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
 - pip install -r requirements.txt
 - echo "add utilix file to not break imports"
-- bash .github/scripts/create_empty_utilix_config.sh
+- bash .github/scripts/create_readonly_utilix_config.sh
 script:
 - python setup.py install
 - coverage run --source=straxen setup.py test
