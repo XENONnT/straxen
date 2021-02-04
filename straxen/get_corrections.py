@@ -123,10 +123,8 @@ def get_NN_file(run_id, nn_conf):
         nn_file = cmt.get_corrections_config(run_id, model_conf)
         nn_file = ' '.join(map(str, nn_file))    
 
-    elif model_type == 'local':
-        nn_file = str(model_conf[1])
-
     else:
-        raise ValueError('Wrong NN configuration')
+        raise ValueError(f'Wrong NN configuration, please look at this {nn_config} '
+                         'and modify it accordingly')
 
     return nn_file

@@ -76,10 +76,10 @@ class CorrectionsManagementServices():
             return self.get_pmt_gains(run_id, model_type, global_version)
         elif 'elife' in model_type:
             return self.get_elife(run_id, model_type, global_version)
-        elif 'NN_weights' in model_type:
+        elif model_type in ('mlp_model', 'cnn_model', 'gcn_model'):
             return self.get_NN_file(run_id, model_type, global_version)
         else:
-            raise ValueError(f'{correction} not found')
+            raise ValueError(f'{config_model} not found')
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
     # entry for e.g. for super runs
@@ -234,21 +234,17 @@ class CorrectionsManagementServices():
         Smart logic to return NN weights file name to be downloader by 
         straxen.MongoDownloader()
         :param run_id: run id from runDB
-        :param model_type: model type and neural network type; mlp, gcn, cnn 
+        :param model_type: model type and neural network type; model_mlp, 
+        or model_gcn or model_cnn 
         :param global_version: global version
         :param return: NN weights file name
         """
-        if 'NN_weights' in model_type:
-            correction = None
-            if 'mlp' in model_type:
-                correction = 'mlp'
-            elif 'cnn' in model_type:
-                correction = 'cnn'
-            elif 'gcn' in model_type:
-                correction = 'gcn'
+        if model_type not in ('mlp_model', 'cnn_model', 'gcn_model'):
+            raise ValueError(f"{model_type} is not stored in CMT use on of 'mlp_model'"
+                             f" or 'cnn_model' or 'gcn_model'")
 
-            file_name = self._get_correction(run_id, correction, global_version)
-        
+        file_name = self._get_correction(run_id, model_type, global_version)
+
         return file_name
     def get_lce(self, run_id, s, position, global_version='v1'):
         """
