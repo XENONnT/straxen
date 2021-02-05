@@ -797,7 +797,7 @@ def infer_records_compressor(rd, datarate, n_fails):
     if datarate < 100:
         # Low datarate, we can do very large compression
         return 'bz2'
-    if chunk_size_mb > 2000:
+    if chunk_size_mb > 1000:
         # Extremely large chunks, let's use LZ4 because we know that it
         # can handle this.
         return 'lz4'
