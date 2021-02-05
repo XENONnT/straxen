@@ -51,6 +51,8 @@ export, __all__ = strax.exporter()
                       "a hit a tight coincidence (ns)"),
     strax.Option('n_tpc_pmts', type=int,
                  help='Number of TPC PMTs'),
+    strax.Option('n_top_pmts', type=int,
+                 help='Number of PMTs in the top array'),
     strax.Option('saturation_correction_on', default=True,
                  help='On off switch for saturation correction'),
     strax.Option('saturation_reference_length', default=100,
@@ -147,7 +149,7 @@ class Peaklets(strax.Plugin):
             n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
-        strax.sum_waveform(peaklets, r, self.to_pe)
+        strax.sum_waveform(peaklets, r, self.to_pe, self.config['n_top_pmts'])
         strax.compute_widths(peaklets)
 
         # Split peaks using low-split natural breaks;
@@ -155,6 +157,7 @@ class Peaklets(strax.Plugin):
         # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
+            n_top_pmts=self.config['n_top_pmts'],
             algorithm='natural_breaks',
             threshold=self.natural_breaks_threshold,
             split_low=True,
@@ -167,7 +170,7 @@ class Peaklets(strax.Plugin):
         # see https://github.com/XENON1T/pax/pull/712
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
-                r, peaklets, self.to_pe,
+                r, peaklets, self.to_pe, n_top_pmts=self.config['n_top_pmts'],
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
 
@@ -233,7 +236,7 @@ class Peaklets(strax.Plugin):
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def peak_saturation_correction(records, peaks, to_pe,
+def peak_saturation_correction(records, peaks, to_pe, n_top_pmts,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
@@ -312,7 +315,7 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
         peaks[peak_i]['dt'] = dt
 
-    strax.sum_waveform(peaks, records, to_pe, peak_list)
+    strax.sum_waveform(peaks, records, to_pe, n_top_pmts, peak_list)
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
@@ -499,6 +502,8 @@ FAKE_MERGED_S2_TYPE = -42
 
 @export
 @strax.takes_config(
+    strax.Option('n_top_pmts', type=int,
+                 help='Number of PMTs in the top array'),
     strax.Option('s2_merge_max_area', default=5000.,
                  help="Merge peaklet cluster only if area < this [PE]"),
     strax.Option('s2_merge_max_gap', default=3500,
