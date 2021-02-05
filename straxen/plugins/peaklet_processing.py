@@ -502,8 +502,6 @@ FAKE_MERGED_S2_TYPE = -42
 
 @export
 @strax.takes_config(
-    strax.Option('n_top_pmts', type=int,
-                 help='Number of PMTs in the top array'),
     strax.Option('s2_merge_max_area', default=5000.,
                  help="Merge peaklet cluster only if area < this [PE]"),
     strax.Option('s2_merge_max_gap', default=3500,
