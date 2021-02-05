@@ -202,7 +202,10 @@ timeouts = {
     # Bootstrax writes it's state to the daq-database. To have a backlog we store this
     # state using a TTL collection. To prevent too many entries in this backlog, only
     # create new entries if the previous entry is at least this old (in seconds).
-    'min_status_interval': 60
+    'min_status_interval': 60,
+    # Minimum time that the run needs to be ongoing before we can infer
+    # the datarate (s).
+    'min_time_in_run': 10,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -714,6 +717,10 @@ def infer_mode(rd):
     """
     # Get data rate from dispatcher
     try:
+        seconds_in_run = (now() - rd['start']).seconds
+        if seconds_in_run < timeouts['min_time_in_run']:
+            # Don't go aggregating if the run just started, we would get 0
+            time.sleep(timeouts['min_time_in_run'] - seconds_in_run)
         docs = ag_stat_coll.aggregate([
             {'$match': {'number': rd['number']}},
             {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
@@ -788,10 +795,13 @@ def infer_records_compressor(rd, datarate, n_fails):
                     rd['daq_config']['strax_chunk_length'])
     chunk_size_mb = datarate*chunk_length
     if datarate < 100:
-        #
+        # Low datarate, we can do very large compression
         return 'bz2'
     if chunk_size_mb > 2000:
+        # Extremely large chunks, let's use LZ4 because we know that it
+        # can handle this.
         return 'lz4'
+    # High datarate and reasonable chunk size.
     return 'zstd'
 
 
