@@ -107,6 +107,9 @@ class CorrectionsManagementServices():
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
                         df = self.interface.interpolate(df, when, how='fill')
+                    if correction in ('mlp_model', 'cnn_model', 'gcn_model'):
+                        # is this the best solution?
+                        df = self.interface.interpolate(df, when, how='fill')
                     else:
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
