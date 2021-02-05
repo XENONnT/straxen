@@ -103,11 +103,17 @@ def plot_on_single_pmt_array(
     pos = pmt_positions[mask]
 
     kwargs.setdefault('s', 280)
+    if log_scale:
+        kwargs.setdefault('norm',
+                          matplotlib.colors.LogNorm(vmin=vmin,
+                                                    vmax=vmax))
+    else:
+        kwargs.setdefault('vmin', vmin)
+        kwargs.setdefault('vmax', vmax)
     result = plt.scatter(
         pos['x'],
         pos['y'],
         c=c[mask],
-        norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax) if log_scale else None,
         **kwargs)
 
     if show_tpc:
