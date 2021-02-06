@@ -120,7 +120,7 @@ def xenonnt_online(output_folder='./strax_data',
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
                        'online_peak_monitor',
-                       'online_event_monitor',))]
+                       'event_basics',))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797. Runs
