@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -203,9 +203,8 @@ timeouts = {
     # state using a TTL collection. To prevent too many entries in this backlog, only
     # create new entries if the previous entry is at least this old (in seconds).
     'min_status_interval': 60,
-    # Minimum time that the run needs to be ongoing before we can infer
-    # the datarate (s).
-    'min_time_in_run': 10,
+    # Minimum time we can take to can infer the datarate (s).
+    'max_data_rate_infer_time': 30,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -717,18 +716,19 @@ def infer_mode(rd):
     """
     # Get data rate from dispatcher
     try:
-        seconds_in_run = (now() - rd['start']).seconds
-        if seconds_in_run < timeouts['min_time_in_run']:
-            # Don't go aggregating if the run just started, we would get 0
-            time.sleep(timeouts['min_time_in_run'] - seconds_in_run)
-        docs = ag_stat_coll.aggregate([
-            {'$match': {'number': rd['number']}},
-            {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
-        ])
-        data_rate = int(sum([d['rate'] for d in docs]))
+        data_rate = None
+        started_looking = time.time()
+        while data_rate is None:
+            docs = ag_stat_coll.aggregate([
+                {'$match': {'number': rd['number']}},
+                {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
+            ])
+            data_rate = int(sum([d['rate'] for d in docs]))
+            if time.time() - started_looking > timeouts['max_data_rate_infer_time']:
+                raise RuntimeError
     except Exception as e:
-        log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.',
-                    run_id=f'{rd["number"]:06}', priority='info')
+        log_warning(f'infer_mode ran into {e}. Cannot infer datarate, using default mode.',
+                    run_id=f'{rd["number"]:06}', priority='warning')
         data_rate = None
 
     # Find out if eb is new (eb3-eb5):
@@ -794,7 +794,7 @@ def infer_records_compressor(rd, datarate, n_fails):
     chunk_length = (rd['daq_config']['strax_chunk_overlap'] +
                     rd['daq_config']['strax_chunk_length'])
     chunk_size_mb = datarate*chunk_length
-    if datarate < 100:
+    if datarate < 50:
         # Low datarate, we can do very large compression
         return 'bz2'
     if chunk_size_mb > 1000:
