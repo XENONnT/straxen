@@ -96,8 +96,7 @@ def get_records(raw_records, baseline_window):
               (('Waveform data in raw ADC counts', 'data'), 'f4', (record_length,))]
 
     records = np.zeros(len(raw_records), dtype=_dtype)
-    strax.copy_to_buffer(raw_records, records, "_rr_to_r_led",
-                         field_names=records.dtype.names)
+    strax.copy_to_buffer(raw_records, records, "_rr_to_r_led")
 
     mask = np.where((records['record_i'] == 0) & (records['length'] == 160))[0]
     records = records[mask]
