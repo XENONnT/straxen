@@ -17,11 +17,6 @@ export, __all__ = strax.exporter()
         type=tuple, default=((0, 5), (0, 5)),
         help='Boundaries of log-log histogram of area vs width'),
     strax.Option(
-        'area_vs_width_min_gap',
-        type=int, default=20,
-        help='Minimal gap between consecutive peaks to be considered for the '
-             '"area_vs_width_hist_clean" To turn off this cut, set to 0.'),
-    strax.Option(
         'area_vs_width_cut_string',
         type=str, default='',
         help='Selection (like selection_str) applied to data for '
@@ -42,15 +37,6 @@ export, __all__ = strax.exporter()
              'near_s1_hists, '
              'online_se_gain estimate (histogram is not stored), '
     ),
-    strax.Option(
-        'near_s1_hists_cut_string',
-        type=str,
-        default='(n_channels > 20) & (n_channels < 400) & (area < 1000) & '
-                '(area > 5) & (rise_time < 100) & (type == 1)',
-        help='Selection (like selection_str) applied to data for '
-             '"near_s1_hists", cuts should be separated using "&"'
-             'For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)'
-             'Default is no selection (other than "area_vs_width_min_gap")'),
     strax.Option(
         'lone_hits_cut_string',
         type=str,
@@ -115,8 +101,6 @@ class OnlinePeakMonitor(strax.Plugin):
              (np.int64, (n_bins_area_width, n_bins_area_width))),
             (('Area vs width edges (log-space)', 'area_vs_width_bounds'),
              (np.float64, np.shape(bounds_area_width))),
-            (('Area vs width histogram with cuts (log-log)', 'area_vs_width_hist_clean'),
-             (np.int64, (n_bins_area_width, n_bins_area_width))),
             (('Lone hits areas histogram [ADC-counts]', 'lone_hits_area_hist'),
              (np.int64, n_bins)),
             (('Lone hits areas bounds [ADC-counts]', 'lone_hits_area_bounds'),
@@ -129,12 +113,6 @@ class OnlinePeakMonitor(strax.Plugin):
              (np.float64, 2)),
             (('Number of contributing channels histogram', 'n_channel_hist'),
              (np.int64, n_tpc_pmts)),
-            (('Number of contributing channels histogram bounds', 'n_channel_bounds'),
-             (np.float64, 2)),
-            (('Near S1 peaks area hist', 'near_s1_area_hist'),
-             (np.int64, n_bins)),
-            (('Near S1 peaks area hist bounds', 'near_s1_area_bounds'),
-             (np.float64, 2)),
             (('Single electron gain', 'online_se_gain'),
              np.float32),
         ]
@@ -156,21 +134,6 @@ class OnlinePeakMonitor(strax.Plugin):
         # Always cut out unphysical peaks
         sel = (peaks['area'] > 0) & (peaks['range_50p_area'] > 0)
         res['area_vs_width_hist'] = self.area_width_hist(peaks[sel])
-
-        # Experimental example of how to apply cuts here.
-        # Let's make a cut on the time between two peaks, if too short,
-        # ignore the peak.
-        timedelta = peaks[1:]['time'] - strax.endtime(peaks)[:-1]
-        timesel = timedelta > self.config['area_vs_width_min_gap']
-        # Last peak always has no tails
-        timesel = np.concatenate((timesel, [True]))
-        sel &= timesel
-
-        # Also apply the area_vs_width_cut_string like a selection_str
-        sel_str = self.config['area_vs_width_cut_string']
-        sel = _config_as_selection_str(sel_str, peaks, pre_sel=sel)
-        res['area_vs_width_hist_clean'] = self.area_width_hist(peaks[sel])
-        # make a new selection don't re-use
         del sel
 
         # -- Lone hit properties --
@@ -204,32 +167,6 @@ class OnlinePeakMonitor(strax.Plugin):
         aft_hist, _ = np.histogram(peaks['area_fraction_top'], bins=n_bins, range=aft_b)
         res['aft_hist'] = aft_hist
         res['aft_bounds'] = aft_b
-
-        # -- Number of contributing channels channels --
-        n_cont_b = [0, n_pmt]
-        n_cont_hist, _ = np.histogram(peaks['n_channels'], bins=n_pmt, range=n_cont_b)
-        res['n_channel_hist'] = n_cont_hist
-        res['n_channel_bounds'] = n_cont_b
-
-        # -- Experimental selection --
-        # We first apply a basic selection on the peaks to e.g. get S1s
-        mask = _config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
-        peaks_sel = peaks[mask]
-        # We select peaks where the peak before or the peak after it is within
-        # near_s1_max_time_diff ns. TODO: Do we want another hist for this?
-        time_diff = peaks_sel[1:]['time'] - strax.endtime(peaks_sel)[:-1]
-        is_close = time_diff < self.config['near_s1_max_time_diff']
-        time_mask = np.zeros(len(peaks_sel), dtype=np.bool_)
-        # Either the previous or the next peak can be close, take both into account
-        time_mask[:-1] = is_close
-        time_mask[1:] = time_mask[1:] | is_close
-
-        # Make the area hist
-        near_s1_bound = self.config['near_s1_hists_bounds']
-        near_s1_hist, _ = np.histogram(peaks_sel['area'][time_mask], bins=n_bins,
-                                       range=near_s1_bound)
-        res['near_s1_area_hist'] = near_s1_hist
-        res['near_s1_area_bounds'] = near_s1_bound
 
         # Estimate Single Electron (SE) gain
         se_hist, se_bins = np.histogram(peaks['area'], bins=n_bins,
