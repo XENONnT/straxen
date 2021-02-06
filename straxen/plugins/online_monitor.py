@@ -34,7 +34,6 @@ export, __all__ = strax.exporter()
              'for: '
              'lone_hits_area-histogram, '
              'area_fraction_top-histogram, '
-             'near_s1_hists, '
              'online_se_gain estimate (histogram is not stored), '
     ),
     strax.Option(
@@ -49,15 +48,6 @@ export, __all__ = strax.exporter()
         default=15_000,
         help='Minimal gap [ns] between consecutive lone-hits. To turn off '
              'this cut, set to 0.'),
-    strax.Option(
-        'near_s1_hists_bounds',
-        type=tuple,
-        default=(0, 1000),
-        help='Bounds for the near s1-peaks in PE'),
-    strax.Option(
-        'near_s1_max_time_diff',
-        type=int, default=2_000,
-        help='Max gap between two peaks for the near-s1 area histogram [ns]'),
     strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
