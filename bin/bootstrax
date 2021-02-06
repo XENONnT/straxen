@@ -161,8 +161,8 @@ print(f'---\n bootstrax version {__version__}\n---')
 
 # The folder that can be used for testing bootstrax (i.e. non production
 # mode). It will be written to:
-test_data_folder = ('/nfs/scratch/bootstrax/' if
-                    os.path.exists('/nfs/scratch/bootstrax/')
+test_data_folder = ('/data/test_processed/' if
+                    os.path.exists('/data/test_processed/')
                     else './bootstrax/')
 
 # Timeouts in seconds
