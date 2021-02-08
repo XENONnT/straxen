@@ -95,11 +95,7 @@ class Peaklets(strax.Plugin):
     __version__ = '0.3.7'
 
     def infer_dtype(self):
-        peaklet_dtype= strax.peak_dtype(n_channels=self.config['n_tpc_pmts'])
-        if self.config['store_top_waveform']:
-            peaklet_dtype +=[(('Waveform data from the top array in PE/sample (not PE/ns!)',
-                         'data_top'), np.float32, 200)]
-        return dict(peaklets=peaklet_dtype,
+        return dict(peaklets=strax.peak_dtype(n_channels=self.config['n_tpc_pmts']),
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
