@@ -249,7 +249,10 @@ x1t_common_config = dict(
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
-        ((2, 1), (4.5, 0.4))))
+        ((2, 1), (4.5, 0.4))),
+    left_event_extension=int(1e6),
+    right_event_extension=int(1e6),
+)
 
 
 def demo():

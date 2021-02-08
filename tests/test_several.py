@@ -58,6 +58,7 @@ def test_several():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+            st.make(test_run_id, 'records')
             # Ignore strax-internal warnings
             st.set_context_config({'free_options': tuple(st.config.keys())})
 
@@ -139,6 +140,8 @@ def test_several():
             st.hvdisp_plot_peak_waveforms(test_run_id,
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
+            print('Plot single pulse:')
+            st.plot_pulses_tpc(test_run_id, max_plots=2,  plot_hits=True, ignore_time_warning=True)
 
             print("Check live-time")
             live_time = straxen.get_livetime_sec(st, test_run_id, things=p)
