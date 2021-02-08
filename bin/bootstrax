@@ -803,9 +803,9 @@ def infer_records_compressor(rd, datarate, n_fails):
                     rd['daq_config']['strax_chunk_length'])
     chunk_size_mb = datarate*chunk_length
     if datarate < 50:
-        # Low datarate, we can do very large compression
+        # Low data rate, we can do very large compression
         return 'bz2'
-    if chunk_size_mb > 1000:
+    if chunk_size_mb > 1800:
         # Extremely large chunks, let's use LZ4 because we know that it
         # can handle this.
         return 'lz4'
