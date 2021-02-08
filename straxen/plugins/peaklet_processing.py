@@ -61,7 +61,8 @@ export, __all__ = strax.exporter()
     strax.Option('saturation_min_reference_length', default=20,
                  help="Minimum number of reference sample used "
                       "to correct saturated samples"),
-
+    strax.Option('store_top_waveform',default=False,
+                 help='Bool for storing the top array waveform seperately'),
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
@@ -94,8 +95,11 @@ class Peaklets(strax.Plugin):
     __version__ = '0.3.7'
 
     def infer_dtype(self):
-        return dict(peaklets=strax.peak_dtype(
-                        n_channels=self.config['n_tpc_pmts']),
+        peaklet_dtype= strax.peak_dtype(n_channels=self.config['n_tpc_pmts'])
+        if self.config['store_top_waveform']:
+            peaklet_dtype +=[(('Waveform data from the top array in PE/sample (not PE/ns!)',
+                         'data_top'), np.float32, 200)]
+        return dict(peaklets=peaklet_dtype,
                     lone_hits=strax.hit_dtype)
 
     def setup(self):
@@ -149,7 +153,7 @@ class Peaklets(strax.Plugin):
             n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
-        strax.sum_waveform(peaklets, r, self.to_pe, self.config['n_top_pmts'])
+        strax.sum_waveform(peaklets, r, self.to_pe, self.config['n_top_pmts'], self.config['store_top_waveform'])
         strax.compute_widths(peaklets)
 
         # Split peaks using low-split natural breaks;
@@ -158,6 +162,7 @@ class Peaklets(strax.Plugin):
         peaklets = strax.split_peaks(
             peaklets, r, self.to_pe,
             n_top_pmts=self.config['n_top_pmts'],
+            store_top_waveform=self.config['store_top_waveform'],
             algorithm='natural_breaks',
             threshold=self.natural_breaks_threshold,
             split_low=True,
@@ -171,6 +176,7 @@ class Peaklets(strax.Plugin):
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
                 r, peaklets, self.to_pe, n_top_pmts=self.config['n_top_pmts'],
+                store_top_waveform=self.config['store_top_waveform'],
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
 
@@ -237,6 +243,7 @@ class Peaklets(strax.Plugin):
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def peak_saturation_correction(records, peaks, to_pe, n_top_pmts,
+                               store_top_waveform,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
@@ -315,7 +322,7 @@ def peak_saturation_correction(records, peaks, to_pe, n_top_pmts,
         peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
         peaks[peak_i]['dt'] = dt
 
-    strax.sum_waveform(peaks, records, to_pe, n_top_pmts, peak_list)
+    strax.sum_waveform(peaks, records, to_pe, n_top_pmts, store_top_waveform, peak_list)
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
@@ -508,7 +515,10 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Maximum separation between peaklets to allow merging [ns]"),
     strax.Option('s2_merge_max_duration', default=15_000,
                  help="Do not merge peaklets at all if the result would be a peak "
-                      "longer than this [ns]"))
+                      "longer than this [ns]"),
+    strax.Option('store_top_waveform',default=False,
+                 help='Bool for storing the top array waveform seperately'),
+                      )
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -550,6 +560,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s = strax.merge_peaks(
                 peaklets,
                 start_merge_at, end_merge_at,
+                store_top_waveform=self.config['store_top_waveform'],
                 max_buffer=int(self.config['s2_merge_max_duration']
                                // peaklets['dt'].min()))
             merged_s2s['type'] = 2
