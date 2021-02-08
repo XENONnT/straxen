@@ -203,8 +203,10 @@ timeouts = {
     # state using a TTL collection. To prevent too many entries in this backlog, only
     # create new entries if the previous entry is at least this old (in seconds).
     'min_status_interval': 60,
-    # Minimum time we can take to can infer the datarate (s).
-    'max_data_rate_infer_time': 30,
+    # Maximum time we can take to can infer the datarate (s).
+    'max_data_rate_infer_time': 60,
+    # Minimum time we have to be in the run before we can infer the datarate (s).
+    'min_data_rate_infer_time': 15,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -716,16 +718,22 @@ def infer_mode(rd):
     """
     # Get data rate from dispatcher
     try:
-        data_rate = None
         started_looking = time.time()
-        while data_rate is None:
+        time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'] - now()).seconds
+        if time_to_wait > 0:
+            time.sleep(time_to_wait)
+        while True:
             docs = ag_stat_coll.aggregate([
                 {'$match': {'number': rd['number']}},
                 {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
             ])
             data_rate = int(sum([d['rate'] for d in docs]))
-            if time.time() - started_looking > timeouts['max_data_rate_infer_time']:
+            if data_rate is not None:
+                break
+            elif time.time() - started_looking > timeouts['max_data_rate_infer_time']:
                 raise RuntimeError
+            time.sleep(5)
+
     except Exception as e:
         log_warning(f'infer_mode ran into {e}. Cannot infer datarate, using default mode.',
                     run_id=f'{rd["number"]:06}', priority='warning')
