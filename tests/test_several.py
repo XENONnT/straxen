@@ -61,6 +61,7 @@ def test_several():
             st.make(test_run_id, 'records')
             # Ignore strax-internal warnings
             st.set_context_config({'free_options': tuple(st.config.keys())})
+            st.make(test_run_id, 'records')
 
             print("Get peaks")
             p = st.get_array(test_run_id, 'peaks')
