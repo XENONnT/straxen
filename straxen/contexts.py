@@ -147,7 +147,7 @@ def xenonnt_led(**kwargs):
 # This gain model is a temporary solution until we have a nice stable one
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
-    xnt_common_config['gain_model'] = ('to_pe_per_run', 'to_pe_nt.npy')
+    xnt_common_config['gain_model'] = ('to_pe_constant', 0.01)
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
