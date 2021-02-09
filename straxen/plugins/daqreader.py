@@ -89,7 +89,15 @@ class DAQReader(strax.Plugin):
     data_kind = immutabledict(zip(provides, provides))
     depends_on = tuple()
     parallel = 'process'
-    rechunk_on_save = False
+    rechunk_on_save = immutabledict(
+        raw_records=False,
+        raw_records_he=False,
+        raw_records_aqmon=True,
+        raw_records_nv=False,
+        raw_records_aqmon_nv=True,
+        raw_records_aux_mv=True,
+        raw_records_mv=False,
+    )
     compressor = 'lz4'
     __version__ = '0.0.0'
 

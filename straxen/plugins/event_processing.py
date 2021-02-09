@@ -466,6 +466,7 @@ class EnergyEstimates(strax.Plugin):
         ('e_charge', np.float32, 'Energy in charge signal [keVee]'),
         ('e_ces', np.float32, 'Energy estimate [keVee]')
     ] + strax.time_fields
+    save_when = strax.SaveWhen.TARGET
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])

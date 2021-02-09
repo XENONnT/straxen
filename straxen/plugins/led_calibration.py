@@ -48,7 +48,7 @@ class LEDCalibration(strax.Plugin):
     compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = False
-    
+
     dtype = [('area', np.float32, 'Area averaged in integration windows'),
              ('amplitude_led', np.float32, 'Amplitude in LED window'),
              ('amplitude_noise', np.float32, 'Amplitude in off LED window'),
@@ -68,11 +68,7 @@ class LEDCalibration(strax.Plugin):
         del rr, raw_records
 
         temp = np.zeros(len(r), dtype=self.dtype)
-
-        temp['channel'] = r['channel']
-        temp['time']    = r['time']
-        temp['dt']      = r['dt']
-        temp['length']  = r['length']
+        strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
 
         on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'])
         temp['amplitude_led']   = on['amplitude']
@@ -100,23 +96,18 @@ def get_records(raw_records, baseline_window):
               (('Waveform data in raw ADC counts', 'data'), 'f4', (record_length,))]
 
     records = np.zeros(len(raw_records), dtype=_dtype)
+    strax.copy_to_buffer(raw_records, records, "_rr_to_r_led")
 
-    records['time']         = raw_records['time']
-    records['length']       = raw_records['length']
-    records['dt']           = raw_records['dt']
-    records['pulse_length'] = raw_records['pulse_length']
-    records['record_i']     = raw_records['record_i']
-    records['channel']      = raw_records['channel']
-    records['data']         = raw_records['data']
-
-    mask = np.where((records['record_i']==0)&(records['length']==160))[0]
+    mask = np.where((records['record_i'] == 0) & (records['length'] == 160))[0]
     records = records[mask]
     bl = records['data'][:, baseline_window[0]:baseline_window[1]].mean(axis=1)
     records['data'][:, :160] = -1. * (records['data'][:, :160].transpose() - bl[:]).transpose()
     return records
 
+
 _on_off_dtype = np.dtype([('channel', 'int16'),
                           ('amplitude', 'float32')])
+
 
 def get_amplitude(records, led_window, noise_window):
     """
