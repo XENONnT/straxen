@@ -719,7 +719,8 @@ def infer_mode(rd):
     # Get data rate from dispatcher
     try:
         started_looking = time.time()
-        time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'] - now()).seconds
+        time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
+                tzinfo=timezone.utc) - now()).seconds
         if time_to_wait > 0:
             time.sleep(time_to_wait)
         while True:
