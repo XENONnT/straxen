@@ -92,6 +92,7 @@ class OnlinePeakMonitor(strax.Plugin):
     # TODO make new datakind:
     # data_kind = 'online_monitor'
     rechunk_on_save = False
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         n_bins_area_width = self.config['area_vs_width_nbins']
