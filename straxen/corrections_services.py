@@ -76,8 +76,10 @@ class CorrectionsManagementServices():
             return self.get_pmt_gains(run_id, model_type, global_version)
         elif 'elife' in model_type:
             return self.get_elife(run_id, model_type, global_version)
+        elif model_type in ('mlp_model', 'cnn_model', 'gcn_model'):
+            return self.get_NN_file(run_id, model_type, global_version)
         else:
-            raise ValueError(f'{correction} not found')
+            raise ValueError(f'{config_model} not found')
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
     # entry for e.g. for super runs
@@ -105,6 +107,9 @@ class CorrectionsManagementServices():
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
                         df = self.interface.interpolate(df, when, how='fill')
+                    if correction in ('mlp_model', 'cnn_model', 'gcn_model'):
+                        # is this the best solution?
+                        df = self.interface.interpolate(df, when, how='fill')
                     else:
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
@@ -112,9 +117,6 @@ class CorrectionsManagementServices():
         except KeyError:
             raise ValueError(f'Global version {global_version} not found for correction {correction}')
 
-        # for single value corrections, e.g. elife correction
-        if len(corrections) == 1:
-            return float(corrections)
         else:
             return corrections
 
@@ -159,7 +161,6 @@ class CorrectionsManagementServices():
                                  f'and should provide a float. Got: '
                                  f'{type(global_version)}')
             return float(global_version)
-
         else:
             raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
@@ -231,12 +232,28 @@ class CorrectionsManagementServices():
             np.save(cache_name, to_pe, allow_pickle=False)
         return to_pe
 
+    def get_NN_file(self, run_id, model_type, global_version='ONLINE'):
+        """
+        Smart logic to return NN weights file name to be downloader by 
+        straxen.MongoDownloader()
+        :param run_id: run id from runDB
+        :param model_type: model type and neural network type; model_mlp, 
+        or model_gcn or model_cnn 
+        :param global_version: global version
+        :param return: NN weights file name
+        """
+        if model_type not in ('mlp_model', 'cnn_model', 'gcn_model'):
+            raise ValueError(f"{model_type} is not stored in CMT use on of 'mlp_model'"
+                             f" or 'cnn_model' or 'gcn_model'")
+
+        file_name = self._get_correction(run_id, model_type, global_version)
+
+        return file_name
     def get_lce(self, run_id, s, position, global_version='v1'):
         """
         Smart logic to return light collection eff map values.
         :param run_id: run id from runDB
         :param s: S1 map or S2 map
-        :param global_version:
         :param position: event position
         """
         raise NotImplementedError
