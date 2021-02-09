@@ -132,45 +132,8 @@ class nVETOHitlets(strax.Plugin):
 
         # Remove data field:
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
-        drop_data_field(temp_hitlets, hitlets)
-
+        strax.copy_to_buffer(temp_hitlets, hitlets, '_copy_hitlets')
         return hitlets
-
-@numba.njit
-def drop_data_field(old_hitlets, new_hitlets):
-    """
-    Function which copies everything except for the data field.
-    If anyone know a better and faster way please let me know....
-
-    :param old_hitlets:
-    :param new_hitlets:
-    :return:
-    """
-    n_hitlets = len(old_hitlets)
-    for i in range(n_hitlets):
-        o = old_hitlets[i]
-        n = new_hitlets[i]
-
-        n['time'] = o['time']
-        n['length'] = o['length']
-        n['dt'] = o['dt']
-        n['channel'] = o['channel']
-        n['area'] = o['area']
-        n['amplitude'] = o['amplitude']
-        n['time_amplitude'] = o['time_amplitude']
-        n['entropy'] = o['entropy']
-        n['fwhm'] = o['fwhm']
-        n['fwtm'] = o['fwtm']
-        n['range_50p_area'] = o['range_50p_area']
-        n['range_80p_area'] = o['range_80p_area']
-        n['range_hdr_50p_area'] = o['range_hdr_50p_area']
-        n['range_hdr_80p_area'] = o['range_hdr_80p_area']
-        n['left'] = o['left']
-        n['low_left'] = o['low_left']
-        n['left_area'] = o['left_area']
-        n['low_left_area'] = o['low_left_area']
-        n['left_hdr'] = o['left_hdr']
-        n['low_left_hdr'] = o['low_left_hdr']
 
 
 @export

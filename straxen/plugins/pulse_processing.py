@@ -125,6 +125,7 @@ class PulseProcessing(strax.Plugin):
 
     provides = ('records', 'veto_regions', 'pulse_counts')
     data_kind = {k: k for k in provides}
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records
@@ -240,6 +241,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
     depends_on = 'raw_records_he'
     compressor = 'lz4'
     child_plugin = True
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         dtype = dict()
