@@ -13,7 +13,8 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_nv',
-        default=10, track=True,
+        default_by_run=[(0, 10),
+                        (12684, 26)], track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
