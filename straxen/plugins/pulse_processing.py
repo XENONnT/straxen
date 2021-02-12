@@ -241,6 +241,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
     depends_on = 'raw_records_he'
     compressor = 'lz4'
     child_plugin = True
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         dtype = dict()
