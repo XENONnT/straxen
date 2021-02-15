@@ -1,3 +1,8 @@
+0.15.1 / 2021-02-11
+--------------------
+- Change event extensions (#364)
+
+
 0.15.0 / 2021-02-09
 --------------------
 - Datarate dependent compressor (#358)
