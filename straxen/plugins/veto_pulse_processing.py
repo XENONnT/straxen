@@ -13,7 +13,8 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_nv',
-        default=10, track=True,
+        default_by_run=[(0, 10),
+                        (12684, 26)], track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
@@ -40,7 +41,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
     parallel = 'process'
     rechunk_on_save = False
-    compressor = 'lz4'
+    compressor = 'zstd'
     save_when = save_when = strax.SaveWhen.TARGET
 
     depends_on = 'raw_records_coin_nv'

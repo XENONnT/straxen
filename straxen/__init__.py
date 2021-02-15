@@ -1,4 +1,4 @@
-__version__ = '0.14.5'
+__version__ = '0.15.1'
 
 from utilix import uconfig
 from .common import *

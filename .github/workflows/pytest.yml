@@ -57,6 +57,6 @@ jobs:
           PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
       - name: Test package
         run: |
-          pytest
+          pytest --verbose
       - name: goodbye
         run: echo goodbye
