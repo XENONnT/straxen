@@ -3,6 +3,8 @@ import straxen
 import numba
 import numpy as np
 from immutabledict import immutabledict
+import os
+import csv
 
 export, __all__ = strax.exporter()
 
@@ -135,29 +137,30 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     strax.Option('gps_file_path', type = str,
                 help = 'Path to gps files. TODO: make it fetch the RunDB\
                  or utilix'),
-    strax.Option('gps_verbose', default = True,
-                help = 'Debug prints for when things are desperate.')
+    strax.Option('gps_verbose', default = False,
+                help = 'Debug prints for when things are desperate.'),
                 )
 
-class GPS_sync(strax.OverlapWindowPlugin):
+class GPS_sync(strax.Plugin):
     """Find the TTL GPS pulses coming into the AM from the gps 
     module and their pairs in the ASCII file coming from the module
     for the correspondant run.
     """
         
-    __version__ ='0.0.9'
-    depends_on = ('aqmon_hits') 
-    provides  = ('gps_aqmon')
-    data_kind = ('gps_aqmon')
+    __version__ ='0.0.10'
+    depends_on = 'aqmon_hits'   
+    provides  = 'gps_aqmon'
+    data_kind = 'gps_aqmon'
     
     def infer_dtype(self):
-        dtype = [(('GPS start time since unix epoch [ns]', 'time'), np.int64),
-                 (('GPS end time since unix epoch [ns]', 'endtime'), np.int64),
-                 (('GPS module pulse time (corrected)[ns]','gps_pulse'),np.int64)
+        dtype = [(('Start time since unix epoch [ns]', 'time'), np.int64),
+                 (('End time since unix epoch [ns]', 'endtime'), np.int64),
+                 (('GPS module pulse time (corrected to UTC) [ns]','gps_pulse'),np.int64)
                 ]
         return dtype
 
-    def get_gpsdata(self):
+
+    def get_gpsdata(self, run_id):
         '''Function to fetch the gps file from the given source.
         Could be RunDB or directory with all the files.'''
 
@@ -197,7 +200,12 @@ class GPS_sync(strax.OverlapWindowPlugin):
         
         gps_hits = hits[hits['channel'] == self.config['gps_channel']]
 
-        # Check that we found a GPS pulse in aqmon data and update the resulting dict
+        if self.config['gps_verbose'] == True:
+            print('len aqmon gps hits', len(gps_hits))
+            if len(gps_hits) == 1:
+                print(gps_hits)
+
+        # Check that we found a GPS pulses in aqmon data and update the resulting dict
         if len(gps_hits):
             ans_temp.setdefault("time",[]).extend(gps_hits['time'])
             ans_temp.setdefault("endtime",[]).extend(gps_hits['time'] +\
@@ -205,7 +213,6 @@ class GPS_sync(strax.OverlapWindowPlugin):
         
         ans = strax.dict_to_rec(ans_temp, dtype=self.dtype)
         ans.sort(order = 'time') 
-        
         
         gps_module_pulses = self.get_gps_time_array()
         if self.config['gps_verbose'] == True:
