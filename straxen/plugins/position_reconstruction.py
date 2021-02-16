@@ -144,6 +144,7 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
     """Graph Convolutional Network (GCN) neural net for position reconstruction"""
     provides = "peak_positions_gcn"
     algorithm = "gcn"
+    __version__ = '0.0.1'
 
 
 @export
@@ -159,6 +160,7 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
     """Convolutional Neural Network (CNN) neural net for position reconstruction"""
     provides = "peak_positions_cnn"
     algorithm = "cnn"
+    __version__ = '0.0.1'
 
 
 @export
