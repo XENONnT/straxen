@@ -147,7 +147,7 @@ class GPS_sync(strax.Plugin):
     for the correspondant run.
     """
         
-    __version__ ='0.0.10'
+    __version__ ='0.0.11'
     depends_on = 'aqmon_hits'   
     provides  = 'gps_aqmon'
     data_kind = 'gps_aqmon'
@@ -192,7 +192,25 @@ class GPS_sync(strax.Plugin):
             gpsdata = np.concatenate((gpsdata,np.asarray(data)))
 
         return np.array(gpsdata)
-    
+
+    def cut_outside_run(self,aqmon_array, gps_array):
+        first_idx = None
+        last_idx = None
+        _idx = 0
+        while (first_idx == None) or (last_idx == None):
+
+            if np.abs(aqmon_array[0]-gps_array[_idx])<5e9:
+                first_idx = _idx
+            if np.abs(aqmon_array[-1]-gps_array[-_idx-1])<5e9:
+                last_idx = -_idx
+            _idx+=1
+        if last_idx == 0:
+            gps_array_corr = gps_array[first_idx:]
+        else:
+            gps_array_corr = gps_array[first_idx:last_idx]
+
+        return gps_array_corr
+
     def compute(self, aqmon_hits): 
         hits = aqmon_hits
         
@@ -212,17 +230,27 @@ class GPS_sync(strax.Plugin):
                                                      gps_hits['length'] * gps_hits['dt'])
         
         ans = strax.dict_to_rec(ans_temp, dtype=self.dtype)
-        ans.sort(order = 'time') 
-        
+        ans.sort(order = 'time')
+
+        #Load GPS-module pulses
         gps_module_pulses = self.get_gps_time_array()
         if self.config['gps_verbose'] == True:
              print('len gps_module_pulses', len(gps_module_pulses))
-                
-        assert (len(ans) == len(gps_module_pulses)), \
+
+        # Make sure first and last pulses match
+        gps_array_corr = self.cut_outside_run(ans['time'],gps_module_pulses)
+
+        # Take out pulses with entry problems and roll with it
+        weirdpulses_mask = np.abs(ans['time']-gps_array_corr)<1e9
+        
+        ans = ans[weirdpulses_mask]
+        gps_array_corr = gps_array_corr[weirdpulses_mask]
+        
+        assert (len(ans) == len(gps_array_corr)), \
         "Number of pulses in AM (%d) and GPS file (%d) don't match for run %s."\
-        %(len(ans), len(gps_module_pulses), self.run_id)
+        %(len(ans), len(gps_array_corr), self.run_id)
     
-        ans['gps_pulse'] = gps_module_pulses
+        ans['gps_pulse'] = gps_array_corr
 
         return ans
 
