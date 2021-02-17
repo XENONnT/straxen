@@ -23,6 +23,8 @@ dtype_ap = [(('Channel/PMT number','channel'),
                '<i2'),                                        # start sample of hit
              (('Index of sample in record in which the hit area suceeds 10% of its total area', 'sample_10pc_area'),
                '<i2'),                                        # 10% area quantile sample of hit
+             (('Index of sample in record in which the hit area suceeds 50% of its total area', 'sample_50pc_area'),
+               '<i2'),                                        # 50% area quantile sample of hit        
              (('Index of sample in record in which the hit height suceeds 50% of maximum height', 'sample_50pc_height'),
                '<i2'),                                        # sample where hit height first exceeds 10% of maxium height
              (('Index of sample in record of hit maximum', 'max'),
@@ -46,21 +48,18 @@ dtype_ap = [(('Channel/PMT number','channel'),
                  type=int,
                  help="Number of PMTs in TPC"),
     strax.Option('LED_window_left',
-                 default=40,
+                 default=50,
                  help='Left boundary of sample range for LED pulse integration'),
     strax.Option('LED_window_right',
-                 default=90,
+                 default=80,
                  help='Right boundary of sample range for LED pulse integration'),
-    strax.Option('hit_threshold',
-                 default=15,
-                 help='Hitfinder threshold in ADC counts above baseline'),
     strax.Option('baseline_samples',
                  default=40,
                  help='Number of samples to use at the start of the pulse to determine the baseline'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.0.8'
+    __version__ = '0.1.0.1'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -73,12 +72,12 @@ class LEDAfterpulses(strax.Plugin):
     def setup(self):
         
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], n_pmts=self.config['n_tpc_pmts'])
-        print('setup:\n   plugin version = ', self.__version__,
-              '\n   hit_threshold = ', self.config['hit_threshold'],
-              '\n   gain_model = ', self.config['gain_model'],
-              '\n   LED_window = ', self.config['LED_window_left'], '-', self.config['LED_window_right'],
-              '\n\n to_pe =', self.to_pe,
-             )
+#         print('setup:\n   plugin version = ', self.__version__,
+#               #'\n   hit_threshold = ', self.config['hit_threshold'],
+#               '\n   gain_model = ', self.config['gain_model'],
+#               '\n   LED_window = ', self.config['LED_window_left'], '-', self.config['LED_window_right'],
+#               '\n\n to_pe =', self.to_pe,
+#              )
 
         
     def compute(self, raw_records):
@@ -98,7 +97,6 @@ class LEDAfterpulses(strax.Plugin):
         
         # find all hits in all WFs
         hits = find_hits_ap(r,
-                            threshold=self.config['hit_threshold'],
                             LED_window_left=self.config['LED_window_left'],
                             LED_window_right=self.config['LED_window_right'],
                            )
@@ -112,6 +110,7 @@ class LEDAfterpulses(strax.Plugin):
         return result
 
 
+    
 # new data type for hits in AP data
 hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
              (('Time resolution in ns', 'dt'), '<i2'),
@@ -120,6 +119,7 @@ hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
              (('Integral of hit in ADC counts x samples', 'area'), '<i4'),
              (('Index of sample in record in which hit starts', 'left'), '<i2'),
              (('Index of sample in record in which the hit area suceeds 10% of its total area', 'sample_10pc_area'), '<i2'),
+             (('Index of sample in record in which the hit area suceeds 50% of its total area', 'sample_50pc_area'), '<i2'),
              (('Index of sample in record in which the hit height suceeds 50% of maximum height', 'sample_50pc_height'), '<i2'),
              (('Index of sample in record of hit maximum', 'max'), '<i2'),
              (('Index of first sample in record just beyond hit (exclusive bound)', 'right'), '<i2'),
@@ -128,6 +128,7 @@ hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
              (('Internal (temporary) index of fragment in which hit was found', 'record_i'), '<i4')
             ]
             
+    
 # strax hitfinder modified for AP data
 #   - all samples above threshold in LED window are combined into one LED hit
 #   - added timing parameters for hits
@@ -137,7 +138,7 @@ hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
 @export
 @strax.growing_result(hit_ap_dtype, chunk_size=int(1e2))
 @numba.jit(nopython=True, nogil=True, cache=True)
-def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_buffer=None):
+def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None):
 
     buffer = _result_buffer
     if not len(records):
@@ -151,6 +152,9 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
         area = height = t_LED = 0
         
         LED_hit = False
+        
+        # get hit finding threshold: 3 times the baseline rms (standard dev)
+        threshold = r['baseline_rms'] * 3
 
         # start hitfinder at beginning of LED window
         for i in range(LED_window_left, samples_per_record):
@@ -170,7 +174,7 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
                         hit_max = i
                     
                     # end of LED hit (last sample above threshold in LED window)
-                    hit_end = i + 1    
+                    hit_end = i
                         
                     if i == LED_window_right:
                         # end of LED window
@@ -197,8 +201,8 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
             if in_interval:
                 if not above_threshold:
                     # Hit ends at the start of this sample
-                    if not LED_hit: # (LED hit end is determined already)
-                        hit_end = i
+                    #if not LED_hit: # (LED hit end is determined already)
+                    hit_end = i
                     in_interval = False
                     
                 else:
@@ -217,9 +221,14 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
                 if not in_interval:
                     # Hit is done, add it to the result
                     if hit_end == hit_start:
-                        print(r['time'], r['channel'], hit_start)
+                        #print(r['time'], r['channel'], hit_start)
                         raise ValueError(
                             "Caught attempt to save zero-length hit!")
+                    
+                    if hit_end == hit_start + 1:
+                        # ignore hits with only 1 sample above threshold
+                        continue
+                    
                     res = buffer[offset]
                     res['left'] = hit_start
                     res['right'] = hit_end
@@ -240,16 +249,28 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
 
                     ### Additional hit timing parameters
 
-                    # Get 10% area quantile (first sample where integrated area of hit is > 10% total area)
+                    # Get area quantiles (first sample where integrated area of hit is > x % total area)
                     data = r['data'][hit_start:hit_end]
                     area_sum = 0
+                    q10 = False
                     for data_i, d in enumerate(data):
                         area_sum += d
-                        if area_sum < 0.1*area:
-                            continue
-                        else:
-                            res['sample_10pc_area'] = hit_start + data_i
-                            break
+                        
+                        #if area_sum < 0.1*area:
+                        #    continue
+                        #else:
+                        #    res['sample_10pc_area'] = hit_start + data_i
+                        #    break
+                        
+                        if area_sum > 0.1 * area:
+                            if not q10:
+                                q10 = True
+                                res['sample_10pc_area'] = hit_start + data_i
+                            if area_sum > 0.5 * area:
+                                res['sample_50pc_area'] = hit_start + data_i
+                                break
+                        
+                        
                     
                     # Get sample index where 50% of height is exceeded
                     for data_i, d in enumerate(data):
@@ -278,4 +299,3 @@ def find_hits_ap(records, threshold, LED_window_left, LED_window_right, _result_
                         offset = 0
                         
     yield offset
-    
