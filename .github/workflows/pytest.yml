@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.8]
+        # NB: We are going to test data baseless for py37
+        python-version: [3.6, 3.7, 3.8]
     steps:
       - name: Setup python
         uses: actions/setup-python@v2
@@ -46,6 +47,7 @@ jobs:
       - name: Install pytest and hypothesis
         run: pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
       - name: patch utilix file
+        if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
           RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}

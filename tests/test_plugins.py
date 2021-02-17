@@ -131,7 +131,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     # Ignore strax-internal warnings
     st.set_context_config({'free_options': tuple(st.config.keys())})
     st.register(DummyRawRecords)
-    if nt:
+    if nt and not straxen.utilix_is_configured():
         st.set_config(testing_config_nT)
         del st._plugin_class_registry['peak_positions_mlp']
         del st._plugin_class_registry['peak_positions_cnn']
@@ -141,8 +141,8 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     else:
         st.set_config(testing_config_1T)
     try:
-        if not hasattr(utilix, 'uconfig'):
-            raise ValueError('Utilx did not import correctly (or we are testing on CI')
+        if not straxen.utilix_is_configured():
+            raise ValueError('Utilix did not import correctly (or we are testing on CI')
         # If you want to have quicker checks: always raise an ValueError
         # as the CMT does take quite long to load the right corrections.
         if max_workers > 1 and fallback_gains is not None:

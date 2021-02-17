@@ -8,14 +8,6 @@ not show up in Pull Requests.
 import straxen
 
 
-def _is_connected() -> bool:
-    """
-    Check if we have the right connection to
-    :return: bool, can we connect to the Mongo database?
-    """
-    return straxen.uconfig is not None
-
-
 def test_select_runs(check_n_runs=2):
     """
     Test (if we have a connection) if we can perform strax.select_runs
@@ -24,7 +16,7 @@ def test_select_runs(check_n_runs=2):
     :param check_n_runs: int, the number of runs we want to check
     """
 
-    if not _is_connected():
+    if not straxen.utilix_is_configured():
         # If we cannot connect, there is nothing to test
         return
     assert check_n_runs >= 1
