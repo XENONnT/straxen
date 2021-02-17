@@ -48,7 +48,7 @@ jobs:
       - name: patch utilix file
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
-          $RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
+          RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
           RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
           RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
           PYMONGO_URL: ${{ secrets.PYMONGO_URL }}

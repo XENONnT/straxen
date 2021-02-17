@@ -19,6 +19,7 @@ pymongo_user = $PYMONGO_USER
 pymongo_password = $PYMONGO_PASSWORD
 pymongo_database = $PYMONGO_DATABASE
 EOF
+echo "YEAH boy, complete github actions voodoo now made you have access to our database!"
 else
  echo "You have no power here! Environment variables are not set, therefore no utilix file will be created"
 fi
