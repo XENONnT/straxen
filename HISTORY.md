@@ -1,3 +1,10 @@
+0.15.2 / 2021-02-17
+--------------------
+- GCN and CNN version bump for CMT bugfix (#367)
+- Veto compression updates (#365)
+- Simulation context fixed gains (363)
+
+
 0.15.1 / 2021-02-11
 --------------------
 - Change event extensions (#364)
