@@ -16,10 +16,10 @@ export, __all__ = strax.exporter()
     strax.Option('trigger_max_competing', default=7,
                  help='Peaks must have FEWER nearby larger or slightly smaller'
                       ' peaks to cause events'),
-    strax.Option('left_event_extension', default=int(2.5e6),
+    strax.Option('left_event_extension', default=int(2.7e6),
                  help='Extend events this many ns to the left from each '
                       'triggering peak'),
-    strax.Option('right_event_extension', default=int(2.5e6),
+    strax.Option('right_event_extension', default=int(0.5e6),
                  help='Extend events this many ns to the right from each '
                       'triggering peak'),
 )

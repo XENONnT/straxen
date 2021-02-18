@@ -41,7 +41,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
     parallel = 'process'
     rechunk_on_save = False
-    compressor = 'lz4'
+    compressor = 'zstd'
     save_when = save_when = strax.SaveWhen.TARGET
 
     depends_on = 'raw_records_coin_nv'

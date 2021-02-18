@@ -66,7 +66,7 @@ class nVETOHitlets(strax.Plugin):
 
     parallel = 'process'
     rechunk_on_save = True
-    compressor = 'lz4'
+    compressor = 'zstd'
 
     depends_on = 'records_nv'
 
