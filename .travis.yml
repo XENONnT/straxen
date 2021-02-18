@@ -30,6 +30,7 @@ install:
 - pip install -r requirements.txt
 - echo "add utilix file to not break imports"
 - bash .github/scripts/create_readonly_utilix_config.sh
+- cat $HOME/.xenon_config
 script:
 - python setup.py install
 - coverage run --source=straxen setup.py test
