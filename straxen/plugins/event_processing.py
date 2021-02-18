@@ -260,7 +260,7 @@ class EventBasics(strax.LoopPlugin):
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
-                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
+                        posrec_result[f'alt_s{s_i}_{name}'] = main_s[s_i][name]
                 # Compute delay time properties
                 result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
                                                - main_s[s_i]['center_time'])
