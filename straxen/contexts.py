@@ -119,7 +119,8 @@ def xenonnt_online(output_folder='./strax_data',
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
-                       'online_monitor',))]
+                       'online_peak_monitor',
+                       'event_basics',))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797. Runs
@@ -143,22 +144,10 @@ def xenonnt_led(**kwargs):
     return st
 
 
-def xenonnt_ap(**kwargs):
-    st = xenonnt_online(output_folder = '/dali/lgrandi/hoetzsch/xenonnt/strax_data', **kwargs)
-    st.context_config['check_available'] = ('raw_records',)
-    # Return a new context with only raw_records and afterpulses registered
-    return st.new_context(
-        replace = True,
-        register = [straxen.DAQReader, straxen.LEDAfterpulses],
-        config = st.config,
-        storage = st.storage,
-        **st.context_config)
-
-
-# This gain model is a temporary solution until we have a nice stable one
+# This gain model is the average to_pe. For something more fancy use the CMT
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
-    xnt_common_config['gain_model'] = ('to_pe_per_run', 'to_pe_nt.npy')
+    xnt_common_config['gain_model'] = ('to_pe_constant', 0.01)
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
