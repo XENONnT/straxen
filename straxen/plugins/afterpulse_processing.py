@@ -32,7 +32,9 @@ dtype_ap = [(('Channel/PMT number','channel'),
              (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
                '<i2'),                                        # first sample after last sample of hit
              (('Height of hit in ADC counts', 'height'),
-               '<i4'),                                        # height of hit
+               '<i4'),                                        # height of hit in ADC counts
+             (('Height of hit in PE', 'height_pe'),
+               '<f4'),                                        # height of hit converted to PE equivalent
              (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
                '<i2'),                                        # time delay of hit w.r.t to corresponding LED hit in the same WF in samples
              (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
@@ -59,7 +61,7 @@ dtype_ap = [(('Channel/PMT number','channel'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.1.0.1'
+    __version__ = '0.1.1.0'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -106,6 +108,7 @@ class LEDAfterpulses(strax.Plugin):
         for name in hits.dtype.names:
             result[name] = hits[name]        
         result['area_pe'] = result['area'] * self.to_pe[result['channel']]
+        result['height_pe'] = result['height'] * self.to_pe[result['channel']]
         
         return result
 
