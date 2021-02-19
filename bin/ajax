@@ -879,7 +879,7 @@ if __name__ == '__main__':
 
     try:
         import daqnt
-        log_name = 'ajax_' + hostname + ('' if not args.execute else 'TESTING')
+        log_name = 'ajax_' + hostname + ('' if not args.execute else '_TESTING')
         log = daqnt.get_daq_logger('main', log_name, level=logging.DEBUG)
     except ModuleNotFoundError:
         logging.basicConfig(

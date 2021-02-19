@@ -267,7 +267,7 @@ hostname = socket.getfqdn()
 
 try:
     import daqnt
-    log_name = 'bootstrax_' + hostname + ('' if args.production else 'TESTING')
+    log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
     log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
 except ModuleNotFoundError:
     logging.basicConfig(
