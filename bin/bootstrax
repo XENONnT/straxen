@@ -1302,6 +1302,8 @@ def process_run(rd, send_heartbeats=args.production):
     log.info(f"Starting processing of run {rd['number']}")
     if rd is None:
         raise RuntimeError("Pass a valid rundoc, not None!")
+    elif args.production and rd.get('bootstrax', {}).get('state', None) == 'done':
+        raise RuntimeError(f'{rd["number"]} is done already, do not make a mass')
 
     # Shortcuts for failing
     class RunFailed(Exception):
