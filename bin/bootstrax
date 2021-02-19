@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.4'
+__version__ = '1.0.5'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1620,8 +1620,8 @@ def cleanup_db():
     abandon_queries = [
         ({'tags': {
             '$elemMatch': {
-                'name': 'bad'}}},
-         "Run has a 'bad' tag"),
+                'name': 'abandon'}}},
+         "Run has a 'abandon' tag"),
     ]
 
     for query, failure_message in abandon_queries:
