@@ -32,6 +32,7 @@ testing_config_1T = dict(
     gain_model=('to_pe_constant', 0.0085)
 )
 
+test_run_id_nT = '008900'
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False)
@@ -205,9 +206,9 @@ def test_1T(ncores=1):
 
     # Register the 1T plugins for this test as well
     st.register_all(straxen.plugins.x1t_cuts)
-    # for _plugin, _plugin_class in st._plugin_class_registry.items():
-    #     if 'cut' in str(_plugin).lower():
-    #         _plugin_class.save_when = strax.SaveWhen.ALWAYS
+    for _plugin, _plugin_class in st._plugin_class_registry.items():
+        if 'cut' in str(_plugin).lower():
+            _plugin_class.save_when = strax.SaveWhen.ALWAYS
     _run_plugins(st, make_all=True, max_wokers=ncores)
     # Test issue #233
     st.search_field('cs1')
@@ -222,7 +223,7 @@ def test_nT(ncores=1):
     offline_gain_model = ('to_pe_constant', 'gain_placeholder')
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
-    _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_nT)
     # Test issue #233
     st.search_field('cs1')
     # Test of child plugins:
