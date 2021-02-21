@@ -186,3 +186,12 @@ def test_plots():
     c = np.ones(straxen.n_tpc_pmts)
     straxen.plot_pmts(c)
     straxen.plot_pmts(c, log_scale=True)
+
+
+def print_version():
+    straxen.print_versions()
+
+
+def print_non_existent_versions():
+    # Don't raise an error if we try to import something that does not exist
+    straxen.print_versions(['something_that_does_not_exist'])

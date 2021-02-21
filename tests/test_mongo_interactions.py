@@ -32,3 +32,4 @@ def test_select_runs(check_n_runs=2):
     # amount of documents checked and therefore keeps the test short.
     st.storage[0].minimum_run_number = int(last_run) - (check_n_runs-1)
     st.select_runs()
+

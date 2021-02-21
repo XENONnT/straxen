@@ -138,29 +138,11 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         del st._plugin_class_registry['peak_positions_gcn']
         st.register(straxen.PeakPositions1T)
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
-    else:
+        st.set_config({'gain_model': fallback_gains})
+
+    elif not nt:
         st.set_config(testing_config_1T)
-    try:
-        if not straxen.utilix_is_configured():
-            raise ValueError('Utilix did not import correctly (or we are testing on CI')
-        # If you want to have quicker checks: always raise an ValueError
-        # as the CMT does take quite long to load the right corrections.
-        if max_workers > 1 and fallback_gains is not None:
-            raise ValueError(
-                'Use fallback gains for multicore to save time on tests')
-    except ValueError:
-        # Okay so we cannot initize the runs-database. Let's just use some
-        # fallback values if they are specified.
-        if ('gain_model' in st.config and
-                st.config['gain_model'][0] == 'CMT_model'):
-            if fallback_gains is None:
-                # If you run into this error, go to the test_nT() - test and
-                # see for example how it is done there.
-                raise ValueError('Context uses CMT_model but no fallback_gains '
-                                 'are specified in test_plugins.py for this '
-                                 'context being tested')
-            else:
-                st.set_config({'gain_model': fallback_gains})
+
     if max_workers - 1:
         st.set_context_config({
             'allow_multiprocess': True,
@@ -223,6 +205,9 @@ def test_1T(ncores=1):
 
     # Register the 1T plugins for this test as well
     st.register_all(straxen.plugins.x1t_cuts)
+    for _plugin, _plugin_class in st._plugin_class_registry.items():
+        if 'cut' in str(_plugin).lower():
+            _plugin_class.save_when = strax.SaveWhen.ALWAYS
     _run_plugins(st, make_all=False, max_wokers=ncores)
     # Test issue #233
     st.search_field('cs1')
