@@ -48,6 +48,6 @@ jobs:
           PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
       - name: Test package
         run: |
-          python setup.py test -v --durations=0
+          python setup.py test -v
       - name: goodbye
         run: echo goodbye
