@@ -28,6 +28,7 @@ jobs:
     - name: install pre requirements
       run: |
         bash .github/scripts/preinstall_requirements.sh
+        pip install coveralls coverage
     - name: Install python dependencies
       uses: py-actions/py-dependency-install@v2
     - name: patch utilix file
@@ -45,6 +46,5 @@ jobs:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         NUMBA_DISABLE_JIT: 1
       run: |
-        pip install coveralls coverage
         coverage run --source=straxen setup.py test -v
         coveralls
