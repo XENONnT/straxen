@@ -58,6 +58,18 @@ def test_elife():
     cmt.get_elife(test_run_id_nT, 'elife_model', 'ONLINE')
 
 
+def _patch_om_init(take_only):
+    """
+    temp patch since om = straxen.OnlineMonitor() does not work with utilix
+    """
+    header = 'RunDB'
+    user = straxen.uconfig.get(header, 'pymongo_user')
+    pwd = straxen.uconfig.get(header, 'pymongo_password')
+    url = straxen.uconfig.get(header, 'pymongo_url').split(',')[-1]
+    uri = f"mongodb://{user}:{pwd}@{url}"
+    return straxen.OnlineMonitor(uri=uri, take_only=take_only)
+
+
 def test_online_monitor(target='online_peak_monitor', max_tries=3):
     """
     See if we can get some data from the online monitor before max_tries
@@ -67,7 +79,7 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
         run
     """
     st = straxen.contexts.xenonnt_online()
-    om = straxen.OnlineMonitor(take_only=target)
+    om = _patch_om_init(target)
     st.storage = [om]
     for i in range(max_tries):
         some_run = om.db[om.col_name].find_one({'provides_meta': True,
