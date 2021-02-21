@@ -25,12 +25,11 @@ jobs:
         python-version: 3.8
     - name: Checkout repo
       uses: actions/checkout@v2
+    - name: install pre requirements
+      run: |
+        bash .github/preinstall_requirements.sh
     - name: Install python dependencies
       uses: py-actions/py-dependency-install@v2
-    - name: Install requirements
-      run: |
-        pip install pytest hypothesis flake8 pytest-cov coveralls pytest
-        python setup.py install
     - name: patch utilix file
       run: bash .github/scripts/create_readonly_utilix_config.sh
       env:
