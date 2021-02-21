@@ -78,6 +78,9 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
     :param max_tries: number of queries max allowed to get a non-failing
         run
     """
+    if not straxen.utilix_is_configured():
+        warn('Cannot test online monitor because utilix is not configured')
+        return
     st = straxen.contexts.xenonnt_online()
     om = _patch_om_init(target)
     st.storage = [om]
