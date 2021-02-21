@@ -6,7 +6,7 @@ not show up in Pull Requests.
 """
 
 import straxen
-
+import os
 
 def test_select_runs(check_n_runs=2):
     """
@@ -32,3 +32,13 @@ def test_select_runs(check_n_runs=2):
     # amount of documents checked and therefore keeps the test short.
     st.storage[0].minimum_run_number = int(last_run) - (check_n_runs-1)
     st.select_runs()
+
+
+def test_downloader():
+    if not straxen.utilix_is_configured():
+        # If we cannot connect, there is nothing to test
+        return
+
+    downloader = straxen.MongoDownloader()
+    path = downloader.download_single('to_pe_nt.npy')
+    assert os.path.exists(path)
