@@ -7,6 +7,7 @@ not show up in Pull Requests.
 
 import straxen
 import os
+from warnings import warn
 
 def test_select_runs(check_n_runs=2):
     """
@@ -17,7 +18,8 @@ def test_select_runs(check_n_runs=2):
     """
 
     if not straxen.utilix_is_configured():
-        # If we cannot connect, there is nothing to test
+        warn('Makes no sense to test the select runs because we do not '
+             'have access to the database.')
         return
     assert check_n_runs >= 1
     st = straxen.contexts.xenonnt_online()
@@ -36,7 +38,7 @@ def test_select_runs(check_n_runs=2):
 
 def test_downloader():
     if not straxen.utilix_is_configured():
-        # If we cannot connect, there is nothing to test
+        warn('Cannot download because utilix is not configured')
         return
 
     downloader = straxen.MongoDownloader()
