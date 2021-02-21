@@ -205,10 +205,10 @@ def test_1T(ncores=1):
 
     # Register the 1T plugins for this test as well
     st.register_all(straxen.plugins.x1t_cuts)
-    for _plugin, _plugin_class in st._plugin_class_registry.items():
-        if 'cut' in str(_plugin).lower():
-            _plugin_class.save_when = strax.SaveWhen.ALWAYS
-    _run_plugins(st, make_all=False, max_wokers=ncores)
+    # for _plugin, _plugin_class in st._plugin_class_registry.items():
+    #     if 'cut' in str(_plugin).lower():
+    #         _plugin_class.save_when = strax.SaveWhen.ALWAYS
+    _run_plugins(st, make_all=True, max_wokers=ncores)
     # Test issue #233
     st.search_field('cs1')
     _test_child_options(st)
