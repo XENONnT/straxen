@@ -329,7 +329,7 @@ class MongoDownloader(GridFsInterface):
 
                 with open(temp_path, 'wb') as stored_file:
                     # This is were we do the actual downloading!
-                    warn(f'Downloading {config_name} to {temp_path}')
+                    warn(f'Downloading {config_name} to {destination_path}')
                     stored_file.write(fs_object.read())
 
                 if not os.path.exists(destination_path):
