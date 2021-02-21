@@ -29,6 +29,8 @@ setuptools.setup(name='straxen',
                      'flake8',
                      'pytest-cov',
                      'coveralls',
+                     'xarray',
+                     'datashader',
                      'boltons'],
                  python_requires=">=3.6",
                  extras_require={
