@@ -59,6 +59,6 @@ jobs:
           PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
       - name: Test package
         run: |
-          pytest --verbose
+          coverage run --source=straxen setup.py test
       - name: goodbye
         run: echo goodbye
