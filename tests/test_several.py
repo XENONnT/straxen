@@ -58,6 +58,10 @@ def test_several():
 
             print("Downloading test data (if needed)")
             st = straxen.contexts.demo()
+            st.make(test_run_id, 'records')
+            # Ignore strax-internal warnings
+            st.set_context_config({'free_options': tuple(st.config.keys())})
+
             print("Get peaks")
             p = st.get_array(test_run_id, 'peaks')
 
@@ -68,7 +72,7 @@ def test_several():
             assert np.abs(len(p) -
                           EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
 
-            st.make(test_run_id, 'event_info')
+            events = st.get_array(test_run_id, 'event_info')
             print('plot wf')
             peak_i = 0
             st.plot_waveform(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
@@ -79,10 +83,34 @@ def test_several():
             st.plot_hit_pattern(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])), xenon1t=True)
             plt_clf()
 
-            print('plot records matrix')
+            print('plot (raw)records matrix')
             peak_i = 2
             assert st.is_stored(test_run_id, 'records'), "no records"
-            st.plot_records_matrix(test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            assert st.is_stored(test_run_id, 'raw_records'), "no raw records"
+            st.plot_records_matrix(test_run_id, time_range=(p[peak_i]['time'],
+                                                            strax.endtime(p[peak_i])))
+            st.raw_records_matrix(test_run_id, time_range=(p[peak_i]['time'],
+                                                           strax.endtime(p[peak_i])))
+            plt_clf()
+
+            print('plot event displays')
+            straxen.analyses.event_display.plot_single_event(st,
+                                                             test_run_id,
+                                                             events,
+                                                             xenon1t=True,
+                                                             event_number=0,
+                                                             records_matrix=True)
+            plt_clf()
+            straxen.analyses.event_display.plot_single_event(st,
+                                                             test_run_id,
+                                                             events,
+                                                             xenon1t=True,
+                                                             event_number=0,
+                                                             records_matrix='raw')
+            plt_clf()
+            st.event_display_interactive(test_run_id, time_range=(events[0]['time'],
+                                                                  events[0]['endtime']),
+                                         xenon1t=True)
             plt_clf()
 
             print('plot aft')
@@ -97,9 +125,27 @@ def test_several():
             st.plot_energy_spectrum(test_run_id)
             plt_clf()
 
+            print('plot peak clsassification')
+            st.plot_peak_classification(test_run_id)
+            plt_clf()
+
+            print("plot holoviews")
+            peak_i = 3
+            st.waveform_display(test_run_id,
+                                time_range=(p[peak_i]['time'],
+                                            strax.endtime(p[peak_i])))
+            st.hvdisp_plot_pmt_pattern(test_run_id,
+                                time_range=(p[peak_i]['time'],
+                                            strax.endtime(p[peak_i])))
+            st.hvdisp_plot_peak_waveforms(test_run_id,
+                                time_range=(p[peak_i]['time'],
+                                            strax.endtime(p[peak_i])))
+            print('Plot single pulse:')
+            st.plot_pulses_tpc(test_run_id, max_plots=2,  plot_hits=True, ignore_time_warning=True)
+
             print("Check live-time")
             live_time = straxen.get_livetime_sec(st, test_run_id, things=p)
-            assertion_statement = ("Live-time calculation is wrong")
+            assertion_statement = "Live-time calculation is wrong"
             assert live_time == EXPECTED_OUTCOMES_TEST_SEVERAL['run_live_time'], assertion_statement
 
             print('Check the peak_basics')
@@ -114,7 +160,7 @@ def test_several():
             print("Check that we can write nice wiki dfs")
             straxen.dataframe_to_wiki(df)
 
-            print("Abbuse the peaks to show that _average_scada works")
+            print("Abuse the peaks to show that _average_scada works")
             p = p[:10]
             p_t, p_a = straxen.scada._average_scada(
                 p['time']/1e9,

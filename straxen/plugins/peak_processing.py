@@ -1,7 +1,6 @@
 import json
 import os
 import tempfile
-
 import numpy as np
 import numba
 
@@ -10,6 +9,7 @@ import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 from .pulse_processing import  HE_PREAMBLE
+
 
 @export
 @strax.takes_config(
@@ -129,7 +129,7 @@ class PeakBasicsHighEnergy(PeakBasics):
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
-class PeakPositions(strax.Plugin):
+class PeakPositions1T(strax.Plugin):
     """Compute the S2 (x,y)-position based on a neural net."""
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
@@ -137,8 +137,8 @@ class PeakPositions(strax.Plugin):
               'Reconstructed S2 Y position (cm), uncorrected')
              ] + strax.time_fields
     depends_on = ('peaks',)
+    provides = "peak_positions"
 
-    # TODO
     # Parallelization doesn't seem to make it go faster
     # Is there much pure-python stuff in tensorflow?
     # Process-level paralellization might work, but you'd have to do setup
@@ -146,12 +146,11 @@ class PeakPositions(strax.Plugin):
     # except for huge chunks
     parallel = False
 
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     def setup(self):
         import tensorflow as tf
         keras = tf.keras
-
         nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
         # badPMTList was inserted by a very clever person into the keras json
         # file. Let's delete it to prevent future keras versions from crashing.

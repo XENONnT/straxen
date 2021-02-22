@@ -91,7 +91,7 @@ class RunDB(strax.StorageFrontend):
                         'user': mongo_user,
                         'password': mongo_password,
                         'database': mongo_database}
-        self.collection = utilix.rundb.pymongo_collection(**mongo_kwargs)
+        self.collection = utilix.rundb.xent_collection(**mongo_kwargs)
 
         # Do not delete the client!
         self.client = self.collection.database.client

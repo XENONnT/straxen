@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '0.5.13'
+__version__ = '1.0.4'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -87,8 +87,6 @@ import socket
 import shutil
 import time
 import traceback
-from tqdm import tqdm
-
 import numpy as np
 import pymongo
 from psutil import pid_exists, disk_usage
@@ -96,11 +94,7 @@ import pytz
 import strax
 import straxen
 import threading
-import utilix
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
+import pandas as pd
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -109,15 +103,19 @@ parser.add_argument(
     help="Start strax processes with debug logging.")
 parser.add_argument(
     '--profile', type=str, default='false',
-    help="Option to run strax in profiling mode. argument specifies the name "
-         "of the profile if not 'false'. Use e.g. 'date'.prof")
+    help="Run strax in profiling mode. Specify target filename as argument.")
 parser.add_argument(
     '--cores', type=int, default=8,
-    help="Maximum number of workers to use in a strax process. Set to -1 for "
-         "all available cores")
+    help="Maximum number of workers to use in a strax process.")
 parser.add_argument(
-    '--target', default='event_info',
-    help="Strax data type name that should be produced")
+    '--targets', nargs='*',
+    default=['event_info', 'online_monitor', 'hitlets_nv'],
+    help="Strax data type name(s) that should be produced with live processing")
+parser.add_argument(
+    '--post_process', nargs='*',
+    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv', 'veto_intervals'],
+    help="Target(s) for other sub-detectors. If not produced automatically "
+         "when processing tpc data, st.make the requested data later.")
 parser.add_argument(
     '--fix_target', action='store_true',
     help="Don't allow bootstrax to switch to a different target for special runs")
@@ -136,11 +134,6 @@ parser.add_argument(
     '--ignore_checks', action='store_true',
     help="Do not use! This disables checks on e.g. the timestamps! Should only "
          "be used if some run is very valuable but some checks are failing.")
-parser.add_argument(
-    '--sub_d_targets', nargs='*',
-    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv'],
-    help="Target(s) for other sub-detectors. If not produced automatically "
-         "when processing tpc data, st.make the requested data later.")
 parser.add_argument(
     '--max_messages', type=int, default=10,
     help="number of max mailbox messages")
@@ -168,8 +161,8 @@ print(f'---\n bootstrax version {__version__}\n---')
 
 # The folder that can be used for testing bootstrax (i.e. non production
 # mode). It will be written to:
-test_data_folder = ('/nfs/scratch/bootstrax/' if
-                    os.path.exists('/nfs/scratch/bootstrax/')
+test_data_folder = ('/data/test_processed/' if
+                    os.path.exists('/data/test_processed/')
                     else './bootstrax/')
 
 # Timeouts in seconds
@@ -209,7 +202,11 @@ timeouts = {
     # Bootstrax writes it's state to the daq-database. To have a backlog we store this
     # state using a TTL collection. To prevent too many entries in this backlog, only
     # create new entries if the previous entry is at least this old (in seconds).
-    'min_status_interval': 60
+    'min_status_interval': 60,
+    # Maximum time we can take to can infer the datarate (s).
+    'max_data_rate_infer_time': 60,
+    # Minimum time we have to be in the run before we can infer the datarate (s).
+    'min_data_rate_infer_time': 15,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -217,6 +214,7 @@ timeouts = {
 # hence, we can check if there is sufficient diskspace and if not, wait a while.
 # Below are the max number of times and number of seconds bootstrax will wait.
 wait_diskspace_max_space_percent = 90
+min_disk_space_tb = 1.0  # Terabytes
 wait_diskspace_n_max = 60 * 24 * 7  # times
 wait_diskspace_dt = 60  # seconds
 if timeouts['bootstrax_presumed_dead'] < wait_diskspace_dt:
@@ -250,36 +248,43 @@ max_timetamp_diff = 5
 
 # The maximum number of retries for processing a run. After this many times of retrying
 # to process a run, the DAQ-group has to either manually fix this run or manually fail it.
-max_n_retry = 20
+max_n_retry = 10
 
-# Bootstrax retries runs multiple times. If there have been this many fails we could lower
-# the resources to be somewhat more lenient on the CPU and RAM of the eventbuilders. Use
-# this option with care as we might be running in a sub-optimal mode that may not be
-# noticed and eventbuilders may be spending more time on trying to reprocess failed runs.
-lower_resources_after_n_failures = 10
+# Check that there are runs that are waiting to be processed. If there are few,
+# an eventbuilder should not process new data.
+max_queue_new_runs = 2
+
+# Remove any targets or post processing targets after the run failed
+# this many times. If high level data is hitting some edge case, we
+# might want to be able to keep the intermediate level data.
+# NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
+remove_target_after_fails = dict(events=2, hitlets=2, peak=3, online=4, ALL=5)
 
 ##
 # Initialize globals (e.g. rundb connection)
 ##
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
-    datefmt='%m-%d %H:%M')
-log = logging.getLogger()
 hostname = socket.getfqdn()
 
+try:
+    import daqnt
+    log_name = 'bootstrax_' + hostname + ('' if args.production else 'TESTING')
+    log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
+except ModuleNotFoundError:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
+        datefmt='%m-%d %H:%M')
+    log = logging.getLogger()
+
 # Set the output folder
-output_folder = '/data/xenonnt_processed/'
+output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
 
 if not args.production:
     # This means we are in some test mode
     wait_diskspace_max_space_percent = 80
-    output_folder = test_data_folder
     if not os.path.exists(output_folder):
         log.warning(f'Creating {output_folder}')
         os.mkdir(output_folder)
-
     log.warning(
         f'\n---------------'
         f'\nBe aware, bootstrax not running in production mode. Specify with --production.'
@@ -295,16 +300,22 @@ else:
         log.warning("Better performance is expected in production mode with "
                     "'--infer_mode'\nplease restart bootstrax")
 
+if os.access(output_folder, os.W_OK) is not True:
+    message = f'No writing access to {output_folder}'
+    log.warning(message, priority='fatal')
+    raise IOError(message)
+
 
 def new_context(cores=args.cores,
                 max_messages=args.max_messages,
-                timeout=300,
-                targets=strax.to_str_tuple(args.target),
+                timeout=500,
+                targets=strax.to_str_tuple(args.targets),
                 ):
     """Create strax context that can access the runs db"""
     # We use exactly the same logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
     class MergeTargets(strax.Plugin):
+        """Mergeonly plugin to allow a single endpoint for st.make"""
         depends_on = targets
         provides = 'multiple'
         save_when = strax.SaveWhen.NEVER
@@ -322,7 +333,6 @@ def new_context(cores=args.cores,
         timeout=timeout)
     if not args.production:
         context.storage = [strax.DataDirectory(output_folder)]
-
     context.register(MergeTargets)
     return context
 
@@ -354,8 +364,6 @@ else:
 run_coll = run_db[run_collname]
 run_db.command('ping')
 
-run_coll = run_db[run_collname]
-
 # Ping the databases to ensure the mongo connections are working
 if not args.undying:
     run_db.command('ping')
@@ -363,12 +371,6 @@ if not args.undying:
 
 
 def main():
-    # Check that writing access is OK, otherwise report to the database and die
-    if os.access(output_folder, os.W_OK) is not True:
-        message = f'No writing access to {output_folder}'
-        log_warning(message, priority='fatal')
-        raise IOError(message)
-
     if args.cores == -1:
         # Use all of the available cores on this machine
         args.cores = multiprocessing.cpu_count()
@@ -425,25 +427,20 @@ def main_loop():
     new_runs_seen, failed_runs_seen = 0, 1
     while True:
         log.info(f'bootstrax running for {(now() - t_start).seconds} seconds')
+        # Check resources are still OK, otherwise crash / reboot program
         sufficient_diskspace()
         log.info("Looking for work")
-        if not eb_can_process():
-            # Nothing to do, let's do some cleanup and set to idle
-            delete_temp_files()
-            set_state('idle')
-            time.sleep(timeouts['idle_nap'])
-            continue
         set_state('busy')
-        # Check resources are still OK, otherwise crash / reboot program
+        if eb_can_process():
+            # Process new runs
+            rd = consider_run({"bootstrax.state": None},
+                              test_counter=new_runs_seen)
+            if rd is not None:
+                new_runs_seen += 1
+                process_run(rd)
+                continue
 
-        # Process new runs
-        rd = consider_run({"bootstrax.state": None},
-                          test_counter=new_runs_seen)
-        if rd is not None:
-            new_runs_seen += 1
-            process_run(rd)
-            continue
-
+        # There is either no new run or we are an old eventbuilder.
         # Scan DB for runs with unusual problems
         if now() > next_cleanup_time:
             cleanup_db()
@@ -454,7 +451,8 @@ def main_loop():
         rd = consider_run({"bootstrax.state": 'failed',
                            "bootstrax.n_failures": {'$lt': max_n_retry},
                            "bootstrax.next_retry": {'$lt': now()}
-                           }, test_counter=failed_runs_seen)
+                           },
+                          test_counter=failed_runs_seen)
         if rd is not None:
             failed_runs_seen += 1
             process_run(rd)
@@ -500,32 +498,92 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def override_target(rd):
+def _remove_veto_from_t(targets, remove=('_mv', '_nv'), _flip=False):
+    """Remove veto(s) from targets"""
+    start = targets
+    remove = strax.to_str_tuple(remove)
+    if targets is None:
+        return None
+    for r in remove:
+        targets = [t for t in strax.to_str_tuple(targets) if (r not in t)]
+    if _flip:
+        targets = [t for i, t in enumerate(start) if not np.in1d(start, targets)[i]]
+    return strax.to_str_tuple(targets)
+
+
+def _keep_veto_from_t(targets, keep='_nv'):
+    """Remove non-veto(s) targets"""
+    targets = _remove_veto_from_t(targets, remove=keep, _flip=True)
+    if not len(targets):
+        targets = strax.to_str_tuple('raw_records')
+    return targets
+
+
+def infer_target(rd):
     """
     Check if the target should be overridden based on the mode of the DAQ for this run
     :param rd: rundoc
-    :return: override False for LED or raw_records
+    :return: dict with the targets and the targets for post processing
     """
+    _t = args.targets
+    _pp = args.post_process
+
     if args.fix_target:
-        return False
+        return {'targets': strax.to_str_tuple(_t),
+                'post_processing': strax.to_str_tuple(_pp)}
+
+    n_fails = rd['bootstrax'].get('n_failures', 0)
+    if n_fails:
+        log.debug(f'override_target::\tdeleting targets')
+        for _rm_t, _rm_t_after in remove_target_after_fails.items():
+            _t = [__t for __t in _t if (_rm_t not in __t and n_fails < _rm_t_after)]
+            _pp = [__pp for __pp in _pp if (_rm_t not in __pp and n_fails < _rm_t_after)]
+    if n_fails >= remove_target_after_fails['ALL']:
+        _t = 'raw_records'
+        _pp = 'raw_records'
+        return {'targets': strax.to_str_tuple(_t),
+                'post_processing': strax.to_str_tuple(_pp)}
 
     # Special modes override target for these
     led_modes = ['pmtgain']
     diagnostic_modes = ['exttrig', 'noise', 'pmtap']
-
     mode = str(rd.get('mode'))
     detectors = list(rd.get('detectors'))
 
-    log.info(f'override_target::\tmode is {mode}, changing target if needed')
+    log.debug(f'override_target::\tmode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
-        return 'led_calibration'
+        _t = 'led_calibration'
+        _pp = 'raw_records'
     elif np.any([m in mode for m in diagnostic_modes]):
-        return 'raw_records'
-    elif 'tpc' not in detectors:
-        # Don't make any high level if we don't have a TPC
-        return 'raw_records'
+        _t = 'raw_records'
+        _pp = 'raw_records'
+
+    if detectors == ['tpc']:
+        _t = _remove_veto_from_t(_t)
+        _pp = _remove_veto_from_t(_pp)
+    elif detectors == ['neutron_veto']:
+        _t = _keep_veto_from_t(_t, keep='_nv')
+        _pp = _keep_veto_from_t(_pp, keep='_nv')
+    elif detectors == ['muon_veto']:
+        _t = _keep_veto_from_t(_t, keep='_mv')
+        _pp = _keep_veto_from_t(_pp, keep='_mv')
     else:
-        return False
+        log_warning(f'Running in linked mode, processing up to {_t} and '
+                    f'postprocessing to {_pp}',
+                    priority='info',
+                    run_id=f'{rd["number"]:06}')
+    if _t is None or not len(_t):
+        _t = 'raw_records'
+    if _pp is None or not len(_pp):
+        _pp = 'raw_records'
+    _t = strax.to_str_tuple(_t)
+    _pp = strax.to_str_tuple(_pp)
+    for __check in (_t, _pp):
+        if not len(set(__check)) == len(__check):
+            log_warning(f'Duplicates in (post) targets {__check}',
+                        priority='Fatal')
+            raise ValueError(f'Duplicates in (post) targets {__check}')
+    return {'targets': _t, 'post_processing': _pp}
 
 
 def set_state(state, update_fields=None):
@@ -544,7 +602,7 @@ def set_state(state, update_fields=None):
         pid=os.getpid(),
         time=now(),
         state=state,
-        target=args.target,
+        targets=args.targets,
         max_cores=args.cores,
         max_messages=args.max_messages,
         undying=args.undying,
@@ -617,10 +675,6 @@ def eb_can_process():
         log_warning('Why is eb2 alive?!', priority='error')
         return False
 
-    # Check that there are runs that are waiting to be processed. If there are few, this
-    # eb should not process.
-    max_queue_new_runs = 2
-
     # Count number of runs untouched by bootstrax.
     n_untouched_runs = run_coll.count_documents({'bootstrax.state': None})
 
@@ -643,92 +697,120 @@ def eb_can_process():
                     '$lt': now(-timeouts['eb3-5_max_busy_time'])}})
             if running_eb:
                 n_ebs_busy += 1
-                log.info(f'eb_can_process::\t eb{eb_i} is busy')
-    if ((n_ebs_running == n_ebs_busy and n_untouched_runs > max_queue_new_runs) or
-            not n_ebs_running):
-        # There is a need for this eb to also process data (for now).
-        log.info(f'eb_can_process::\tThere is a need for {hostname} to process data. As we'
-                 f' have {n_ebs_running} running and {n_ebs_busy} busy')
+                log.debug(f'eb_can_process::\t eb{eb_i} is busy')
+    log.info(f'eb_can_process::\trunning: {n_ebs_running}\t'
+             f'busy: {n_ebs_busy}\tqueue: {n_untouched_runs}')
+    if (not n_ebs_running or
+            (n_ebs_running == n_ebs_busy and
+             n_untouched_runs > max_queue_new_runs)):
         return True
-    elif n_untouched_runs and n_untouched_runs < max_queue_new_runs:
-        log.info(f'eb_can_process::\tDo not process on {hostname} as there are few new runs.')
-    else:
-        log.info(f'eb_can_process::\tDo not process on {hostname}, new ebs are taking care')
-    log.info(
-        f'eb_can_process::\trunning: {n_ebs_running}\tbusy: {n_ebs_busy}\tqueue: {n_untouched_runs}')
     return False
 
 
 def infer_mode(rd):
-    """Infer a safe operating mode of running bootstrax based on the size of the first
-    chunk. Estimating save parameters for running bootstrax from:
-    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_update
-    returns: dictionary of how many cores and max_messages should be used based on an
-    estimated data rate.
     """
-    default_opt = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
-
+    Infer a safe operating mode of running bootstrax based on the
+    uncompressed redax rate. Estimating save parameters for running
+    bootstrax from:
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_2021update
+    :returns: dictionary of how many cores, max_messages and compressor
+    should be used based on an estimated data rate.
+    """
     # Get data rate from dispatcher
     try:
-        docs = ag_stat_coll.aggregate([
-            {'$match': {'number': rd['number']}},
-            {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
-        ])
-        data_rate = sum([d['rate'] for d in docs])
+        started_looking = time.time()
+        time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'] - now()).seconds
+        if time_to_wait > 0:
+            time.sleep(time_to_wait)
+        while True:
+            docs = ag_stat_coll.aggregate([
+                {'$match': {'number': rd['number']}},
+                {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
+            ])
+            data_rate = int(sum([d['rate'] for d in docs]))
+            if data_rate is not None:
+                break
+            elif time.time() - started_looking > timeouts['max_data_rate_infer_time']:
+                raise RuntimeError
+            time.sleep(5)
+
     except Exception as e:
-        log_warning(f'infer_mode ran into {e}. Cannot infer mode, using default mode.',
-                    run_id=f'{rd["number"]:06}', priority='info')
+        log_warning(f'infer_mode ran into {e}. Cannot infer datarate, using default mode.',
+                    run_id=f'{rd["number"]:06}', priority='warning')
         data_rate = None
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
-    log.info(f"infer_mode::\teb{int(hostname[2])}")
-    eb = 'new_eb' if is_new_eb else 'old_eb'
-
-    # Return a run-mode that is empirically found to provide stable but fast processing.
-    log.info(f'infer_mode::\tWorking with a data rate of {data_rate:.1f} MB/s')
-    # TODO
-    #  decrease timeout later. Unsure why needed now.
-    run_settings = {
-        'new_eb':
-            {'low_rate': dict(cores=24, max_messages=20, timeout=500),
-             'med_rate': dict(cores=24, max_messages=20, timeout=600),
-             'high_rate': dict(cores=20, max_messages=15, timeout=1000),
-             'very_high_rate': dict(cores=20, max_messages=15, timeout=1500),
-             'max_rate': dict(cores=16, max_messages=10, timeout=2000)},
-        'old_eb':
-            {'low_rate': dict(cores=30, max_messages=20, timeout=500),
-             'med_rate': dict(cores=20, max_messages=15, timeout=600),
-             'high_rate': dict(cores=10, max_messages=15, timeout=1000),
-             'very_high_rate': dict(cores=10, max_messages=10, timeout=1500),
-             'max_rate': dict(cores=8, max_messages=10, timeout=2000)}}
-    if data_rate is None:
-        result = default_opt
-    elif data_rate < 100:
-        result = run_settings[eb]['low_rate']
-    elif data_rate < 200:
-        result = run_settings[eb]['med_rate']
-    elif data_rate < 500:
-        result = run_settings[eb]['high_rate']
-    elif data_rate < 700:
-        result = run_settings[eb]['very_high_rate']
+    log.info(f'infer_mode::\tData rate: {data_rate} MB/s. New_eb: {is_new_eb}')
+    benchmark = {
+        'mbs': [0, 70, 90, 110, 150, 220, 290, 360, 390, 420, 500, 550],
+        'cores_old': [39, 35, 35, 30, 30, 20, 12, 12, 10, 10, 10, 8],
+        'cores': [24, 24, 24, 24, 18, 15, 15, 15, 15, 15, 15, 10],
+        'max_messages_old': [20, 20, 15, 15, 10, 10, 10, 10, 10, 10, 8, 6],
+        'max_messages': [60, 60, 35, 30, 25, 25, 25, 25, 20, 15, 12, 12],
+        'timeout': [600, 600, None, None, None, None, None, None, None, None, None, 1200]
+    }
+    if data_rate and args.infer_mode:
+        df = pd.DataFrame(benchmark)
+        df.loc[len(df.index)] = [data_rate, None, None, None, None, None]
+        df.set_index('mbs', inplace=True)
+        df.sort_values('mbs', inplace=True)
+        df.interpolate(method='index', inplace=True)
+        result = {k: int(v) for k, v in df.loc[data_rate].items()}
+        if not is_new_eb:
+            for k in ('cores', 'max_messages'):
+                result[k] = result[k+'_old']
+        del df, benchmark, result['cores_old'], result['max_messages_old']
     else:
-        result = run_settings[eb]['max_rate']
-    log.info(f'infer_mode::\tOverride processing mode for run {rd["number"]} changing to:'
-             f'\t {result}')
-
-    # Lower the settings if there are continuous failures on this run:
-    if rd.get('bootstrax', {}).get('n_failures', 0) >= lower_resources_after_n_failures:
-        result = dict(cores=max(4, result['cores'] // 2),
-                      max_messages=max(4, result['max_messages'] // 2),
-                      timeout=min(1000, result['timeout'] * 1.5)
-                      )
-        log_warning(f'infer_mode::\tRepeated failures. Lowering mode to {result}. This '
-                    f'may indicated a sub-optimal state of {hostname}!',
+        result = dict(cores=args.cores,
+                      max_messages=args.max_messages,
+                      timeout=1000)
+    n_fails = rd['bootstrax'].get('n_failures', 0)
+    if n_fails:
+        # Exponentially lower resources & increase timeout
+        result = dict(
+            cores=np.clip(result['cores']/(1.1**n_fails), 4, 40).astype(int),
+            max_messages=np.clip(result['max_messages']/(1.1**n_fails), 4, 100).astype(int),
+            timeout=np.clip(result['timeout']*(1.1**n_fails), 500, 3600).astype(int),
+        )
+        log_warning(f'infer_mode::\tRepeated failures on {rd["number"]}@{hostname}. '
+                    f'Lowering to {result}',
                     priority='info',
                     run_id=f'{rd["number"]:06}')
-
+    else:
+        result = {k: int(v) for k, v in result.items()}
+    result['records_compressor'] = infer_records_compressor(rd, data_rate, n_fails)
+    log.info(f'infer_mode::\tInferred mode for {rd["number"]}\t{result}')
     return result
+
+
+def infer_records_compressor(rd, datarate, n_fails):
+    """
+    Get a compressor for the (raw)records. This takes two things in consideration:
+    1. Do we store the data fast enough (high write speed)
+    2. Does the data fit into the buffer
+
+    Used compressors:
+        bz2: slow but very good compression -> use for low datarate
+        zstd: fast & decent compression, max chunk size of ??? GB
+        lz4: fast & not no chunk size limit, use if all ese fails
+    """
+    if n_fails or datarate is None:
+        # Cannot infer datarate or failed before, go for fast & safe
+        return 'lz4' if n_fails > 1 else 'zstd'
+
+    chunk_length = (rd['daq_config']['strax_chunk_overlap'] +
+                    rd['daq_config']['strax_chunk_length'])
+    chunk_size_mb = datarate*chunk_length
+    if datarate < 50:
+        # Low data rate, we can do very large compression
+        return 'bz2'
+    if chunk_size_mb > 1800:
+        # Extremely large chunks, let's use LZ4 because we know that it
+        # can handle this.
+        return 'lz4'
+    # High datarate and reasonable chunk size.
+    return 'zstd'
 
 
 ##
@@ -738,14 +820,20 @@ def infer_mode(rd):
 def sufficient_diskspace():
     """Check if there is sufficient space available on the local disk to write to"""
     for i in range(wait_diskspace_n_max):
-        disk_pct = disk_usage(output_folder).percent
-        if disk_pct < wait_diskspace_max_space_percent:
-            log.info(f'Check disk space: {disk_pct:.1f}% full')
+        du = disk_usage(output_folder)
+        disk_pct = du.percent
+        disk_free = du.free/(1024**4)
+        if (disk_pct < wait_diskspace_max_space_percent and
+                disk_free > min_disk_space_tb):
+            log.debug(f'Check disk space: {disk_pct:.1f}% full')
             # Sufficient space to write to, let's continue
             return
         else:
-            log.info(f'Insufficient free disk space ({disk_pct:.1f}% full) '
-                     f'on {hostname}. Waiting {wait_diskspace_dt} s ({i}th iteration)')
+            if not i % 60:
+                log_warning(
+                    f'Insufficient free disk space ({disk_pct:.1f}% full) on '
+                    f'{hostname}. Waiting {i}/{wait_diskspace_n_max}',
+                    priority='warning')
             time.sleep(wait_diskspace_dt)
             send_heartbeat(dict(state='disk full'))
     set_state(dead_state)
@@ -794,7 +882,7 @@ def _delete_data(rd, path, data_type):
         message = 'Unsafe operation. Trying to delete live data!'
         log_warning(message, priority='fatal')
         raise ValueError(message)
-    log.info(f'Deleting data at {path}')
+    log.debug(f'Deleting data at {path}')
     if os.path.exists(path):
         shutil.rmtree(path)
     log.info(f'deleting {path} finished')
@@ -809,7 +897,7 @@ def _delete_data(rd, path, data_type):
                 ddoc.pop(k)
 
         ddoc.update({'at': now(), 'by': hostname})
-        log.info(f'update with {ddoc}')
+        log.debug(f'update with {ddoc}')
         run_coll.update_one({'_id': rd['_id']},
                             {"$addToSet": {'deleted_data': ddoc},
                              "$pull": {"data":
@@ -828,13 +916,12 @@ def wait_on_delete_thread():
     threads = threading.enumerate()
     for thread in threads:
         if thread.name == delete_thread_name:
-            wait = True
-            while wait:
-                wait = False
+            done = False
+            while not done:
                 if thread.isAlive():
                     log.info(f'{thread.name} still running take a {timeouts["idle_nap"]} s nap')
                     time.sleep(timeouts['idle_nap'])
-                    wait = True
+                    done = True
     log.info(f'Checked that {delete_thread_name} finished')
 
 
@@ -846,7 +933,7 @@ def clear_shm():
     if not len(shm_files):
         return
     log.info(f'clear_shm:: clearing {len(shm_files)} files')
-    for f in tqdm(shm_files):
+    for f in shm_files:
         os.remove(shm_dir + f)
 
 
@@ -862,7 +949,7 @@ def ping_dbs():
             daq_db.command('ping')
             break
         except Exception as ping_error:
-            log_warning(
+            log.warning(
                 f'Failed to connect to Mongo. Ran into {ping_error}. Sleep '
                 f'for a minute.', priority='warning')
             time.sleep(60)
@@ -897,11 +984,8 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
         return run_coll.find_one({'_id': rd['_id']})
 
     bd = rd['bootstrax']
-    bd.update({
-        'state': state,
-        'host': hostname,
-        'time': now(),
-        **kwargs})
+    bd.update({'state': state, 'host': hostname, 'time': now(),
+               **kwargs})
 
     if state == 'failed':
         bd['n_failures'] = bd.get('n_failures', 0) + 1
@@ -927,6 +1011,7 @@ def check_data_written(rd):
             if os.path.exists(ddoc['location']):
                 files_written += 1
             else:
+                log.info(f'No data at {ddoc["location"]}')
                 return False
     return files_written > 0
 
@@ -943,6 +1028,8 @@ def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
     start = time.time()
     while not check_data_written(rd):
         if time.time() - start > wait_max:
+            log_warning(f'Not all files saved for {rd["number"]}@{hostname}?!',
+                        priority='warning')
             return False
         send_heartbeat()
         time.sleep(wait_per_cycle)
@@ -1084,7 +1171,7 @@ def fail_run(rd, reason, error_traceback=''):
         rd['bootstrax'] = {}
         rd['bootstrax']['n_failures'] = 0
 
-    if 'n_failures' in rd['bootstrax'] and rd['bootstrax']['n_failures'] > 0:
+    if rd['bootstrax'].get('n_failures', 0) > 0:
         fail_name = 'Repeated failure'
         failure_message_level = 'info'
     else:
@@ -1094,7 +1181,7 @@ def fail_run(rd, reason, error_traceback=''):
     # Cleanup any data associated with the run
     # TODO: This should become optional, or just not happen at all,
     # after we're done testing (however, then we need some other
-    # pruning mechanism)
+    # pruning mechanism like AJAX!)
     clean_run(mongo_id=rd['_id'])
 
     # Report to run db
@@ -1122,27 +1209,14 @@ def manual_fail(*, mongo_id=None, number=None, reason=''):
     fail_run(rd, "Manually set failed state. " + reason)
 
 
-def get_compressor(rd, default_compressor="lz4"):
-    """Read the compressor method from the run_doc. Return 'lz4' if no
-    information is specified in the run_doc"""
-    try:
-        return rd["daq_config"]["compressor"]
-    except KeyError:
-        log_warning(f"Bootstrax couldn't read the compressor form the run_doc. "
-                    f"Assuming 'lz4' for now",
-                    priority='info',
-                    run_id=f'{rd["number"]:06}')
-        return default_compressor
-
-
 ##
 # Processing
 ##
 
-def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
-              run_start_time, samples_per_record, process_mode, target_override,
-              daq_chunk_duration, daq_overlap_chunk_duration, n_fails,
-              debug=False):
+def run_strax(run_id, input_dir, targets, readout_threads, compressor,
+              run_start_time, samples_per_record, cores, max_messages, timeout,
+              daq_chunk_duration, daq_overlap_chunk_duration, post_processing,
+              records_compressor, debug=False):
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1155,20 +1229,20 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
-        # Never override the target for raw_records because we might be in a save mode
-        if target != 'raw_records' and target_override:
-            log.info(f'This is an non-standard run. Changing target from {target} to '
-                     f'{target_override}.\nTo disable specify --fix_target')
-            if target_override == 'led_calibration':
-                # Increase the timeout a little
-                process_mode['timeout'] = process_mode['timeout'] * 5
-            target = target_override
+        if targets == strax.to_str_tuple('led_calibration'):
+            # TODO, still true?
+            # timeout *= 5
+            pass
 
         # Create multiple targets
-        plugin_targets = strax.to_str_tuple(target)
-        if (target != 'raw_records' and target != 'led_calibration' and n_fails <= 3) or args.fix_target:
-            plugin_targets += strax.to_str_tuple(args.sub_d_targets)
-        st = new_context(**process_mode, targets=plugin_targets)
+        st = new_context(cores=cores,
+                         max_messages=max_messages,
+                         timeout=timeout,
+                         targets=targets)
+
+        for t in ('raw_records', 'records'):
+            # Set the (raw)records processor to the inferred one
+            st._plugin_class_registry[t].compressor = records_compressor
 
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
@@ -1180,30 +1254,29 @@ def run_strax(run_id, input_dir, target, n_readout_threads, compressor,
                                 record_length=samples_per_record,
                                 daq_chunk_duration=daq_chunk_duration,
                                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
-                                n_readout_threads=n_readout_threads,
+                                readout_threads=readout_threads,
                                 check_raw_record_overlaps=False,
                                 )
 
-            st.make(run_id, 'multiple',
-                    config=strax_config,
-                    max_workers=process_mode['cores'])
+            for i, c in enumerate(st.get_iter(run_id,
+                                              'multiple',
+                                              config=strax_config,
+                                              max_workers=cores)):
+                if not i % 10:
+                    log.info(f'Target plugin - chunk {i}\n\t{c}')
 
-            if (target != 'raw_records' and n_fails <= 3) or args.fix_target:
-                # Make the nv, he, and mv data type only if we are:
-                #  - Not processing up to raw_records (that means we are in some recovery mode)
-                #  - We haven't failed this run before.
-                # or
-                #  - Are fixing the target (this is useful for testing but normally not used)
-                for sub_d_target in args.sub_d_targets:
-                    if sub_d_target not in st._plugin_class_registry:
-                        log_warning(f'Trying to make unknown data type {sub_d_target}',
-                                    priority='info',
+            if len(post_processing):
+                for post_target in post_processing:
+                    if post_target not in st._plugin_class_registry:
+                        log_warning(f'Trying to make unknown data type {post_target}',
+                                    priority='error',
                                     run_id=run_id)
                         continue
-                    elif not st.is_stored(run_id, sub_d_target):
-                        st.make(run_id, sub_d_target,
+                    elif not st.is_stored(run_id, post_target):
+                        st.make(run_id,
+                                post_target,
                                 config=strax_config,
-                                max_workers=process_mode['cores'])
+                                max_workers=cores)
 
         if args.profile.lower() == 'false':
             st_make()
@@ -1247,25 +1320,26 @@ def process_run(rd, send_heartbeats=args.production):
         except Exception as e:
             fail(f"Could not format run number: {str(e)}")
 
-        for dd in rd['data']:
-            if 'type' not in dd:
-                fail("Corrupted data doc, found entry without 'type' field")
-            if dd['type'] == 'live':
-                break
-            elif not args.production:
-                # We are just testing let's assume its on the usual location
-                dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
-            else:
-                fail("Non-live data already registered; untracked failure?")
-        else:
-            if not args.production:
-                # We are just testing let's assume its on the usual location
-                dd = {'type': 'live', 'location': '/live_data/xenonnt/', 'host': 'daq'}
-            else:
-                fail(f"No live data entry in rundoc")
+        if not args.production:
+            # We are just testing let's assume its on the usual location
+            loc = osp.join('/live_data/xenonnt/', run_id)
+            # or use the test-dir:
+            if not osp.exists(loc):
+                loc = os.path.join('/live_data/xenonnt_test/', run_id)
 
-        if not osp.exists(dd['location']):
-            fail(f"No access to live data folder {dd['location']}")
+        else:
+            for dd in rd['data']:
+                if 'type' not in dd:
+                    fail("Corrupted data doc, found entry without 'type' field")
+                if dd['type'] == 'live':
+                    break
+                else:
+                    fail("Non-live data already registered; untracked failure?")
+            loc = osp.join(dd['location'], run_id)
+        if not osp.exists(loc):
+            fail(f"No live data at claimed location {loc}")
+
+        run_strax_config = dict(run_id=run_id, input_dir=loc)
 
         if 'daq_config' not in rd:
             fail('No daq_config in the rundoc!')
@@ -1274,30 +1348,24 @@ def process_run(rd, send_heartbeats=args.production):
             # values (that are hardcoded here).
             dq_conf = rd['daq_config']
             to_read = ('processing_threads', 'strax_chunk_length', 'strax_chunk_overlap',
-                       'strax_fragment_payload_bytes')
+                       'strax_fragment_payload_bytes', 'compressor')
             report_missing_config = [conf for conf in to_read if conf not in dq_conf]
             if report_missing_config:
                 log_warning(f'{", ".join(report_missing_config)} not in rundoc for '
                             f'{run_id}! Using default values.',
-                            priority='info',
+                            priority='warning',
                             run_id=run_id)
-            thread_info = dq_conf.get('processing_threads', dict())
-            n_readout_threads = sum([v for v in thread_info.values()])
-            daq_chunk_duration = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
-            daq_overlap_chunk_duration = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
+            run_strax_config['readout_threads'] = dq_conf.get('processing_threads', None)
+            run_strax_config['daq_chunk_duration'] = int(dq_conf.get('strax_chunk_length', 5) * 1e9)
+            run_strax_config['daq_overlap_chunk_duration'] = int(dq_conf.get('strax_chunk_overlap', 0.5) * 1e9)
             # note that value in rd in bytes hence //2
-            samples_per_record = dq_conf.get('strax_fragment_payload_bytes', 220) // 2
-            if not samples_per_record == 110:
-                log.info(f'Samples_per_record = {samples_per_record}')
+            run_strax_config['samples_per_record'] = dq_conf.get('strax_fragment_payload_bytes', 220) // 2
+            run_strax_config['compressor'] = dq_conf.get('compressor', 'lz4')
         except Exception as e:
             fail(f"Could not find {to_read} in rundoc: {str(e)}")
 
-        if not n_readout_threads:
+        if run_strax_config['readout_threads'] is None:
             fail(f"Run doc for {run_id} has no readout thread count info")
-
-        loc = osp.join(dd['location'], run_id)
-        if not osp.exists(loc):
-            fail(f"No live data at claimed location {loc}")
 
         # Remove any previous processed data
         # If we do not do this, strax will just load this instead of
@@ -1311,33 +1379,21 @@ def process_run(rd, send_heartbeats=args.production):
         if osp.exists(exception_tempfile):
             os.remove(exception_tempfile)
 
-        target = args.target
-        n_fails = rd['bootstrax'].get('n_failures', 0)
         if not args.production and 'bootstrax' not in rd:
             # Bootstrax does not register in non-production mode
             pass
-        elif n_fails > 3 and not args.process:
-            # Failed before, and on autopilot: do just raw_records
-            target = 'raw_records'
-
-        compressor = get_compressor(rd)
-        target_override = override_target(rd)
         try:
-            run_start_time = rd['start'].replace(tzinfo=timezone.utc).timestamp()
+            run_strax_config['run_start_time'] = rd['start'].replace(
+                tzinfo=timezone.utc).timestamp()
         except Exception as e:
             fail(f"Could not find start in datetime.datetime object: {str(e)}")
 
-        if args.infer_mode:
-            process_mode = infer_mode(rd)
-        else:
-            process_mode = dict(cores=args.cores, max_messages=args.max_messages, timeout=300)
-
+        run_strax_config.update(infer_target(rd))
+        run_strax_config.update(infer_mode(rd))
+        run_strax_config['debug'] = args.debug
         strax_proc = multiprocessing.Process(
             target=run_strax,
-            args=(run_id, loc, target, n_readout_threads, compressor,
-                  run_start_time, samples_per_record, process_mode, target_override,
-                  daq_chunk_duration, daq_overlap_chunk_duration, n_fails,
-                  args.debug))
+            kwargs=run_strax_config)
 
         t0 = now()
         info = dict(started_processing=t0)
@@ -1345,11 +1401,10 @@ def process_run(rd, send_heartbeats=args.production):
 
         while True:
             if send_heartbeats:
-                update = process_mode.copy()
-                update.update(dict(run_id=run_id,
-                                   target=target_override if target_override else args.target))
+                to_report = ('run_id', 'targets', 'cores', 'max_messages',
+                             'timeout', 'post_processing'),
+                update = {k: v for k, v in run_strax_config.items() if k in to_report}
                 send_heartbeat(update)
-
             ec = strax_proc.exitcode
             if ec is None:
                 if t0 < now(-timeouts['max_processing_time']):
@@ -1366,7 +1421,6 @@ def process_run(rd, send_heartbeats=args.production):
 
             elif ec == 0:
                 log.info(f"Strax done on run {run_id}, performing basic data quality check")
-
                 if args.ignore_checks:
                     # I hope you know what you are doing, we are not going to
                     # do any of the checks below
