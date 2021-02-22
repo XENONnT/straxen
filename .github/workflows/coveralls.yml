@@ -43,13 +43,12 @@ jobs:
         PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
     - name: Coveralls
       env:
-        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         NUMBA_DISABLE_JIT: 1
       run: |
         coverage run --source=straxen setup.py test -v
     - name: Upload coverage
       env:
-       CAN_UPLOAD: ${{ secrets.COVERALLS_TOKEN }}
-      if: env.CAN_UPLOAD != null
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      if: env.COVERALLS_REPO_TOKEN != null
       run: |
          coveralls
