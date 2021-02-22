@@ -237,7 +237,7 @@ class SCADAInterface:
         if query_type_lab:
             # In the lab case we get interpolated data without nans so the df can be set
             # accordingly.
-            seconds = np.arange(start, end + 1, 10**9, every_nth_value)
+            seconds = np.arange(start, end + 1, 10**9 * every_nth_value)
         else:
             seconds = np.arange(start, end + 1, 10**9)  # +1 to make sure endtime is included
 
@@ -268,8 +268,12 @@ class SCADAInterface:
                                   start=(start//10**9)+1+offset,
                                   end=(end//10**9)+1,
                                   query_type_lab=query_type_lab,
-                                  seconds_interval=every_nth_value
+                                  seconds_interval=every_nth_value,
+                                  raise_error_message=False  # No valid value in query range... 
                                   )  # +1 since it is end before exclusive
+            if temp_df.empty:
+                # In case WebInterface does not return any data, e.g. if query range too small
+                break
             times = (temp_df['timestampseconds'].values*10**9).astype('<M8[ns]')
             df.loc[times, parameter_key] = temp_df.loc[:, 'value'].values
 
@@ -306,7 +310,13 @@ class SCADAInterface:
         return df
 
     @staticmethod
-    def _query(query, api, start=None, end=None, query_type_lab=False, seconds_interval=None):
+    def _query(query, 
+               api, 
+               start=None, 
+               end=None, 
+               query_type_lab=False, 
+               seconds_interval=None,
+              raise_error_message=True):
         """
         Helper to reduce code. Asks for data and returns result. Raises error
         if api returns error.
@@ -326,8 +336,9 @@ class SCADAInterface:
         query_url = urllib.parse.urlencode(query)
         values = requests.get(api + query_url)
         values = values.json()
-
-        if isinstance(values, dict):
+            
+        temp_df = pd.DataFrame(columns=('timestampseconds', 'value'))
+        if isinstance(values, dict) and raise_error_message:
             query_status = values['status']
             query_message = values['message']
             raise ValueError(f'SCADAapi has not returned values for the '
@@ -335,7 +346,7 @@ class SCADAInterface:
                              f'status "{query_status}" with the message "{query_message}".')
         if isinstance(values, list):
             temp_df = pd.DataFrame(values)
-            return temp_df
+        return temp_df
 
     def find_scada_parameter(self):
         raise NotImplementedError('Feature not implemented yet.')
