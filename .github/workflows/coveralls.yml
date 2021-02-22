@@ -47,4 +47,8 @@ jobs:
         NUMBA_DISABLE_JIT: 1
       run: |
         coverage run --source=straxen setup.py test -v
-        coveralls
+    - name: Upload coverage
+      env:
+       CAN_UPLOAD: ${{ secrets.COVERALLS_TOKEN }}
+      if: env.CAN_UPLOAD != null
+         coveralls
