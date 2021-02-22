@@ -4,7 +4,7 @@ import os
 import numpy as np
 import straxen
 
-test_run_id = '180423_1021'
+test_run_id_1T = '180423_1021'
 
 
 def test_straxen():
@@ -21,7 +21,7 @@ def test_straxen():
             run_df = st.select_runs(available='raw_records')
             print(run_df)
             run_id = run_df.iloc[0]['name']
-            assert run_id == test_run_id
+            assert run_id == test_run_id_1T
 
             print("Test processing")
             df = st.get_df(run_id, 'event_info')
@@ -33,7 +33,7 @@ def test_straxen():
 
             print('Test common.get_livetime_sec')
             events = st.get_array(run_id, 'peaks')
-            straxen.get_livetime_sec(st, test_run_id, things=events)
+            straxen.get_livetime_sec(st, test_run_id_1T, things=events)
             # TODO: find a way to break up the tests
             # surely pytest has common startup/cleanup?
 
@@ -42,7 +42,7 @@ def test_straxen():
             def count_rr(raw_records):
                 return len(raw_records)
 
-            n = st.count_rr(test_run_id)
+            n = st.count_rr(test_run_id_1T)
             assert n > 100
 
         # On windows, you cannot delete the current process'
