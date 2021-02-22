@@ -109,3 +109,22 @@ def get_elife(run_id, elife_conf):
             '(model_type->str, model_config->str, is_nT->bool)'
             '')
     return e
+@export
+def get_NN_file(run_id, nn_conf):
+    if not isinstance(nn_conf, tuple):
+        raise ValueError(f'NN_model must be a tuple')
+    if not len(nn_conf) == 3:
+        raise ValueError(f'NN_model must have three elements: '
+                         f'the model type, its specific configuration '
+                         f'and detector (True = nT)')
+    model_type, model_conf, is_nt = nn_conf
+    if model_type == 'CMT_model':
+        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+        nn_file = cmt.get_corrections_config(run_id, model_conf)
+        nn_file = ' '.join(map(str, nn_file))    
+
+    else:
+        raise ValueError(f'Wrong NN configuration, please look at this {nn_config} '
+                         'and modify it accordingly')
+
+    return nn_file

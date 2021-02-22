@@ -1,5 +1,4 @@
-utilix>=0.4.0
-# git+git://github.com/AxFoundation/strax
+utilix>=0.4.1
 # tensorflow>=2.3.0  # Optional, to (re)do posrec
 # holoviews          # Optional, to enable wf display
 # datashader         # Optional, to enable wf display

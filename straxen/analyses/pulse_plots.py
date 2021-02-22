@@ -68,7 +68,7 @@ def plot_pulses(context, raw_records, run_id, time_range,
 
     nfigs = 1
     if store_pdf:
-        fname = f'pulses_{run_id}_{time_range["time"]}_{time_range["time"]}.pdf'
+        fname = f'pulses_{run_id}_{time_range[0]}_{time_range[1]}.pdf'
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)
 
@@ -138,7 +138,7 @@ def plot_pulses(context, raw_records, run_id, time_range,
             pdf.savefig(fig)
 
         nfigs += 1
-        if nfigs > max_plots:
+        if max_plots is not None and nfigs > max_plots:
             break
 
     if store_pdf:

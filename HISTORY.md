@@ -1,4 +1,28 @@
-0.14.5 / 2020-01-29
+0.15.2 / 2021-02-17
+--------------------
+- GCN and CNN version bump for CMT bugfix (#367)
+- Veto compression updates (#365)
+- Simulation context fixed gains (363)
+
+
+0.15.1 / 2021-02-11
+--------------------
+- Change event extensions (#364)
+
+
+0.15.0 / 2021-02-09
+--------------------
+- Datarate dependent compressor (#358)
+- Reduce n-files/run (#343)
+- PulseProcessing save_when = strax.SaveWhen.TARGET (#352)
+- Online events monitor (#349)
+- Changed nveto baseline length (#362)
+- Use DAQ logger (#354)
+- Small hit pattern plotting bugfix (#357)
+- Allow dynamic copy of dtype (#361)
+
+
+0.14.5 / 2021-01-29
 --------------------
 - Function for version printing (#344)
 - Extending the event window (#345)
@@ -6,7 +30,7 @@
 - Update create-utilix-config.sh (#348)
 
 
-0.14.4 / 2020-01-22
+0.14.4 / 2021-01-22
 --------------------
 - Nveto changes (#319)
 - travis test at pinned environments (#335)
@@ -15,12 +39,12 @@
 - Listen to utilix, remove depricated function from straxen #340
 
 
-0.14.3 / 2020-01-15
+0.14.3 / 2021-01-15
 --------------------
 - EventBasics dtype should be ordered (8665256)
 
 
-0.14.2 / 2020-01-15
+0.14.2 / 2021-01-15
 --------------------
 - Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
 - Matplotlib event display (#326)
@@ -29,7 +53,7 @@
 - Scada-interface updates (#321,  #324)
 
 
-0.14.1 / 2020-01-04
+0.14.1 / 2021-01-04
 --------------------
 - bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
 
