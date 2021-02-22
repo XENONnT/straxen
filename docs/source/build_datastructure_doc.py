@@ -15,7 +15,6 @@ import strax
 import straxen
 import numpy as np
 
-
 this_dir = os.path.dirname(os.path.realpath(__file__))
 
 page_header = """
@@ -30,7 +29,6 @@ you currently need more than one `get_df` (or `get_array`) commands.
 
 """
 
-
 template = """
 {data_type}
 --------------------------------------------------------
@@ -38,7 +36,7 @@ template = """
 Description
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Provided by plugin: {p.__class__.__name__}
+Provided by plugin: `{p.__class__.__name__} <https://github.com/XENONnT/straxen/blob/master/{module}.py>`_
 
 Data kind: {kind}
 
@@ -77,7 +75,7 @@ titles = {'': 'Straxen datastructure',
           '_he': "Straxen datastructure for high energy channels",
           '_nv': "Straxen datastructure for neutron veto",
           '_mv': "Straxen datastructure for muon veto",
-}
+          }
 tree_suffices = list(titles.keys())
 
 kind_colors = dict(
@@ -168,7 +166,6 @@ def get_context():
 
 
 def build_datastructure_doc():
-
     pd.set_option('display.max_colwidth', int(1e9))
 
     st = get_context()
@@ -215,11 +212,13 @@ def build_datastructure_doc():
 
                 p = plugins[data_type]
 
-                out += template.format(p=p, svg=svg, data_type=data_type,
-                    columns=add_spaces(st.data_info(data_type).to_html(index=False)),
-                    kind=p.data_kind_for(data_type),
-                    docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
-                    config_options=add_spaces(config_df.to_html(index=False)))
+                out += template.format(p=p, module=str(p.__module__).replace('.', '/'),
+                                       svg=svg, data_type=data_type,
+                                       columns=add_spaces(
+                                           st.data_info(data_type).to_html(index=False)),
+                                       kind=p.data_kind_for(data_type),
+                                       docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
+                                       config_options=add_spaces(config_df.to_html(index=False)))
 
         with open(this_dir + f'/reference/datastructure{suffix}.rst', mode='w') as f:
             f.write(out)
