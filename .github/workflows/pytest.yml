@@ -10,6 +10,9 @@ on:
     branches:
       - master
       - stable
+  push:
+    branches:
+      - master
 
 jobs:
   update:
