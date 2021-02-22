@@ -51,4 +51,5 @@ jobs:
       env:
        CAN_UPLOAD: ${{ secrets.COVERALLS_TOKEN }}
       if: env.CAN_UPLOAD != null
+      run: |
          coveralls
