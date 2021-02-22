@@ -1,0 +1,55 @@
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+name: Coveralls
+
+jobs:
+
+  build:
+    name: Coveralls
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v1
+    - name: Setup python
+      uses: actions/setup-python@v2 # https://github.com/marketplace/actions/setup-miniconda
+      with:
+        python-version: 3.8
+    - name: Checkout repo
+      uses: actions/checkout@v2
+    - name: install pre requirements
+      run: |
+        bash .github/scripts/preinstall_requirements.sh
+        pip install coveralls coverage
+    - name: Install python dependencies
+      uses: py-actions/py-dependency-install@v2
+    - name: patch utilix file
+      run: bash .github/scripts/create_readonly_utilix_config.sh
+      env:
+        RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
+        RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
+        RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
+        PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
+        PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
+        PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
+        PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
+    - name: Coveralls
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        NUMBA_DISABLE_JIT: 1
+      run: |
+        coverage run --source=straxen setup.py test -v
+    - name: Upload coverage
+      env:
+       CAN_UPLOAD: ${{ secrets.COVERALLS_TOKEN }}
+      if: env.CAN_UPLOAD != null
+      run: |
+         coveralls
