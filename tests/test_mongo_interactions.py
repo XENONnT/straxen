@@ -6,14 +6,9 @@ not show up in Pull Requests.
 """
 
 import straxen
-
-
-def _is_connected() -> bool:
-    """
-    Check if we have the right connection to
-    :return: bool, can we connect to the Mongo database?
-    """
-    return straxen.uconfig is not None
+import os
+from warnings import warn
+from .test_plugins import test_run_id_nT
 
 
 def test_select_runs(check_n_runs=2):
@@ -24,8 +19,9 @@ def test_select_runs(check_n_runs=2):
     :param check_n_runs: int, the number of runs we want to check
     """
 
-    if not _is_connected():
-        # If we cannot connect, there is nothing to test
+    if not straxen.utilix_is_configured():
+        warn('Makes no sense to test the select runs because we do not '
+             'have access to the database.')
         return
     assert check_n_runs >= 1
     st = straxen.contexts.xenonnt_online()
@@ -38,5 +34,71 @@ def test_select_runs(check_n_runs=2):
 
     # Set this number as the minimum run number. This limits the
     # amount of documents checked and therefore keeps the test short.
-    st.storage[0].minimum_run_number = int(last_run) - (check_n_runs-1)
+    st.storage[0].minimum_run_number = int(last_run) - (check_n_runs - 1)
     st.select_runs()
+
+
+def test_downloader():
+    """Test if we can download a small file from the downloader"""
+    if not straxen.utilix_is_configured():
+        warn('Cannot download because utilix is not configured')
+        return
+
+    downloader = straxen.MongoDownloader()
+    path = downloader.download_single('to_pe_nt.npy')
+    assert os.path.exists(path)
+
+
+def test_elife():
+    """Test the get_elife function from CMT"""
+    if not straxen.utilix_is_configured():
+        warn('Cannot test CMT elife since utilix is not configured')
+        return
+    cmt = straxen.CorrectionsManagementServices()
+    cmt.get_elife(test_run_id_nT, 'elife_model', 'ONLINE')
+
+
+def _patch_om_init(take_only):
+    """
+    temp patch since om = straxen.OnlineMonitor() does not work with utilix
+    """
+    header = 'RunDB'
+    user = straxen.uconfig.get(header, 'pymongo_user')
+    pwd = straxen.uconfig.get(header, 'pymongo_password')
+    url = straxen.uconfig.get(header, 'pymongo_url').split(',')[-1]
+    uri = f"mongodb://{user}:{pwd}@{url}"
+    return straxen.OnlineMonitor(uri=uri, take_only=take_only)
+
+
+def test_online_monitor(target='online_peak_monitor', max_tries=3):
+    """
+    See if we can get some data from the online monitor before max_tries
+
+    :param target: target to test getting from the online monitor
+    :param max_tries: number of queries max allowed to get a non-failing
+        run
+    """
+    if not straxen.utilix_is_configured():
+        warn('Cannot test online monitor because utilix is not configured')
+        return
+    st = straxen.contexts.xenonnt_online()
+    om = _patch_om_init(target)
+    st.storage = [om]
+    for i in range(max_tries):
+        some_run = om.db[om.col_name].find_one({'provides_meta': True,
+                                                'data_type': target,
+                                                },
+                                               projection={'number': 1,
+                                                           'metadata': 1})
+        if some_run is None or some_run.get('number', None) is None:
+            continue
+        elif 'exception' in some_run.get('metadata', {}):
+            continue
+        else:
+            # Correctly written
+            run_id = f'{some_run["number"]:06}'
+            break
+    else:
+        raise FileNotFoundError(f'No non-failing {target} found in the online '
+                                f'monitor after {max_tries}')
+    st.get_array(run_id, target, seconds_range=(0, 1), allow_incomplete=True)
