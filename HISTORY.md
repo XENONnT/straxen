@@ -1,3 +1,8 @@
+0.15.4 / 2021-02-22
+--------------------
+- Patch version 0.15.3 (b5433bd)
+
+
 0.15.3 / 2021-02-22
 --------------------
 - Test with database (#360)
@@ -6,6 +11,7 @@
 - Link data structure to github page (#377)
 - Fixes/improvements for 'plot_pulses' (#379)
 - Remove unused code block (#380)
+
 
 0.15.2 / 2021-02-17
 --------------------
