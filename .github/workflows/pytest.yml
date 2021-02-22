@@ -10,13 +10,17 @@ on:
     branches:
       - master
       - stable
+  push:
+    branches:
+      - master
 
 jobs:
   update:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.8]
+        # NB: For python3.7 we are going to explicitly test without a database
+        python-version: [3.6, 3.7, 3.8]
     steps:
       - name: Setup python
         uses: actions/setup-python@v2
@@ -26,27 +30,26 @@ jobs:
         uses: actions/checkout@v2
       - name: install pre requirements
         run: |
-            echo "download requirements from base_environment"
-            wget -O pre_requirements.txt https://raw.githubusercontent.com/XENONnT/base_environment/master/requirements.txt &> /dev/null
-            echo "select important dependencies for strax(en)"
-            cat pre_requirements.txt | grep 'numpy\|numba\|tensorflow\|blosc\|scikit-learn' &> sel_pre_requirements.txt
-            echo "Will pre-install:"
-            cat sel_pre_requirements.txt
-            echo "Start preinstall and rm pre-requirements:"
-            pip install -r sel_pre_requirements.txt
-            rm pre_requirements.txt sel_pre_requirements.txt
+            bash .github/scripts/preinstall_requirements.sh
       - name: Install strax
         run: |
-            git clone https://github.com/AxFoundation/strax.git ../strax
-            pip install ../strax
+            pip install git+https://github.com/AxFoundation/strax.git
       - name: Install python dependencies
         uses: py-actions/py-dependency-install@v2
-      - name: Install straxen
-        run: bash .github/scripts/install_straxen.sh
-      - name: Install pytest and hypothesis
-        run: pip install pytest hypothesis flake8 boltons pytest-runner coveralls holoviews xarray datashader
+      - name: patch utilix file
+        # Since we skip this step for python 3.7, we are testing without the database
+        if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8
+        run: bash .github/scripts/create_readonly_utilix_config.sh
+        env:
+          RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
+          RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
+          RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
+          PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
+          PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
+          PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
+          PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
       - name: Test package
         run: |
-          pytest --verbose
+          python setup.py test -v
       - name: goodbye
         run: echo goodbye

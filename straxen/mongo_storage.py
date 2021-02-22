@@ -9,12 +9,7 @@ from tqdm import tqdm
 from shutil import move
 import hashlib
 from pymongo.collection import Collection as pymongo_collection
-
-try:
-    import utilix
-except (RuntimeError, FileNotFoundError):
-    # We might be on a travis job
-    pass
+import utilix
 from straxen import uconfig
 
 export, __all__ = exporter()
@@ -334,6 +329,7 @@ class MongoDownloader(GridFsInterface):
 
                 with open(temp_path, 'wb') as stored_file:
                     # This is were we do the actual downloading!
+                    warn(f'Downloading {config_name} to {destination_path}')
                     stored_file.write(fs_object.read())
 
                 if not os.path.exists(destination_path):
