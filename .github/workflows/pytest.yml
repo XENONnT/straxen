@@ -33,8 +33,7 @@ jobs:
             bash .github/scripts/preinstall_requirements.sh
       - name: Install strax
         run: |
-            git clone https://github.com/AxFoundation/strax.git ../strax
-            pip install ../strax
+            pip install git+https://github.com/AxFoundation/strax.git
       - name: Install python dependencies
         uses: py-actions/py-dependency-install@v2
       - name: patch utilix file
