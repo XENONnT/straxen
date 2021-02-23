@@ -9,6 +9,8 @@ import straxen
 import os
 export, __all__ = strax.exporter()
 
+corrections_w_file=['mlp_model', 'gcn_model', 'cnn_model', 's2_xy_map', 's1_xy_map',
+                    'fdc_map']
 
 @export
 class CorrectionsManagementServices():
@@ -72,8 +74,8 @@ class CorrectionsManagementServices():
             return self.get_pmt_gains(run_id, model_type, global_version)
         elif 'elife' in model_type:
             return self.get_elife(run_id, model_type, global_version)
-        elif model_type in ('mlp_model', 'cnn_model', 'gcn_model'):
-            return self.get_NN_file(run_id, model_type, global_version)
+        elif model_type in corrections_w_file:
+            return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
             raise ValueError(f'{config_model} not found')
 
@@ -103,7 +105,7 @@ class CorrectionsManagementServices():
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
                         df = self.interface.interpolate(df, when, how='fill')
-                    if correction in ('mlp_model', 'cnn_model', 'gcn_model'):
+                    if correction in corrections_w_file:
                         # is this the best solution?
                         df = self.interface.interpolate(df, when, how='fill')
                     else:
@@ -228,7 +230,7 @@ class CorrectionsManagementServices():
             np.save(cache_name, to_pe, allow_pickle=False)
         return to_pe
 
-    def get_NN_file(self, run_id, model_type, global_version='ONLINE'):
+    def get_config_from_cmt(self, run_id, model_type, global_version='ONLINE'):
         """
         Smart logic to return NN weights file name to be downloader by 
         straxen.MongoDownloader()
@@ -238,30 +240,17 @@ class CorrectionsManagementServices():
         :param global_version: global version
         :param return: NN weights file name
         """
-        if model_type not in ('mlp_model', 'cnn_model', 'gcn_model'):
-            raise ValueError(f"{model_type} is not stored in CMT use on of 'mlp_model'"
-                             f" or 'cnn_model' or 'gcn_model'")
+        if model_type not in corrections_w_file:
+            raise ValueError(f"{model_type} is not stored in CMT "
+                             f"please check, these are available {corrections_w_file}")
 
         file_name = self._get_correction(run_id, model_type, global_version)
 
-        return file_name
-    def get_lce(self, run_id, s, position, global_version='v1'):
-        """
-        Smart logic to return light collection eff map values.
-        :param run_id: run id from runDB
-        :param s: S1 map or S2 map
-        :param position: event position
-        """
-        raise NotImplementedError
+        if not file_name: 
+            raise ValueError(f"You have the right option but could not find a file"
+                             f"Please contact CMT manager and yell at him")
 
-    def get_fdc(self, run_id, position, global_version='v1'):
-        """
-        Smart logic to return field distortion map values.
-        :param run_id: run id from runDB
-        :param position: event position
-        :param global_version: global version (str type)
-        """
-        raise NotImplementedError
+        return file_name
 
     # TODO change to st.estimate_start_time
     def get_start_time(self, run_id):

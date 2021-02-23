@@ -113,7 +113,7 @@ class PeakPositionsBaseNT(strax.Plugin):
             return model_from_config
 
         # Use CMT
-        model_file = straxen.get_NN_file(self.run_id, model_from_config)
+        model_file = straxen.get_config_from_cmt(self.run_id, model_from_config)
         return model_file
 
 @export
