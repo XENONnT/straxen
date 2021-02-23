@@ -16,7 +16,8 @@ export, __all__ = strax.exporter()
                  help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('nbaseline_samples_lone_records_nv', type=int, default=10, track=False,
+    strax.Option('nbaseline_samples_lone_records_nv', type=int,
+                 default_by_run=[(0, 10), (12684, 26)], track=True,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
@@ -41,7 +42,7 @@ class nVETORecorder(strax.Plugin):
 
     rechunk_on_save = True
     save_when = strax.SaveWhen.TARGET
-    compressor = 'lz4'
+    compressor = 'zstd'
 
     depends_on = 'raw_records_nv'
 

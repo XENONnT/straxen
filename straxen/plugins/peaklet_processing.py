@@ -412,6 +412,7 @@ class PeakletsHighEnergy(Peaklets):
     data_kind = 'peaklets_he'
     __version__ = '0.0.1'
     child_plugin = True
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])

@@ -16,10 +16,10 @@ export, __all__ = strax.exporter()
     strax.Option('trigger_max_competing', default=7,
                  help='Peaks must have FEWER nearby larger or slightly smaller'
                       ' peaks to cause events'),
-    strax.Option('left_event_extension', default=int(2.5e6),
+    strax.Option('left_event_extension', default=int(2.7e6),
                  help='Extend events this many ns to the left from each '
                       'triggering peak'),
-    strax.Option('right_event_extension', default=int(2.5e6),
+    strax.Option('right_event_extension', default=int(0.5e6),
                  help='Extend events this many ns to the right from each '
                       'triggering peak'),
 )
@@ -107,7 +107,7 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.5.5'
+    __version__ = '0.5.7'
 
     depends_on = ('events',
                   'peak_basics',
@@ -198,9 +198,9 @@ class EventBasics(strax.LoopPlugin):
                       endtime=strax.endtime(event))
         posrec_result = dict(time=event['time'],
                              endtime=strax.endtime(event))
-        posrec_save = (d.replace("s2_", "").replace("alt_", "")
+        posrec_save = [d.replace("s2_", "").replace("alt_", "")
                        for d in self.dtype_for('event_posrec_many').names if
-                       'time' not in d)
+                       'time' not in d]
 
         if not len(peaks):
             return result
@@ -260,7 +260,7 @@ class EventBasics(strax.LoopPlugin):
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
-                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
+                        posrec_result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 # Compute delay time properties
                 result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
                                                - main_s[s_i]['center_time'])
@@ -466,6 +466,7 @@ class EnergyEstimates(strax.Plugin):
         ('e_charge', np.float32, 'Energy in charge signal [keVee]'),
         ('e_ces', np.float32, 'Energy estimate [keVee]')
     ] + strax.time_fields
+    save_when = strax.SaveWhen.TARGET
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])
