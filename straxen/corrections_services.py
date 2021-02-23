@@ -118,29 +118,6 @@ class CorrectionsManagementServices():
         else:
             return corrections
 
-    def _read_and_interpolate(self, it_correction, version,  when, buffer=None, buffer_idx=None):
-        """
-
-        :param it_correction: correction item e.g. pmt_209_gain_xenon1t
-        :param version: version of correction e.g. ONLINE or v1
-        :param when: datetime object at which to interpolate
-        :param buffer: optional, if provided will fill value at buffer_idx
-        :param buffer_idx: index where tho store result in the buffer
-        :return: single value (if no buffer is specified, if there is a
-        buffer, fill it).
-        """
-        itp_kwargs = {}
-        if version == "ONLINE":
-            itp_kwargs['how'] = 'fill'
-        df = self.interface.read(it_correction)
-        df = self.interface.interpolate(df, when, **itp_kwargs)
-        if buffer is None:
-            return df.loc[df.index == when, version].values[0]
-        elif buffer_idx is not None:
-            buffer[buffer_idx] = (df.loc[df.index == when, version].values[0])
-        else:
-            raise ValueError('Provided "buffer" but no "buffer_idx" to fill at')
-
     def get_elife(self, run_id, model_type, global_version):
         """
         Smart logic to return electron lifetime correction
