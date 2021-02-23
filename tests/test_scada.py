@@ -1,5 +1,6 @@
 import numpy as np
 import straxen
+import warnings
 
 def test_query_sc_values():
     '''
@@ -7,8 +8,9 @@ def test_query_sc_values():
     return is correct.
     '''
     if not straxen.utilix_is_configured():
-        warn('Cannot test scada since we have no access to xenon secrets.')
+        warnings.warn('Cannot test scada since we have no access to xenon secrets.')
         return
+    
     print('Testing SCADAInterface')
     sc = straxen.SCADAInterface(use_progress_bar=False)
     
