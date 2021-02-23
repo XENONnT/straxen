@@ -366,8 +366,8 @@ class EventPositions(strax.Plugin):
             (0, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json')),  # noqa
             (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
     strax.Option(
-        's2_relative_map',
-        help="S2 relative (x, y) map. Correct S2 position dependence "
+        's2_xy_correction_map',
+        help="S2 (x, y) correction map. Correct S2 position dependence "
              "manly due to bending of anode/gate-grid, PMT quantum efficiency "
              "and extraction field distribution, as well as other geometric factors.",
         default=("CMT_model", ('s2_xy_map', "ONLINE"), True)),
@@ -407,7 +407,7 @@ class CorrectedAreas(strax.Plugin):
         self.s1_map = InterpolatingMap(
                 get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
-                get_resource(get_config_from_cmt(self.run_id, self.config['s2_relative_map'])))
+                get_resource(get_config_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
         self.elife = get_elife(self.run_id, self.config['elife_file'])
 
     def compute(self, events):
