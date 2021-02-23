@@ -5,6 +5,7 @@ import strax
 import straxen
 import sys
 export, __all__ = strax.exporter()
+from configparser import NoSectionError
 
 
 @export
@@ -73,5 +74,8 @@ def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?
     """
-    return (hasattr(straxen.uconfig, 'get') and
-            straxen.uconfig.get(header, section) is not None)
+    try:
+        return (hasattr(straxen.uconfig, 'get') and
+                straxen.uconfig.get(header, section) is not None)
+    except NoSectionError:
+        return False
