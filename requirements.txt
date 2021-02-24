@@ -10,3 +10,4 @@ immutabledict
 numba>=0.50.0
 strax>=0.13.4
 requests
+commentjson
