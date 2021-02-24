@@ -1,7 +1,6 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-import numpy as np
 
 
 common_opts = dict(
@@ -46,6 +45,7 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     s1_max_rise_time=100,
+    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -242,6 +242,7 @@ x1t_common_config = dict(
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
 )
+
 
 
 def demo():

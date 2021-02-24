@@ -59,13 +59,13 @@ def get_to_pe(run_id, gain_model, n_pmts):
             # Uniform gain, specified as a to_pe factor
             to_pe = np.ones(n_pmts, dtype=np.float32) * model_conf
         except np.core._exceptions.UFuncTypeError as e:
-            raise(str(e) +
-                  f'\nTried multiplying by {model_conf}. Insert a number instead.')
+            raise (str(e) +
+                   f'\nTried multiplying by {model_conf}. Insert a number instead.')
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
     if len(to_pe) != n_pmts:
-       raise ValueError(
+        raise ValueError(
             f"Gain model {gain_model} resulted in a to_pe "
             f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
     return to_pe
@@ -109,8 +109,13 @@ def get_elife(run_id, elife_conf):
             '(model_type->str, model_config->str, is_nT->bool)'
             '')
     return e
+
+
 @export
 def get_config_from_cmt(run_id, conf):
+    if isinstance(conf, str) and conf.startswith('https://raw'):
+        # Legacy support for pax files
+        return conf
     if not isinstance(conf, tuple):
         raise ValueError(f'conf must be a tuple')
     if not len(conf) == 3:
@@ -121,7 +126,7 @@ def get_config_from_cmt(run_id, conf):
     if model_type == 'CMT_model':
         cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
         this_file = cmt.get_corrections_config(run_id, model_conf)
-        this_file = ' '.join(map(str, this_file))    
+        this_file = ' '.join(map(str, this_file))
 
     else:
         raise ValueError(f'Wrong NN configuration, please look at this {nn_config} '

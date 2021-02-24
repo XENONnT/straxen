@@ -367,10 +367,10 @@ class EventPositions(strax.Plugin):
             (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
     strax.Option(
         's2_xy_correction_map',
-        help="S2 (x, y) correction map. Correct S2 position dependence "
-             "manly due to bending of anode/gate-grid, PMT quantum efficiency "
-             "and extraction field distribution, as well as other geometric factors.",
-        default=("CMT_model", ('s2_xy_map', "ONLINE"), True)),
+        help="S2 relative LCE(x, y) map",
+        default_by_run=[
+            (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
+            (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
         'elife_file',
         default=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
