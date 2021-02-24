@@ -7,10 +7,12 @@ import strax
 import utilix
 import straxen
 import os
+
 export, __all__ = strax.exporter()
 
-corrections_w_file=['mlp_model', 'gcn_model', 'cnn_model', 's2_xy_map', 's1_xy_map',
-                    'fdc_map']
+corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
+                      's2_xy_map', 's1_xy_map', 'fdc_map']
+
 
 @export
 class CorrectionsManagementServices():
@@ -20,6 +22,7 @@ class CorrectionsManagementServices():
     stage to remove detector effects. Information on the strax implementation
     can be found at https://github.com/AxFoundation/strax/blob/master/strax/corrections.py
     """
+
     def __init__(self, username=None, password=None, mongo_url=None, is_nt=True):
         """
         :param username: corrections DB username
@@ -178,10 +181,10 @@ class CorrectionsManagementServices():
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
                 raise ValueError(
-                        f'to_pe(PMT gains) values are NaN, no data available'
-                        f' for {run_id} in the gain model with version '
-                        f'{global_version}, please set constant values for '
-                        f'{run_id}')
+                    f'to_pe(PMT gains) values are NaN, no data available'
+                    f' for {run_id} in the gain model with version '
+                    f'{global_version}, please set constant values for '
+                    f'{run_id}')
 
         else:
             raise ValueError(f'{model_type} not implemented for to_pe values')
@@ -223,7 +226,7 @@ class CorrectionsManagementServices():
 
         file_name = self._get_correction(run_id, model_type, global_version)
 
-        if not file_name: 
+        if not file_name:
             raise ValueError(f"You have the right option but could not find a file"
                              f"Please contact CMT manager and yell at him")
 
@@ -242,8 +245,8 @@ class CorrectionsManagementServices():
             run_id = int(run_id)
 
         rundoc = self.collection.find_one(
-                {'number' if self.is_nt else 'name': run_id},
-                {'start': 1})
+            {'number' if self.is_nt else 'name': run_id},
+            {'start': 1})
         if rundoc is None:
             raise ValueError(f'run_id = {run_id} not found')
         time = rundoc['start']
