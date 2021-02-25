@@ -18,6 +18,13 @@ pymongo_url = $PYMONGO_URL
 pymongo_user = $PYMONGO_USER
 pymongo_password = $PYMONGO_PASSWORD
 pymongo_database = $PYMONGO_DATABASE
+
+[scada]
+scdata_url = $SCADA_URL
+sclastvalue_url = $SCADA_VALUE_URL
+querytype = $SCADA_QUERY_TYPE
+username = $SCADA_USER
+api_key = $SCADA_KEY
 EOF
 echo "YEAH boy, complete github actions voodoo now made you have access to our database!"
 else

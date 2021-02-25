@@ -41,6 +41,11 @@ jobs:
         PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
         PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
         PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
+        SCADA_URL: ${{ secrets.SCADA_URL }}
+        SCADA_VALUE_URL: ${{ secrets.SCADA_VALUE_URL }}
+        SCADA_QUERY_TYPE: ${{ secrets.SCADA_QUERY_TYPE }}
+        SCADA_USER: ${{ secrets.SCADA_USER }}
+        SCADA_KEY: ${{ secrets.SCADA_KEY }}
     - name: Coveralls
       env:
         NUMBA_DISABLE_JIT: 1
