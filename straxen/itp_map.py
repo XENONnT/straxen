@@ -162,7 +162,7 @@ class InterpolatingMap:
         if self.dimensions == 0:
             return
         if hasattr(scaling_factor, '__len__'):
-            assess (len(scaling_factor) == self.dimensions), f"Scaling factor array dimension {len(scaling_factor)} does not match grid dimension {self.dimensions}"
+            assert (len(scaling_factor) == self.dimensions), f"Scaling factor array dimension {len(scaling_factor)} does not match grid dimension {self.dimensions}"
             self._sf = scaling_factor
         if isinstance(scaling_factor, (int, float)):
             self._sf = [scaling_factor] * self.dimensions
@@ -171,13 +171,11 @@ class InterpolatingMap:
         for i, gp in enumerate(self.coordinate_system):
             alt_cs[i] = [gc * k for (gc, k) in zip(gp, self._sf)]
 
-        del alt_cs
-
         map_data = np.array(self.data[map_name])
         array_valued = len(map_data.shape) == self.dimensions + 1
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
-        itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
+        itp_fun = InterpolateAndExtrapolate(points=np.array(alt_cs),
                                             values=np.array(map_data),
                                             array_valued=array_valued)
         self.interpolators[map_name] = itp_fun

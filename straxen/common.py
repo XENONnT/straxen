@@ -3,7 +3,7 @@ import configparser
 import gzip
 import inspect
 import io
-import commentjson as json
+import json
 import os
 import os.path as osp
 import pickle
