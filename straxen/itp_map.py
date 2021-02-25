@@ -162,7 +162,7 @@ class InterpolatingMap:
         if self.dimensions == 0:
             return
         if hasattr(scaling_factor, '__len__'):
-            assess len(scaling_factor) == self.dimensions, f"Scaling factor array dimension {len(scaling_factor)} does not match grid dimension {self.dimensions}"
+            assess (len(scaling_factor) == self.dimensions), f"Scaling factor array dimension {len(scaling_factor)} does not match grid dimension {self.dimensions}"
             self._sf = scaling_factor
         if isinstance(scaling_factor, (int, float)):
             self._sf = [scaling_factor] * self.dimensions
