@@ -327,6 +327,7 @@ class EventPositions(strax.Plugin):
     def setup(self):
         self.map = InterpolatingMap(
             get_resource(self.config['fdc_map'], fmt='binary'))
+        self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
 
     def compute(self, events):
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
@@ -351,7 +352,7 @@ class EventPositions(strax.Plugin):
 
         with np.errstate(invalid='ignore'):
             z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-            invalid = np.abs(z_obs) < np.abs(delta_r)        # Why??
+            invalid = np.abs(z_obs) < np.abs(delta_r)
         z_cor[invalid] = z_obs[invalid]
         result['z'] = z_cor
 
