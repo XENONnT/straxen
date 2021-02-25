@@ -98,7 +98,7 @@ def get_elife(run_id, elife_conf):
         x = straxen.get_resource(elife_conf, fmt='npy')
         run_index = np.where(x['run_id'] == int(run_id))[0]
         if not len(run_index):
-            # Gains not known: using placeholders
+            # Electron lifetime not known: using placeholders
             e = 623e3
         else:
             e = x[run_index[0]]['e_life']
@@ -108,7 +108,7 @@ def get_elife(run_id, elife_conf):
             'Corrections Management Tools format: '
             '(model_type->str, model_config->str, is_nT->bool)'
             '')
-    return e
+    return float(e)
 
 
 @export
