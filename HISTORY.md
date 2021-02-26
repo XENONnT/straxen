@@ -1,3 +1,18 @@
+0.15.5 / 2021-02-22
+--------------------
+- Patch version 0.15.3 (b5433bd)
+
+
+0.15.3 / 2021-02-22
+--------------------
+- Test with database (#360)
+- Fix issue #371 - alt s2 in event_posrec_many (#372)
+- Update issue templates (#375)
+- Link data structure to github page (#377)
+- Fixes/improvements for 'plot_pulses' (#379)
+- Remove unused code block (#380)
+
+
 0.15.2 / 2021-02-17
 --------------------
 - GCN and CNN version bump for CMT bugfix (#367)

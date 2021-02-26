@@ -1,11 +1,9 @@
 import tempfile
 import strax
-import straxen
 import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
-import utilix
-import os
+import straxen
 
 # Number of chunks for the dummy raw records we are writing here
 N_CHUNKS = 2
@@ -24,7 +22,9 @@ testing_config_nT = dict(
     straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
     gain_model=
     ('to_pe_per_run',
-     straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+     straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
+    s2_xy_correction_map=straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
+    elife_file=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
 )
 
 testing_config_1T = dict(
@@ -33,6 +33,7 @@ testing_config_1T = dict(
 )
 
 test_run_id_nT = '008900'
+
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False)
@@ -192,6 +193,7 @@ def _test_child_options(st):
                 assert not t, (f'Found "{parent_name}" in the lineage of {p.__class__.__name__}. '
                                f'This should not have happend since "{parent_name}" is a child of '
                                f'"{option_name}"!')
+
 
 ##
 # Tests
