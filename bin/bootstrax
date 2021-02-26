@@ -207,6 +207,10 @@ timeouts = {
     'max_data_rate_infer_time': 60,
     # Minimum time we have to be in the run before we can infer the datarate (s).
     'min_data_rate_infer_time': 15,
+    # Bootstrax can abandon runs for this time based on a tag, after that it
+    # should not be on the DAQ any way or can be manually failed using the
+    # --abandon option. We can abandon a run only for this many seconds:
+    'abandoning_allowed': 3600 * 24 * 7,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -1622,8 +1626,10 @@ def cleanup_db():
     abandon_queries = [
         ({'tags': {
             '$elemMatch': {
-                'name': 'abandon'}}},
-         "Run has a 'abandon' tag"),
+                'name': 'abandon'}},
+             'end': {'$gt': now(-timeouts['abandoning_allowed'])}
+         },
+         "Run has an 'abandon' tag"),
     ]
 
     for query, failure_message in abandon_queries:
