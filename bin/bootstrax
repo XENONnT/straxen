@@ -1328,7 +1328,7 @@ def process_run(rd, send_heartbeats=args.production):
             loc = osp.join('/live_data/xenonnt/', run_id)
             # or use the test-dir:
             if not osp.exists(loc):
-                loc = os.path.join('/live_data/xenonnt_test/', run_id)
+                loc = os.path.join('/live_data/xenonnt_bootstrax_test/', run_id)
 
         else:
             for dd in rd['data']:
