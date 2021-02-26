@@ -1,3 +1,8 @@
+0.15.7 / 2021-02-26
+--------------------
+- Fix for commentjson-package for zipped json (#386)
+
+
 0.15.6 / 2021-02-26
 --------------------
 - Scada updates (#378, #383)
