@@ -1627,7 +1627,7 @@ def cleanup_db():
         ({'tags': {
             '$elemMatch': {
                 'name': 'abandon'}},
-             'end': {'$gt': now(-timeouts['abandoning_allowed'])}
+             'start': {'$gt': now(-timeouts['abandoning_allowed'])}
          },
          "Run has an 'abandon' tag"),
     ]
