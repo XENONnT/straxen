@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.4'
+__version__ = '1.0.5'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -157,8 +157,6 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\n bootstrax version {__version__}\n---')
-
 # The folder that can be used for testing bootstrax (i.e. non production
 # mode). It will be written to:
 test_data_folder = ('/data/test_processed/' if
@@ -207,6 +205,10 @@ timeouts = {
     'max_data_rate_infer_time': 60,
     # Minimum time we have to be in the run before we can infer the datarate (s).
     'min_data_rate_infer_time': 15,
+    # Bootstrax can abandon runs for this time based on a tag, after that it
+    # should not be on the DAQ any way or can be manually failed using the
+    # --abandon option. We can abandon a run only for this many seconds:
+    'abandoning_allowed': 3600 * 24 * 7,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -267,7 +269,7 @@ hostname = socket.getfqdn()
 
 try:
     import daqnt
-    log_name = 'bootstrax_' + hostname + ('' if args.production else 'TESTING')
+    log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
     log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
 except ModuleNotFoundError:
     logging.basicConfig(
@@ -275,6 +277,8 @@ except ModuleNotFoundError:
         format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
         datefmt='%m-%d %H:%M')
     log = logging.getLogger()
+
+log.info(f'---\n bootstrax version {__version__}\n---')
 
 # Set the output folder
 output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
@@ -1172,7 +1176,8 @@ def fail_run(rd, reason, error_traceback=''):
         rd['bootstrax'] = {}
         rd['bootstrax']['n_failures'] = 0
 
-    if rd['bootstrax'].get('n_failures', 0) > 0:
+    if ((rd['bootstrax'].get('n_failures', 0) > 0) or
+            ('perhaps it crashed on this run or is still stuck' in reason)):
         fail_name = 'Repeated failure'
         failure_message_level = 'info'
     else:
@@ -1302,6 +1307,8 @@ def process_run(rd, send_heartbeats=args.production):
     log.info(f"Starting processing of run {rd['number']}")
     if rd is None:
         raise RuntimeError("Pass a valid rundoc, not None!")
+    elif args.production and rd.get('bootstrax', {}).get('state', None) == 'done':
+        raise RuntimeError(f'{rd["number"]} is done already, do not make a mass')
 
     # Shortcuts for failing
     class RunFailed(Exception):
@@ -1326,7 +1333,7 @@ def process_run(rd, send_heartbeats=args.production):
             loc = osp.join('/live_data/xenonnt/', run_id)
             # or use the test-dir:
             if not osp.exists(loc):
-                loc = os.path.join('/live_data/xenonnt_test/', run_id)
+                loc = os.path.join('/live_data/xenonnt_bootstrax_test/', run_id)
 
         else:
             for dd in rd['data']:
@@ -1618,11 +1625,12 @@ def cleanup_db():
     # Abandon runs which we already know are so bad that
     # there is no point in retrying them
     abandon_queries = [
-        ({'tags': {
-            '$elemMatch': {
-                'name': 'bad'}}},
-         "Run has a 'bad' tag"),
-    ]
+        ({'tags.name': 'abandon',
+          'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
+         "Run has an 'abandon' tag"),
+        ({'tags.name': 'abandon', 'bootstrax.state': 'failed'},
+         "Run has an 'abandon' tag and was failing"),
+        ]
 
     for query, failure_message in abandon_queries:
         query['bootstrax.state'] = {'$ne': 'abandoned'}
