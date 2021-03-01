@@ -1256,7 +1256,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                                 daq_chunk_duration=daq_chunk_duration,
                                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                                 readout_threads=readout_threads,
-                                check_raw_record_overlaps=False,
+                                check_raw_record_overlaps=True,
                                 )
 
             for i, c in enumerate(st.get_iter(run_id,
