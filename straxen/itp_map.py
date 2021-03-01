@@ -133,6 +133,7 @@ class InterpolatingMap:
 
         for map_name in self.map_names:
             map_data = np.array(self.data[map_name])
+            map_data = none_to_float_nan(map_data)
             array_valued = len(map_data.shape) == self.dimensions + 1
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
@@ -154,3 +155,17 @@ class InterpolatingMap:
         :param map_name: Name of the map to use. Default is 'map'.
         """
         return self.interpolators[map_name](positions)
+
+
+def none_to_float_nan(arr):
+    """Remove Nones from array and replace with float nans"""
+    res = []
+    for r in arr:
+        if r is None:
+            res.append(float('nan'))
+        else:
+            res.append(r)
+    if isinstance(arr, np.ndarray):
+        res = np.array(res)
+
+    return res
