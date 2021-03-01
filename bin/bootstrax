@@ -1624,11 +1624,8 @@ def cleanup_db():
     # Abandon runs which we already know are so bad that
     # there is no point in retrying them
     abandon_queries = [
-        ({'tags': {
-            '$elemMatch': {
-                'name': 'abandon'}},
-             'start': {'$gt': now(-timeouts['abandoning_allowed'])}
-         },
+        ({'tags.name': 'abandon',
+          'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
     ]
 
