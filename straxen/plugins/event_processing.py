@@ -1,6 +1,7 @@
 import strax
 
 import numpy as np
+from warnings import warn
 
 from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
 from straxen.get_corrections import get_elife, get_config_from_cmt
@@ -285,76 +286,141 @@ class EventBasics(strax.LoopPlugin):
     strax.Option(
         name='electron_drift_velocity',
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=1.3325e-4
+        default=0.632e-4
     ),
     strax.Option(
-        'fdc_map',
-        help='3D field distortion correction map path',
+        'fdc_maps',
+        help='3D field distortion correction map path for each posrec algorithm',
         default_by_run=[
-            (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
-            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')),  # noqa
-            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')),  # noqa
-            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')),  # noqa
-            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
+            (0, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
+                 'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
+                 'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz'}),  # noqa
+            (12041, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_GCN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
+                     'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_CNN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
+                     'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_MLP_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz'}),  # noqa
+            (12043, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
+                     'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
+                     'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz'}),  # noqa
+            (12049, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_GCN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
+                     'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_CNN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
+                     'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_MLP_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz'})],  # noqa
+    ),
+    strax.Option("default_reconstruction_algorithm",
+                 help="Default reconstruction algorithm that provides (x,y)",
+                 default="mlp",
+                 )
 )
 class EventPositions(strax.Plugin):
     """
     Computes the observed and corrected position for the main S1/S2
-    pairs in an event.
+    pairs in an event for each position reconstruction algorithm.
     """
-    __version__ = '0.1.2'
 
-    depends_on = ('event_basics',)
-    dtype = [
-        ('x', np.float32,
-         'Interaction x-position, field-distortion corrected (cm)'),
-        ('y', np.float32,
-         'Interaction y-position, field-distortion corrected (cm)'),
-        ('z', np.float32,
-         'Interaction z-position, field-distortion corrected (cm)'),
-        ('r', np.float32,
-         'Interaction radial position, field-distortion corrected (cm)'),
-        ('z_naive', np.float32,
-         'Interaction z-position using mean drift velocity only (cm)'),
-        ('r_naive', np.float32,
-         'Interaction r-position using observed S2 positions directly (cm)'),
-        ('r_field_distortion_correction', np.float32,
-         'Correction added to r_naive for field distortion (cm)'),
-        ('theta', np.float32,
-         'Interaction angular position (radians)')
-    ] + strax.time_fields
+    depends_on = ('event_basics', 'event_posrec_many')
+
+    __version__ = '0.1.3'
+
+    def infer_dtype(self):
+        self.algorithms = set(self.config['fdc_maps'].keys())
+        self.pos_rec_labels = set(d.split('_')[-1] for d in
+                                  self.deps['event_posrec_many'].dtype_for('event_posrec_many').names
+                                  if d.startswith('s2_x_'))
+        dtype = [
+            ('x', np.float32,
+             'Interaction x-position, field-distortion corrected (cm)'),
+            ('y', np.float32,
+             'Interaction y-position, field-distortion corrected (cm)'),
+            ('z', np.float32,
+             'Interaction z-position, field-distortion corrected (cm)'),
+            ('r', np.float32,
+             'Interaction radial position, field-distortion corrected (cm)'),
+            ('z_naive', np.float32,
+             'Interaction z-position using mean drift velocity only (cm)'),
+            ('r_naive', np.float32,
+             'Interaction r-position using observed S2 positions directly (cm)'),
+            ('r_field_distortion_correction', np.float32,
+             'Correction added to r_naive for field distortion (cm)'),
+            ('theta', np.float32,
+             'Interaction angular position (radians)')
+        ]
+
+        # returning the corrected position only for those available posrec algorithms included in the FDC map
+        for algo in self.algorithms.intersection(self.pos_rec_labels):
+            dtype += [
+                (f'x_{algo}', np.float32,
+                 f'Interaction {algo.upper()} x-position, field-distortion corrected (cm)'),
+                (f'y_{algo}', np.float32,
+                 f'Interaction {algo.upper()} y-position, field-distortion corrected (cm)'),
+                (f'z_{algo}', np.float32,
+                 f'Interaction {algo.upper()} z-position, field-distortion corrected (cm)'),
+                (f'r_{algo}', np.float32,
+                 f'Interaction {algo.upper()} radial position, field-distortion corrected (cm)'),
+                (f'r_naive_{algo}', np.float32,
+                 f'Interaction {algo.upper()} r-position using observed S2 positions directly (cm)'),
+                (f'r_field_distortion_correction_{algo}', np.float32,
+                 f'Correction added to {algo.upper()} r_naive for field distortion (cm)'),
+                (f'theta_{algo}', np.float32,
+                 f'Interaction {algo.upper()} angular position (radians)')
+            ]
+
+        dtype += strax.time_fields
+
+        # returning a warning for correction maps specified without a corresponding posrec algorithm
+        corr_wo_posrec = self.algorithms.difference(self.pos_rec_labels)
+        if len(corr_wo_posrec) != 0:
+            warn("Found correction maps for the following posrec algorithms "
+                       f"{list(corr_wo_posrec)}, but no corresponding event position.")
+
+        # returning a warning for posrec algorithms without a corresponding FDC map
+        posrec_wo_corr = self.pos_rec_labels.difference(self.algorithms)
+        if len(posrec_wo_corr) != 0:
+            warn(f"No correction map specified for the following posrec algorithms: f{posrec_wo_corr}")
+
+        return dtype
 
     def setup(self):
-        self.map = InterpolatingMap(
-            get_resource(self.config['fdc_map'], fmt='binary'))
-        self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
+
+        if not self.config['default_reconstruction_algorithm'] in self.algorithms:
+            raise NotImplementedError(f'No FDC map found for default posrec algorithm {self.config["default_reconstruction_algorithm"]}')
+
+        self.map = {}
+        for algo in self.algorithms.intersection(self.pos_rec_labels):
+            self.map[algo] = InterpolatingMap(
+                get_resource(self.config['fdc_maps'][algo], fmt='binary'))
+            self.map[algo].scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
 
     def compute(self, events):
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
 
-        orig_pos = np.vstack([events['s2_x'], events['s2_y'], z_obs]).T
-        r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
+        result = {'time': events['time'],
+                  'endtime': strax.endtime(events),
+                  'z_naive': z_obs}
 
-        delta_r = self.map(orig_pos)
-        with np.errstate(invalid='ignore', divide='ignore'):
-            r_cor = r_obs + delta_r
-            scale = r_cor / r_obs
+        for algo in self.algorithms.intersection(self.pos_rec_labels):
+            orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
+            r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
 
-        result = dict(time=events['time'],
-                      endtime=strax.endtime(events),
-                      x=orig_pos[:, 0] * scale,
-                      y=orig_pos[:, 1] * scale,
-                      r=r_cor,
-                      z_naive=z_obs,
-                      r_naive=r_obs,
-                      r_field_distortion_correction=delta_r,
-                      theta=np.arctan2(orig_pos[:, 1], orig_pos[:, 0]))
+            delta_r = self.map[algo](orig_pos)
+            with np.errstate(invalid='ignore', divide='ignore'):
+                r_cor = r_obs + delta_r
+                scale = r_cor / r_obs
 
-        with np.errstate(invalid='ignore'):
-            z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-            invalid = np.abs(z_obs) < np.abs(delta_r)
-        z_cor[invalid] = z_obs[invalid]
-        result['z'] = z_cor
+            result[f'x_{algo}'] = orig_pos[:, 0] * scale
+            result[f'y_{algo}'] = orig_pos[:, 1] * scale
+            result[f'r_{algo}'] = r_cor
+            result[f'r_naive_{algo}'] = r_obs
+            result[f'r_field_distortion_correction_{algo}'] = delta_r
+            result[f'theta_{algo}'] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
+
+            with np.errstate(invalid='ignore'):
+                z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
+                invalid = np.abs(z_obs) < np.abs(delta_r)
+            z_cor[invalid] = z_obs[invalid]
+            result[f'z_{algo}'] = z_cor
+
+        algo_default = self.config['default_reconstruction_algorithm']
+        for coord in ('x', 'y', 'z', 'r', 'r_naive', 'r_field_distortion_correction', 'theta'):
+            result[coord] = result[f'{coord}_{algo_default}']
 
         return result
 
