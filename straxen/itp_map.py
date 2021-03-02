@@ -132,7 +132,8 @@ class InterpolatingMap:
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
-            map_data = np.array(self.data[map_name])
+            # Specify dtype float to set Nones to nan
+            map_data = np.array(self.data[map_name], dtype=np.float)
             array_valued = len(map_data.shape) == self.dimensions + 1
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
