@@ -30,6 +30,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
 
     parallel = 'process'
     compressor = 'zstd'
+    save_when = strax.SaveWhen.TARGET
 
     __version__ = '0.0.1'
     event_seen = 0
