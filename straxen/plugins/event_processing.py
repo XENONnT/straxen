@@ -1,7 +1,7 @@
 import strax
 
 import numpy as np
-from warning import warn
+from warnings import warn
 
 from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
 from straxen.get_corrections import get_elife, get_config_from_cmt
