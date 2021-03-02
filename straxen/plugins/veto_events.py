@@ -66,7 +66,8 @@ class nVETOEvents(strax.OverlapWindowPlugin):
 
         # Compute center time:
         split_hitlets = strax.split_by_containment(hitlets_nv, events)
-        compute_event_properties(events, split_hitlets, start_channel=2000)
+        if len(split_hitlets):
+            compute_event_properties(events, split_hitlets, start_channel=2000)
 
         # Cut all those events for which we have less than self.config['event_min_hits_nv'] 
         # hitlets. (straxen.plugins.nveto_recorder.coincidence works with partially overlaping things)
