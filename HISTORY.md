@@ -1,3 +1,10 @@
+0.15.8 / 2021-03-02
+--------------------
+- Update daq-tagging for abandoned runs (#374)
+- Remove nones and replace with nans for itp map (#388)
+- Check for raw-record overlaps (#387)
+
+
 0.15.7 / 2021-02-26
 --------------------
 - Fix for commentjson-package for zipped json (#386)
