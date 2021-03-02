@@ -1,7 +1,7 @@
 import strax
 
 import numpy as np
-from warnings import warn
+from warning import warn
 
 from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
 from straxen.get_corrections import get_elife, get_config_from_cmt
@@ -292,33 +292,18 @@ class EventBasics(strax.LoopPlugin):
         'fdc_maps',
         help='3D field distortion correction map path for each posrec algorithm',
         default_by_run=[
-<<<<<<< HEAD
-            (0, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
-                 'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
-                 'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz'}),  # noqa
-            (12041, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_GCN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
-                     'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_CNN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
-                     'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_MLP_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz'}),  # noqa
-            (12043, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
-                     'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz',
-                     'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_dummy_all_zeros_v0.1.json.gz'}),  # noqa
-            (12049, {'gcn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_GCN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
-                     'cnn': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_CNN_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz',
-                     'mlp': '/home/ftoschi/private_nt_aux_files/strax_files/XnT_3D_FDC_xyt_MLP_v0.1_B2d75n_C2d75n_G0_A4d5p_T1d3n_PMTs1d3n_FSR0d4p.json.gz'})],  # noqa
-=======
-            (0, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_26Feb2021.json.gz',
-                 'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_26Feb2021.json.gz',
-                 'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_26Feb2021.json.gz'}),  # noqa
-            (12041, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_GCN_v0.1_25Feb2021.json.gz',
-                     'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_CNN_v0.1_25Feb2021.json.gz',
-                     'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_MLP_v0.1_25Feb2021.json.gz'}),  # noqa
-            (12043, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_26Feb2021.json.gz',
-                     'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_26Feb2021.json.gz',
-                     'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_26Feb2021.json.gz'}),  # noqa
-            (12049, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_GCN_v0.1_25Feb2021.json.gz',
-                     'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_CNN_v0.1_25Feb2021.json.gz',
-                     'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_MLP_v0.1_25Feb2021.json.gz'})],  # noqa
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
+            (0, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_01Mar2021.json.gz',
+                 'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_01Mar2021.json.gz',
+                 'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_01Mar2021.json.gz'}),  # noqa
+            (12041, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_GCN_v0.1_01Mar2021.json.gz',
+                     'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_CNN_v0.1_01Mar2021.json.gz',
+                     'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_MLP_v0.1_01Mar2021.json.gz'}),  # noqa
+            (12043, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_01Mar2021.json.gz',
+                     'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_01Mar2021.json.gz',
+                     'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_dummy_all_zeros_v0.1_01Mar2021.json.gz'}),  # noqa
+            (12049, {'gcn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_GCN_v0.1_01Mar2021.json.gz',
+                     'cnn': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_CNN_v0.1_01Mar2021.json.gz',
+                     'mlp': '/home/ftoschi/corrections/XENONnT/field_distortion/XENONnT_3D_FDC_data_driven_drift_time_MLP_v0.1_01Mar2021.json.gz'})],  # noqa
     ),
     strax.Option("default_reconstruction_algorithm",
                  help="Default reconstruction algorithm that provides (x,y)",
@@ -330,7 +315,6 @@ class EventPositions(strax.Plugin):
     Computes the observed and corrected position for the main S1/S2
     pairs in an event for each position reconstruction algorithm.
     """
-<<<<<<< HEAD
 
     depends_on = ('event_basics', 'event_posrec_many')
 
@@ -341,15 +325,6 @@ class EventPositions(strax.Plugin):
         self.pos_rec_labels = set(d.split('_')[-1] for d in
                                   self.deps['event_posrec_many'].dtype_for('event_posrec_many').names
                                   if d.startswith('s2_x_'))
-=======
-
-    depends_on = ('event_basics', 'event_posrec_many')
-
-    __version__ = '0.1.2'
-
-    def infer_dtype(self):
-        self._algorithms = self.config['fdc_maps'].keys()
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
         dtype = [
             ('x', np.float32,
              'Interaction x-position, field-distortion corrected (cm)'),
@@ -369,7 +344,6 @@ class EventPositions(strax.Plugin):
              'Interaction angular position (radians)')
         ]
 
-<<<<<<< HEAD
         # returning the corrected position only for those available posrec algorithms included in the FDC map
         for algo in self.algorithms.intersection(self.pos_rec_labels):
             dtype += [
@@ -394,40 +368,18 @@ class EventPositions(strax.Plugin):
         # returning a warning for correction maps specified without a corresponding posrec algorithm
         corr_wo_posrec = self.algorithms.difference(self.pos_rec_labels)
         if len(corr_wo_posrec) != 0:
-            warn("Found correction maps for the following posrec algorithms "
+            raise warn("Found correction maps for the following posrec algorithms"
                        f"{list(corr_wo_posrec)}, but no corresponding event position.")
 
         # returning a warning for posrec algorithms without a corresponding FDC map
         posrec_wo_corr = self.pos_rec_labels.difference(self.algorithms)
         if len(posrec_wo_corr) != 0:
-            warn(f"No correction map specified for the following posrec algorithms: f{posrec_wo_corr}")
+            raise warn(f"No correction map specified for the following posrec algorithms : f{posrec_wo_corr}")
 
-=======
-        for _algo in self._algorithms:
-            dtype += [
-                (f'x_{_algo}', np.float32,
-                 f'Interaction {_algo.upper()} x-position, field-distortion corrected (cm)'),
-                (f'y_{_algo}', np.float32,
-                 f'Interaction {_algo.upper()} y-position, field-distortion corrected (cm)'),
-                (f'z_{_algo}', np.float32,
-                 f'Interaction {_algo.upper()} z-position, field-distortion corrected (cm)'),
-                (f'r_{_algo}', np.float32,
-                 f'Interaction {_algo.upper()} radial position, field-distortion corrected (cm)'),
-                (f'r_naive_{_algo}', np.float32,
-                 f'Interaction {_algo.upper()} r-position using observed S2 positions directly (cm)'),
-                (f'r_field_distortion_correction_{_algo}', np.float32,
-                 f'Correction added to {_algo.upper()} r_naive for field distortion (cm)'),
-                (f'theta_{_algo}', np.float32,
-                 f'Interaction {_algo.upper()} angular position (radians)')
-            ]
-
-        dtype += strax.time_fields
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
         return dtype
 
     def setup(self):
 
-<<<<<<< HEAD
         if not self.config['default_reconstruction_algorithm'] in self.algorithms:
             raise NotImplementedError(f'No FDC map found for default posrec algorithm {self.config["default_reconstruction_algorithm"]}')
 
@@ -436,16 +388,6 @@ class EventPositions(strax.Plugin):
             self.map[algo] = InterpolatingMap(
                 get_resource(self.config['fdc_maps'][algo], fmt='binary'))
             self.map[algo].scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
-=======
-        if not self.config['default_reconstruction_algorithm'] in self._algorithms:
-            raise NotImplementedError(f'No FDC map found for default posrec algorithm {self.config["default_reconstruction_algorithm"]}')
-
-        self.map = {}
-        for _algo in self._algorithms:
-            self.map[_algo] = InterpolatingMap(
-                get_resource(self.config['fdc_maps'][_algo], fmt='binary'))
-            self.map[_algo].scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
 
     def compute(self, events):
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
@@ -454,56 +396,31 @@ class EventPositions(strax.Plugin):
                   'endtime': strax.endtime(events),
                   'z_naive': z_obs}
 
-<<<<<<< HEAD
         for algo in self.algorithms.intersection(self.pos_rec_labels):
             orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
             r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
 
             delta_r = self.map[algo](orig_pos)
-=======
-        for _algo in self._algorithms:
-            orig_pos = np.vstack([events[f's2_x_{_algo}'], events[f's2_y_{_algo}'], z_obs]).T
-            r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-
-            delta_r = self.map[_algo](orig_pos)
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
             with np.errstate(invalid='ignore', divide='ignore'):
                 r_cor = r_obs + delta_r
                 scale = r_cor / r_obs
 
-<<<<<<< HEAD
             result[f'x_{algo}'] = orig_pos[:, 0] * scale
             result[f'y_{algo}'] = orig_pos[:, 1] * scale
             result[f'r_{algo}'] = r_cor
             result[f'r_naive_{algo}'] = r_obs
             result[f'r_field_distortion_correction_{algo}'] = delta_r
             result[f'theta_{algo}'] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
-=======
-            result[f'x_{_algo}'] = orig_pos[:, 0] * scale
-            result[f'y_{_algo}'] = orig_pos[:, 1] * scale
-            result[f'r_{_algo}'] = r_cor
-            result[f'r_naive_{_algo}'] = r_obs
-            result[f'r_field_distortion_correction_{_algo}'] = delta_r
-            result[f'theta_{_algo}'] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
 
             with np.errstate(invalid='ignore'):
                 z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
                 invalid = np.abs(z_obs) < np.abs(delta_r)
             z_cor[invalid] = z_obs[invalid]
-<<<<<<< HEAD
             result[f'z_{algo}'] = z_cor
 
         algo_default = self.config['default_reconstruction_algorithm']
         for coord in ('x', 'y', 'z', 'r', 'r_naive', 'r_field_distortion_correction', 'theta'):
             result[coord] = result[f'{coord}_{algo_default}']
-=======
-            result[f'z_{_algo}'] = z_cor
-
-        _algo_default = self.config['default_reconstruction_algorithm']
-        for _coord in ('x', 'y', 'z', 'r', 'r_naive', 'r_field_distortion_correction', 'theta'):
-            result[_coord] = result[f'{_coord}_{_algo_default}']
->>>>>>> 5491c09584f80baa175f0e4fa2ccec886b506268
 
         return result
 
