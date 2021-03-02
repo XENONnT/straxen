@@ -68,6 +68,7 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
     straxen.nveto_recorder,
     straxen.veto_pulse_processing,
     straxen.veto_hitlets,
+    straxen.veto_events,
     straxen.acqmon_processing,
     straxen.pulse_processing,
     straxen.peaklet_processing,
