@@ -228,6 +228,11 @@ def clean_up_empty_records(records, record_links, only_last=True):
         child_option=True, parent_option_name='hit_min_amplitude_nv',
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
+    strax.Option(
+        'check_raw_record_overlaps',
+        default=True, track=False,
+        help='Crash if any of the pulses in raw_records overlap with others '
+             'in the same channel'),
 )
 class muVETOPulseProcessing(nVETOPulseProcessing):
     __doc__ = MV_PREAMBLE + nVETOPulseProcessing.__doc__
@@ -244,4 +249,6 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         return dtype
 
     def compute(self, raw_records_mv):
+        if self.config['check_raw_record_overlaps']:
+            straxen.check_overlaps(raw_records_mv, n_channels=3000)
         return super().compute(raw_records_mv)
