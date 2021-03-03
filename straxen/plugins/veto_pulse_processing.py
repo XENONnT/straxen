@@ -28,12 +28,6 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         default=None, track=True,
         help='Min. length of pulse before alternative baselineing via '
              'pulse median is applied.'),
-    strax.Option(
-        'check_raw_record_overlaps',
-        default=True, track=False,
-        help='Crash if any of the pulses in raw_records overlap with others '
-             'in the same channel'),
-
 )
 class nVETOPulseProcessing(strax.Plugin):
     """
@@ -63,8 +57,6 @@ class nVETOPulseProcessing(strax.Plugin):
         return dtype
 
     def compute(self, raw_records_coin_nv):
-        if self.config['check_raw_record_overlaps']:
-            straxen.check_overlaps(raw_records_coin_nv, n_channels=3000)
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
         r = strax.raw_to_records(raw_records_coin_nv)
