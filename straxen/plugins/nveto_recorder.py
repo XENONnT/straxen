@@ -26,6 +26,10 @@ export, __all__ = strax.exporter()
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
+    strax.Option('check_raw_record_overlaps',
+                 default=True, track=False,
+                 help='Crash if any of the pulses in raw_records overlap with others '
+                      'in the same channel'),
 )
 class nVETORecorder(strax.Plugin):
     """
@@ -67,6 +71,8 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end):
+        if self.config['check_raw_record_overlaps']:
+            straxen.check_overlaps(raw_records_nv, n_channels=3000)
         # Cover the case if we do not want to have any coincidence:
         if self.config['coincidence_level_recorder_nv'] <= 1:
             rr = raw_records_nv
