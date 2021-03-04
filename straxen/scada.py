@@ -375,8 +375,8 @@ class SCADAInterface:
                 response = urllib.request.urlopen(req)
 
         # Read database response and check if query was valid:
-        values = response.read()
-        response.close()
+        with response:
+            values = response.read()
         values = json.loads(values.decode('utf8'))
 
         temp_df = pd.DataFrame(columns=('timestampseconds', 'value'))
