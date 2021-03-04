@@ -10,13 +10,11 @@ from immutabledict import immutabledict
     strax.Option('event_left_extension_nv', default=0,
                  help="Extends events this many ns to the left"),
     strax.Option('event_resolving_time_nv', default=300,
-                 help="Resolving time for fixed window concidene [ns]."),
+                 help="Resolving time for fixed window coincidence [ns]."),
     strax.Option('event_min_hits_nv', default=6,
-                 help="Minimum number of fully convinet hitlets to define an event."),
+                 help="Minimum number of fully confined hitlets to define an event."),
     strax.Option('gain_model_nv',
                  help='PMT gain model. Specify as (model_type, model_config)'),
-    strax.Option('n_nveto_pmts', type=int,
-                 help='Number of TPC PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
@@ -32,18 +30,23 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     compressor = 'zstd'
     save_when = strax.SaveWhen.TARGET
 
+    # Needed in case we make again an muVETO child.
+    ends_with = '_nv'
+
     __version__ = '0.0.1'
-    event_seen = 0
+    events_seen = 0
 
     def setup(self):
+        self.channel_range = self.config['channel_map']['nveto']
+        self.n_channel = self.channel_range[1] - self.channel_range[0] + 1
+
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model_nv'],
-                                       self.config['n_nveto_pmts'])
-
-        self.channel_range = self.config['channel_map']['nveto']
+                                       self.n_channel)
+        self.name_event_number = 'event_number_nv'
 
     def infer_dtype(self):
-        return veto_event_dtype()
+        return veto_event_dtype(self.name_event_number, self.n_channel)
 
     def get_window_size(self):
         return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
@@ -56,7 +59,10 @@ class nVETOEvents(strax.OverlapWindowPlugin):
                                                                )
 
         n_events = len(intervals)
-        events = np.zeros(n_events, dtype=veto_event_dtype())
+        events = np.zeros(n_events,
+                          dtype=veto_event_dtype(self.name_event_number,
+                                                 self.n_channel)
+                          )
 
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
@@ -67,14 +73,16 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         # Compute center time:
         split_hitlets = strax.split_by_containment(hitlets_nv, events)
         if len(split_hitlets):
-            compute_event_properties(events, split_hitlets, start_channel=2000)
+            compute_nveto_event_properties(events,
+                                           split_hitlets,
+                                           start_channel=self.channel_range[0])
 
         # Cut all those events for which we have less than self.config['event_min_hits_nv'] 
-        # hitlets. (straxen.plugins.nveto_recorder.coincidence works with partially overlaping things)
+        # hitlets. (straxen.plugins.nveto_recorder.coincidence works with partially overlapping things)
         events = events[events['n_hits'] >= self.config['event_min_hits_nv']]
         n_events = len(events)
-        events['event_number_nv'] = np.arange(n_events) + self.event_seen
-        self.event_seen = n_events
+        events[self.name_event_number] = np.arange(n_events) + self.events_seen
+        self.events_seen += n_events
 
         return events
 
@@ -84,7 +92,7 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
     dtype += strax.time_fields  # because mutable
     dtype += [(('Veto event number in this dataset', name_event_number), np.int64),
               (('Last hitlet endtime in event [ns].', 'last_hitlet_endtime'), np.int64),
-              (('Total area of all hitlets in evnet [pe]', 'area'), np.float32),
+              (('Total area of all hitlets in event [pe]', 'area'), np.float32),
               (('Total number of hitlets in events', 'n_hits'), np.int32),
               (('Area in event per channel [pe]', 'area_per_channel'), np.float32, n_pmts),
               (('Area weighted mean time of the event relative to the event start [ns]',
@@ -94,7 +102,7 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_event_properties(events, contained_hitlets, start_channel=2000):
+def compute_nveto_event_properties(events, contained_hitlets, start_channel=2000):
     """
     Computes properties of the neutron-veto events. Writes results
     directly to events.
