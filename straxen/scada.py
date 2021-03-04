@@ -471,13 +471,8 @@ class SCADAInterface:
 
         res = res.json()
         if 'token' not in res.keys():
-            if res['Message'] == 'Invalid username or password.':
-                raise ValueError('Cannot get security token from Slow Control web API. '
-                                 f'API returned the following reason: {res["Message"]} '
-                                 'Please use your Xe1TViewer/SCADA credentials.')
-            else:
-                raise ValueError('Cannot get security token from Slow Control web API. '
-                                 f'API returned the following reason: {res["Message"]}')
+            raise ValueError('Cannot get security token from Slow Control web API. '
+                             f'API returned the following reason: {res["Message"]}')
         else:
             self._token = res['token']
             toke_start_time = datetime.now(tz=pytz.timezone('utc'))
