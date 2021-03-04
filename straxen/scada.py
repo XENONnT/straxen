@@ -370,28 +370,25 @@ class SCADAInterface:
         if not self._query_url.lower().startswith('https'):
             raise ValueError('The query URL should start with https! '
                              f'Current URL: {self._query_url}')
-        req = urllib.request.Request(self._query_url)
-        req.add_header('Authorization', self._token)
 
-        try:
-            # Try to get result:
-            response = urllib.request.urlopen(req)
-        except urllib.error.HTTPError as e:
-            if e.code != 401:
-                print(f'HTTPError {e}')
-            else:
-                # Invalid token so we have to get a new one,
-                # this should actually never happen, but you never know...
-                print('Your token is invalid. It may have expired please get a new one:')
-                # If the user puts in the wrong credentials the query will fail.
-                self._get_token()
-                req = urllib.request.Request(self._query_url)
-                req.add_header('Authorization', self._token)
-                response = urllib.request.urlopen(req)
+        response = requests.get(self._query_url,
+                                headers={'Authorization': self._token})
+        if response.status_code == 401:
+            # Invalid token so we have to get a new one,
+            # this should actually never happen, but you never know...
+            print('Your token is invalid. It may have expired please get a new one:')
+            # If the user puts in the wrong credentials the query will fail.
+            self._get_token()
+            response = requests.get(self._query_url,
+                                    headers={'Authorization': self._token})
+
+        if response.status_code != 200:
+            # Check if we get any status code different from 200 == ok
+            # If yes raise the corresponding status:
+            response.raise_for_status()
 
         # Read database response and check if query was valid:
-        values = response.read()
-        values = json.loads(values.decode('utf8'))
+        values = response.json()
 
         temp_df = pd.DataFrame(columns=('timestampseconds', 'value'))
         if isinstance(values, dict) and raise_error_message:
