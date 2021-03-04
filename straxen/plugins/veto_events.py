@@ -38,7 +38,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
 
     def setup(self):
         self.channel_range = self.config['channel_map']['nveto']
-        self.n_channel = self.channel_range[1] - self.channel_range[0] + 1
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
 
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model_nv'],

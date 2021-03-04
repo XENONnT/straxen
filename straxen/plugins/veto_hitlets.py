@@ -19,7 +19,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         'hit_min_amplitude_nv',
         default=20, track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_nveto_pmts, or a number.'),
+             'Specify as a tuple of length 120, or a number.'),
     strax.Option(
         'min_split_nv',
         default=100, track=True,
@@ -40,8 +40,6 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
-    strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of muVETO PMTs'),
     strax.Option('gain_model_nv',
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
@@ -77,10 +75,13 @@ class nVETOHitlets(strax.Plugin):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
+        self.channel_range = self.config['channel_map']['nveto']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+
         to_pe = straxen.get_to_pe(self.run_id,
                                   self.config['gain_model_nv'],
-                                  self.config['n_nveto_pmts'])
-        self.channel_range = self.config['channel_map']['nveto']
+                                  self.n_channel)
+
         
         # Create to_pe array of size max channel:
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
@@ -148,7 +149,7 @@ class nVETOHitlets(strax.Plugin):
         default=20, track=True,
         child_option=True, parent_option_name='hit_min_amplitude_nv',
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_nveto_pmts, or a number.'),
+             'Specify as a tuple of length 120, or a number.'),
     strax.Option(
         'min_split_mv', 
         default=100, track=True,
@@ -173,8 +174,6 @@ class nVETOHitlets(strax.Plugin):
     strax.Option('gain_model_mv',
                  child_option=True, parent_option_name='gain_model_nv',
              help='PMT gain model. Specify as (model_type, model_config)'),
-    strax.Option('n_mveto_pmts', type=int, track=False,
-                 help='Number of muVETO PMTs'),
 )
 class muVETOHitlets(nVETOHitlets):
     __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
@@ -188,11 +187,13 @@ class muVETOHitlets(nVETOHitlets):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
+        self.channel_range = self.config['channel_map']['mv']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+
         to_pe = straxen.get_to_pe(self.run_id,
                                   self.config['gain_model_mv'],
-                                  straxen.n_mveto_pmts)
-        self.channel_range = self.config['channel_map']['mv']
-        
+                                  self.n_channel)
+
         # Create to_pe array of size max channel:
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]

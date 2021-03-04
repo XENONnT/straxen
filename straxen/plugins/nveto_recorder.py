@@ -21,8 +21,6 @@ export, __all__ = strax.exporter()
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
-    strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of nVETO PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
@@ -56,9 +54,11 @@ class nVETORecorder(strax.Plugin):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
 
+        channel_range = self.config['channel_map']['nveto']
+        n_channel = (channel_range[1] - channel_range[0]) + 1
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
-        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(self.config['n_nveto_pmts'])
+        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(n_channel)
 
         dtypes = [nveto_records_dtype,
                   nveto_diagnostic_lone_records_dtype,
