@@ -360,7 +360,7 @@ class SCADAInterface:
 
         try:
             # Try to get result:
-            values = urllib.request.urlopen(req)
+            response = urllib.request.urlopen(req)
         except urllib.error.HTTPError as e:
             if e.code != 401:
                 print(f'HTTPError {e}')
@@ -372,11 +372,11 @@ class SCADAInterface:
                 self._get_token()
                 req = urllib.request.Request(self._query_url)
                 req.add_header('Authorization', self._token)
-                req.add_header('Authorization', self._token)
-                values = urllib.request.urlopen(req)
+                response = urllib.request.urlopen(req)
 
         # Read database response and check if query was valid:
-        values = values.read()
+        values = response.read()
+        response.close()
         values = json.loads(values.decode('utf8'))
 
         temp_df = pd.DataFrame(columns=('timestampseconds', 'value'))
