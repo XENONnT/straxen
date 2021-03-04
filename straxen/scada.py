@@ -64,6 +64,7 @@ class SCADAInterface:
                          start=None,
                          end=None,
                          run_id=None,
+                         query_type_lab = False,
                          time_selection_kwargs=None,
                          fill_gaps=None,
                          filling_kwargs=None,
@@ -113,8 +114,7 @@ class SCADAInterface:
         :return: pandas.DataFrame containing the data of the specified
             parameters.
         """
-        query_type_lab = False
-
+        
         if not filling_kwargs:
             filling_kwargs = {}
 
@@ -280,23 +280,26 @@ class SCADAInterface:
         # Init parameter query:
         query = {'name': parameter_name}
 
-        # Check if first value is in requested range:
-        temp_df = self._query(query,
-                              self.SCLastValue_URL,
-                              end=(start // 10**9) + 1)  # +1 since it is end before exclusive
+        if not query_type_lab:
+            # Check if first value is in requested range:
+            # This is only needed in case of raw data since here it can 
+            # happen that the user queries a range without any data.
+            temp_df = self._query(query,
+                                  self.SCLastValue_URL,
+                                  end=(start // 10**9) + 1)  # +1 since it is end before exclusive
 
-        # Store value as first value in our df
-        df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
-
-        # Query values between start+1 and endtime:
-        offset = 0
+            # Store value as first value in our df
+            df.loc[df.index.values[0], parameter_key] = temp_df['value'][0]
+            offset = 1
+        else:
+            offset = 0
         ntries = 0
         max_tries = 40000  # This corresponds to ~23 years
         while ntries < max_tries:
             temp_df = self._query(query,
                                   self.SCData_URL,
-                                  start=(start // 10**9) + 1 + offset,
-                                  end=(end // 10**9) + 1,
+                                  start=(start // 10**9) + offset,
+                                  end=(end // 10**9),
                                   query_type_lab=query_type_lab,
                                   seconds_interval=every_nth_value,
                                   raise_error_message=False  # No valid value in query range...
@@ -326,7 +329,10 @@ class SCADAInterface:
 
         # Step 4. Down-sample data if asked for:
         df.reset_index(inplace=True)
-        if every_nth_value > 1:
+        if every_nth_value > 1 and not query_type_lab:
+            # If the user asks for down sampling do so, but only for 
+            # raw_data, lab query type is already interpolated and down sampled
+            # by the historian. 
             if down_sampling:
                 df = df[::every_nth_value]
             else:
