@@ -36,17 +36,16 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     __version__ = '0.0.1'
     events_seen = 0
 
-    def setup(self):
+    def infer_dtype(self):
+        self.name_event_number = 'event_number_nv'
         self.channel_range = self.config['channel_map']['nveto']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+        return veto_event_dtype(self.name_event_number, self.n_channel)
 
+    def setup(self):
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model_nv'],
                                        self.n_channel)
-        self.name_event_number = 'event_number_nv'
-
-    def infer_dtype(self):
-        return veto_event_dtype(self.name_event_number, self.n_channel)
 
     def get_window_size(self):
         return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
