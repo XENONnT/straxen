@@ -364,7 +364,6 @@ class SCADAInterface:
 
         try:
             # Try to get result:
-            # TODO add check if it is an url
             response = urllib.request.urlopen(req)
         except urllib.error.HTTPError as e:
             if e.code != 401:
