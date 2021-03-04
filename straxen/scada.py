@@ -473,15 +473,15 @@ class SCADAInterface:
         if 'token' not in res.keys():
             raise ValueError('Cannot get security token from Slow Control web API. '
                              f'API returned the following reason: {res["Message"]}')
-        else:
-            self._token = res['token']
-            toke_start_time = datetime.now(tz=pytz.timezone('utc'))
-            hours_added = timedelta(hours=3)
-            self._token_expire_time = toke_start_time + hours_added
-            print('Received token, the token is valid for 3 hrs.\n',
-                  f'from {toke_start_time.strftime("%d.%m. %H:%M:%S")} UTC\n',
-                  f'till {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC'
-                  )
+
+        self._token = res['token']
+        toke_start_time = datetime.now(tz=pytz.timezone('utc'))
+        hours_added = timedelta(hours=3)
+        self._token_expire_time = toke_start_time + hours_added
+        print('Received token, the token is valid for 3 hrs.\n',
+              f'from {toke_start_time.strftime("%d.%m. %H:%M:%S")} UTC\n',
+              f'till {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC'
+              )
 
     def token_expires_in(self):
         """
