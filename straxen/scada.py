@@ -118,53 +118,20 @@ class SCADAInterface:
         if not filling_kwargs:
             filling_kwargs = {}
 
-        if not time_selection_kwargs:
-            time_selection_kwargs = {'full_range': True}
-
         if not isinstance(parameters, dict):
             mes = 'The argument "parameters" has to be specified as a dict.'
             raise ValueError(mes)
 
-        if np.all((run_id, self.context)):
-            # User specified a valid context and run_id, so get the start
-            # and end time for our query:
-            if isinstance(run_id, (list, tuple)):
-                run_id = np.sort(run_id)  # Do not trust the user's
-                start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
-                _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
-            else:
-                start, end = self.context.to_absolute_time_range(run_id, **time_selection_kwargs)
-        elif run_id:
-            mes = ('You are trying to query slow control data via run_ids'
-                   ' but you have not specified the context you are '
-                   'working with. Please set the context either via '
-                   '.st = YOURCONTEXT, or when initializing the '
-                   'interface.')
-            raise ValueError(mes)
-
-        if not np.all((start, end)):
-            # User has not specified any valid start and end time
-            mes = ('You have to specify either a run_id and context.'
-                   ' E.g. call get_scada_values(parameters, run_id=run)'
-                   ' or you have to specify a valid start and end time '
-                   'in utc unix time ns.')
-            raise ValueError(mes)
+        start, end, now = self._get_and_check_start_end(run_id,
+                                                        start,
+                                                        end,
+                                                        time_selection_kwargs
+                                                        )
 
         _fill_gaps = [None, 'None', 'interpolation', 'forwardfill']
-
         if fill_gaps not in _fill_gaps:
             raise ValueError(f'Wrong argument for "fill_gaps", must be either {_fill_gaps}.'
                              f' You specified "{fill_gaps}"')
-
-        now = np.datetime64('now')
-        if (end // 10**9) > now.astype(np.int64):
-            mes = ('You are asking for an endtime which is in the future,'
-                   ' I may be written by a physicist, but I am neither self-'
-                   'aware nor can I predict the future like they can. You '
-                   f'asked for the endtime: {end // 10**9} but current utc '
-                   f'time is {now.astype(np.int64)}. I will return for the values for the '
-                   'corresponding times as nans instead.')
-            warnings.warn(mes)
 
         if not self._token:
             # User has not asked for a token yet:
@@ -210,6 +177,50 @@ class SCADAInterface:
             df.loc[now:, :] = np.nan
 
         return df
+
+    def _get_and_check_start_end(self, run_id, start, end, time_selection_kwargs):
+        """
+        Helper function which clusters all time related checks and reduces complexity
+        of get_scada_values.
+        """
+        if not time_selection_kwargs:
+            time_selection_kwargs = {'full_range': True}
+
+        if np.all((run_id, self.context)):
+            # User specified a valid context and run_id, so get the start
+            # and end time for our query:
+            if isinstance(run_id, (list, tuple)):
+                run_id = np.sort(run_id)  # Do not trust the user's
+                start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
+                _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
+            else:
+                start, end = self.context.to_absolute_time_range(run_id, **time_selection_kwargs)
+        elif run_id:
+            mes = ('You are trying to query slow control data via run_ids'
+                   ' but you have not specified the context you are '
+                   'working with. Please set the context either via '
+                   '.st = YOURCONTEXT, or when initializing the '
+                   'interface.')
+            raise ValueError(mes)
+
+        if not np.all((start, end)):
+            # User has not specified any valid start and end time
+            mes = ('You have to specify either a run_id and context.'
+                   ' E.g. call get_scada_values(parameters, run_id=run)'
+                   ' or you have to specify a valid start and end time '
+                   'in utc unix time ns.')
+            raise ValueError(mes)
+
+        now = np.datetime64('now')
+        if (end // 10**9) > now.astype(np.int64):
+            mes = ('You are asking for an endtime which is in the future,'
+                   ' I may be written by a physicist, but I am neither self-'
+                   'aware nor can I predict the future like they can. You '
+                   f'asked for the endtime: {end // 10**9} but current utc '
+                   f'time is {now.astype(np.int64)}. I will return for the values for the '
+                   'corresponding times as nans instead.')
+            warnings.warn(mes)
+        return start, end, now
 
     def _query_single_parameter(self,
                                 start,
