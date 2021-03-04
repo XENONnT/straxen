@@ -355,13 +355,17 @@ class SCADAInterface:
         # Configure query url
         query_url = urllib.parse.urlencode(query)
         self._query_url = api + query_url
+        # Security check if url is a real url and not something like file://
+        if not self._query_url.lower().startswith('https'):
+            raise ValueError('The query URL should start with https! '
+                             f'Current URL: {self._query_url}')
         req = urllib.request.Request(self._query_url)
         req.add_header('Authorization', self._token)
 
         try:
             # Try to get result:
-            with urllib.request.urlopen(req) as response:
-                values = response.read()
+            # TODO add check if it is an url
+            response = urllib.request.urlopen(req)
         except urllib.error.HTTPError as e:
             if e.code != 401:
                 print(f'HTTPError {e}')
@@ -373,10 +377,12 @@ class SCADAInterface:
                 self._get_token()
                 req = urllib.request.Request(self._query_url)
                 req.add_header('Authorization', self._token)
-                with urllib.request.urlopen(req) as response:
-                    values = response.read()
+                response = urllib.request.urlopen(req)
 
+        # Read database response and check if query was valid:
+        values = response.read()
         values = json.loads(values.decode('utf8'))
+
         temp_df = pd.DataFrame(columns=('timestampseconds', 'value'))
         if isinstance(values, dict) and raise_error_message:
             # Not valid, why:
