@@ -147,7 +147,7 @@ def plot_records_matrix(context, run_id,
                     max_samples=max_samples,
                     ignore_max_sample_warning=ignore_max_sample_warning,
                     **kwargs)
-    if group_by:
+    if group_by is not None:
         ylabs, wvm_mask = group_by_daq(context, run_id, group_by)
         wvm = wvm[:, wvm_mask]
         plt.ylabel(group_by)
@@ -163,14 +163,17 @@ def plot_records_matrix(context, run_id,
     plt.xlim(*seconds_range)
 
     ax = plt.gca()
-    if group_by:
+    if group_by is not None:
         # Do some magic to convert all the labels to an integer that
         # allows for remapping of the y labels to whatever is provided
         # in the "ylabs", otherwise matplotlib shows nchannels different
-        # labels in the case of strings
+        # labels in the case of strings.
+        # Make a dict that converts the label to an int
         int_labels = {h: i for i, h in enumerate(set(ylabs))}
         mask = np.ones(len(ylabs), dtype=np.bool_)
+        # If the label (int) is different wrt. its neighbour, show it
         mask[1:] = np.abs(np.diff([int_labels[y] for y in ylabs])) > 0
+        # Only label the selection
         ax.set_yticks(np.arange(len(ylabs))[mask])
         ax.set_yticklabels(ylabs[mask])
     plt.xlabel('Time [s]')

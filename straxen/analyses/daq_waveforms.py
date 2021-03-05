@@ -12,11 +12,14 @@ import matplotlib.pyplot as plt
 def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', **kwargs):
     """
     Plot with peak, records and records sorted by "link" or "ADC ID"
+    (other items are also possible as long as it is in the channel map).
     """
+
     f, axes = plt.subplots(3, 1,
                            figsize=figsize,
                            gridspec_kw={'height_ratios': [1, 1, lower_panel_height]})
 
+    # Panel 1, the peaks
     plt.sca(axes[0])
     plt.title('Peaks')
     context.plot_peaks(**kwargs,
@@ -25,6 +28,7 @@ def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', *
     plt.xticks(rotation=0)
     plt.grid('y')
 
+    # Panel 2, the records where we keep the order of the records/channel number
     plt.sca(axes[1])
     plt.title('Records (by channel number)')
     context.plot_records_matrix(**kwargs,
@@ -33,6 +37,7 @@ def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', *
     plt.grid('x')
     plt.xlim(*xlim)
 
+    # Use a grouping argument to group the channels by.
     plt.sca(axes[2])
     plt.title(f'Records (by {group_by})')
     context.plot_records_matrix(**kwargs,
@@ -52,14 +57,14 @@ def _get_daq_config(
     Either use the context of the runs collection.
     """
     if not context.storage[0].__class__.__name__ == 'RunDB' and run_collection is None:
-        raise NotImplementedError('Only works with the runsdatabase')
+        raise NotImplementedError('Only works with the runs-database')
     if run_collection is None:
         run_collection = context.storage[0].collection
-    daq_config = run_collection.find_one({"number": int(run_id)},
-                                         projection={config_name: 1}).get(config_name, None)
-    if daq_config is None:
+    daq_doc = run_collection.find_one({"number": int(run_id)},
+                                      projection={config_name: 1})
+    if daq_doc is None or config_name not in daq_doc:
         raise ValueError(f'Requested {config_name} does not exist')
-    return daq_config
+    return daq_doc[config_name]
 
 
 def _board_to_host_link(daq_config: dict, board: int, add_crate=True) -> str:
@@ -111,15 +116,15 @@ def _group_channels_by_index(cable_map: pandas.DataFrame,
 def group_by_daq(context, run_id, group_by: str):
     """From the channel map, get the mapping of channel number -> group by"""
     cable_map = _get_cable_map()
-    if group_by != 'link':
-        return _group_channels_by_index(cable_map, group_by=group_by, )
-    else:
+    if group_by == 'link':
         labels, idx = _group_channels_by_index(cable_map, group_by='ADC ID')
         daq_config = _get_daq_config(context, run_id)
         labels = [_board_to_host_link(daq_config, l) for l in labels]
         labels = np.array(labels)
         order = np.argsort(labels)
         return labels[order], idx[order]
+    else:
+        return _group_channels_by_index(cable_map, group_by=group_by)
 
 
 @numba.njit
