@@ -53,7 +53,7 @@ def _get_daq_config(
     """
     if not context.storage[0].__class__.__name__ == 'RunDB' and run_collection is None:
         raise NotImplementedError('Only works with the runsdatabase')
-    elif run_collection is None:
+    if run_collection is None:
         run_collection = context.storage[0].collection
     daq_config = run_collection.find_one({"number": int(run_id)},
                                          projection={config_name: 1}).get(config_name, None)
