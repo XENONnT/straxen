@@ -166,7 +166,7 @@ def plot_records_matrix(context, run_id,
     if group_by:
         # Do some magic to convert all the labels to an integer that
         # allows for remapping of the y labels to whatever is provided
-        # in the "ylabs", otherwise matplotlib shows nchannels different 
+        # in the "ylabs", otherwise matplotlib shows nchannels different
         # labels in the case of strings
         int_labels = {h: i for i, h in enumerate(set(ylabs))}
         mask = np.ones(len(ylabs), dtype=np.bool_)
