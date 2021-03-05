@@ -140,3 +140,4 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
         y[y_start:y_end, r['channel']] += w[r_start:r_end]
 
     return y
+
