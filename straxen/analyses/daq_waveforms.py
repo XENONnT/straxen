@@ -26,7 +26,7 @@ def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', *
     plt.grid('y')
 
     plt.sca(axes[1])
-    plt.title('Recods (by channel number)')
+    plt.title('Records (by channel number)')
     context.plot_records_matrix(**kwargs,
                                 single_figure=False)
     plt.xticks(rotation=0)
@@ -34,7 +34,7 @@ def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', *
     plt.xlim(*xlim)
 
     plt.sca(axes[2])
-    plt.title('Records (by reader, link, crate)')
+    plt.title(f'Records (by {group_by})')
     context.plot_records_matrix(**kwargs,
                                 group_by=group_by,
                                 single_figure=False)
