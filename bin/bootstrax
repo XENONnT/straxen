@@ -260,7 +260,13 @@ max_queue_new_runs = 2
 # this many times. If high level data is hitting some edge case, we
 # might want to be able to keep the intermediate level data.
 # NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
-remove_target_after_fails = dict(events=2, hitlets=2, peak=3, online=4, ALL=5)
+remove_target_after_fails = dict(events=2,
+                                 hitlets=2,
+                                 peaks=3,
+                                 peak_basics=3,
+                                 peaklets=4,
+                                 online=4,
+                                 ALL=5)
 
 ##
 # Initialize globals (e.g. rundb connection)
@@ -538,11 +544,19 @@ def infer_target(rd):
 
     n_fails = rd['bootstrax'].get('n_failures', 0)
     if n_fails:
-        log.debug(f'override_target::\tdeleting targets')
+        log.debug(f'Deleting targets')
         for _rm_t, _rm_t_after in remove_target_after_fails.items():
-            _t = [__t for __t in _t if (_rm_t not in __t and n_fails < _rm_t_after)]
-            _pp = [__pp for __pp in _pp if (_rm_t not in __pp and n_fails < _rm_t_after)]
+            for __i, __t in enumerate(_t):
+                if __t in _rm_t and n_fails > _rm_t_after:
+                    log.debug(f'Remove {__t}')
+                    del _t[__i]
+            for __pi, __p  in enumerate(_pp):
+                if __p in _rm_t and n_fails > _rm_t_after:
+                    log.debug(f'Remove {__p}')
+                    del _pp[__pi]
+    log.debug(f'{_t} and {_pp} remaining')
     if n_fails >= remove_target_after_fails['ALL']:
+        log.debug(f'Overwriting to raw-records only')
         _t = 'raw_records'
         _pp = 'raw_records'
         return {'targets': strax.to_str_tuple(_t),
@@ -556,9 +570,11 @@ def infer_target(rd):
 
     log.debug(f'override_target::\tmode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
+        log.debug('led-mode')
         _t = 'led_calibration'
         _pp = 'raw_records'
     elif np.any([m in mode for m in diagnostic_modes]):
+        log.debug('diagnostic-mode')
         _t = 'raw_records'
         _pp = 'raw_records'
 
@@ -582,6 +598,7 @@ def infer_target(rd):
         _pp = 'raw_records'
     _t = strax.to_str_tuple(_t)
     _pp = strax.to_str_tuple(_pp)
+    log.info(f'Inferring modes done, writing {_t} and {_pp}')
     for __check in (_t, _pp):
         if not len(set(__check)) == len(__check):
             log_warning(f'Duplicates in (post) targets {__check}',
