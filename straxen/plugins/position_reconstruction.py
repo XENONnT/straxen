@@ -9,6 +9,11 @@ import straxen
 from warnings import warn
 export, __all__ = strax.exporter()
 
+DEFAULT_POSREC_ALGO_OPTION = tuple(strax.Option("default_reconstruction_algorithm",
+                                                help="default reconstruction algorithm that provides (x,y)",
+                                                default="mlp"
+                                                ))
+
 
 @export
 @strax.takes_config(
