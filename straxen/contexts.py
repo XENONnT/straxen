@@ -46,11 +46,8 @@ xnt_common_config = dict(
     # Clustering/classification parameters
     s1_max_rise_time=100,
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
-    default_reconstruction_algorithm='mlp',
-)
-
-xnt_common_config.update(dict(
-    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True))
+    elife_file=("elife_model", "ONLINE",True),
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -156,7 +153,7 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config='fax_config_nt.json',
+                    fax_config='fax_config_nt_design.json',
                     check_raw_record_overlaps=False,
                     **straxen.contexts.xnt_common_config,
                     ),
