@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 import argparse
 from datetime import datetime, timedelta
@@ -843,10 +843,6 @@ def set_state(state):
 
 if __name__ == '__main__':
     print(f'---\n ajax version {__version__}\n---')
-    logging.basicConfig(level=logging.INFO,
-                        format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
-    log = logging.getLogger()
-    hostname = socket.getfqdn()
 
     parser = argparse.ArgumentParser(
         description="XENONnT cleaning manager")
@@ -879,6 +875,18 @@ if __name__ == '__main__':
     'data, old raw_records_nv')
 
     args = parser.parse_args()
+    hostname = socket.getfqdn()
+
+    try:
+        import daqnt
+        log_name = 'ajax_' + hostname + ('' if not args.execute else '_TESTING')
+        log = daqnt.get_daq_logger('main', log_name, level=logging.DEBUG)
+    except ModuleNotFoundError:
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
+            datefmt='%m-%d %H:%M')
+        log = logging.getLogger()
 
     if args.clean == 'raw_records_nv':
         log.info(f'main::\tDelete neutron veto data from {hostname} older than '

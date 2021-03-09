@@ -1,3 +1,23 @@
+0.15.8 / 2021-03-02
+--------------------
+- Update daq-tagging for abandoned runs (#374)
+- Remove nones and replace with nans for itp map (#388)
+- Check for raw-record overlaps (#387)
+
+
+0.15.7 / 2021-02-26
+--------------------
+- Fix for commentjson-package for zipped json (#386)
+
+
+0.15.6 / 2021-02-26
+--------------------
+- Scada updates (#378, #383)
+- Correct S2(x,y) with CMT (#382)
+- Correct elife with CMT (#385)
+- Replace json with commentjson (#384)
+
+
 0.15.5 / 2021-02-22
 --------------------
 - Patch version 0.15.3 (b5433bd)
