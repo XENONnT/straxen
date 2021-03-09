@@ -38,7 +38,7 @@ class nVETOPulseProcessing(strax.Plugin):
         2. Find hits and apply ZLE
         3. Remove empty fragments.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
 
     parallel = 'process'
     rechunk_on_save = False
