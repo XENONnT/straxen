@@ -11,7 +11,7 @@ from immutabledict import immutabledict
                  help="Extends events this many ns to the left"),
     strax.Option('event_resolving_time_nv', default=300,
                  help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_nv', default=6,
+    strax.Option('event_min_hits_nv', default=3,
                  help="Minimum number of fully confined hitlets to define an event."),
     strax.Option('gain_model_nv',
                  help='PMT gain model. Specify as (model_type, model_config)'),
