@@ -16,9 +16,13 @@ export, __all__ = strax.exporter()
                  help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('nbaseline_samples_lone_records_nv', type=int,
+    strax.Option('baseline_samples_nv', type=int,
                  default_by_run=[(0, 10), (12684, 26)], track=True,
                  help="Number of samples used in baseline rms calculation"),
+    strax.Option('hit_min_amplitude_nv',
+                 default=20, track=True,
+                 help='Minimum hit amplitude in ADC counts above baseline. '
+                      'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
     strax.Option('n_nveto_pmts', type=int, track=False,
@@ -41,7 +45,7 @@ class nVETORecorder(strax.Plugin):
     properties for monitoring purposes. Depending on the setting also
     a fixed number of the lone_records per channel are stored.
     """
-    __version__ = '0.0.6'
+    __version__ = '0.0.7'
     parallel = 'process'
 
     rechunk_on_save = True
@@ -82,14 +86,26 @@ class nVETORecorder(strax.Plugin):
                     'lone_raw_records_nv': lr,
                     'lone_raw_record_statistics_nv': lrs}
             
+        # Search for hits to define coincidence intervals:
+        temp_records = strax.raw_to_records(raw_records_nv)
+        temp_records = strax.sort_by_time(temp_records)
+        strax.zero_out_of_bounds(temp_records)
+        strax.baseline(temp_records,
+                       baseline_samples=self.config['baseline_samples_nv'],
+                       flip=True)
+        hits = strax.find_hits(temp_records,
+                               min_amplitude=self.config['hit_min_amplitude_nv'])
+        del temp_records
+
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
-        intervals = coincidence(raw_records_nv,
+        intervals = coincidence(hits,
                                 self.config['coincidence_level_recorder_nv'],
                                 self.config['resolving_time_recorder_nv'],
-                                self.config['pre_trigger_time_nv']
-                               )
+                                self.config['pre_trigger_time_nv'])
+        del hits
+
         # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
         # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
         if len(intervals):
@@ -115,7 +131,7 @@ class nVETORecorder(strax.Plugin):
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
         strax.baseline(lr,
-                       baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
+                       baseline_samples=self.config['baseline_samples_nv'],
                        flip=True)
         strax.integrate(lr)
         lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
