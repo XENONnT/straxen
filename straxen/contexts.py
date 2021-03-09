@@ -50,7 +50,7 @@ xnt_common_config = dict(
 )
 
 xnt_common_config.update(dict(
-    fdc_map=("CMT_model", (f'fdc_map_{xnt_common_config["default_reconstruction_algorithm"]}', "ONLINE"), True))
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True))
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)

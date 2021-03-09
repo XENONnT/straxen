@@ -251,7 +251,7 @@ class EventBasics(strax.LoopPlugin):
                 if s_i == 2:
                     for name in posrec_save:
                         posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
-
+                        
             # Store alternate signal properties
             if _alt_i is None:
                 result[f'alt_s{s_i}_index'] = -1
@@ -290,7 +290,7 @@ class EventBasics(strax.LoopPlugin):
         default=0.632e-4
     ),
     strax.Option(
-        'fdc_map',
+        name='fdc_map',
         help='3D field distortion correction map path',
         default_by_run=[
             (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
@@ -305,16 +305,21 @@ class EventBasics(strax.LoopPlugin):
             170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))],
     # noqa
     ),
+    strax.Option(
+        name="default_reconstruction_algorithm_fdc",
+        help="Default reconstruction algorithm used for field distortion corrected position",
+        default="mlp"),
     *DEFAULT_POSREC_ALGO_OPTION
 )
 class EventPositions(strax.Plugin):
     """
     Computes the observed and corrected position for the main S1/S2
     pairs in an event. For XENONnT data, it returns the FDC corrected
-    positions of the default_reconstruction_algorithm.
+    positions of the default_reconstruction_algorithm_fdc, not necessary 
+    identical to the default_reconstruction_algorithm.
     """
 
-    depends_on = ('event_basics', 'event_posrec_many')
+    depends_on = ('event_basics','event_posrec_many')
 
     __version__ = '0.1.3'
 
@@ -339,17 +344,24 @@ class EventPositions(strax.Plugin):
 
     def setup(self):
 
-        is_CMT = isinstance(self.config["field_map"], tuple)
+        if self.config['default_reconstruction_algorithm_fdc'] != self.config['default_reconstruction_algorithm']:
+            warn(f'Default posrec algorithm ({self.config["default_reconstruction_algorithm"].upper()}) '
+                 'used for uncorrected positions is different than the default algorithm used for '
+                 f'the corrected positions ({self.config["default_reconstruction_algorithm_fdc"].upper()}).')
+        is_CMT = isinstance(self.config['fdc_map'], tuple)
 
         if is_CMT:
-            name_map = self.config["field_map"][1][0].lower()
-            if not self.config['default_reconstruction_algorithm'].lower() in name_map: # check the name
-                raise NotImplementedError(('No FDC map found for posrec algorithm ',
-                                           f'{self.config["default_reconstruction_algorithm"].upper()}'))
+            
+            map_algo = list(self.config['fdc_map'])
+            name_map = list(map_algo[1])
+            name_map[0] = '_'.join([name_map[0], self.config['default_reconstruction_algorithm_fdc']])
+            map_algo[1] = tuple(name_map)
+            map_algo = tuple(map_algo)
+            
             self.map = InterpolatingMap(
-                get_resource(get_config_from_cmt(self.run_id, self.config['fdc_map']), fmt='binary'))
+                get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
 
-        elif isinstance(self.config["field_map"], str):
+        elif isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
                 get_resource(self.config['fdc_map'], fmt='binary'))
 
@@ -362,9 +374,11 @@ class EventPositions(strax.Plugin):
 
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
+        
+        algo = self.config['default_reconstruction_algorithm_fdc']
 
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
-        orig_pos = np.vstack([events['s2_x'], events['s2_y'], z_obs]).T
+        orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = self.map(orig_pos)
 
