@@ -135,22 +135,3 @@ def group_by_daq(context, run_id, group_by: str):
         return labels[order], idx[order]
     else:
         return _group_channels_by_index(cable_map, group_by=group_by)
-
-
-@numba.njit
-def _numba_in(val, array):
-    """Check if val is in array"""
-    for a in array:
-        if val == a:
-            return True
-    return False
-
-
-@numba.njit()
-def _sel_channels(data, length, nchannels):
-    """Create mask for data to see if the data is in any of the channels"""
-    mask = np.zeros(length, np.bool_)
-    for d_i in range(length):
-        if _numba_in(data[d_i]['channel'], nchannels):
-            mask[d_i] = True
-    return mask
