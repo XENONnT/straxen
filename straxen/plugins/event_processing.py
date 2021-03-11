@@ -287,7 +287,7 @@ class EventBasics(strax.LoopPlugin):
     strax.Option(
         name='electron_drift_velocity',
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=0.632e-4
+        default=1.3325e-4
     ),
     strax.Option(
         name='fdc_map',
@@ -305,10 +305,6 @@ class EventBasics(strax.LoopPlugin):
             170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))],
     # noqa
     ),
-    strax.Option(
-        name="default_reconstruction_algorithm_fdc",
-        help="Default reconstruction algorithm used for field distortion corrected position",
-        default="mlp"),
     *DEFAULT_POSREC_ALGO_OPTION
 )
 class EventPositions(strax.Plugin):
@@ -319,8 +315,8 @@ class EventPositions(strax.Plugin):
     identical to the default_reconstruction_algorithm.
     """
 
-    depends_on = ('event_basics','event_posrec_many')
-
+    depends_on = ('event_basics', )
+    
     __version__ = '0.1.3'
 
     dtype = [
@@ -344,17 +340,13 @@ class EventPositions(strax.Plugin):
 
     def setup(self):
 
-        if self.config['default_reconstruction_algorithm_fdc'] != self.config['default_reconstruction_algorithm']:
-            warn(f'Default posrec algorithm ({self.config["default_reconstruction_algorithm"].upper()}) '
-                 'used for uncorrected positions is different than the default algorithm used for '
-                 f'the corrected positions ({self.config["default_reconstruction_algorithm_fdc"].upper()}).')
         is_CMT = isinstance(self.config['fdc_map'], tuple)
 
         if is_CMT:
             
             map_algo = list(self.config['fdc_map'])
             name_map = list(map_algo[1])
-            name_map[0] = '_'.join([name_map[0], self.config['default_reconstruction_algorithm_fdc']])
+            name_map[0] = '_'.join([name_map[0], self.config['default_reconstruction_algorithm']])
             map_algo[1] = tuple(name_map)
             map_algo = tuple(map_algo)
             
@@ -375,10 +367,8 @@ class EventPositions(strax.Plugin):
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
         
-        algo = self.config['default_reconstruction_algorithm_fdc']
-
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
-        orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
+        orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = self.map(orig_pos)
 
@@ -388,7 +378,8 @@ class EventPositions(strax.Plugin):
             scale = r_cor / r_obs
 
         # z correction due to longer drift time for distortion
-        # (geometrical reasoning not valid if |delta_r| > |z_obs|)
+        # (geometrical reasoning not valid if |delta_r| > |z_obs|,
+        #  as cathetus cannot be longer than hypothenuse)
         with np.errstate(invalid='ignore'):
             z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
             invalid = np.abs(z_obs) < np.abs(delta_r)
