@@ -8,6 +8,7 @@ import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
 
+
 def test_pmt_pos_1t():
     """
     Test if we can get the 1T PMT positions
@@ -89,9 +90,14 @@ def test_several():
             assert st.is_stored(test_run_id_1T, 'records'), "no records"
             assert st.is_stored(test_run_id_1T, 'raw_records'), "no raw records"
             st.plot_records_matrix(test_run_id_1T, time_range=(p[peak_i]['time'],
-                                                            strax.endtime(p[peak_i])))
+                                                               strax.endtime(p[peak_i])))
+
             st.raw_records_matrix(test_run_id_1T, time_range=(p[peak_i]['time'],
                                                            strax.endtime(p[peak_i])))
+            st.plot_waveform(test_run_id_1T,
+                             time_range=(p[peak_i]['time'],
+                                         strax.endtime(p[peak_i])),
+                             deep=True)
             plt_clf()
 
             print('plot event displays')
@@ -190,3 +196,42 @@ def test_plots():
 
 def test_print_version():
     straxen.print_versions(['strax', 'something_that_does_not_exist'])
+
+
+def test_daq_plot():
+    if not straxen.utilix_is_configured():
+        return
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            print("Temporary directory is ", temp_dir)
+            os.chdir(temp_dir)
+            from .test_plugins import DummyRawRecords, testing_config_nT, test_run_id_nT
+            st = straxen.contexts.xenonnt_online()
+            rundb = st.storage[0]
+            rundb.readonly = True
+            st.storage = [rundb, strax.DataDirectory(temp_dir)]
+            st.set_config(testing_config_nT)
+            st.set_context_config(dict(forbid_creation_of=()))
+            st.register(DummyRawRecords)
+
+            rr = st.get_array(test_run_id_nT, 'raw_records')
+            st.make(test_run_id_nT, 'records')
+            st.make(test_run_id_nT, 'peak_basics')
+            if straxen.utilix_is_configured():
+                st.daq_plot(test_run_id_nT,
+                            time_range=(rr['time'][0], strax.endtime(rr)[-1]),
+                            vmin=0.1,
+                            vmax=1,
+                            )
+
+                st.plot_records_matrix(test_run_id_nT,
+                                       time_range=(rr['time'][0],
+                                                   strax.endtime(rr)[-1]),
+                                       vmin=0.1,
+                                       vmax=1,
+                                       group_by='ADC ID')
+                plt_clf()
+        # On windows, you cannot delete the current process'
+        # working directory, so we have to chdir out first.
+        finally:
+            os.chdir('..')

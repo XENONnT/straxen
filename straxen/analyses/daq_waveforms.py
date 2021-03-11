@@ -9,7 +9,13 @@ import matplotlib.pyplot as plt
 
 
 @straxen.mini_analysis()
-def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', **kwargs):
+def daq_plot(context,
+             figsize=(14, 15),
+             lower_panel_height=6,
+             group_by='link',
+             vmin=None,
+             vmax=None,
+             **kwargs):
     """
     Plot with peak, records and records sorted by "link" or "ADC ID"
     (other items are also possible as long as it is in the channel map).
@@ -32,6 +38,8 @@ def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', *
     plt.sca(axes[1])
     plt.title('Records (by channel number)')
     context.plot_records_matrix(**kwargs,
+                                vmin=vmin,
+                                vmax=vmax,
                                 single_figure=False)
     plt.xticks(rotation=0)
     plt.grid('x')
@@ -41,6 +49,8 @@ def daq_plot(context, figsize=(14, 15), lower_panel_height=6, group_by='link', *
     plt.sca(axes[2])
     plt.title(f'Records (by {group_by})')
     context.plot_records_matrix(**kwargs,
+                                vmin=vmin,
+                                vmax=vmax,
                                 group_by=group_by,
                                 single_figure=False)
     plt.xlim(*xlim)

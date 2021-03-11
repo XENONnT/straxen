@@ -132,6 +132,8 @@ def plot_records_matrix(context, run_id,
                         group_by=None,
                         max_samples=DEFAULT_MAX_SAMPLES,
                         ignore_max_sample_warning=False,
+                        vmin = None,
+                        vmax = None,
                         **kwargs):
     if seconds_range is None:
         raise ValueError(
@@ -154,11 +156,18 @@ def plot_records_matrix(context, run_id,
     else:
         plt.ylabel('Channel number')
 
+    # extract min and max from kwargs or set defaults
+    if vmin is None:
+        vmin = min(0.1 * wvm.max(), 1e-2)
+    if vmax is None:
+        vmax = wvm.max()
+
     plt.pcolormesh(
         ts, ys, wvm.T,
         norm=matplotlib.colors.LogNorm(
-            vmin=min(0.1 * wvm.max(), 1e-2),
-            vmax=wvm.max(), ),
+            vmin=vmin,
+            vmax=vmax,
+        ),
         cmap=plt.cm.inferno)
     plt.xlim(*seconds_range)
 
