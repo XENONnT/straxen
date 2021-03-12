@@ -329,6 +329,7 @@ def new_context(cores=args.cores,
         we_are_the_daq=True,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
+        allow_lazy=False,
         max_messages=max_messages,
         timeout=timeout)
     if not args.production:
