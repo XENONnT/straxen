@@ -1643,6 +1643,7 @@ def cleanup_db():
     # there is no point in retrying them
     abandon_queries = [
         ({'tags.name': 'abandon',
+          'bootstrax.state': {'$ne', 'done'},
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
         ({'tags.name': 'abandon', 'bootstrax.state': 'failed'},
