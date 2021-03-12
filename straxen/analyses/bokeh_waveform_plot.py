@@ -163,9 +163,9 @@ def event_display_interactive(events,
 
     # Put everything together:
     if bottom_pmt_array:
-        upper_row = [fig_s1, fig_s2, fig_top]
-    else:
         upper_row = [fig_s1, fig_s2, fig_top, fig_bottom]
+    else:
+        upper_row = [fig_s1, fig_s2, fig_top]
 
     upper_row = bokeh.layouts.Row(children=upper_row)
 
