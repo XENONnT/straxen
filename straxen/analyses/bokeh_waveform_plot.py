@@ -327,6 +327,8 @@ def plot_peaks(peaks, time_scaler=1, fig=None, colors=('gray', 'blue', 'green'))
         tt = straxen.bokeh_utils.peak_tool_tip(i)
         tt = [v for k, v in tt.items() if k != 'time_dynamic']
         fig.add_tools(bokeh.models.HoverTool(names=[LEGENDS[i]], tooltips=tt))
+        fig.add_tools(bokeh.models.WheelZoomTool(dimensions='width', name='wheel'))
+        fig.toolbar.active_scroll = [t for t in fig.tools if t.name == 'wheel'][0]
 
     fig.xaxis.axis_label = 'Time [µs]'
     fig.xaxis.axis_label_text_font_size = '14pt'
