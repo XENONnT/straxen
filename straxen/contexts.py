@@ -48,6 +48,7 @@ xnt_common_config = dict(
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     elife_file=("elife_model", "ONLINE",True),
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
+    electron_drift_velocity=0.632e-4,
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
