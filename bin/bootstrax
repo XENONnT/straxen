@@ -1255,7 +1255,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
         st = new_context(cores=cores,
                          max_messages=max_messages,
                          timeout=timeout,
-                         targets=targets)
+                         )
 
         for t in ('raw_records', 'records'):
             # Set the (raw)records processor to the inferred one
