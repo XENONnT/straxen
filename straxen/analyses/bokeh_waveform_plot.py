@@ -4,20 +4,36 @@ import numpy as np
 import strax
 import straxen
 
-# Default legend and color options for unknow, S1 and S2
-COLORS = ('gray', 'blue', 'green')
+# Default legend, unknow, S1 and S2
 LEGENDS = ('Unknown', 'S1', 'S2')
 
-
-@straxen.mini_analysis(requires=('events', 'event_basics', 'peaks', 'peak_basics', 'peak_positions'), 
+@straxen.mini_analysis(requires=('events', 'event_basics', 'peaks', 'peak_basics', 'peak_positions'),
                        warn_beyond_sec=0.05)
-def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=False, log=True):
+def event_display_interactive(events,
+                              peaks,
+                              to_pe,
+                              run_id,
+                              context,
+                              bottom_pmt_array=True,
+                              only_main_peaks=False,
+                              only_peak_detail_in_wf=False,
+                              xenon1t=False,
+                              colors=('gray', 'blue', 'green'),
+                              log=True, ):
     """
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
     in a given event.
-    
+
+    :param top_pmt_array: If true plots top PMT array hit-pattern.
+    :param bottom_pmt_array: If true plots bottom PMT array hit-pattern.
+    :param only_main_peaks: If true plots only main peaks into detail
+        plots as well as PMT arrays.
+    :param only_peak_detail_in_wf: Only plots main/alt S1/S2 into
+        waveform. Only plot main peaks if only_main_peaks is true.
     :param xenin1T: Flag to use event display with 1T data.
+    :param colors: Colors to be used for peaks. Order is as peak types,
+        0 = Unknown, 1 = S1, 2 = S2. Can be any colors accepted by bokeh.
     :param log: If true color sclae is used for hitpattern plots.
 
     Note:
@@ -39,115 +55,150 @@ def event_display_interactive(events, peaks, to_pe, run_id, context, xenon1t=Fal
         raise ValueError('The time range you specified contains more or'
                          ' less than a single event. The event display '
                          ' only works with individual events for now.')
-        
+
     if peaks.shape[0] == 0:
         raise ValueError('Found an event without peaks this should not had have happened.')
-    
+
     # Select main/alt S1/S2s based on time and endtime in event:
     m_other_peaks = np.ones(len(peaks), dtype=np.bool_)  # To select non-event peaks
     endtime = strax.endtime(peaks)
 
     signal = {}
-    keys = ['s1', 'alt_s1', 's2', 'alt_s2']
-    for s in keys:
-        m = (peaks['time'] == events[f'{s}_time']) & (endtime == events[f'{s}_endtime'])
-        signal[s] = peaks[m]
-        m_other_peaks &= ~m
-    
-    # Use consistent labels:
-    labels = {'s1': 'MS1', 'alt_s1': 'AS1', 's2': 'MS2', 'alt_s2': 'AS2'}
+    if only_main_peaks:
+        s1_keys = ['s1']
+        s2_keys = ['s2']
+        labels = {'s1': 'S1', 's2': 'S2'}
+        number_s_x = 1
+    else:
+        s1_keys = ['s1', 'alt_s1']
+        s2_keys = ['s2', 'alt_s2']
+        labels = {'s1': 'MS1', 'alt_s1': 'AS1', 's2': 'MS2', 'alt_s2': 'AS2'}
+        number_s_x = 2
 
-    # Detail plot S1/S2:
+    for s_x in labels.keys():
+        # Loop over Main/Alt Sx and get store S1/S2 Main/Alt in signals,
+        # store information about other peaks as "m_other_peaks"
+        m = (peaks['time'] == events[f'{s_x}_time']) & (endtime == events[f'{s_x}_endtime'])
+        signal[s_x] = peaks[m]
+        m_other_peaks &= ~m
+
+    # Detail plots for main/alt S1/S2:
+    # First we create figure then we loop over figures and plots and
+    # add drawings:
     fig_s1 = straxen.bokeh_utils.default_fig(title='Main/Alt S1')
     fig_s2 = straxen.bokeh_utils.default_fig(title='Main/Alt S2')
-    for fig, peak_types in zip([fig_s1, fig_s2], (keys[:2], keys[2:])):
-        pi = 0
+    for fig, peak_types in zip([fig_s1, fig_s2],
+                               (s1_keys, s2_keys)):
+        # Loop over fig and corresponding peaks
         for peak_type in peak_types:
-            p = None
             if 's2' in peak_type:
-                time_scalar = 1000
+                # If S2 use µs as units
+                time_scalar = 1000  # ns
             else:
-                time_scalar = 1
+                time_scalar = 1  # ns
             if signal[peak_type].shape[0]:
-                fig, p = plot_peak_detail(signal[peak_type], 
-                                          time_scaler=time_scalar,
-                                          label=labels[peak_type], 
-                                          fig=fig)
-            if pi and p:
-                # Not main S1/S2
-                p.visible = False
-            pi += 1
-            
-    # PMT arrays:
-    # TOP
-    fig_top = straxen.bokeh_utils.default_fig(title='top array')
-    fig_bottom = straxen.bokeh_utils.default_fig(title='bottom array')
-    pmt_arrays = {'top': (fig_top, keys[2:] + keys[:2]),
-                  'bottom': (fig_bottom, keys)}
-    for parray, v in pmt_arrays.items():
-        fig, peak_type = v
+                # If signal exists, plot:
+                fig, plot = plot_peak_detail(signal[peak_type],
+                                             time_scaler=time_scalar,
+                                             label=labels[peak_type],
+                                             fig=fig,
+                                             colors=colors)
+                if 'alt' in peak_type:
+                    # Not main S1/S2, so make peak invisible
+                    plot.visible = False
 
-        for ind, k in enumerate(peak_type):
+    # PMT arrays:
+    # Same logic as for detailed Peaks, first make figures
+    # then loop over figures and data and populate figures with plots
+    fig_top = straxen.bokeh_utils.default_fig(title='Top array')
+    fig_bottom = straxen.bokeh_utils.default_fig(title='Bottom array')
+    if not only_main_peaks:
+        # Plot all keys into both arrays:
+        top_array_keys = s2_keys + s1_keys
+        bottom_array_keys = s1_keys + s2_keys
+    else:
+        top_array_keys = s2_keys
+        bottom_array_keys = s1_keys
+
+    for pmt_array_type, fig, peak_types in zip(['top', 'bottom'],
+                                               [fig_top, fig_bottom],
+                                               [top_array_keys, bottom_array_keys]):
+        for ind, k in enumerate(peak_types):
+            # Loop over peaks enumerate them since we plot all Peaks
+            # Main/ALt S1/S2 into the PMT array, but only the first one
+            # Should be visible.
             if not signal[k].shape[0]:
-                # alt S1/S2 does not exist
+                # alt S1/S2 does not exist so go to next.
                 continue
 
-            fig, p, _ = plot_pmt_array(signal[k][0], parray, to_pe,
-                                       label=labels[k], xenon1t=xenon1t, fig=fig, 
-                                       log=log)
+            fig, plot, _ = plot_pmt_array(signal[k][0], pmt_array_type, to_pe,
+                                          label=labels[k], xenon1t=xenon1t, fig=fig,
+                                          log=log)
             if ind:
                 # Not main S1 or S2
-                p.visible = False
+                plot.visible = False
 
-            if parray == 'top' and 's2' in k:
+            if pmt_array_type == 'top' and 's2' in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
-                fig, p = plot_posS2s(signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind)
+                fig, plot = plot_posS2s(signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind)
                 if ind:
                     # Not main S2
-                    p.visible = False
+                    plot.visible = False
 
-    # Now we only have to add all other S2 to the top pmt array
     m_other_s2 = m_other_peaks & (peaks['type'] == 2)
-    if np.any(m_other_s2):
-        fig_top, p = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type_style_id=2)
-        p.visible = False
+    if np.any(m_other_s2) and not only_main_peaks:
+        # Now we have to add the positions of all the other S2 to the top pmt array
+        # if not only main peaks.
+        fig_top, plot = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type_style_id=2)
+        plot.visible = False
 
     # Main Plot:
     title = _make_event_title(events[0], run_id)
-    waveform = plot_event(peaks, signal, labels)
+
+    if only_peak_detail_in_wf:
+        # If specified by the user only plot main/alt S1/S2
+        peaks = peaks[~m_other_peaks]
+
+    waveform = plot_event(peaks, signal, labels, events[0], colors)
 
     # Put everything together:
-    upper_row = bokeh.layouts.Row(children=[fig_s1, fig_s2, fig_top, fig_bottom])
+    if bottom_pmt_array:
+        upper_row = [fig_s1, fig_s2, fig_top]
+    else:
+        upper_row = [fig_s1, fig_s2, fig_top, fig_bottom]
+
+    upper_row = bokeh.layouts.Row(children=upper_row)
 
     plots = bokeh.layouts.gridplot(children=[upper_row, waveform],
-                                           sizing_mode='scale_both',
-                                           ncols=1,
-                                           merge_tools=True,
-                                           toolbar_location='above',
-                                           )
+                                   sizing_mode='scale_both',
+                                   ncols=1,
+                                   merge_tools=True,
+                                   toolbar_location='above',
+                                   )
     event_display = bokeh.layouts.Column(children=[title, plots],
                                          sizing_mode='scale_both',
                                          max_width=1600,
-                                        )
-    
+                                         )
 
     return event_display
 
 
-def plot_event(peaks, signal, labels):
+def plot_event(peaks, signal, labels, event, colors):
     """
     Wrapper for plot peaks to highlight main/alt. S1/S2
 
     :param peaks: Peaks in event
     :param signal: Dictionary containing main/alt. S1/S2
     :param labels: dict with labels to be used
+    :param event: Event to set correctly x-ranges.
     :return: bokeh.plotting.figure instance
     """
-    waveform = plot_peaks(peaks, time_scaler=1000)
-    # Hightlight main and alternate S1/S2:
+    waveform = plot_peaks(peaks, time_scaler=1000, colors=colors)
+    # Highlight main and alternate S1/S2:
     start = peaks[0]['time']
+    end = strax.endtime(peaks)[-1]
     # Workaround did not manage to scale via pixels...
-    ymax = np.max((peaks['data'].T/peaks['dt']).T)
+    ymax = np.max((peaks['data'].T / peaks['dt']).T)
     ymax -= 0.1 * ymax
     for s, p in signal.items():
         if p.shape[0]:
@@ -167,10 +218,17 @@ def plot_event(peaks, signal, labels):
                 main.line_dash = 'dashed'
             waveform.add_layout(main)
             waveform.add_layout(vline_label)
+
+    # Get some meaningful x-range limit to 10% left and right extending
+    # beyond first last peak, clip at event boundary.
+    length = (end - start) / 10**3
+
+    waveform.x_range.start = max(-0.1 * length, (event['time'] - start) / 10**3)
+    waveform.x_range.end = min(1.1 * length, (event['endtime'] - start) / 10**3)
     return waveform
 
 
-def plot_peak_detail(peak, time_scaler=1, label='', fig=None):
+def plot_peak_detail(peak, time_scaler=1, label='', fig=None, colors=('gray', 'blue', 'green')):
     """
     Function which makes a detailed plot for the given peak. As in the
     main/alt S1/S2 plots of the event display.
@@ -209,9 +267,9 @@ def plot_peak_detail(peak, time_scaler=1, label='', fig=None):
 
     patches = fig.patches(source=source,
                           legend_label=label,
-                          fill_color=COLORS[p_type],
+                          fill_color=colors[p_type],
                           fill_alpha=0.2,
-                          line_color=COLORS[p_type],
+                          line_color=colors[p_type],
                           line_width=0.5,
                           name=label
                           )
@@ -231,7 +289,7 @@ def plot_peak_detail(peak, time_scaler=1, label='', fig=None):
     return fig, patches
 
 
-def plot_peaks(peaks, time_scaler=1, fig=None):
+def plot_peaks(peaks, time_scaler=1, fig=None, colors=('gray', 'blue', 'green')):
     """
     Function which plots a list/array of peaks relative to the first
     one.
@@ -250,7 +308,7 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
         _ind = np.where(peaks['type'] == i)[0]
         if not len(_ind):
             continue
-        
+
         source = straxen.bokeh_utils.get_peaks_source(peaks[_ind],
                                                       relative_start=peaks[0]['time'],
                                                       time_scaler=time_scaler,
@@ -258,9 +316,9 @@ def plot_peaks(peaks, time_scaler=1, fig=None):
                                                       )
 
         fig.patches(source=source,
-                    fill_color=COLORS[i],
+                    fill_color=colors[i],
                     fill_alpha=0.2,
-                    line_color=COLORS[i],
+                    line_color=colors[i],
                     line_width=0.5,
                     legend_label=LEGENDS[i],
                     name=LEGENDS[i],
@@ -329,14 +387,14 @@ def plot_pmt_array(peak, array_type, to_pe, log=False, xenon1t=False, fig=None, 
         fig = _plot_off_pmts(pmts_off, fig)
 
     area_per_channel = peak['area_per_channel'][pmts_on['i']]
-    
-    if log==True:
+
+    if log == True:
         area_plot = np.log10(area_per_channel)
         # Manually set infs to zero since cmap cannot handle it.
-        area_plot = np.where(area_plot==-np.inf, 0, area_plot)  
+        area_plot = np.where(area_plot == -np.inf, 0, area_plot)
     else:
         area_plot = area_per_channel
-        
+
     mapper = bokeh.transform.linear_cmap(field_name='area_plot',
                                          palette="Viridis256",
                                          low=min(area_plot),
@@ -421,7 +479,7 @@ def plot_posS2s(peaks, label='', fig=None, s2_type_style_id=0):
     """
     if not peaks.shape:
         peaks = np.array([peaks])
-    
+
     if not np.all(peaks['type'] == 2):
         raise ValueError('All peaks must be S2!')
 
@@ -489,10 +547,10 @@ def _make_event_title(event, run_id, width=1600):
                              style={'text-align': 'left',
                                     },
                              sizing_mode='scale_both',
-                             width = width,
+                             width=width,
                              default_size=width,
                              orientation='vertical',
                              width_policy='fit',
-                             margin=(0,0,-30, 50)
+                             margin=(0, 0, -30, 50)
                              )
     return title
