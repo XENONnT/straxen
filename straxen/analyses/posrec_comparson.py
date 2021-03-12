@@ -1,4 +1,3 @@
-import warnings as warn
 import numpy as np
 import pandas as pd
 
@@ -58,39 +57,33 @@ def load_corrected_positions(context, run_id, events,
         else context.show_config('event_positions', 'electron_drift_velocity').default.values[0]
     
     for algo, v_cmt in zip(posrec_algos, cmt_version):
-        try:
-            fdc_tmp = ('CMT_model', (f'fdc_map_{algo}', v_cmt), True)
-            map_tmp = straxen.get_config_from_cmt(run_id, fdc_tmp)
-            itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt='binary'))
-            itp_tmp.scale_coordinates([1., 1., -drift_speed])
+        fdc_tmp = ('CMT_model', (f'fdc_map_{algo}', v_cmt), True)
+        map_tmp = straxen.get_config_from_cmt(run_id, fdc_tmp)
+        itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt='binary'))
+        itp_tmp.scale_coordinates([1., 1., -drift_speed])
 
-            z_obs = - drift_speed * events['drift_time']
-            orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
-            r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-            delta_r = itp_tmp(orig_pos)
+        z_obs = - drift_speed * events['drift_time']
+        orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
+        r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
+        delta_r = itp_tmp(orig_pos)
 
-            # apply radial correction
-            with np.errstate(invalid='ignore', divide='ignore'):
-                r_cor = r_obs + delta_r
-                scale = r_cor / r_obs
-                
-            with np.errstate(invalid='ignore'):
-                z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-                invalid = np.abs(z_obs) < np.abs(delta_r)
-            z_cor[invalid] = z_obs[invalid]
-            
-            result[f'x_{algo}'] = orig_pos[:, 0] * scale
-            result[f'y_{algo}'] = orig_pos[:, 1] * scale
-            result[f'r_{algo}'] = r_cor
-            result[f'r_naive_{algo}'] = r_obs
-            result[f'r_field_distortion_correction_{algo}'] = delta_r
-            result[f'theta_{algo}'] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
-            result[f'z_{algo}'] = z_cor
+        # apply radial correction
+        with np.errstate(invalid='ignore', divide='ignore'):
+            r_cor = r_obs + delta_r
+            scale = r_cor / r_obs
 
-        except:
-            warn('Field distortion correction map not found for '
-                 f'position reconstruction algorithm {algo.upper()}.')
-            continue
+        with np.errstate(invalid='ignore'):
+            z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
+            invalid = np.abs(z_obs) < np.abs(delta_r)
+        z_cor[invalid] = z_obs[invalid]
+
+        result[f'x_{algo}'] = orig_pos[:, 0] * scale
+        result[f'y_{algo}'] = orig_pos[:, 1] * scale
+        result[f'r_{algo}'] = r_cor
+        result[f'r_naive_{algo}'] = r_obs
+        result[f'r_field_distortion_correction_{algo}'] = delta_r
+        result[f'theta_{algo}'] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
+        result[f'z_{algo}'] = z_cor
 
     result['z_naive'] = z_obs
     return result
