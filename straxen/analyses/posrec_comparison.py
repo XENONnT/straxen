@@ -23,7 +23,7 @@ def load_corrected_positions(context, run_id, events,
     posrec_algos = strax.to_str_tuple(posrec_algos)
     
     if cmt_version == None:
-        cmt_version = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
+        cmt_version = context.get_single_plugin(run_id, 'event_positions').config['fdc_map'][1][1]
     
     if hasattr(cmt_version, '__len__') and not isinstance(cmt_version, str) and len(cmt_version) != len(posrec_algos):
         raise TypeError(f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
