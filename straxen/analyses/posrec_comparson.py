@@ -8,8 +8,8 @@ export, __all__ = strax.exporter()
 
 @straxen.mini_analysis(requires=('event_basics', 'event_posrec_many',))
 def load_corrected_positions(context, run_id, events,
-                             cmt_version='ONLINE',
-                             posrec_algos=['mlp', 'gcn', 'cnn']):
+                             cmt_version=None,
+                             posrec_algos=('mlp', 'gcn', 'cnn')):
 
     """
     Returns the corrected position for each position algorithm available, without the need to reprocess
@@ -20,16 +20,17 @@ def load_corrected_positions(context, run_id, events,
     :param posrec_algos: list of position reconstruction algorithms to use (default ['mlp', 'gcn', 'cnn'])
     """
     
-    posrec_algos = (posrec_algos, ) if isinstance(posrec_algos, str) else posrec_algos
-
+    posrec_algos = strax.to_str_tuple(posrec_algos)
+    
+    if cmt_version == None:
+        cmt_version = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
+    
     if hasattr(cmt_version, '__len__') and not isinstance(cmt_version, str) and len(cmt_version) != len(posrec_algos):
         raise TypeError(f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
         
-    cmt_version = [cmt_version] * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
+    cmt_version = (cmt_version, ) * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
     
     dtype = []
-    posrec_dependent_dtype = ['x', 'y', 'z', 'r', 'r_naive',
-                              'r_field_distortion_correction', 'theta']
     
     for algo in posrec_algos:
 
@@ -52,9 +53,8 @@ def load_corrected_positions(context, run_id, events,
     dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
     result = np.zeros(len(events), dtype=dtype)
 
-    drift_speed = context.show_config('event_positions', 'electron_drift_velocity').current.values[0]
-    drift_speed = drift_speed if drift_speed != strax.OMITTED \
-        else context.show_config('event_positions', 'electron_drift_velocity').default.values[0]
+    drift_speed = context.get_single_plugin(run_id, 'event_positions').config['electron_drift_velocity']
+    z_obs = - drift_speed * events['drift_time']
     
     for algo, v_cmt in zip(posrec_algos, cmt_version):
         fdc_tmp = ('CMT_model', (f'fdc_map_{algo}', v_cmt), True)
@@ -62,7 +62,6 @@ def load_corrected_positions(context, run_id, events,
         itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt='binary'))
         itp_tmp.scale_coordinates([1., 1., -drift_speed])
 
-        z_obs = - drift_speed * events['drift_time']
         orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = itp_tmp(orig_pos)
