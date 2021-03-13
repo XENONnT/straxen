@@ -305,8 +305,9 @@ class EventPositions(strax.Plugin):
     """
     Computes the observed and corrected position for the main S1/S2
     pairs in an event. For XENONnT data, it returns the FDC corrected
-    positions of the default_reconstruction_algorithm_fdc, not necessary 
-    identical to the default_reconstruction_algorithm.
+    positions of the default_reconstruction_algorithm. In case the fdc_map
+    is given as a file (not through CMT), then the coordinate system
+    should be given as (x, y, z), not (x, y, drift_time).
     """
 
     depends_on = ('event_basics', )
@@ -346,6 +347,7 @@ class EventPositions(strax.Plugin):
             
             self.map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
+            self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
 
         elif isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
@@ -353,8 +355,6 @@ class EventPositions(strax.Plugin):
 
         else:
             raise NotImplementedError('FDC map format not understood.')
-
-        self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
 
     def compute(self, events):
 
