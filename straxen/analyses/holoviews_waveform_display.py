@@ -134,6 +134,7 @@ def hvdisp_plot_records_2d(records,
     shader = shader.opts(title="Time vs. Channel")
     return shader, records, time_stream
 
+
 def _hvdisp_plot_records_2d(records,
                             to_pe,
                             config,
