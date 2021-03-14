@@ -100,34 +100,75 @@ def _records_to_points(*, records, to_pe, t_reference,
 
 
 @straxen.mini_analysis(requires=['records'], hv_bokeh=True)
-def hvdisp_plot_records_2d(records, to_pe, config,
-                           t_reference, width=600, time_stream=None):
+def hvdisp_plot_records_2d(records,
+                           to_pe,
+                           config,
+                           t_reference,
+                           time_stream=None,
+                           tools=(x_zoom_wheel(), 'xpan'),
+                           default_tools=('save', 'pan', 'box_zoom', 'save', 'reset'),
+                           plot_library='bokeh',
+                           hooks=()):
     """Plot records in a dynamic 2D histogram of (time, pmt)
     :param width: Plot width in pixels
     :param time_stream: holoviews rangex stream to use. If provided,
-    we assume records is already converted to points (which hopefully
-    is what the stream is derived from)
+        we assume records is already converted to points (which hopefully
+        is what the stream is derived from)
+    :param tools: Tools to be used in the interactive plot. Only works
+        with bokeh as plot library.
+    :param plot_library: Default bokeh, library to be used for the
+        plotting.
+    :param hooks: Hooks to adjust plot settings.
+    :returns: datashader object, records holoview points,
+        RangeX time stream of records.
     """
+    shader, records, time_stream = _hvdisp_plot_records_2d(records,
+                                                           to_pe,
+                                                           config,
+                                                           t_reference,
+                                                           time_stream=time_stream,
+                                                           default_tools=default_tools,
+                                                           tools=tools,
+                                                           hooks=hooks,
+                                                           plot_library=plot_library)
+    shader = shader.opts(title="Time vs. Channel")
+    return shader, records, time_stream
+
+def _hvdisp_plot_records_2d(records,
+                            to_pe,
+                            config,
+                            t_reference,
+                            time_stream=None,
+                            default_tools=(),
+                            tools=(),
+                            hooks=(),
+                            plot_library='bokeh'):
     import holoviews as hv
     import holoviews.operation.datashader
+    hv.extension(plot_library)
 
     if time_stream is None:
         # Records are still a dataframe, convert it to points
         records, time_stream = _records_to_points(
             records=records, to_pe=to_pe, t_reference=t_reference,
             config=config)
-        
-    
-    # TODO: weigh by area?
-    return hv.operation.datashader.dynspread(
-            hv.operation.datashader.datashade(
-                records,
-                y_range=(0, config['n_tpc_pmts']),
-                streams=[time_stream])).opts(
-        plot=dict(width=width,
-                  tools=[x_zoom_wheel(), 'xpan'],
-                  default_tools=['save', 'pan', 'box_zoom', 'save', 'reset'],
-                  show_grid=False)).opts(title="Time vs. Channel")
+
+    # Creating the plot:
+    shader = hv.operation.datashader.dynspread(
+        hv.operation.datashader.datashade(
+            records,
+            dynamic=True,
+            y_range=(0, config['n_tpc_pmts']),
+            streams=[time_stream]), threshold=0.1).opts(
+        plot=dict(aspect=4,
+                  responsive='width',
+                  hooks=hooks,
+                  tools=tools,
+                  default_tools=default_tools,
+                  fontsize={'labels': 12},
+                  show_grid=True))
+
+    return shader, records, time_stream
 
 
 @straxen.mini_analysis(
