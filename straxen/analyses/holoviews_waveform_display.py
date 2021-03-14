@@ -172,6 +172,87 @@ def _hvdisp_plot_records_2d(records,
     return shader, records, time_stream
 
 
+def plot_record_polygons(record_points, width=1.1, **kwargs):
+    """
+    Plots record hv.Points as polygons for record matrix.
+
+    :param record_points: Holoviews Points generated with
+        _records_to_points.
+    :param width: Length of the record in µs.
+    :param kwargs: Keyword arguments applied to hv.Polygons options.
+    :returns: hv.Polygons
+    """
+    import holoviews as hv
+
+    data = [{('x', 'y'): rectangle(t, ch, width=width), 'area': a} for t, ch, a in
+            record_points.data[['time', 'channel', 'area']].values]
+    polys = hv.Polygons(data, vdims='area')
+    polys = polys.opts(color='level', aspect=4, responsive='width', line_width=0, **kwargs, cmap='viridis')
+    return polys
+
+
+def rectangle(time=0, channel=0, width=1.1, height=1):
+    """
+    Generates polygon box coordinates for record matrix.
+
+    :param time: Center position of the record in time.
+    :param channel: Center position of PMT channel. E.g channel 0 => 0.5
+    :param width: Length of the record in µs.
+    param height: Height of the record in "channel"-units.
+
+    X,Y have to be the center of the polygon.
+    Width and height are the full width and height in data coordinates.
+    """
+    width = width / 2
+    height = height / 2
+    return np.array([(time - width, channel - height),
+                     (time + width, channel - height),
+                     (time + width, channel + height),
+                     (time - width, channel + height)])
+
+
+def get_records_matrix_in_window(polys, x_range, time_slice=10):
+    """
+    Helper function which returns polygons for rendering when x_range
+    is below the specified value.
+
+    This function has to be applied to polygons e.g.:
+
+        poly.apply(get_records_matrix_in_window, streams=[time_stream])
+
+    :param polys: Holoviews Polygons
+    :param x_range: x_range of the RangeX object.
+    :param time_slice: Size of the time slice in [µs] when records
+        should be drawn.
+    """
+    if x_range is None:
+        # Needed since x_range is by default not defined when plotting
+        # the first time.
+        return polys.iloc[:0]
+    if (x_range[1] - x_range[0]) < time_slice:
+        # If x_range smaller than specified minimum return polys ->
+        # render polys.
+        inds = _in_window(polys.data, x_range)
+        return polys.iloc[inds]
+    return polys.iloc[:0]
+
+
+def _in_window(polys, x_range):
+    """
+    Function which checks if a polygon is partially in x_range.
+
+    :param polys: List of ordered dictionaries containing Polygon data.
+    :param x_range: Range which should be tested.
+    """
+    res = []
+    for ind, p in enumerate(polys):
+        # Loop over polys, if partially in window keep index.
+        x = p['x']
+        if np.any((x_range[0] <= x) & (p['x'] < x_range[1])):
+            res.append(ind)
+    return res
+
+
 @straxen.mini_analysis(
     requires=['peaks', 'peak_basics'],
     hv_bokeh=True)
