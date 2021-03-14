@@ -9,8 +9,18 @@ import pandas as pd
 import straxen
 
 
-def seconds_from(t, t_reference):
-    return (t - t_reference) / int(1e9)
+def seconds_from(t, t_reference, unit_conversion=int(1e9)):
+    """
+    Helper function which concerts times into relative times in
+    specified unit.
+
+    :param t: Time
+    :param t_reference: Reference time e.g. start of an event or first
+        peak in event.
+    :param unit_conversion: Conversion factor for time units e.g. 10**-3
+        for micro seconds.
+    """
+    return (t - t_reference) / unit_conversion
 
 
 # Custom wheel zoom tool that only zooms in one dimension
@@ -62,8 +72,9 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array='bottom'):
     return pmts
 
 
-def _records_to_points(*, records, to_pe, t_reference, config):
-    """Return (holoviews.Points, time_stream) corresponding to records
+def _records_to_points(*, records, to_pe, t_reference,
+                       config, unit_conversion=int(1e9)):
+    """Return (holoviews.Points, time_stream) corresponding to records.
     """
     import holoviews as hv
 
@@ -72,18 +83,17 @@ def _records_to_points(*, records, to_pe, t_reference, config):
     # Create dataframe with record metadata
     df = pd.DataFrame(dict(
         area=areas_r,
-        time=seconds_from(records['time']
-                          + records['dt'] * records['length'] // 2,
-                          t_reference),
+        time=seconds_from(records['time'] + records['dt'] * records['length'] // 2,
+                          t_reference, unit_conversion=unit_conversion),
         channel=records['channel']))
 
     rec_points = hv.Points(
         df,
-        kdims=[hv.Dimension('time', label='Time', unit='sec'),
+        kdims=[hv.Dimension('time', label='Time [µs]'),
                hv.Dimension('channel',
                             label='PMT number',
                             range=(0, config['n_tpc_pmts']))],
-        vdims=[hv.Dimension('area', label='Area', unit='pe')])
+        vdims=[hv.Dimension('area', label='Area [pe]')])
 
     time_stream = hv.streams.RangeX(source=rec_points)
     return rec_points, time_stream
