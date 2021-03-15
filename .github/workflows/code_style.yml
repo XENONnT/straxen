@@ -10,12 +10,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@master
         with:
-          python-version: 3.8
+          python-version: 3.6
 #      - name: Run unit tests
 #        run: |
 #          python setup.py test
 #        env:
 #          NUMBA_DISABLE_JIT: 1
+      - name: Change __all__ exports for pyflake
+        run: |
+             bash .github/scripts/pre_pyflakes.sh
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.15.2
         continue-on-error: true
