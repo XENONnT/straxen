@@ -14,11 +14,5 @@ sed -e '/__all__ +=/ s/^#*/#/' -i *.py
 cd ../analyses
 sed -e '/__all__ +=/ s/^#*/#/' -i *.py
 
-cd ../../bin
-# Rename all scrips in bin to script.py
-for f in *; do
-    mv -- "$f" "$f.py"
-done
-
 cd $start
 echo "done"
