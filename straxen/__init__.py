@@ -1,6 +1,8 @@
 __version__ = '0.15.8'
 
-
+# Import of utilix config for only once. NB: Should be first due to circular imports
+from utilix import uconfig
+# Straxen imports:
 from .common import *
 from .corrections_services import *
 from .get_corrections import *
@@ -21,5 +23,4 @@ from . import analyses
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
-# Import of utilix config for only once
-from utilix import uconfig
+
