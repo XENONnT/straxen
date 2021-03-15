@@ -50,7 +50,6 @@ ajax_thresholds = {
     'nap_time': 3600,  # s
     # Short nap time
     'short_nap': 5,  # s
-
 }
 
 # The low level data is taken care of by admix so we don't have to delete this. All other
@@ -139,7 +138,6 @@ def main_ajax():
             # This usually only takes a minute or two
             time.sleep(60)
             log.warning('Restarting main loop')
-
 
 def clean_ceph():
     """
