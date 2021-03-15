@@ -87,6 +87,7 @@ def xenonnt_online(output_folder='./strax_data',
                    _rucio_path='/dali/lgrandi/rucio/',
                    _raw_path='/dali/lgrandi/xenonnt/raw',
                    _processed_path='/dali/lgrandi/xenonnt/processed',
+                   _add_online_monitor_frontend=False,
                    _context_config_overwrite=None,
                    **kwargs):
     """
@@ -103,6 +104,8 @@ def xenonnt_online(output_folder='./strax_data',
     :param _raw_path: str, common path of the raw-data
     :param _processed_path: str. common path of output data
     :param _context_config_overwrite: dict, overwrite config
+    :param _add_online_monitor_frontend: bool, should we add the online
+        monitor storage frontend.
     :param kwargs: dict, context options
     :return: strax.Context
     """
@@ -139,7 +142,7 @@ def xenonnt_online(output_folder='./strax_data',
         if _forbid_creation_of is not None:
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
     # Only the online monitor backend for the DAQ
-    elif _database_init:
+    if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
