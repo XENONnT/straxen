@@ -6,24 +6,33 @@ import straxen
 
 export, __all__ = strax.exporter()
 
+
 @straxen.mini_analysis(requires=('event_basics', 'event_posrec_many',))
 def load_corrected_positions(context, run_id, events,
                              cmt_version=None,
                              posrec_algos=('mlp', 'gcn', 'cnn')):
 
     """
-    Returns the corrected position for each position algorithm available, without the need to reprocess
-    event_basics, as the needed information is already stored in event_posrec_many.
+    Returns the corrected position for each position algorithm available,
+        without the need to reprocess event_basics, as the needed
+        information is already stored in event_posrec_many.
     
-    :param cmt_version: CMT version to use (it can be a list of same length as posrec_algos, if different versions
-                        are required for different posrec algorithms, default 'ONLINE')
-    :param posrec_algos: list of position reconstruction algorithms to use (default ['mlp', 'gcn', 'cnn'])
+    :param cmt_version: CMT version to use (it can be a list of same
+        length as posrec_algos, if different versions are required for
+        different posrec algorithms, default 'ONLINE')
+    :param posrec_algos: list of position reconstruction algorithms to
+        use (default ['mlp', 'gcn', 'cnn'])
     """
     
     posrec_algos = strax.to_str_tuple(posrec_algos)
     
     if cmt_version is None:
-        cmt_version = context.get_single_plugin(run_id, 'event_positions').config['fdc_map'][1][1]
+        fdc_config = None
+        try:
+            fdc_config = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
+            cmt_version = fdc_config[1][1]
+        except IndexError as e:
+            raise ValueError(f'CMT is not set? Your fdc config is {fdc_config}') from e
     
     if hasattr(cmt_version, '__len__') and not isinstance(cmt_version, str) and len(cmt_version) != len(posrec_algos):
         raise TypeError(f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
