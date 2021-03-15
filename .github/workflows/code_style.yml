@@ -16,9 +16,10 @@ jobs:
 #          python setup.py test
 #        env:
 #          NUMBA_DISABLE_JIT: 1
-      - name: ls
+      - name: overwrite pyflackes
         run: |
-          ls
+          echo "Overwrite pyflackes for straxen uses __all__ += []"
+          pip install git+https://github.com/jorana/pyflakes
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.15.2
         continue-on-error: true
