@@ -19,6 +19,7 @@ jobs:
       - name: overwrite pyflackes
         run: |
           echo "Overwrite pyflackes for straxen uses __all__ += []"
+          pip uninstall pyflakes
           pip install git+https://github.com/jorana/pyflakes
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.15.2
