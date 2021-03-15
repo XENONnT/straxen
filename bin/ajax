@@ -139,6 +139,7 @@ def main_ajax():
             time.sleep(60)
             log.warning('Restarting main loop')
 
+
 def clean_ceph():
     """
     Look for old data on ceph. If found, delete it. Recursively iterate until no old data
