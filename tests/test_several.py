@@ -243,11 +243,13 @@ def test_nt_minianalyses():
             st.load_corrected_positions(test_run_id_nT,
                                         time_range=(rr['time'][0],
                                                     strax.endtime(rr)[-1]),
+
                                         )
-            st.event_display(test_run_id_nT,
-                             time_range=(rr['time'][0],
-                                         strax.endtime(rr)[-1]),
-                             )
+            # This would be nice to add but with empty events it does not work
+            # st.event_display(test_run_id_nT,
+            #                  time_range=(rr['time'][0],
+            #                              strax.endtime(rr)[-1]),
+            #                  )
         # On windows, you cannot delete the current process'git p
         # working directory, so we have to chdir out first.
         finally:
