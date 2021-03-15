@@ -1,4 +1,4 @@
-name: Python Pull Request Workflow
+name: Python style
 on: [pull_request]
 jobs:
 
@@ -11,9 +11,11 @@ jobs:
         uses: actions/setup-python@master
         with:
           python-version: 3.8
-      - name: Run unit tests
-        run: |
-          python setup.py test
+#      - name: Run unit tests
+#        run: |
+#          python setup.py test
+#        env:
+#          NUMBA_DISABLE_JIT: 1
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.15.2
         continue-on-error: true
