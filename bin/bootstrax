@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.5'
+__version__ = '1.1.1'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -319,31 +319,26 @@ if os.access(output_folder, os.W_OK) is not True:
 def new_context(cores=args.cores,
                 max_messages=args.max_messages,
                 timeout=500,
-                targets=strax.to_str_tuple(args.targets),
                 ):
     """Create strax context that can access the runs db"""
     # We use exactly the same logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
-    class MergeTargets(strax.Plugin):
-        """Mergeonly plugin to allow a single endpoint for st.make"""
-        depends_on = targets
-        provides = 'multiple'
-        save_when = strax.SaveWhen.NEVER
-        dtype = strax.time_fields
-
-        def compute(self, **kwargs):
-            return np.empty(0, dtype=self.dtype)
 
     context = straxen.contexts.xenonnt_online(
         output_folder=output_folder,
         we_are_the_daq=True,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
+        allow_lazy=False,
         max_messages=max_messages,
         timeout=timeout)
     if not args.production:
-        context.storage = [strax.DataDirectory(output_folder)]
-    context.register(MergeTargets)
+        # Keep the rundb but set it to readonly and local only, delete
+        # all other storage frontends except fo the test folder.
+        context.storage = [context.storage[0],
+                           strax.DataDirectory(output_folder)]
+        context.storage[0].readonly = True
+        context.storage[0].local_only = True
     return context
 
 
@@ -1261,7 +1256,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
         st = new_context(cores=cores,
                          max_messages=max_messages,
                          timeout=timeout,
-                         targets=targets)
+                         )
 
         for t in ('raw_records', 'records'):
             # Set the (raw)records processor to the inferred one
@@ -1280,13 +1275,12 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                                 readout_threads=readout_threads,
                                 check_raw_record_overlaps=True,
                                 )
-
-            for i, c in enumerate(st.get_iter(run_id,
-                                              'multiple',
-                                              config=strax_config,
-                                              max_workers=cores)):
-                if not i % 10:
-                    log.info(f'Target plugin - chunk {i}\n\t{c}')
+            log.info(f'Making {run_id}-{targets}')
+            log.debug(f'With {strax_config}, n-cores {cores}')
+            st.make(run_id, targets,
+                    allow_multiple=True,
+                    config=strax_config,
+                    max_workers=cores)
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1296,10 +1290,13 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                                     run_id=run_id)
                         continue
                     elif not st.is_stored(run_id, post_target):
+                        log.info(f'Making {post_target}')
                         st.make(run_id,
                                 post_target,
                                 config=strax_config,
                                 max_workers=cores)
+                    else:
+                        log.info(f'Not making {post_target}, it is already stored')
 
         if args.profile.lower() == 'false':
             st_make()
