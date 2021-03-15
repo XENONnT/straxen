@@ -12,7 +12,9 @@ jobs:
         with:
           python-version: 3.8
       - name: Run unit tests
+        # https://github.com/wemake-services/wemake-python-styleguide/issues/519
         run: |
+          pip install flake8-bandit==1.0.2
           python setup.py test
         env:
           NUMBA_DISABLE_JIT: 1
