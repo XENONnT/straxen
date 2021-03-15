@@ -9,8 +9,18 @@ import pandas as pd
 import straxen
 
 
-def seconds_from(t, t_reference):
-    return (t - t_reference) / int(1e9)
+def seconds_from(t, t_reference, unit_conversion=int(1e9)):
+    """
+    Helper function which concerts times into relative times in
+    specified unit.
+
+    :param t: Time
+    :param t_reference: Reference time e.g. start of an event or first
+        peak in event.
+    :param unit_conversion: Conversion factor for time units e.g. 10**-3
+        for micro seconds.
+    """
+    return (t - t_reference) / unit_conversion
 
 
 # Custom wheel zoom tool that only zooms in one dimension
@@ -62,8 +72,9 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array='bottom'):
     return pmts
 
 
-def _records_to_points(*, records, to_pe, t_reference, config):
-    """Return (holoviews.Points, time_stream) corresponding to records
+def _records_to_points(*, records, to_pe, t_reference,
+                       config, unit_conversion=int(1e9)):
+    """Return (holoviews.Points, time_stream) corresponding to records.
     """
     import holoviews as hv
 
@@ -72,52 +83,174 @@ def _records_to_points(*, records, to_pe, t_reference, config):
     # Create dataframe with record metadata
     df = pd.DataFrame(dict(
         area=areas_r,
-        time=seconds_from(records['time']
-                          + records['dt'] * records['length'] // 2,
-                          t_reference),
+        time=seconds_from(records['time'] + records['dt'] * records['length'] // 2,
+                          t_reference, unit_conversion=unit_conversion),
         channel=records['channel']))
 
     rec_points = hv.Points(
         df,
-        kdims=[hv.Dimension('time', label='Time', unit='sec'),
+        kdims=[hv.Dimension('time', label='Time [µs]'),
                hv.Dimension('channel',
                             label='PMT number',
                             range=(0, config['n_tpc_pmts']))],
-        vdims=[hv.Dimension('area', label='Area', unit='pe')])
+        vdims=[hv.Dimension('area', label='Area [pe]')])
 
     time_stream = hv.streams.RangeX(source=rec_points)
     return rec_points, time_stream
 
 
 @straxen.mini_analysis(requires=['records'], hv_bokeh=True)
-def hvdisp_plot_records_2d(records, to_pe, config,
-                           t_reference, width=600, time_stream=None):
+def hvdisp_plot_records_2d(records,
+                           to_pe,
+                           config,
+                           t_reference,
+                           time_stream=None,
+                           tools=(x_zoom_wheel(), 'xpan'),
+                           default_tools=('save', 'pan', 'box_zoom', 'save', 'reset'),
+                           plot_library='bokeh',
+                           hooks=()):
     """Plot records in a dynamic 2D histogram of (time, pmt)
     :param width: Plot width in pixels
     :param time_stream: holoviews rangex stream to use. If provided,
-    we assume records is already converted to points (which hopefully
-    is what the stream is derived from)
+        we assume records is already converted to points (which hopefully
+        is what the stream is derived from)
+    :param tools: Tools to be used in the interactive plot. Only works
+        with bokeh as plot library.
+    :param plot_library: Default bokeh, library to be used for the
+        plotting.
+    :param hooks: Hooks to adjust plot settings.
+    :returns: datashader object, records holoview points,
+        RangeX time stream of records.
     """
+    shader, records, time_stream = _hvdisp_plot_records_2d(records,
+                                                           to_pe,
+                                                           config,
+                                                           t_reference,
+                                                           time_stream=time_stream,
+                                                           default_tools=default_tools,
+                                                           tools=tools,
+                                                           hooks=hooks,
+                                                           plot_library=plot_library)
+    shader = shader.opts(title="Time vs. Channel")
+    return shader, records, time_stream
+
+
+def _hvdisp_plot_records_2d(records,
+                            to_pe,
+                            config,
+                            t_reference,
+                            time_stream=None,
+                            default_tools=(),
+                            tools=(),
+                            hooks=(),
+                            plot_library='bokeh'):
     import holoviews as hv
     import holoviews.operation.datashader
+    hv.extension(plot_library)
 
     if time_stream is None:
         # Records are still a dataframe, convert it to points
         records, time_stream = _records_to_points(
             records=records, to_pe=to_pe, t_reference=t_reference,
             config=config)
-        
-    
-    # TODO: weigh by area?
-    return hv.operation.datashader.dynspread(
-            hv.operation.datashader.datashade(
-                records,
-                y_range=(0, config['n_tpc_pmts']),
-                streams=[time_stream])).opts(
-        plot=dict(width=width,
-                  tools=[x_zoom_wheel(), 'xpan'],
-                  default_tools=['save', 'pan', 'box_zoom', 'save', 'reset'],
-                  show_grid=False)).opts(title="Time vs. Channel")
+
+    # Creating the plot:
+    shader = hv.operation.datashader.dynspread(
+        hv.operation.datashader.datashade(
+            records,
+            dynamic=True,
+            y_range=(0, config['n_tpc_pmts']),
+            streams=[time_stream]), threshold=0.1).opts(
+        plot=dict(aspect=4,
+                  responsive='width',
+                  hooks=hooks,
+                  tools=tools,
+                  default_tools=default_tools,
+                  fontsize={'labels': 12},
+                  show_grid=True))
+
+    return shader, records, time_stream
+
+
+def plot_record_polygons(record_points, width=1.1, **kwargs):
+    """
+    Plots record hv.Points as polygons for record matrix.
+
+    :param record_points: Holoviews Points generated with
+        _records_to_points.
+    :param width: Length of the record in µs.
+    :param kwargs: Keyword arguments applied to hv.Polygons options.
+    :returns: hv.Polygons
+    """
+    import holoviews as hv
+
+    data = [{('x', 'y'): rectangle(t, ch, width=width), 'area': a} for t, ch, a in
+            record_points.data[['time', 'channel', 'area']].values]
+    polys = hv.Polygons(data, vdims='area')
+    polys = polys.opts(color='level', aspect=4, responsive='width', line_width=0, **kwargs, cmap='viridis')
+    return polys
+
+
+def rectangle(time=0, channel=0, width=1.1, height=1):
+    """
+    Generates polygon box coordinates for record matrix.
+
+    :param time: Center position of the record in time.
+    :param channel: Center position of PMT channel. E.g channel 0 => 0.5
+    :param width: Length of the record in µs.
+    param height: Height of the record in "channel"-units.
+
+    X,Y have to be the center of the polygon.
+    Width and height are the full width and height in data coordinates.
+    """
+    width = width / 2
+    height = height / 2
+    return np.array([(time - width, channel - height),
+                     (time + width, channel - height),
+                     (time + width, channel + height),
+                     (time - width, channel + height)])
+
+
+def get_records_matrix_in_window(polys, x_range, time_slice=10):
+    """
+    Helper function which returns polygons for rendering when x_range
+    is below the specified value.
+
+    This function has to be applied to polygons e.g.:
+
+        poly.apply(get_records_matrix_in_window, streams=[time_stream])
+
+    :param polys: Holoviews Polygons
+    :param x_range: x_range of the RangeX object.
+    :param time_slice: Size of the time slice in [µs] when records
+        should be drawn.
+    """
+    if x_range is None:
+        # Needed since x_range is by default not defined when plotting
+        # the first time.
+        return polys.iloc[:0]
+    if (x_range[1] - x_range[0]) < time_slice:
+        # If x_range smaller than specified minimum return polys ->
+        # render polys.
+        inds = _in_window(polys.data, x_range)
+        return polys.iloc[inds]
+    return polys.iloc[:0]
+
+
+def _in_window(polys, x_range):
+    """
+    Function which checks if a polygon is partially in x_range.
+
+    :param polys: List of ordered dictionaries containing Polygon data.
+    :param x_range: Range which should be tested.
+    """
+    res = []
+    for ind, p in enumerate(polys):
+        # Loop over polys, if partially in window keep index.
+        x = p['x']
+        if np.any((x_range[0] <= x) & (p['x'] < x_range[1])):
+            res.append(ind)
+    return res
 
 
 @straxen.mini_analysis(
