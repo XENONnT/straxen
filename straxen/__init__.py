@@ -1,5 +1,6 @@
 __version__ = '0.15.8'
 
+
 from .common import *
 from .corrections_services import *
 from .get_corrections import *
@@ -20,5 +21,5 @@ from . import analyses
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
-
-print('bad style example'); print('will comment')
+# Import of utilix config for only once
+from utilix import uconfig
