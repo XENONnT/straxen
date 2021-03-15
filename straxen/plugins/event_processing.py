@@ -339,7 +339,7 @@ class EventPositions(strax.Plugin):
 
         if is_CMT:
 
-            cmt, cmt_conf, is_nt = config['fdc_map']
+            cmt, cmt_conf, is_nt = self.config['fdc_map']
             cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}' , cmt_conf[1])
             map_algo = cmt, cmt_conf, is_nt           
  
