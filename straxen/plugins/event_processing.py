@@ -338,13 +338,11 @@ class EventPositions(strax.Plugin):
         is_CMT = isinstance(self.config['fdc_map'], tuple)
 
         if is_CMT:
-            
-            map_algo = list(self.config['fdc_map'])
-            name_map = list(map_algo[1])
-            name_map[0] = '_'.join([name_map[0], self.config['default_reconstruction_algorithm']])
-            map_algo[1] = tuple(name_map)
-            map_algo = tuple(map_algo)
-            
+
+            cmt, cmt_conf, is_nt = config['fdc_map']
+            cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}' , cmt_conf[1])
+            map_algo = cmt, cmt_conf, is_nt           
+ 
             self.map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
             self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
