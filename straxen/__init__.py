@@ -1,8 +1,6 @@
 __version__ = '0.15.8'
 
-from utilix import uconfig
 from .common import *
-# contexts.py below
 from .corrections_services import *
 from .get_corrections import *
 from .hitfinder_thresholds import *
@@ -15,15 +13,12 @@ from .online_monitor import *
 from .rundb import *
 from .scada import *
 from .bokeh_utils import *
-
-
+# Nested structures:
 from . import plugins
 from .plugins import *
-
 from . import analyses
-
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
 
-print('bad style example') ; print('will comment')
+print('bad style example'); print('will comment')
