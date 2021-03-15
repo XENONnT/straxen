@@ -10,7 +10,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@master
         with:
-          python-version: 3.8
+          python-version: 3.6
 #      - name: Run unit tests
 #        run: |
 #          python setup.py test
