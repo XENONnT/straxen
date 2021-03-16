@@ -8,6 +8,8 @@ import pandas as pd
 
 import straxen
 
+straxen._BOKEH_X_RANGE = None
+
 
 def seconds_from(t, t_reference, unit_conversion=int(1e9)):
     """
@@ -17,7 +19,7 @@ def seconds_from(t, t_reference, unit_conversion=int(1e9)):
     :param t: Time
     :param t_reference: Reference time e.g. start of an event or first
         peak in event.
-    :param unit_conversion: Conversion factor for time units e.g. 10**-3
+    :param unit_conversion: Conversion factor for time units e.g. 10**3
         for micro seconds.
     """
     return (t - t_reference) / unit_conversion
@@ -91,7 +93,7 @@ def _records_to_points(*, records, to_pe, t_reference,
         df,
         kdims=[hv.Dimension('time', label='Time [µs]'),
                hv.Dimension('channel',
-                            label='PMT number',
+                            label='PMT Channel',
                             range=(0, config['n_tpc_pmts']))],
         vdims=[hv.Dimension('area', label='Area [pe]')])
 
@@ -108,6 +110,7 @@ def hvdisp_plot_records_2d(records,
                            tools=(x_zoom_wheel(), 'xpan'),
                            default_tools=('save', 'pan', 'box_zoom', 'save', 'reset'),
                            plot_library='bokeh',
+                           width=600,
                            hooks=()):
     """Plot records in a dynamic 2D histogram of (time, pmt)
     :param width: Plot width in pixels
@@ -118,6 +121,7 @@ def hvdisp_plot_records_2d(records,
         with bokeh as plot library.
     :param plot_library: Default bokeh, library to be used for the
         plotting.
+    :param width: With of the record matrix in pixel.
     :param hooks: Hooks to adjust plot settings.
     :returns: datashader object, records holoview points,
         RangeX time stream of records.
@@ -127,45 +131,63 @@ def hvdisp_plot_records_2d(records,
                                                            config,
                                                            t_reference,
                                                            time_stream=time_stream,
+                                                           width=width,
                                                            default_tools=default_tools,
                                                            tools=tools,
                                                            hooks=hooks,
                                                            plot_library=plot_library)
     shader = shader.opts(title="Time vs. Channel")
-    return shader, records, time_stream
+    return shader
 
 
 def _hvdisp_plot_records_2d(records,
                             to_pe,
                             config,
                             t_reference,
+                            event_range=(None, None),
                             time_stream=None,
+                            width=None,
                             default_tools=(),
                             tools=(),
                             hooks=(),
-                            plot_library='bokeh'):
+                            plot_library='bokeh',
+                            unit_conversion=10**3):
     import holoviews as hv
     import holoviews.operation.datashader
     hv.extension(plot_library)
 
     if time_stream is None:
         # Records are still a dataframe, convert it to points
-        records, time_stream = _records_to_points(
-            records=records, to_pe=to_pe, t_reference=t_reference,
-            config=config)
+        records, time_stream = _records_to_points(records=records,
+                                                  to_pe=to_pe,
+                                                  t_reference=t_reference,
+                                                  unit_conversion=unit_conversion,
+                                                  config=config)
+
+    # Whether to show the toolbar or not:
+    if tools:
+        toolbar = 'right'
+    else:
+        toolbar = None
+
+    if width:
+        responsive=None
 
     # Creating the plot:
     shader = hv.operation.datashader.dynspread(
         hv.operation.datashader.datashade(
             records,
             dynamic=True,
+            x_range=event_range,
             y_range=(0, config['n_tpc_pmts']),
             streams=[time_stream]), threshold=0.1).opts(
         plot=dict(aspect=4,
-                  responsive='width',
-                  hooks=hooks,
-                  tools=tools,
-                  default_tools=default_tools,
+                  width=width,
+                  responsive=responsive,
+                  hooks=list(hooks),
+                  toolbar=toolbar,
+                  tools=list(tools),
+                  default_tools=list(default_tools),
                   fontsize={'labels': 12},
                   show_grid=True))
 
@@ -390,3 +412,38 @@ def waveform_display(
 
     layout = time_v_channel + peak_wvs + array_plot['top'] + array_plot['bottom']
     return layout.cols(2)
+
+
+def hook(plot, x_range, debug=False):
+    """
+    Hook to set the same RangeX stream for event display and
+    records matrix, voodoo....
+
+    Note:
+        Works only in the following order:
+
+        1. Create holoviews
+        2. hv.render plot
+        3. set bokeh x_range as holoviews x_range
+
+        Does not work first with bokeh and then with holoviews. Why?
+        I have no clue....
+    """
+    if debug:
+        print('Hook: ', x_range)
+    if not x_range:
+        _hook_get_xrange(plot, debug)
+    else:
+        _hook_set_xrange(plot, x_range, debug)
+
+
+def _hook_get_xrange(plot, debug):
+    straxen._BOKEH_X_RANGE = plot.handles['x_range']
+    if debug:
+        print('Get', straxen._BOKEH_X_RANGE)
+
+
+def _hook_set_xrange(plot, x_range, debug):
+    if debug:
+        print('Set', x_range)
+    plot.state.x_range = x_range

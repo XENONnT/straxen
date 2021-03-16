@@ -1,6 +1,30 @@
 import bokeh.plotting as bklt
+import bokeh
 import numpy as np
 import strax
+export, __all__ = strax.exporter()
+
+
+@export
+def bokeh_to_wiki(fig, outputfile=None):
+    """
+    Function which converts bokeh HTML code to a wiki readable code.
+
+    :param fig: Figure to be conerted
+    :param outputfile: String of absolute file path. If specified output
+        is writen to the file. Else output is print to the notebook and
+        can be simply copied into the wiki.
+    """
+    # convert plot to wiki format:
+    html = bokeh.embed.file_html(fig, bokeh.resources.CDN)
+    html = '\n'.join((['<html>'] + html.split('\n')[6:]))
+
+    if outputfile:
+        with open(outputfile, mode='w') as file:
+            file.write(html)
+    else:
+        print(html)
+
 
 def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_sample=True):
     """
@@ -36,6 +60,7 @@ def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_
                                          'ys': y_p,
                                          'x': peaks['x'],  # XY-Pos in PMZ Hitpattern
                                          'y': peaks['y'],
+                                         'dt': peaks['dt'],
                                          'time': peaks['time'],
                                          'center_time': peaks['center_time'],
                                          'endtime': strax.endtime(peaks),
@@ -90,6 +115,7 @@ def peak_tool_tip(peak_type):
                 }
 
     # Now ns/µs parameters for S1 and S2
+    tool_tip['dt'] = ("dt [ns/sample]", "@dt")
     tool_tip['time_dynamic'] = ("time [ns]", "$x")
     tool_tip['rel_center_time'] = ('center time [ns]', '@rel_center_time')
     tool_tip['range_50p_width'] = ('50% width [ns]', '@width_50')

@@ -1,8 +1,15 @@
 import bokeh
 import bokeh.plotting as bklt
+
+from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook,\
+    plot_record_polygons, get_records_matrix_in_window
+
 import numpy as np
+import numba
 import strax
 import straxen
+
+import warnings
 
 # Default legend, unknow, S1 and S2
 LEGENDS = ('Unknown', 'S1', 'S2')
@@ -58,6 +65,8 @@ def event_display_interactive(events,
 
     :return: bokeh.plotting.figure instance.
     """
+    st = context
+
     if len(events) != 1:
         raise ValueError('The time range you specified contains more or'
                          ' less than a single event. The event display '
@@ -118,14 +127,15 @@ def event_display_interactive(events,
         fig_top, plot = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type_style_id=2)
         plot.visible = False
 
-    # Main Plot:
-    title = _make_event_title(events[0], run_id)
-
+    # Main waveform plot:
     if only_peak_detail_in_wf:
         # If specified by the user only plot main/alt S1/S2
         peaks = peaks[~m_other_peaks]
 
     waveform = plot_event(peaks, signal, labels, events[0], colors)
+
+    # Create tile:
+    title = _make_event_title(events[0], run_id)
 
     # Put everything together:
     if bottom_pmt_array:
@@ -145,6 +155,53 @@ def event_display_interactive(events,
                                          sizing_mode='scale_both',
                                          max_width=1600,
                                          )
+
+    # Add record matrix if asked:
+    if plot_record_matrix:
+        if st.is_stored(run_id, 'records'):
+            # Check if records can be found and load:
+            r = st.get_array(run_id, 'records', time_range=(events[0]['time'], events[0]['endtime']))
+        elif st.is_stored(run_id, 'raw_records'):
+            warnings.warn(f'Cannot find records for {run_id}, making them from raw_records instead.')
+            p = st.get_single_plugin(run_id, 'records')
+            r = st.get_array(run_id, 'raw_records', time_range=(events[0]['time'], events[0]['endtime']))
+            r = p.compute(r, events[0]['time'], events[0]['endtime'])['records']
+        else:
+            warnings.warn(f'Can neither find records nor raw_records for run {run_id}, proceed without record '
+                          f'matrix.')
+            plot_record_matrix = False
+
+    if plot_record_matrix:
+        straxen._BOKEH_X_RANGE = None
+        # First get hook to for x_range:
+        x_range_hook = lambda plot, element: hook(plot, x_range=straxen._BOKEH_X_RANGE, debug=False)
+
+        # Create datashader plot:
+        wf, record_points, time_stream = _hvdisp_plot_records_2d(records=r,
+                                                                 to_pe=to_pe,
+                                                                 t_reference=peaks[0]['time'],
+                                                                 event_range=(waveform.x_range.start,
+                                                                              waveform.x_range.end),
+                                                                 config=st.config,
+                                                                 hooks=[x_range_hook],
+                                                                 tools=[]
+                                                                 )
+        # Create record polygons:
+        polys = plot_record_polygons(record_points, width=1.1)
+        records_in_window = polys.apply(get_records_matrix_in_window,
+                                        streams=[time_stream],
+                                        time_slice=plot_records_threshold)
+
+        # Render plot to initialize x_range:
+        import holoviews as hv
+        import panel
+
+        _ = hv.render(wf)
+        # Set x-range of event plot:
+        bokeh_set_x_range(waveform, straxen._BOKEH_X_RANGE, debug=False)
+        event_display = panel.Column(event_display,
+                                     wf * records_in_window,
+                                     sizing_mode='scale_width')
 
     return event_display
 
@@ -171,13 +228,16 @@ def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors):
             if 's2' in peak_type:
                 # If S2 use µs as units
                 time_scalar = 1000  # ns
+                unit = 'µs'
             else:
                 time_scalar = 1  # ns
+                unit = 'ns'
             if signal[peak_type].shape[0]:
                 # If signal exists, plot:
                 fig, plot = plot_peak_detail(signal[peak_type],
-                                             time_scaler=time_scalar,
+                                             time_scalar=time_scalar,
                                              label=labels[peak_type],
+                                             unit=unit,
                                              fig=fig,
                                              colors=colors)
                 if 'alt' in peak_type:
@@ -272,15 +332,16 @@ def plot_event(peaks, signal, labels, event, colors):
     return waveform
 
 
-def plot_peak_detail(peak, time_scaler=1, label='', fig=None, colors=('gray', 'blue', 'green')):
+def plot_peak_detail(peak, time_scalar=1, label='', unit='ns', fig=None, colors=('gray', 'blue', 'green')):
     """
     Function which makes a detailed plot for the given peak. As in the
     main/alt S1/S2 plots of the event display.
 
     :param peak: Peak to be plotted.
-    :param time_scaler: Factor to rescale the time from ns to other scale.
+    :param time_scalar: Factor to rescale the time from ns to other scale.
         E.g. =1000 scales to µs.
     :param label: Label to be used in the plot legend.
+    :param unit: Time unit of the plotted peak.
     :param fig: Instance of bokeh.plotting.figure if None one will be
         created via straxen.bokeh.utils.default_figure().
     :return: Instance of bokeh.plotting.figure
@@ -305,7 +366,7 @@ def plot_peak_detail(peak, time_scaler=1, label='', fig=None, colors=('gray', 'b
 
     source = straxen.bokeh_utils.get_peaks_source(peak,
                                                   relative_start=peak[0]['time'],
-                                                  time_scaler=time_scaler,
+                                                  time_scaler=time_scalar,
                                                   keep_amplitude_per_sample=False
                                                   )
 
@@ -317,7 +378,7 @@ def plot_peak_detail(peak, time_scaler=1, label='', fig=None, colors=('gray', 'b
                           line_width=0.5,
                           name=label
                           )
-    fig.xaxis.axis_label = f"Time [{time_scaler} ns]"
+    fig.xaxis.axis_label = f"Time [{unit}]"
     fig.xaxis.axis_label_text_font_size = '12pt'
     fig.yaxis.axis_label = "Amplitude [pe/ns]"
     fig.yaxis.axis_label_text_font_size = '12pt'
@@ -375,9 +436,9 @@ def plot_peaks(peaks, time_scaler=1, fig=None, colors=('gray', 'blue', 'green'))
         fig.toolbar.active_scroll = [t for t in fig.tools if t.name == 'wheel'][0]
 
     fig.xaxis.axis_label = 'Time [µs]'
-    fig.xaxis.axis_label_text_font_size = '14pt'
+    fig.xaxis.axis_label_text_font_size = '12pt'
     fig.yaxis.axis_label = "Amplitude [pe/ns]"
-    fig.yaxis.axis_label_text_font_size = '14pt'
+    fig.yaxis.axis_label_text_font_size = '12pt'
 
     fig.legend.location = "top_left"
     fig.legend.click_policy = "hide"
@@ -434,7 +495,7 @@ def plot_pmt_array(peak, array_type, to_pe, log=False, xenon1t=False, fig=None, 
 
     area_per_channel = peak['area_per_channel'][pmts_on['i']]
 
-    if log == True:
+    if log:
         area_plot = np.log10(area_per_channel)
         # Manually set infs to zero since cmap cannot handle it.
         area_plot = np.where(area_plot == -np.inf, 0, area_plot)
@@ -623,3 +684,257 @@ def bokeh_set_x_range(plot, x_range, debug=False):
             # Prints x_range bar to check Id, as I said voodoo
             print(x_range)
         plot.x_range.js_on_change(attr, CustomJS(args=dict(x_range=x_range), code=code))
+
+
+class DataSelectionHist:
+    """
+    Class for an interactive data selection plot.
+    """
+    def __init__(self, name, size=600):
+        """
+         Class for an interactive data selection plot.
+
+        :param name: Name of the class object instance. Needed for
+            dynamic return, e.g. ds = DataSelectionHist("ds")
+        :param size: Edge size of the figure in pixel.
+        """
+        self.name = name
+        self.selection_index = None
+        self.size = size
+
+    def histogram2d(self,
+                    items,
+                    xdata,
+                    ydata,
+                    bins,
+                    range,
+                    x_label='X-Data',
+                    y_label='Y-Data',
+                    log_color_scale=True,
+                    cmap_steps=256,
+                    clim=(None, None),
+                    undeflow_color=None,
+                    overflow_color=None,
+                    weights=1):
+        """
+        2d Histogram which allows to select the plotted items dynamically.
+
+        Note:
+            You can select the data either via a box select or Lasso
+            select tool. The data can be returned by:
+
+            ds.get_back_selected_items()
+
+            Hold shift to select multiple regions.
+
+        Warnings:
+            Depending on the number of bins the Lasso selection can
+            become relatively slow. The number of bins should not be
+            larger than 100.
+            The box selection performance is better.
+
+        :param items: numpy.structured.array of items to be selected.
+            e.g. peaks or events.
+        :param xdata: numpy.array for xdata e.g. peaks['area']
+        :param ydata: same
+        :param bins: Integer specifying the number of bins. Currently
+            x and y axis must share the same binning.
+        :param range: Tuple of x-range and y-range.
+        :param x_label: Label to be used for the x-axis
+        :param y_label: same but for y
+        :param log_color_scale: If true (default) use log colorscale
+        :param cmap_steps: Integer between 0 and 256 for stepped
+            colorbar.
+        :param clim: Tuple of color limits.
+        :param undeflow_color: If specified colors all bins below clim
+            with the corresponding color.
+        :param overflow_color: Same but per limit.
+        :param weights: If specified each bin entry is weighted by this
+            value. Can be either a scalar e.g. a time or an array of
+            weights which has the same length as the x/y data.
+        :return: bokeh figure instance.
+        """
+        if isinstance(bins, tuple):
+            raise ValueError('Currently only squared bins are supported. '
+                             'Plase change bins into an integer.')
+
+        x_pos, y_pos = self._make_bin_positions((bins, bins), range)
+        weights = np.ones(len(xdata)) * weights
+
+        hist, hist_inds = self._hist2d_with_index(xdata,
+                                                  ydata,
+                                                  weights,
+                                                  self.xedges,
+                                                  self.yedges)
+
+        # Define times and ids for return:
+        self.items = items
+        self.hist_inds = hist_inds
+
+        colors = self._get_color(hist,
+                                 cmap_steps,
+                                 log_color_scale=log_color_scale,
+                                 clim=clim,
+                                 undeflow_color=undeflow_color,
+                                 overflow_color=overflow_color)
+
+        # Create Figure and add LassoTool:
+        f = bokeh.plotting.figure(title="DataSelection",
+                                  width=self.size,
+                                  height=self.size,
+                                  tools="box_select,reset,save")
+
+        # Add hover tool, colorbar is too complictaed:
+        tool_tip = [("Bin Center x", "@x"),
+                    ("Bin Center y", "@y"),
+                    ("Entries", "@h")]
+        f.add_tools(bokeh.models.LassoSelectTool(select_every_mousemove=False),
+                    bokeh.models.HoverTool(tooltips=tool_tip))
+
+        s1 = bokeh.plotting.ColumnDataSource(data=dict(x=x_pos,
+                                                       y=y_pos,
+                                                       h=hist.flatten(),
+                                                       color=colors)
+                                             )
+        f.square(source=s1,
+                 size=self.size / bins,
+                 color='color',
+                 nonselection_alpha=0.3)
+
+        f.x_range.start = self.xedges[0]
+        f.x_range.end = self.xedges[-1]
+        f.y_range.start = self.yedges[0]
+        f.y_range.end = self.yedges[-1]
+        f.xaxis.axis_label = x_label
+        f.yaxis.axis_label = y_label
+
+        self.selection_index = None
+        s1.selected.js_on_change('indices',
+                                 bokeh.models.CustomJS(args=dict(s1=s1), code=f"""
+                var inds = cb_obj.indices;
+                var kernel = IPython.notebook.kernel;
+                IPython.notebook.kernel.execute("{self.name}.selection_index = " + inds);
+            """)
+                                 )
+        return f
+
+    def get_back_selected_items(self):
+        if not self.selection_index:
+            raise ValueError('No data selection found. Have you selected any data? '
+                             'If yes you most likely have not intialized the DataSelctor correctly. '
+                             'You have to callit as: my_instance_name = DataSelectionHist("my_instance_name")')
+        m = np.isin(self.hist_inds, self.selection_index)
+        return self.items[m]
+
+    @staticmethod
+    @numba.njit
+    def _hist2d_with_index(xdata, ydata, weights, x_edges, y_edges):
+
+        n_x_bins = len(x_edges) - 1
+        n_y_bins = len(y_edges) - 1
+        res_hist_inds = np.zeros(len(xdata), dtype=np.int32)
+        res_hist = np.zeros((n_x_bins, n_y_bins), dtype=np.int64)
+
+        # Create bin ranges:
+        offset = 0
+        for ind in range(len(xdata)):
+            xv = xdata[ind]
+            yv = ydata[ind]
+            w = weights[ind]
+            hist_ind = 0
+            found = False
+            for ind_xb, low_xb in enumerate(x_edges[:-1]):
+                high_xb = x_edges[ind_xb + 1]
+
+                if not low_xb <= xv:
+                    hist_ind += n_y_bins
+                    continue
+                if not xv < high_xb:
+                    hist_ind += n_y_bins
+                    continue
+
+                # Checked both bins value is in bin, so check y:
+                for ind_yb, low_yb in enumerate(y_edges[:-1]):
+                    high_yb = y_edges[ind_yb + 1]
+
+                    if not low_yb <= yv:
+                        hist_ind += 1
+                        continue
+                    if not yv < high_yb:
+                        hist_ind += 1
+                        continue
+
+                    found = True
+                    res_hist_inds[offset] = hist_ind
+                    res_hist[ind_xb, ind_yb] += w
+                    offset += 1
+
+            # Set to -1 if not in any
+            if not found:
+                res_hist_inds[offset] = -1
+                offset += 1
+        return res_hist, res_hist_inds
+
+    def _make_bin_positions(self, bins, range):
+        """
+        Helper function to create center positions for "hisogram"
+        markers.
+        """
+        edges = []
+        for b, br in zip(bins, range):
+            # Create x and y edges
+            d_range = br[1] - br[0]
+            edges.append(np.arange(br[0], br[1] + d_range / b, d_range / b))
+
+        # Convert into marker positions:
+        xedges, yedges = edges
+        self.xedges = xedges
+        self.yedges = yedges
+        x_pos = xedges[:-1] + np.diff(xedges) / 2
+        x_pos = np.repeat(x_pos, len(yedges) - 1)
+
+        y_pos = yedges[:-1] + np.diff(yedges) / 2
+        y_pos = np.array(list(y_pos) * (len(xedges) - 1))
+        return x_pos, y_pos
+
+    def _get_color(self,
+                   hist,
+                   cmap_steps,
+                   log_color_scale=False,
+                   clim=(None, None),
+                   undeflow_color=None,
+                   overflow_color=None):
+        """
+        Helper function to create colorscale.
+        """
+        hist = hist.flatten()
+
+        if clim[0] and undeflow_color:
+            # If underflow is specified get indicies for underflow bins
+            inds_underflow = np.argwhere(hist < clim[0]).flatten()
+
+        if clim[1] and overflow_color:
+            inds_overflow = np.argwhere(hist > clim[1]).flatten()
+
+        # Clip data according to clim
+        if np.any(clim):
+            hist = np.clip(hist, clim[0], clim[1])
+
+        self.clim = (np.min(hist), np.max(hist))
+        if log_color_scale:
+            color = np.log10(hist)
+            color /= np.max(color)
+            color *= cmap_steps - 1
+        else:
+            color = hist / np.max(hist)
+            color *= cmap_steps - 1
+
+        cmap = np.array(bokeh.palettes.viridis(cmap_steps))
+        cmap = cmap[np.round(color).astype(np.int8)]
+
+        if undeflow_color:
+            cmap[inds_underflow] = undeflow_color
+
+        if overflow_color:
+            cmap[inds_overflow] = overflow_color
+        return cmap
