@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
     strax.Option('nbaseline_samples_lone_records_nv', type=int,
-                 default_by_run=[(0, 10), (12684, 26)], track=True,
+                 default=('baseline_samples_nv', 'ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
@@ -114,8 +114,9 @@ class nVETORecorder(strax.Plugin):
 
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
+        baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['nbaseline_samples_lone_records_nv']) 
         strax.baseline(lr,
-                       baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
+                       baseline_samples=baseline_samples,
                        flip=True)
         strax.integrate(lr)
         lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])

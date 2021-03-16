@@ -13,6 +13,8 @@ export, __all__ = strax.exporter()
 corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
                       's2_xy_map', 's1_xy_map', 'fdc_map']
 
+single_value_corrections =['elife', 'baseline_samples_nv',
+                           'electron_drift_velocity']
 
 @export
 class CorrectionsManagementServices():
@@ -75,8 +77,10 @@ class CorrectionsManagementServices():
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, global_version)
-        elif 'elife' in model_type:
-            return self.get_elife(run_id, model_type, global_version)
+        elif model_type in single_value_corrections:
+            return self._get_correction(run_id, model_type, global_version)
+        #elif 'elife' in model_type:
+        #    return self.get_elife(run_id, model_type, global_version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
@@ -120,27 +124,6 @@ class CorrectionsManagementServices():
 
         else:
             return corrections
-
-    def get_elife(self, run_id, model_type, global_version):
-        """
-        Smart logic to return electron lifetime correction
-        :param run_id: run id from runDB
-        :param model_type: choose either elife_model or elife_constant
-        :param global_version: global version, or float (if model_type == elife_constant)
-        :return: electron lifetime correction value
-        """
-        if model_type == 'elife_model':
-            return self._get_correction(run_id, 'elife', global_version)
-
-        elif model_type == 'elife_constant':
-            # This is nothing more than just returning the value we put in
-            if not isinstance(global_version, float):
-                raise ValueError(f'User specify a model type {model_type} '
-                                 f'and should provide a float. Got: '
-                                 f'{type(global_version)}')
-            return float(global_version)
-        else:
-            raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
     def get_pmt_gains(self, run_id, model_type, global_version,
                       cacheable_versions=('ONLINE',),

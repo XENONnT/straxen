@@ -83,32 +83,27 @@ FIXED_TO_PE = {
 
 
 @export
-def get_elife(run_id, elife_conf):
-    if isinstance(elife_conf, tuple) and len(elife_conf) == 3:
-        # We want to use corrections management
-        is_nt = elife_conf[-1]
-        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+def get_correction_from_cmt(run_id, conf):
+    if isinstance(conf, tuple) and len(conf) == 3:
+        is_nt = conf[-1]
 
-        e = cmt.get_corrections_config(run_id, elife_conf[:2])
-
-    elif isinstance(elife_conf, str):
-        warn("get_elife will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
-        # Let's remove these functions and only rely on the CMT in the future
-        x = straxen.get_resource(elife_conf, fmt='npy')
-        run_index = np.where(x['run_id'] == int(run_id))[0]
-        if not len(run_index):
-            # Electron lifetime not known: using placeholders
-            e = 623e3
+        # check you are not asking for a cte value....
+        model_type, global_version = conf[:2]
+        if 'constant' in model_type:
+            if not isinstance(global_version, float):
+                raise ValueError(f'User specify a model type {model_type} '
+                                 f'and should provide a float. Got: '
+                                 f'{type(global_version)}')
+            return float(global_version)
         else:
-            e = x[run_index[0]]['e_life']
-    else:
-        raise ValueError(
-            'Wrong elife model. Either specify a string (url) or the '
-            'Corrections Management Tools format: '
-            '(model_type->str, model_config->str, is_nT->bool)'
-            '')
-    return float(e)
+            cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+            correction = cmt.get_corrections_config(run_id, conf[:2])
+            if correction.size == 0:
+                raise ValueError(f'Could not find a value for {model_type} '
+                                 f'please check it is implemented in CMT. '
+                                 f'for nT = {is_nt}')
+
+            return float(correction)
 
 
 @export

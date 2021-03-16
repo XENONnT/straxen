@@ -14,8 +14,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_nv',
-        default_by_run=[(0, 10),
-                        (12684, 26)], track=True,
+        default=('baseline_samples_nv', 'ONLINE', True), track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
@@ -64,8 +63,9 @@ class nVETOPulseProcessing(strax.Plugin):
 
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
+        baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['baseline_samples_nv']) 
         strax.baseline(r,
-                       baseline_samples=self.config['baseline_samples_nv'],
+                       baseline_samples=baseline_samples,
                        flip=True)
 
         if self.config['min_samples_alt_baseline_nv']:
