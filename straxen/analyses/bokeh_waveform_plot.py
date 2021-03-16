@@ -707,7 +707,7 @@ class DataSelectionHist:
                     xdata,
                     ydata,
                     bins,
-                    range,
+                    hist_range,
                     x_label='X-Data',
                     y_label='Y-Data',
                     log_color_scale=True,
@@ -739,7 +739,7 @@ class DataSelectionHist:
         :param ydata: same
         :param bins: Integer specifying the number of bins. Currently
             x and y axis must share the same binning.
-        :param range: Tuple of x-range and y-range.
+        :param hist_range: Tuple of x-range and y-range.
         :param x_label: Label to be used for the x-axis
         :param y_label: same but for y
         :param log_color_scale: If true (default) use log colorscale
@@ -758,7 +758,7 @@ class DataSelectionHist:
             raise ValueError('Currently only squared bins are supported. '
                              'Plase change bins into an integer.')
 
-        x_pos, y_pos = self._make_bin_positions((bins, bins), range)
+        x_pos, y_pos = self._make_bin_positions((bins, bins), hist_range)
         weights = np.ones(len(xdata)) * weights
 
         hist, hist_inds = self._hist2d_with_index(xdata,
@@ -837,8 +837,7 @@ class DataSelectionHist:
 
         # Create bin ranges:
         offset = 0
-        for ind in range(len(xdata)):
-            xv = xdata[ind]
+        for ind, xv in enumerate(xdata):
             yv = ydata[ind]
             w = weights[ind]
             hist_ind = 0
@@ -875,19 +874,20 @@ class DataSelectionHist:
                 offset += 1
         return res_hist, res_hist_inds
 
-    def _make_bin_positions(self, bins, range):
+    def _make_bin_positions(self, bins, bin_range):
         """
-        Helper function to create center positions for "hisogram"
+        Helper function to create center positions for "histogram"
         markers.
         """
         edges = []
-        for b, br in zip(bins, range):
+        for b, br in zip(bins, bin_range):
             # Create x and y edges
             d_range = br[1] - br[0]
             edges.append(np.arange(br[0], br[1] + d_range / b, d_range / b))
 
         # Convert into marker positions:
-        xedges, yedges = edges
+        xedges = edges[0]
+        yedges = edges[1]
         self.xedges = xedges
         self.yedges = yedges
         x_pos = xedges[:-1] + np.diff(xedges) / 2
