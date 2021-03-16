@@ -118,13 +118,14 @@ def xenonnt_online(output_folder='./strax_data',
         **context_options)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
-    st.storage = [straxen.RunDB(
-        readonly=not we_are_the_daq,
-        minimum_run_number=_minimum_run_number,
-        runid_field='number',
-        new_data_path=output_folder,
-        rucio_path=_rucio_path)
-        ] if _database_init else []
+    st.storage = [
+        straxen.RunDB(
+            readonly=not we_are_the_daq,
+            minimum_run_number=_minimum_run_number,
+            runid_field='number',
+            new_data_path=output_folder,
+            rucio_path=_rucio_path,
+        )] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
@@ -133,7 +134,8 @@ def xenonnt_online(output_folder='./strax_data',
                 take_only=straxen.DAQReader.provides),
             strax.DataDirectory(
                 _processed_path,
-                readonly=True)]
+                readonly=True,
+            )]
         if output_folder:
             st.storage.append(
                 strax.DataDirectory(output_folder))
