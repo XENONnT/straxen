@@ -200,7 +200,7 @@ def test_several():
                                p['area'],
                                p['area'],
                                bins=50,
-                               range=((0, 200), (0, 2000)),
+                               hist_range=((0, 200), (0, 2000)),
                                log_color_scale=True,
                                clim=(10, None),
                                undeflow_color='white')
