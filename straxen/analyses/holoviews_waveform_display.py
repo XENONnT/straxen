@@ -110,7 +110,6 @@ def hvdisp_plot_records_2d(records,
                            tools=(x_zoom_wheel(), 'xpan'),
                            default_tools=('save', 'pan', 'box_zoom', 'save', 'reset'),
                            plot_library='bokeh',
-                           width=600,
                            hooks=()):
     """Plot records in a dynamic 2D histogram of (time, pmt)
     :param width: Plot width in pixels
@@ -131,7 +130,6 @@ def hvdisp_plot_records_2d(records,
                                                            config,
                                                            t_reference,
                                                            time_stream=time_stream,
-                                                           width=width,
                                                            default_tools=default_tools,
                                                            tools=tools,
                                                            hooks=hooks,
@@ -146,7 +144,6 @@ def _hvdisp_plot_records_2d(records,
                             t_reference,
                             event_range=(None, None),
                             time_stream=None,
-                            width=None,
                             default_tools=(),
                             tools=(),
                             hooks=(),
@@ -170,9 +167,6 @@ def _hvdisp_plot_records_2d(records,
     else:
         toolbar = None
 
-    if width:
-        responsive=None
-
     # Creating the plot:
     shader = hv.operation.datashader.dynspread(
         hv.operation.datashader.datashade(
@@ -182,8 +176,7 @@ def _hvdisp_plot_records_2d(records,
             y_range=(0, config['n_tpc_pmts']),
             streams=[time_stream]), threshold=0.1).opts(
         plot=dict(aspect=4,
-                  width=width,
-                  responsive=responsive,
+                  responsive='width',
                   hooks=list(hooks),
                   toolbar=toolbar,
                   tools=list(tools),
@@ -375,7 +368,6 @@ def waveform_display(
     time_v_channel = context.hvdisp_plot_records_2d(
         run_id=run_id, to_pe=to_pe,
         records=records_points,
-        width=width,
         time_stream=time_stream,
         time_range=time_range, t_reference=t_reference,
         # We don't need to cut these further, records we get are already cut
