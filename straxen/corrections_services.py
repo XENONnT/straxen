@@ -79,8 +79,6 @@ class CorrectionsManagementServices():
             return self.get_pmt_gains(run_id, model_type, global_version)
         elif model_type in single_value_corrections:
             return self._get_correction(run_id, model_type, global_version)
-        #elif 'elife' in model_type:
-        #    return self.get_elife(run_id, model_type, global_version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
