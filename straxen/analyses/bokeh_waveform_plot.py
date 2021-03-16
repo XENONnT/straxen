@@ -1,7 +1,7 @@
 import bokeh
 import bokeh.plotting as bklt
 
-from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook,\
+from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, \
     plot_record_polygons, get_records_matrix_in_window
 
 import numpy as np
@@ -13,6 +13,8 @@ import warnings
 
 # Default legend, unknow, S1 and S2
 LEGENDS = ('Unknown', 'S1', 'S2')
+straxen._BOKEH_CONFIGURED_NOTEBOOK = False
+
 
 @straxen.mini_analysis(requires=('events', 'event_basics', 'peaks', 'peak_basics', 'peak_positions'),
                        warn_beyond_sec=0.05)
@@ -24,6 +26,7 @@ def event_display_interactive(events,
                               bottom_pmt_array=True,
                               only_main_peaks=False,
                               only_peak_detail_in_wf=False,
+                              plot_all_pmts=False,
                               plot_record_matrix=False,
                               plot_records_threshold=10,
                               xenon1t=False,
@@ -66,6 +69,12 @@ def event_display_interactive(events,
     :return: bokeh.plotting.figure instance.
     """
     st = context
+
+    if not hasattr(st, '_BOKEH_CONFIGURED_NOTEBOOK'):
+        st._BOKEH_CONFIGURED_NOTEBOOK = True
+        # Configure show to show notebook:
+        from bokeh.io import output_notebook
+        output_notebook()
 
     if len(events) != 1:
         raise ValueError('The time range you specified contains more or'
@@ -117,6 +126,7 @@ def event_display_interactive(events,
                                                         signal,
                                                         to_pe,
                                                         labels,
+                                                        plot_all_pmts,
                                                         xenon1t=xenon1t,
                                                         log=log)
 
@@ -184,7 +194,7 @@ def event_display_interactive(events,
                                                                               waveform.x_range.end),
                                                                  config=st.config,
                                                                  hooks=[x_range_hook],
-                                                                 tools=[]
+                                                                 tools=[],
                                                                  )
         # Create record polygons:
         polys = plot_record_polygons(record_points, width=1.1)
@@ -251,9 +261,14 @@ def plot_pmt_arrays_and_positions(top_array_keys,
                                   signal,
                                   to_pe,
                                   labels,
+                                  plot_all_pmts,
                                   xenon1t=False,
                                   log=True):
+    """
+    Function which plots the Top and Bottom PMT array.
 
+    :returns: fig_top, fig_bottom
+    """
     # Same logic as for detailed Peaks, first make figures
     # then loop over figures and data and populate figures with plots
     fig_top = straxen.bokeh_utils.default_fig(title='Top array')
@@ -270,8 +285,12 @@ def plot_pmt_arrays_and_positions(top_array_keys,
                 # alt S1/S2 does not exist so go to next.
                 continue
 
-            fig, plot, _ = plot_pmt_array(signal[k][0], pmt_array_type, to_pe,
-                                          label=labels[k], xenon1t=xenon1t, fig=fig,
+            fig, plot, _ = plot_pmt_array(signal[k][0],
+                                          pmt_array_type, to_pe,
+                                          plot_all_pmts=plot_all_pmts,
+                                          label=labels[k],
+                                          xenon1t=xenon1t,
+                                          fig=fig,
                                           log=log)
             if ind:
                 # Not main S1 or S2
@@ -445,7 +464,14 @@ def plot_peaks(peaks, time_scaler=1, fig=None, colors=('gray', 'blue', 'green'))
     return fig
 
 
-def plot_pmt_array(peak, array_type, to_pe, log=False, xenon1t=False, fig=None, label=''):
+def plot_pmt_array(peak,
+                   array_type,
+                   to_pe,
+                   plot_all_pmts=False,
+                   log=False,
+                   xenon1t=False,
+                   fig=None,
+                   label='',):
     """
     Plots top or bottom PMT array for given peak.
 
@@ -484,7 +510,10 @@ def plot_pmt_array(peak, array_type, to_pe, log=False, xenon1t=False, fig=None, 
 
     # Plotting PMTs:
     pmts = straxen.pmt_positions(xenon1t)
-    mask_pmts = to_pe == 0
+    if plot_all_pmts:
+        mask_pmts = np.zeros(len(pmts), dtype=np.bool_)
+    else:
+        mask_pmts = to_pe == 0
     pmts_on = pmts[~mask_pmts]
     pmts_on = pmts_on[pmts_on['array'] == array_type]
 
