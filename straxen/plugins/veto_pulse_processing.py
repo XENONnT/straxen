@@ -65,7 +65,7 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.zero_out_of_bounds(r)
         baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['baseline_samples_nv'])
         strax.baseline(r,
-                       baseline_samples=int(baseline_samples),
+                       baseline_samples=baseline_samples,
                        flip=True)
 
         if self.config['min_samples_alt_baseline_nv']:

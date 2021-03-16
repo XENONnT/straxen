@@ -116,7 +116,7 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(lr)
         baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['nbaseline_samples_lone_records_nv'])
         strax.baseline(lr,
-                       baseline_samples=int(baseline_samples),
+                       baseline_samples=baseline_samples,
                        flip=True)
         strax.integrate(lr)
         lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
