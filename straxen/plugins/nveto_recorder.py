@@ -114,7 +114,7 @@ class nVETORecorder(strax.Plugin):
 
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
-        baseline_samples = int(straxen.get_correction_from_cmt(self.run_id, self.config['nbaseline_samples_lone_records_nv'])) 
+        baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['nbaseline_samples_lone_records_nv']) 
         strax.baseline(lr,
                        baseline_samples=baseline_samples,
                        flip=True)
