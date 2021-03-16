@@ -92,9 +92,12 @@ def get_correction_from_cmt(run_id, conf):
         if 'constant' in model_type:
             if not isinstance(global_version, float):
                 raise ValueError(f'User specify a model type {model_type} '
-                                 f'and should provide a float. Got: '
+                                 f'and should provide a number. Got: '
                                  f'{type(global_version)}')
-            return float(global_version)
+            if 'samples' in model_type:  # samples are int others are float 
+                return int(global_version)
+            else:
+                return float(global_version)
         else:
             cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
             correction = cmt.get_corrections_config(run_id, conf[:2])
@@ -103,7 +106,10 @@ def get_correction_from_cmt(run_id, conf):
                                  f'please check it is implemented in CMT. '
                                  f'for nT = {is_nt}')
 
-            return float(correction)
+            if 'samples' in model_type:  # samples are int others are float 
+                return int(correction)
+            else:
+                return float(correction)
 
 
 @export
