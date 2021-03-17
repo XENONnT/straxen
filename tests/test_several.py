@@ -189,14 +189,14 @@ def test_several():
                                                time_range=(events[0]['time'],
                                                            events[0]['endtime']),
                                                xenon1t=True,
-                                               plot_record_matrix=True
+                                               plot_record_matrix=True,
                                                )
             fig.save('test_display.html')
 
             # Test data selector:
             from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
             ds = DataSelectionHist('ds')
-            f = ds.histogram2d(p,
+            fig = ds.histogram2d(p,
                                p['area'],
                                p['area'],
                                bins=50,
@@ -206,7 +206,7 @@ def test_several():
                                undeflow_color='white')
 
             import bokeh.plotting as bklt
-            bklt.save(f, 'test_data_selector.html')
+            bklt.save(fig, 'test_data_selector.html')
 
         # On windows, you cannot delete the current process'
         # working directory, so we have to chdir out first.

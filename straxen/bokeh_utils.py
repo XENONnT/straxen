@@ -95,7 +95,7 @@ def _patches_x_y(peak, keep_amplitude_per_sample=False):
 
     x = np.arange(peak["length"])
     xx = np.zeros(2 * len(x), dtype=x.dtype)
-    mx = 0.5 * (x[1::] + x[0:-1])
+    mx = 0.5 * (x[1::] + x[:-1])
     xx[1:-1:2] = mx
     xx[2::2] = mx
     xx[0] = 1.5 * x[0] - 0.5 * x[1]
@@ -106,7 +106,7 @@ def _patches_x_y(peak, keep_amplitude_per_sample=False):
     yy[0::2] = y
     yy[1::2] = y
     yy = np.array(yy) / dt_a
-    # y = np.array(y) / dt_a
+
     # baseline since we'll fill underneath
     xx = np.concatenate([[xx[0]], xx, [xx[-1]]])
     yy = np.concatenate([[0], yy, [0]])
