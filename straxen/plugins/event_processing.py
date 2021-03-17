@@ -374,13 +374,11 @@ class EventPositions(strax.Plugin):
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
-        'elife_file',
+        'elife_conf',
         default=('elife_constant', 700000., True),
-        help='Electron lifetime model '
-             'To use a constant value, provide a link (as this default) To use'
-             'the corrections management tools specify the following:'
+        help='Electron lifetime '
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
-             'where model_type can be "elife_model" or "elife_constant" '
+             'where model_type can be "elife" or "elife_constant" '
              'and model_config can be a version'
    ))
 class CorrectedAreas(strax.Plugin):
@@ -410,7 +408,7 @@ class CorrectedAreas(strax.Plugin):
                 get_resource(self.config['s1_relative_lce_map']))
         self.s2_map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
-        self.elife = get_correction_from_cmt(self.run_id, self.config['elife_file'])
+        self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.

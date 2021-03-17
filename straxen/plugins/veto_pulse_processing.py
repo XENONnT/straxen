@@ -49,6 +49,11 @@ class nVETOPulseProcessing(strax.Plugin):
     data_kind = 'records_nv'
     ends_with = '_nv'
 
+    def setup(self):
+
+        baseline_samples = straxen.get_correction_from_cmt(self.run_id,
+                                                           self.config['baseline_samples_nv'])
+
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
             self.deps['raw_records_coin_nv'].dtype_for('raw_records_coin_nv'))
@@ -63,7 +68,6 @@ class nVETOPulseProcessing(strax.Plugin):
 
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
-        baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['baseline_samples_nv'])
         strax.baseline(r,
                        baseline_samples=baseline_samples,
                        flip=True)

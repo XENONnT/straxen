@@ -82,7 +82,9 @@ class CorrectionsManagementServices():
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
-            raise ValueError(f'{config_model} not found')
+            raise ValueError(f'{config_model} not found, currently these are '
+                             f'available {single_value_corrections} and '
+                             f'{corrections_w_file} ')
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
     # entry for e.g. for super runs

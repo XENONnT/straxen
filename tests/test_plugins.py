@@ -22,9 +22,9 @@ testing_config_nT = dict(
     ('to_pe_per_run',
      straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
     s2_xy_correction_map = straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
-    elife_file = ('elife_constant', 700000., True),
-    baseline_samples_nv = ('baseline_samples_nv_constant', 10., False),
-    nbaseline_samples_lone_records_nv = ('baseline_samples_nv_constant', 10., False)
+    elife_conf = ('elife_constant', 700000., True),
+    baseline_samples_nv = ('baseline_samples_nv_constant', 10., True),
+    nbaseline_samples_lone_records_nv = ('baseline_samples_nv_constant', 10., True)
 )
 
 testing_config_1T = dict(

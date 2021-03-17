@@ -56,6 +56,11 @@ class nVETORecorder(strax.Plugin):
 
     data_kind = {key: key for key in provides}
 
+    def setup(self):
+        
+        baseline_samples = straxen.get_correction_from_cmt(self.run_id,
+                                                           self.config['nbaseline_samples_lone_records_nv'])
+        
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
@@ -114,7 +119,6 @@ class nVETORecorder(strax.Plugin):
 
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
-        baseline_samples = straxen.get_correction_from_cmt(self.run_id, self.config['nbaseline_samples_lone_records_nv'])
         strax.baseline(lr,
                        baseline_samples=baseline_samples,
                        flip=True)
