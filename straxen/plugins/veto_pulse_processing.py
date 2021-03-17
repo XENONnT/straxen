@@ -51,7 +51,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
     def setup(self):
 
-        baseline_samples = straxen.get_correction_from_cmt(self.run_id,
+        self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
                                                            self.config['baseline_samples_nv'])
 
     def infer_dtype(self):
@@ -69,7 +69,7 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
         strax.baseline(r,
-                       baseline_samples=baseline_samples,
+                       baseline_samples=self.baseline_samples,
                        flip=True)
 
         if self.config['min_samples_alt_baseline_nv']:
