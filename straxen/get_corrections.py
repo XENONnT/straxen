@@ -106,10 +106,12 @@ def get_correction_from_cmt(run_id, conf):
             return int(correction)
         else:
             return float(correction)
+
     else:
         raise ValueError(f'Wrong configuration.'
                          f'Please use the following format: '
-                         f'(model_type->str, model_config->str, is_nT->bool)')
+                         f'(model_type->str, model_config->str or number, is_nT->bool)'
+                         f'User specify {conf} please modify')
 
 @export
 def get_config_from_cmt(run_id, conf):

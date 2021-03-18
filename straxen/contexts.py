@@ -242,6 +242,7 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
+    elife_conf=("elife", "ONLINE", False),
 )
 
 

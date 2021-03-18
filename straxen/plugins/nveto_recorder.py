@@ -16,7 +16,7 @@ export, __all__ = strax.exporter()
                  help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('nbaseline_samples_lone_records_nv', type=tuple,
+    strax.Option('baseline_samples_nv', type=tuple,
                  default=('baseline_samples_nv', 'ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
@@ -55,12 +55,12 @@ class nVETORecorder(strax.Plugin):
                 'lone_raw_record_statistics_nv')
 
     data_kind = {key: key for key in provides}
-
+    
     def setup(self):
-        
-        self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
-                                                           self.config['nbaseline_samples_lone_records_nv'])
-        
+
+       self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
+                                                               self.config['baseline_samples_nv']) 
+     
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
