@@ -24,7 +24,6 @@ testing_config_nT = dict(
     s2_xy_correction_map = straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
     elife_conf = ('elife_constant', 700000., True),
     baseline_samples_nv = ('baseline_samples_nv_constant', 10, True),
-    nbaseline_samples_lone_records_nv = ('baseline_samples_nv_constant', 10, True)
 )
 
 testing_config_1T = dict(
