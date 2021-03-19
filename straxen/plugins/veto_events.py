@@ -25,6 +25,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     """
     depends_on = 'hitlets_nv'
     provides = 'events_nv'
+    data_kind = 'events_nv'
 
     parallel = 'process'
     compressor = 'zstd'
@@ -131,3 +132,121 @@ def compute_nveto_event_properties(events, contained_hitlets, start_channel=2000
         for h in hitlets:
             ch = h['channel'] - start_channel
             e['area_per_channel'][ch] += h['area']
+
+
+@strax.takes_config(
+    strax.Option('angle_max_time_nv', default=10,
+                 help="Time [ns] within an evnet use to compute the azimuthal angle of the event."),
+)
+class nVETOEventPositions(strax.Plugin):
+    """
+    Plugin which computes the interaction position in the nveto as an
+    azimuthal angle.
+    """
+    depends_on = ('events_nv', 'hitlets_nv')
+    data_kind = 'events_nv'
+    provides = 'event_positions_nv'
+
+    loop_over = 'events_nv'
+    compressor = 'zstd'
+    save_when = strax.SaveWhen.TARGET
+
+    # Needed in case we make again an muVETO child.
+    ends_with = '_nv'
+
+    dtype = []
+    dtype += strax.time_fields
+    dtype += [(('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
+                'angle'), np.float32)]
+
+    __version__ = '0.0.2'
+
+    def setup(self):
+        self.pmt_properties = 1
+        raise NotImplementedError('Need X/Y/Z in database')
+
+    def compute(self, events_nv, hitlets_nv):
+        hits_in_events = strax.split_by_containment(hitlets_nv,
+                                                    events_nv)
+
+        angle = compute_average_angle(hits_in_events,
+                                      self.pmt_properties)
+
+        event_angles = np.zeros(len(events_nv), dtype=self.dtype)
+
+        event_angles['angle'] = angle
+        strax.copy_to_buffer(events_nv, event_angles, '_copy_events_nv')
+
+        return event_angles
+
+
+@numba.njit
+def compute_average_angle(hitlets_in_event,
+                          pmt_properties,
+                          start_channel=2000,
+                          max_time=10):
+    """
+    Computes azimuthal angle as an area weighted mean over all hitlets
+    which arrive within a certain time window.
+
+    :param hitlets_in_event: numba.typed.List containing the hitlets per
+        event.
+    :param pmt_properties: numpy.sturctured.array containing the PMT
+        positions in the fields "x" and "y".
+    :param start_channel: First channel e.g. 2000 for nevto.
+    :param max_time: Time within a hitlet must arrive in order to be
+        used in the computation.
+    :return: np.array holding the azimuthal angles.
+    """
+    res = np.zeros(len(hitlets_in_event), np.float32)
+    for ind, hitlets in enumerate(hitlets_in_event):
+        m = (hitlets['time'] - hitlets[0]['time']) < max_time
+        h = hitlets[m]
+        x = pmt_properties['x'][h['channel'] - start_channel]
+        y = pmt_properties['y'][h['channel'] - start_channel]
+
+        weighted_mean_x = np.sum(x * h['area']) / np.sum(h['area'])
+        weighted_mean_y = np.sum(y * h['area']) / np.sum(h['area'])
+        res[ind] = _circ_angle(weighted_mean_x, weighted_mean_y)
+    return res
+
+
+@numba.njit
+def circ_angle(x_values, y_values):
+    """
+    Loops over a set of x and y values and computes azimuthal angle.
+
+    :param x_values: x-coordinates
+    :param y_values: y-coordinates
+    :return: angles
+    """
+    res = np.zeros(len(x_values), dtype=np.float32)
+    for ind, (x, y) in enumerate(zip(x_values, y_values)):
+        res[ind] = _circ_angle(x, y)
+    return res
+
+
+@numba.njit
+def _circ_angle(x, y):
+    if x > 0 and y >= 0:
+        # 1st quadrant
+        angle = np.abs(np.arctan(y / x))
+        return angle
+    elif x <= 0 and y > 0:
+        # 2nd quadrant
+        angle = np.abs(np.arctan(x / y))
+        return np.pi / 2 + angle
+    elif x < 0 and y <= 0:
+        # 3rd quadrant
+        angle = np.abs(np.arctan(y / x))
+        return np.pi + angle
+    elif y < 0 and x >= 0:
+        # 4th quadrant
+        angle = np.abs(np.arctan(x / y))
+        return 3 / 2 * np.pi + angle
+    elif x == 0 and y == 0:
+        return np.NaN
+    else:
+        print(x, y)
+        raise ValueError('It should be impossible to arrive here, '
+                         'but somehow we managed.')
