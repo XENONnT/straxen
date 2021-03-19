@@ -58,9 +58,9 @@ class nVETORecorder(strax.Plugin):
     
     def setup(self):
 
-       self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
-                                                               self.config['baseline_samples_nv']) 
-     
+        self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
+                                                               self.config['baseline_samples_nv'])
+ 
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
