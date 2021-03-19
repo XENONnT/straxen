@@ -150,7 +150,7 @@ def peak_tool_tip(peak_type):
     return tool_tip
 
 
-def default_fig(width=400, height=400, title=''):
+def default_fig(width=400, height=400, title='', **kwargs):
     """
     Helper function which returns a bokeh.plotting.figure instance
     with sizing_mode set to 'scale_both' and an aspect ratio set
@@ -160,6 +160,8 @@ def default_fig(width=400, height=400, title=''):
     :param height: PLot height in pixels.
     :param title: Title of the plot.
 
+    Also allows for additional kwargs accepted by bokeh.plotting.
+
     :returns: bokeh.plotting.figure  instance.
     """
     fig = bklt.figure(plot_width=width,
@@ -167,6 +169,7 @@ def default_fig(width=400, height=400, title=''):
                       sizing_mode='scale_both',
                       aspect_ratio=width / height,
                       title=title,
-                      tools="pan,box_zoom,reset,save"
+                      tools="pan,box_zoom,reset,save",
+                      **kwargs
                       )
     return fig

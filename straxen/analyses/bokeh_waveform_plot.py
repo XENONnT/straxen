@@ -31,26 +31,31 @@ def event_display_interactive(events,
                               plot_records_threshold=10,
                               xenon1t=False,
                               colors=('gray', 'blue', 'green'),
+                              yscale=('linear', 'linear', 'linear'),
                               log=True, ):
     """
     Interactive event display for XENONnT. Plots detailed main/alt
     S1/S2, bottom and top PMT hit pattern as well as all other peaks
     in a given event.
 
-    :param top_pmt_array: If true plots top PMT array hit-pattern.
     :param bottom_pmt_array: If true plots bottom PMT array hit-pattern.
     :param only_main_peaks: If true plots only main peaks into detail
         plots as well as PMT arrays.
     :param only_peak_detail_in_wf: Only plots main/alt S1/S2 into
         waveform. Only plot main peaks if only_main_peaks is true.
+    :param plot_all_pmts: Bool if True, colors switched off PMTs instead
+        of showing them in gray, useful for graphs shown in talks.
     :param plot_record_matrix: If true record matrix is plotted below.
         waveform.
     :param plot_records_threshold: Threshold at which zoom level to display
         record matrix as polygons. Larger values may lead to longer
         render times since more polygons are shown.
-    :param xenin1T: Flag to use event display with 1T data.
+    :param xenon1t: Flag to use event display with 1T data.
     :param colors: Colors to be used for peaks. Order is as peak types,
         0 = Unknown, 1 = S1, 2 = S2. Can be any colors accepted by bokeh.
+    :param yscale: Defines scale for main/alt S1 == 0, main/alt S2 == 1,
+        waveform plot == 2. Please note, that the log scale can lead to funny
+        glyph renders for small values.
     :param log: If true color sclae is used for hitpattern plots.
 
     Note:
@@ -69,6 +74,9 @@ def event_display_interactive(events,
     :return: bokeh.plotting.figure instance.
     """
     st = context
+
+    if len(yscale) != 3:
+        raise ValueError(f'"yscale" needs three entries, but you passed {len(yscale)}.')
 
     if not hasattr(st, '_BOKEH_CONFIGURED_NOTEBOOK'):
         st._BOKEH_CONFIGURED_NOTEBOOK = True
@@ -110,7 +118,8 @@ def event_display_interactive(events,
                                             s1_keys,
                                             s2_keys,
                                             labels,
-                                            colors)
+                                            colors,
+                                            yscale[:2], )
 
     # PMT arrays:
     if not only_main_peaks:
@@ -142,7 +151,7 @@ def event_display_interactive(events,
         # If specified by the user only plot main/alt S1/S2
         peaks = peaks[~m_other_peaks]
 
-    waveform = plot_event(peaks, signal, labels, events[0], colors)
+    waveform = plot_event(peaks, signal, labels, events[0], colors, yscale[-1])
 
     # Create tile:
     title = _make_event_title(events[0], run_id)
@@ -216,7 +225,12 @@ def event_display_interactive(events,
     return event_display
 
 
-def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors):
+def plot_detail_plot_s1_s2(signal,
+                           s1_keys,
+                           s2_keys,
+                           labels,
+                           colors,
+                           yscale=('linear', 'linear')):
     """
     Function to plot the main/alt S1/S2 peak details.
 
@@ -225,12 +239,17 @@ def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors):
     :param s2_keys: Same but for S2
     :param labels: Labels to be used for Peaks
     :param colors: Colors to be used
+    :param yscale: Tuple with axis scale type.
+
     :return: S1 and S2 bokeh figure.
     """
     # First we create figure then we loop over figures and plots and
     # add drawings:
-    fig_s1 = straxen.bokeh_utils.default_fig(title='Main/Alt S1')
-    fig_s2 = straxen.bokeh_utils.default_fig(title='Main/Alt S2')
+    fig_s1 = straxen.bokeh_utils.default_fig(title='Main/Alt S1',
+                                             y_axis_type=yscale[0], )
+    fig_s2 = straxen.bokeh_utils.default_fig(title='Main/Alt S2',
+                                             y_axis_type=yscale[1], )
+
     for fig, peak_types in zip([fig_s1, fig_s2],
                                (s1_keys, s2_keys)):
         # Loop over fig and corresponding peak keys
@@ -306,7 +325,7 @@ def plot_pmt_arrays_and_positions(top_array_keys,
     return fig_top, fig_bottom
 
 
-def plot_event(peaks, signal, labels, event, colors):
+def plot_event(peaks, signal, labels, event, colors, yscale='linear'):
     """
     Wrapper for plot peaks to highlight main/alt. S1/S2
 
@@ -314,9 +333,12 @@ def plot_event(peaks, signal, labels, event, colors):
     :param signal: Dictionary containing main/alt. S1/S2
     :param labels: dict with labels to be used
     :param event: Event to set correctly x-ranges.
+    :param colors: Colors to be used for unknown, s1 and s2 signals.
+    :param yscale: string of yscale type.
+
     :return: bokeh.plotting.figure instance
     """
-    waveform = plot_peaks(peaks, time_scaler=1000, colors=colors)
+    waveform = plot_peaks(peaks, time_scalar=1000, colors=colors, yscale=yscale)
     # Highlight main and alternate S1/S2:
     start = peaks[0]['time']
     end = strax.endtime(peaks)[-1]
@@ -351,7 +373,12 @@ def plot_event(peaks, signal, labels, event, colors):
     return waveform
 
 
-def plot_peak_detail(peak, time_scalar=1, label='', unit='ns', fig=None, colors=('gray', 'blue', 'green')):
+def plot_peak_detail(peak,
+                     time_scalar=1,
+                     label='',
+                     unit='ns',
+                     colors=('gray', 'blue', 'green'),
+                     fig=None, ):
     """
     Function which makes a detailed plot for the given peak. As in the
     main/alt S1/S2 plots of the event display.
@@ -361,6 +388,7 @@ def plot_peak_detail(peak, time_scalar=1, label='', unit='ns', fig=None, colors=
         E.g. =1000 scales to µs.
     :param label: Label to be used in the plot legend.
     :param unit: Time unit of the plotted peak.
+    :param colors: Colors to be used for unknown, s1 and s2 peaks.
     :param fig: Instance of bokeh.plotting.figure if None one will be
         created via straxen.bokeh.utils.default_figure().
     :return: Instance of bokeh.plotting.figure
@@ -413,20 +441,22 @@ def plot_peak_detail(peak, time_scalar=1, label='', unit='ns', fig=None, colors=
     return fig, patches
 
 
-def plot_peaks(peaks, time_scaler=1, fig=None, colors=('gray', 'blue', 'green')):
+def plot_peaks(peaks, time_scalar=1, fig=None, colors=('gray', 'blue', 'green'), yscale='linear'):
     """
     Function which plots a list/array of peaks relative to the first
     one.
 
     :param peaks: Peaks to be plotted.
-    :param time_scaler:  Factor to rescale the time from ns to other scale.
+    :param time_scalar:  Factor to rescale the time from ns to other scale.
         E.g. =1000 scales to µs.
+    :param colors: Colors to be used for unknown, s1 and s2 signals
+    :param yscale: yscale type can be "linear" or "log"
     :param fig: Instance of bokeh.plotting.figure if None one will be
         created via straxen.bokeh.utils.default_figure().
     :return: bokeh.plotting.figure instance.
     """
     if not fig:
-        fig = straxen.bokeh_utils.default_fig(width=1600, height=400)
+        fig = straxen.bokeh_utils.default_fig(width=1600, height=400, y_axis_type=yscale)
 
     for i in range(0, 3):
         _ind = np.where(peaks['type'] == i)[0]
@@ -435,7 +465,7 @@ def plot_peaks(peaks, time_scaler=1, fig=None, colors=('gray', 'blue', 'green'))
 
         source = straxen.bokeh_utils.get_peaks_source(peaks[_ind],
                                                       relative_start=peaks[0]['time'],
-                                                      time_scaler=time_scaler,
+                                                      time_scaler=time_scalar,
                                                       keep_amplitude_per_sample=False
                                                       )
 
@@ -471,7 +501,7 @@ def plot_pmt_array(peak,
                    log=False,
                    xenon1t=False,
                    fig=None,
-                   label='',):
+                   label='', ):
     """
     Plots top or bottom PMT array for given peak.
 
@@ -479,7 +509,10 @@ def plot_pmt_array(peak,
     :param array_type: String which specifies if "top" or "bottom"
         PMT array should be plotted
     :param to_pe: PMT gains.
-    :param log: If true use a log-scale for the colorscale.
+    :param log: If true use a log-scale for the color scale.
+    :param plot_all_pmts: If True colors all PMTs instead of showing
+        swtiched off PMTs as gray dots.
+    :param xenon1t: If True plots 1T array.
     :param fig: Instance of bokeh.plotting.figure if None one will be
         created via straxen.bokeh.utils.default_figure().
     :param label: Label of the peak which should be used for the
