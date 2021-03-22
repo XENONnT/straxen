@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
                  help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('baseline_samples_nv', type=tuple,
+    strax.Option('baseline_samples_nv', 
                  default=('baseline_samples_nv', 'ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
