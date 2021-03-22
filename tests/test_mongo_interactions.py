@@ -49,6 +49,15 @@ def test_downloader():
     assert os.path.exists(path)
 
 
+def test_elife():
+    """Test the get_elife function from CMT"""
+    if not straxen.utilix_is_configured():
+        warn('Cannot test CMT elife since utilix is not configured')
+        return
+    cmt = straxen.CorrectionsManagementServices()
+    cmt.get_elife(test_run_id_nT, 'elife_model', 'ONLINE')
+
+
 def _patch_om_init(take_only):
     """
     temp patch since om = straxen.OnlineMonitor() does not work with utilix

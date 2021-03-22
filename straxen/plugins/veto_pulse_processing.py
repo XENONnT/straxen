@@ -14,7 +14,8 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_nv',
-        default=('baseline_samples_nv', 'ONLINE', True), type=tuple, track=True,
+        default_by_run=[(0, 10),
+                        (12684, 26)], track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
@@ -49,13 +50,6 @@ class nVETOPulseProcessing(strax.Plugin):
     data_kind = 'records_nv'
     ends_with = '_nv'
 
-    def setup(self):
-        if isinstance(self.config['baseline_samples_nv'], int):
-            self.baseline_samples = self.config['baseline_samples_nv']
-        else:
-            self.baseline_samples = straxen.get_correction_from_cmt(
-                self.run_id, self.config['baseline_samples_nv'])
-
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
             self.deps['raw_records_coin_nv'].dtype_for('raw_records_coin_nv'))
@@ -71,7 +65,7 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
         strax.baseline(r,
-                       baseline_samples=self.baseline_samples,
+                       baseline_samples=self.config['baseline_samples_nv'],
                        flip=True)
 
         if self.config['min_samples_alt_baseline_nv']:
@@ -247,9 +241,6 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
     provides = 'records_mv'
     data_kind = 'records_mv'
     child_plugin = True
-
-    def setup(self):
-        self.baseline_samples = self.config['baseline_samples_mv']
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
