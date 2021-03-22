@@ -13,6 +13,9 @@ export, __all__ = strax.exporter()
 corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
                       's2_xy_map', 's1_xy_map', 'fdc_map']
 
+single_value_corrections = ['elife', 'baseline_samples_nv',
+                            'electron_drift_velocity']
+
 
 @export
 class CorrectionsManagementServices():
@@ -75,19 +78,20 @@ class CorrectionsManagementServices():
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, global_version)
-        elif 'elife' in model_type:
-            return self.get_elife(run_id, model_type, global_version)
+        elif model_type in single_value_corrections:
+            return self._get_correction(run_id, model_type, global_version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
-            raise ValueError(f'{config_model} not found')
+            raise ValueError(f"{config_model} not found, currently these are "
+                             f"available {single_value_corrections} and "
+                             f"{corrections_w_file} ")
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
     # entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
-    def _get_correction(self, run_id, correction, global_version,
-                        correction_dtype=np.float64):
+    def _get_correction(self, run_id, correction, global_version):
         """
         Smart logic to get correction from DB
         :param run_id: run id from runDB
@@ -116,31 +120,10 @@ class CorrectionsManagementServices():
                     values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
         except KeyError:
-            raise ValueError(f'Global version {global_version} not found for correction {correction}')
+            raise ValueError(f"Global version {global_version} not found for correction {correction}")
 
         else:
             return corrections
-
-    def get_elife(self, run_id, model_type, global_version):
-        """
-        Smart logic to return electron lifetime correction
-        :param run_id: run id from runDB
-        :param model_type: choose either elife_model or elife_constant
-        :param global_version: global version, or float (if model_type == elife_constant)
-        :return: electron lifetime correction value
-        """
-        if model_type == 'elife_model':
-            return self._get_correction(run_id, 'elife', global_version)
-
-        elif model_type == 'elife_constant':
-            # This is nothing more than just returning the value we put in
-            if not isinstance(global_version, float):
-                raise ValueError(f'User specify a model type {model_type} '
-                                 f'and should provide a float. Got: '
-                                 f'{type(global_version)}')
-            return float(global_version)
-        else:
-            raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
     def get_pmt_gains(self, run_id, model_type, global_version,
                       cacheable_versions=('ONLINE',),
@@ -181,13 +164,13 @@ class CorrectionsManagementServices():
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
                 raise ValueError(
-                    f'to_pe(PMT gains) values are NaN, no data available'
-                    f' for {run_id} in the gain model with version '
-                    f'{global_version}, please set constant values for '
-                    f'{run_id}')
+                    f"to_pe(PMT gains) values are NaN, no data available "
+                    f"for {run_id} in the gain model with version "
+                    f"{global_version}, please set constant values for "
+                    f"{run_id}")
 
         else:
-            raise ValueError(f'{model_type} not implemented for to_pe values')
+            raise ValueError(f"{model_type} not implemented for to_pe values")
 
         # Double check the dtype of the gains
         to_pe = np.array(to_pe, dtype=gain_dtype)
@@ -212,11 +195,11 @@ class CorrectionsManagementServices():
 
     def get_config_from_cmt(self, run_id, model_type, global_version='ONLINE'):
         """
-        Smart logic to return NN weights file name to be downloader by 
+        Smart logic to return NN weights file name to be downloader by
         straxen.MongoDownloader()
         :param run_id: run id from runDB
-        :param model_type: model type and neural network type; model_mlp, 
-        or model_gcn or model_cnn 
+        :param model_type: model type and neural network type; model_mlp,
+        or model_gcn or model_cnn
         :param global_version: global version
         :param return: NN weights file name
         """
