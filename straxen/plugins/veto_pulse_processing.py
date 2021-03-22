@@ -50,9 +50,11 @@ class nVETOPulseProcessing(strax.Plugin):
     ends_with = '_nv'
 
     def setup(self):
-        
-        self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
-                                                                self.config['baseline_samples_nv'])
+        if isinstance(self.config['baseline_samples_nv'], int):
+            self.baseline_samples = self.config['baseline_samples_nv']
+        else:
+            self.baseline_samples = straxen.get_correction_from_cmt(
+                self.run_id, self.config['baseline_samples_nv'])
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(

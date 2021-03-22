@@ -84,6 +84,9 @@ FIXED_TO_PE = {
 
 @export
 def get_correction_from_cmt(run_id, conf):
+    if isinstance(conf, str) and conf.startswith('https://raw'):
+        # Legacy support for pax files
+        return conf
     if isinstance(conf, tuple) and len(conf) == 3:
         is_nt = conf[-1]
 
@@ -132,7 +135,20 @@ def get_config_from_cmt(run_id, conf):
         this_file = ' '.join(map(str, this_file))
 
     else:
-        raise ValueError(f"Wrong NN configuration, please look at this {nn_config} "
+        raise ValueError(f"Wrong NN configuration, please look at this {conf} "
                          "and modify it accordingly")
 
     return this_file
+
+
+def get_elife(run_id, elife_conf):
+    # 1T support for electron lifetimes from a file
+    # Let's remove these functions and only rely on the CMT in the future
+    x = straxen.get_resource(elife_conf, fmt='npy')
+    run_index = np.where(x['run_id'] == int(run_id))[0]
+    if not len(run_index):
+        # Electron lifetime not known: using placeholders
+        e = 623e3
+    else:
+        e = x[run_index[0]]['e_life']
+    return float(e)

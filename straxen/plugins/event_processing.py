@@ -2,8 +2,8 @@ import strax
 
 import numpy as np
 
-from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
-from straxen.get_corrections import get_correction_from_cmt, get_config_from_cmt
+from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.get_corrections import get_correction_from_cmt, get_config_from_cmt, get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
@@ -375,11 +375,11 @@ class EventPositions(strax.Plugin):
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
         'elife_conf',
-        default=('elife_constant', 700000., True),
+        default=("elife", "ONLINE", True),
         help='Electron lifetime '
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife" or "elife_constant" '
-             'and model_config can be a version'
+             'and model_config can be a version. Files can be supported '
    ))
 class CorrectedAreas(strax.Plugin):
     """
@@ -409,6 +409,10 @@ class CorrectedAreas(strax.Plugin):
         self.s2_map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
+
+        if isinstance(self.elife, str):
+            # Legacy 1T support
+            self.elife = get_elife(self.run_id, self.elife)
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.

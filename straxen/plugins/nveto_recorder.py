@@ -57,10 +57,12 @@ class nVETORecorder(strax.Plugin):
     data_kind = {key: key for key in provides}
     
     def setup(self):
+        if isinstance(self.config['baseline_samples_nv'], int):
+            self.baseline_samples = self.config['baseline_samples_nv']
+        else:
+            self.baseline_samples = straxen.get_correction_from_cmt(
+                self.run_id, self.config['baseline_samples_nv'])
 
-        self.baseline_samples = straxen.get_correction_from_cmt(self.run_id,
-                                                               self.config['baseline_samples_nv'])
- 
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))

@@ -46,7 +46,6 @@ xnt_common_config = dict(
     # Clustering/classification parameters
     s1_max_rise_time=100,
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
-    elife_conf=("elife", "ONLINE", True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -272,8 +271,7 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
-    elife_conf = ('elife_constant', 700000., False)
-       
+    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
 )
 
 
