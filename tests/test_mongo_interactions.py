@@ -8,7 +8,6 @@ not show up in Pull Requests.
 import straxen
 import os
 from warnings import warn
-from .test_plugins import test_run_id_nT
 
 
 def test_select_runs(check_n_runs=2):
