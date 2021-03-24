@@ -3,6 +3,7 @@ import configparser
 import gzip
 import inspect
 import io
+import commentjson
 import json
 import os
 import os.path as osp
@@ -112,7 +113,7 @@ def open_resource(file_name: str, fmt='text'):
             result = json.load(f)
     elif fmt == 'json':
         with open(file_name, mode='r') as f:
-            result = json.load(f)
+            result = commentjson.load(f)
     elif fmt == 'binary':
         with open(file_name, mode='rb') as f:
             result = f.read()

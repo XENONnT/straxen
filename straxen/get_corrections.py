@@ -59,13 +59,13 @@ def get_to_pe(run_id, gain_model, n_pmts):
             # Uniform gain, specified as a to_pe factor
             to_pe = np.ones(n_pmts, dtype=np.float32) * model_conf
         except np.core._exceptions.UFuncTypeError as e:
-            raise(str(e) +
-                  f'\nTried multiplying by {model_conf}. Insert a number instead.')
+            raise (str(e) +
+                   f'\nTried multiplying by {model_conf}. Insert a number instead.')
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
     if len(to_pe) != n_pmts:
-       raise ValueError(
+        raise ValueError(
             f"Gain model {gain_model} resulted in a to_pe "
             f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
     return to_pe
@@ -98,7 +98,7 @@ def get_elife(run_id, elife_conf):
         x = straxen.get_resource(elife_conf, fmt='npy')
         run_index = np.where(x['run_id'] == int(run_id))[0]
         if not len(run_index):
-            # Gains not known: using placeholders
+            # Electron lifetime not known: using placeholders
             e = 623e3
         else:
             e = x[run_index[0]]['e_life']
@@ -108,23 +108,28 @@ def get_elife(run_id, elife_conf):
             'Corrections Management Tools format: '
             '(model_type->str, model_config->str, is_nT->bool)'
             '')
-    return e
+    return float(e)
+
+
 @export
-def get_NN_file(run_id, nn_conf):
-    if not isinstance(nn_conf, tuple):
-        raise ValueError(f'NN_model must be a tuple')
-    if not len(nn_conf) == 3:
-        raise ValueError(f'NN_model must have three elements: '
+def get_config_from_cmt(run_id, conf):
+    if isinstance(conf, str) and conf.startswith('https://raw'):
+        # Legacy support for pax files
+        return conf
+    if not isinstance(conf, tuple):
+        raise ValueError(f'conf must be a tuple')
+    if not len(conf) == 3:
+        raise ValueError(f'conf must have three elements: '
                          f'the model type, its specific configuration '
                          f'and detector (True = nT)')
-    model_type, model_conf, is_nt = nn_conf
+    model_type, model_conf, is_nt = conf
     if model_type == 'CMT_model':
         cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
-        nn_file = cmt.get_corrections_config(run_id, model_conf)
-        nn_file = ' '.join(map(str, nn_file))    
+        this_file = cmt.get_corrections_config(run_id, model_conf)
+        this_file = ' '.join(map(str, this_file))
 
     else:
         raise ValueError(f'Wrong NN configuration, please look at this {nn_config} '
                          'and modify it accordingly')
 
-    return nn_file
+    return this_file

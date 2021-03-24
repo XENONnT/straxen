@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.0.4'
+__version__ = '1.1.2'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -157,8 +157,6 @@ args = parser.parse_args()
 # Configuration
 ##
 
-print(f'---\n bootstrax version {__version__}\n---')
-
 # The folder that can be used for testing bootstrax (i.e. non production
 # mode). It will be written to:
 test_data_folder = ('/data/test_processed/' if
@@ -207,6 +205,10 @@ timeouts = {
     'max_data_rate_infer_time': 60,
     # Minimum time we have to be in the run before we can infer the datarate (s).
     'min_data_rate_infer_time': 15,
+    # Bootstrax can abandon runs for this time based on a tag, after that it
+    # should not be on the DAQ any way or can be manually failed using the
+    # --abandon option. We can abandon a run only for this many seconds:
+    'abandoning_allowed': 3600 * 24 * 7,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -258,7 +260,13 @@ max_queue_new_runs = 2
 # this many times. If high level data is hitting some edge case, we
 # might want to be able to keep the intermediate level data.
 # NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
-remove_target_after_fails = dict(events=2, hitlets=2, peak=3, online=4, ALL=5)
+remove_target_after_fails = dict(events=2,
+                                 hitlets=2,
+                                 peaks=3,
+                                 peak_basics=3,
+                                 peaklets=4,
+                                 online=4,
+                                 ALL=5)
 
 ##
 # Initialize globals (e.g. rundb connection)
@@ -267,7 +275,7 @@ hostname = socket.getfqdn()
 
 try:
     import daqnt
-    log_name = 'bootstrax_' + hostname + ('' if args.production else 'TESTING')
+    log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
     log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
 except ModuleNotFoundError:
     logging.basicConfig(
@@ -275,6 +283,8 @@ except ModuleNotFoundError:
         format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
         datefmt='%m-%d %H:%M')
     log = logging.getLogger()
+
+log.info(f'---\n bootstrax version {__version__}\n---')
 
 # Set the output folder
 output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
@@ -309,31 +319,26 @@ if os.access(output_folder, os.W_OK) is not True:
 def new_context(cores=args.cores,
                 max_messages=args.max_messages,
                 timeout=500,
-                targets=strax.to_str_tuple(args.targets),
                 ):
     """Create strax context that can access the runs db"""
     # We use exactly the same logic of straxen to access the runs DB;
     # this avoids duplication, and ensures strax can access the runs DB if we can
-    class MergeTargets(strax.Plugin):
-        """Mergeonly plugin to allow a single endpoint for st.make"""
-        depends_on = targets
-        provides = 'multiple'
-        save_when = strax.SaveWhen.NEVER
-        dtype = strax.time_fields
-
-        def compute(self, **kwargs):
-            return np.empty(0, dtype=self.dtype)
 
     context = straxen.contexts.xenonnt_online(
         output_folder=output_folder,
         we_are_the_daq=True,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
+        allow_lazy=False,
         max_messages=max_messages,
         timeout=timeout)
     if not args.production:
-        context.storage = [strax.DataDirectory(output_folder)]
-    context.register(MergeTargets)
+        # Keep the rundb but set it to readonly and local only, delete
+        # all other storage frontends except fo the test folder.
+        context.storage = [context.storage[0],
+                           strax.DataDirectory(output_folder)]
+        context.storage[0].readonly = True
+        context.storage[0].local_only = True
     return context
 
 
@@ -534,11 +539,19 @@ def infer_target(rd):
 
     n_fails = rd['bootstrax'].get('n_failures', 0)
     if n_fails:
-        log.debug(f'override_target::\tdeleting targets')
+        log.debug(f'Deleting targets')
         for _rm_t, _rm_t_after in remove_target_after_fails.items():
-            _t = [__t for __t in _t if (_rm_t not in __t and n_fails < _rm_t_after)]
-            _pp = [__pp for __pp in _pp if (_rm_t not in __pp and n_fails < _rm_t_after)]
+            for __i, __t in enumerate(_t):
+                if __t in _rm_t and n_fails > _rm_t_after:
+                    log.debug(f'Remove {__t}')
+                    del _t[__i]
+            for __pi, __p  in enumerate(_pp):
+                if __p in _rm_t and n_fails > _rm_t_after:
+                    log.debug(f'Remove {__p}')
+                    del _pp[__pi]
+    log.debug(f'{_t} and {_pp} remaining')
     if n_fails >= remove_target_after_fails['ALL']:
+        log.debug(f'Overwriting to raw-records only')
         _t = 'raw_records'
         _pp = 'raw_records'
         return {'targets': strax.to_str_tuple(_t),
@@ -550,11 +563,13 @@ def infer_target(rd):
     mode = str(rd.get('mode'))
     detectors = list(rd.get('detectors'))
 
-    log.debug(f'override_target::\tmode is {mode}, changing target if needed')
+    log.debug(f'mode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
+        log.debug('led-mode')
         _t = 'led_calibration'
         _pp = 'raw_records'
     elif np.any([m in mode for m in diagnostic_modes]):
+        log.debug('diagnostic-mode')
         _t = 'raw_records'
         _pp = 'raw_records'
 
@@ -578,6 +593,7 @@ def infer_target(rd):
         _pp = 'raw_records'
     _t = strax.to_str_tuple(_t)
     _pp = strax.to_str_tuple(_pp)
+    log.info(f'Inferring modes done, writing {_t} and {_pp}')
     for __check in (_t, _pp):
         if not len(set(__check)) == len(__check):
             log_warning(f'Duplicates in (post) targets {__check}',
@@ -697,8 +713,8 @@ def eb_can_process():
                     '$lt': now(-timeouts['eb3-5_max_busy_time'])}})
             if running_eb:
                 n_ebs_busy += 1
-                log.debug(f'eb_can_process::\t eb{eb_i} is busy')
-    log.info(f'eb_can_process::\trunning: {n_ebs_running}\t'
+                log.debug(f'eb{eb_i} is busy')
+    log.info(f'running: {n_ebs_running}\t'
              f'busy: {n_ebs_busy}\tqueue: {n_untouched_runs}')
     if (not n_ebs_running or
             (n_ebs_running == n_ebs_busy and
@@ -742,7 +758,7 @@ def infer_mode(rd):
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
-    log.info(f'infer_mode::\tData rate: {data_rate} MB/s. New_eb: {is_new_eb}')
+    log.info(f'Data rate: {data_rate} MB/s. New_eb: {is_new_eb}')
     benchmark = {
         'mbs': [0, 70, 90, 110, 150, 220, 290, 360, 390, 420, 500, 550],
         'cores_old': [39, 35, 35, 30, 30, 20, 12, 12, 10, 10, 10, 8],
@@ -774,14 +790,14 @@ def infer_mode(rd):
             max_messages=np.clip(result['max_messages']/(1.1**n_fails), 4, 100).astype(int),
             timeout=np.clip(result['timeout']*(1.1**n_fails), 500, 3600).astype(int),
         )
-        log_warning(f'infer_mode::\tRepeated failures on {rd["number"]}@{hostname}. '
+        log_warning(f'Repeated failures on {rd["number"]}@{hostname}. '
                     f'Lowering to {result}',
                     priority='info',
                     run_id=f'{rd["number"]:06}')
     else:
         result = {k: int(v) for k, v in result.items()}
     result['records_compressor'] = infer_records_compressor(rd, data_rate, n_fails)
-    log.info(f'infer_mode::\tInferred mode for {rd["number"]}\t{result}')
+    log.info(f'Inferred mode for {rd["number"]}\t{result}')
     return result
 
 
@@ -933,7 +949,7 @@ def clear_shm():
 
     if not len(shm_files):
         return
-    log.info(f'clear_shm:: clearing {len(shm_files)} files')
+    log.info(f'Clearing {len(shm_files)} files')
     for f in shm_files:
         os.remove(shm_dir + f)
 
@@ -1060,7 +1076,7 @@ def upload_file_metadata(rd):
         if os.path.exists(loc):
             file_count = len(os.listdir(loc))
             # Can also get the latter from st.lineage_for but too lazy for that
-            data_size_mb, avg_data_size_mb, lineage_hash = None, None, None
+            data_size_mb, avg_data_size_mb, lineage_hash, compressor = None, None, None, None
             run_id = '%06d' % rd['number']
             if st_meta is not None:
                 try:
@@ -1069,6 +1085,7 @@ def upload_file_metadata(rd):
                     data_size_mb = int(np.sum(chunk_mb))
                     avg_data_size_mb = int(np.average(chunk_mb))
                     lineage_hash = md['lineage_hash']
+                    compressor = md['compressor']
                 except Exception as e:
                     log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
                                 priority='warning',
@@ -1083,7 +1100,9 @@ def upload_file_metadata(rd):
                       'data.$.meta.straxen_version': straxen.__version__,
                       'data.$.meta.size_mb': data_size_mb,
                       'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash}
+                      'data.$.meta.lineage_hash': lineage_hash,
+                      'data.$.meta.compressor': compressor,
+                      }
                  })
 
 
@@ -1172,7 +1191,8 @@ def fail_run(rd, reason, error_traceback=''):
         rd['bootstrax'] = {}
         rd['bootstrax']['n_failures'] = 0
 
-    if rd['bootstrax'].get('n_failures', 0) > 0:
+    if ((rd['bootstrax'].get('n_failures', 0) > 0) or
+            ('perhaps it crashed on this run or is still stuck' in reason)):
         fail_name = 'Repeated failure'
         failure_message_level = 'info'
     else:
@@ -1239,7 +1259,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
         st = new_context(cores=cores,
                          max_messages=max_messages,
                          timeout=timeout,
-                         targets=targets)
+                         )
 
         for t in ('raw_records', 'records'):
             # Set the (raw)records processor to the inferred one
@@ -1256,15 +1276,14 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                                 daq_chunk_duration=daq_chunk_duration,
                                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                                 readout_threads=readout_threads,
-                                check_raw_record_overlaps=False,
+                                check_raw_record_overlaps=True,
                                 )
-
-            for i, c in enumerate(st.get_iter(run_id,
-                                              'multiple',
-                                              config=strax_config,
-                                              max_workers=cores)):
-                if not i % 10:
-                    log.info(f'Target plugin - chunk {i}\n\t{c}')
+            log.info(f'Making {run_id}-{targets}')
+            log.debug(f'With {strax_config}, n-cores {cores}')
+            st.make(run_id, targets,
+                    allow_multiple=True,
+                    config=strax_config,
+                    max_workers=cores)
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1274,10 +1293,13 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                                     run_id=run_id)
                         continue
                     elif not st.is_stored(run_id, post_target):
+                        log.info(f'Making {post_target}')
                         st.make(run_id,
                                 post_target,
                                 config=strax_config,
                                 max_workers=cores)
+                    else:
+                        log.info(f'Not making {post_target}, it is already stored')
 
         if args.profile.lower() == 'false':
             st_make()
@@ -1302,6 +1324,8 @@ def process_run(rd, send_heartbeats=args.production):
     log.info(f"Starting processing of run {rd['number']}")
     if rd is None:
         raise RuntimeError("Pass a valid rundoc, not None!")
+    elif args.production and rd.get('bootstrax', {}).get('state', None) == 'done':
+        raise RuntimeError(f'{rd["number"]} is done already, do not make a mass')
 
     # Shortcuts for failing
     class RunFailed(Exception):
@@ -1326,7 +1350,7 @@ def process_run(rd, send_heartbeats=args.production):
             loc = osp.join('/live_data/xenonnt/', run_id)
             # or use the test-dir:
             if not osp.exists(loc):
-                loc = os.path.join('/live_data/xenonnt_test/', run_id)
+                loc = os.path.join('/live_data/xenonnt_bootstrax_test/', run_id)
 
         else:
             for dd in rd['data']:
@@ -1618,11 +1642,13 @@ def cleanup_db():
     # Abandon runs which we already know are so bad that
     # there is no point in retrying them
     abandon_queries = [
-        ({'tags': {
-            '$elemMatch': {
-                'name': 'bad'}}},
-         "Run has a 'bad' tag"),
-    ]
+        ({'tags.name': 'abandon',
+          'bootstrax.state': {'$ne', 'done'},
+          'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
+         "Run has an 'abandon' tag"),
+        ({'tags.name': 'abandon', 'bootstrax.state': 'failed'},
+         "Run has an 'abandon' tag and was failing"),
+        ]
 
     for query, failure_message in abandon_queries:
         query['bootstrax.state'] = {'$ne': 'abandoned'}
