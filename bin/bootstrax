@@ -208,7 +208,7 @@ timeouts = {
     # Bootstrax can abandon runs for this time based on a tag, after that it
     # should not be on the DAQ any way or can be manually failed using the
     # --abandon option. We can abandon a run only for this many seconds:
-    'abandoning_allowed': 3600 * 24 * 7,
+    'abandoning_allowed': 3600 * 24 * 1,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -1643,10 +1643,11 @@ def cleanup_db():
     # there is no point in retrying them
     abandon_queries = [
         ({'tags.name': 'abandon',
-          'bootstrax.state': {'$ne', 'done'},
+          'bootstrax.state': {'$in': ['busy', ' done']},
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
-        ({'tags.name': 'abandon', 'bootstrax.state': 'failed'},
+        ({'tags.name': 'abandon', 
+          'bootstrax.state': 'failed'},
          "Run has an 'abandon' tag and was failing"),
         ]
 
