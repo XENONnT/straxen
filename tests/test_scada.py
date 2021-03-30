@@ -25,7 +25,8 @@ def test_query_sc_values():
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
-                             every_nth_value=1)
+                             every_nth_value=1,
+                             query_type_lab=False,)
 
     assert df['SomeParameter'][0] // 1 == 1253, 'First values returned is not corrrect.'
     assert np.all(np.isnan(df['SomeParameter'][1:])), 'Subsequent values are not correct.'
@@ -37,7 +38,8 @@ def test_query_sc_values():
                              start=start,
                              end=end,
                              fill_gaps='forwardfill',
-                             every_nth_value=1)
+                             every_nth_value=1,
+                             query_type_lab=False,)
     assert np.all(np.isclose(df[:4], 2.079859)), 'First four values deviate from queried values.'
     assert np.all(np.isclose(df[4:], 2.117820)), 'Last two values deviate from queried values.'
 
@@ -47,20 +49,23 @@ def test_query_sc_values():
                                  start=start,
                                  end=end,
                                  fill_gaps='forwardfill',
-                                 every_nth_value=1)
+                                 every_nth_value=1,
+                                 query_type_lab=False,)
 
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
                              down_sampling=True,
-                             every_nth_value=2)
+                             every_nth_value=2,
+                             query_type_lab=False,)
 
     assert np.all(df_all[::2] == df), 'Downsampling did not return the correct values.'
 
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
-                             every_nth_value=2)
+                             every_nth_value=2,
+                             query_type_lab=False,)
 
     # Compare average for each two values:
     for ind, i in enumerate([0, 2, 4]):
