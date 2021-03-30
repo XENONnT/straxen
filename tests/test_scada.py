@@ -55,6 +55,7 @@ def test_query_sc_values():
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
+                             fill_gaps='forwardfill',
                              down_sampling=True,
                              every_nth_value=2,
                              query_type_lab=False,)
@@ -64,6 +65,7 @@ def test_query_sc_values():
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
+                             fill_gaps='forwardfill',
                              every_nth_value=2,
                              query_type_lab=False,)
 
@@ -77,4 +79,4 @@ def test_query_sc_values():
                              end=end,
                              query_type_lab=True,)
 
-    assert np.all(df['SomeParameter'] // 1 == 1253), 'Not all values are correct for query type lab.'
+    assert np.all(df['SomeParameter'] // 1 == -96), 'Not all values are correct for query type lab.'
