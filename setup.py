@@ -34,6 +34,7 @@ setuptools.setup(name='straxen',
                      'boltons',
                      'ipython',
                      'dask[array]',
+                     'dask[dataframe]',
                  ],
                  python_requires=">=3.6",
                  extras_require={
