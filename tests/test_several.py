@@ -225,7 +225,8 @@ def test_print_version():
     straxen.print_versions(['strax', 'something_that_does_not_exist'])
 
 
-def test_daq_plot():
+def test_nt_minianalyses():
+    """Number of tests to be run on nT like configs"""
     if not straxen.utilix_is_configured():
         return
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -237,28 +238,46 @@ def test_daq_plot():
             rundb = st.storage[0]
             rundb.readonly = True
             st.storage = [rundb, strax.DataDirectory(temp_dir)]
-            st.set_config(testing_config_nT)
+
+            # We want to test the FDC map that only works with CMT
+            test_conf = testing_config_nT.copy()
+            del test_conf['fdc_map']
+
+            st.set_config(test_conf)
             st.set_context_config(dict(forbid_creation_of=()))
             st.register(DummyRawRecords)
 
             rr = st.get_array(test_run_id_nT, 'raw_records')
             st.make(test_run_id_nT, 'records')
             st.make(test_run_id_nT, 'peak_basics')
-            if straxen.utilix_is_configured():
-                st.daq_plot(test_run_id_nT,
-                            time_range=(rr['time'][0], strax.endtime(rr)[-1]),
-                            vmin=0.1,
-                            vmax=1,
-                            )
 
-                st.plot_records_matrix(test_run_id_nT,
-                                       time_range=(rr['time'][0],
-                                                   strax.endtime(rr)[-1]),
-                                       vmin=0.1,
-                                       vmax=1,
-                                       group_by='ADC ID')
-                plt_clf()
-        # On windows, you cannot delete the current process'
+            st.daq_plot(test_run_id_nT,
+                        time_range=(rr['time'][0], strax.endtime(rr)[-1]),
+                        vmin=0.1,
+                        vmax=1,
+                        )
+
+            st.plot_records_matrix(test_run_id_nT,
+                                   time_range=(rr['time'][0],
+                                               strax.endtime(rr)[-1]),
+                                   vmin=0.1,
+                                   vmax=1,
+                                   group_by='ADC ID',
+                                   )
+            plt_clf()
+
+            st.make(test_run_id_nT, 'event_info')
+            st.load_corrected_positions(test_run_id_nT,
+                                        time_range=(rr['time'][0],
+                                                    strax.endtime(rr)[-1]),
+
+                                        )
+            # This would be nice to add but with empty events it does not work
+            # st.event_display(test_run_id_nT,
+            #                  time_range=(rr['time'][0],
+            #                              strax.endtime(rr)[-1]),
+            #                  )
+        # On windows, you cannot delete the current process'git p
         # working directory, so we have to chdir out first.
         finally:
             os.chdir('..')
