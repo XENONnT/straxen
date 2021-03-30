@@ -58,12 +58,14 @@ class SCADAInterface:
         self._use_progress_bar = use_progress_bar
         self.context = context
 
+        self.we_are_straxen = True
+
     def get_scada_values(self,
                          parameters,
                          start=None,
                          end=None,
                          run_id=None,
-                         query_type_lab = False,
+                         query_type_lab=True,
                          time_selection_kwargs=None,
                          fill_gaps=None,
                          filling_kwargs=None,
@@ -87,7 +89,7 @@ class SCADAInterface:
             range lasting between the start of the first and endtime
             of the second run.
         :param query_type_lab: Mode on how to query data from the historians.
-            Can be either False (default) to get raw data or True to get
+            Can be either False to get raw data or True (default) to get
             data which was interpolated by historian. Useful if large
             time ranges have to be queried.
         :param time_selection_kwargs: Keyword arguments taken by
@@ -113,7 +115,7 @@ class SCADAInterface:
         :return: pandas.DataFrame containing the data of the specified
             parameters.
         """
-        
+
         if not filling_kwargs:
             filling_kwargs = {}
 
