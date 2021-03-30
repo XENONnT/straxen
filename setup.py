@@ -33,7 +33,7 @@ setuptools.setup(name='straxen',
                      'datashader',
                      'boltons',
                      'ipython',
-                     'daskarray',
+                     'dask[array]',
                  ],
                  python_requires=">=3.6",
                  extras_require={
