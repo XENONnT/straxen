@@ -67,6 +67,14 @@ def test_query_sc_values():
                              every_nth_value=2,
                              query_type_lab=False,)
 
-    # Compare average for each two values:
+    # Compare average for each second value:
     for ind, i in enumerate([0, 2, 4]):
         assert np.isclose(np.mean(df_all[i:i + 2]), df['SomeParameter'][ind]), 'Averaging is incorrect.'
+
+    # Testing lab query type:
+    df = sc.get_scada_values(parameters,
+                             start=start,
+                             end=end,
+                             query_type_lab=True,)
+
+    assert np.all(df['SomeParameter'] // 1 == 1253), 'Not all values are correct for query type lab.'
