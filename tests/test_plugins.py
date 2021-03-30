@@ -24,6 +24,8 @@ testing_config_nT = dict(
     s2_xy_correction_map=straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
     elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
     baseline_samples_nv=10,
+    fdc_map=straxen.pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
+    gain_model_nv=("to_pe_constant", "adc_nv"),
 )
 
 testing_config_1T = dict(

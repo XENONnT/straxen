@@ -11,7 +11,8 @@ import os
 export, __all__ = strax.exporter()
 
 corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
-                      's2_xy_map', 's1_xy_map', 'fdc_map']
+                      's2_xy_map', 's1_xy_map', 'fdc_map_mlp',
+                      'fdc_map_gcn', 'fdc_map_cnn']
 
 single_value_corrections = ['elife', 'baseline_samples_nv',
                             'electron_drift_velocity']

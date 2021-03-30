@@ -28,7 +28,7 @@ xnt_common_config = dict(
     n_mveto_pmts=straxen.n_mveto_pmts,
     n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
-    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
     gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
@@ -46,6 +46,8 @@ xnt_common_config = dict(
     # Clustering/classification parameters
     s1_max_rise_time=100,
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
+    elife_file=("elife_model", "ONLINE",True),
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -182,7 +184,7 @@ def xenonnt_simulation(output_folder='./strax_data'):
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
                     fax_config='fax_config_nt_design.json',
-                    check_raw_record_overlaps=False,
+                    check_raw_record_overlaps=True,
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.xnt_common_opts)
@@ -365,7 +367,6 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config='fax_config_1t.json',
             detector='XENON1T',
-            check_raw_record_overlaps=False,
             **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFax1T)
