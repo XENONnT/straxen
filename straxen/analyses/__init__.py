@@ -5,4 +5,5 @@ from . import holoviews_waveform_display
 from . import bokeh_waveform_plot
 from . import event_display
 from . import pulse_plots
+from . import posrec_comparison
 from . import daq_waveforms
