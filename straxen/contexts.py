@@ -28,7 +28,7 @@ xnt_common_config = dict(
     n_mveto_pmts=straxen.n_mveto_pmts,
     n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
-    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
     gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
