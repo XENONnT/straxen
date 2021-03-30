@@ -180,7 +180,7 @@ class nVETOEventPositions(strax.Plugin):
         return event_angles
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def compute_average_angle(hitlets_in_event,
                           pmt_properties,
                           start_channel=2000,
@@ -211,7 +211,7 @@ def compute_average_angle(hitlets_in_event,
     return res
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def circ_angle(x_values, y_values):
     """
     Loops over a set of x and y values and computes azimuthal angle.
@@ -226,7 +226,7 @@ def circ_angle(x_values, y_values):
     return res
 
 
-@numba.njit
+@numba.njit(cache=True, nogil=True)
 def _circ_angle(x, y):
     if x > 0 and y >= 0:
         # 1st quadrant
