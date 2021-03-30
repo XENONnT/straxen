@@ -336,7 +336,12 @@ def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
          they will be merged into a single interval.
     """
     if len(records):
-        start_times = _coincidence(records, nfold, resolving_time)
+        if nfold > 1:
+            start_times = _coincidence(records, nfold, resolving_time)
+        else:
+            # In case of a "single-fold" coincidence every thing gives
+            # the start of a new interval:
+            start_times = records['time']
         intervals = _merge_intervals(start_times-pre_trigger, 
                                      resolving_time+pre_trigger)
     else:
