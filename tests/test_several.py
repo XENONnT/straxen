@@ -147,6 +147,8 @@ def test_several():
             st.hvdisp_plot_peak_waveforms(test_run_id_1T,
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
+
+
             print('Plot single pulse:')
             st.plot_pulses_tpc(test_run_id_1T, max_plots=2,  plot_hits=True, ignore_time_warning=True)
 
@@ -181,6 +183,31 @@ def test_several():
                                    "perhaps the test is outdated or something "
                                    "changed in the processing.")
             assert len(events) == EXPECTED_OUTCOMES_TEST_SEVERAL['n_events'], assertion_statement
+
+            print("Plot bokkeh:")
+            fig = st.event_display_interactive(test_run_id_1T,
+                                               time_range=(events[0]['time'],
+                                                           events[0]['endtime']),
+                                               xenon1t=True,
+                                               plot_record_matrix=True,
+                                               )
+            fig.save('test_display.html')
+
+            # Test data selector:
+            from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
+            ds = DataSelectionHist('ds')
+            fig = ds.histogram2d(p,
+                               p['area'],
+                               p['area'],
+                               bins=50,
+                               hist_range=((0, 200), (0, 2000)),
+                               log_color_scale=True,
+                               clim=(10, None),
+                               undeflow_color='white')
+
+            import bokeh.plotting as bklt
+            bklt.save(fig, 'test_data_selector.html')
+
         # On windows, you cannot delete the current process'
         # working directory, so we have to chdir out first.
         finally:
