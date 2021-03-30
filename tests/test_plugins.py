@@ -5,8 +5,6 @@ from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
 import straxen
 
-# Number of chunks for the dummy raw records we are writing here
-N_CHUNKS = 2
 
 ##
 # Tools
@@ -24,7 +22,8 @@ testing_config_nT = dict(
     ('to_pe_per_run',
      straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
     s2_xy_correction_map=straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
-    elife_file=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
+    elife_file=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    gain_model_nv=("to_pe_constant", "adc_nv"),
 )
 
 testing_config_1T = dict(
@@ -36,7 +35,9 @@ test_run_id_nT = '008900'
 
 
 @strax.takes_config(
-    strax.Option('secret_time_offset', default=0, track=False)
+    strax.Option('secret_time_offset', default=0, track=False),
+    strax.Option('n_chunks', default=2, track=False,
+                 help='Number of chunks for the dummy raw records we are writing here')
 )
 class DummyRawRecords(strax.Plugin):
     """
@@ -59,16 +60,18 @@ class DummyRawRecords(strax.Plugin):
         return True
 
     def is_ready(self, chunk_i):
-        return chunk_i < N_CHUNKS
+        return chunk_i < self.config['n_chunks']
 
     def compute(self, chunk_i):
         t0 = chunk_i + self.config['secret_time_offset']
-        if chunk_i < N_CHUNKS - 1:
+        if chunk_i < self.config['n_chunks'] - 1:
+            # One filled chunk
             r = np.zeros(recs_per_chunk, self.dtype['raw_records'])
             r['time'] = t0
             r['length'] = r['dt'] = 1
             r['channel'] = np.arange(len(r))
         else:
+            # One empty chunk
             r = np.zeros(0, self.dtype['raw_records'])
         res = {p: self.chunk(start=t0, end=t0 + 1, data=r, data_type=p)
                for p in self.provides}

@@ -1,3 +1,17 @@
+0.15.9 / 2021-03-24
+--------------------
+- Use multiple targets for better online support (#397)
+- Use code style commentator (#399, #405)
+- Add daq-plots to minianalysies (#394)
+- Check for raw-record overlaps veto systems (#390)
+- Infer-target update (#395)
+- Prevent abandonment of done runs (#398)
+- Upload compressor from metadata to rundoc (#410)
+- Cleanup ajax (#402)
+- Context cleanup (#403)
+- Change default nT fax config (#391)
+
+
 0.15.8 / 2021-03-02
 --------------------
 - Update daq-tagging for abandoned runs (#374)
