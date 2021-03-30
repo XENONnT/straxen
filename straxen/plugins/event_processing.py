@@ -1,7 +1,9 @@
 import strax
 
 import numpy as np
+from warnings import warn
 
+from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
 from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
 from straxen.get_corrections import get_elife, get_config_from_cmt
 from straxen.itp_map import InterpolatingMap
@@ -249,7 +251,7 @@ class EventBasics(strax.LoopPlugin):
                 if s_i == 2:
                     for name in posrec_save:
                         posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
-
+                        
             # Store alternate signal properties
             if _alt_i is None:
                 result[f'alt_s{s_i}_index'] = -1
@@ -288,23 +290,30 @@ class EventBasics(strax.LoopPlugin):
         default=1.3325e-4
     ),
     strax.Option(
-        'fdc_map',
+        name='fdc_map',
         help='3D field distortion correction map path',
         default_by_run=[
             (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
-            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')),  # noqa
-            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')),  # noqa
-            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')),  # noqa
-            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
+            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')), # noqa
+            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')), # noqa
+            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
+            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))], # noqa
+    ),
+    *DEFAULT_POSREC_ALGO_OPTION
 )
 class EventPositions(strax.Plugin):
     """
     Computes the observed and corrected position for the main S1/S2
-    pairs in an event.
+    pairs in an event. For XENONnT data, it returns the FDC corrected
+    positions of the default_reconstruction_algorithm. In case the fdc_map
+    is given as a file (not through CMT), then the coordinate system
+    should be given as (x, y, z), not (x, y, drift_time).
     """
-    __version__ = '0.1.2'
 
-    depends_on = ('event_basics',)
+    depends_on = ('event_basics', )
+    
+    __version__ = '0.1.3'
+
     dtype = [
         ('x', np.float32,
          'Interaction x-position, field-distortion corrected (cm)'),
@@ -322,38 +331,60 @@ class EventPositions(strax.Plugin):
          'Correction added to r_naive for field distortion (cm)'),
         ('theta', np.float32,
          'Interaction angular position (radians)')
-    ] + strax.time_fields
+            ] + strax.time_fields
 
     def setup(self):
-        self.map = InterpolatingMap(
-            get_resource(self.config['fdc_map'], fmt='binary'))
+
+        is_CMT = isinstance(self.config['fdc_map'], tuple)
+
+        if is_CMT:
+
+            cmt, cmt_conf, is_nt = self.config['fdc_map']
+            cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}' , cmt_conf[1])
+            map_algo = cmt, cmt_conf, is_nt           
+ 
+            self.map = InterpolatingMap(
+                get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
+            self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
+
+        elif isinstance(self.config['fdc_map'], str):
+            self.map = InterpolatingMap(
+                get_resource(self.config['fdc_map'], fmt='binary'))
+
+        else:
+            raise NotImplementedError('FDC map format not understood.')
 
     def compute(self, events):
+
+        result = {'time': events['time'],
+                  'endtime': strax.endtime(events)}
+        
         z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
-
-        orig_pos = np.vstack([events['s2_x'], events['s2_y'], z_obs]).T
+        orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-
         delta_r = self.map(orig_pos)
+
+        # apply radial correction
         with np.errstate(invalid='ignore', divide='ignore'):
             r_cor = r_obs + delta_r
             scale = r_cor / r_obs
 
-        result = dict(time=events['time'],
-                      endtime=strax.endtime(events),
-                      x=orig_pos[:, 0] * scale,
-                      y=orig_pos[:, 1] * scale,
-                      r=r_cor,
-                      z_naive=z_obs,
-                      r_naive=r_obs,
-                      r_field_distortion_correction=delta_r,
-                      theta=np.arctan2(orig_pos[:, 1], orig_pos[:, 0]))
-
+        # z correction due to longer drift time for distortion
+        # (geometrical reasoning not valid if |delta_r| > |z_obs|,
+        #  as cathetus cannot be longer than hypothenuse)
         with np.errstate(invalid='ignore'):
             z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-            invalid = np.abs(z_obs) < np.abs(delta_r)        # Why??
+            invalid = np.abs(z_obs) < np.abs(delta_r)
         z_cor[invalid] = z_obs[invalid]
-        result['z'] = z_cor
+
+        result.update({'x': orig_pos[:, 0] * scale,
+                       'y': orig_pos[:, 1] * scale,
+                       'r': r_cor,
+                       'r_naive': r_obs,
+                       'r_field_distortion_correction': delta_r,
+                       'theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
+                       'z_naive': z_obs,
+                       'z': z_cor})
 
         return result
 

@@ -47,6 +47,7 @@ xnt_common_config = dict(
     s1_max_rise_time=100,
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     elife_file=("elife_model", "ONLINE",True),
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
