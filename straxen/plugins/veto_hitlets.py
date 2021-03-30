@@ -60,7 +60,7 @@ class nVETOHitlets(strax.Plugin):
     Note:
         Hitlets are getting chopped if extended in not recorded regions.
     """
-    __version__ = '0.0.6'
+    __version__ = '0.0.7'
 
     parallel = 'process'
     rechunk_on_save = True
@@ -101,10 +101,10 @@ class nVETOHitlets(strax.Plugin):
         hits = strax.sort_by_time(hits)
 
         # Now convert hits into temp_hitlets including the data field:
+        nsamples = 200
         if len(hits):
-            nsamples = hits['length'].max()
-        else:
-            nsamples = 0
+            nsamples = max(hits['length'].max(), nsamples)
+
         temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
     
         # Generating hitlets and copying relevant information from hits to hitlets.
