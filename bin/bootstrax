@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -208,7 +208,7 @@ timeouts = {
     # Bootstrax can abandon runs for this time based on a tag, after that it
     # should not be on the DAQ any way or can be manually failed using the
     # --abandon option. We can abandon a run only for this many seconds:
-    'abandoning_allowed': 3600 * 24 * 7,
+    'abandoning_allowed': 3600 * 24 * 1,
 }
 
 # The disk that the eb is writing to may fill up at some point. The data should
@@ -1076,7 +1076,7 @@ def upload_file_metadata(rd):
         if os.path.exists(loc):
             file_count = len(os.listdir(loc))
             # Can also get the latter from st.lineage_for but too lazy for that
-            data_size_mb, avg_data_size_mb, lineage_hash = None, None, None
+            data_size_mb, avg_data_size_mb, lineage_hash, compressor = None, None, None, None
             run_id = '%06d' % rd['number']
             if st_meta is not None:
                 try:
@@ -1085,6 +1085,7 @@ def upload_file_metadata(rd):
                     data_size_mb = int(np.sum(chunk_mb))
                     avg_data_size_mb = int(np.average(chunk_mb))
                     lineage_hash = md['lineage_hash']
+                    compressor = md['compressor']
                 except Exception as e:
                     log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
                                 priority='warning',
@@ -1099,7 +1100,9 @@ def upload_file_metadata(rd):
                       'data.$.meta.straxen_version': straxen.__version__,
                       'data.$.meta.size_mb': data_size_mb,
                       'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash}
+                      'data.$.meta.lineage_hash': lineage_hash,
+                      'data.$.meta.compressor': compressor,
+                      }
                  })
 
 
@@ -1640,11 +1643,12 @@ def cleanup_db():
     # there is no point in retrying them
     abandon_queries = [
         ({'tags.name': 'abandon',
-          'bootstrax.state': {'$ne', 'done'},
+          'bootstrax.state':'done',
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
-        ({'tags.name': 'abandon', 'bootstrax.state': 'failed'},
-         "Run has an 'abandon' tag and was failing"),
+        ({'tags.name': 'abandon', 
+          'bootstrax.state': {'$in': ['busy', 'failed']}},
+         "Run has an 'abandon' tag and was failing/busy"),
         ]
 
     for query, failure_message in abandon_queries:
