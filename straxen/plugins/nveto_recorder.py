@@ -99,7 +99,7 @@ class nVETORecorder(strax.Plugin):
         temp_records = strax.sort_by_time(temp_records)
         strax.zero_out_of_bounds(temp_records)
         strax.baseline(temp_records,
-                       baseline_samples=self.config['baseline_samples_nv'],
+                       baseline_samples=self.baseline_samples,
                        flip=True)
         hits = strax.find_hits(temp_records,
                                min_amplitude=self.config['hit_min_amplitude_nv'])
