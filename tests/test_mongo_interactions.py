@@ -75,15 +75,22 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
     st = straxen.contexts.xenonnt_online()
     om = _patch_om_init(target)
     st.storage = [om]
+    max_run = None
     for i in range(max_tries):
-        some_run = om.db[om.col_name].find_one({'provides_meta': True,
-                                                'data_type': target,
-                                                },
+        query = {'provides_meta': True, 'data_type': target}
+        if max_run is not None:
+            # One run failed before, lets try a more recent one.
+            query.update({'number': {"$gt": int(max_run)}})
+        some_run = om.db[om.col_name].find_one(query,
                                                projection={'number': 1,
                                                            'metadata': 1})
         if some_run is None or some_run.get('number', None) is None:
+            print(f'Found None')
             continue
         elif 'exception' in some_run.get('metadata', {}):
+            # Did find a run, but it is bad, we need to find another one
+            print(f'Found {some_run.get("number", "No number")} with errors')
+            max_run = some_run.get("number", -1)
             continue
         else:
             # Correctly written
@@ -91,5 +98,6 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
             break
     else:
         raise FileNotFoundError(f'No non-failing {target} found in the online '
-                                f'monitor after {max_tries}')
+                                f'monitor after {max_tries}. Looked for:\n'
+                                f'{st.key_for("0", target)}')
     st.get_array(run_id, target, seconds_range=(0, 1), allow_incomplete=True)
