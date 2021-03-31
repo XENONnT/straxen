@@ -83,7 +83,7 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end):
-        if self.config['check_raw_record_overlaps']:
+        if self.config['check_raw_record_overlaps_nv']:
             straxen.check_overlaps(raw_records_nv, n_channels=3000)
         # Cover the case if we do not want to have any coincidence:
         if self.config['coincidence_level_recorder_nv'] <= 1:
