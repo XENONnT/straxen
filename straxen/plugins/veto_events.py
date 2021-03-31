@@ -146,7 +146,7 @@ def compute_nveto_event_properties(events, contained_hitlets, start_channel=2000
                  help="Time [ns] within an evnet use to compute the azimuthal angle of the event."),
     strax.Option('nveto_pmt_position_map', track=False,
                  help="nVeto PMT position mapfile",
-                default='nveto_pmt_position_mc.csv'),
+                default='nveto_pmt_position.csv'),
 )
 class nVETOEventPositions(strax.Plugin):
     """
@@ -283,4 +283,3 @@ def _circ_angle(x, y):
         print(x, y)
         raise ValueError('It should be impossible to arrive here, '
                          'but somehow we managed.')
-
