@@ -39,7 +39,7 @@ class nVETOPulseProcessing(strax.Plugin):
         2. Find hits and apply ZLE
         3. Remove empty fragments.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
 
     parallel = 'process'
     rechunk_on_save = False
@@ -92,8 +92,6 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
-        rlinks = strax.record_links(r)
-        r = clean_up_empty_records(r, rlinks, only_last=True)
         return r
 
 

@@ -40,7 +40,10 @@ test_run_id_nT = '008900'
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
     strax.Option('n_chunks', default=2, track=False,
-                 help='Number of chunks for the dummy raw records we are writing here')
+                 help='Number of chunks for the dummy raw records we are writing here'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="frozendict mapping subdetector to (min, max) "
+                      "channel number.")
 )
 class DummyRawRecords(strax.Plugin):
     """
@@ -59,6 +62,13 @@ class DummyRawRecords(strax.Plugin):
     rechunk_on_save = False
     dtype = {p: strax.raw_record_dtype() for p in provides}
 
+    def setup(self):
+        self.channel_map_keys = {'he': 'he',
+                                 'nv': 'nveto',
+                                 'aqmon': 'aqmon',
+                                 'aux_mv': 'aux_mv',
+                                 's_mv': 'mv',}  # s_mv otherwise same as aux in endswith
+
     def source_finished(self):
         return True
 
@@ -76,8 +86,19 @@ class DummyRawRecords(strax.Plugin):
         else:
             # One empty chunk
             r = np.zeros(0, self.dtype['raw_records'])
-        res = {p: self.chunk(start=t0, end=t0 + 1, data=r, data_type=p)
-               for p in self.provides}
+
+        res = {}
+        for p in self.provides:
+            rr = np.copy(r)
+            # Add detector specific channel offset:
+            for key, channel_key in self.channel_map_keys.items():
+                if channel_key not in self.config['channel_map']:
+                    # Channel map for 1T is different.
+                    continue
+                if p.endswith(key):
+                    s, e = self.config['channel_map'][channel_key]
+                    rr['channel'] += s
+            res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res
 
 
