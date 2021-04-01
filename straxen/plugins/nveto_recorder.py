@@ -389,7 +389,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     # Do not have to check the last n-1 events since by definition they can not satisfy the n-fold coincidence.
     # So we can keep the mask false.
     t_cum = t_cum[:-(nfold - 1)]
-    mask[:-(nfold - 1)] = t_cum <= resolving_time
+    mask[:-(nfold - 1)] = t_cum < resolving_time
     return start_times[mask]
 
 
