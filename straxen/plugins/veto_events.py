@@ -199,11 +199,11 @@ def solve_ambiguity(contained_hitlets_ids):
 
 
 @strax.takes_config(
-    strax.Option('angle_max_time_nv', default=10,
+    strax.Option('position_max_time_nv', default=20,
                  help="Time [ns] within an evnet use to compute the azimuthal angle of the event."),
     strax.Option('nveto_pmt_position_map', track=False,
                  help="nVeto PMT position mapfile",
-                default='nveto_pmt_position.csv'),
+                 default='nveto_pmt_position.csv'),
 )
 class nVETOEventPositions(strax.Plugin):
     """
@@ -216,14 +216,15 @@ class nVETOEventPositions(strax.Plugin):
 
     loop_over = 'events_nv'
     compressor = 'zstd'
-    save_when = strax.SaveWhen.TARGET
 
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
     dtype = []
     dtype += strax.time_fields
-    dtype += [(('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
+    dtype += [(('Number of prompt hitlets within the first "position_max_time_nv" ns of the event.',
+                'n_prompt_hitlets'), np.int16),
+              (('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
                 'angle'), np.float32),
               (('Area weighted mean of position in x [mm]', 'pos_x'), np.float32),
               (('Area weighted mean of position in y [mm]', 'pos_y'), np.float32),
@@ -231,73 +232,81 @@ class nVETOEventPositions(strax.Plugin):
               (('Weighted variance of position in x [mm]', 'pos_x_spread'), np.float32),
               (('Weighted variance of position in y [mm]', 'pos_y_spread'), np.float32),
               (('Weighted variance of position in z [mm]', 'pos_z_spread'), np.float32)
-          ]
+              ]
 
-    __version__ = '0.0.2'
+    __version__ = '0.0.1'
 
     def setup(self):
-        self.pmt_properties = 1
-        df_pmt_pos = straxen.get_resource(self.config['nveto_pmt_position_map'],fmt='csv')
-        self.pmt_pos = df_pmt_pos.to_numpy(dtype=np.float32)
+        self.pmt_properties = straxen.get_resource(
+            '/home/dwenz/python_scripts/XENONnT/analysiscode/nveto/nveto_pmt_position_mc.npy', fmt='npy')
 
     def compute(self, events_nv, hitlets_nv):
-        hits_in_events = strax.split_by_containment(hitlets_nv, events_nv)
         event_angles = np.zeros(len(events_nv), dtype=self.dtype)
 
+        # Split hitlets by containment, works since we updated event start/end in
+        # compute_event_properties.
+        hits_in_events = strax.split_by_containment(hitlets_nv, events_nv)
+
+        # Compute hitlets within the first x ns of event:
+        hits_in_events, n_prompt = first_hitelts(hits_in_events,
+                                                 self.config['position_max_time_nv'])
+        event_angles['n_prompt_hitlets'] = n_prompt
+
+        # Compute azimuthal angle and xyz positions:
         angle = compute_average_angle(hits_in_events,
                                       self.pmt_properties)
-
         event_angles['angle'] = angle
-        compute_positions(event_angles, events_nv, hits_in_events, self.pmt_pos)
+        compute_positions(event_angles, events_nv, hits_in_events, self.pmt_properties)
         strax.copy_to_buffer(events_nv, event_angles, '_copy_events_nv')
 
         return event_angles
 
-@numba.njit
+
+@numba.njit(cache=True, nogil=True)
 def compute_positions(event_angles, events, contained_hitlets, pmt_pos, start_channel=2000):
     for e_angles, e, hitlets in zip(event_angles, events, contained_hitlets):
         if e['area']:
-            pmt_x = pmt_pos[hitlets['channel']-start_channel, 2] # 2 is index of x
-            e_angles['pos_x'] = np.sum(pmt_x * hitlets['area']) / e['area']
-            pmt_y = pmt_pos[hitlets['channel']-start_channel, 3] # 3 is index of y
-            e_angles['pos_y'] = np.sum(pmt_y * hitlets['area']) / e['area']
-            pmt_z = pmt_pos[hitlets['channel']-start_channel, 4] # 4 is index of z
-            e_angles['pos_z'] = np.sum(pmt_z * hitlets['area']) / e['area']
-            if e['n_hits'] > 1:
-                w = hitlets['area']/e['area'] # normalized weights
-                e_angles['pos_x_spread'] = np.sqrt(np.sum(w*np.power(pmt_x-e_angles['pos_x'],2))/np.sum(w))
-                e_angles['pos_y_spread'] = np.sqrt(np.sum(w*np.power(pmt_y-e_angles['pos_y'],2))/np.sum(w))
-                e_angles['pos_z_spread'] = np.sqrt(np.sum(w*np.power(pmt_z-e_angles['pos_z'],2))/np.sum(w))
+            ch = hitlets['channel'] - start_channel
+            pos_x = pmt_pos['x'][ch]
+            pos_y = pmt_pos['y'][ch]
+            pos_z = pmt_pos['z'][ch]
+
+            e_angles['pos_x'] = np.sum(pos_x * hitlets['area']) / e['area']
+            e_angles['pos_y'] = np.sum(pos_y * hitlets['area']) / e['area']
+            e_angles['pos_z'] = np.sum(pos_z * hitlets['area']) / e['area']
+            if len(hitlets) and np.sum(hitlets['area']) > 0:
+                w = hitlets['area'] / e['area']  # normalized weights
+                e_angles['pos_x_spread'] = np.sqrt(np.sum(w * np.power(pos_x - e_angles['pos_x'], 2)) / np.sum(w))
+                e_angles['pos_y_spread'] = np.sqrt(np.sum(w * np.power(pos_y - e_angles['pos_y'], 2)) / np.sum(w))
+                e_angles['pos_z_spread'] = np.sqrt(np.sum(w * np.power(pos_z - e_angles['pos_z'], 2)) / np.sum(w))
 
 
 @numba.njit(cache=True, nogil=True)
 def compute_average_angle(hitlets_in_event,
                           pmt_properties,
                           start_channel=2000,
-                          max_time=10):
+                          ):
     """
-    Computes azimuthal angle as an area weighted mean over all hitlets
-    which arrive within a certain time window.
+    Computes azimuthal angle as an area weighted mean over all hitlets.
 
     :param hitlets_in_event: numba.typed.List containing the hitlets per
         event.
     :param pmt_properties: numpy.sturctured.array containing the PMT
         positions in the fields "x" and "y".
     :param start_channel: First channel e.g. 2000 for nevto.
-    :param max_time: Time within a hitlet must arrive in order to be
-        used in the computation.
     :return: np.array holding the azimuthal angles.
     """
     res = np.zeros(len(hitlets_in_event), np.float32)
     for ind, hitlets in enumerate(hitlets_in_event):
-        m = (hitlets['time'] - hitlets[0]['time']) < max_time
-        h = hitlets[m]
-        x = pmt_properties['x'][h['channel'] - start_channel]
-        y = pmt_properties['y'][h['channel'] - start_channel]
+        if np.sum(hitlets['area']):
+            x = pmt_properties['x'][hitlets['channel'] - start_channel]
+            y = pmt_properties['y'][hitlets['channel'] - start_channel]
 
-        weighted_mean_x = np.sum(x * h['area']) / np.sum(h['area'])
-        weighted_mean_y = np.sum(y * h['area']) / np.sum(h['area'])
-        res[ind] = _circ_angle(weighted_mean_x, weighted_mean_y)
+            weighted_mean_x = np.sum(x * hitlets['area']) / np.sum(hitlets['area'])
+            weighted_mean_y = np.sum(y * hitlets['area']) / np.sum(hitlets['area'])
+            res[ind] = _circ_angle(weighted_mean_x, weighted_mean_y)
+        else:
+            res[ind] = np.nan
     return res
 
 
@@ -340,3 +349,22 @@ def _circ_angle(x, y):
         print(x, y)
         raise ValueError('It should be impossible to arrive here, '
                          'but somehow we managed.')
+
+
+@numba.njit(cache=True, nogil=True)
+def first_hitelts(hitlets_per_event, max_time):
+    """
+    Returns hitlets within the first "max_time" ns of an event.
+
+    :param hitlets_per_event: numba.typed.List of hitlets per event.
+    :param max_time: int max allowed time difference to leading hitlet
+        in ns.
+    """
+    res_hitlets_in_event = numba.typed.List()
+    res_n_prompt = np.zeros(len(hitlets_per_event), np.int16)
+    for ind, hitlets in enumerate(hitlets_per_event):
+        m = (hitlets['time'] - hitlets[0]['time']) < max_time
+        h = hitlets[m]
+        res_hitlets_in_event.append(h)
+        res_n_prompt[ind] = len(h)
+    return res_hitlets_in_event, res_n_prompt
