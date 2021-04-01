@@ -27,9 +27,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     provides = 'events_nv'
     data_kind = 'events_nv'
 
-    parallel = 'process'
     compressor = 'zstd'
-    save_when = strax.SaveWhen.TARGET
 
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
@@ -63,27 +61,37 @@ class nVETOEvents(strax.OverlapWindowPlugin):
                           dtype=veto_event_dtype(self.name_event_number,
                                                  self.n_channel)
                           )
+        events['time'] = intervals[:, 0]
+        events['endtime'] = intervals[:, 1]
 
-        # Don't extend beyond the chunk boundaries
-        # This will often happen for events near the invalid boundary of the
-        # overlap processing (which should be thrown away)
-        events['time'] = np.clip(intervals[:, 0], start, end)
-        events['endtime'] = np.clip(intervals[:, 1], start, end)
+        # Find all hilets which touch the coincidence windows
+        # and fix ambiguities in case a single hitlet touches two intveral
+        # (this can happen for muon signals with a long tail + afterpulses/trapped
+        # light, in those cases we merge the two events into a single one)
+        hitlets_ids_in_event = strax.touching_windows(hitlets_nv, events)
+        hitlets_ids_in_event = solve_ambiguity(hitlets_ids_in_event)
 
-        # Compute center time:
-        split_hitlets = strax.split_by_containment(hitlets_nv, events)
-        if len(split_hitlets):
+        # Drop empty events (which were merged before):
+        m = np.diff(hitlets_ids_in_event).flatten() != 0
+        hitlets_ids_in_event = hitlets_ids_in_event[m]
+        events = events[m]
+
+        if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
-                                           split_hitlets,
+                                           hitlets_nv,
+                                           hitlets_ids_in_event,
                                            start_channel=self.channel_range[0])
 
-        # Cut all those events for which we have less than self.config['event_min_hits_nv'] 
-        # hitlets. (straxen.plugins.nveto_recorder.coincidence works with partially overlapping things)
-        events = events[events['n_hits'] >= self.config['event_min_hits_nv']]
+        # Get eventids:
         n_events = len(events)
         events[self.name_event_number] = np.arange(n_events) + self.events_seen
         self.events_seen += n_events
 
+        # Don't extend beyond the chunk boundaries
+        # This will often happen for events near the invalid boundary of the
+        # overlap processing (which should be thrown away)
+        events['time'] = np.clip(events['time'], start, end)
+        events['endtime'] = np.clip(events['endtime'], start, end)
         return events
 
 
@@ -94,7 +102,7 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
               (('Last hitlet endtime in event [ns].', 'last_hitlet_endtime'), np.int64),
               (('Total area of all hitlets in event [pe]', 'area'), np.float32),
               (('Total number of hitlets in events', 'n_hits'), np.int32),
-              (('Total number of contributed channels', 'n_contributed_pmt'), np.uint8),
+              (('Total number of contributing channels', 'n_contributing_pmt'), np.uint8),
               (('Area in event per channel [pe]', 'area_per_channel'), np.float32, n_pmts),
               (('Area weighted mean time of the event relative to the event start [ns]',
                 'center_time'), np.float32),
@@ -104,41 +112,90 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_nveto_event_properties(events, contained_hitlets, start_channel=2000):
+def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start_channel=2000):
     """
     Computes properties of the neutron-veto events. Writes results
     directly to events.
 
     :param events: Events for which properties should be computed
-    :param contained_hitlets: numba.typed.List of hitlets contained in
-        each event.
+    :param hitlets: hitlets which were used to build the events.
+    :param contained_hitlets_ids: numpy array of the shape n x 2 which holds
+        the indices of the hitlets contained in the corresponding event.
     :param start_channel: Integer specifying start channel, e.g. 2000
         for nveto.
     """
-    for e, hitlets in zip(events, contained_hitlets):
-        event_area = np.sum(hitlets['area'])
+    for e, (s_i, e_i) in zip(events, contained_hitlets_ids):
+        hitlet = hitlets[s_i:e_i]
+        event_area = np.sum(hitlet['area'])
         e['area'] = event_area
-        e['n_hits'] = len(hitlets)
-        e['n_contributed_pmt'] = len(np.unique(hitlets['channel']))
+        e['n_hits'] = len(hitlet)
+        e['n_contributed_pmt'] = len(np.unique(hitlet['channel']))
 
-        t = hitlets['time'] - hitlets[0]['time']
+        t = hitlet['time'] - hitlet[0]['time']
         if event_area:
-            e['center_time'] = np.sum(t * hitlets['area']) / event_area
+            e['center_time'] = np.sum(t * hitlet['area']) / event_area
             if e['n_hits'] > 1 and e['center_time']:
-                w = hitlets['area']/e['area'] # normalized weights
+                w = hitlet['area'] / e['area']  # normalized weights
                 # Definition of variance
-                e['center_time_spread'] = np.sqrt(np.sum(w*np.power(t-e['center_time'],2))/np.sum(w))
+                e['center_time_spread'] = np.sqrt(np.sum(w * np.power(t - e['center_time'], 2)) / np.sum(w))
             else:
                 e['center_time_spread'] = np.inf
 
         # Compute per channel properties:
-        for h in hitlets:
-            ch = h['channel'] - start_channel
-            e['area_per_channel'][ch] += h['area']
+        for hit in hitlet:
+            ch = hit['channel'] - start_channel
+            e['area_per_channel'][ch] += hit['area']
 
         # Compute endtime of last hitlet in event:
-        endtime = strax.endtime(hitlets)
-        e['last_hitlet_endtime'] = max(endtime)
+        endtime = strax.endtime(hitlet)
+        e['last_hitlet_endtime'] = np.max(endtime)
+
+        # Update start and endtime as hitlets only have to overlap
+        # partially
+        e['time'] = min(e['time'], hitlet['time'][0])
+        e['endtime'] = max(e['endtime'], max(endtime))
+
+
+@numba.njit(cache=True, nogil=False)
+def solve_ambiguity(contained_hitlets_ids):
+    """
+    Function which solves the ambiguity if a single hitlete overlaps
+    with two event intervals.
+
+    This can happen for muon signals which have a long tail, since we
+    define the coincidence window as a fixed window. Hence those tails
+    can extend beyond the fixed window.
+    """
+    res = np.zeros(contained_hitlets_ids.shape, dtype=contained_hitlets_ids.dtype)
+    offset = 0
+    skip_next = False
+    for e_i, ids in enumerate(contained_hitlets_ids[:-1]):
+        if skip_next:
+            # Prev interval overlapped with current interval and was
+            # merged so skip this one.
+            skip_next = False
+            continue
+
+        # Test if current and next interval overlap:
+        c_s_i, c_e_i = ids
+        n_s_i, n_e_i = contained_hitlets_ids[e_i + 1]
+        if (c_e_i - n_s_i) > 0:
+            # Yes, they do so merge them increase the counter
+            # by two to keep track of the events which were
+            # merged.
+            res[offset, :] = c_s_i, n_e_i
+            offset += 2
+            skip_next = True
+        else:
+            # No so just copy the values.
+            res[offset, :] = c_s_i, c_e_i
+            offset += 1
+
+    # Last event:
+    if not skip_next:
+        res[offset, :] = contained_hitlets_ids[-1]
+        offset += 1
+    return res[:offset]
 
 
 @strax.takes_config(
