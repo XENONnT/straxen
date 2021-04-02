@@ -126,7 +126,11 @@ class EventBasics(strax.LoopPlugin):
         ('area',              np.float32, 'area, uncorrected [PE]'),
         ('n_channels',        np.int32,   'count of contributing PMTs'),
         ('n_competing',       np.float32, 'number of competing PMTs'),
+        ('max_pmt',           np.int32,   'PMT number which contributes the most PE'),
+        ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
         ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
+        ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
+        ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
         ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'))
 
     def infer_dtype(self):
@@ -207,6 +211,9 @@ class EventBasics(strax.LoopPlugin):
         main_s = dict()
         secondary_s = dict()
 
+        # peak properties for main signal only
+        main_s_only = ["max_pmt", "range_90p_area", "rise_time"]
+
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
 
@@ -257,6 +264,8 @@ class EventBasics(strax.LoopPlugin):
                 secondary_s[s_i] = ss[_alt_i]
                 result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
                 for name in to_store:
+                    if name is in main_s_only:
+                        continue
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
@@ -275,6 +284,7 @@ class EventBasics(strax.LoopPlugin):
             if 2 in secondary_s:
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
+
 
         return {'event_basics': result,
                 'event_posrec_many': posrec_result}
