@@ -1,6 +1,6 @@
 0.16.0 / 2021-04-02
 --------------------
-- restore #404, add get_correction_from_cmt to corrections_services.py (#409)
+- add get_correction_from_cmt to corrections_services.py (#404, #409)
 - Updated on the nveto plugins and new event plugins (#416, #389)
 - New EventPositions for XENONnT (#396)
 - Check for overlapping raw_records in nT sims (#413)
