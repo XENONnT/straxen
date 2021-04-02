@@ -3,6 +3,9 @@ import straxen
 
 import numpy as np
 import numba
+import pandas as pd
+
+import os
 from immutabledict import immutabledict
 
 
@@ -203,7 +206,7 @@ def solve_ambiguity(contained_hitlets_ids):
                  help="Time [ns] within an evnet use to compute the azimuthal angle of the event."),
     strax.Option('nveto_pmt_position_map', track=False,
                  help="nVeto PMT position mapfile",
-                 default='nveto_pmt_position.csv'),
+                 default='nveto_pmt_positions'),
 )
 class nVETOEventPositions(strax.Plugin):
     """
@@ -237,8 +240,27 @@ class nVETOEventPositions(strax.Plugin):
     __version__ = '0.0.1'
 
     def setup(self):
-        self.pmt_properties = straxen.get_resource(
-            '/home/dwenz/python_scripts/XENONnT/analysiscode/nveto/nveto_pmt_position_mc.npy', fmt='npy')
+        if os.path.exists(self.nveto_pmt_position_map):
+            print(f"Path is local. Loading {self.nveto_pmt_position_map} from disk. ")
+            self.path_to_map = self.nveto_pmt_position_map
+        else:
+            downloader = straxen.MongoDownloader()
+            try:
+                self.path_to_map = downloader.download_single(self.nveto_pmt_position_map)
+            except straxen.mongo_storage.CouldNotLoadError as e:
+                raise RuntimeError(f'PMT map {self.nveto_pmt_position_map} is not found') from e
+
+        df = pd.read_csv(self.path_to_map, index_col=0)
+        self.pmt_properties = np.zeros(120, dtype=[(('nVETO PMT channel', 'channel'), np.int16),
+                                                   (('X coordinate of the PMT [mm]', 'x'), np.float64),
+                                                   (('Y coordinate of the PMT [mm]', 'y'), np.float64),
+                                                   (('Z coordinate of the PMT [mm]', 'z'), np.float64),
+                                                   ])
+
+        self.pmt_properties['channel'] = df['channel']
+        self.pmt_properties['x'] = df['x']
+        self.pmt_properties['y'] = df['y']
+        self.pmt_properties['z'] = df['z']
 
     def compute(self, events_nv, hitlets_nv):
         event_angles = np.zeros(len(events_nv), dtype=self.dtype)
