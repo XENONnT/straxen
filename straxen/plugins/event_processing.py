@@ -285,6 +285,22 @@ class EventBasics(strax.LoopPlugin):
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
+        # store s2 related info if S2 exists
+        if result[f's2_index'] != -1:
+            peaks_before_ms2 = peaks[peaks['time'] < main_s[2]['time']]
+            result['area_before_main_s2'] = sum(peaks_before_ms2[area''])
+
+            s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2['type']==2]
+            if len(s2peaks_before_ms2) == 0:
+                result['large_s2_before_main_s2'] = 0
+            else:
+                result['large_s2_before_main_s2'] = max(s2peaks_before_ms2["area"])
+
+            # s2 tail
+            t_to_prev_peak = (np.ones(len(peaks), dtype=np.int64)
+                              * self.config['peak_max_proximity_time'])
+            t_to_prev_peak[1:] = peaks['time'][1:] - peaks['endtime'][:-1]
+
 
         return {'event_basics': result,
                 'event_posrec_many': posrec_result}
