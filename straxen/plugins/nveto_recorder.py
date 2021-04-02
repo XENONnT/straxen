@@ -26,8 +26,6 @@ export, __all__ = strax.exporter()
                       'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
-    strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of nVETO PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
@@ -72,9 +70,11 @@ class nVETORecorder(strax.Plugin):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
 
+        channel_range = self.config['channel_map']['nveto']
+        n_channel = (channel_range[1] - channel_range[0]) + 1
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
-        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(self.config['n_nveto_pmts'])
+        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(n_channel)
 
         dtypes = [nveto_records_dtype,
                   nveto_diagnostic_lone_records_dtype,
@@ -389,7 +389,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     # Do not have to check the last n-1 events since by definition they can not satisfy the n-fold coincidence.
     # So we can keep the mask false.
     t_cum = t_cum[:-(nfold - 1)]
-    mask[:-(nfold - 1)] = t_cum <= resolving_time
+    mask[:-(nfold - 1)] = t_cum < resolving_time
     return start_times[mask]
 
 

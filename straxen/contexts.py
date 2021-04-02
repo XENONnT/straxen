@@ -25,8 +25,6 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    n_mveto_pmts=straxen.n_mveto_pmts,
-    n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
     gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
     gain_model_mv=("to_pe_constant", "adc_mv"),
@@ -69,6 +67,7 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
     straxen.nveto_recorder,
     straxen.veto_pulse_processing,
     straxen.veto_hitlets,
+    straxen.veto_events,
     straxen.acqmon_processing,
     straxen.pulse_processing,
     straxen.peaklet_processing,
