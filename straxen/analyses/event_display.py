@@ -77,6 +77,9 @@ def event_display(context,
                   display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
                   s1_hp_kwargs=None,
                   s2_hp_kwargs=None,
+                  axes = None,
+                  event_time_limit = None,
+                  plot_all_positions = True,
                   ):
     """
     Make a waveform-display of a given event. Requires events, peaks and
@@ -99,6 +102,12 @@ def event_display(context,
         event and displayed in the peak info panel see above for format
     :param s1_hp_kwargs: dict, optional kwargs for S1 hitpatterns
     :param s2_hp_kwargs: dict, optional kwargs for S2 hitpatterns
+    :param axes: if a dict of matplotlib axes (w/ same keys as below,
+        and empty/None for panels not filled)
+    :param event_time_limit = overrides x-axis limits of event
+        plot
+    :param plot_all_positions if True, plot best-fit positions 
+        from all posrec algorithms
     :return: axes used for plotting:
         ax_s1, ax_s2, ax_s1_hp_t, ax_s1_hp_b,
         ax_event_info, ax_peak_info, ax_s2_hp_t, ax_s2_hp_b,
@@ -130,42 +139,59 @@ def event_display(context,
 
     # Convert string to int to allow plots to be enlarged for extra panel
     _rr_resize_int = int(bool(records_matrix))
-    fig = plt.figure(figsize=(25, 21 if _rr_resize_int else 16),
-                     facecolor='white')
-    grid = plt.GridSpec((2 + _rr_resize_int), 1, hspace=0.1+0.1*_rr_resize_int,
-                        height_ratios=[1.5, 0.5, 0.5][:2 + _rr_resize_int]
-                        )
+    if axes is None:
+        fig = plt.figure(figsize=(25, 21 if _rr_resize_int else 16),
+                         facecolor='white')
+        grid = plt.GridSpec((2 + _rr_resize_int), 1, hspace=0.1+0.1*_rr_resize_int,
+                            height_ratios=[1.5, 0.5, 0.5][:2 + _rr_resize_int]
+                            )
 
-    # S1, S2, hitpatterns
-    gss_0 = gridspec.GridSpecFromSubplotSpec(2, 4, subplot_spec=grid[0], wspace=0.25, hspace=0.4)
-    ax_s1 = fig.add_subplot(gss_0[0])
-    ax_s2 = fig.add_subplot(gss_0[1])
-    ax_s1_hp_t = fig.add_subplot(gss_0[2])
-    ax_s1_hp_b = fig.add_subplot(gss_0[3])
-    ax_s2_hp_t = fig.add_subplot(gss_0[6])
-    ax_s2_hp_b = fig.add_subplot(gss_0[7])
+        # S1, S2, hitpatterns
+        gss_0 = gridspec.GridSpecFromSubplotSpec(2, 4, subplot_spec=grid[0], wspace=0.25, hspace=0.4)
+        ax_s1 = fig.add_subplot(gss_0[0])
+        ax_s2 = fig.add_subplot(gss_0[1])
+        ax_s1_hp_t = fig.add_subplot(gss_0[2])
+        ax_s1_hp_b = fig.add_subplot(gss_0[3])
+        ax_s2_hp_t = fig.add_subplot(gss_0[6])
+        ax_s2_hp_b = fig.add_subplot(gss_0[7])
 
-    # Peak & event info
-    ax_event_info = fig.add_subplot(gss_0[4])
-    ax_peak_info = fig.add_subplot(gss_0[5])
+        # Peak & event info
+        ax_event_info = fig.add_subplot(gss_0[4])
+        ax_peak_info = fig.add_subplot(gss_0[5])
 
-    # All peaks in event
-    gss_1 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[1])
-    ax_ev = fig.add_subplot(gss_1[0])
+        # All peaks in event
+        gss_1 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[1])
+        ax_ev = fig.add_subplot(gss_1[0])
+        ax_rec = None
+    else:
+        ax_s1 = axes.get("ax_s1",None)
+        ax_s2 = axes.get("ax_s2",None)
+        ax_s1_hp_t = axes.get("ax_s1_hp_t",None)
+        ax_s1_hp_b = axes.get("ax_s1_hp_b",None)
+        ax_s2_hp_t = axes.get("ax_s2_hp_t",None)
+        ax_s2_hp_b = axes.get("ax_s2_hp_b",None)
+        ax_event_info = axes.get("ax_event_info",None)
+        ax_peak_info = axes.get("ax_peak_info",None)
+        ax_ev = axes.get("ax_ev",None)
+        ax_rec = axes.get("ax_rec",None)
+        fig = None
+        for _,ax in axes.items():
+            if ax is not None:
+                fig = ax.figure
 
     # titles
-    ax_s1.set_title('Main S1')
-    ax_s1_hp_t.set_title('S1 top')
-    ax_s1_hp_b.set_title('S1 bottom')
-    ax_s2.set_title('Main S2')
-    ax_s2_hp_t.set_title('S2 top')
-    ax_s2_hp_b.set_title('S2 bottom')
-    ax_event_info.set_title('Event info')
-    ax_peak_info.set_title('Peak info')
-    ax_rec = None
+    for ax, title in zip([ax_s1, ax_s1_hp_t, ax_s1_hp_b,
+                      ax_s2, ax_s2_hp_t, ax_s2_hp_b,
+                      ax_event_info, ax_peak_info],
+                      ["Main S1", "S1 top", "S1 bottom",
+                       "Main S2", "S2 top", "S2 bottom",
+                       "Event info", "Peak info"]):
+        if ax is not None:
+            ax.set_title(title)
+
 
     # (raw)records matrix (optional)
-    if records_matrix:
+    if records_matrix and ax_rec is not None:
         gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
         ax_rec = fig.add_subplot(gss_2[0])
 
@@ -195,11 +221,12 @@ def event_display(context,
 
     # S1
     if events['s1_area'] != 0:
-        plt.sca(ax_s1)
-        context.plot_peaks(run_id,
-                           time_range=(events['s1_time'] - s1_fuzz,
-                                       events['s1_endtime'] + s1_fuzz),
-                           single_figure=False)
+        if ax_s1 is not None:
+            plt.sca(ax_s1)
+            context.plot_peaks(run_id,
+                               time_range=(events['s1_time'] - s1_fuzz,
+                                           events['s1_endtime'] + s1_fuzz),
+                               single_figure=False)
 
         # Hit pattern plots
         area = context.get_array(run_id, 'peaklets',
@@ -209,20 +236,22 @@ def event_display(context,
                                  progress_bar=False,
                                  )
         for ax, array in ((ax_s1_hp_t, 'top'), (ax_s1_hp_b, 'bottom')):
-            plt.sca(ax)
-            straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
-                                             array_name=array,
-                                             **s1_hp_kwargs)
-            # Mark reconstructed position
-            plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
+            if ax is not None:
+                plt.sca(ax)
+                straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
+                                                 array_name=array,
+                                                 **s1_hp_kwargs)
+                # Mark reconstructed position
+                plt.scatter(event['x'], event['y'], marker='X', s=100, c='k')
 
     # S2
     if event['s2_area'] != 0:
-        plt.sca(ax_s2)
-        context.plot_peaks(run_id,
-                           time_range=(events['s2_time'] - s2_fuzz,
-                                       events['s2_endtime'] + s2_fuzz),
-                           single_figure=False)
+        if ax_s2 is not None:
+            plt.sca(ax_s2)
+            context.plot_peaks(run_id,
+                               time_range=(events['s2_time'] - s2_fuzz,
+                                           events['s2_endtime'] + s2_fuzz),
+                               single_figure=False)
 
         # Hit pattern plots
         area = context.get_array(run_id, 'peaklets',
@@ -232,37 +261,45 @@ def event_display(context,
                                  progress_bar=False,
                                  )
         for axi, (ax, array) in enumerate([(ax_s2_hp_t, 'top'), (ax_s2_hp_b, 'bottom')]):
-            plt.sca(ax)
-            straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
-                                             array_name=array,
-                                             **s2_hp_kwargs)
-            # Mark reconstructed position (corrected)
-            plt.scatter(event['x'], event['y'], marker='X', s=100, c='r')
-            if not xenon1t and axi == 0:
-                _scatter_rec(event)
+            if ax is not None:
+                plt.sca(ax)
+                straxen.plot_on_single_pmt_array(c=np.sum(area['area_per_channel'], axis=0),
+                                                 array_name=array,
+                                                 **s2_hp_kwargs)
+                # Mark reconstructed position (corrected)
+                plt.scatter(event['x'], event['y'], marker='X', s=100, c='k')
+                if not xenon1t and axi == 0 and plot_all_positions:
+                    _scatter_rec(event)
 
     # Fill panels with peak/event info
     for it, (ax, labels_and_unit) in enumerate([(ax_event_info, display_event_info),
                                                 (ax_peak_info, display_peak_info)]):
-        for i, (_lab, _unit) in enumerate(labels_and_unit):
-            coord = 0.01, 0.9 - 0.9 * i / len(labels_and_unit)
-            ax.text(*coord, _lab[:24], va='top', zorder=-10)
-            ax.text(coord[0] + 0.5, coord[1],
-                    _unit.format(v=event[_lab]), va='top', zorder=-10)
-            # Remove axes and labels from panel
-            ax.set_xticks([])
-            ax.set_yticks([])
-            _ = [s.set_visible(False) for s in ax.spines.values()]
+        if ax is not None:
+            for i, (_lab, _unit) in enumerate(labels_and_unit):
+                coord = 0.01, 0.9 - 0.9 * i / len(labels_and_unit)
+                ax.text(*coord, _lab[:24], va='top', zorder=-10)
+                ax.text(coord[0] + 0.5, coord[1],
+                        _unit.format(v=event[_lab]), va='top', zorder=-10)
+                # Remove axes and labels from panel
+                ax.set_xticks([])
+                ax.set_yticks([])
+                _ = [s.set_visible(False) for s in ax.spines.values()]
 
     # Plot peaks in event
-    plt.sca(ax_ev)
-    context.plot_peaks(run_id,
-                       time_range=(events['time'], events['endtime']),
-                       show_largest=max_peaks,
-                       single_figure=False)
-    ev_range = plt.xlim()
+    if ax_ev is not None:
+        plt.sca(ax_ev)
+        if event_time_limit is None:
+            time_range=(events['time'], events['endtime'])
+        else:
+            time_range = event_time_limit
 
-    if records_matrix:
+        context.plot_peaks(run_id,
+                           time_range = time_range,
+                           show_largest=max_peaks,
+                           single_figure=False)
+        ev_range = plt.xlim()
+
+    if records_matrix and ax_rec is not None:
         plt.sca(ax_rec)
         context.plot_records_matrix(run_id,
                                     raw=records_matrix == 'raw',
@@ -276,9 +313,12 @@ def event_display(context,
         plt.xlim(*ev_range)
 
     # Final tweaks
-    ax_s2.tick_params(axis='x', rotation=45)
-    ax_s1.tick_params(axis='x', rotation=45)
-    ax_ev.tick_params(axis='x', rotation=0)
+    if ax_s2 is not None:
+        ax_s1.tick_params(axis='x', rotation=45)
+    if ax_s2 is not None:
+        ax_s2.tick_params(axis='x', rotation=45)
+    if ax_ev is not None:
+        ax_ev.tick_params(axis='x', rotation=0)
     title = (f'Run {run_id}. Time '
              f'{str(events["time"])[:-9]}.{str(events["time"])[-9:]}\n'
              f'{datetime.fromtimestamp(event["time"]/1e9, tz=pytz.utc)}')
