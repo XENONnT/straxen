@@ -373,7 +373,7 @@ def _circ_angle(x, y):
 
 
 @numba.njit(cache=True, nogil=True)
-def first_hitelts(hitlets_per_event, max_time):
+def first_hitlets(hitlets_per_event, max_time):
     """
     Returns hitlets within the first "max_time" ns of an event.
 
