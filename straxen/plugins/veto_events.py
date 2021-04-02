@@ -241,17 +241,8 @@ class nVETOEventPositions(strax.Plugin):
 
     def setup(self):
         if isinstance(self.config['nveto_pmt_position_map'], str):
-            if os.path.exists(self.config['nveto_pmt_position_map']):
-                # Deprecated support, let's remove this soon
-                warnings.warn(
-                    f"Path is local. Loading "
-                    f"{self.config['nveto_pmt_position_map']} from disk.",
-                    DeprecationWarning)
-                path_to_map = self.config['nveto_pmt_position_map']
-                npmt_pos = pd.read_csv(path_to_map, index_col=0)
-            else:
-                # This is what is used normally, the file downloader
-                npmt_pos = straxen.get_resource(self.config['nveto_pmt_position_map'], fmt='csv')
+            # Load PMT settings file:
+            npmt_pos = straxen.get_resource(self.config['nveto_pmt_position_map'], fmt='csv')
         elif isinstance(self.config['nveto_pmt_position_map'], dict):
             # Testing support
             npmt_pos = pd.DataFrame(self.config['nveto_pmt_position_map'])
