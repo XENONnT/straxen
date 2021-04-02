@@ -4,11 +4,16 @@ import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
 import straxen
-
+import pandas as pd
 
 ##
 # Tools
 ##
+# Let's make a dummy map for NVeto
+nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
+                      'x': list(range(120)),
+                      'y': list(range(120)),
+                      'z': list(range(120))}
 
 # Some configs are better obtained from the strax_auxiliary_files repo.
 # Let's use small files, we don't want to spend a lot of time downloading
@@ -26,6 +31,7 @@ testing_config_nT = dict(
     baseline_samples_nv=10,
     fdc_map=straxen.pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
     gain_model_nv=("to_pe_constant", "adc_nv"),
+    nveto_pmt_position_map=nveto_pmt_dummy_df,
 )
 
 testing_config_1T = dict(

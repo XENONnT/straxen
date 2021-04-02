@@ -1,6 +1,6 @@
 import strax
 import straxen
-
+import warnings
 import numpy as np
 import numba
 import pandas as pd
@@ -206,7 +206,7 @@ def solve_ambiguity(contained_hitlets_ids):
                  help="Time [ns] within an evnet use to compute the azimuthal angle of the event."),
     strax.Option('nveto_pmt_position_map',
                  help="nVeto PMT position mapfile",
-                 default='nveto_pmt_positions'),
+                 default='nveto_pmt_position.csv'),
 )
 class nVETOEventPositions(strax.Plugin):
     """
@@ -240,27 +240,26 @@ class nVETOEventPositions(strax.Plugin):
     __version__ = '0.0.1'
 
     def setup(self):
-        if os.path.exists(self.config['nveto_pmt_position_map']):
-            print(f"Path is local. Loading {self.config['nveto_pmt_position_map']} from disk. ")
-            self.path_to_map = self.config['nveto_pmt_position_map']
+        if isinstance(self.config['nveto_pmt_position_map'], str):
+            if os.path.exists(self.config['nveto_pmt_position_map']):
+                # Deprecated support, let's remove this soon
+                warnings.warn(
+                    f"Path is local. Loading "
+                    f"{self.config['nveto_pmt_position_map']} from disk.",
+                    DeprecationWarning)
+                path_to_map = self.config['nveto_pmt_position_map']
+                npmt_pos = pd.read_csv(path_to_map, index_col=0)
+            else:
+                # This is what is used normally, the file downloader
+                npmt_pos = straxen.get_resource(self.config['nveto_pmt_position_map'], fmt='csv')
+        elif isinstance(self.config['nveto_pmt_position_map'], dict):
+            # Testing support
+            npmt_pos = pd.DataFrame(self.config['nveto_pmt_position_map'])
         else:
-            downloader = straxen.MongoDownloader()
-            try:
-                self.path_to_map = downloader.download_single(self.config['nveto_pmt_position_map'])
-            except straxen.mongo_storage.CouldNotLoadError as e:
-                raise RuntimeError(f'PMT map {self.config["nveto_pmt_position_map"]} is not found') from e
+            raise ValueError(f"{self.config['nveto_pmt_position_map']} is not understood")
 
-        df = pd.read_csv(self.path_to_map, index_col=0)
-        self.pmt_properties = np.zeros(120, dtype=[(('nVETO PMT channel', 'channel'), np.int16),
-                                                   (('X coordinate of the PMT [mm]', 'x'), np.float64),
-                                                   (('Y coordinate of the PMT [mm]', 'y'), np.float64),
-                                                   (('Z coordinate of the PMT [mm]', 'z'), np.float64),
-                                                   ])
-
-        self.pmt_properties['channel'] = df['channel']
-        self.pmt_properties['x'] = df['x']
-        self.pmt_properties['y'] = df['y']
-        self.pmt_properties['z'] = df['z']
+        # Use records instead of a dataframe.
+        self.pmt_properties = npmt_pos.to_records(index=False)
 
     def compute(self, events_nv, hitlets_nv):
         event_angles = np.zeros(len(events_nv), dtype=self.dtype)
