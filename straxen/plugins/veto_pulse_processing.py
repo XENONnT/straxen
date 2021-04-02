@@ -2,9 +2,11 @@ import strax
 import numpy as np
 import numba
 import straxen
+
 export, __all__ = strax.exporter()
 
 MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+
 
 @export
 @strax.takes_config(
@@ -14,8 +16,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_nv',
-        default_by_run=[(0, 10),
-                        (12684, 26)], track=True,
+        default=('baseline_samples_nv', 'ONLINE', True), track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
@@ -38,17 +39,24 @@ class nVETOPulseProcessing(strax.Plugin):
         2. Find hits and apply ZLE
         3. Remove empty fragments.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
 
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'zstd'
-    save_when = save_when = strax.SaveWhen.TARGET
+    save_when = strax.SaveWhen.TARGET
 
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
     data_kind = 'records_nv'
     ends_with = '_nv'
+
+    def setup(self):
+        if isinstance(self.config['baseline_samples_nv'], int):
+            self.baseline_samples = self.config['baseline_samples_nv']
+        else:
+            self.baseline_samples = straxen.get_correction_from_cmt(
+                self.run_id, self.config['baseline_samples_nv'])
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -65,7 +73,7 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
         strax.baseline(r,
-                       baseline_samples=self.config['baseline_samples_nv'],
+                       baseline_samples=self.baseline_samples,
                        flip=True)
 
         if self.config['min_samples_alt_baseline_nv']:
@@ -73,7 +81,7 @@ class nVETOPulseProcessing(strax.Plugin):
             if np.any(m):
                 # Correcting baseline after PMT saturated signals
                 r[m] = median_baseline(r[m])
-        
+
         strax.integrate(r)
 
         strax.zero_out_of_bounds(r)
@@ -84,21 +92,19 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
-        rlinks = strax.record_links(r)
-        r = clean_up_empty_records(r, rlinks, only_last=True)
         return r
-    
-    
+
+
 def median_baseline(records):
     """
     Function which computes the baseline according the pulse's median.
-    
-    :param records: Records 
+
+    :param records: Records
     """
     # Count number of pulses
     npulses = np.sum(records['record_i'] == 0)
     fail_counter = 0
-    
+
     if npulses == 1:
         # This case is simple
         records = _correct_baseline(records)
@@ -142,7 +148,7 @@ def _correct_baseline(records):
         r['data'][:r['length']] = r['data'][:r['length']] - bl
         r['baseline'] -= bl
     return records
-    
+
 
 @export
 @numba.njit(cache=True, nogil=True)
@@ -241,6 +247,9 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
     provides = 'records_mv'
     data_kind = 'records_mv'
     child_plugin = True
+
+    def setup(self):
+        self.baseline_samples = self.config['baseline_samples_mv']
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(

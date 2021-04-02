@@ -13,7 +13,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='0.15.9',
+                 version='0.16.0',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
@@ -31,7 +31,9 @@ setuptools.setup(name='straxen',
                      'coveralls',
                      'xarray',
                      'datashader',
-                     'boltons'],
+                     'boltons',
+                     'ipython',
+                 ],
                  python_requires=">=3.6",
                  extras_require={
                      'docs': ['sphinx',
