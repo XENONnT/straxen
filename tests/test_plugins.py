@@ -4,7 +4,6 @@ import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
 import straxen
-import pandas as pd
 
 ##
 # Tools
