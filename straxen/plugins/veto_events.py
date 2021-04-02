@@ -195,7 +195,7 @@ def solve_ambiguity(contained_hitlets_ids):
             offset += 1
 
     # Last event:
-    if not skip_next:
+    if not skip_next and len(contained_hitlets_ids):
         res[offset, :] = contained_hitlets_ids[-1]
         offset += 1
     return res[:offset]
@@ -260,7 +260,7 @@ class nVETOEventPositions(strax.Plugin):
         hits_in_events = strax.split_by_containment(hitlets_nv, events_nv)
 
         # Compute hitlets within the first x ns of event:
-        hits_in_events, n_prompt = first_hitelts(hits_in_events,
+        hits_in_events, n_prompt = first_hitlets(hits_in_events,
                                                  self.config['position_max_time_nv'])
         event_angles['n_prompt_hitlets'] = n_prompt
 
