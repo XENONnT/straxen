@@ -9,4 +9,4 @@ cat sel_pre_requirements.txt
 echo "Start preinstall and rm pre-requirements:"
 pip install -r sel_pre_requirements.txt
 rm pre_requirements.txt sel_pre_requirements.txt
-pip install dask=2021.4.0
+pip install dask==2021.4.0
