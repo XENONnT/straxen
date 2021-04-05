@@ -211,9 +211,6 @@ class EventBasics(strax.LoopPlugin):
         main_s = dict()
         secondary_s = dict()
 
-        # peak properties for main signal only
-        main_s_only = ["max_pmt", "range_90p_area", "rise_time"]
-
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
 
@@ -264,8 +261,6 @@ class EventBasics(strax.LoopPlugin):
                 secondary_s[s_i] = ss[_alt_i]
                 result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
                 for name in to_store:
-                    if name is in main_s_only:
-                        continue
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
