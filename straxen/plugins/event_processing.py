@@ -172,6 +172,13 @@ class EventBasics(strax.LoopPlugin):
             (f'alt_s2_y', np.float32,
              f'Alternate S2 reconstructed Y position, uncorrected [cm]')]
 
+        # area before main S2
+        basics_dtype += [
+            (f'area_before_main_s2', np.float32,
+             f'Sum of areas before Main S2 [PE]'),
+            (f'large_s2_before_main_s2', np.float32,
+             f'The largest S2 before the Main S2 [PE]')]
+
         posrec_many_dtype = list(strax.time_fields)
         # parse x_mlp et cetera if needed to get the algorithms used.
         self.pos_rec_labels = list(
@@ -280,7 +287,7 @@ class EventBasics(strax.LoopPlugin):
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
-        # store s2 related info if S2 exists
+        # areas before main S2
         if result[f's2_index'] != -1:
             peaks_before_ms2 = peaks[peaks['time'] < main_s[2]['time']]
             result['area_before_main_s2'] = sum(peaks_before_ms2[area''])
@@ -290,12 +297,6 @@ class EventBasics(strax.LoopPlugin):
                 result['large_s2_before_main_s2'] = 0
             else:
                 result['large_s2_before_main_s2'] = max(s2peaks_before_ms2["area"])
-
-            # s2 tail
-            t_to_prev_peak = (np.ones(len(peaks), dtype=np.int64)
-                              * self.config['peak_max_proximity_time'])
-            t_to_prev_peak[1:] = peaks['time'][1:] - peaks['endtime'][:-1]
-
 
         return {'event_basics': result,
                 'event_posrec_many': posrec_result}
