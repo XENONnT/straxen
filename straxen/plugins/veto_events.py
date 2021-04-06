@@ -132,7 +132,7 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
         event_area = np.sum(hitlet['area'])
         e['area'] = event_area
         e['n_hits'] = len(hitlet)
-        e['n_contributed_pmt'] = len(np.unique(hitlet['channel']))
+        e['n_contributing_pmt'] = len(np.unique(hitlet['channel']))
 
         t = hitlet['time'] - hitlet[0]['time']
         if event_area:
