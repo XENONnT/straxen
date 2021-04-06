@@ -290,13 +290,13 @@ class EventBasics(strax.LoopPlugin):
         # areas before main S2
         if result[f's2_index'] != -1:
             peaks_before_ms2 = peaks[peaks['time'] < main_s[2]['time']]
-            result['area_before_main_s2'] = sum(peaks_before_ms2[area''])
+            result['area_before_main_s2'] = sum(peaks_before_ms2['area'])
 
             s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2['type']==2]
             if len(s2peaks_before_ms2) == 0:
                 result['large_s2_before_main_s2'] = 0
             else:
-                result['large_s2_before_main_s2'] = max(s2peaks_before_ms2["area"])
+                result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
 
         return {'event_basics': result,
                 'event_posrec_many': posrec_result}
