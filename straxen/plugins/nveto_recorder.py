@@ -402,6 +402,10 @@ def _merge_intervals(start_time, resolving_time):
         If start times of two intervals are exactly resolving_time apart
         from each other they will be merged into a single interval.
     """
+    if not len(start_time):
+        # If the input is empty return empty array:
+        return np.zeros((0, 2), dtype=np.int64)
+
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
     gaps = np.diff(start_time) > resolving_time
