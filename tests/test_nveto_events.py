@@ -228,5 +228,10 @@ def _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event):
     # and to simplify comparison
     m = (events['pos_x'] == 0) & (events['pos_y'] == 0)
     angle[m] = 0
+
+    # Fixing +2pi issue and np.angle [-180, 180] and [0, 360) convention
+    # issue.
+    angle = angle % (2*np.pi)
+    truth_angle = truth_angle % (2*np.pi)
     mes = f'Event angle did not match expected {truth_angle}, got {angle}.'
     assert np.isclose(angle, truth_angle), mes
