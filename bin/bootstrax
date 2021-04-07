@@ -530,32 +530,33 @@ def infer_target(rd):
     :param rd: rundoc
     :return: dict with the targets and the targets for post processing
     """
-    _t = args.targets
-    _pp = args.post_process
+    targets = args.targets
+    post_process = args.post_process
 
     if args.fix_target:
-        return {'targets': strax.to_str_tuple(_t),
-                'post_processing': strax.to_str_tuple(_pp)}
+        return {'targets': strax.to_str_tuple(targets),
+                'post_processing': strax.to_str_tuple(post_process)}
 
     n_fails = rd['bootstrax'].get('n_failures', 0)
+
     if n_fails:
         log.debug(f'Deleting targets')
-        for _rm_t, _rm_t_after in remove_target_after_fails.items():
-            for __i, __t in enumerate(_t):
-                if __t in _rm_t and n_fails > _rm_t_after:
-                    log.debug(f'Remove {__t}')
-                    del _t[__i]
-            for __pi, __p  in enumerate(_pp):
-                if __p in _rm_t and n_fails > _rm_t_after:
-                    log.debug(f'Remove {__p}')
-                    del _pp[__pi]
-    log.debug(f'{_t} and {_pp} remaining')
+        for rm_target, rm_after_n in remove_target_after_fails.items():
+            for target_i, targ in enumerate(targets):
+                if targ in rm_target and n_fails > rm_after_n:
+                    log.debug(f'Remove {targ}')
+                    del targets[target_i]
+            for post_i, post_targ in enumerate(post_process):
+                if post_targ in rm_target and n_fails > rm_after_n:
+                    log.debug(f'Remove {post_targ}')
+                    del post_process[post_i]
+
+    log.debug(f'{targets} and {post_process} remaining')
+
     if n_fails >= remove_target_after_fails['ALL']:
         log.debug(f'Overwriting to raw-records only')
-        _t = 'raw_records'
-        _pp = 'raw_records'
-        return {'targets': strax.to_str_tuple(_t),
-                'post_processing': strax.to_str_tuple(_pp)}
+        return {'targets': strax.to_str_tuple('raw_records'),
+                'post_processing': strax.to_str_tuple('raw_records')}
 
     # Special modes override target for these
     led_modes = ['pmtgain']
@@ -566,40 +567,45 @@ def infer_target(rd):
     log.debug(f'mode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
         log.debug('led-mode')
-        _t = 'led_calibration'
-        _pp = 'raw_records'
+        targets = 'led_calibration'
+        post_process = 'raw_records'
     elif np.any([m in mode for m in diagnostic_modes]):
         log.debug('diagnostic-mode')
-        _t = 'raw_records'
-        _pp = 'raw_records'
+        targets = 'raw_records'
+        post_process = 'raw_records'
 
     if detectors == ['tpc']:
-        _t = _remove_veto_from_t(_t)
-        _pp = _remove_veto_from_t(_pp)
-    elif detectors == ['neutron_veto']:
-        _t = _keep_veto_from_t(_t, keep='_nv')
-        _pp = _keep_veto_from_t(_pp, keep='_nv')
-    elif detectors == ['muon_veto']:
-        _t = _keep_veto_from_t(_t, keep='_mv')
-        _pp = _keep_veto_from_t(_pp, keep='_mv')
+        targets = _remove_veto_from_t(targets)
+        post_process = _remove_veto_from_t(post_process)
     else:
-        log_warning(f'Running in linked mode, processing up to {_t} and '
-                    f'postprocessing to {_pp}',
-                    priority='info',
-                    run_id=f'{rd["number"]:06}')
-    if _t is None or not len(_t):
-        _t = 'raw_records'
-    if _pp is None or not len(_pp):
-        _pp = 'raw_records'
-    _t = strax.to_str_tuple(_t)
-    _pp = strax.to_str_tuple(_pp)
-    log.info(f'Inferring modes done, writing {_t} and {_pp}')
-    for __check in (_t, _pp):
-        if not len(set(__check)) == len(__check):
-            log_warning(f'Duplicates in (post) targets {__check}',
+        for det, remove in (('neutron_veto', '_nv'),
+                            ('muon_veto', '_mv')):
+            if det not in detectors:
+                # Remove the _veto if this detector is not in the detector list
+                targets = _remove_veto_from_t(targets, remove=remove)
+                post_process = _remove_veto_from_t(post_process, remove=remove)
+        if len(detectors):
+            # Temp log to the rundb
+            log_warning(f'Running in linked mode, processing up to {targets} and '
+                        f'postprocessing to {post_process}',
+                        priority='info',
+                        run_id=f'{rd["number"]:06}')
+
+    if targets is None or not len(targets):
+        targets = 'raw_records'
+    if post_process is None or not len(post_process):
+        post_process = 'raw_records'
+
+    targets = strax.to_str_tuple(targets)
+    post_process = strax.to_str_tuple(post_process)
+    log.info(f'Inferring modes done, writing {targets} and {post_process}')
+    for check in (targets, post_process):
+        if not len(set(check)) == len(check):
+            log_warning(f'Duplicates in (post) targets {check}',
                         priority='Fatal')
-            raise ValueError(f'Duplicates in (post) targets {__check}')
-    return {'targets': _t, 'post_processing': _pp}
+            raise ValueError(f'Duplicates in (post) targets {check}')
+
+    return {'targets': targets, 'post_processing': post_process}
 
 
 def set_state(state, update_fields=None):
