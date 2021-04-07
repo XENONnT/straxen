@@ -130,12 +130,6 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
             ch = hit['channel'] - start_channel
             e['area_per_channel'][ch] += hit['area']
 
-        # Update start and endtime as hitlets only have to overlap
-        # partially
-        e['time'] = min(e['time'], hitlet['time'][0])
-        endtime = strax.endtime(hitlet)
-        e['endtime'] = np.max(endtime)
-
 
 def find_veto_events(hitlets,
                      coincidence_level,
