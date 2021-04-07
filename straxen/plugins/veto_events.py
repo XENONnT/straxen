@@ -102,7 +102,6 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
     dtype = []
     dtype += strax.time_fields  # because mutable
     dtype += [(('Veto event number in this dataset', name_event_number), np.int64),
-              (('Last hitlet endtime in event [ns].', 'last_hitlet_endtime'), np.int64),
               (('Total area of all hitlets in event [pe]', 'area'), np.float32),
               (('Total number of hitlets in events', 'n_hits'), np.int32),
               (('Total number of contributing channels', 'n_contributing_pmt'), np.uint8),
@@ -149,14 +148,11 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
             ch = hit['channel'] - start_channel
             e['area_per_channel'][ch] += hit['area']
 
-        # Compute endtime of last hitlet in event:
-        endtime = strax.endtime(hitlet)
-        e['last_hitlet_endtime'] = np.max(endtime)
-
         # Update start and endtime as hitlets only have to overlap
         # partially
         e['time'] = min(e['time'], hitlet['time'][0])
-        e['endtime'] = max(e['endtime'], max(endtime))
+        endtime = strax.endtime(hitlet)
+        e['endtime'] = np.max(endtime)
 
 
 @numba.njit(cache=True, nogil=False)
@@ -223,21 +219,10 @@ class nVETOEventPositions(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    dtype = []
-    dtype += strax.time_fields
-    dtype += [(('Number of prompt hitlets within the first "position_max_time_nv" ns of the event.',
-                'n_prompt_hitlets'), np.int16),
-              (('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
-                'angle'), np.float32),
-              (('Area weighted mean of position in x [mm]', 'pos_x'), np.float32),
-              (('Area weighted mean of position in y [mm]', 'pos_y'), np.float32),
-              (('Area weighted mean of position in z [mm]', 'pos_z'), np.float32),
-              (('Weighted variance of position in x [mm]', 'pos_x_spread'), np.float32),
-              (('Weighted variance of position in y [mm]', 'pos_y_spread'), np.float32),
-              (('Weighted variance of position in z [mm]', 'pos_z_spread'), np.float32)
-              ]
-
     __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        return veto_event_positions_dtype()
 
     def setup(self):
         if isinstance(self.config['nveto_pmt_position_map'], str):
@@ -272,6 +257,23 @@ class nVETOEventPositions(strax.Plugin):
         strax.copy_to_buffer(events_nv, event_angles, f'_copy_events{self.ends_with}')
 
         return event_angles
+
+
+def veto_event_positions_dtype():
+    dtype = []
+    dtype += strax.time_fields
+    dtype += [(('Number of prompt hitlets within the first "position_max_time_nv" ns of the event.',
+                'n_prompt_hitlets'), np.int16),
+              (('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
+                'angle'), np.float32),
+              (('Area weighted mean of position in x [mm]', 'pos_x'), np.float32),
+              (('Area weighted mean of position in y [mm]', 'pos_y'), np.float32),
+              (('Area weighted mean of position in z [mm]', 'pos_z'), np.float32),
+              (('Weighted variance of position in x [mm]', 'pos_x_spread'), np.float32),
+              (('Weighted variance of position in y [mm]', 'pos_y_spread'), np.float32),
+              (('Weighted variance of position in z [mm]', 'pos_z_spread'), np.float32)
+              ]
+    return dtype
 
 
 @numba.njit(cache=True, nogil=True)
