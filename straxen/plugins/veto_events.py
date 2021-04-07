@@ -198,8 +198,12 @@ def _solve_ambiguity(contained_hitlets_ids: np.ndarray) -> np.ndarray:
     can extend beyond the fixed window.
     """
     res = np.zeros(contained_hitlets_ids.shape, dtype=contained_hitlets_ids.dtype)
-    offset = 0
 
+    if not len(res):
+        # Return empty result
+        return res
+
+    offset = 0
     start_i, end_i = contained_hitlets_ids[0]
     for e_i, ids in enumerate(contained_hitlets_ids[1:]):
 
