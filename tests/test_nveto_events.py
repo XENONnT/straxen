@@ -99,49 +99,45 @@ def _test_disjoint(intervals, time, length, channel, dt):
                                  hypothesis.HealthCheck.too_slow],
           deadline=None)
 @given(create_disjoint_intervals(strax.hitlet_dtype(),
-                                 n_intervals=25,
+                                 n_intervals=50,
                                  dt=1,
-                                 time_range=(0, 50),
+                                 time_range=(0, 1000),
                                  channel_range=(2000, 2120),
-                                 length_range=(2, 8), ),
+                                 length_range=(20, 80), ),
        hst.integers(1, 3),
-       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=25),
        )
-def test_nveto_event_building_and_properties(hitlets,
-                                             coincidence,
-                                             area):
+def test_nveto_event_building(hitlets,
+                              coincidence):
+    """
+    In this test we test the code of
+    straxen.plugins.veto_evnets.find_veto_events
+    """
     hitlets = strax.sort_by_time(hitlets)
 
-    # Add other toy properties:
-    hitlets['area'] = area
+    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets,
+                                                           coincidence,
+                                                           300)
 
-    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets, coincidence, 50)
-
-    # Create events with veto event and event positions dtype:
-    dtype = []
-    dtype += straxen.plugins.veto_events.veto_event_dtype('event_number_nv', n_pmts=120)
-    dtype += straxen.plugins.veto_event_positions_dtype()[2:]  # (remove time fields)
-    events = np.zeros(len(intervals), dtype)
-    events['time'] = intervals[:, 0]
-    events['endtime'] = intervals[:, 1]
+    # Create event_intervals:
+    event_intervals = np.zeros(len(intervals),
+                               dtype=strax.time_fields
+                               )
+    event_intervals['time'] = intervals[:, 0]
+    event_intervals['endtime'] = intervals[:, 1]
 
     mes = 'Found overlapping events returned by "coincidence".'
-    assert np.all(events['endtime'][:-1] - events['time'][1:] < 0), mes
+    assert np.all(event_intervals['endtime'][:-1] - event_intervals['time'][1:] < 0), mes
 
     # Get hits which touch the event window, this can lead to ambiguities
     # which we will solve subsequently.
-    hitlets_ids_in_event = strax.touching_windows(hitlets, events)
-    # First check for empty events, since amiguity check will merge intervals:
+    hitlets_ids_in_event = strax.touching_windows(hitlets, event_intervals)
+    # First check for empty events, since ambiguity check will merge intervals:
     mes = f'Found an empty event without any hitlets: {hitlets_ids_in_event}.'
     assert np.all(np.diff(hitlets_ids_in_event) != 0), mes
 
-    # Solve ambiguities (merge overlapping intervals) remove empty once
-    # and check.
+    # Solve ambiguities (merge overlapping intervals)
     interval_truth = _test_ambiguity(hitlets_ids_in_event)
-
-    hitlets_ids_in_event = straxen.plugins.veto_events.solve_ambiguity(hitlets_ids_in_event)
-    m = np.diff(hitlets_ids_in_event).flatten() != 0
-    hitlets_ids_in_event = hitlets_ids_in_event[m]
+    hitlets_ids_in_event = straxen.plugins.veto_events._solve_ambiguity(hitlets_ids_in_event)
 
     mes = f'Found ambigious event for {hitlets_ids_in_event} with turth {interval_truth}'
     assert np.all(hitlets_ids_in_event == interval_truth), mes
@@ -149,11 +145,6 @@ def test_nveto_event_building_and_properties(hitlets,
     # Check if events satisfy the coincidence requirement:
     mes = f'Found an event with less than 3 hitelts. {hitlets_ids_in_event}'
     assert np.all(np.diff(hitlets_ids_in_event) >= coincidence), mes
-
-    # --------------
-    # Event building works so, lets compute the properties:
-    # --------------
-    _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event)
 
 
 def _test_ambiguity(hitlets_ids_in_event):
@@ -177,7 +168,25 @@ def _test_ambiguity(hitlets_ids_in_event):
     return res
 
 
-def _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event):
+@settings(suppress_health_check=[hypothesis.HealthCheck.large_base_example,
+                                 hypothesis.HealthCheck.too_slow],
+          deadline=None)
+@given(create_disjoint_intervals(strax.hitlet_dtype(),
+                                 n_intervals=50,
+                                 dt=1,
+                                 time_range=(0, 1000),
+                                 channel_range=(2000, 2120),
+                                 length_range=(20, 80), ),
+       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=50),
+       )
+def test_nveto_event_plugin(hitlets, area):
+
+    hitlets['area'] = area
+    events, hitlets_ids_in_event= straxen.ind_veto_events(hitlets,
+                                                          3,
+                                                          300,
+                                                          0)
+
     straxen.plugins.veto_events.compute_nveto_event_properties(events,
                                                                hitlets,
                                                                hitlets_ids_in_event,
