@@ -210,32 +210,23 @@ def _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event):
         assert np.all(sbc_hitlets == h), mes
 
     # Test event positions:
-    if False:
-        npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
-        npmt_pos = npmt_pos.to_records(index=False)
+    npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
+    npmt_pos = npmt_pos.to_records(index=False)
 
-        straxen.plugins.veto_events.compute_positions(events,
-                                                      events,
-                                                      split_hitlets,
-                                                      npmt_pos,
-                                                      start_channel=2000)
+    straxen.plugins.veto_events.compute_positions(events,
+                                                  events,
+                                                  split_hitlets,
+                                                  npmt_pos,
+                                                  start_channel=2000)
 
-        angle = straxen.plugins.veto_events.compute_average_angle(split_hitlets,
-                                                                  npmt_pos,
-                                                                  start_channel=2000)
-        # Compute truth angles:
-        truth_angle = np.angle(events['pos_x']+events['pos_y']*1j)
-        # Replace not defined angles, into zeros to match np.angles return
-        # and to simplify comparison
-        m = (events['pos_x'] == 0) & (events['pos_y'] == 0)
-        angle[m] = 0
-        mes = f'Event angle did not match expected {truth_angle}, got {angle}.'
-        assert np.isclose(angle, truth_angle), mes
-
-@settings(deadline=None)
-@given(hst.floats(0,1))
-def test(f):
-    if True:
-        npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
-        npmt_pos = npmt_pos.to_records(index=False)
-    assert f <= 1, 'Test'
+    angle = straxen.plugins.veto_events.compute_average_angle(split_hitlets,
+                                                              npmt_pos,
+                                                              start_channel=2000)
+    # Compute truth angles:
+    truth_angle = np.angle(events['pos_x']+events['pos_y']*1j)
+    # Replace not defined angles, into zeros to match np.angles return
+    # and to simplify comparison
+    m = (events['pos_x'] == 0) & (events['pos_y'] == 0)
+    angle[m] = 0
+    mes = f'Event angle did not match expected {truth_angle}, got {angle}.'
+    assert np.isclose(angle, truth_angle), mes
