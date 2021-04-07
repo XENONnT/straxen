@@ -233,5 +233,7 @@ def _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event):
     # issue.
     angle = angle % (2*np.pi)
     truth_angle = truth_angle % (2*np.pi)
+
+    # Compare angle, also indirectly tests average x/y/z
     mes = f'Event angle did not match expected {truth_angle}, got {angle}.'
     assert np.isclose(angle, truth_angle), mes
