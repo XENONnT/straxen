@@ -52,6 +52,11 @@ def test_xenon1t_dali():
 
 
 def test_demo():
+    """
+    Test the demo context. Since we download the folder to the current
+        working directory, make sure we are in a tempfolder where we
+        can write the data to
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             print("Temporary directory is ", temp_dir)
