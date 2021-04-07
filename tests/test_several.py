@@ -100,21 +100,18 @@ def test_several():
                              deep=True)
             plt_clf()
 
-            print('plot event displays')
-            straxen.analyses.event_display.plot_single_event(st,
-                                                             test_run_id_1T,
-                                                             events,
-                                                             xenon1t=True,
-                                                             event_number=0,
-                                                             records_matrix=True)
-            plt_clf()
             straxen.analyses.event_display.plot_single_event(st,
                                                              test_run_id_1T,
                                                              events,
                                                              xenon1t=True,
                                                              event_number=0,
                                                              records_matrix='raw')
+            st.event_display_simple(test_run_id_1T,
+                                    time_range=(events[0]['time'],
+                                                events[0]['endtime']),
+                                    xenon1t=True)
             plt_clf()
+
             st.event_display_interactive(test_run_id_1T, time_range=(events[0]['time'],
                                                                   events[0]['endtime']),
                                          xenon1t=True)
