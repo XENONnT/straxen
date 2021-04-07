@@ -8,6 +8,7 @@ import pandas as pd
 import os
 from immutabledict import immutabledict
 
+export, __all__ = strax.exporter()
 
 @strax.takes_config(
     strax.Option('event_left_extension_nv', default=0,
@@ -130,7 +131,7 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
             ch = hit['channel'] - start_channel
             e['area_per_channel'][ch] += hit['area']
 
-
+@export
 def find_veto_events(hitlets,
                      coincidence_level,
                      resolving_time,
