@@ -1,11 +1,11 @@
 import strax
 import straxen
-import warnings
+
 import numpy as np
 import numba
 import pandas as pd
 
-import os
+import typing as ty
 from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
@@ -81,7 +81,8 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return events
 
 
-def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
+def veto_event_dtype(name_event_number: str = 'event_number_nv',
+                     n_pmts: int = 120) -> list:
     dtype = []
     dtype += strax.time_fields  # because mutable
     dtype += [(('Veto event number in this dataset', name_event_number), np.int64),
@@ -97,7 +98,10 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start_channel=2000):
+def compute_nveto_event_properties(events: np.ndarray,
+                                   hitlets: np.ndarray,
+                                   contained_hitlets_ids: np.ndarray,
+                                   start_channel: int = 2000):
     """
     Computes properties of the neutron-veto events. Writes results
     directly to events.
@@ -132,12 +136,12 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
             e['area_per_channel'][ch] += hit['area']
 
 @export
-def find_veto_events(hitlets,
-                     coincidence_level,
-                     resolving_time,
-                     left_extension,
-                     event_number_key='event_number_nv',
-                     n_channel=120, ):
+def find_veto_events(hitlets: np.ndarray,
+                     coincidence_level: int,
+                     resolving_time: int,
+                     left_extension: int,
+                     event_number_key: str = 'event_number_nv',
+                     n_channel: int = 120, ) -> ty.Tuple[np.ndarray, np.ndarray]:
     """
     Function which find the veto events as a nfold concidence in a given
     resolving time window. All hitlets which touch the event window
@@ -184,7 +188,7 @@ def find_veto_events(hitlets,
 
 
 @numba.njit(cache=True, nogil=False)
-def _solve_ambiguity(contained_hitlets_ids):
+def _solve_ambiguity(contained_hitlets_ids: np.ndarray) -> np.ndarray:
     """
     Function which solves the ambiguity if a single hitlets overlaps
     with two event intervals.
@@ -217,7 +221,9 @@ def _solve_ambiguity(contained_hitlets_ids):
 
 
 @numba.njit(cache=True, nogil=True)
-def _make_event(hitlets, hitlet_ids, res):
+def _make_event(hitlets: np.ndarray,
+                hitlet_ids: np.ndarray,
+                res: np.ndarray):
     """
     Function which sets veto event time and endtime.
     """
@@ -289,7 +295,7 @@ class nVETOEventPositions(strax.Plugin):
         return event_angles
 
 
-def veto_event_positions_dtype():
+def veto_event_positions_dtype() -> list:
     dtype = []
     dtype += strax.time_fields
     dtype += [(('Number of prompt hitlets within the first "position_max_time_nv" ns of the event.',
@@ -307,7 +313,11 @@ def veto_event_positions_dtype():
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_positions(event_angles, events, contained_hitlets, pmt_pos, start_channel=2000):
+def compute_positions(event_angles: np.ndarray,
+                      events: np.ndarray,
+                      contained_hitlets: np.ndarray,
+                      pmt_pos: np.ndarray,
+                      start_channel: int = 2000):
     for e_angles, e, hitlets in zip(event_angles, events, contained_hitlets):
         if e['area']:
             ch = hitlets['channel'] - start_channel
@@ -326,10 +336,9 @@ def compute_positions(event_angles, events, contained_hitlets, pmt_pos, start_ch
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_average_angle(hitlets_in_event,
-                          pmt_properties,
-                          start_channel=2000,
-                          ):
+def compute_average_angle(hitlets_in_event: np.ndarray,
+                          pmt_properties: np.ndarray,
+                          start_channel: int = 2000,) -> np.ndarray:
     """
     Computes azimuthal angle as an area weighted mean over all hitlets.
 
@@ -355,7 +364,8 @@ def compute_average_angle(hitlets_in_event,
 
 
 @numba.njit(cache=True, nogil=True)
-def circ_angle(x_values, y_values):
+def circ_angle(x_values: np.ndarray,
+               y_values: np.ndarray) -> np.ndarray:
     """
     Loops over a set of x and y values and computes azimuthal angle.
 
@@ -370,7 +380,7 @@ def circ_angle(x_values, y_values):
 
 
 @numba.njit(cache=True, nogil=True)
-def _circ_angle(x, y):
+def _circ_angle(x: float, y: float) -> float:
     if x > 0 and y >= 0:
         # 1st quadrant
         angle = np.abs(np.arctan(y / x))
@@ -396,7 +406,8 @@ def _circ_angle(x, y):
 
 
 @numba.njit(cache=True, nogil=True)
-def first_hitlets(hitlets_per_event, max_time):
+def first_hitlets(hitlets_per_event: np.ndarray,
+                  max_time: int) -> ty.Tuple[numba.typed.List, np.ndarray]:
     """
     Returns hitlets within the first "max_time" ns of an event.
 
