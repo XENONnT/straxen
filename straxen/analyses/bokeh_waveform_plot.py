@@ -764,6 +764,9 @@ class DataSelectionHist:
         self.selection_index = None
         self.size = size
 
+        from bokeh.io import output_notebook
+        output_notebook()
+
     def histogram2d(self,
                     items,
                     xdata,
