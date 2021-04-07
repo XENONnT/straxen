@@ -182,10 +182,10 @@ def _test_ambiguity(hitlets_ids_in_event):
 def test_nveto_event_plugin(hitlets, area):
     hitlets['area'] = area
     hitlets = strax.sort_by_time(hitlets)
-    events, hitlets_ids_in_event= straxen.find_veto_events(hitlets,
-                                                           3,
-                                                           300,
-                                                           0)
+    events, hitlets_ids_in_event = straxen.find_veto_events(hitlets,
+                                                            3,
+                                                            300,
+                                                            0)
 
     straxen.plugins.veto_events.compute_nveto_event_properties(events,
                                                                hitlets,
@@ -222,7 +222,10 @@ def test_nveto_event_plugin(hitlets, area):
     npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
     npmt_pos = npmt_pos.to_records(index=False)
 
-    straxen.plugins.veto_events.compute_positions(events,
+    events_angle = np.zeros(len(events),
+                            dtype=straxen.plugins.veto_events.veto_event_positions_dtype())
+
+    straxen.plugins.veto_events.compute_positions(events_angle,
                                                   events,
                                                   split_hitlets,
                                                   npmt_pos,
@@ -232,10 +235,10 @@ def test_nveto_event_plugin(hitlets, area):
                                                               npmt_pos,
                                                               start_channel=2000)
     # Compute truth angles:
-    truth_angle = np.angle(events['pos_x']+events['pos_y']*1j)
+    truth_angle = np.angle(events_angle['pos_x']+events_angle['pos_y']*1j)
     # Replace not defined angles, into zeros to match np.angles return
     # and to simplify comparison
-    m = (events['pos_x'] == 0) & (events['pos_y'] == 0)
+    m = (events_angle['pos_x'] == 0) & (events_angle['pos_y'] == 0)
     angle[m] = 0
 
     # Fixing +2pi issue and np.angle [-180, 180] and [0, 360) convention
