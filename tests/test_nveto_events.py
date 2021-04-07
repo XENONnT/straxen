@@ -15,7 +15,7 @@ def create_disjoint_intervals(draw,
                               n_intervals=10,
                               dt=1,
                               time_range=(0, 100),
-                              channel_range=(2000, 2120),
+                              channel_range=(2000, 2199),
                               length_range=(1, 1), ):
     """
     Function which generates a hypothesis strategy for a fixed number
