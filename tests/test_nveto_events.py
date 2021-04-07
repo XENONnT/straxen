@@ -21,12 +21,6 @@ def create_disjoint_intervals(draw,
     Function which generates a hypothesis strategy for a fixed number
     of disjoint intervals
 
-    Note:
-        You can use create_disjoint_intervals().example() to see an
-        example.
-        If you do not want to specify the bounds for any of the "_range"
-        parameters set the corresponding bound to None.
-
     :param dtype: Can be any strax-like dtype either with endtime or
         dt and length field.
     :param n_intervals: How many disjoint intervals should be returned.
@@ -38,6 +32,18 @@ def create_disjoint_intervals(draw,
         equal.
     :param length_range: Range how long time intervals can be.
     :return: hypothesis strategy which can be used in @given
+
+    Note:
+        You can use create_disjoint_intervals().example() to see an
+        example.
+        If you do not want to specify the bounds for any of the "_range"
+        parameters set the corresponding bound to None.
+
+        Somehow hypothesis complains that the creation of these events
+        takes too long ~2 s for 50 intervals. You can disable the
+        corresponding healt checks via:" @settings(
+        suppress_health_check=[hypothesis.HealthCheck.large_base_example,
+         hypothesis.HealthCheck.too_slow])"
     """
     n = 0
 
@@ -89,18 +95,33 @@ def _test_disjoint(intervals, time, length, channel, dt):
         return True
 
 
-@settings(suppress_health_check=[hypothesis.HealthCheck.large_base_example, hypothesis.HealthCheck.too_slow])
+@settings(suppress_health_check=[hypothesis.HealthCheck.large_base_example,
+                                 hypothesis.HealthCheck.too_slow],
+          deadline=None)
 @given(create_disjoint_intervals(strax.hitlet_dtype(),
-                                 n_intervals=50,
+                                 n_intervals=25,
                                  dt=1,
-                                 time_range=(0, 1000),
+                                 time_range=(0, 50),
                                  channel_range=(2000, 2120),
-                                 length_range=(20, 80), ), hst.integers(1, 3))
-def test_nveto_events_and_coincidence(hitlets, coincidence):
+                                 length_range=(2, 8), ),
+       hst.integers(1, 3),
+       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=25),
+       )
+def test_nveto_event_building_and_properties(hitlets,
+                                             coincidence,
+                                             area):
     hitlets = strax.sort_by_time(hitlets)
 
+    # Add other toy properties:
+    hitlets['area'] = area
+
     intervals = straxen.plugins.nveto_recorder.coincidence(hitlets, coincidence, 50)
-    events = np.zeros(len(intervals), strax.time_fields)
+
+    # Create events with veto event and event positions dtype:
+    dtype = []
+    dtype += straxen.plugins.veto_events.veto_event_dtype('event_number_nv', n_pmts=120)
+    dtype += straxen.plugins.veto_event_positions_dtype()[2:]  # (remove time fields)
+    events = np.zeros(len(intervals), dtype)
     events['time'] = intervals[:, 0]
     events['endtime'] = intervals[:, 1]
 
@@ -110,13 +131,12 @@ def test_nveto_events_and_coincidence(hitlets, coincidence):
     # Get hits which touch the event window, this can lead to ambiguities
     # which we will solve subsequently.
     hitlets_ids_in_event = strax.touching_windows(hitlets, events)
-    print(hitlets_ids_in_event)
     # First check for empty events, since amiguity check will merge intervals:
-    mes =  f'Found an empty event without any hitlets: {hitlets_ids_in_event}.'
+    mes = f'Found an empty event without any hitlets: {hitlets_ids_in_event}.'
     assert np.all(np.diff(hitlets_ids_in_event) != 0), mes
 
-    # Solve ambiguities (merge overlapping intervals) remove empty once and
-    # check.
+    # Solve ambiguities (merge overlapping intervals) remove empty once
+    # and check.
     interval_truth = _test_ambiguity(hitlets_ids_in_event)
 
     hitlets_ids_in_event = straxen.plugins.veto_events.solve_ambiguity(hitlets_ids_in_event)
@@ -126,9 +146,14 @@ def test_nveto_events_and_coincidence(hitlets, coincidence):
     mes = f'Found ambigious event for {hitlets_ids_in_event} with turth {interval_truth}'
     assert np.all(hitlets_ids_in_event == interval_truth), mes
 
-    # Check if events satisfy the interval requirement:
+    # Check if events satisfy the coincidence requirement:
     mes = f'Found an event with less than 3 hitelts. {hitlets_ids_in_event}'
     assert np.all(np.diff(hitlets_ids_in_event) >= coincidence), mes
+
+    # --------------
+    # Event building works so, lets compute the properties:
+    # --------------
+    _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event)
 
 
 def _test_ambiguity(hitlets_ids_in_event):
@@ -150,3 +175,40 @@ def _test_ambiguity(hitlets_ids_in_event):
     # Add last interval:
     res.append([start, end])
     return res
+
+
+def _test_nveto_event_plugin(hitlets, events, hitlets_ids_in_event):
+    straxen.plugins.veto_events.compute_nveto_event_properties(events,
+                                                               hitlets,
+                                                               hitlets_ids_in_event,
+                                                               start_channel=2000)
+    # Test some of the parameters:
+    for e, hit_ids in zip(events, hitlets_ids_in_event):
+        hits = hitlets[hit_ids[0]:hit_ids[1]]
+
+        assert e['time'] == np.min(hits['time']), f'Event start is wrong (hit_ids: hit_ids)'
+        assert e['endtime'] == np.max(strax.endtime(hits)), f'Event end is wrong (hit_ids: hit_ids)'
+        assert np.isclose(e['area'], np.sum(hits['area'])), f'Event area is wrong for {e["area"]}, {hits["area"]}'
+        mes = f'Event n_contributing_pmt is wrong for {e["n_contributing_pmt"]}, {hits["channel"]}'
+        assert e['n_contributing_pmt'] == len(np.unique(hits['channel'])), mes
+        assert e['n_hits'] == len(hits), f'Event n_hits is wrong for {e["n_hits"]}, {hits}'
+
+    # -----------------------
+    # Check if updated events
+    # have the correct boundaries:
+    # -----------------------
+    if len(events) > 1:
+        mes = f'Updated event boundaries overlap! {events}'
+        assert (events['endtime'][:-1] - events['time'][1:]) > 0, mes
+
+    split_hitlets = strax.split_by_containment(hitlets, events)
+
+    for sbc_hitlets, tw_hitlet_id in zip(split_hitlets, hitlets_ids_in_event):
+        h = hitlets[tw_hitlet_id[0]:tw_hitlet_id[1]]
+        mes = ('Touching windows and split_by_containment yield different hitlets'
+               ' after updating the event boundaries. This should not have happened.')
+        assert np.all(sbc_hitlets == h), mes
+
+    # Test event positions:
+    #npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
+    #straxen.plugins.veto_events.compute_positions(
