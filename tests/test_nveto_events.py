@@ -182,10 +182,10 @@ def _test_ambiguity(hitlets_ids_in_event):
 def test_nveto_event_plugin(hitlets, area):
 
     hitlets['area'] = area
-    events, hitlets_ids_in_event= straxen.ind_veto_events(hitlets,
-                                                          3,
-                                                          300,
-                                                          0)
+    events, hitlets_ids_in_event= straxen.find_veto_events(hitlets,
+                                                           3,
+                                                           300,
+                                                           0)
 
     straxen.plugins.veto_events.compute_nveto_event_properties(events,
                                                                hitlets,
