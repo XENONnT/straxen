@@ -35,7 +35,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     events_seen = 0
 
     def infer_dtype(self):
@@ -53,31 +53,13 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
 
     def compute(self, hitlets_nv, start, end):
-        intervals = straxen.plugins.nveto_recorder.coincidence(hitlets_nv,
-                                                               self.config['event_min_hits_nv'],
-                                                               self.config['event_resolving_time_nv'],
-                                                               self.config['event_left_extension_nv']
-                                                               )
 
-        n_events = len(intervals)
-        events = np.zeros(n_events,
-                          dtype=veto_event_dtype(self.name_event_number,
-                                                 self.n_channel)
-                          )
-        events['time'] = intervals[:, 0]
-        events['endtime'] = intervals[:, 1]
-
-        # Find all hilets which touch the coincidence windows
-        # and fix ambiguities in case a single hitlet touches two intveral
-        # (this can happen for muon signals with a long tail + afterpulses/trapped
-        # light, in those cases we merge the two events into a single one)
-        hitlets_ids_in_event = strax.touching_windows(hitlets_nv, events)
-        hitlets_ids_in_event = solve_ambiguity(hitlets_ids_in_event)
-
-        # Drop empty events (which were merged before):
-        m = np.diff(hitlets_ids_in_event).flatten() != 0
-        hitlets_ids_in_event = hitlets_ids_in_event[m]
-        events = events[m]
+        events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
+                                                        self.config['event_min_hits_nv'],
+                                                        self.config['event_resolving_time_nv'],
+                                                        self.confgi['event_left_extension_nv'],
+                                                        event_number_key=self.name_event_number,
+                                                        n_channel=self.n_channel, )
 
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
@@ -155,8 +137,59 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
         e['endtime'] = np.max(endtime)
 
 
+def find_veto_events(hitlets,
+                     coincidence_level,
+                     resolving_time,
+                     left_extension,
+                     event_number_key='event_number_nv',
+                     n_channel=120, ):
+    """
+    Function which find the veto events as a nfold concidence in a given
+    resolving time window. All hitlets which touch the event window
+    contribute.
+
+    :param hitlets: Hitlets which shall be used for event creation.
+    :param coincidence_level: int, coincidence level.
+    :param resolving_time: int, resolving window for coincidence in ns.
+    :param left_extension: int, left event extension in ns.
+    :param event_number_key: str, field name for the event number
+    :param n_channel: int, number of channels in detector.
+    :returns: events, hitelt_ids_per_event
+    """
+    # Find intervals which satisfy requirement:
+    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets,
+                                                           coincidence_level,
+                                                           resolving_time,
+                                                           left_extension,
+
+                                                           )
+
+    # Create some preliminary events:
+    event_intervals = np.zeros(len(intervals),
+                               dtype=strax.time_fields
+                               )
+    event_intervals['time'] = intervals[:, 0]
+    event_intervals['endtime'] = intervals[:, 1]
+
+    # Find all hitlets which touch the coincidence windows:
+    # (we cannot use fully_contained in here since some muon signals
+    # may be larger than 300 ns)
+    hitlets_ids_in_event = strax.touching_windows(hitlets,
+                                                  event_intervals)
+
+    # For some rare cases long signals may touch two intervals, in that
+    # case we merge the intervals in the subsequent function:
+    hitlets_ids_in_event = _solve_ambiguity(hitlets_ids_in_event)
+
+    # Now we can create the veto events:
+    events = np.zeros(len(hitlets_ids_in_event),
+                      dtype=veto_event_dtype(event_number_key, n_channel))
+    _make_event(hitlets, hitlets_ids_in_event, events)
+    return events, hitlets_ids_in_event
+
+
 @numba.njit(cache=True, nogil=False)
-def solve_ambiguity(contained_hitlets_ids):
+def _solve_ambiguity(contained_hitlets_ids):
     """
     Function which solves the ambiguity if a single hitlete overlaps
     with two event intervals.
@@ -167,34 +200,36 @@ def solve_ambiguity(contained_hitlets_ids):
     """
     res = np.zeros(contained_hitlets_ids.shape, dtype=contained_hitlets_ids.dtype)
     offset = 0
-    skip_next = False
-    for e_i, ids in enumerate(contained_hitlets_ids[:-1]):
-        if skip_next:
-            # Prev interval overlapped with current interval and was
-            # merged so skip this one.
-            skip_next = False
-            continue
 
-        # Test if current and next interval overlap:
-        c_s_i, c_e_i = ids
-        n_s_i, n_e_i = contained_hitlets_ids[e_i + 1]
-        if (c_e_i - n_s_i) > 0:
-            # Yes, they do so merge them increase the counter
-            # by two to keep track of the events which were
-            # merged.
-            res[offset, :] = c_s_i, n_e_i
-            offset += 2
-            skip_next = True
+    start_i, end_i = contained_hitlets_ids[0]
+    for e_i, ids in enumerate(contained_hitlets_ids[1:]):
+
+        if end_i > ids[0]:
+            # Current and next interval overlap so just updated the end
+            # index.
+            end_i = ids[1]
         else:
-            # No so just copy the values.
-            res[offset, :] = c_s_i, c_e_i
+            # They do not overlap store indicies:
+            res[offset] = [start_i, end_i]
             offset += 1
+            # Init next interval:
+            start_i, end_i = ids
 
     # Last event:
-    if not skip_next and len(contained_hitlets_ids):
-        res[offset, :] = contained_hitlets_ids[-1]
-        offset += 1
+    res[offset, :] = [start_i, end_i]
+    offset += 1
     return res[:offset]
+
+
+@numba.njit(cache=True, nogil=True)
+def _make_event(hitlets, hitlet_ids, res):
+    """
+    Function which sets veto event time and endtime.
+    """
+    for ei, ids in enumerate(hitlet_ids):
+        hit = hitlets[ids[0]:ids[1]]
+        res[ei]['time'] = hit[0]['time']
+        res[ei]['endtime'] = np.max(strax.endtime(hit))
 
 
 @strax.takes_config(
