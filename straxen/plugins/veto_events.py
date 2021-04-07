@@ -57,7 +57,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
                                                         self.config['event_min_hits_nv'],
                                                         self.config['event_resolving_time_nv'],
-                                                        self.confgi['event_left_extension_nv'],
+                                                        self.config['event_left_extension_nv'],
                                                         event_number_key=self.name_event_number,
                                                         n_channel=self.n_channel, )
 
@@ -185,7 +185,7 @@ def find_veto_events(hitlets,
 @numba.njit(cache=True, nogil=False)
 def _solve_ambiguity(contained_hitlets_ids):
     """
-    Function which solves the ambiguity if a single hitlete overlaps
+    Function which solves the ambiguity if a single hitlets overlaps
     with two event intervals.
 
     This can happen for muon signals which have a long tail, since we
@@ -203,7 +203,7 @@ def _solve_ambiguity(contained_hitlets_ids):
             # index.
             end_i = ids[1]
         else:
-            # They do not overlap store indicies:
+            # They do not overlap store indices:
             res[offset] = [start_i, end_i]
             offset += 1
             # Init next interval:
