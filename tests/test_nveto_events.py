@@ -180,8 +180,8 @@ def _test_ambiguity(hitlets_ids_in_event):
        hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=50),
        )
 def test_nveto_event_plugin(hitlets, area):
-
     hitlets['area'] = area
+    hitlets = strax.sort_by_time(hitlets)
     events, hitlets_ids_in_event= straxen.find_veto_events(hitlets,
                                                            3,
                                                            300,
@@ -246,3 +246,4 @@ def test_nveto_event_plugin(hitlets, area):
     # Compare angle, also indirectly tests average x/y/z
     mes = f'Event angle did not match expected {truth_angle}, got {angle}.'
     assert np.isclose(angle, truth_angle), mes
+
