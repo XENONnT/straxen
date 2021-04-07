@@ -2,6 +2,8 @@
 a field (i.e. can build the dependencies in the context correctly)
 See issue #233 and PR #236"""
 from straxen.contexts import *
+import tempfile
+import os
 
 
 def import_wfsim():
@@ -50,8 +52,16 @@ def test_xenon1t_dali():
 
 
 def test_demo():
-    st = demo()
-    st.search_field('time')
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            print("Temporary directory is ", temp_dir)
+            os.chdir(temp_dir)
+            st = demo()
+            st.search_field('time')
+        # On windows, you cannot delete the current process'
+        # working directory, so we have to chdir out first.
+        finally:
+            os.chdir('..')
 
 
 def test_fake_daq():
