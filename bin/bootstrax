@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -95,6 +95,7 @@ import strax
 import straxen
 import threading
 import pandas as pd
+import typing as ty
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -503,7 +504,9 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def _remove_veto_from_t(targets, remove=('_mv', '_nv'), _flip=False):
+def _remove_veto_from_t(targets: ty.Union[str, list, tuple],
+                        remove: ty.Union[str, list, tuple] = ('_mv', '_nv'),
+                        _flip: bool = False) -> ty.Union[str, list, tuple, None]:
     """Remove veto(s) from targets"""
     start = targets
     remove = strax.to_str_tuple(remove)
@@ -516,7 +519,9 @@ def _remove_veto_from_t(targets, remove=('_mv', '_nv'), _flip=False):
     return strax.to_str_tuple(targets)
 
 
-def _keep_veto_from_t(targets, keep='_nv'):
+def _keep_veto_from_t(targets: ty.Union[str, list, tuple],
+                      keep: ty.Union[str, list, tuple] = '_nv',
+                      ) -> ty.Union[str, list, tuple, None]:
     """Remove non-veto(s) targets"""
     targets = _remove_veto_from_t(targets, remove=keep, _flip=True)
     if not len(targets):
@@ -524,7 +529,7 @@ def _keep_veto_from_t(targets, keep='_nv'):
     return targets
 
 
-def infer_target(rd):
+def infer_target(rd: dict) -> dict:
     """
     Check if the target should be overridden based on the mode of the DAQ for this run
     :param rd: rundoc
@@ -574,9 +579,14 @@ def infer_target(rd):
         targets = 'raw_records'
         post_process = 'raw_records'
 
-    if detectors == ['tpc']:
-        targets = _remove_veto_from_t(targets)
-        post_process = _remove_veto_from_t(post_process)
+    if 'tpc' not in detectors:
+        keep = []
+        if 'neutron_veto' in detectors:
+            keep += ['_nv']
+        if 'muon_veto' in detectors:
+            keep += ['_mv']
+        targets = _keep_veto_from_t(targets, keep=keep)
+        post_process = _keep_veto_from_t(post_process, keep=keep)
     else:
         for det, remove in (('neutron_veto', '_nv'),
                             ('muon_veto', '_mv')):
