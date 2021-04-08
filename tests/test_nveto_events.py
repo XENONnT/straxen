@@ -219,8 +219,12 @@ def test_nveto_event_plugin(hitlets, area):
         assert np.all(sbc_hitlets == h), mes
 
     # Test event positions:
-    npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
-    npmt_pos = npmt_pos.to_records(index=False)
+    try:
+        npmt_pos = straxen.get_resource('nveto_pmt_position.csv', fmt='csv')
+        npmt_pos = npmt_pos.to_records(index=False)
+    except FileNotFoundError:
+        npmt_pos = np.ones(120, dtype=[('x', np.float64),
+                                       ('y', np.float64)])
 
     events_angle = np.zeros(len(events),
                             dtype=straxen.plugins.veto_events.veto_event_positions_dtype())
