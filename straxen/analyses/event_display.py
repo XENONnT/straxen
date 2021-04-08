@@ -398,7 +398,8 @@ def plot_single_event(context: strax.Context,
 
 def _scatter_rec(_event,
                  recs=None,
-                 scatter_kwargs=None):
+                 scatter_kwargs=None,
+                ):
     """Convenient wrapper to show posrec of three algorithms for xenonnt"""
     if recs is None:
         recs = ('mlp', 'cnn', 'gcn')
@@ -418,7 +419,7 @@ def _scatter_rec(_event,
                     marker=shapes[_i],
                     c=colors[_i],
                     label=_r.upper(),
-                    **scatter_kwargs
+                    **scatter_kwargs,
                     )
     plt.legend(loc='best', fontsize="x-small", markerscale=0.5)
 
@@ -449,7 +450,7 @@ Make a waveform-display of a given event. Requires events, peaks and
 :param s2_hp_kwargs: dict, optional kwargs for S2 hitpatterns
 :param event_time_limit = overrides x-axis limits of event
     plot
-:param plot_all_positions if True, plot best-fit positions 
+:param plot_all_positions if True, plot best-fit positions
     from all posrec algorithms
 """
 event_returns = """
