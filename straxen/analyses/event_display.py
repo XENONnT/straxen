@@ -54,7 +54,7 @@ def event_display_simple(context,
                          event_time_limit=None,
                          plot_all_positions=True,
                          ):
-    f"""
+    """
     {event_docs}
     {event_returns}
     """
@@ -104,7 +104,7 @@ def event_display(context,
                   event_time_limit=None,
                   plot_all_positions=True,
                   ):
-    f"""
+    """
     {event_docs}
     {event_returns}
     """
@@ -194,7 +194,7 @@ def _event_display(context,
                    event_time_limit=None,
                    plot_all_positions=True,
                    ):
-    f"""{event_docs}
+    """{event_docs}
     :param axes: if a dict of matplotlib axes (w/ same keys as below,
         and empty/None for panels not filled)
     {event_returns} 
@@ -423,6 +423,9 @@ def _scatter_rec(_event,
     plt.legend(loc='best', fontsize="x-small", markerscale=0.5)
 
 
+# Event display docstrings.
+# Let's add them to the corresponding functions
+
 event_docs = """
 Make a waveform-display of a given event. Requires events, peaks and
     peaklets (optionally: records). NB: time selection should return
@@ -467,3 +470,10 @@ event_returns = """
         - ax_ev, waveform of the entire event
         - ax_rec, (raw)record matrix (if any otherwise None)
 """
+
+# Add the same docstring to each of these functions
+for event_function in (event_display, event_display_simple, _event_display):
+    doc = event_function.__doc__
+    if doc is not None:
+        event_function.__doc__ = doc.format(event_docs=event_docs,
+                                            event_returns=event_returns)
