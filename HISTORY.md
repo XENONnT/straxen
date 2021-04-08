@@ -1,3 +1,65 @@
+0.16.0 / 2021-04-02
+--------------------
+- add get_correction_from_cmt to corrections_services.py (#404, #409)
+- Updated on the nveto plugins and new event plugins (#416, #389)
+- New EventPositions for XENONnT (#396)
+- Check for overlapping raw_records in nT sims (#413)
+- Get n_veto gains from CMT (#406)
+- Bug fix: Added fixed minimal length for temp_hitlets. #415
+- use dependabot for actions (#414)
+- Event display update, record matrix and dynamic data selector (#401)
+- Remove duplicate call to 1T sim config (#411)
+- Fix abandonning (#412)
+
+0.15.9 / 2021-03-24
+--------------------
+- Use multiple targets for better online support (#397)
+- Use code style commentator (#399, #405)
+- Add daq-plots to minianalysies (#394)
+- Check for raw-record overlaps veto systems (#390)
+- Infer-target update (#395)
+- Prevent abandonment of done runs (#398)
+- Upload compressor from metadata to rundoc (#410)
+- Cleanup ajax (#402)
+- Context cleanup (#403)
+- Change default nT fax config (#391)
+
+
+0.15.8 / 2021-03-02
+--------------------
+- Update daq-tagging for abandoned runs (#374)
+- Remove nones and replace with nans for itp map (#388)
+- Check for raw-record overlaps (#387)
+
+
+0.15.7 / 2021-02-26
+--------------------
+- Fix for commentjson-package for zipped json (#386)
+
+
+0.15.6 / 2021-02-26
+--------------------
+- Scada updates (#378, #383)
+- Correct S2(x,y) with CMT (#382)
+- Correct elife with CMT (#385)
+- Replace json with commentjson (#384)
+
+
+0.15.5 / 2021-02-22
+--------------------
+- Patch version 0.15.3 (b5433bd)
+
+
+0.15.3 / 2021-02-22
+--------------------
+- Test with database (#360)
+- Fix issue #371 - alt s2 in event_posrec_many (#372)
+- Update issue templates (#375)
+- Link data structure to github page (#377)
+- Fixes/improvements for 'plot_pulses' (#379)
+- Remove unused code block (#380)
+
+
 0.15.2 / 2021-02-17
 --------------------
 - GCN and CNN version bump for CMT bugfix (#367)

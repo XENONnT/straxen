@@ -8,6 +8,7 @@ import straxen
 
 export, __all__ = strax.exporter()
 
+
 @export
 @strax.takes_config(
     strax.Option('coincidence_level_recorder_nv', type=int, default=3,
@@ -16,16 +17,22 @@ export, __all__ = strax.exporter()
                  help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('nbaseline_samples_lone_records_nv', type=int,
-                 default_by_run=[(0, 10), (12684, 26)], track=True,
+    strax.Option('baseline_samples_nv',
+                 default=('baseline_samples_nv', 'ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
+    strax.Option('hit_min_amplitude_nv',
+                 default=20, track=True,
+                 help='Minimum hit amplitude in ADC counts above baseline. '
+                      'Specify as a tuple of length n_nveto_pmts, or a number.'),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
-    strax.Option('n_nveto_pmts', type=int, track=False,
-                 help='Number of nVETO PMTs'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
+    strax.Option('check_raw_record_overlaps_nv',
+                 default=False, track=False,
+                 help='Crash if any of the pulses in raw_records overlap with others '
+                      'in the same channel'),
 )
 class nVETORecorder(strax.Plugin):
     """
@@ -37,7 +44,7 @@ class nVETORecorder(strax.Plugin):
     properties for monitoring purposes. Depending on the setting also
     a fixed number of the lone_records per channel are stored.
     """
-    __version__ = '0.0.6'
+    __version__ = '0.0.7'
     parallel = 'process'
 
     rechunk_on_save = True
@@ -52,13 +59,22 @@ class nVETORecorder(strax.Plugin):
 
     data_kind = {key: key for key in provides}
 
+    def setup(self):
+        if isinstance(self.config['baseline_samples_nv'], int):
+            self.baseline_samples = self.config['baseline_samples_nv']
+        else:
+            self.baseline_samples = straxen.get_correction_from_cmt(
+                self.run_id, self.config['baseline_samples_nv'])
+
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
 
+        channel_range = self.config['channel_map']['nveto']
+        n_channel = (channel_range[1] - channel_range[0]) + 1
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
         nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
-        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(self.config['n_nveto_pmts'])
+        nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(n_channel)
 
         dtypes = [nveto_records_dtype,
                   nveto_diagnostic_lone_records_dtype,
@@ -67,6 +83,8 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end):
+        if self.config['check_raw_record_overlaps_nv']:
+            straxen.check_overlaps(raw_records_nv, n_channels=3000)
         # Cover the case if we do not want to have any coincidence:
         if self.config['coincidence_level_recorder_nv'] <= 1:
             rr = raw_records_nv
@@ -75,15 +93,28 @@ class nVETORecorder(strax.Plugin):
             return {'raw_records_coin_nv': rr,
                     'lone_raw_records_nv': lr,
                     'lone_raw_record_statistics_nv': lrs}
-            
+
+        # Search for hits to define coincidence intervals:
+        temp_records = strax.raw_to_records(raw_records_nv)
+        temp_records = strax.sort_by_time(temp_records)
+        strax.zero_out_of_bounds(temp_records)
+        strax.baseline(temp_records,
+                       baseline_samples=self.baseline_samples,
+                       flip=True)
+        hits = strax.find_hits(temp_records,
+                               min_amplitude=self.config['hit_min_amplitude_nv'])
+        del temp_records
+
+
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
-        intervals = coincidence(raw_records_nv,
+        intervals = coincidence(hits,
                                 self.config['coincidence_level_recorder_nv'],
                                 self.config['resolving_time_recorder_nv'],
-                                self.config['pre_trigger_time_nv']
-                               )
+                                self.config['pre_trigger_time_nv'])
+        del hits
+
         # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
         # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
         if len(intervals):
@@ -109,7 +140,7 @@ class nVETORecorder(strax.Plugin):
         lr = strax.sort_by_time(lr)
         strax.zero_out_of_bounds(lr)
         strax.baseline(lr,
-                       baseline_samples=self.config['nbaseline_samples_lone_records_nv'],
+                       baseline_samples=self.baseline_samples,
                        flip=True)
         strax.integrate(lr)
         lrs, lr = compute_lone_records(lr, self.config['channel_map']['nveto'], self.config['n_lone_records_nv'])
@@ -160,7 +191,7 @@ def compute_lone_records(lone_records, nveto_channels, n):
         The array shape is of the raw_records dtype.
     """
     ch0, ch119 = nveto_channels
-    
+
     if len(lone_records):
         # Results computation of lone records:
         res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119+1-ch0))
@@ -176,7 +207,7 @@ def compute_lone_records(lone_records, nveto_channels, n):
 
 
 @numba.njit(nogil=True, cache=True)
-def _compute_lone_records(lone_record, res, lone_ids, n,  nveto_channels):
+def _compute_lone_records(lone_record, res, lone_ids, n, nveto_channels):
     ch0, ch119 = nveto_channels
     n_channels = ch119 - ch0 + 1
 
@@ -314,7 +345,12 @@ def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
          they will be merged into a single interval.
     """
     if len(records):
-        start_times = _coincidence(records, nfold, resolving_time)
+        if nfold > 1:
+            start_times = _coincidence(records, nfold, resolving_time)
+        else:
+            # In case of a "single-fold" coincidence every thing gives
+            # the start of a new interval:
+            start_times = records['time']
         intervals = _merge_intervals(start_times-pre_trigger, 
                                      resolving_time+pre_trigger)
     else:
@@ -353,7 +389,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     # Do not have to check the last n-1 events since by definition they can not satisfy the n-fold coincidence.
     # So we can keep the mask false.
     t_cum = t_cum[:-(nfold - 1)]
-    mask[:-(nfold - 1)] = t_cum <= resolving_time
+    mask[:-(nfold - 1)] = t_cum < resolving_time
     return start_times[mask]
 
 
@@ -369,7 +405,7 @@ def _merge_intervals(start_time, resolving_time):
     # check for gaps larger than resolving_time:
     # The gaps will indicate the starts of new intervals
     gaps = np.diff(start_time) > resolving_time
-    
+
     last_element = np.argwhere(gaps).flatten()
     first_element = 0
     # Creating output

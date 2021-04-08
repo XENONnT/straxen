@@ -1,17 +1,18 @@
 import tempfile
 import strax
-import straxen
 import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
-import os
-
-# Number of chunks for the dummy raw records we are writing here
-N_CHUNKS = 2
+import straxen
 
 ##
 # Tools
 ##
+# Let's make a dummy map for NVeto
+nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
+                      'x': list(range(120)),
+                      'y': list(range(120)),
+                      'z': list(range(120))}
 
 # Some configs are better obtained from the strax_auxiliary_files repo.
 # Let's use small files, we don't want to spend a lot of time downloading
@@ -23,17 +24,31 @@ testing_config_nT = dict(
     straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
     gain_model=
     ('to_pe_per_run',
-     straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy')
+     straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
+    s2_xy_correction_map=straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
+    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    baseline_samples_nv=10,
+    fdc_map=straxen.pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
+    gain_model_nv=("to_pe_constant", "adc_nv"),
+    nveto_pmt_position_map=nveto_pmt_dummy_df,
 )
 
 testing_config_1T = dict(
     hev_gain_model=('to_pe_constant', 0.0085),
-    gain_model=('to_pe_constant', 0.0085)
+    gain_model=('to_pe_constant', 0.0085),
+    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
 )
+
+test_run_id_nT = '008900'
 
 
 @strax.takes_config(
-    strax.Option('secret_time_offset', default=0, track=False)
+    strax.Option('secret_time_offset', default=0, track=False),
+    strax.Option('n_chunks', default=2, track=False,
+                 help='Number of chunks for the dummy raw records we are writing here'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="frozendict mapping subdetector to (min, max) "
+                      "channel number.")
 )
 class DummyRawRecords(strax.Plugin):
     """
@@ -52,23 +67,43 @@ class DummyRawRecords(strax.Plugin):
     rechunk_on_save = False
     dtype = {p: strax.raw_record_dtype() for p in provides}
 
+    def setup(self):
+        self.channel_map_keys = {'he': 'he',
+                                 'nv': 'nveto',
+                                 'aqmon': 'aqmon',
+                                 'aux_mv': 'aux_mv',
+                                 's_mv': 'mv',}  # s_mv otherwise same as aux in endswith
+
     def source_finished(self):
         return True
 
     def is_ready(self, chunk_i):
-        return chunk_i < N_CHUNKS
+        return chunk_i < self.config['n_chunks']
 
     def compute(self, chunk_i):
         t0 = chunk_i + self.config['secret_time_offset']
-        if chunk_i < N_CHUNKS - 1:
+        if chunk_i < self.config['n_chunks'] - 1:
+            # One filled chunk
             r = np.zeros(recs_per_chunk, self.dtype['raw_records'])
             r['time'] = t0
             r['length'] = r['dt'] = 1
             r['channel'] = np.arange(len(r))
         else:
+            # One empty chunk
             r = np.zeros(0, self.dtype['raw_records'])
-        res = {p: self.chunk(start=t0, end=t0 + 1, data=r, data_type=p)
-               for p in self.provides}
+
+        res = {}
+        for p in self.provides:
+            rr = np.copy(r)
+            # Add detector specific channel offset:
+            for key, channel_key in self.channel_map_keys.items():
+                if channel_key not in self.config['channel_map']:
+                    # Channel map for 1T is different.
+                    continue
+                if p.endswith(key):
+                    s, e = self.config['channel_map'][channel_key]
+                    rr['channel'] += s
+            res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res
 
 
@@ -130,37 +165,18 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     # Ignore strax-internal warnings
     st.set_context_config({'free_options': tuple(st.config.keys())})
     st.register(DummyRawRecords)
-    if nt:
+    if nt and not straxen.utilix_is_configured():
         st.set_config(testing_config_nT)
-        if straxen.uconfig is None or True:
-            del st._plugin_class_registry['peak_positions_mlp']
-            del st._plugin_class_registry['peak_positions_cnn']
-            del st._plugin_class_registry['peak_positions_gcn']
-            st.register(straxen.PeakPositions1T)
-            print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
-    else:
+        del st._plugin_class_registry['peak_positions_mlp']
+        del st._plugin_class_registry['peak_positions_cnn']
+        del st._plugin_class_registry['peak_positions_gcn']
+        st.register(straxen.PeakPositions1T)
+        print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
+        st.set_config({'gain_model': fallback_gains})
+
+    elif not nt:
         st.set_config(testing_config_1T)
-    try:
-        if straxen.uconfig is None:
-            raise ValueError('uconfig did not import')
-        # If you want to have quicker checks: always raise an ValueError
-        # as the CMT does take quite long to load the right corrections.
-        if max_workers > 1 and fallback_gains is not None:
-            raise ValueError(
-                'Use fallback gains for multicore to save time on tests')
-    except ValueError:
-        # Okay so we cannot initize the runs-database. Let's just use some
-        # fallback values if they are specified.
-        if ('gain_model' in st.config and
-                st.config['gain_model'][0] == 'CMT_model'):
-            if fallback_gains is None:
-                # If you run into this error, go to the test_nT() - test and
-                # see for example how it is done there.
-                raise ValueError('Context uses CMT_model but no fallback_gains '
-                                 'are specified in test_plugins.py for this '
-                                 'context being tested')
-            else:
-                st.set_config({'gain_model': fallback_gains})
+
     if max_workers - 1:
         st.set_context_config({
             'allow_multiprocess': True,
@@ -210,6 +226,7 @@ def _test_child_options(st):
                                f'This should not have happend since "{parent_name}" is a child of '
                                f'"{option_name}"!')
 
+
 ##
 # Tests
 ##
@@ -223,7 +240,10 @@ def test_1T(ncores=1):
 
     # Register the 1T plugins for this test as well
     st.register_all(straxen.plugins.x1t_cuts)
-    _run_plugins(st, make_all=False, max_wokers=ncores)
+    for _plugin, _plugin_class in st._plugin_class_registry.items():
+        if 'cut' in str(_plugin).lower():
+            _plugin_class.save_when = strax.SaveWhen.ALWAYS
+    _run_plugins(st, make_all=True, max_wokers=ncores)
     # Test issue #233
     st.search_field('cs1')
     _test_child_options(st)
@@ -233,11 +253,11 @@ def test_1T(ncores=1):
 def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
-    st = straxen.contexts.xenonnt_online(_database_init=False)
+    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured())
     offline_gain_model = ('to_pe_constant', 'gain_placeholder')
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
-    _run_plugins(st, make_all=True, max_wokers=ncores, run_id='008900')
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_nT)
     # Test issue #233
     st.search_field('cs1')
     # Test of child plugins:

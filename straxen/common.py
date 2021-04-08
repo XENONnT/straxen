@@ -3,6 +3,7 @@ import configparser
 import gzip
 import inspect
 import io
+import commentjson
 import json
 import os
 import os.path as osp
@@ -22,7 +23,7 @@ import straxen
 
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E', 
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E',
             'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius']
 
 straxen_dir = os.path.dirname(os.path.abspath(
@@ -30,7 +31,7 @@ straxen_dir = os.path.dirname(os.path.abspath(
 
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
-tpc_r = 66.4   # [CM], Not really radius, but apothem: from MC paper draft 1.0
+tpc_r = 66.4  # [CM], Not really radius, but apothem: from MC paper draft 1.0
 tpc_z = 148.6515  # [CM], distance between the bottom of gate and top of cathode wires
 n_tpc_pmts = 494
 n_top_pmts = 253
@@ -39,7 +40,7 @@ n_hard_aqmon_start = 800
 n_nveto_pmts = 120
 n_mveto_pmts = 84
 
-tpc_pmt_radius = 7.62/2  # cm
+tpc_pmt_radius = 7.62 / 2  # cm
 
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
@@ -66,7 +67,7 @@ def pmt_positions(xenon1t=False):
             dict(x=q['position']['x'],
                  y=q['position']['y'],
                  i=q['pmt_position'],
-                 array=q.get('array','other'))
+                 array=q.get('array', 'other'))
             for q in pmt_config[:248]])
     else:
         return resource_from_url(
@@ -112,7 +113,7 @@ def open_resource(file_name: str, fmt='text'):
             result = json.load(f)
     elif fmt == 'json':
         with open(file_name, mode='r') as f:
-            result = json.load(f)
+            result = commentjson.load(f)
     elif fmt == 'binary':
         with open(file_name, mode='rb') as f:
             result = f.read()
@@ -374,6 +375,9 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
         for _rep in replace:
             if _rep not in data_keys:
                 # Apparently this data doesn't have the entry we want to replace
+                continue
+            if _dat['channel'].ndim != 1:
+                # Only convert channel if they are flat and not nested.
                 continue
             # Make a buffer we can overwrite and replace with an remapped array
             buff = np.array(_data[_rep])

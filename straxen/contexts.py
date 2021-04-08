@@ -1,7 +1,6 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-import numpy as np
 
 
 common_opts = dict(
@@ -26,10 +25,8 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    n_mveto_pmts=straxen.n_mveto_pmts,
-    n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
-    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
     gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
@@ -46,6 +43,8 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     s1_max_rise_time=100,
+    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -67,6 +66,7 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
     straxen.nveto_recorder,
     straxen.veto_pulse_processing,
     straxen.veto_hitlets,
+    straxen.veto_events,
     straxen.acqmon_processing,
     straxen.pulse_processing,
     straxen.peaklet_processing,
@@ -82,8 +82,32 @@ def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _database_init=True,
+                   _forbid_creation_of=None,
+                   _rucio_path='/dali/lgrandi/rucio/',
+                   _raw_path='/dali/lgrandi/xenonnt/raw',
+                   _processed_path='/dali/lgrandi/xenonnt/processed',
+                   _add_online_monitor_frontend=False,
+                   _context_config_overwrite=None,
                    **kwargs):
-    """XENONnT online processing and analysis"""
+    """
+    XENONnT online processing and analysis
+
+    :param output_folder: str, Path of the strax.DataDirectory where new
+        data can be stored
+    :param we_are_the_daq: bool, if we have admin access to upload data
+    :param _minimum_run_number: int, lowest number to consider
+    :param _database_init: bool, start the database (for testing)
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
+        being written (raw_records* is always forbidden).
+    :param _rucio_path: str, path of rucio
+    :param _raw_path: str, common path of the raw-data
+    :param _processed_path: str. common path of output data
+    :param _context_config_overwrite: dict, overwrite config
+    :param _add_online_monitor_frontend: bool, should we add the online
+        monitor storage frontend.
+    :param kwargs: dict, context options
+    :return: strax.Context
+    """
     context_options = {
         **straxen.contexts.xnt_common_opts,
         **kwargs}
@@ -93,29 +117,33 @@ def xenonnt_online(output_folder='./strax_data',
         **context_options)
     st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulses])
 
-    st.storage = [straxen.RunDB(
-        readonly=not we_are_the_daq,
-        minimum_run_number=_minimum_run_number,
-        runid_field='number',
-        new_data_path=output_folder,
-        rucio_path='/dali/lgrandi/rucio/')
-        ] if _database_init else []
+    st.storage = [
+        straxen.RunDB(
+            readonly=not we_are_the_daq,
+            minimum_run_number=_minimum_run_number,
+            runid_field='number',
+            new_data_path=output_folder,
+            rucio_path=_rucio_path,
+        )] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
-                '/dali/lgrandi/xenonnt/raw',
+                _raw_path,
                 readonly=True,
                 take_only=straxen.DAQReader.provides),
             strax.DataDirectory(
-                '/dali/lgrandi/xenonnt/processed',
-                readonly=True)]
+                _processed_path,
+                readonly=True,
+            )]
         if output_folder:
             st.storage.append(
                 strax.DataDirectory(output_folder))
 
-        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
+        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
+        if _forbid_creation_of is not None:
+            st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
     # Only the online monitor backend for the DAQ
-    elif _database_init:
+    if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
@@ -128,6 +156,8 @@ def xenonnt_online(output_folder='./strax_data',
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
     st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
+    if _context_config_overwrite is not None:
+        st.set_context_config(_context_config_overwrite)
     return st
 
 
@@ -151,8 +181,8 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config='fax_config_nt.json',
-                    check_raw_record_overlaps=False,
+                    fax_config='fax_config_nt_design.json',
+                    check_raw_record_overlaps=True,
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.xnt_common_opts)
@@ -241,7 +271,9 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
+    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
 )
+
 
 
 def demo():
@@ -364,7 +396,6 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config='fax_config_1t.json',
             detector='XENON1T',
-            check_raw_record_overlaps=False,
             **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
     st.register(wfsim.RawRecordsFromFax1T)

@@ -9,6 +9,10 @@ import straxen
 from warnings import warn
 export, __all__ = strax.exporter()
 
+DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
+                 help="default reconstruction algorithm that provides (x,y)",
+                 default="mlp",
+                 )])
 
 @export
 @strax.takes_config(
@@ -113,7 +117,7 @@ class PeakPositionsBaseNT(strax.Plugin):
             return model_from_config
 
         # Use CMT
-        model_file = straxen.get_NN_file(self.run_id, model_from_config)
+        model_file = straxen.get_config_from_cmt(self.run_id, model_from_config)
         return model_file
 
 @export
@@ -165,10 +169,7 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
 
 @export
 @strax.takes_config(
-    strax.Option("default_reconstruction_algorithm",
-                 help="default reconstruction algorithm that provides (x,y)",
-                 default="mlp",
-                 )
+    *DEFAULT_POSREC_ALGO_OPTION
 )
 class PeakPositionsNT(strax.MergeOnlyPlugin):
     """

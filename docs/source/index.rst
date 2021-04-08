@@ -4,7 +4,7 @@ Straxen
 
 Github page: https://github.com/XENONnT/straxen
 
-Straxen is the analysis framework for XENONnT, built on top of the generic [strax framework](https://github.com/AxFoundation/strax). Currently it is configured for analyzing XENON1T/XENONnT data.
+Straxen is the analysis framework for XENONnT, built on top of the generic `strax framework <https://github.com/AxFoundation/strax>`_. Currently it is configured for analyzing XENON1T/XENONnT data.
 
 
 .. toctree::

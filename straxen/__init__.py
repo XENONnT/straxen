@@ -1,19 +1,10 @@
-__version__ = '0.15.2'
+__version__ = '0.16.0'
 
-from warnings import warn
-# load configuration file using utilix
-try:
-    from utilix import uconfig
-# if no utilix config, get a RuntimeError
-# we don't want this to break straxen, but it does print a warning statement
-except (FileNotFoundError, RuntimeError) as e:
-    warn('Warning, utilix config file not loaded properly. copy '
-         '/project2/lgrandi/xenonnt/.xenon_config to your HOME directory!',
-         UserWarning)
-    uconfig = None
+# Import of utilix config for only once. NB: Should be first due to circular imports
+from utilix import uconfig
 
+# Straxen imports:
 from .common import *
-# contexts.py below
 from .corrections_services import *
 from .get_corrections import *
 from .hitfinder_thresholds import *
@@ -27,10 +18,9 @@ from .rundb import *
 from .scada import *
 from .bokeh_utils import *
 
-
+# Nested structures:
 from . import plugins
 from .plugins import *
-
 from . import analyses
 
 # Do not make all contexts directly available under straxen.
