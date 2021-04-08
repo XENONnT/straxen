@@ -53,7 +53,7 @@ dtype_ap = [(('Channel/PMT number','channel'),
                  default=50,
                  help='Left boundary of sample range for LED pulse integration'),
     strax.Option('LED_window_right',
-                 default=80,
+                 default=90,
                  help='Right boundary of sample range for LED pulse integration'),
     strax.Option('baseline_samples',
                  default=40,
@@ -61,7 +61,7 @@ dtype_ap = [(('Channel/PMT number','channel'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.1.1.0'
+    __version__ = '0.1.2'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
