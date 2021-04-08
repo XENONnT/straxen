@@ -224,7 +224,8 @@ def test_nveto_event_plugin(hitlets, area):
         npmt_pos = npmt_pos.to_records(index=False)
     except FileNotFoundError:
         npmt_pos = np.ones(120, dtype=[('x', np.float64),
-                                       ('y', np.float64)])
+                                       ('y', np.float64),
+                                       ('z', np.float64)])
 
     events_angle = np.zeros(len(events),
                             dtype=straxen.plugins.veto_events.veto_event_positions_dtype())
