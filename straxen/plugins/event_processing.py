@@ -426,7 +426,9 @@ class EventPositions(strax.Plugin):
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife" or "elife_constant" '
              'and model_config can be a version.'
-   ))
+   ),
+    *DEFAULT_POSREC_ALGO_OPTION
+)
 class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
@@ -460,7 +462,8 @@ class CorrectedAreas(strax.Plugin):
         else:
             self.s1_map = InterpolatingMap(
                 get_resource(self.config['s1_xyz_correction_map']))
-        #TODO: s2 map should also have PosRec algo dependence
+
+        # TODO: s2 map should also have PosRec algo dependence
         self.s2_map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
