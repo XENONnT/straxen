@@ -1,3 +1,15 @@
+0.17.0 / 2021-04-09
+--------------------
+- Extend event_basics and remove event_posrec_many (#420)
+- Add nveto event tests (#425)
+- Update veto_pulse_processing.py (#427)
+- add option abbreviate event_display (#418)
+- fix logic linked mode (#426)
+- fix test to use tempdir (#423)
+- Added output_notebook to data selector. (#421)
+- bootstrax, fix abandonning (#422)
+
+
 0.16.0 / 2021-04-02
 --------------------
 - add get_correction_from_cmt to corrections_services.py (#404, #409)
