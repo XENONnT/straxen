@@ -36,6 +36,9 @@ from .veto_pulse_processing import *
 from . import veto_hitlets
 from .veto_hitlets import *
 
+from . import veto_events
+from .veto_events import *
+
 from . import acqmon_processing
 from .acqmon_processing import *
 

@@ -5,10 +5,14 @@ from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
 import straxen
 
-
 ##
 # Tools
 ##
+# Let's make a dummy map for NVeto
+nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
+                      'x': list(range(120)),
+                      'y': list(range(120)),
+                      'z': list(range(120))}
 
 # Some configs are better obtained from the strax_auxiliary_files repo.
 # Let's use small files, we don't want to spend a lot of time downloading
@@ -26,6 +30,7 @@ testing_config_nT = dict(
     baseline_samples_nv=10,
     fdc_map=straxen.pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
     gain_model_nv=("to_pe_constant", "adc_nv"),
+    nveto_pmt_position_map=nveto_pmt_dummy_df,
 )
 
 testing_config_1T = dict(
@@ -40,7 +45,10 @@ test_run_id_nT = '008900'
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
     strax.Option('n_chunks', default=2, track=False,
-                 help='Number of chunks for the dummy raw records we are writing here')
+                 help='Number of chunks for the dummy raw records we are writing here'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="frozendict mapping subdetector to (min, max) "
+                      "channel number.")
 )
 class DummyRawRecords(strax.Plugin):
     """
@@ -59,6 +67,13 @@ class DummyRawRecords(strax.Plugin):
     rechunk_on_save = False
     dtype = {p: strax.raw_record_dtype() for p in provides}
 
+    def setup(self):
+        self.channel_map_keys = {'he': 'he',
+                                 'nv': 'nveto',
+                                 'aqmon': 'aqmon',
+                                 'aux_mv': 'aux_mv',
+                                 's_mv': 'mv',}  # s_mv otherwise same as aux in endswith
+
     def source_finished(self):
         return True
 
@@ -76,8 +91,19 @@ class DummyRawRecords(strax.Plugin):
         else:
             # One empty chunk
             r = np.zeros(0, self.dtype['raw_records'])
-        res = {p: self.chunk(start=t0, end=t0 + 1, data=r, data_type=p)
-               for p in self.provides}
+
+        res = {}
+        for p in self.provides:
+            rr = np.copy(r)
+            # Add detector specific channel offset:
+            for key, channel_key in self.channel_map_keys.items():
+                if channel_key not in self.config['channel_map']:
+                    # Channel map for 1T is different.
+                    continue
+                if p.endswith(key):
+                    s, e = self.config['channel_map'][channel_key]
+                    rr['channel'] += s
+            res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res
 
 

@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -95,6 +95,7 @@ import strax
 import straxen
 import threading
 import pandas as pd
+import typing as ty
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -503,7 +504,9 @@ def kill_process(pid, wait_time=None):
         os.kill(pid, sig)
 
 
-def _remove_veto_from_t(targets, remove=('_mv', '_nv'), _flip=False):
+def _remove_veto_from_t(targets: ty.Union[str, list, tuple],
+                        remove: ty.Union[str, list, tuple] = ('_mv', '_nv'),
+                        _flip: bool = False) -> ty.Union[str, list, tuple, None]:
     """Remove veto(s) from targets"""
     start = targets
     remove = strax.to_str_tuple(remove)
@@ -516,7 +519,9 @@ def _remove_veto_from_t(targets, remove=('_mv', '_nv'), _flip=False):
     return strax.to_str_tuple(targets)
 
 
-def _keep_veto_from_t(targets, keep='_nv'):
+def _keep_veto_from_t(targets: ty.Union[str, list, tuple],
+                      keep: ty.Union[str, list, tuple] = '_nv',
+                      ) -> ty.Union[str, list, tuple, None]:
     """Remove non-veto(s) targets"""
     targets = _remove_veto_from_t(targets, remove=keep, _flip=True)
     if not len(targets):
@@ -524,38 +529,39 @@ def _keep_veto_from_t(targets, keep='_nv'):
     return targets
 
 
-def infer_target(rd):
+def infer_target(rd: dict) -> dict:
     """
     Check if the target should be overridden based on the mode of the DAQ for this run
     :param rd: rundoc
     :return: dict with the targets and the targets for post processing
     """
-    _t = args.targets
-    _pp = args.post_process
+    targets = args.targets
+    post_process = args.post_process
 
     if args.fix_target:
-        return {'targets': strax.to_str_tuple(_t),
-                'post_processing': strax.to_str_tuple(_pp)}
+        return {'targets': strax.to_str_tuple(targets),
+                'post_processing': strax.to_str_tuple(post_process)}
 
     n_fails = rd['bootstrax'].get('n_failures', 0)
+
     if n_fails:
         log.debug(f'Deleting targets')
-        for _rm_t, _rm_t_after in remove_target_after_fails.items():
-            for __i, __t in enumerate(_t):
-                if __t in _rm_t and n_fails > _rm_t_after:
-                    log.debug(f'Remove {__t}')
-                    del _t[__i]
-            for __pi, __p  in enumerate(_pp):
-                if __p in _rm_t and n_fails > _rm_t_after:
-                    log.debug(f'Remove {__p}')
-                    del _pp[__pi]
-    log.debug(f'{_t} and {_pp} remaining')
+        for rm_target, rm_after_n in remove_target_after_fails.items():
+            for target_i, targ in enumerate(targets):
+                if targ in rm_target and n_fails > rm_after_n:
+                    log.debug(f'Remove {targ}')
+                    del targets[target_i]
+            for post_i, post_targ in enumerate(post_process):
+                if post_targ in rm_target and n_fails > rm_after_n:
+                    log.debug(f'Remove {post_targ}')
+                    del post_process[post_i]
+
+    log.debug(f'{targets} and {post_process} remaining')
+
     if n_fails >= remove_target_after_fails['ALL']:
         log.debug(f'Overwriting to raw-records only')
-        _t = 'raw_records'
-        _pp = 'raw_records'
-        return {'targets': strax.to_str_tuple(_t),
-                'post_processing': strax.to_str_tuple(_pp)}
+        return {'targets': strax.to_str_tuple('raw_records'),
+                'post_processing': strax.to_str_tuple('raw_records')}
 
     # Special modes override target for these
     led_modes = ['pmtgain']
@@ -566,40 +572,50 @@ def infer_target(rd):
     log.debug(f'mode is {mode}, changing target if needed')
     if np.any([m in mode for m in led_modes]):
         log.debug('led-mode')
-        _t = 'led_calibration'
-        _pp = 'raw_records'
+        targets = 'led_calibration'
+        post_process = 'raw_records'
     elif np.any([m in mode for m in diagnostic_modes]):
         log.debug('diagnostic-mode')
-        _t = 'raw_records'
-        _pp = 'raw_records'
+        targets = 'raw_records'
+        post_process = 'raw_records'
 
-    if detectors == ['tpc']:
-        _t = _remove_veto_from_t(_t)
-        _pp = _remove_veto_from_t(_pp)
-    elif detectors == ['neutron_veto']:
-        _t = _keep_veto_from_t(_t, keep='_nv')
-        _pp = _keep_veto_from_t(_pp, keep='_nv')
-    elif detectors == ['muon_veto']:
-        _t = _keep_veto_from_t(_t, keep='_mv')
-        _pp = _keep_veto_from_t(_pp, keep='_mv')
+    if 'tpc' not in detectors:
+        keep = []
+        if 'neutron_veto' in detectors:
+            keep += ['_nv']
+        if 'muon_veto' in detectors:
+            keep += ['_mv']
+        targets = _keep_veto_from_t(targets, keep=keep)
+        post_process = _keep_veto_from_t(post_process, keep=keep)
     else:
-        log_warning(f'Running in linked mode, processing up to {_t} and '
-                    f'postprocessing to {_pp}',
-                    priority='info',
-                    run_id=f'{rd["number"]:06}')
-    if _t is None or not len(_t):
-        _t = 'raw_records'
-    if _pp is None or not len(_pp):
-        _pp = 'raw_records'
-    _t = strax.to_str_tuple(_t)
-    _pp = strax.to_str_tuple(_pp)
-    log.info(f'Inferring modes done, writing {_t} and {_pp}')
-    for __check in (_t, _pp):
-        if not len(set(__check)) == len(__check):
-            log_warning(f'Duplicates in (post) targets {__check}',
+        for det, remove in (('neutron_veto', '_nv'),
+                            ('muon_veto', '_mv')):
+            if det not in detectors:
+                # Remove the _veto if this detector is not in the detector list
+                targets = _remove_veto_from_t(targets, remove=remove)
+                post_process = _remove_veto_from_t(post_process, remove=remove)
+        if len(detectors):
+            # Temp log to the rundb
+            log_warning(f'Running in linked mode, processing up to {targets} and '
+                        f'postprocessing to {post_process}',
+                        priority='info',
+                        run_id=f'{rd["number"]:06}')
+
+    if targets is None or not len(targets):
+        targets = 'raw_records'
+    if post_process is None or not len(post_process):
+        post_process = 'raw_records'
+
+    targets = strax.to_str_tuple(targets)
+    post_process = strax.to_str_tuple(post_process)
+    log.info(f'Inferring modes done, writing {targets} and {post_process}')
+    for check in (targets, post_process):
+        if not len(set(check)) == len(check):
+            log_warning(f'Duplicates in (post) targets {check}',
                         priority='Fatal')
-            raise ValueError(f'Duplicates in (post) targets {__check}')
-    return {'targets': _t, 'post_processing': _pp}
+            raise ValueError(f'Duplicates in (post) targets {check}')
+
+    return {'targets': targets, 'post_processing': post_process}
 
 
 def set_state(state, update_fields=None):
@@ -1643,16 +1659,15 @@ def cleanup_db():
     # there is no point in retrying them
     abandon_queries = [
         ({'tags.name': 'abandon',
-          'bootstrax.state':'done',
+          'bootstrax.state': 'done',
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
         ({'tags.name': 'abandon', 
-          'bootstrax.state': {'$in': ['busy', 'failed']}},
-         "Run has an 'abandon' tag and was failing/busy"),
+          'bootstrax.state': 'failed'},
+         "Run has an 'abandon' tag and was failing"),
         ]
 
     for query, failure_message in abandon_queries:
-        query['bootstrax.state'] = {'$ne': 'abandoned'}
         failure_message += ' -- run has been abandoned'
         while True:
             send_heartbeat()

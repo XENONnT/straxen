@@ -39,12 +39,12 @@ class nVETOPulseProcessing(strax.Plugin):
         2. Find hits and apply ZLE
         3. Remove empty fragments.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
 
     parallel = 'process'
     rechunk_on_save = False
     compressor = 'zstd'
-    save_when = save_when = strax.SaveWhen.TARGET
+    save_when = strax.SaveWhen.TARGET
 
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
@@ -92,8 +92,6 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
-        rlinks = strax.record_links(r)
-        r = clean_up_empty_records(r, rlinks, only_last=True)
         return r
 
 
@@ -260,6 +258,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         return dtype
 
     def compute(self, raw_records_mv):
-        if self.config['check_raw_record_overlaps']:
-            straxen.check_overlaps(raw_records_mv, n_channels=3000)
+#         TODO -> Reactivate        
+#         if self.config['check_raw_record_overlaps']:
+#             straxen.check_overlaps(raw_records_mv, n_channels=3000)
         return super().compute(raw_records_mv)

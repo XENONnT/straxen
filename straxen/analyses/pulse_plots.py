@@ -62,8 +62,16 @@ def plot_pulses(context, raw_records, run_id, time_range,
     records = strax.raw_to_records(raw_records)
     records = strax.sort_by_time(records)
     strax.zero_out_of_bounds(records)
+
+    baseline_key = 'baseline_samples'+detector_ending
+    if isinstance(p.config[baseline_key], int):
+        baseline_samples = p.config[baseline_key]
+    else:
+        baseline_samples = straxen.get_correction_from_cmt(
+            run_id, p.config[baseline_key])
+
     strax.baseline(records,
-                   baseline_samples=p.config['baseline_samples'+detector_ending],
+                   baseline_samples=baseline_samples,
                    flip=True)
 
     nfigs = 1
