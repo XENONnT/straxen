@@ -1,13 +1,14 @@
 import strax
 import straxen
-import warnings
+
 import numpy as np
 import numba
 import pandas as pd
 
-import os
+import typing as ty
 from immutabledict import immutabledict
 
+export, __all__ = strax.exporter()
 
 @strax.takes_config(
     strax.Option('event_left_extension_nv', default=0,
@@ -35,7 +36,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     events_seen = 0
 
     def infer_dtype(self):
@@ -53,31 +54,13 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
 
     def compute(self, hitlets_nv, start, end):
-        intervals = straxen.plugins.nveto_recorder.coincidence(hitlets_nv,
-                                                               self.config['event_min_hits_nv'],
-                                                               self.config['event_resolving_time_nv'],
-                                                               self.config['event_left_extension_nv']
-                                                               )
 
-        n_events = len(intervals)
-        events = np.zeros(n_events,
-                          dtype=veto_event_dtype(self.name_event_number,
-                                                 self.n_channel)
-                          )
-        events['time'] = intervals[:, 0]
-        events['endtime'] = intervals[:, 1]
-
-        # Find all hilets which touch the coincidence windows
-        # and fix ambiguities in case a single hitlet touches two intveral
-        # (this can happen for muon signals with a long tail + afterpulses/trapped
-        # light, in those cases we merge the two events into a single one)
-        hitlets_ids_in_event = strax.touching_windows(hitlets_nv, events)
-        hitlets_ids_in_event = solve_ambiguity(hitlets_ids_in_event)
-
-        # Drop empty events (which were merged before):
-        m = np.diff(hitlets_ids_in_event).flatten() != 0
-        hitlets_ids_in_event = hitlets_ids_in_event[m]
-        events = events[m]
+        events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
+                                                        self.config['event_min_hits_nv'],
+                                                        self.config['event_resolving_time_nv'],
+                                                        self.config['event_left_extension_nv'],
+                                                        event_number_key=self.name_event_number,
+                                                        n_channel=self.n_channel, )
 
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
@@ -98,11 +81,11 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return events
 
 
-def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
+def veto_event_dtype(name_event_number: str = 'event_number_nv',
+                     n_pmts: int = 120) -> list:
     dtype = []
     dtype += strax.time_fields  # because mutable
     dtype += [(('Veto event number in this dataset', name_event_number), np.int64),
-              (('Last hitlet endtime in event [ns].', 'last_hitlet_endtime'), np.int64),
               (('Total area of all hitlets in event [pe]', 'area'), np.float32),
               (('Total number of hitlets in events', 'n_hits'), np.int32),
               (('Total number of contributing channels', 'n_contributing_pmt'), np.uint8),
@@ -115,7 +98,10 @@ def veto_event_dtype(name_event_number='event_number_nv', n_pmts=120):
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start_channel=2000):
+def compute_nveto_event_properties(events: np.ndarray,
+                                   hitlets: np.ndarray,
+                                   contained_hitlets_ids: np.ndarray,
+                                   start_channel: int = 2000):
     """
     Computes properties of the neutron-veto events. Writes results
     directly to events.
@@ -132,7 +118,7 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
         event_area = np.sum(hitlet['area'])
         e['area'] = event_area
         e['n_hits'] = len(hitlet)
-        e['n_contributed_pmt'] = len(np.unique(hitlet['channel']))
+        e['n_contributing_pmt'] = len(np.unique(hitlet['channel']))
 
         t = hitlet['time'] - hitlet[0]['time']
         if event_area:
@@ -149,20 +135,62 @@ def compute_nveto_event_properties(events, hitlets, contained_hitlets_ids, start
             ch = hit['channel'] - start_channel
             e['area_per_channel'][ch] += hit['area']
 
-        # Compute endtime of last hitlet in event:
-        endtime = strax.endtime(hitlet)
-        e['last_hitlet_endtime'] = np.max(endtime)
+@export
+def find_veto_events(hitlets: np.ndarray,
+                     coincidence_level: int,
+                     resolving_time: int,
+                     left_extension: int,
+                     event_number_key: str = 'event_number_nv',
+                     n_channel: int = 120, ) -> ty.Tuple[np.ndarray, np.ndarray]:
+    """
+    Function which find the veto events as a nfold concidence in a given
+    resolving time window. All hitlets which touch the event window
+    contribute.
 
-        # Update start and endtime as hitlets only have to overlap
-        # partially
-        e['time'] = min(e['time'], hitlet['time'][0])
-        e['endtime'] = max(e['endtime'], max(endtime))
+    :param hitlets: Hitlets which shall be used for event creation.
+    :param coincidence_level: int, coincidence level.
+    :param resolving_time: int, resolving window for coincidence in ns.
+    :param left_extension: int, left event extension in ns.
+    :param event_number_key: str, field name for the event number
+    :param n_channel: int, number of channels in detector.
+    :returns: events, hitelt_ids_per_event
+    """
+    # Find intervals which satisfy requirement:
+    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets,
+                                                           coincidence_level,
+                                                           resolving_time,
+                                                           left_extension,
+
+                                                           )
+
+    # Create some preliminary events:
+    event_intervals = np.zeros(len(intervals),
+                               dtype=strax.time_fields
+                               )
+    event_intervals['time'] = intervals[:, 0]
+    event_intervals['endtime'] = intervals[:, 1]
+
+    # Find all hitlets which touch the coincidence windows:
+    # (we cannot use fully_contained in here since some muon signals
+    # may be larger than 300 ns)
+    hitlets_ids_in_event = strax.touching_windows(hitlets,
+                                                  event_intervals)
+
+    # For some rare cases long signals may touch two intervals, in that
+    # case we merge the intervals in the subsequent function:
+    hitlets_ids_in_event = _solve_ambiguity(hitlets_ids_in_event)
+
+    # Now we can create the veto events:
+    events = np.zeros(len(hitlets_ids_in_event),
+                      dtype=veto_event_dtype(event_number_key, n_channel))
+    _make_event(hitlets, hitlets_ids_in_event, events)
+    return events, hitlets_ids_in_event
 
 
 @numba.njit(cache=True, nogil=False)
-def solve_ambiguity(contained_hitlets_ids):
+def _solve_ambiguity(contained_hitlets_ids: np.ndarray) -> np.ndarray:
     """
-    Function which solves the ambiguity if a single hitlete overlaps
+    Function which solves the ambiguity if a single hitlets overlaps
     with two event intervals.
 
     This can happen for muon signals which have a long tail, since we
@@ -170,35 +198,43 @@ def solve_ambiguity(contained_hitlets_ids):
     can extend beyond the fixed window.
     """
     res = np.zeros(contained_hitlets_ids.shape, dtype=contained_hitlets_ids.dtype)
-    offset = 0
-    skip_next = False
-    for e_i, ids in enumerate(contained_hitlets_ids[:-1]):
-        if skip_next:
-            # Prev interval overlapped with current interval and was
-            # merged so skip this one.
-            skip_next = False
-            continue
 
-        # Test if current and next interval overlap:
-        c_s_i, c_e_i = ids
-        n_s_i, n_e_i = contained_hitlets_ids[e_i + 1]
-        if (c_e_i - n_s_i) > 0:
-            # Yes, they do so merge them increase the counter
-            # by two to keep track of the events which were
-            # merged.
-            res[offset, :] = c_s_i, n_e_i
-            offset += 2
-            skip_next = True
+    if not len(res):
+        # Return empty result
+        return res
+
+    offset = 0
+    start_i, end_i = contained_hitlets_ids[0]
+    for e_i, ids in enumerate(contained_hitlets_ids[1:]):
+
+        if end_i > ids[0]:
+            # Current and next interval overlap so just updated the end
+            # index.
+            end_i = ids[1]
         else:
-            # No so just copy the values.
-            res[offset, :] = c_s_i, c_e_i
+            # They do not overlap store indices:
+            res[offset] = [start_i, end_i]
             offset += 1
+            # Init next interval:
+            start_i, end_i = ids
 
     # Last event:
-    if not skip_next and len(contained_hitlets_ids):
-        res[offset, :] = contained_hitlets_ids[-1]
-        offset += 1
+    res[offset, :] = [start_i, end_i]
+    offset += 1
     return res[:offset]
+
+
+@numba.njit(cache=True, nogil=True)
+def _make_event(hitlets: np.ndarray,
+                hitlet_ids: np.ndarray,
+                res: np.ndarray):
+    """
+    Function which sets veto event time and endtime.
+    """
+    for ei, ids in enumerate(hitlet_ids):
+        hit = hitlets[ids[0]:ids[1]]
+        res[ei]['time'] = hit[0]['time']
+        res[ei]['endtime'] = np.max(strax.endtime(hit))
 
 
 @strax.takes_config(
@@ -223,21 +259,10 @@ class nVETOEventPositions(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    dtype = []
-    dtype += strax.time_fields
-    dtype += [(('Number of prompt hitlets within the first "position_max_time_nv" ns of the event.',
-                'n_prompt_hitlets'), np.int16),
-              (('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
-                'angle'), np.float32),
-              (('Area weighted mean of position in x [mm]', 'pos_x'), np.float32),
-              (('Area weighted mean of position in y [mm]', 'pos_y'), np.float32),
-              (('Area weighted mean of position in z [mm]', 'pos_z'), np.float32),
-              (('Weighted variance of position in x [mm]', 'pos_x_spread'), np.float32),
-              (('Weighted variance of position in y [mm]', 'pos_y_spread'), np.float32),
-              (('Weighted variance of position in z [mm]', 'pos_z_spread'), np.float32)
-              ]
-
     __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        return veto_event_positions_dtype()
 
     def setup(self):
         if isinstance(self.config['nveto_pmt_position_map'], str):
@@ -274,8 +299,29 @@ class nVETOEventPositions(strax.Plugin):
         return event_angles
 
 
+def veto_event_positions_dtype() -> list:
+    dtype = []
+    dtype += strax.time_fields
+    dtype += [(('Number of prompt hitlets within the first "position_max_time_nv" ns of the event.',
+                'n_prompt_hitlets'), np.int16),
+              (('Azimuthal angle, where the neutron capture was detected in [0, 2 pi).',
+                'angle'), np.float32),
+              (('Area weighted mean of position in x [mm]', 'pos_x'), np.float32),
+              (('Area weighted mean of position in y [mm]', 'pos_y'), np.float32),
+              (('Area weighted mean of position in z [mm]', 'pos_z'), np.float32),
+              (('Weighted variance of position in x [mm]', 'pos_x_spread'), np.float32),
+              (('Weighted variance of position in y [mm]', 'pos_y_spread'), np.float32),
+              (('Weighted variance of position in z [mm]', 'pos_z_spread'), np.float32)
+              ]
+    return dtype
+
+
 @numba.njit(cache=True, nogil=True)
-def compute_positions(event_angles, events, contained_hitlets, pmt_pos, start_channel=2000):
+def compute_positions(event_angles: np.ndarray,
+                      events: np.ndarray,
+                      contained_hitlets: np.ndarray,
+                      pmt_pos: np.ndarray,
+                      start_channel: int = 2000):
     for e_angles, e, hitlets in zip(event_angles, events, contained_hitlets):
         if e['area']:
             ch = hitlets['channel'] - start_channel
@@ -294,10 +340,9 @@ def compute_positions(event_angles, events, contained_hitlets, pmt_pos, start_ch
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_average_angle(hitlets_in_event,
-                          pmt_properties,
-                          start_channel=2000,
-                          ):
+def compute_average_angle(hitlets_in_event: np.ndarray,
+                          pmt_properties: np.ndarray,
+                          start_channel: int = 2000,) -> np.ndarray:
     """
     Computes azimuthal angle as an area weighted mean over all hitlets.
 
@@ -323,7 +368,8 @@ def compute_average_angle(hitlets_in_event,
 
 
 @numba.njit(cache=True, nogil=True)
-def circ_angle(x_values, y_values):
+def circ_angle(x_values: np.ndarray,
+               y_values: np.ndarray) -> np.ndarray:
     """
     Loops over a set of x and y values and computes azimuthal angle.
 
@@ -338,7 +384,7 @@ def circ_angle(x_values, y_values):
 
 
 @numba.njit(cache=True, nogil=True)
-def _circ_angle(x, y):
+def _circ_angle(x: float, y: float) -> float:
     if x > 0 and y >= 0:
         # 1st quadrant
         angle = np.abs(np.arctan(y / x))
@@ -364,7 +410,8 @@ def _circ_angle(x, y):
 
 
 @numba.njit(cache=True, nogil=True)
-def first_hitlets(hitlets_per_event, max_time):
+def first_hitlets(hitlets_per_event: np.ndarray,
+                  max_time: int) -> ty.Tuple[numba.typed.List, np.ndarray]:
     """
     Returns hitlets within the first "max_time" ns of an event.
 
