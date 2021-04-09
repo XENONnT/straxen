@@ -126,7 +126,7 @@ class EventBasics(strax.LoopPlugin):
         ('area',              np.float32, 'area, uncorrected [PE]'),
         ('n_channels',        np.int32,   'count of contributing PMTs'),
         ('n_competing',       np.float32, 'number of competing PMTs'),
-        ('max_pmt',           np.int32,   'PMT number which contributes the most PE'),
+        ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
         ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
         ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
         ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
