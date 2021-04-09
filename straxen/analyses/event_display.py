@@ -37,7 +37,7 @@ EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
 
 # Don't be smart with the arguments, since it is a minianalyses we
 # need to have all the arguments
-@straxen.mini_analysis(requires='event_info')
+@straxen.mini_analysis(requires=('event_info',))
 def event_display_simple(context,
                          run_id,
                          events,
@@ -87,7 +87,7 @@ def event_display_simple(context,
 
 # Don't be smart with the arguments, since it is a minianalyses we
 # need to have all the arguments
-@straxen.mini_analysis(requires='event_info',)
+@straxen.mini_analysis(requires=('event_info',))
 def event_display(context,
                   run_id,
                   events,
