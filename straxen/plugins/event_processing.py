@@ -107,14 +107,14 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.5.8'
+    __version__ = '0.6.0'
 
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
-    provides = ('event_basics', 'event_posrec_many')
-    data_kind = {k: 'events' for k in provides}
+    provides = 'event_basics'
+    data_kind = 'events'
     loop_over = 'events'
 
     # Properties to store for each peak (main and alternate S1 and S2)
@@ -135,15 +135,15 @@ class EventBasics(strax.LoopPlugin):
 
     def infer_dtype(self):
         # Basic event properties
-        basics_dtype = []
-        basics_dtype += strax.time_fields
-        basics_dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
-                         ('drift_time', np.int32,
-                          'Drift time between main S1 and S2 in ns')]
+        dtype = []
+        dtype += strax.time_fields
+        dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
+                  ('drift_time', np.int32,
+                   'Drift time between main S1 and S2 in ns')]
 
         for i in [1, 2]:
             # Peak indices
-            basics_dtype += [
+            dtype += [
                 (f's{i}_index', np.int32,
                  f'Main S{i} peak index in event'),
                 (f'alt_s{i}_index', np.int32,
@@ -151,18 +151,18 @@ class EventBasics(strax.LoopPlugin):
 
             # Peak properties
             for name, dt, comment in self.peak_properties:
-                basics_dtype += [
+                dtype += [
                     (f's{i}_{name}', dt, f'Main S{i} {comment}'),
                     (f'alt_s{i}_{name}', dt, f'Alternate S{i} {comment}')]
 
             # Drifts and delays
-            basics_dtype += [
+            dtype += [
                 (f'alt_s{i}_interaction_drift_time', np.int32,
                  f'Drift time using alternate S{i} [ns]'),
                 (f'alt_s{i}_delay', np.int32,
                  f'Time between main and alternate S{i} [ns]')]
 
-        basics_dtype += [
+        dtype += [
             (f's2_x', np.float32,
              f'Main S2 reconstructed X position, uncorrected [cm]'),
             (f's2_y', np.float32,
@@ -173,13 +173,12 @@ class EventBasics(strax.LoopPlugin):
              f'Alternate S2 reconstructed Y position, uncorrected [cm]')]
 
         # area before main S2
-        basics_dtype += [
+        dtype += [
             (f'area_before_main_s2', np.float32,
              f'Sum of areas before Main S2 [PE]'),
             (f'large_s2_before_main_s2', np.float32,
              f'The largest S2 before the Main S2 [PE]')]
 
-        posrec_many_dtype = list(strax.time_fields)
         # parse x_mlp et cetera if needed to get the algorithms used.
         self.pos_rec_labels = list(
             set(d.split('_')[-1] for d in
@@ -190,7 +189,7 @@ class EventBasics(strax.LoopPlugin):
 
         for algo in self.pos_rec_labels:
             # S2 positions
-            posrec_many_dtype += [
+            dtype += [
                 (f's2_x_{algo}', np.float32,
                  f'Main S2 {algo}-reconstructed X position, uncorrected [cm]'),
                 (f's2_y_{algo}', np.float32,
@@ -200,18 +199,15 @@ class EventBasics(strax.LoopPlugin):
                 (f'alt_s2_y_{algo}', np.float32,
                  f'Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]')]
 
-        return {'event_basics': basics_dtype,
-                'event_posrec_many': posrec_many_dtype}
+        return dtype
 
     def compute_loop(self, event, peaks):
         result = dict(n_peaks=len(peaks),
                       time=event['time'],
                       endtime=strax.endtime(event))
-        posrec_result = dict(time=event['time'],
-                             endtime=strax.endtime(event))
-        posrec_save = [d.replace("s2_", "").replace("alt_", "")
-                       for d in self.dtype_for('event_posrec_many').names if
-                       'time' not in d]
+        posrec_save = [(xy + algo)
+                       for xy in ['x_', 'y_']
+                       for algo in self.pos_rec_labels]
 
         if not len(peaks):
             return result
@@ -259,8 +255,8 @@ class EventBasics(strax.LoopPlugin):
                     result[f's{s_i}_{name}'] = main_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
-                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
-                        
+                        result[f's{s_i}_{name}'] = main_s[s_i][name]
+
             # Store alternate signal properties
             if _alt_i is None:
                 result[f'alt_s{s_i}_index'] = -1
@@ -271,7 +267,7 @@ class EventBasics(strax.LoopPlugin):
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
-                        posrec_result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
+                        result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 # Compute delay time properties
                 result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
                                                - main_s[s_i]['center_time'])
@@ -292,14 +288,13 @@ class EventBasics(strax.LoopPlugin):
             peaks_before_ms2 = peaks[peaks['time'] < main_s[2]['time']]
             result['area_before_main_s2'] = sum(peaks_before_ms2['area'])
 
-            s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2['type']==2]
+            s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2['type'] == 2]
             if len(s2peaks_before_ms2) == 0:
                 result['large_s2_before_main_s2'] = 0
             else:
                 result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
 
-        return {'event_basics': result,
-                'event_posrec_many': posrec_result}
+        return result
 
 
 @export

@@ -7,7 +7,7 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-@straxen.mini_analysis(requires=('event_basics', 'event_posrec_many',))
+@straxen.mini_analysis(requires=('event_basics',))
 def load_corrected_positions(context, run_id, events,
                              cmt_version=None,
                              posrec_algos=('mlp', 'gcn', 'cnn')):
@@ -15,7 +15,7 @@ def load_corrected_positions(context, run_id, events,
     """
     Returns the corrected position for each position algorithm available,
         without the need to reprocess event_basics, as the needed
-        information is already stored in event_posrec_many.
+        information is already stored in event_basics.
     
     :param cmt_version: CMT version to use (it can be a list of same
         length as posrec_algos, if different versions are required for
@@ -36,28 +36,28 @@ def load_corrected_positions(context, run_id, events,
     
     if hasattr(cmt_version, '__len__') and not isinstance(cmt_version, str) and len(cmt_version) != len(posrec_algos):
         raise TypeError(f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
-        
+
     cmt_version = (cmt_version, ) * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
     
     dtype = []
     
     for algo in posrec_algos:
-
+        for xyzr in 'x y z r'.split():
+            dtype += [
+                ((f'Interaction {xyzr}-position, field-distortion corrected (cm) - '
+                  f'{algo.upper()} posrec algorithm', f'{xyzr}_{algo}'),
+                 np.float32),
+                     ]
         dtype += [
-                ((f'Interaction x-position, field-distortion corrected (cm) - {algo.upper()} posrec algorithm', f'x_{algo}'), 
-                 np.float32),
-                ((f'Interaction y-position, field-distortion corrected (cm) - {algo.upper()} posrec algorithm', f'y_{algo}'), 
-                 np.float32),
-                ((f'Interaction z-position, field-distortion corrected (cm) - {algo.upper()} posrec algorithm', f'z_{algo}'), 
-                 np.float32),
-                ((f'Interaction radial position, field-distortion corrected (cm) - {algo.upper()} posrec algorithm', f'r_{algo}'),
-                 np.float32),
-                ((f'Interaction r-position using observed S2 positions directly (cm) - {algo.upper()} posrec algorithm', f'r_naive_{algo}'),
-                 np.float32),
-                ((f'Correction added to r_naive for field distortion (cm) - {algo.upper()} posrec algorithm',
-                  f'r_field_distortion_correction_{algo}'), np.float32),
-                ((f'Interaction angular position (radians) - {algo.upper()} posrec algorithm', f'theta_{algo}'),
-                 np.float32)]
+            ((f'Interaction r-position using observed S2 positions directly (cm) -'
+              f' {algo.upper()} posrec algorithm', f'r_naive_{algo}'),
+             np.float32),
+            ((f'Correction added to r_naive for field distortion (cm) - '
+              f'{algo.upper()} posrec algorithm',
+              f'r_field_distortion_correction_{algo}'), np.float32),
+            ((f'Interaction angular position (radians) - {algo.upper()} '
+              f'posrec algorithm', f'theta_{algo}'),
+             np.float32)]
         
     dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
     result = np.zeros(len(events), dtype=dtype)
