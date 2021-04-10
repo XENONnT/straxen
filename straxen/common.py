@@ -491,7 +491,10 @@ def remap_old(data, targets, run_id, works_on_target=''):
     elif len(data):
         # select the old data and do the remapping for this
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
-        data[mask] = remap_channels(data[mask])
+        res = data.copy()
+        res[mask] = remap_channels(data[mask])
+        data = res.copy()
+        del res
     return data
 
 
