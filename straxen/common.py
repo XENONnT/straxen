@@ -467,13 +467,15 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     return _dat
 
 
-def remap_old(data, targets, works_on_target=''):
+@export
+def remap_old(data, targets, run_id, works_on_target=''):
     """
     If the data is of before the time sectors were re-cabled, apply a software remap
         otherwise just return the data is it is.
     :param data: numpy array of data with at least the field time. It is assumed the data
         is sorted by time
     :param targets: targets in the st.get_array to get
+    :param run_id: required positional argument of apply_function_to_data in strax
     :param works_on_target: regex match string to match any of the targets. By default set
         to '' such that any target in the targets would be remapped (which is what we want
         as channels are present in most data types). If one only wants records (no
@@ -488,9 +490,6 @@ def remap_old(data, targets, works_on_target=''):
         pass
     elif len(data):
         # select the old data and do the remapping for this
-        warn("Correcting data of runs with mis-cabled PMTs. \nSee: https://"
-             "xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap. "
-             "Don't use '' selection_str='channel == xx' '' (github.com/XENONnT/straxen/issues/239)")
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
         data[mask] = remap_channels(data[mask])
     return data
