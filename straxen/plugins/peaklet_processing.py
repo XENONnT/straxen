@@ -5,7 +5,6 @@ import strax
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 from strax.processing.general import _touching_windows
-from warnings import warn
 
 export, __all__ = strax.exporter()
 
@@ -98,11 +97,12 @@ class Peaklets(strax.Plugin):
 
     def setup(self):
         if self.config['peak_min_pmts'] > 2:
-            # Can fix by resplitting, NotImplemented
-            raise warn(f"Raising the peak_min_pmts to "
-                       f"{self.config['peak_min_pmts']} interferes with "
-                       f"lone_hit definition. See "
-                       f"github.com/XENONnT/straxen/issues/295")
+            # Can fix by re-splitting,
+            raise NotImplementedError(
+                f"Raising the peak_min_pmts to {self.config['peak_min_pmts']} "
+                f"interferes with lone_hit definition. "
+                f"See github.com/XENONnT/straxen/issues/295")
+
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
                                        self.config['n_tpc_pmts'])
