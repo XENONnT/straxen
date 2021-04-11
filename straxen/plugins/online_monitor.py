@@ -45,7 +45,7 @@ export, __all__ = strax.exporter()
     strax.Option(
         'lone_hits_min_gap',
         type=int,
-        default=-1,
+        default=15_000,
         help='Minimal gap [ns] between consecutive lone-hits. To turn off '
              'this cut, set to 0.'),
     strax.Option(
@@ -72,7 +72,7 @@ class OnlinePeakMonitor(strax.Plugin):
     depends_on = ('peak_basics', 'lone_hits')
     provides = 'online_peak_monitor'
     data_kind = 'online_peak_monitor'
-    __version__ = '0.0.6'
+    __version__ = '0.0.5'
     rechunk_on_save = False
 
     def infer_dtype(self):
