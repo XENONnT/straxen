@@ -262,8 +262,9 @@ class OnlineEventMonitor(strax.Plugin):
         # --- Drift time vs R^2 histogram ---
         res['drift_time_vs_R2_bounds'] = self.config['drift_time_vs_R2_bounds']
 
-        dt_r2_events = strax.apply_selection(events,
-                                             selection_str=self.config['drift_time_vs_R2_cut_string'])
+        dt_r2_events = strax.apply_selection(
+            events,
+            selection_str=self.config['drift_time_vs_R2_cut_string'])
         res['drift_time_vs_R2_hist'] = self.drift_time_r2_hist(dt_r2_events)
 
         # drift time vs. s2 width histogram
