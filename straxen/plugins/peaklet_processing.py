@@ -26,8 +26,8 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1), (6.0, 0.4)),
-                     ((2, 1), (4.5, 0.4))),
+                     ((0.5, 1.), (6.0, 0.4)),
+                     ((2., 1.), (4.5, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
     strax.Option('peak_split_filter_wing_width', default=70,
