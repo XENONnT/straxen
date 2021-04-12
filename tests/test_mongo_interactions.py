@@ -83,7 +83,14 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
             query.update({'number': {"$gt": int(max_run)}})
         some_run = om.db[om.col_name].find_one(query,
                                                projection={'number': 1,
-                                                           'metadata': 1})
+                                                           'metadata': 1,
+                                                           'lineage_hash': 1,
+                                                           })
+        if some_run.get('lineage_hash', False):
+            if some_run['lineage_hash'] != st.key_for("0", target).lineage_hash:
+                # We are doing a new release, therefore there is no
+                # matching data. This makes sense.
+                return
         if some_run is None or some_run.get('number', None) is None:
             print(f'Found None')
             continue
