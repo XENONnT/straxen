@@ -129,11 +129,14 @@ class OnlinePeakMonitor(strax.Plugin):
         # -- Lone hit properties --
         # Make a mask with the cuts.
         # Now only take lone hits that are separated in time.
-        lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
-        # Hits on the left are far away? (assume first is because of chunk bound)
-        mask = np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
-        # Hits on the right are far away? (assume last is because of chunk bound)
-        mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+        if len(lone_hits):
+            lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
+            # Hits on the left are far away? (assume first is because of chunk bound)
+            mask = np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
+            # Hits on the right are far away? (assume last is because of chunk bound)
+            mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+        else:
+            mask = []
         masked_lh = strax.apply_selection(lone_hits[mask],
                                           selection_str=self.config['lone_hits_cut_string'])
 
