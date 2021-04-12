@@ -447,9 +447,7 @@ class PeakletClassification(strax.Plugin):
     depends_on = ('peaklets',)
     parallel = True
     dtype = (strax.peak_interval_dtype +
-             [('type', np.int8, 'Classification of the peak(let)'),
-             ]
-            )
+             [('type', np.int8, 'Classification of the peak(let)')])
     __version__ = '0.2.1'
 
     def compute(self, peaklets):
