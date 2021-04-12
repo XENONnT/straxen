@@ -160,7 +160,7 @@ def xenonnt_online(output_folder='./strax_data',
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
     return st
