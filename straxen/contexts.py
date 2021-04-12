@@ -45,6 +45,7 @@ xnt_common_config = dict(
     s1_max_rise_time=100,
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
+    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -81,6 +82,7 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
+                   _maximum_run_number=None,
                    _database_init=True,
                    _forbid_creation_of=None,
                    _rucio_path='/dali/lgrandi/rucio/',
@@ -96,6 +98,9 @@ def xenonnt_online(output_folder='./strax_data',
         data can be stored
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param _minimum_run_number: int, lowest number to consider
+    :param _maximum_run_number: Highest number to consider. When None
+        (the default) consider all runs that are higher than the
+        minimum_run_number.
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
         being written (raw_records* is always forbidden).
@@ -121,6 +126,7 @@ def xenonnt_online(output_folder='./strax_data',
         straxen.RunDB(
             readonly=not we_are_the_daq,
             minimum_run_number=_minimum_run_number,
+            maximum_run_number=_maximum_run_number,
             runid_field='number',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
