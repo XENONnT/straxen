@@ -463,7 +463,6 @@ class CorrectedAreas(strax.Plugin):
             self.s1_map = InterpolatingMap(
                 get_resource(self.config['s1_xyz_correction_map']))
 
-        # TODO: s2 map should also have PosRec algo dependence
         self.s2_map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
