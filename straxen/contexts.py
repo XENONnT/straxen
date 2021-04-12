@@ -249,26 +249,34 @@ x1t_common_config = dict(
         tpc=(0, 247),
         diagnostic=(248, 253),
         aqmon=(254, 999)),
+    # Records
     hev_gain_model=('to_pe_per_run',
                     'to_pe.npy'),
-    gain_model=('to_pe_per_run',
-                'to_pe.npy'),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
         -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    tail_veto_threshold=int(1e5),
-    # Smaller right extension since we applied the filter
-    peak_right_extension=30,
-    peak_min_pmts=2,
-    save_outside_hits=(3, 3),
     hit_min_amplitude='XENON1T_SR1',
+    tail_veto_threshold=int(1e5),
+    save_outside_hits=(3, 3),
+    # Peaklets
+    peaklet_gap_threshold=350,
+    gain_model=('to_pe_per_run',
+                'to_pe.npy'),
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
         ((2, 1), (4.5, 0.4))),
+    peak_min_pmts=2,
+    # MergedS2s
+    s2_merge_max_duration=5000.,
+    s2_merge_max_gap=3500,
+    # Peaks
+    # Smaller right extension since we applied the filter
+    peak_right_extension=30,
+    # Events*
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
     elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',

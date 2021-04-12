@@ -11,7 +11,7 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('peaklet_gap_threshold', default=350,
+    strax.Option('peaklet_gap_threshold', default=700,
                  help="No hits for this many ns triggers a new peak"),
     strax.Option('peak_left_extension', default=30,
                  help="Include this many ns left of hits in peaks"),
@@ -26,7 +26,7 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1), (4, 0.4)),
+                     ((0.5, 1), (6.0, 0.4)),
                      ((2, 1), (4.5, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
@@ -500,9 +500,9 @@ FAKE_MERGED_S2_TYPE = -42
 
 @export
 @strax.takes_config(
-    strax.Option('s2_merge_max_area', default=5000.,
+    strax.Option('s2_merge_max_area', default=35_000,
                  help="Merge peaklet cluster only if area < this [PE]"),
-    strax.Option('s2_merge_max_gap', default=3500,
+    strax.Option('s2_merge_max_gap', default=5_000,
                  help="Maximum separation between peaklets to allow merging [ns]"),
     strax.Option('s2_merge_max_duration', default=15_000,
                  help="Do not merge peaklets at all if the result would be a peak "
