@@ -88,7 +88,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.7'
+    __version__ = '0.3.8'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -410,7 +410,7 @@ class PeakletsHighEnergy(Peaklets):
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
@@ -447,9 +447,9 @@ class PeakletClassification(strax.Plugin):
     depends_on = ('peaklets',)
     parallel = True
     dtype = (
-        strax.interval_dtype +
+        strax.peak_interval_dtype +
         [('type', np.int8, 'Classification of the peak(let)'),])
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     def compute(self, peaklets):
         peaks = peaklets
@@ -488,7 +488,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     __doc__ = HE_PREAMBLE + PeakletClassification.__doc__
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     child_plugin = True
 
     def compute(self, peaklets_he):
