@@ -65,8 +65,7 @@ class Events(strax.OverlapWindowPlugin):
             triggers,
             gap_threshold=le + re + 1,
             left_extension=le,
-            right_extension=re,
-        )
+            right_extension=re)
 
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
