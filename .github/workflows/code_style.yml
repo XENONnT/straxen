@@ -18,7 +18,7 @@ jobs:
         uses: wemake-services/wemake-python-styleguide@0.15.2
         continue-on-error: true
         with:
-          reporter: 'github-pr-check'
+          reporter: 'github-pr-review'
         env:
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
