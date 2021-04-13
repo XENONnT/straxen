@@ -58,7 +58,8 @@ export, __all__ = strax.exporter()
     strax.Option('saturation_min_reference_length', default=20,
                  help="Minimum number of reference sample used "
                       "to correct saturated samples"),
-
+    strax.Option('peaklet_max_duration', default=int(10e6),
+                 help="Maximum duration [ns] of a peaklet"),
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
@@ -129,7 +130,9 @@ class Peaklets(strax.Plugin):
             left_extension=self.config['peak_left_extension'],
             right_extension=self.config['peak_right_extension'],
             min_channels=self.config['peak_min_pmts'],
-            result_dtype=self.dtype_for('peaklets'))
+            result_dtype=self.dtype_for('peaklets'),
+            max_duration=self.config['peaklet_max_duration'],
+        )
 
         # Make sure peaklets don't extend out of the chunk boundary
         # This should be very rare in normal data due to the ADC pretrigger
