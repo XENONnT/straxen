@@ -499,11 +499,11 @@ FAKE_MERGED_S2_TYPE = -42
 
 @export
 @strax.takes_config(
-    strax.Option('s2_merge_max_area', default=35_000,
+    strax.Option('s2_merge_max_area', default=5000.,
                  help="Merge peaklet cluster only if area < this [PE]"),
     strax.Option('s2_merge_max_gap', default=5_000,
                  help="Maximum separation between peaklets to allow merging [ns]"),
-    strax.Option('s2_merge_max_duration', default=15_000,
+    strax.Option('s2_merge_max_duration', default=35_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):
