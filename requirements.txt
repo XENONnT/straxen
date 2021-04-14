@@ -1,5 +1,5 @@
 strax>=0.14.0
-utilix==0.4.1
+utilix>=0.5.2
 # tensorflow>=2.3.0  # Optional, to (re)do posrec
 # holoviews          # Optional, to enable wf display
 # datashader         # Optional, to enable wf display
