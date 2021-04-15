@@ -302,7 +302,7 @@ class EventBasics(strax.LoopPlugin):
     strax.Option(
         name='electron_drift_velocity',
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=1.3325e-4
+        default=("electron_drift_velocity", "ONLINE", True)
     ),
     strax.Option(
         name='fdc_map',
@@ -351,7 +351,7 @@ class EventPositions(strax.Plugin):
     def setup(self):
 
         is_CMT = isinstance(self.config['fdc_map'], tuple)
-
+        self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         if is_CMT:
 
             cmt, cmt_conf, is_nt = self.config['fdc_map']
@@ -360,7 +360,7 @@ class EventPositions(strax.Plugin):
  
             self.map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
-            self.map.scale_coordinates([1., 1., -self.config['electron_drift_velocity']])
+            self.map.scale_coordinates([1., 1., -self.electron_drift_velocity])
 
         elif isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
@@ -374,7 +374,7 @@ class EventPositions(strax.Plugin):
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
         
-        z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
+        z_obs = - self.electron_drift_velocity * events['drift_time']
         orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = self.map(orig_pos)
