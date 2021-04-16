@@ -208,7 +208,7 @@ def test_nveto_event_plugin(hitlets, area):
     # -----------------------
     if len(events) > 1:
         mes = f'Updated event boundaries overlap! {events}'
-        assert (events['endtime'][:-1] - events['time'][1:]) > 0, mes
+        assert (events['endtime'][:-1] - events['time'][1:]) < 0, mes
 
     split_hitlets = strax.split_by_containment(hitlets, events)
 
