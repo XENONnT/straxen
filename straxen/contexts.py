@@ -277,7 +277,7 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     peak_min_pmts=2,
     # MergedS2s
-    s2_merge_max_duration=5000.,
+    s2_merge_max_duration=15_000,
     s2_merge_max_gap=3500,
     # Peaks
     # Smaller right extension since we applied the filter
