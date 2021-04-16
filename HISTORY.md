@@ -1,3 +1,16 @@
+0.18.0 / 2021-04-16
+---------------------
+- Clustering and classification update (#436)
+- Documentation: add 1T, fix #31, compact config display (#434)
+- Implement nT S1 correction (#430)
+- Use CMT to get electron drift velocity (#437)
+- Set max-runnumber (#433)
+- Update update-context-collection.py (#438)
+- Raise notimplemented error for peak_min_pmts > 2 (#432)
+- Update apply_function_to_data (#431)
+- use strax.apply_selection in om (#435)
+
+
 0.17.0 / 2021-04-09
 --------------------
 - Extend event_basics and remove event_posrec_many (#420)
