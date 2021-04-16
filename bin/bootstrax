@@ -596,10 +596,9 @@ def infer_target(rd: dict) -> dict:
                 post_process = _remove_veto_from_t(post_process, remove=remove)
         if len(detectors):
             # Temp log to the rundb
-            log_warning(f'Running in linked mode, processing up to {targets} and '
-                        f'postprocessing to {post_process}',
-                        priority='info',
-                        run_id=f'{rd["number"]:06}')
+            log.info(f'{rd["number"]:06} running in linked mode, '
+                     f'processing up to {targets} and postprocessing '
+                     f'to {post_process}')
 
     if targets is None or not len(targets):
         targets = 'raw_records'
