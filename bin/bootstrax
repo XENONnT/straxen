@@ -785,7 +785,8 @@ def infer_mode(rd):
     }
     if data_rate and args.infer_mode:
         df = pd.DataFrame(benchmark)
-        df.loc[len(df.index)] = [data_rate, None, None, None, None, None]
+        if data_rate not in benchmark['mbs']:
+            df.loc[len(df.index)] = [data_rate, None, None, None, None, None]
         df.set_index('mbs', inplace=True)
         df.sort_values('mbs', inplace=True)
         df.interpolate(method='index', inplace=True)
