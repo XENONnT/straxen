@@ -38,7 +38,10 @@ def load_corrected_positions(context, run_id, events,
         raise TypeError(f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
 
     cmt_version = (cmt_version, ) * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
-    
+
+    # Get drift from CMT
+    drift_conf = context.get_single_plugin(run_id, 'event_positions').config.get('electron_drift_velocity')
+    drift_speed = straxen.get_correction_from_cmt(run_id, drift_conf)
     dtype = []
     
     for algo in posrec_algos:
@@ -62,7 +65,6 @@ def load_corrected_positions(context, run_id, events,
     dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
     result = np.zeros(len(events), dtype=dtype)
 
-    drift_speed = context.get_single_plugin(run_id, 'event_positions').config['electron_drift_velocity']
     z_obs = - drift_speed * events['drift_time']
     
     for algo, v_cmt in zip(posrec_algos, cmt_version):
