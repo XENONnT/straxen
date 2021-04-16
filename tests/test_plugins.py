@@ -32,12 +32,14 @@ testing_config_nT = dict(
     gain_model_nv=("to_pe_constant", "adc_nv"),
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
+    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, True),
 )
 
 testing_config_1T = dict(
     hev_gain_model=('to_pe_constant', 0.0085),
     gain_model=('to_pe_constant', 0.0085),
     elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, False),
 )
 
 test_run_id_nT = '008900'
