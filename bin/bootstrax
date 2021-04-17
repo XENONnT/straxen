@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.1.3'
+__version__ = '1.1.4'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -445,6 +445,17 @@ def main_loop():
                 new_runs_seen += 1
                 process_run(rd)
                 continue
+        else:
+            # We are on an old eb with not so much to do, perhaps one of
+            # the veto systems needs processing?
+            rd = consider_run(
+                {'detectors': {'$in': ["muon_veto", "neutron_veto"]},
+                 "bootstrax.state": None},
+                test_counter=new_runs_seen)
+            if rd is not None:
+                new_runs_seen += 1
+                process_run(rd)
+                continue
 
         # There is either no new run or we are an old eventbuilder.
         # Scan DB for runs with unusual problems
@@ -459,6 +470,7 @@ def main_loop():
                            "bootstrax.next_retry": {'$lt': now()}
                            },
                           test_counter=failed_runs_seen)
+
         if rd is not None:
             failed_runs_seen += 1
             process_run(rd)
