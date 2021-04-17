@@ -951,7 +951,7 @@ def wait_on_delete_thread():
         if thread.name == delete_thread_name:
             done = False
             while not done:
-                if thread.isAlive():
+                if thread.is_alive():
                     log.info(f'{thread.name} still running take a {timeouts["idle_nap"]} s nap')
                     time.sleep(timeouts['idle_nap'])
                     done = True
