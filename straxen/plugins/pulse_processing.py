@@ -119,7 +119,7 @@ class PulseProcessing(strax.Plugin):
         records=False,
         veto_regions=True,
         pulse_counts=True)
-    compressor = 'lz4'
+    compressor = 'zstd'
 
     depends_on = 'raw_records'
 
@@ -239,7 +239,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
         records_he=False,
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
-    compressor = 'lz4'
+    compressor = 'zstd'
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
