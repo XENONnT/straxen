@@ -160,6 +160,7 @@ def event_scatter(context, run_id, events,
                      extend=extend,
                      ax=[ax, ax3])
 
+
 @straxen.mini_analysis(requires=('event_info',))
 def plot_energy_spectrum(
         events,

@@ -45,6 +45,7 @@ xnt_common_config = dict(
     s1_max_rise_time=100,
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
+    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -81,6 +82,7 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
+                   _maximum_run_number=None,
                    _database_init=True,
                    _forbid_creation_of=None,
                    _rucio_path='/dali/lgrandi/rucio/',
@@ -96,6 +98,9 @@ def xenonnt_online(output_folder='./strax_data',
         data can be stored
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param _minimum_run_number: int, lowest number to consider
+    :param _maximum_run_number: Highest number to consider. When None
+        (the default) consider all runs that are higher than the
+        minimum_run_number.
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
         being written (raw_records* is always forbidden).
@@ -121,6 +126,7 @@ def xenonnt_online(output_folder='./strax_data',
         straxen.RunDB(
             readonly=not we_are_the_daq,
             minimum_run_number=_minimum_run_number,
+            maximum_run_number=_maximum_run_number,
             runid_field='number',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
@@ -155,7 +161,7 @@ def xenonnt_online(output_folder='./strax_data',
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
     return st
@@ -249,29 +255,38 @@ x1t_common_config = dict(
         tpc=(0, 247),
         diagnostic=(248, 253),
         aqmon=(254, 999)),
+    # Records
     hev_gain_model=('to_pe_per_run',
                     'to_pe.npy'),
-    gain_model=('to_pe_per_run',
-                'to_pe.npy'),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
         -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    tail_veto_threshold=int(1e5),
-    # Smaller right extension since we applied the filter
-    peak_right_extension=30,
-    peak_min_pmts=2,
-    save_outside_hits=(3, 3),
     hit_min_amplitude='XENON1T_SR1',
+    tail_veto_threshold=int(1e5),
+    save_outside_hits=(3, 3),
+    # Peaklets
+    peaklet_gap_threshold=350,
+    gain_model=('to_pe_per_run',
+                'to_pe.npy'),
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
         ((2, 1), (4.5, 0.4))),
+    peak_min_pmts=2,
+    # MergedS2s
+    s2_merge_max_duration=15_000,
+    s2_merge_max_gap=3500,
+    # Peaks
+    # Smaller right extension since we applied the filter
+    peak_right_extension=30,
+    # Events*
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
     elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
 )
 
 
