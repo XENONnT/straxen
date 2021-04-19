@@ -449,7 +449,7 @@ def main_loop():
             # We are on an old eb with not so much to do, perhaps one of
             # the veto systems needs processing?
             rd = consider_run(
-                {'detectors': {'$in': ["muon_veto", "neutron_veto"]},
+                {'detectors': {'$ne': 'tpc'},
                  "bootstrax.state": None},
                 test_counter=new_runs_seen)
             if rd is not None:
