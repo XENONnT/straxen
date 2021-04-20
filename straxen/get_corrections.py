@@ -2,12 +2,33 @@ import numpy as np
 import strax
 import straxen
 from warnings import warn
+from functools import wraps
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
 
 
+def correction_options(f):
+    """A wrapper function for functions here in the get_corrections module
+    Search for special options like ["MC", ] and apply arg shuffling accordingly
+    """
+    @wraps(f)
+    def _correction_options(run_id, conf, *arg):
+        if isinstance(conf, tuple):
+            # MC chain simulation can put run_id inside configuration
+            if 'MC' in conf:
+                tag, run_id, *conf = conf
+                assert tag == 'MC', 'Get corrections require input in the from of tuple("MC", run_id, *conf) when "MC" option is invoked'
+                return f(run_id, tuple(conf), *arg)
+
+        # Else use the get correstions as they are
+        return f(run_id, conf, *arg)
+
+    return _correction_options
+
+
 @export
+@correction_options
 def get_to_pe(run_id, gain_model, n_pmts):
     if not isinstance(gain_model, tuple):
         raise ValueError(f"gain_model must be a tuple")
@@ -83,6 +104,7 @@ FIXED_TO_PE = {
 
 
 @export
+@correction_options
 def get_correction_from_cmt(run_id, conf):
     if isinstance(conf, str) and conf.startswith('https://raw'):
         # Legacy support for pax files
@@ -118,6 +140,7 @@ def get_correction_from_cmt(run_id, conf):
 
 
 @export
+@correction_options
 def get_config_from_cmt(run_id, conf):
     if isinstance(conf, str) and conf.startswith('https://raw'):
         # Legacy support for pax files
@@ -141,6 +164,7 @@ def get_config_from_cmt(run_id, conf):
     return this_file
 
 
+@correction_options
 def get_elife(run_id, elife_conf):
     # 1T support for electron lifetimes from a file
     # Let's remove these functions and only rely on the CMT in the future
