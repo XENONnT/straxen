@@ -239,7 +239,8 @@ class SCADAInterface:
                    f'time is {now.astype(np.int64)}. I will return for the values for the '
                    'corresponding times as nans instead.')
             warnings.warn(mes)
-        return start, end, now
+
+        return int(start), int(end), now
 
     def _query_single_parameter(self,
                                 start,
