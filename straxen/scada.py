@@ -157,24 +157,27 @@ class SCADAInterface:
         if self._use_progress_bar:
             # wrap using progress bar
             iterator = tqdm(iterator, total=len(parameters), desc='Load parameters')
-        for ind, (k, p) in iterator:
-            temp_df = self._query_single_parameter(start, end,
-                                                   k, p,
-                                                   every_nth_value=every_nth_value,
-                                                   fill_gaps=fill_gaps,
-                                                   filling_kwargs=filling_kwargs,
-                                                   down_sampling=down_sampling,
-                                                   query_type_lab=query_type_lab
-                                                   )
 
-            if ind:
-                m = np.all(df.loc[:, 'time'] == temp_df.loc[:, 'time'])
-                mes = ('This is odd somehow the time stamps for the query of'
-                       f' {p} does not match the other time stamps.')
-                assert m, mes
-                df = pd.concat((df, temp_df[k]), axis=1)
-            else:
-                df = temp_df
+        df = pd.DataFrame(columns=('time',))
+        for ind, (k, p) in iterator:
+            try:
+                temp_df = self._query_single_parameter(start, end,
+                                                       k, p,
+                                                       every_nth_value=every_nth_value,
+                                                       fill_gaps=fill_gaps,
+                                                       filling_kwargs=filling_kwargs,
+                                                       down_sampling=down_sampling,
+                                                       query_type_lab=query_type_lab)
+                if ind:
+                    m = np.all(df.loc[:, 'time'] == temp_df.loc[:, 'time'])
+                    if ind and not m:
+                        raise ValueError('This is odd somehow the time stamps for the query of'
+                                         f' {p} does not match the previous timestamps.')
+            except ValueError as e:
+                warnings.warn(f'Was not able to load parameters for "{k}". The reason was: "{e}"')
+                temp_df = pd.DataFrame(columns=(k,))
+
+            df = pd.concat((df, temp_df[k]), axis=1)
 
         # Adding timezone information and rename index:
         df.set_index('time', inplace=True)
