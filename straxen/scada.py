@@ -15,6 +15,7 @@ import pytz
 
 import getpass
 import warnings
+from configparser import NoOptionError
 import sys
 
 if any('jupyter' in arg for arg in sys.argv):
@@ -490,14 +491,15 @@ class SCADAInterface:
         security token. The token is required to query any data from the
         slow control historians.
         """
-        print('Please, enter your Xe1TViewer/SCADA credentials:')
-        time.sleep(1)
         if not self.we_are_straxen:
-            username = getpass.getpass('Username: ')
-            password = getpass.getpass('Password: ')
+            username, password =  self._ask_for_credentials()
         else:
-            username = straxen.uconfig.get('scada', 'straxen_username')
-            password = straxen.uconfig.get('scada', 'straxen_password')
+            try:
+                username = straxen.uconfig.get('scada', 'straxen_username')
+                password = straxen.uconfig.get('scada', 'straxen_password')
+            except (AttributeError, NoOptionError):
+                # If file does not exist Fall back to user credentials
+                username, password = self._ask_for_credentials()
 
         login_query = {'username': username,
                        'password': password,
@@ -518,6 +520,14 @@ class SCADAInterface:
               f'from {toke_start_time.strftime("%d.%m. %H:%M:%S")} UTC\n',
               f'till {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC'
               )
+
+    @staticmethod
+    def _ask_for_credentials(self):
+        print('Please, enter your Xe1TViewer/SCADA credentials:')
+        time.sleep(1)
+        username = getpass.getpass('Xenon Username: ')
+        password = getpass.getpass('Xenon Password: ')
+        return username, password
 
     def token_expires_in(self):
         """
