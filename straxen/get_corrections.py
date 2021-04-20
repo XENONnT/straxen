@@ -8,23 +8,28 @@ export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
 
 
-def correction_options(f):
+def correction_options(get_correction_fuction):
     """A wrapper function for functions here in the get_corrections module
     Search for special options like ["MC", ] and apply arg shuffling accordingly
+    :param get_correction_fuction: function here in the get_corrections module
+
+    :returns: function wrapped with the option search
     """
-    @wraps(f)
-    def _correction_options(run_id, conf, *arg):
+    @wraps(get_correction_fuction)
+    def correction_options_wrapped(run_id, conf, *arg):
         if isinstance(conf, tuple):
             # MC chain simulation can put run_id inside configuration
             if 'MC' in conf:
                 tag, run_id, *conf = conf
-                assert tag == 'MC', 'Get corrections require input in the from of tuple("MC", run_id, *conf) when "MC" option is invoked'
-                return f(run_id, tuple(conf), *arg)
+                if tag != 'MC':
+                    raise Exception('Get corrections require input in the from of tuple '
+                                    '("MC", run_id, *conf) when "MC" option is invoked')
+                return get_correction_fuction(run_id, tuple(conf), *arg)
 
-        # Else use the get correstions as they are
-        return f(run_id, conf, *arg)
+        # Else use the get corrections as they are
+        return get_correction_fuction(run_id, conf, *arg)
 
-    return _correction_options
+    return correction_options_wrapped
 
 
 @export
