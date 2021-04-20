@@ -41,17 +41,23 @@ class SCADAInterface:
         self.we_are_straxen = False
         self._token_expire_time = None
         self._token = None
+        self.pmt_file_found = True
         try:
             self.SCLogin_url = straxen.uconfig.get('scada', 'sclogin_url')
             self.SCData_URL = straxen.uconfig.get('scada', 'scdata_url')
             self.SCLastValue_URL = straxen.uconfig.get('scada', 'sclastvalue_url')
 
-            # Load parameters from the database.
-            self.pmt_file = straxen.get_resource('PMTmap_SCADA.json',
-                                                 fmt='json')
+
         except ValueError as e:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
                              ' config. SCADAInterface cannot be used.') from e
+
+        try:
+            # Load parameters from the database.
+            self.pmt_file = straxen.get_resource('PMTmap_SCADA.json', fmt='json')
+        except FileNotFoundError:
+            warnings.warn('Cannot find PMT map, "find_pmt_names" cannot be used.')
+            self.pmt_file_found = False
 
         # Use a tqdm progress bar if requested. If a user does not want
         # a progress bar, just wrap it by a tuple
@@ -431,6 +437,10 @@ class SCADAInterface:
         :return: dictionary containing short names as keys and scada
             parameter names as values.
         """
+        if not self.pmt_file_found:
+            raise ValueError('json file containing the PMT information was not found. '
+                             '"find_pmt_names" cannot be used.')
+
         if not (hv or current):
             raise ValueError('Either one "hv" or "current" must be true.')
 
