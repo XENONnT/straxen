@@ -48,7 +48,6 @@ class SCADAInterface:
             self.SCData_URL = straxen.uconfig.get('scada', 'scdata_url')
             self.SCLastValue_URL = straxen.uconfig.get('scada', 'sclastvalue_url')
 
-
         except ValueError as e:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
                              ' config. SCADAInterface cannot be used.') from e
@@ -66,6 +65,7 @@ class SCADAInterface:
         self.context = context
 
         self.we_are_straxen = True
+        self.get_new_token()
 
     def get_scada_values(self,
                          parameters,
@@ -480,8 +480,7 @@ class SCADAInterface:
 
     def get_new_token(self):
         """
-        Function to renew the token of the current session. Asks user for
-        Xe1TViewer/SCADA credentials.
+        Function to renew the token of the current session.
         """
         self._get_token()
 
@@ -519,10 +518,12 @@ class SCADAInterface:
         print('Received token, the token is valid for 3 hrs.\n',
               f'from {toke_start_time.strftime("%d.%m. %H:%M:%S")} UTC\n',
               f'till {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC'
+              'We will automatically refresh the token for you :). '
+              'Have a nice day and a fruitful analysis!'
               )
 
     @staticmethod
-    def _ask_for_credentials(self):
+    def _ask_for_credentials():
         print('Please, enter your Xe1TViewer/SCADA credentials:')
         time.sleep(1)
         username = getpass.getpass('Xenon Username: ')
