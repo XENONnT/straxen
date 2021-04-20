@@ -218,6 +218,10 @@ class SCADAInterface:
                    'in utc unix time ns.')
             raise ValueError(mes)
 
+        if end < start:
+            raise ValueError('You specified an endtime which is smaller '
+                             'than the start time.')
+
         now = np.datetime64('now')
         if (end // 10**9) > now.astype(np.int64):
             mes = ('You are asking for an endtime which is in the future,'
