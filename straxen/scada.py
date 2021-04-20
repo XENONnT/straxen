@@ -222,6 +222,10 @@ class SCADAInterface:
             raise ValueError('You specified an endtime which is smaller '
                              'than the start time.')
 
+        if len(str(start)) < 19 or len(str(end)) < 19:
+            raise ValueError('Expected the time to be in ns unix time (number with 19 digits or more).'
+                             ' Have you specified the time maybe in seconds or micro-seconds?')
+
         now = np.datetime64('now')
         if (end // 10**9) > now.astype(np.int64):
             mes = ('You are asking for an endtime which is in the future,'
