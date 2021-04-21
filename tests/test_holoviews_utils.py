@@ -84,7 +84,7 @@ def test_array_to_df_and_make_sliders():
     nvd = nVETOEventDisplay()
     df = straxen.convert_array_to_df(evt)
 
-    nvd.make_sliders_and_tables(df)
+    nvd._make_sliders_and_tables(df)
 
 
 def test_static_detector_plots():
