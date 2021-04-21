@@ -202,6 +202,8 @@ def plot_record_polygons(record_points,
         should be in µs use 10**-3.
     :returns: hv.Polygons
     """
+    import holoviews as hv
+
     df = record_points.data.copy()
     if not center_time:
         df.loc[:, 'time'] = df.loc[:, 'time'] + (df.loc[:, 'length'] / 2 * df.loc[:, 'dt'])
