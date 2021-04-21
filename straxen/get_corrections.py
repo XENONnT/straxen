@@ -168,7 +168,6 @@ def get_config_from_cmt(run_id, conf):
     return this_file
 
 
-@correction_options
 def get_elife(run_id, elife_conf):
     # 1T support for electron lifetimes from a file
     # Let's remove these functions and only rely on the CMT in the future
