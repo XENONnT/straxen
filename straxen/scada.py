@@ -158,7 +158,6 @@ class SCADAInterface:
             # wrap using progress bar
             iterator = tqdm(iterator, total=len(parameters), desc='Load parameters')
 
-        df = pd.DataFrame(columns=('time',))
         for ind, (k, p) in iterator:
             try:
                 temp_df = self._query_single_parameter(start, end,
@@ -168,17 +167,22 @@ class SCADAInterface:
                                                        filling_kwargs=filling_kwargs,
                                                        down_sampling=down_sampling,
                                                        query_type_lab=query_type_lab)
+                
                 if ind:
                     m = np.all(df.loc[:, 'time'] == temp_df.loc[:, 'time'])
                     if ind and not m:
                         raise ValueError('This is odd somehow the time stamps for the query of'
                                          f' {p} does not match the previous timestamps.')
             except ValueError as e:
-                warnings.warn(f'Was not able to load parameters for "{k}". The reason was: "{e}"')
+                warnings.warn(f'Was not able to load parameters for "{k}". The reason was: "{e}".'
+                               f'Continue without {k}.')
                 temp_df = pd.DataFrame(columns=(k,))
-
-            df = pd.concat((df, temp_df[k]), axis=1)
-
+            
+            if ind:
+                df = pd.concat((df, temp_df[k]), axis=1)
+            else:
+                df = temp_df
+                
         # Adding timezone information and rename index:
         df.set_index('time', inplace=True)
         df = df.tz_localize(tz='UTC')
@@ -501,7 +505,7 @@ class SCADAInterface:
                 username = straxen.uconfig.get('scada', 'straxen_username')
                 password = straxen.uconfig.get('scada', 'straxen_password')
             except (AttributeError, NoOptionError):
-                # If file does not exist Fall back to user credentials
+                # If section does not exist Fall back to user credentials
                 username, password = self._ask_for_credentials()
 
         login_query = {'username': username,
@@ -521,7 +525,7 @@ class SCADAInterface:
         self._token_expire_time = toke_start_time + hours_added
         print('Received token, the token is valid for 3 hrs.\n',
               f'from {toke_start_time.strftime("%d.%m. %H:%M:%S")} UTC\n',
-              f'till {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC'
+              f'till {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC\n'
               'We will automatically refresh the token for you :). '
               'Have a nice day and a fruitful analysis!'
               )
