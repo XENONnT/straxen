@@ -301,8 +301,7 @@ def _in_window(polys, x_range):
     res = []
     for ind, p in enumerate(polys):
         # Loop over polys, if partially in window keep index.
-        x = p['x']
-        if np.any((x_range[0] <= x) & (p['x'] < x_range[1])):
+        if np.any((x_range[0] <= p['time']) & (p['time'] < x_range[1])):
             res.append(ind)
     return res
 
