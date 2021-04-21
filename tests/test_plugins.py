@@ -4,7 +4,7 @@ import numpy as np
 from immutabledict import immutabledict
 from strax.testutils import run_id, recs_per_chunk
 import straxen
-
+from straxen.common import pax_file, aux_repo
 ##
 # Tools
 ##
@@ -19,24 +19,27 @@ nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
 # some file.
 testing_config_nT = dict(
     nn_architecture=
-    straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
+    aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=
-    straxen.aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
+    aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
     gain_model=
     ('to_pe_per_run',
-     straxen.aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
-    s2_xy_correction_map=straxen.pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
-    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+     aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
+    s2_xy_correction_map=pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
+    elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
     baseline_samples_nv=10,
-    fdc_map=straxen.pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
+    fdc_map=pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
     gain_model_nv=("to_pe_constant", "adc_nv"),
     nveto_pmt_position_map=nveto_pmt_dummy_df,
+    s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
+    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, True),
 )
 
 testing_config_1T = dict(
     hev_gain_model=('to_pe_constant', 0.0085),
     gain_model=('to_pe_constant', 0.0085),
-    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, False),
 )
 
 test_run_id_nT = '008900'

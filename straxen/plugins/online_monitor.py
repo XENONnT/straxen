@@ -128,22 +128,25 @@ class OnlinePeakMonitor(strax.Plugin):
 
         # -- Lone hit properties --
         # Make a mask with the cuts.
-        # NB: LONE HITS AREA ARE IN ADC!
-        mask = _config_as_selection_str(
-            self.config['lone_hits_cut_string'], lone_hits)
         # Now only take lone hits that are separated in time.
-        lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
-        # Hits on the left are far away? (assume first is because of chunk bound)
-        mask &= np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
-        # Hits on the right are far away? (assume last is because of chunk bound)
-        mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+        if len(lone_hits):
+            lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
+            # Hits on the left are far away? (assume first is because of chunk bound)
+            mask = np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
+            # Hits on the right are far away? (assume last is because of chunk bound)
+            mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+        else:
+            mask = []
+        masked_lh = strax.apply_selection(lone_hits[mask],
+                                          selection_str=self.config['lone_hits_cut_string'])
 
         # Make histogram of ADC counts
-        lone_hit_areas, _ = np.histogram(lone_hits[mask]['area'],
+        # NB: LONE HITS AREA ARE IN ADC!
+        lone_hit_areas, _ = np.histogram(masked_lh['area'],
                                          bins=n_bins,
                                          range=self.config['lone_hits_area_bounds'])
 
-        lone_hit_channel_count, _ = np.histogram(lone_hits[mask]['channel'],
+        lone_hit_channel_count, _ = np.histogram(masked_lh['channel'],
                                                  bins=n_pmt,
                                                  range=[0, n_pmt])
         # Count number of lone-hits per PMT
@@ -221,13 +224,13 @@ class OnlineEventMonitor(strax.Plugin):
     """
     depends_on = ('event_basics',)
     provides = 'online_event_monitor'
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     data_kind = 'online_event_monitor'
     rechunk_on_save = False
 
     def infer_dtype(self):
         n_bins = self.config['online_event_monitor_nbins']
-        bounds_drift_time_R2 = self.config['drift_time_vs_R2_bounds']
+        bounds_drift_time_r2 = self.config['drift_time_vs_R2_bounds']
 
         dtype = [
             (('Start time of the chunk', 'time'),
@@ -237,7 +240,7 @@ class OnlineEventMonitor(strax.Plugin):
             (('Drift time vs R^2 histogram', 'drift_time_vs_R2_hist'),
              (np.int64, (n_bins, n_bins))),
             (('Drift time vs R^2 edges (linear space)', 'drift_time_vs_R2_bounds'),
-             (np.float64, np.shape(bounds_drift_time_R2))),
+             (np.float64, np.shape(bounds_drift_time_r2))),
             (('Drift time vs. s2width histogram', 'drift_time_vs_s2width_hist'),
              (np.int64, (n_bins, n_bins))),
             (('Drift time vs. s2width edges', 'drift_time_vs_s2width_bounds'),
@@ -262,11 +265,10 @@ class OnlineEventMonitor(strax.Plugin):
         # --- Drift time vs R^2 histogram ---
         res['drift_time_vs_R2_bounds'] = self.config['drift_time_vs_R2_bounds']
 
-        mask = _config_as_selection_str(
-            self.config['drift_time_vs_R2_cut_string'], events)
-        res['drift_time_vs_R2_hist'] = self.drift_time_R2_hist(events[mask])
-        # Make a new mask, don't re-use
-        del mask
+        dt_r2_events = strax.apply_selection(
+            events,
+            selection_str=self.config['drift_time_vs_R2_cut_string'])
+        res['drift_time_vs_R2_hist'] = self.drift_time_r2_hist(dt_r2_events)
 
         # drift time vs. s2 width histogram
         res['drift_time_vs_s2width_bounds'] = self.config['drift_time_vs_s2width_bounds']
@@ -283,7 +285,7 @@ class OnlineEventMonitor(strax.Plugin):
         # Other event properties?
         return res
 
-    def drift_time_R2_hist(self, data):
+    def drift_time_r2_hist(self, data):
         """Make drift time vs R^2 2D-hist"""
         hist, _, _ = np.histogram2d(
             (data['s2_x'] ** 2 + data['s2_y'] ** 2),
@@ -319,19 +321,3 @@ class OnlineEventMonitor(strax.Plugin):
             bins=self.config['online_event_monitor_nbins']
         )
         return hist.T
-
-
-def _config_as_selection_str(selection_string, data, pre_sel=None):
-    """Get mask for data base on the selection string"""
-    if pre_sel is None:
-        pre_sel = np.ones(len(data), dtype=np.bool_)
-
-    if selection_string != '':
-        if isinstance(selection_string, (list, tuple)):
-            selection_string = ' & '.join(f'({x})' for x in selection_string)
-
-        mask = numexpr.evaluate(selection_string, local_dict={
-            fn: data[fn]
-            for fn in data.dtype.names})
-        pre_sel &= mask
-    return pre_sel
