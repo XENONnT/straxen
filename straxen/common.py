@@ -32,7 +32,7 @@ straxen_dir = os.path.dirname(os.path.abspath(
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 tpc_r = 66.4  # [CM], Not really radius, but apothem: from MC paper draft 1.0
-cryostat_outer_radius = 81.5 # [cm] radius of the outer cylinder wall.
+cryostat_outer_radius = 81.5  # [cm] radius of the outer cylinder wall.
 tpc_z = 148.6515  # [CM], distance between the bottom of gate and top of cathode wires
 n_tpc_pmts = 494
 n_top_pmts = 253
