@@ -21,7 +21,7 @@ def correction_options(get_correction_function):
             if 'MC' in conf:
                 tag, run_id, *conf = conf
                 if tag != 'MC':
-                    raise Exception('Get corrections require input in the from of tuple '
+                    raise ValueError('Get corrections require input in the from of tuple '
                                     '("MC", run_id, *conf) when "MC" option is invoked')
                 return get_correction_function(run_id, tuple(conf), *arg)
 
