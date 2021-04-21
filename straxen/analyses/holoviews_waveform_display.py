@@ -87,6 +87,8 @@ def _records_to_points(*, records, to_pe, t_reference,
         area=areas_r,
         time=seconds_from(records['time'] + records['dt'] * records['length'] // 2,
                           t_reference, unit_conversion=unit_conversion),
+        length=records['length'],
+        dt=records['dt'],
         channel=records['channel']))
 
     rec_points = hv.Points(
@@ -187,26 +189,61 @@ def _hvdisp_plot_records_2d(records,
     return shader, records, time_stream
 
 
-def plot_record_polygons(record_points, width=1.1, **kwargs):
+def plot_record_polygons(record_points,
+                         center_time=True,
+                         scaling=10**-3,):
     """
     Plots record hv.Points as polygons for record matrix.
 
     :param record_points: Holoviews Points generated with
         _records_to_points.
-    :param width: Length of the record in µs.
-    :param kwargs: Keyword arguments applied to hv.Polygons options.
+    :param center_time: If true treats specified times as center times.
+    :param scaling: Scale times scale by this factor. E.g. if times
+        should be in µs use 10**-3.
     :returns: hv.Polygons
     """
-    import holoviews as hv
+    df = record_points.data.copy()
+    if not center_time:
+        df.loc[:, 'time'] = df.loc[:, 'time'] + (df.loc[:, 'length'] / 2 * df.loc[:, 'dt'])
 
-    data = [{('x', 'y'): rectangle(t, ch, width=width), 'area': a} for t, ch, a in
-            record_points.data[['time', 'channel', 'area']].values]
-    polys = hv.Polygons(data, vdims='area')
-    polys = polys.opts(color='level', aspect=4, responsive='width', line_width=0, **kwargs, cmap='viridis')
+    data = _make_polys(df,
+                       scaling=scaling)
+    polys = hv.Polygons(data,
+                        kdims=['time', 'channel'],
+                        vdims=list(data[0].keys())[1:]).opts(color='area',
+                                                             aspect=4,
+                                                             responsive='width',
+                                                             line_width=0,
+                                                             cmap='viridis',
+                                                             )
+
     return polys
 
 
-def rectangle(time=0, channel=0, width=1.1, height=1):
+def _make_polys(df, scaling=1):
+    """
+    Function which converts the hitlet/record points into polygons
+    for the hitlet/record matrix.
+    """
+    res = []
+    for row_i in range(len(df)):
+        data_dict = {}
+        # Kdims are given by time and channel:
+        t, ch = df.loc[row_i, ['time', 'channel']]
+        w = df.loc[row_i, 'length'] * df.loc[row_i, 'dt']
+        data_dict[('time', 'channel')] = _rectangle(t, ch, width=w * scaling)
+
+        # Add other parameters to polygons for vdmis:
+        keys = [key for key in df.columns.values if key not in ['time',
+                                                                'channel',
+                                                                'dt']]
+        for key in keys:
+            data_dict[key] = df.loc[row_i, key]
+        res.append(data_dict)
+    return res
+
+
+def _rectangle(time=0, channel=0, width=1.1, height=1):
     """
     Generates polygon box coordinates for record matrix.
 
