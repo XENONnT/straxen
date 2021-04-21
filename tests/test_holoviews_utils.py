@@ -1,6 +1,6 @@
 import strax
 import straxen
-from straxen.holoviews_utils import *
+from straxen.holoviews_utils import nVETOEventDisplay
 
 import holoviews as hv
 import panel as pn
