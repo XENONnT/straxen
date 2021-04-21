@@ -11,6 +11,12 @@ import straxen
 straxen._BOKEH_X_RANGE = None
 
 
+@straxen.mini_analysis(requires=['hitlets_nv', 'events_nv', 'event_positions_nv'])
+def plot_nveto_event_display(context, run_id, hitlets_nv, events_nv):
+    nvd = straxen.nVETOEventDisplay(events_nv, hitlets_nv, run_id)
+    return nvd.plot_event_display()
+
+
 def seconds_from(t, t_reference, unit_conversion=int(1e9)):
     """
     Helper function which concerts times into relative times in
