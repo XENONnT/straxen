@@ -69,14 +69,13 @@ class nVETOEventDisplay:
 
         :returns: panel.Column hosting the plots and panels.
         """
-
         # First we have to define the python callbacks:
         def matrix_callback(value):
             """
             Callback for the dynamic hitlet matrix. Changes polygons when a new
             event is selected.
             """
-            self.hitlet_points = self.hitelts_to_hv_points(self.hitlets_per_event[value],
+            self.hitlet_points = self.hitlets_to_hv_points(self.hitlets_per_event[value],
                                                            t_ref=self.event_df.loc[value, 'time']
                                                            )
 
@@ -113,7 +112,7 @@ class nVETOEventDisplay:
 
         self._make_sliders_and_tables(self.event_df)
         index = self.evt_sel_slid.value
-        self.hitlet_points = self.hitelts_to_hv_points(self.hitlets_per_event[index],
+        self.hitlet_points = self.hitlets_to_hv_points(self.hitlets_per_event[index],
                                                        t_ref=self.event_df.loc[index, 'time'])
 
         dmap_hitlet_matrix = hv.DynamicMap(matrix_callback,
@@ -148,7 +147,7 @@ class nVETOEventDisplay:
         :returns: hv.Polygons plot.
         """
         if not _hitlet_points:
-            _hitlet_points = self.hitelts_to_hv_points(hitlets, )
+            _hitlet_points = self.hitlets_to_hv_points(hitlets, )
 
         hitlet_matrix = plot_record_polygons(_hitlet_points,
                                              center_time=False,
@@ -183,7 +182,7 @@ class nVETOEventDisplay:
         :returns: stacked hv.Points plot.
         """
         if not _hitlet_points:
-            _hitlet_points = self.hitelts_to_hv_points(hitlets, )
+            _hitlet_points = self.hitlets_to_hv_points(hitlets, )
 
         pmts = self._plot_nveto(_hitlet_points.data,
                                 pmt_size=pmt_size,
@@ -253,11 +252,12 @@ class nVETOEventDisplay:
         pmt_data = self._convert_channel_to_xy(pmt_distance=pmt_distance)
 
         for h in hitlets:
-            pmt_data[h['channel'] - self.channel_range[0]]['area'] += h['area']
+            ch = h['channel'] - self.channel_range[0]
+            pmt_data[ch]['area'] += h['area']
 
-            if not pmt_data[h['channel'] - self.channel_range[0]]['time']:
+            if not pmt_data[ch]['time']:
                 # Get first arrival time for channel:
-                pmt_data[h['channel'] - self.channel_range[0]]['time'] = h['time']
+                pmt_data[ch]['time'] = h['time']
 
         pmt_data['size'] = pmt_data['area'] * pmt_size
         pmt_data['size'] = np.clip(pmt_data['size'], 0, max_area_scale * pmt_size)
@@ -302,8 +302,8 @@ class nVETOEventDisplay:
                     ]
         return HoverTool(tooltips=tooltips)
 
-    def hitelts_to_hv_points(self,
-                             hitlets,
+    @staticmethod
+    def hitlets_to_hv_points(hitlets,
                              t_ref=None, ):
         """
         Function which converts hitlets into hv.Points used in the

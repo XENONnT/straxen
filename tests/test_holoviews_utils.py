@@ -27,7 +27,7 @@ def test_hitlets_to_hv_points():
     hit['area'] = 1
 
     nvd = nVETOEventDisplay(pmt_map=dummy_map)
-    points = nvd.hitelts_to_hv_points(hit, t_ref=0)
+    points = nvd.hitlets_to_hv_points(hit, t_ref=0)
 
     m = [hit[key] == points.data[key] for key in hit.dtype.names if key in points.data.columns.values]
     assert np.all(m), 'Data has not been converted corretly into hv.Points.'
