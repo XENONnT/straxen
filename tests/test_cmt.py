@@ -1,3 +1,5 @@
+"""Testing functions for the CMT services"""
+
 import straxen
 import numpy as np
 
@@ -29,15 +31,15 @@ def test_mc_wrapper_elife(run_id='009000',
     # different run-number.
     mc_elife_diff = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', cmt_id, ("elife", "ONLINE", True)
-         ))
+        ('MC', cmt_id, "elife", "ONLINE", True)
+    )
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `elife` above
     mc_elife_same = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', run_id, ("elife", "ONLINE", True)
-         ))
+        ('MC', run_id, "elife", "ONLINE", True)
+    )
 
     assert elife != mc_elife_diff
     assert elife == mc_elife_same
@@ -56,7 +58,7 @@ def test_mc_wrapper_gains(run_id='009000',
         same as run_id! otherwise the values might actually be the same
         and the test does not work).
     :param execute: Execute this test (this is set to False since the
-        test takes 9 minutes which is too long. We can activate this if 
+        test takes 9 minutes which is too long. We can activate this if
         the testing time due to faster CMT queries is reduced).
     :return: None
     """
