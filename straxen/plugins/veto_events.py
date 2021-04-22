@@ -454,6 +454,7 @@ class muVETOEvents(nVETOEvents):
 
     # Needed in case we make again an muVETO child.
     ends_with = '_mv'
+    child_plugin = True
 
     __version__ = '0.0.1'
     events_seen = 0
