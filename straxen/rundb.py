@@ -132,7 +132,7 @@ class RunDB(strax.StorageFrontend):
                     # TODO remove the meta.lineage since this doc
                     #  entry is deprecated
                     '$or': [{'meta.lineage': key.lineage,
-                             'did': self.key_to_rucio_did(key)
+                             'did': self.key_to_rucio_did(key),
                              }],
                     '$or': self.available_query}}}
 
