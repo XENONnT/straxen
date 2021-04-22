@@ -428,6 +428,7 @@ def first_hitlets(hitlets_per_event: np.ndarray,
         res_n_prompt[ind] = len(h)
     return res_hitlets_in_event, res_n_prompt
 
+
 @strax.takes_config(
     strax.Option('event_left_extension_mv', default=0,
                  child_option=True, parent_option_name='event_left_extension_nv',
@@ -446,8 +447,7 @@ def first_hitlets(hitlets_per_event: np.ndarray,
                       "channel number."),
 )
 class muVETOEvents(nVETOEvents):
-    """
-    Plugin which computes the boundaries of veto events.
+    """Plugin which computes the boundaries of veto events.
     """
     depends_on = 'hitlets_mv'
     provides = 'events_mv'
