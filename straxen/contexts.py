@@ -47,13 +47,14 @@ xnt_common_config = dict(
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
-#these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending. 
-#s1,s2 and fd corrections are still problamatic
+# these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
+# s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model = ("to_pe_constant", 0.01),
-                             gain_model_nv = ("to_pe_constant", 0.01),
-                             gain_model_mv = ("to_pe_constant", "adc_mv"),
-                             elife_conf = ('elife_constant', 1e6))
+xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
+                             gain_model_nv=("to_pe_constant", 0.01),
+                             gain_model_mv=("to_pe_constant", "adc_mv"),
+                             elife_conf=('elife_constant', 1e6),
+                             )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
