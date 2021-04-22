@@ -48,9 +48,9 @@ xnt_common_config = dict(
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
 
-xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model =("to_pe_constant", 0.0005),    
-                             gain_model_nv=("to_pe_constant", 0.0005),
+xnt_simulation_config=deepcopy(xnt_common_config)
+xnt_simulation_config.update(gain_model =("to_pe_constant", 0.01),
+                             gain_model_nv=("to_pe_constant", 0.01),
                              gain_model_mv=("to_pe_constant", "adc_mv"),
                              elife_conf=('elife_constant',1e6))
 
