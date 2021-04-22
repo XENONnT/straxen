@@ -1,8 +1,8 @@
-from straxen.misc import time_widgets
+from straxen.misc import TimeWidgets
 
 
 def test_widgets():
-    tw = time_widgets()
+    tw = TimeWidgets()
     wig = tw.create_widgets()
     start, end = tw.get_start_end()
 
