@@ -152,7 +152,7 @@ class RunDB(strax.StorageFrontend):
                         # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
                         'did': rucio_key,
-                        'protocol': 'rucio'}}}
+                        'status': 'transferred'}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
