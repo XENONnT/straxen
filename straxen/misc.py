@@ -4,6 +4,15 @@ import socket
 import strax
 import straxen
 import sys
+import warnings
+from datetime import datetime, timedelta
+import pytz
+
+try:
+    import ipywidgets as widgets
+    from ipywidgets import Layout
+except ModuleNotFoundError:
+    pass
 export, __all__ = strax.exporter()
 from configparser import NoSectionError
 
@@ -79,3 +88,103 @@ def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
                 straxen.uconfig.get(header, section) is not None)
     except NoSectionError:
         return False
+
+
+class time_widgets():
+
+    def __init__(self):
+        """Creates interactive time widgets which allow to convert a
+        human readble date and time into a start and endtime in unix time
+        nano-seconds.
+        """
+        self._created_widgets = False
+
+    def create_widgets(self):
+        """
+        Creates time and time zone widget for simpler time querying.
+
+        Note:
+            Please be aware that the correct format for the time field
+            is HH:MM.
+        """
+        utcend = datetime.utcnow()
+        deltat = timedelta(minutes=60)
+        utcstart = utcend - deltat
+
+        self._start_widget = self._create_date_and_time_widget(utcstart, 'Start')
+        self._end_widget = self._create_date_and_time_widget(utcend, 'End')
+        self._time_zone_widget = self._create_time_zone_widget()
+        self._created_widgets = True
+
+        return widgets.VBox([self._time_zone_widget,
+                             self._start_widget,
+                             self._end_widget])
+
+    def get_start_end(self):
+        """
+        Returns start and end time of the specfied time interval in
+        nano-seconds utc unix time.
+        """
+        if not self._created_widgets:
+            raise ValueError('Please run first "create_widgets". ')
+
+        time_zone = self._time_zone_widget.options[self._time_zone_widget.value][0]
+
+        start = self._convert_to_datetime(self._start_widget, time_zone)
+        start = start.astimezone(tz=pytz.UTC)
+        start = start.timestamp()
+        start = int(start * 10**9)
+        end = self._convert_to_datetime(self._end_widget, time_zone)
+        end = end.astimezone(tz=pytz.UTC)
+        end = end.timestamp()
+        end = int(end * 10**9)
+
+        if start > end:
+            warnings.warn('Start time is larger than endtime are you '
+                          'sure you wanted this?')
+        return start, end
+
+    @staticmethod
+    def _create_date_and_time_widget(date_and_time, widget_describtion):
+        date = datetime(date_and_time.year,
+                        date_and_time.month,
+                        date_and_time.day)
+        date = widgets.DatePicker(description=widget_describtion,
+                                  value=date,
+                                  layout=Layout(width='225px'),
+                                  disabled=False)
+
+        time = "{:02d}:{:02d}".format(int(date_and_time.hour),
+                                      int(date_and_time.minute))
+        time = widgets.Text(value=time,
+                            layout=Layout(width='75px'),
+                            disabled=False)
+
+        return widgets.HBox([date, time])
+
+    @staticmethod
+    def _create_time_zone_widget():
+        _time_zone_widget = widgets.Dropdown(options=[('CET', 0), ('UTC', 1)],
+                                             value=0,
+                                             description='Time Zone:',
+                                             )
+        return _time_zone_widget
+
+    @staticmethod
+    def _convert_to_datetime(time_widget, time_zone):
+        """
+        Converts
+        """
+        date_and_time = [c.value for c in time_widget.children]
+        try:
+            hour_and_minutes = datetime.strptime(date_and_time[1], '%H:%M')
+        except ValueError as e:
+            raise ValueError('Cannot convert time into datetime object. '
+                             f'Expected the following formating HH:MM. {e}')
+
+        time = date_and_time[0]
+        time = time.replace(hour=hour_and_minutes.hour,
+                            minute=hour_and_minutes.minute)
+        time_zone = pytz.timezone(time_zone)
+        time = time_zone.localize(time)
+        return time
