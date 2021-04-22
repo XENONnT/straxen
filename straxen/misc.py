@@ -6,7 +6,7 @@ import straxen
 import sys
 import warnings
 from datetime import datetime, timedelta
-import pytz:
+import pytz
 
 try:
     import ipywidgets as widgets
@@ -90,7 +90,8 @@ def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
         return False
 
 
-class time_widgets():
+@export
+class TimeWidgets:
 
     def __init__(self):
         """Creates interactive time widgets which allow to convert a
