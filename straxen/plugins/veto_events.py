@@ -442,9 +442,6 @@ def first_hitlets(hitlets_per_event: np.ndarray,
     strax.Option('gain_model_mv',
                  child_option=True, parent_option_name='gain_model_nv',
                  help='PMT gain model. Specify as (model_type, model_config)'),
-    strax.Option('channel_map', track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number."),
 )
 class muVETOEvents(nVETOEvents):
     """Plugin which computes the boundaries of veto events.
@@ -457,6 +454,7 @@ class muVETOEvents(nVETOEvents):
 
     # Needed in case we make again an muVETO child.
     ends_with = '_mv'
+    child_plugin = True
 
     __version__ = '0.0.1'
     events_seen = 0
