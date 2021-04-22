@@ -1,6 +1,6 @@
 import strax
 import straxen
-from straxen.holoviews_utils import *
+from straxen.holoviews_utils import nVETOEventDisplay
 
 import holoviews as hv
 import panel as pn
@@ -9,6 +9,14 @@ import numpy as np
 from tempfile import TemporaryDirectory
 import os
 
+dummy_map = np.zeros(120, dtype=[('x', np.int32),
+                                 ('y', np.int32),
+                                 ('z', np.int32),
+                                 ('channel', np.int32),])
+dummy_map['x'] = np.arange(0, 120)
+dummy_map['y'] = np.arange(0, 120)
+dummy_map['z'] = np.arange(0, 120)
+dummy_map['channel'] = np.arange(2000, 2120, 1, dtype=np.int32)
 
 def test_hitlets_to_hv_points():
     hit = np.zeros(1, dtype=strax.hit_dtype)
@@ -18,8 +26,8 @@ def test_hitlets_to_hv_points():
     hit['channel'] = 2000
     hit['area'] = 1
 
-    nvd = nVETOEventDisplay()
-    points = nvd.hitelts_to_hv_points(hit, t_ref=0)
+    nvd = nVETOEventDisplay(pmt_map=dummy_map)
+    points = nvd.hitlets_to_hv_points(hit, t_ref=0)
 
     m = [hit[key] == points.data[key] for key in hit.dtype.names if key in points.data.columns.values]
     assert np.all(m), 'Data has not been converted corretly into hv.Points.'
@@ -33,7 +41,7 @@ def test_hitlet_matrix():
     hit['channel'] = 2000
     hit['area'] = 1
 
-    nvd = nVETOEventDisplay()
+    nvd = nVETOEventDisplay(pmt_map=dummy_map)
     hit_m = nvd.plot_hitlet_matrix(hitlets=hit)
 
     with TemporaryDirectory() as d:
@@ -46,7 +54,7 @@ def test_plot_nveto_pattern():
     hit['channel'] = 2000
     hit['area'] = 1
 
-    nvd = nVETOEventDisplay()
+    nvd = nVETOEventDisplay(pmt_map=dummy_map)
     pmt_plot = nvd.plot_nveto(hitlets=hit)
     with TemporaryDirectory() as d:
         # Have to store plot to make sure it is rendered
@@ -68,7 +76,7 @@ def test_nveto_event_display():
     event['endtime'] = hit['time'] + 40
     event['area'] = hit['area']
 
-    nvd = nVETOEventDisplay(event, hit, run_id='014986')
+    nvd = nVETOEventDisplay(event, hit, pmt_map=dummy_map, run_id='014986')
     dispaly = nvd.plot_event_display()
 
     with TemporaryDirectory() as d:
@@ -81,10 +89,10 @@ def test_array_to_df_and_make_sliders():
              + straxen.veto_events.veto_event_positions_dtype()[2:])
     evt = np.zeros(1, dtype)
 
-    nvd = nVETOEventDisplay()
+    nvd = nVETOEventDisplay(pmt_map=dummy_map)
     df = straxen.convert_array_to_df(evt)
 
-    nvd.make_sliders_and_tables(df)
+    nvd._make_sliders_and_tables(df)
 
 
 def test_static_detector_plots():

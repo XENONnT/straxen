@@ -80,6 +80,7 @@ def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
     except NoSectionError:
         return False
 
+
 @export
 def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
@@ -87,6 +88,7 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     dimensional fields during the process.
 
     :param array: numpy.array to be converted.
+    :returns: DataFrame with higher dimensions dropped.
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])

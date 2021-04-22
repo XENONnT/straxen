@@ -21,7 +21,22 @@ class nVETOEventDisplay:
                  channel_range=(2000, 2119),
                  pmt_map='nveto_pmt_position.csv',
                  plot_extension='bokeh'):
+        """
+        Class to plot an interactive nveto display.
 
+        :param events: Events which should be plot. Can also be none
+            in case the hitlet matrix and/or pattern map should be
+            plotted separately.
+        :param hitlets: Same as events, but hitlets_nv.
+        :param run_id: Run_id which should be displayed in the title.
+        :param channel_range: Channel range of the detector.
+        :param pmt_map: PMT map which is loaded via straxen.get_resource.
+            The map has to contain the channel number, and xyz
+            coordinates.
+        :param plot_extension: Extension which should be used for
+            rendering can be either bokeh or matpltolib. Default is
+            bokeh to support dynamic plots.
+        """
         hv.extension(plot_extension)
         self.df_event_time = None
         self.df_event_properties = None
@@ -48,7 +63,288 @@ class nVETOEventDisplay:
             self.hitlets_per_event = strax.split_by_containment(hitlets,
                                                                 events)
 
-    def make_sliders_and_tables(self, df):
+    def plot_event_display(self):
+        """
+        Creates an interactive event display for the neutron veto.
+
+        :returns: panel.Column hosting the plots and panels.
+        """
+        # First we have to define the python callbacks:
+        def matrix_callback(value):
+            """
+            Callback for the dynamic hitlet matrix. Changes polygons when a new
+            event is selected.
+            """
+            self.hitlet_points = self.hitlets_to_hv_points(self.hitlets_per_event[value],
+                                                           t_ref=self.event_df.loc[value, 'time']
+                                                           )
+
+            # Create the hitlet matrix and time stream:
+            self.hitlet_matrix = self.plot_hitlet_matrix(hitlets=None,
+                                                         _hitlet_points=self.hitlet_points)
+            return self.hitlet_matrix
+
+        def pattern_callback(value, x_range):
+            """
+            Call back for the dynamic PMT pattern map. Depends on the selcted
+            event as well as the selected x_range in the hitlet_matrix.
+            """
+            # Get hitlet points and select only points within x_range:
+            hit = self.hitlet_points.data
+            if not x_range:
+                time = hit['time'].values
+                length = hit['length'].values
+                dt = hit['dt'].values
+                x_range = [min(time), max(time + (length * dt))]
+
+            m = (hit['time'] >= x_range[0]) & (hit['time'] < x_range[1])
+
+            hitlets_in_time = hit[m]
+            new_points = hv.Points(hitlets_in_time)
+
+            # Plot pmt pattern:
+            pmts = self.plot_nveto(hitlets=None,
+                                   _hitlet_points=new_points,
+                                   pmt_size=8,
+                                   pmt_distance=0.5)
+            angle = self._plot_reconstructed_position(value)
+            return angle * pmts
+
+        self._make_sliders_and_tables(self.event_df)
+        index = self.evt_sel_slid.value
+        self.hitlet_points = self.hitlets_to_hv_points(self.hitlets_per_event[index],
+                                                       t_ref=self.event_df.loc[index, 'time'])
+
+        dmap_hitlet_matrix = hv.DynamicMap(matrix_callback,
+                                           streams=[self.evt_sel_slid.param.value]).opts(framewise=True)
+        time_stream = hv.streams.RangeX(source=dmap_hitlet_matrix)
+
+        dmap_pmts = hv.DynamicMap(pattern_callback,
+                                  streams=[self.evt_sel_slid.param.value,
+                                           time_stream])
+
+        slider_column = pn.Column(self.evt_sel_slid,
+                                  self.evt_sel_slid.controls(['value']),
+                                  self.time_table)
+
+        event_display = pn.Column(self.title_panel,
+                                  pn.Row(slider_column, dmap_pmts, width_policy='max'),
+                                  dmap_hitlet_matrix,
+                                  self.prop_table,
+                                  self.pos_table,
+                                  width_policy='max')
+        return event_display
+
+    def plot_hitlet_matrix(self, hitlets, _hitlet_points=None):
+        """
+        Function which plots the hitlet matrix for the specified hitlets.
+        The hitlet matrix is something equivalent to the record matrix
+        for the TPC.
+
+        :param hitlets: Hitlets to be plotted if called directly.
+        :param _hitlet_points: holoviews.Points created by the event
+            display. Only internal use.
+        :returns: hv.Polygons plot.
+        """
+        if not _hitlet_points:
+            _hitlet_points = self.hitlets_to_hv_points(hitlets, )
+
+        hitlet_matrix = plot_record_polygons(_hitlet_points,
+                                             center_time=False,
+                                             scaling=1
+                                             ).opts(title='Hitlet Matrix',
+                                                    xlabel='Time [ns]',
+                                                    ylabel='PMT channel',
+                                                    aspect=None, height=300,
+                                                    tools=['hover'],
+                                                    colorbar=True,
+                                                    clabel='Area [pe]',
+                                                    ylim=(1995, 2125)
+                                                    )
+        return hitlet_matrix
+
+    def plot_nveto(self,
+                   hitlets,
+                   pmt_size=8,
+                   pmt_distance=0.5,
+                   _hitlet_points=None, ):
+        """
+        Plots the nveto pmt pattern map for the specified hitlets.
+        Expects hitlets to be sorted in time.
+
+        :param hitelts: Hitlets to be plotted if called directly.
+        :param pmt_size: Base size of a PMT for 1 pe.
+        :param pmt_distance: Scaling parameter for the z -> xy
+            projection.
+        :param _hitlet_points: holoviews.Points created by the event
+            display. Only internal use.
+
+        :returns: stacked hv.Points plot.
+        """
+        if not _hitlet_points:
+            _hitlet_points = self.hitlets_to_hv_points(hitlets, )
+
+        pmts = self._plot_nveto(_hitlet_points.data,
+                                pmt_size=pmt_size,
+                                pmt_distance=pmt_distance)
+
+        # Plot channels which have not seen anything:
+        pmts_data = pmts.data
+        m = pmts_data.loc[:, 'area'].values == 0
+        blanko_pmts = np.zeros(np.sum(m), dtype=strax.hitlet_dtype())
+        blanko_pmts['area'] = 1
+        blanko_pmts['channel'] = pmts_data.loc[m, 'channel']
+        blanko = self._plot_nveto(blanko_pmts,
+                                  pmt_size=pmt_size,
+                                  pmt_distance=pmt_distance)
+
+        blanko = blanko.opts(fill_color='white',
+                             tools=[HoverTool(tooltips=[('PMT', '@channel')])],
+                             color=None)
+
+        detector_layout = (plot_tpc_circle(straxen.cryostat_outer_radius)
+                           * plot_diffuser_balls_nv()
+                           * plot_nveto_reflector())
+
+        return detector_layout * blanko * pmts
+
+    def _plot_nveto(self,
+                    pmts,
+                    pmt_size,
+                    pmt_distance):
+        if isinstance(pmts, pd.DataFrame):
+            pmts = pmts.to_records(index=False)
+
+        # Get hitlet_points data and extract PMT data
+        pmt_data = self._create_nveto_pmts(pmts,
+                                           pmt_size,
+                                           pmt_distance)
+
+        pmts = hv.Points(data=pd.DataFrame(pmt_data),
+                         kdims=[hv.Dimension('pmt_x',
+                                             label='x [cm]'),
+                                hv.Dimension('pmt_y',
+                                             label='y [cm]')],
+                         vdims=['time', 'size', 'area', 'channel']
+                         ).opts(size='size',
+                                tools=[self._create_pmt_pattern_hover()],
+                                color='time',
+                                colorbar=True,
+                                cmap='viridis',
+                                clabel='Time [ns]',
+                                line_color='black',
+                                alpha=0.8,
+                                width=400,
+                                title='nVETO Top View')
+
+        return pmts
+
+    def _create_nveto_pmts(self,
+                           hitlets,
+                           pmt_size,
+                           pmt_distance,
+                           max_area_scale=10, ):
+        """
+        Function which creates data for the nVTEO PMT points of the
+        pattern plot.
+        """
+        # Get PMT xy-position based on projection function:
+        pmt_data = self._convert_channel_to_xy(pmt_distance=pmt_distance)
+
+        for h in hitlets:
+            ch = h['channel'] - self.channel_range[0]
+            pmt_data[ch]['area'] += h['area']
+
+            if not pmt_data[ch]['time']:
+                # Get first arrival time for channel:
+                pmt_data[ch]['time'] = h['time']
+
+        pmt_data['size'] = pmt_data['area'] * pmt_size
+        pmt_data['size'] = np.clip(pmt_data['size'], 0, max_area_scale * pmt_size)
+
+        return pmt_data
+
+    def _convert_channel_to_xy(self, pmt_distance=0.5):
+        """
+        Projects PMT channel from x/y/z onto xy.
+        """
+        pmt_data = np.zeros(120, dtype=[('pmt_x', np.float64),
+                                        ('pmt_y', np.float64),
+                                        ('channel', np.int32),
+                                        ('column', np.int32),
+                                        ('area', np.float64),
+                                        ('size', np.float64),
+                                        ('time', np.float64), ])
+        pmt_data['pmt_x'] = self.pmt_positions['x']
+        pmt_data['pmt_y'] = self.pmt_positions['y']
+        pmt_data['channel'] = self.pmt_positions['channel']
+        pmt_data['column'] = np.repeat(np.arange(20), 6)
+
+        z = self.pmt_positions['z']
+        z_min = self.pmt_positions['z'].min()
+        z_distance = self.pmt_positions['z'].max() - z_min
+        scale = (z - z_min) / z_distance * pmt_distance
+
+        # Only correct x or y depending on column position:
+        m_x = np.isin(pmt_data['column'], (4, 5, 6, 7, 8, 14, 15, 16, 17, 18))
+        m_y = np.isin(pmt_data['column'], (19, 0, 1, 2, 3, 9, 10, 11, 12, 13))
+
+        pmt_data['pmt_x'][m_x] = pmt_data['pmt_x'][m_x] * (1 + scale[m_x])
+        pmt_data['pmt_y'][m_y] = pmt_data['pmt_y'][m_y] * (1 + scale[m_y])
+
+        return pmt_data
+
+    @staticmethod
+    def _create_pmt_pattern_hover():
+        tooltips = [('rel. time [ns]', '@time'),
+                    ('integrated area [pe]', '@area'),
+                    ('PMT', '@channel'),
+                    ]
+        return HoverTool(tooltips=tooltips)
+
+    @staticmethod
+    def hitlets_to_hv_points(hitlets,
+                             t_ref=None, ):
+        """
+        Function which converts hitlets into hv.Points used in the
+        different plots. Computes hitlet times as relative times with
+        respect to the first hitlet if t_ref is not set.
+        """
+        if not len(hitlets):
+            raise ValueError('Expected at least a single hitlet.')
+
+        if isinstance(hitlets, np.ndarray):
+            hitlets = pd.DataFrame(hitlets)
+
+        # Set relative times:
+        if t_ref is None:
+            t_ref = min(hitlets['time'])
+
+        time = seconds_from(hitlets['time'],
+                            t_ref,
+                            unit_conversion=1)
+        hitlets['time'] = time
+
+        hitlet_points = hv.Points(hitlets)
+
+        return hitlet_points
+
+    def _plot_reconstructed_position(self, index):
+        """
+        Function which plots the nVETO event position according to its
+        azimuthal angle.
+
+        :param index: Which event to plot.
+        """
+        x = (0, np.real(np.exp(self.event_df.loc[index, 'angle'] * 1j)) * 400)
+        y = (0, np.imag(np.exp(self.event_df.loc[index, 'angle'] * 1j)) * 400)
+        angle = hv.Curve((x, y)).opts(color='orange',
+                                      line_dash='dashed',
+                                      xlim=(-350, 350),
+                                      ylim=(-350, 350))
+        return angle
+
+    def _make_sliders_and_tables(self, df):
         """
         Function which creates interactive sliders and tables for the
         neutron-veto event display
@@ -123,271 +419,6 @@ class nVETOEventDisplay:
         return ''.join((f'##Event {ind} from run {self.run_id}\n',
                         f'##Recorded at ({date[:10]} {date[10:]}) UTC ',
                         f'{start_ns} ns - {end_ns} ns'))
-
-    def plot_event_display(self):
-        """
-        Creates an interactive event display for the neutron veto.
-        """
-
-        # First we have to define the python callbacks:
-        def matrix_callback(value):
-            """
-            Callback for the dynamic hitlet matrix. Changes polygons when a new
-            event is selcted.
-            """
-            self.hitlet_points = self.hitelts_to_hv_points(self.hitlets_per_event[value],
-                                                           t_ref=self.event_df.loc[value, 'time']
-                                                           )
-
-            # Create the hitlet matrix and time stream:
-            self.hitlet_matrix = self.plot_hitlet_matrix(hitlets=None,
-                                                         _hitlet_points=self.hitlet_points)
-            return self.hitlet_matrix
-
-        def pattern_callback(value, x_range):
-            """
-            Call back for the dynamic PMT pattern map. Depends on the selcted
-            event as well as the selected x_range in the hitlet_matrix.
-            """
-            # Get hitlet points and select only points within x_range:
-            hit = self.hitlet_points.data
-            if not x_range:
-                time = hit['time'].values
-                length = hit['length'].values
-                dt = hit['dt'].values
-                x_range = [min(time), max(time + (length * dt))]
-
-            m = (hit['time'] >= x_range[0]) & (hit['time'] < x_range[1])
-
-            hitlets_in_time = hit[m]
-            new_points = hv.Points(hitlets_in_time)
-
-            # Plot pmt pattern:
-            pmts = self.plot_nveto(hitlets=None,
-                                   _hitlet_points=new_points,
-                                   pmt_size=8,
-                                   pmt_distance=0.5)
-            angle = self._plot_reconstructed_position(value)
-            return angle * pmts
-
-        self.make_sliders_and_tables(self.event_df)
-        index = self.evt_sel_slid.value
-        self.hitlet_points = self.hitelts_to_hv_points(self.hitlets_per_event[index],
-                                                       t_ref=self.event_df.loc[index, 'time'])
-
-        dmap_hitlet_matrix = hv.DynamicMap(matrix_callback,
-                                           streams=[self.evt_sel_slid.param.value]).opts(framewise=True)
-        time_stream = hv.streams.RangeX(source=dmap_hitlet_matrix)
-
-        dmap_pmts = hv.DynamicMap(pattern_callback,
-                                  streams=[self.evt_sel_slid.param.value,
-                                           time_stream])
-
-        slider_column = pn.Column(self.evt_sel_slid,
-                                  self.evt_sel_slid.controls(['value']),
-                                  self.time_table)
-
-        event_display = pn.Column(self.title_panel,
-                                  pn.Row(slider_column, dmap_pmts, width_policy='max'),
-                                  dmap_hitlet_matrix,
-                                  self.prop_table,
-                                  self.pos_table,
-                                  width_policy='max')
-        return event_display
-
-    def plot_nveto(self,
-                   hitlets,
-                   pmt_size=8,
-                   pmt_distance=0.5,
-                   _hitlet_points=None, ):
-        """
-        Plots the nveto pmt pattern map for the specified hitlets.
-        Expects hitlets to be sorted in time.
-        """
-        if not _hitlet_points:
-            _hitlet_points = self.hitelts_to_hv_points(hitlets, )
-
-        pmts = self._plot_nveto(_hitlet_points.data,
-                                pmt_size=pmt_size,
-                                pmt_distance=pmt_distance)
-
-        # Plot channels which have not seen anything:
-        pmts_data = pmts.data
-        m = pmts_data.loc[:, 'area'].values == 0
-        blanko_pmts = np.zeros(np.sum(m), dtype=strax.hitlet_dtype())
-        blanko_pmts['area'] = 1
-        blanko_pmts['channel'] = pmts_data.loc[m, 'channel']
-        blanko = self._plot_nveto(blanko_pmts,
-                                  pmt_size=pmt_size,
-                                  pmt_distance=pmt_distance)
-
-        blanko = blanko.opts(fill_color='white',
-                             tools=[HoverTool(tooltips=[('PMT', '@channel')])],
-                             color=None)
-
-        detector_layout = (plot_tpc_circle(straxen.cryostat_outer_radius)
-                           * plot_diffuser_balls_nv()
-                           * plot_nveto_reflector())
-
-        return detector_layout * blanko * pmts
-
-    def _plot_nveto(self,
-                    pmts,
-                    pmt_size,
-                    pmt_distance):
-        if isinstance(pmts, pd.DataFrame):
-            pmts = pmts.to_records(index=False)
-
-        # Get hitlet_points data and extract PMT data
-        pmt_data = self.create_nveto_pmts(pmts,
-                                          pmt_size,
-                                          pmt_distance)
-
-        pmts = hv.Points(data=pd.DataFrame(pmt_data),
-                         kdims=[hv.Dimension('pmt_x',
-                                             label='x [cm]'),
-                                hv.Dimension('pmt_y',
-                                             label='y [cm]')],
-                         vdims=['time', 'size', 'area', 'channel']
-                         ).opts(size='size',
-                                tools=[self._create_pmt_pattern_hover()],
-                                color='time',
-                                colorbar=True,
-                                cmap='viridis',
-                                clabel='Time [ns]',
-                                line_color='black',
-                                alpha=0.8,
-                                width=400,
-                                title='nVETO Top View')
-
-        return pmts
-
-    def create_nveto_pmts(self,
-                          hitlets,
-                          pmt_size,
-                          pmt_distance,
-                          max_area_scale=10, ):
-        """
-        Function which creates data for the nVTEO PMT points of the
-        pattern plot.
-        """
-        # Get PMT xy-position based on projection function:
-        pmt_data = self.convert_channel_to_xy(pmt_distance=pmt_distance)
-
-        for h in hitlets:
-            pmt_data[h['channel'] - self.channel_range[0]]['area'] += h['area']
-
-            if not pmt_data[h['channel'] - self.channel_range[0]]['time']:
-                # Get first arrival time for channel:
-                pmt_data[h['channel'] - self.channel_range[0]]['time'] = h['time']
-
-        pmt_data['size'] = pmt_data['area'] * pmt_size
-        pmt_data['size'] = np.clip(pmt_data['size'], 0, max_area_scale * pmt_size)
-
-        return pmt_data
-
-    def convert_channel_to_xy(self, pmt_distance=0.5):
-        """
-        Projects PMT channel from x/y/z onto xy.
-        """
-        pmt_data = np.zeros(120, dtype=[('pmt_x', np.float64),
-                                        ('pmt_y', np.float64),
-                                        ('channel', np.int32),
-                                        ('column', np.int32),
-                                        ('area', np.float64),
-                                        ('size', np.float64),
-                                        ('time', np.float64), ])
-        pmt_data['pmt_x'] = self.pmt_positions['x']
-        pmt_data['pmt_y'] = self.pmt_positions['y']
-        pmt_data['channel'] = self.pmt_positions['channel']
-        pmt_data['column'] = np.repeat(np.arange(20), 6)
-
-        z = self.pmt_positions['z']
-        z_min = self.pmt_positions['z'].min()
-        z_distance = self.pmt_positions['z'].max() - z_min
-        scale = (z - z_min) / z_distance * pmt_distance
-
-        # Only correct x or y depending on column position:
-        m_x = np.isin(pmt_data['column'], (4, 5, 6, 7, 8, 14, 15, 16, 17, 18))
-        m_y = np.isin(pmt_data['column'], (19, 0, 1, 2, 3, 9, 10, 11, 12, 13))
-
-        pmt_data['pmt_x'][m_x] = pmt_data['pmt_x'][m_x] * (1 + scale[m_x])
-        pmt_data['pmt_y'][m_y] = pmt_data['pmt_y'][m_y] * (1 + scale[m_y])
-
-        return pmt_data
-
-    @staticmethod
-    def _create_pmt_pattern_hover():
-        tooltips = [('rel. time [ns]', '@time'),
-                    ('integrated area [pe]', '@area'),
-                    ('PMT', '@channel'),
-                    ]
-        return HoverTool(tooltips=tooltips)
-
-    def plot_hitlet_matrix(self, hitlets, _hitlet_points=None):
-        """
-        Function which plots the hitlet matrix for the specified hitlets.
-        The hitlet matrix is something equivalent to the record matrix
-        for the TPC.
-        """
-        if not _hitlet_points:
-            _hitlet_points = self.hitelts_to_hv_points(hitlets, )
-
-        hitlet_matrix = plot_record_polygons(_hitlet_points,
-                                             center_time=False,
-                                             scaling=1
-                                             ).opts(title='Hitlet Matrix',
-                                                    xlabel='Time [ns]',
-                                                    ylabel='PMT channel',
-                                                    aspect=None, height=300,
-                                                    tools=['hover'],
-                                                    colorbar=True,
-                                                    clabel='Area [pe]',
-                                                    ylim=(1995, 2125)
-                                                    )
-        return hitlet_matrix
-
-    def hitelts_to_hv_points(self,
-                             hitlets,
-                             t_ref=None, ):
-        """
-        Function which converts hitlets into hv.Points used in the
-        different plots. Computes hitlet times as relative times with
-        respect to the first hitlet if t_ref is not set.
-        """
-        if not len(hitlets):
-            raise ValueError('Expected at least a single hitlet.')
-
-        if isinstance(hitlets, np.ndarray):
-            hitlets = pd.DataFrame(hitlets)
-
-        # Set relative times:
-        if t_ref is None:
-            t_ref = min(hitlets['time'])
-
-        time = seconds_from(hitlets['time'],
-                            t_ref,
-                            unit_conversion=1)
-        hitlets['time'] = time
-
-        hitlet_points = hv.Points(hitlets)
-
-        return hitlet_points
-
-    def _plot_reconstructed_position(self, index):
-        """
-        Function which plots the nVETO event position according to its
-        azimuthal angle.
-
-        :param index: Which event to plot.
-        """
-        x = (0, np.real(np.exp(self.event_df.loc[index, 'angle'] * 1j)) * 400)
-        y = (0, np.imag(np.exp(self.event_df.loc[index, 'angle'] * 1j)) * 400)
-        angle = hv.Curve((x, y)).opts(color='orange',
-                                      line_dash='dashed',
-                                      xlim=(-350, 350),
-                                      ylim=(-350, 350))
-        return angle
 
 
 def plot_tpc_circle(radius):
