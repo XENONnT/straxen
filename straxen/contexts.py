@@ -191,7 +191,6 @@ def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
-        xnt_common_config['gains']=bla
         config=dict(detector='XENONnT',
                     fax_config='fax_config_nt_design.json',
                     check_raw_record_overlaps=True,
