@@ -1,7 +1,7 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-
+from copy import deepcopy
 
 common_opts = dict(
     register_all=[
@@ -47,6 +47,12 @@ xnt_common_config = dict(
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
+
+xnt_simulation_config = deepcopy(xnt_common_config)
+xnt_simulation_config.update(gain_model =("to_pe_constant", 0.0005),    
+                             gain_model_nv=("to_pe_constant", 0.0005),
+                             gain_model_mv=("to_pe_constant", "adc_mv"),
+                             elife_conf=('elife_constant',1e6))
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
@@ -183,13 +189,13 @@ def xenonnt_led(**kwargs):
 # This gain model is the average to_pe. For something more fancy use the CMT
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
-    xnt_common_config['gain_model'] = ('to_pe_constant', 0.01)
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
+        xnt_common_config['gains']=bla
         config=dict(detector='XENONnT',
                     fax_config='fax_config_nt_design.json',
                     check_raw_record_overlaps=True,
-                    **straxen.contexts.xnt_common_config,
+                    **straxen.contexts.xnt_simulation_config,
                     ),
         **straxen.contexts.xnt_common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
