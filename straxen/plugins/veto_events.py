@@ -427,3 +427,53 @@ def first_hitlets(hitlets_per_event: np.ndarray,
         res_hitlets_in_event.append(h)
         res_n_prompt[ind] = len(h)
     return res_hitlets_in_event, res_n_prompt
+
+@strax.takes_config(
+    strax.Option('event_left_extension_mv', default=0,
+                 child_option=True, parent_option_name='event_left_extension_nv',
+                 help="Extends events this many ns to the left"),
+    strax.Option('event_resolving_time_mv', default=300,
+                 child_option=True, parent_option_name='event_resolving_time_nv',
+                 help="Resolving time for fixed window coincidence [ns]."),
+    strax.Option('event_min_hits_mv', default=3,
+                 child_option=True, parent_option_name='event_min_hits_nv',
+                 help="Minimum number of fully confined hitlets to define an event."),
+    strax.Option('gain_model_mv',
+                 child_option=True, parent_option_name='gain_model_nv',
+                 help='PMT gain model. Specify as (model_type, model_config)'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."),
+)
+class muVETOEvents(nVETOEvents):
+    """
+    Plugin which computes the boundaries of veto events.
+    """
+    depends_on = 'hitlets_mv'
+    provides = 'events_mv'
+    data_kind = 'events_mv'
+
+    compressor = 'zstd'
+
+    # Needed in case we make again an muVETO child.
+    ends_with = '_mv'
+
+    __version__ = '0.0.1'
+    events_seen = 0
+
+    def infer_dtype(self):
+        self.name_event_number = 'event_number_mv'
+        self.channel_range = self.config['channel_map']['mv']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+        return veto_event_dtype(self.name_event_number, self.n_channel)
+
+    def setup(self):
+        self.to_pe = straxen.get_to_pe(self.run_id,
+                                       self.config['gain_model_mv'],
+                                       self.n_channel)
+
+    def get_window_size(self):
+        return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
+
+    def compute(self, hitlets_mv, start, end):
+        return super().compute(hitlets_mv, start, end)
