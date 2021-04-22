@@ -9,8 +9,12 @@ __all__ += ['FIXED_TO_PE']
 
 
 def correction_options(get_correction_function):
-    """A wrapper function for functions here in the get_corrections module
+    """
+    A wrapper function for functions here in the get_corrections module
     Search for special options like ["MC", ] and apply arg shuffling accordingly
+    Example: get_to_pe(
+        run_id, ('MC', cmt_run_id, 'CMT_model', ('to_pe_model', 'ONLINE')), n_tpc_pmts])
+
     :param get_correction_function: A function here in the get_corrections module
     :returns: The function wrapped with the option search
     """
@@ -19,11 +23,11 @@ def correction_options(get_correction_function):
         if isinstance(conf, tuple):
             # MC chain simulation can put run_id inside configuration
             if 'MC' in conf:
-                tag, run_id, *conf = conf
+                tag, cmt_run_id, *conf = conf
                 if tag != 'MC':
                     raise ValueError('Get corrections require input in the from of tuple '
-                                    '("MC", run_id, *conf) when "MC" option is invoked')
-                return get_correction_function(run_id, tuple(conf), *arg)
+                                     '("MC", run_id, *conf) when "MC" option is invoked')
+                return get_correction_function(cmt_run_id, tuple(conf), *arg)
 
         # Else use the get corrections as they are
         return get_correction_function(run_id, conf, *arg)
