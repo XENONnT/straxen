@@ -47,7 +47,8 @@ xnt_common_config = dict(
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
-
+#these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending. 
+#s1,s2 and fd corrections are still problamatic
 xnt_simulation_config = deepcopy(xnt_common_config)
 xnt_simulation_config.update(gain_model = ("to_pe_constant", 0.01),
                              gain_model_nv= ("to_pe_constant", 0.01),
