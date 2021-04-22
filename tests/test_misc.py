@@ -1,5 +1,6 @@
 from straxen.misc import time_widgets
 
+
 def test_widgets():
     tw = time_widgets()
     wig = tw.create_widgets()

@@ -6,7 +6,7 @@ import straxen
 import sys
 import warnings
 from datetime import datetime, timedelta
-import pytz
+import pytz:
 
 try:
     import ipywidgets as widgets
