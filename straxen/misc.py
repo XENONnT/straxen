@@ -173,7 +173,13 @@ class TimeWidgets:
     @staticmethod
     def _convert_to_datetime(time_widget, time_zone):
         """
-        Converts
+        Converts values of widget into a timezone aware datetime object.
+
+        :param time_widget: Widget Box containing a DatePicker and
+            Text widget. The text widget is used to set a day time.
+        :param time_zone: pytz.timezone allowed string for a timezone.
+
+        :returns: timezone aware datetime object.
         """
         date_and_time = [c.value for c in time_widget.children]
         try:
