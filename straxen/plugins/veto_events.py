@@ -471,7 +471,7 @@ class muVETOEvents(nVETOEvents):
                                        self.n_channel)
 
     def get_window_size(self):
-        return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
+        return self.config['event_left_extension_mv'] + self.config['event_resolving_time_mv'] + 1
 
     def compute(self, hitlets_mv, start, end):
         return super().compute(hitlets_mv, start, end)
