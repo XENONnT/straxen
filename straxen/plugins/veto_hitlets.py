@@ -75,6 +75,11 @@ class nVETOHitlets(strax.Plugin):
     dtype = strax.hitlet_dtype()
 
     def setup(self):
+        # Making nv(mv) specific config class attributes
+        for key in self.config:
+            if key.endswith(self.ends_with):
+                exec(f"self.{key.strip(self.ends_with)} = self.config['{key}']")
+
         self.channel_range = self.config['channel_map']['nveto']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
 
@@ -82,19 +87,18 @@ class nVETOHitlets(strax.Plugin):
                                   self.config['gain_model_nv'],
                                   self.n_channel)
 
-        
         # Create to_pe array of size max channel:
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
     def compute(self, records_nv, start, end):
         # Search again for hits in records:
-        hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(records_nv, min_amplitude=self.__dict__['hit_min_amplitude'])
         # Merge concatenate overlapping  within a channel. This is important
         # in case hits were split by record boundaries. In case we
         # accidentally concatenate two PMT signals we split them later again.
         hits = strax.concat_overlapping_hits(hits,
-                                             self.config['save_outside_hits_nv'],
+                                             self.__dict__['save_outside_hits'],
                                              self.channel_range,
                                              start,
                                              end)
@@ -112,7 +116,7 @@ class nVETOHitlets(strax.Plugin):
         # field which we will drop later.
         strax.refresh_hit_to_hitlets(hits, temp_hitlets)
         del hits
-        
+
         # Get hitlet data and split hitlets:
         strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
 
@@ -121,9 +125,8 @@ class nVETOHitlets(strax.Plugin):
                                          self.to_pe,
                                          data_type='hitlets',
                                          algorithm='local_minimum',
-                                         min_height=self.config['min_split_nv'],
-                                         min_ratio=self.config['min_split_ratio_nv']
-                                         )
+                                         min_height=self.__dict__['min_split'],
+                                         min_ratio=self.__dict__['min_split_ratio'])
 
         # Compute other hitlet properties:
         # We have to loop here 3 times over all hitlets...
@@ -183,10 +186,16 @@ class muVETOHitlets(nVETOHitlets):
     provides = 'hitlets_mv'
     data_kind = 'hitlets_mv'
     child_plugin = True
+    ends_with = '_mv'
 
     dtype = strax.hitlet_dtype()
 
     def setup(self):
+        # Making nv(mv) specific config class attributes
+        for key in self.config:
+            if key.endswith(self.ends_with):
+                exec(f"self.{key.strip(self.ends_with)} = self.config['{key}']")
+
         self.channel_range = self.config['channel_map']['mv']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
 

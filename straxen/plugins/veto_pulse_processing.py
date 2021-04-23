@@ -52,11 +52,14 @@ class nVETOPulseProcessing(strax.Plugin):
     ends_with = '_nv'
 
     def setup(self):
-        if isinstance(self.config['baseline_samples_nv'], int):
-            self.baseline_samples = self.config['baseline_samples_nv']
-        else:
+        # Making nv(mv) specific config class attributes
+        for key in self.config:
+            if key.endswith(self.ends_with):
+                exec(f"self.{key.strip(self.ends_with)} = self.config['{key}']")
+
+        if not isinstance(self.baseline_samples, int):
             self.baseline_samples = straxen.get_correction_from_cmt(
-                self.run_id, self.config['baseline_samples_nv'])
+                self.run_id, self.baseline_samples)
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -73,11 +76,11 @@ class nVETOPulseProcessing(strax.Plugin):
         r = strax.sort_by_time(r)
         strax.zero_out_of_bounds(r)
         strax.baseline(r,
-                       baseline_samples=self.baseline_samples,
+                       baseline_samples=self.__dict__['baseline_samples'],
                        flip=True)
 
-        if self.config['min_samples_alt_baseline_nv']:
-            m = r['pulse_length'] > self.config['min_samples_alt_baseline_nv']
+        if self.__dict__['min_samples_alt_baseline']:
+            m = r['pulse_length'] > self.__dict__['min_samples_alt_baseline']
             if np.any(m):
                 # Correcting baseline after PMT saturated signals
                 r[m] = median_baseline(r[m])
@@ -86,9 +89,9 @@ class nVETOPulseProcessing(strax.Plugin):
 
         strax.zero_out_of_bounds(r)
 
-        hits = strax.find_hits(r, min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(r, min_amplitude=self.__dict__['hit_min_amplitude'])
 
-        le, re = self.config['save_outside_hits_nv']
+        le, re = self.__dict__['save_outside_hits']
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
         strax.zero_out_of_bounds(r)
 
@@ -173,8 +176,8 @@ def clean_up_empty_records(records, record_links, only_last=True):
             m_first = record_links[0][rind] == strax.NO_RECORD_LINK  #
             m_in_between = record_links[1][rind] != strax.NO_RECORD_LINK
             if m_first or m_in_between:
-            # we are not the last record as we don't have a link on the left (i.e. are first) or have a link on the
-            # right
+                # we are not the last record as we don't have a link on the left (i.e. are first) or have a link on the
+                # right
                 indicies_to_keep[n_indicies] = rind
                 n_indicies += 1
                 continue
@@ -188,7 +191,7 @@ def clean_up_empty_records(records, record_links, only_last=True):
         # Hence we have to update the pulse_lengths accordingly:
         length = r['length']
 
-        MAX_RECORD_I  = 500  # Do not want to be stuck forever
+        MAX_RECORD_I = 500  # Do not want to be stuck forever
 
         left_links, right_links = record_links  # Just to make for loop more explicit
         for ind, neighbors in enumerate((left_links, right_links)):
@@ -242,14 +245,12 @@ def clean_up_empty_records(records, record_links, only_last=True):
 )
 class muVETOPulseProcessing(nVETOPulseProcessing):
     __doc__ = MV_PREAMBLE + nVETOPulseProcessing.__doc__
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = 'raw_records_mv'
     provides = 'records_mv'
     data_kind = 'records_mv'
     child_plugin = True
-
-    def setup(self):
-        self.baseline_samples = self.config['baseline_samples_mv']
+    ends_with = '_mv'
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -258,7 +259,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         return dtype
 
     def compute(self, raw_records_mv):
-#         TODO -> Reactivate        
-#         if self.config['check_raw_record_overlaps']:
-#             straxen.check_overlaps(raw_records_mv, n_channels=3000)
+        #         TODO -> Reactivate
+        #         if self.config['check_raw_record_overlaps']:
+        #             straxen.check_overlaps(raw_records_mv, n_channels=3000)
         return super().compute(raw_records_mv)

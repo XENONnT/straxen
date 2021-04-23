@@ -46,21 +46,25 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return veto_event_dtype(self.name_event_number, self.n_channel)
 
     def setup(self):
+        # Making nv(mv) specific config class attributes
+        for key in self.config:
+            if key.endswith(self.ends_with):
+                exec(f"self.{key.strip(self.ends_with)} = self.config['{key}']")
+
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model_nv'],
                                        self.n_channel)
 
     def get_window_size(self):
-        return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
+        return self.__dict__['event_left_extension'] + self.__dict__['event_resolving_time'] + 1
 
     def compute(self, hitlets_nv, start, end):
-
         events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
-                                                        self.config['event_min_hits_nv'],
-                                                        self.config['event_resolving_time_nv'],
-                                                        self.config['event_left_extension_nv'],
+                                                        self.__dict__['event_min_hits'],
+                                                        self.__dict__['event_resolving_time'],
+                                                        self.__dict__['event_left_extension'],
                                                         event_number_key=self.name_event_number,
-                                                        n_channel=self.n_channel, )
+                                                        n_channel=self.n_channel,)
 
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
@@ -466,12 +470,17 @@ class muVETOEvents(nVETOEvents):
         return veto_event_dtype(self.name_event_number, self.n_channel)
 
     def setup(self):
+        # Making nv(mv) specific config class attributes
+        for key in self.config:
+            if key.endswith(self.ends_with):
+                exec(f"self.{key.strip(self.ends_with)} = self.config['{key}']")
+
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model_mv'],
                                        self.n_channel)
 
     def get_window_size(self):
-        return self.config['event_left_extension_mv'] + self.config['event_resolving_time_mv'] + 1
+        return self.__dict__['event_left_extension'] + self.__dict__['event_resolving_time'] + 1
 
     def compute(self, hitlets_mv, start, end):
         return super().compute(hitlets_mv, start, end)
