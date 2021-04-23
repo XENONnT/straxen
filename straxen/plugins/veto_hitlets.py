@@ -40,7 +40,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
-    strax.Option('gain_model_nv',
+    strax.Option('gain_model_nv', default=("CMT_model", ("to_pe_model_nv", "ONLINE")),
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class nVETOHitlets(strax.Plugin):
@@ -171,9 +171,9 @@ class nVETOHitlets(strax.Plugin):
         default=False, track=True,
         child_option=True, parent_option_name='entropy_square_data_nv',
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
-    strax.Option('gain_model_mv',
+    strax.Option('gain_model_mv', default=("to_pe_constant", "adc_mv"),
                  child_option=True, parent_option_name='gain_model_nv',
-             help='PMT gain model. Specify as (model_type, model_config)'),
+                 help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
     __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
