@@ -129,7 +129,11 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    'meta.lineage': key.lineage,
+                    # TODO remove the meta.lineage since this doc
+                    #  entry is deprecated
+                    '$or': [{'meta.lineage': key.lineage,
+                             'did': self.key_to_rucio_did(key),
+                             }],
                     '$or': self.available_query}}}
 
     def _find(self, key: strax.DataKey,
@@ -149,7 +153,6 @@ class RunDB(strax.StorageFrontend):
             dq = {
                 'data': {
                     '$elemMatch': {
-                        # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
                         'did': rucio_key,
                         'status': 'transferred'}}}
