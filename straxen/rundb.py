@@ -5,6 +5,7 @@ import socket
 from tqdm import tqdm
 from copy import deepcopy
 import strax
+from pprint import pprint
 try:
     import utilix
 except (RuntimeError, FileNotFoundError):
@@ -130,7 +131,7 @@ class RunDB(strax.StorageFrontend):
                 '$elemMatch': {
                     'type': key.data_type,
                     # TODO remove the meta.lineage since this doc
-                    #  entry is deprecated
+                    #  entry is deprecated. Also this $OR is too broad!!
                     '$or': [{'meta.lineage': key.lineage,
                              'did': self.key_to_rucio_did(key),
                              }],
@@ -191,8 +192,11 @@ class RunDB(strax.StorageFrontend):
 
             return (strax.FileSytemBackend.__name__,
                     output_path)
-
         datum = doc['data'][0]
+    
+        if datum['host'] == 'rucio-catalogue':
+            # TODO this is due to a bad query in _data_query. We aren't rucio.
+            raise strax.DataNotAvailable
 
         if write and not self._can_overwrite(key):
             raise strax.DataExistsError(at=datum['location'])
