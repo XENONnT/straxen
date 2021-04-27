@@ -125,7 +125,7 @@ class RunDB(strax.StorageFrontend):
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK',
-                                         'status': 'transferred'
+                                         'status': 'transferred',
                                          })
 
     def _data_query(self, key):
@@ -165,7 +165,7 @@ class RunDB(strax.StorageFrontend):
             if doc is not None:
                 datum = doc['data'][0]
                 error_message = f'Expected {rucio_key} got data on {datum["location"]}'
-                assert datum.get('did','') == rucio_key, error_message
+                assert datum.get('did', '') == rucio_key, error_message
                 backend_name, backend_key = (
                     datum['protocol'],
                     f'{key.run_id}-{key.data_type}-{key.lineage_hash}')
