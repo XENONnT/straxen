@@ -6,6 +6,7 @@ from tqdm import tqdm
 from copy import deepcopy
 import strax
 from pprint import pprint
+
 try:
     import utilix
 except (RuntimeError, FileNotFoundError):
@@ -14,6 +15,7 @@ except (RuntimeError, FileNotFoundError):
 from straxen import uconfig
 
 export, __all__ = strax.exporter()
+
 
 @export
 class RunDB(strax.StorageFrontend):
@@ -122,7 +124,9 @@ class RunDB(strax.StorageFrontend):
             self.backends.append(strax.rucio(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
-                                         'location': 'UC_DALI_USERDISK'})
+                                         'location': 'UC_DALI_USERDISK',
+                                         'status': 'transferred',
+                                         })
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key"""
@@ -155,14 +159,16 @@ class RunDB(strax.StorageFrontend):
                 'data': {
                     '$elemMatch': {
                         'type': key.data_type,
-                        'did': rucio_key,
-                        'status': 'transferred'}}}
+                        'did': rucio_key}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
                 datum = doc['data'][0]
-                assert datum.get('did', '') == rucio_key, f'Expected {rucio_key} got data on {datum["location"]}'
-                backend_name, backend_key = datum['protocol'], f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
+                error_message = f'Expected {rucio_key} got data on {datum["location"]}'
+                assert datum.get('did', '') == rucio_key, error_message
+                backend_name, backend_key = (
+                    datum['protocol'],
+                    f'{key.run_id}-{key.data_type}-{key.lineage_hash}')
                 return backend_name, backend_key
 
         dq = self._data_query(key)
@@ -178,7 +184,8 @@ class RunDB(strax.StorageFrontend):
             if self.new_data_path is not None:
                 doc = self.collection.find_one(run_query, projection={'_id'})
                 if not doc:
-                    raise ValueError(f"Attempt to register new data for non-existing run {key.run_id}")   # noqa
+                    raise ValueError(f"Attempt to register new data for"
+                                     f" non-existing run {key.run_id}")
                 self.collection.find_one_and_update(
                     {'_id': doc['_id']},
                     {'$push': {'data': {
@@ -193,7 +200,7 @@ class RunDB(strax.StorageFrontend):
             return (strax.FileSytemBackend.__name__,
                     output_path)
         datum = doc['data'][0]
-    
+
         if datum['host'] == 'rucio-catalogue':
             # TODO this is due to a bad query in _data_query. We aren't rucio.
             raise strax.DataNotAvailable
@@ -212,7 +219,7 @@ class RunDB(strax.StorageFrontend):
             raise ValueError("find_several keys must have same lineage")
         if not len(set([k.data_type for k in keys])) == 1:
             raise ValueError("find_several keys must have same data type")
-        keys = list(keys)   # Context used to pass a set
+        keys = list(keys)  # Context used to pass a set
 
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
@@ -237,8 +244,10 @@ class RunDB(strax.StorageFrontend):
                 dk = doc['name']
             else:
                 dk = f'{doc["number"]:06}'
-
-            results_dict[dk] = datum['protocol'], datum['location']
+            try:
+                results_dict[dk] = datum['protocol'], datum['location']
+            except KeyError as e:
+                raise KeyError(f'Queries failed\n{run_query}\n{dq}\n{doc}') from e
         return [results_dict.get(k.run_id, False)
                 for k in keys]
 
@@ -263,7 +272,7 @@ class RunDB(strax.StorageFrontend):
         # Replace fields by their subfields if requested only take the most
         # "specific" projection
         projection = [f1 for f1 in projection
-                      if not any([f2.startswith(f1+".") for f2 in projection])]
+                      if not any([f2.startswith(f1 + ".") for f2 in projection])]
         cursor = self.collection.find(
             filter=query,
             projection=projection)
