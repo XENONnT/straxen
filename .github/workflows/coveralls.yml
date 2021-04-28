@@ -3,8 +3,6 @@ on:
   release:
     types: [created]
   pull_request:
-    branches:
-      - master
   push:
     branches:
       - master
@@ -29,6 +27,9 @@ jobs:
       run: |
         bash .github/scripts/preinstall_requirements.sh
         pip install coveralls coverage
+    - name: Install strax
+      run: |
+          pip install git+https://github.com/AxFoundation/strax.git
     - name: Install python dependencies
       uses: py-actions/py-dependency-install@v2
     - name: patch utilix file

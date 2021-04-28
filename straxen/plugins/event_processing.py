@@ -1,9 +1,9 @@
 import strax
-
 import numpy as np
-
-from straxen.common import pax_file, get_resource, first_sr1_run, aux_repo
-from straxen.get_corrections import get_elife, get_config_from_cmt
+from warnings import warn
+from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
+from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.get_corrections import get_correction_from_cmt, get_config_from_cmt, get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
@@ -107,14 +107,14 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.5.7'
+    __version__ = '0.6.0'
 
     depends_on = ('events',
                   'peak_basics',
                   'peak_positions',
                   'peak_proximity')
-    provides = ('event_basics', 'event_posrec_many')
-    data_kind = {k: 'events' for k in provides}
+    provides = 'event_basics'
+    data_kind = 'events'
     loop_over = 'events'
 
     # Properties to store for each peak (main and alternate S1 and S2)
@@ -126,20 +126,24 @@ class EventBasics(strax.LoopPlugin):
         ('area',              np.float32, 'area, uncorrected [PE]'),
         ('n_channels',        np.int32,   'count of contributing PMTs'),
         ('n_competing',       np.float32, 'number of competing PMTs'),
+        ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
+        ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
         ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
+        ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
+        ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
         ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'))
 
     def infer_dtype(self):
         # Basic event properties
-        basics_dtype = []
-        basics_dtype += strax.time_fields
-        basics_dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
-                         ('drift_time', np.int32,
-                          'Drift time between main S1 and S2 in ns')]
+        dtype = []
+        dtype += strax.time_fields
+        dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
+                  ('drift_time', np.int32,
+                   'Drift time between main S1 and S2 in ns')]
 
         for i in [1, 2]:
             # Peak indices
-            basics_dtype += [
+            dtype += [
                 (f's{i}_index', np.int32,
                  f'Main S{i} peak index in event'),
                 (f'alt_s{i}_index', np.int32,
@@ -147,18 +151,18 @@ class EventBasics(strax.LoopPlugin):
 
             # Peak properties
             for name, dt, comment in self.peak_properties:
-                basics_dtype += [
+                dtype += [
                     (f's{i}_{name}', dt, f'Main S{i} {comment}'),
                     (f'alt_s{i}_{name}', dt, f'Alternate S{i} {comment}')]
 
             # Drifts and delays
-            basics_dtype += [
+            dtype += [
                 (f'alt_s{i}_interaction_drift_time', np.int32,
                  f'Drift time using alternate S{i} [ns]'),
                 (f'alt_s{i}_delay', np.int32,
                  f'Time between main and alternate S{i} [ns]')]
 
-        basics_dtype += [
+        dtype += [
             (f's2_x', np.float32,
              f'Main S2 reconstructed X position, uncorrected [cm]'),
             (f's2_y', np.float32,
@@ -168,7 +172,13 @@ class EventBasics(strax.LoopPlugin):
             (f'alt_s2_y', np.float32,
              f'Alternate S2 reconstructed Y position, uncorrected [cm]')]
 
-        posrec_many_dtype = list(strax.time_fields)
+        # area before main S2
+        dtype += [
+            (f'area_before_main_s2', np.float32,
+             f'Sum of areas before Main S2 [PE]'),
+            (f'large_s2_before_main_s2', np.float32,
+             f'The largest S2 before the Main S2 [PE]')]
+
         # parse x_mlp et cetera if needed to get the algorithms used.
         self.pos_rec_labels = list(
             set(d.split('_')[-1] for d in
@@ -179,7 +189,7 @@ class EventBasics(strax.LoopPlugin):
 
         for algo in self.pos_rec_labels:
             # S2 positions
-            posrec_many_dtype += [
+            dtype += [
                 (f's2_x_{algo}', np.float32,
                  f'Main S2 {algo}-reconstructed X position, uncorrected [cm]'),
                 (f's2_y_{algo}', np.float32,
@@ -189,18 +199,15 @@ class EventBasics(strax.LoopPlugin):
                 (f'alt_s2_y_{algo}', np.float32,
                  f'Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]')]
 
-        return {'event_basics': basics_dtype,
-                'event_posrec_many': posrec_many_dtype}
+        return dtype
 
     def compute_loop(self, event, peaks):
         result = dict(n_peaks=len(peaks),
                       time=event['time'],
                       endtime=strax.endtime(event))
-        posrec_result = dict(time=event['time'],
-                             endtime=strax.endtime(event))
-        posrec_save = [d.replace("s2_", "").replace("alt_", "")
-                       for d in self.dtype_for('event_posrec_many').names if
-                       'time' not in d]
+        posrec_save = [(xy + algo)
+                       for xy in ['x_', 'y_']
+                       for algo in self.pos_rec_labels]
 
         if not len(peaks):
             return result
@@ -248,7 +255,7 @@ class EventBasics(strax.LoopPlugin):
                     result[f's{s_i}_{name}'] = main_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
-                        posrec_result[f's{s_i}_{name}'] = main_s[s_i][name]
+                        result[f's{s_i}_{name}'] = main_s[s_i][name]
 
             # Store alternate signal properties
             if _alt_i is None:
@@ -260,7 +267,7 @@ class EventBasics(strax.LoopPlugin):
                     result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 if s_i == 2:
                     for name in posrec_save:
-                        posrec_result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
+                        result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
                 # Compute delay time properties
                 result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
                                                - main_s[s_i]['center_time'])
@@ -276,8 +283,18 @@ class EventBasics(strax.LoopPlugin):
                 result['alt_s2_interaction_drift_time'] = \
                     secondary_s[2]['center_time'] - main_s[1]['center_time']
 
-        return {'event_basics': result,
-                'event_posrec_many': posrec_result}
+        # areas before main S2
+        if result[f's2_index'] != -1:
+            peaks_before_ms2 = peaks[peaks['time'] < main_s[2]['time']]
+            result['area_before_main_s2'] = sum(peaks_before_ms2['area'])
+
+            s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2['type'] == 2]
+            if len(s2peaks_before_ms2) == 0:
+                result['large_s2_before_main_s2'] = 0
+            else:
+                result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
+
+        return result
 
 
 @export
@@ -285,26 +302,33 @@ class EventBasics(strax.LoopPlugin):
     strax.Option(
         name='electron_drift_velocity',
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=1.3325e-4
+        default=("electron_drift_velocity", "ONLINE", True)
     ),
     strax.Option(
-        'fdc_map',
+        name='fdc_map',
         help='3D field distortion correction map path',
         default_by_run=[
             (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
-            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')),  # noqa
-            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')),  # noqa
-            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')),  # noqa
-            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))]),  # noqa
+            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')), # noqa
+            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')), # noqa
+            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
+            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))], # noqa
+    ),
+    *DEFAULT_POSREC_ALGO_OPTION
 )
 class EventPositions(strax.Plugin):
     """
     Computes the observed and corrected position for the main S1/S2
-    pairs in an event.
+    pairs in an event. For XENONnT data, it returns the FDC corrected
+    positions of the default_reconstruction_algorithm. In case the fdc_map
+    is given as a file (not through CMT), then the coordinate system
+    should be given as (x, y, z), not (x, y, drift_time).
     """
-    __version__ = '0.1.2'
 
-    depends_on = ('event_basics',)
+    depends_on = ('event_basics', )
+    
+    __version__ = '0.1.3'
+
     dtype = [
         ('x', np.float32,
          'Interaction x-position, field-distortion corrected (cm)'),
@@ -322,46 +346,68 @@ class EventPositions(strax.Plugin):
          'Correction added to r_naive for field distortion (cm)'),
         ('theta', np.float32,
          'Interaction angular position (radians)')
-    ] + strax.time_fields
+            ] + strax.time_fields
 
     def setup(self):
-        self.map = InterpolatingMap(
-            get_resource(self.config['fdc_map'], fmt='binary'))
+
+        is_CMT = isinstance(self.config['fdc_map'], tuple)
+        self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
+        if is_CMT:
+
+            cmt, cmt_conf, is_nt = self.config['fdc_map']
+            cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}' , cmt_conf[1])
+            map_algo = cmt, cmt_conf, is_nt           
+ 
+            self.map = InterpolatingMap(
+                get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
+            self.map.scale_coordinates([1., 1., -self.electron_drift_velocity])
+
+        elif isinstance(self.config['fdc_map'], str):
+            self.map = InterpolatingMap(
+                get_resource(self.config['fdc_map'], fmt='binary'))
+
+        else:
+            raise NotImplementedError('FDC map format not understood.')
 
     def compute(self, events):
-        z_obs = - self.config['electron_drift_velocity'] * events['drift_time']
 
-        orig_pos = np.vstack([events['s2_x'], events['s2_y'], z_obs]).T
+        result = {'time': events['time'],
+                  'endtime': strax.endtime(events)}
+        
+        z_obs = - self.electron_drift_velocity * events['drift_time']
+        orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-
         delta_r = self.map(orig_pos)
+
+        # apply radial correction
         with np.errstate(invalid='ignore', divide='ignore'):
             r_cor = r_obs + delta_r
             scale = r_cor / r_obs
 
-        result = dict(time=events['time'],
-                      endtime=strax.endtime(events),
-                      x=orig_pos[:, 0] * scale,
-                      y=orig_pos[:, 1] * scale,
-                      r=r_cor,
-                      z_naive=z_obs,
-                      r_naive=r_obs,
-                      r_field_distortion_correction=delta_r,
-                      theta=np.arctan2(orig_pos[:, 1], orig_pos[:, 0]))
-
+        # z correction due to longer drift time for distortion
+        # (geometrical reasoning not valid if |delta_r| > |z_obs|,
+        #  as cathetus cannot be longer than hypothenuse)
         with np.errstate(invalid='ignore'):
             z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-            invalid = np.abs(z_obs) < np.abs(delta_r)        # Why??
+            invalid = np.abs(z_obs) < np.abs(delta_r)
         z_cor[invalid] = z_obs[invalid]
-        result['z'] = z_cor
+
+        result.update({'x': orig_pos[:, 0] * scale,
+                       'y': orig_pos[:, 1] * scale,
+                       'r': r_cor,
+                       'r_naive': r_obs,
+                       'r_field_distortion_correction': delta_r,
+                       'theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
+                       'z_naive': z_obs,
+                       'z': z_cor})
 
         return result
 
 
 @strax.takes_config(
     strax.Option(
-        's1_relative_lce_map',
-        help="S1 relative LCE(x,y,z) map",
+        's1_xyz_correction_map',
+        help="S1 relative (x, y, z) correction map",
         default_by_run=[
             (0, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json')),  # noqa
             (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
@@ -374,15 +420,15 @@ class EventPositions(strax.Plugin):
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
-        'elife_file',
-        default=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
-        help='Electron lifetime model '
-             'To use a constant value, provide a link (as this default) To use'
-             'the corrections management tools specify the following:'
+        'elife_conf',
+        default=("elife", "ONLINE", True),
+        help='Electron lifetime '
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
-             'where model_type can be "elife_model" or "elife_constant" '
-             'and model_config can be a version'
-   ))
+             'where model_type can be "elife" or "elife_constant" '
+             'and model_config can be a version.'
+   ),
+    *DEFAULT_POSREC_ALGO_OPTION
+)
 class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
@@ -395,7 +441,7 @@ class CorrectedAreas(strax.Plugin):
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     depends_on = ['event_basics', 'event_positions']
     dtype = [('cs1', np.float32, 'Corrected S1 area [PE]'),
@@ -405,12 +451,25 @@ class CorrectedAreas(strax.Plugin):
              ] + strax.time_fields
 
     def setup(self):
+        is_CMT = isinstance(self.config['s1_xyz_correction_map'], tuple)
 
-        self.s1_map = InterpolatingMap(
-                get_resource(self.config['s1_relative_lce_map']))
+        if is_CMT:
+            cmt, cmt_conf, is_nt = self.config['s1_xyz_correction_map']
+            cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}', cmt_conf[1])
+            map_algo = cmt, cmt_conf, is_nt
+
+            self.s1_map = InterpolatingMap(get_resource(get_config_from_cmt(self.run_id, map_algo)))
+        else:
+            self.s1_map = InterpolatingMap(
+                get_resource(self.config['s1_xyz_correction_map']))
+
         self.s2_map = InterpolatingMap(
                 get_resource(get_config_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
-        self.elife = get_elife(self.run_id, self.config['elife_file'])
+        self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
+
+        if isinstance(self.elife, str):
+            # Legacy 1T support
+            self.elife = get_elife(self.run_id, self.elife)
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.
