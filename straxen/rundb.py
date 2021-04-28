@@ -136,10 +136,12 @@ class RunDB(strax.StorageFrontend):
                     'type': key.data_type,
                     # TODO remove the meta.lineage since this doc
                     #  entry is deprecated. Also this $OR is too broad!!
-                    '$or': [{'meta.lineage': key.lineage,
-                             'did': self.key_to_rucio_did(key),
-                             }],
-                    '$or': self.available_query}}}
+                    '$and': [{'$or': [
+                        {'meta.lineage': key.lineage,
+                         'did': {'$regex': f'/*{key.data_type}-{key.lineage_hash}'},
+                        }
+                    ]},
+                    {'$or': self.available_query}]}}}
 
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
