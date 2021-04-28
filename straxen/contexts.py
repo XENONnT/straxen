@@ -314,7 +314,9 @@ def demo():
     st.set_config(dict(
         hev_gain_model=('1T_gain_placeholder', False),
         gain_model=('1T_gain_placeholder', False),
-    ))
+        elife_conf=('elife_constant', 1e6, False),
+        electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
+        ))
     return st
 
 
