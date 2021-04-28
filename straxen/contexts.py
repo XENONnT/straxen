@@ -312,10 +312,8 @@ def demo():
 
     # Use configs that are always available
     st.set_config(dict(
-        hev_gain_model=('to_pe_per_run', straxen.aux_repo +
-                        '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
-        gain_model=('to_pe_per_run', straxen.aux_repo +
-                    '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
+        hev_gain_model=('1T_gain_placeholder', False),
+        gain_model=('1T_gain_placeholder', False),
     ))
     return st
 
