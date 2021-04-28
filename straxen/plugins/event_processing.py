@@ -353,13 +353,12 @@ class EventPositions(strax.Plugin):
         is_CMT = isinstance(self.config['fdc_map'], tuple)
         self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         if is_CMT:
-
-            cmt, cmt_conf, is_nt = self.config['fdc_map']
-            cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}' , cmt_conf[1])
-            map_algo = cmt, cmt_conf, is_nt           
- 
+            is_nt = self.config['fdc_map'][-1]
+            conf = self.config['fdc_map'][:2]
+            map_algo = (f'{conf[0]}_{self.config["default_reconstruction_algorithm"]}')
+            cmt_conf = map_algo, conf[1], is_nt
             self.map = InterpolatingMap(
-                get_resource(get_config_from_cmt(self.run_id, map_algo), fmt='binary'))
+                get_resource(get_config_from_cmt(self.run_id, cmt_conf), fmt='binary'))
             self.map.scale_coordinates([1., 1., -self.electron_drift_velocity])
 
         elif isinstance(self.config['fdc_map'], str):
@@ -452,13 +451,12 @@ class CorrectedAreas(strax.Plugin):
 
     def setup(self):
         is_CMT = isinstance(self.config['s1_xyz_correction_map'], tuple)
-
         if is_CMT:
-            cmt, cmt_conf, is_nt = self.config['s1_xyz_correction_map']
-            cmt_conf = (f'{cmt_conf[0]}_{self.config["default_reconstruction_algorithm"]}', cmt_conf[1])
-            map_algo = cmt, cmt_conf, is_nt
-
-            self.s1_map = InterpolatingMap(get_resource(get_config_from_cmt(self.run_id, map_algo)))
+            is_nt = self.config['s1_xyz_correction_map'][-1]
+            conf = self.config['s1_xyz_correction_map'][:2]
+            map_algo = (f'{conf[0]}_{self.config["default_reconstruction_algorithm"]}')
+            cmt_conf = map_algo, conf[1], is_nt
+            self.s1_map = InterpolatingMap(get_resource(get_config_from_cmt(self.run_id, cmt_conf)))
         else:
             self.s1_map = InterpolatingMap(
                 get_resource(self.config['s1_xyz_correction_map']))

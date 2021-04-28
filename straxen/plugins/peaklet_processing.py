@@ -41,7 +41,8 @@ export, __all__ = strax.exporter()
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('gain_model',
-                 help='PMT gain model. Specify as (model_type, model_config)'),
+                 help='PMT gain model. Specify as '
+                 '(str(model_config), str(version), nT-->boolean'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),

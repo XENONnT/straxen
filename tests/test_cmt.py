@@ -70,7 +70,7 @@ def test_mc_wrapper_gains(run_id='009000',
     # First for the run-id let's get the value
     gains = straxen.get_to_pe(
         run_id,
-        ('CMT_model', ('to_pe_model', 'ONLINE')),
+        ('to_pe_model', 'ONLINE', True),
         straxen.n_tpc_pmts)
 
     # Now, we repeat the same query using the MC wrapper, this should
@@ -78,14 +78,14 @@ def test_mc_wrapper_gains(run_id='009000',
     # different run-number.
     mc_gains_diff = straxen.get_to_pe(
         mc_id,
-        ('MC', cmt_id, 'CMT_model', ('to_pe_model', 'ONLINE')),
+        ('MC', cmt_id, 'to_pe_model', 'ONLINE', True),
         straxen.n_tpc_pmts)
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `gains` above
     mc_gains_same = straxen.get_to_pe(
         mc_id,
-        ('MC', run_id, 'CMT_model', ('to_pe_model', 'ONLINE')),
+        ('MC', run_id, 'to_pe_model', 'ONLINE', True),
         straxen.n_tpc_pmts)
 
     assert not np.all(gains == mc_gains_diff)

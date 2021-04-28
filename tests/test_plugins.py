@@ -22,23 +22,21 @@ testing_config_nT = dict(
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
-    gain_model=
-    ('to_pe_per_run',
-     aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
+    gain_model=("gain_placeholder", True),
     s2_xy_correction_map=pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
-    elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    elife_conf=('elife_constant', 1e6, True),
     baseline_samples_nv=10,
     fdc_map=pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
-    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_nv=("adc_nv", True),
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, True),
 )
 
 testing_config_1T = dict(
-    hev_gain_model=('to_pe_constant', 0.0085),
-    gain_model=('to_pe_constant', 0.0085),
-    elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    hev_gain_model=('1T_gain_placeholder', False),
+    gain_model=('1T_gain_placeholder', False),
+    elife_conf=('elife_constant', 1e6, False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, False),
 )
 

@@ -124,9 +124,9 @@ class PeakPositionsBaseNT(strax.Plugin):
 @strax.takes_config(
     strax.Option('mlp_model',
                  help='Neural network model.' 
-                      'If CMT, specify as (CMT_model, (mlp_model, ONLINE), True)))'
+                      'If CMT, specify as (mlp_model, ONLINE, True)'
                       'Set to None to skip the computation of this plugin.',
-                 default=("CMT_model", ('mlp_model', "ONLINE"), True)
+                 default=('mlp_model', "ONLINE", True)
                 )
 )
 class PeakPositionsMLP(PeakPositionsBaseNT):
@@ -139,9 +139,9 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 @strax.takes_config(
     strax.Option('gcn_model',
                  help='Neural network model.' 
-                      'If CMT, specify as (CMT_model, (gcn_model, ONLINE), True)))'
+                      'If CMT, specify as  (gcn_model, ONLINE, True)'
                       'Set to None to skip the computation of this plugin.',
-                 default=("CMT_model", ('gcn_model', "ONLINE"), True)
+                 default=('gcn_model', "ONLINE", True)
                 )
 )
 class PeakPositionsGCN(PeakPositionsBaseNT):
@@ -155,9 +155,9 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
 @strax.takes_config(
     strax.Option('cnn_model',
                  help='Neural network model.' 
-                      'If CMT, specify as (CMT_model, (cnn_model, ONLINE), True)))'
+                      'If CMT, specify as (cnn_model, ONLINE, True)'
                       'Set to None to skip the computation of this plugin.',
-                 default=("CMT_model", ('cnn_model', "ONLINE"), True)
+                 default=('cnn_model', "ONLINE", True)
                 )
 )
 class PeakPositionsCNN(PeakPositionsBaseNT):
