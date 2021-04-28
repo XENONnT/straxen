@@ -50,7 +50,7 @@ xnt_common_config = dict(
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model=("gain_placeholder", True),
+xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
                              gain_model_nv=("adc_nv", True),
                              gain_model_mv=("adc_mv", True),
                              elife_conf=('elife_constant', 1e6, True),
@@ -312,8 +312,8 @@ def demo():
 
     # Use configs that are always available
     st.set_config(dict(
-        hev_gain_model=('1T_gain_placeholder', False),
-        gain_model=('1T_gain_placeholder', False),
+        hev_gain_model=('1T_to_pe_placeholder', False),
+        gain_model=('1T_to_pe_placeholder', False),
         elife_conf=('elife_constant', 1e6, False),
         electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
         ))

@@ -22,7 +22,7 @@ testing_config_nT = dict(
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
-    gain_model=("gain_placeholder", True),
+    gain_model=("to_pe_placeholder", True),
     s2_xy_correction_map=pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
     elife_conf=('elife_constant', 1e6, True),
     baseline_samples_nv=10,
@@ -34,8 +34,8 @@ testing_config_nT = dict(
 )
 
 testing_config_1T = dict(
-    hev_gain_model=('1T_gain_placeholder', False),
-    gain_model=('1T_gain_placeholder', False),
+    hev_gain_model=('1T_to_pe_placeholder', False),
+    gain_model=('1T_to_pe_placeholder', False),
     elife_conf=('elife_constant', 1e6, False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, False),
 )
@@ -255,7 +255,7 @@ def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
     st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured())
-    offline_gain_model = ("gain_placeholder", True)
+    offline_gain_model = ("to_pe_placeholder", True)
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_nT)

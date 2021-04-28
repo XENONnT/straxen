@@ -3,6 +3,7 @@ import strax
 import straxen
 from warnings import warn
 from functools import wraps
+from straxen.corrections_services import corrections_w_file
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
@@ -84,9 +85,8 @@ def get_to_pe(run_id, conf, n_pmts):
         raise NotImplementedError(f"Gain model type {model_conf} not implemented")
 
 FIXED_TO_PE = {
-    # just some dummy placeholder for nT gains
-    'gain_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
-    '1T_gain_placeholder' : np.repeat(0.0085, 248),
+    'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
+    '1T_to_pe_placeholder' : np.array([0.0072452, 0., 0., 0.00813198, 0.00438829, 0.0079016, 0.00357636, 0.00752925, 0.00743175, 0.00483737, 0.00706977, 0.00586599, 0., 0.00556236, 0.00797391, 0.00704167, 0.00640926, 0.00850643, 0.00714517, 0.00742941, 0.00715024, 0.01209479, 0.00397228, 0.00754782, 0.00540989, 0.00763518, 0., 0., 0.00659082, 0.00727863, 0.00422917, 0., 0.00413345, 0.0070529, 0., 0.00536641, 0.00743007, 0.00704821, 0.00456053, 0.00518346, 0.00752871, 0.00564258, 0.00459131, 0.00734189, 0.00612753, 0.00655326, 0.00759871, 0.00476416, 0.00802808, 0.00760099, 0.0045909, 0.00460675, 0.00714769, 0.00800725, 0.0046979, 0.00866425, 0.00374124, 0.00496461, 0.01035307, 0.00758412, 0.00603282, 0.01618727, 0., 0.00450775, 0.00483394, 0., 0.00981709, 0.00780705, 0.00357422, 0.00565691, 0.00456281, 0., 0.00803384, 0., 0.00358838, 0.0036835, 0.00588289, 0.00513244, 0.01175829, 0., 0.0050855, 0.0040911, 0.00386543, 0.00816158, 0.0067502, 0.01204568, 0., 0., 0., 0.00651278, 0.00742206, 0., 0.00491631, 0.00769847, 0.00582819, 0.00406426, 0.00400214, 0.00577728, 0.00814137, 0.00763981, 0.00761573, 0.00554446, 0., 0.00715309, 0.00503238, 0.00459783, 0.00492299, 0.00745983, 0.00357002, 0.00759856, 0.00717, 0.00816608, 0.00767994, 0.00604421, 0.00587048, 0.00964442, 0.00468335, 0.00829553, 0., 0.01194368, 0.00698784, 0.00363265, 0.00751866, 0.00745633, 0.00745376, 0.00769538, 0.00348097, 0.00362781, 0.00746885, 0.00638465, 0., 0.00512748, 0.00372908, 0.00523452, 0., 0., 0.00444336, 0., 0.00388768, 0., 0.00359526, 0., 0.01064339, 0.00510303, 0.00646788, 0.00508451, 0.00428273, 0.00350879, 0., 0.00728879, 0., 0.00425876, 0., 0.00471755, 0.00627014, 0.00728991, 0.00537106, 0.00848785, 0.00385989, 0.00556679, 0.00751004, 0.00731159, 0., 0.00779083, 0.00760312, 0.00667208, 0.00731918, 0., 0.00759461, 0.00381062, 0.00359802, 0.00521435, 0.00429271, 0.00735201, 0.00776976, 0.00399636, 0.00622611, 0.00585986, 0., 0.0073606, 0.00358086, 0.00358621, 0.00526905, 0., 0.00770451, 0.00405925, 0.00430389, 0.00421667, 0.0076157 , 0.00764557, 0., 0.00642047, 0.0048628 , 0.00372671, 0.00510367, 0.0076145 , 0.00765479, 0.00770955, 0., 0.00526101, 0.00803205, 0., 0.00792361, 0., 0.00440089, 0.01168991, 0., 0.004523, 0.00704132, 0.00884788, 0.00513383, 0.00445313, 0.00404645, 0., 0., 0.00354486, 0.00417448, 0.01137993, 0.00366378, 0.00368374, 0.00726986, 0.00358424, 0.00503405, 0.00360588, 0.00541749, 0.00742327, 0.00374311, 0.00621805, 0.00647762, 0.00370024, 0.00771456, 0.00457882, 0.00746426, 0.00674823, 0., 0.00366232, 0.00749439, 0.00756156, 0.00365761, 0., 0.00733116, 0.00405427, 0.00375715, 0.00410382, 0., 0.00429508, 0.00494906, 0.00378778]),
     # Gains which will preserve all areas in adc counts.
     # Useful for debugging and tests.
     'adc_tpc': np.ones(straxen.n_tpc_pmts),
@@ -103,9 +103,9 @@ def get_correction_from_cmt(run_id, conf):
         return conf
     if isinstance(conf, tuple) and len(conf) == 3:
         is_nt = conf[-1]
-        model_type, global_version = conf[:2]
+        model_conf, global_version = conf[:2]
         correction = global_version  # in case is a single value
-        if 'constant' in model_type:
+        if 'constant' in model_conf:
             if not isinstance(global_version, (float, int)):
                 raise ValueError(f"User specify a model type {model_type} "
                                  "and should provide a number. Got: "
@@ -117,9 +117,13 @@ def get_correction_from_cmt(run_id, conf):
                 raise ValueError(f"Could not find a value for {model_type} "
                                  "please check it is implemented in CMT. "
                                  f"for nT = {is_nt}")
+            if model_conf in corrections_w_file:
+                this_file = ' '.join(map(str, correction))
+                return this_file
 
-        if 'samples' in model_type:
+        if 'samples' in model_conf:
             return int(correction)
+
         else:
             return float(correction)
 
@@ -129,35 +133,3 @@ def get_correction_from_cmt(run_id, conf):
                          "(config->str, model_config->str or number, is_nT->bool) "
                          f"User specify {conf} please modify")
 
-
-@export
-@correction_options
-def get_config_from_cmt(run_id, conf):
-    if isinstance(conf, str) and conf.startswith('https://raw'):
-        # Legacy support for pax files
-        return conf
-    elif isinstance(conf, tuple) and len(conf) == 3:
-        is_nt = conf[-1]
-        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
-        this_file = cmt.get_corrections_config(run_id, conf[:2])
-        this_file = ' '.join(map(str, this_file))
-        return this_file
-    else:
-        raise ValueError("Wrong configuration. "
-                         "Please use the following format: "
-                         "(model_type->str, model_config->str or number, is_nT->bool) "
-                         f"User specify {conf} please modify")
-
-
-# This should be removed!!!!!!!
-def get_elife(run_id, elife_conf):
-    # 1T support for electron lifetimes from a file
-    # Let's remove these functions and only rely on the CMT in the future
-    x = straxen.get_resource(elife_conf, fmt='npy')
-    run_index = np.where(x['run_id'] == int(run_id))[0]
-    if not len(run_index):
-        # Electron lifetime not known: using placeholders
-        e = 623e3
-    else:
-        e = x[run_index[0]]['e_life']
-    return float(e)
