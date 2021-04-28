@@ -132,4 +132,3 @@ def get_correction_from_cmt(run_id, conf):
                          "Please use the following format: "
                          "(config->str, model_config->str or number, is_nT->bool) "
                          f"User specify {conf} please modify")
-
