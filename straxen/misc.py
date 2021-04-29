@@ -116,7 +116,7 @@ class TimeWidgets:
         self._time_zone_widget = self._create_time_zone_widget()
         self._created_widgets = True
 
-        return widgets.VBox([self._time_zone_widget,
+        return widgets.VBox([widgets.HBox(self._time_zone_widget, widgets.HTML(value="ns:")),
                              self._start_widget,
                              self._end_widget])
 
