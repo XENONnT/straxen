@@ -130,14 +130,14 @@ class TimeWidgets:
 
         time_zone = self._time_zone_widget.options[self._time_zone_widget.value][0]
 
-        start = self._convert_to_datetime(self._start_widget, time_zone)
+        start, start_ns = self._convert_to_datetime(self._start_widget, time_zone)
         start = start.astimezone(tz=pytz.UTC)
         start = start.timestamp()
-        start = int(start * 10**9)
-        end = self._convert_to_datetime(self._end_widget, time_zone)
+        start = int(start * 10**9) + start_ns
+        end, end_ns = self._convert_to_datetime(self._end_widget, time_zone)
         end = end.astimezone(tz=pytz.UTC)
         end = end.timestamp()
-        end = int(end * 10**9)
+        end = int(end * 10**9) + end_ns
 
         if start > end:
             warnings.warn('Start time is larger than endtime are you '
@@ -160,7 +160,11 @@ class TimeWidgets:
                             layout=Layout(width='75px'),
                             disabled=False)
 
-        return widgets.HBox([date, time])
+        time_ns = widgets.Text(value='0',
+                               layout=Layout(width='150px'),
+                               disabled=False)
+
+        return widgets.HBox([date, time, time_ns])
 
     @staticmethod
     def _create_time_zone_widget():
@@ -176,7 +180,8 @@ class TimeWidgets:
         Converts values of widget into a timezone aware datetime object.
 
         :param time_widget: Widget Box containing a DatePicker and
-            Text widget. The text widget is used to set a day time.
+            two text widget. The first text widget is used to set a day
+            time. The second the time in nano-seconds.
         :param time_zone: pytz.timezone allowed string for a timezone.
 
         :returns: timezone aware datetime object.
@@ -193,4 +198,7 @@ class TimeWidgets:
                             minute=hour_and_minutes.minute)
         time_zone = pytz.timezone(time_zone)
         time = time_zone.localize(time)
-        return time
+
+        time_ns = int(date_and_time[2])
+
+        return time, time_ns
