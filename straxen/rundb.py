@@ -5,6 +5,7 @@ import socket
 from tqdm import tqdm
 from copy import deepcopy
 import strax
+from pprint import pprint
 try:
     import utilix
 except (RuntimeError, FileNotFoundError):
@@ -28,6 +29,7 @@ class RunDB(strax.StorageFrontend):
 
     def __init__(self,
                  minimum_run_number=7157,
+                 maximum_run_number=None,
                  runid_field='name',
                  local_only=False,
                  new_data_path=None,
@@ -39,29 +41,36 @@ class RunDB(strax.StorageFrontend):
                  mongo_database=None,
                  *args, **kwargs):
         """
-        :param mongo_url: URL to Mongo runs database (including auth)
-        :param local_only: Do not show data as available if it would have to be
-        downloaded from a remote location.
-        :param new_data_path: Path where new files are to be written.
-            Defaults to None: do not write new data
-            New files will be registered in the runs db!
-            TODO: register under hostname alias (e.g. 'dali')
+        :param minimum_run_number: Lowest number to consider
+        :param maximum_run_number: Highest number to consider. When None
+            (the default) consider all runs that are higher than the
+            minimum_run_number.
         :param runid_field: Rundb field to which strax's run_id concept
             corresponds. Can be either
             - 'name': values must be strings, for XENON1T
             - 'number': values must be ints, for XENONnT DAQ tests
-        :param reader_ini_name_is_mode: If True, will overwrite the 'mode'
-        field with 'reader.ini.name'.
+        :param local_only: Do not show data as available if it would
+            have to be downloaded from a remote location.
+        :param new_data_path: Path where new files are to be written.
+            Defaults to None: do not write new data
+            New files will be registered in the runs db!
+            TODO: register under hostname alias (e.g. 'dali')
+        :param reader_ini_name_is_mode: If True, will overwrite the
+            'mode' field with 'reader.ini.name'.
+        :param rucio_path: What is the base path where Rucio is mounted
+        :param mongo_url: URL to Mongo runs database (excl auth)
+        :param mongo_user: user to Mongo runs database
+        :param mongo_password: password to Mongo runs database
+        :param mongo_database: database name of Mongo runs database
 
         Other (kw)args are passed to StorageFrontend.__init__
-        #TODO
-        Add mongo_* to the docstring
         """
         super().__init__(*args, **kwargs)
         self.local_only = local_only
         self.new_data_path = new_data_path
         self.reader_ini_name_is_mode = reader_ini_name_is_mode
         self.minimum_run_number = minimum_run_number
+        self.maximum_run_number = maximum_run_number
         self.rucio_path = rucio_path
         if self.new_data_path is None:
             self.readonly = True
@@ -80,13 +89,13 @@ class RunDB(strax.StorageFrontend):
 
         # setup mongo kwargs...
         # utilix.rundb.pymongo_collection will take the following variables as kwargs
-        # url: mongo url, including auth
-        # user: the user
-        # password: the password for the above user
-        # database: the mongo database name
+        #     url: mongo url, including auth
+        #     user: the user
+        #     password: the password for the above user
+        #     database: the mongo database name
         # finally, it takes the collection name as an arg (not a kwarg).
         # if no collection arg is passed, it defaults to the runsDB collection
-        # See https://github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
+        # See github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
         mongo_kwargs = {'url': mongo_url,
                         'user': mongo_user,
                         'password': mongo_password,
@@ -121,7 +130,11 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    'meta.lineage': key.lineage,
+                    # TODO remove the meta.lineage since this doc
+                    #  entry is deprecated. Also this $OR is too broad!!
+                    '$or': [{'meta.lineage': key.lineage,
+                             'did': self.key_to_rucio_did(key),
+                             }],
                     '$or': self.available_query}}}
 
     def _find(self, key: strax.DataKey,
@@ -141,10 +154,9 @@ class RunDB(strax.StorageFrontend):
             dq = {
                 'data': {
                     '$elemMatch': {
-                        # TODO can we query smart on the lineage_hash?
                         'type': key.data_type,
                         'did': rucio_key,
-                        'protocol': 'rucio'}}}
+                        'status': 'transferred'}}}
             doc = self.collection.find_one({**run_query, **dq},
                                            projection=dq)
             if doc is not None:
@@ -180,8 +192,11 @@ class RunDB(strax.StorageFrontend):
 
             return (strax.FileSytemBackend.__name__,
                     output_path)
-
         datum = doc['data'][0]
+    
+        if datum['host'] == 'rucio-catalogue':
+            # TODO this is due to a bad query in _data_query. We aren't rucio.
+            raise strax.DataNotAvailable
 
         if write and not self._can_overwrite(key):
             raise strax.DataExistsError(at=datum['location'])
@@ -235,18 +250,15 @@ class RunDB(strax.StorageFrontend):
             raise NotImplementedError("Can't allow_incomplete with RunDB yet")
 
         q = self._data_query(key)
-        if self.minimum_run_number:
-            q['number'] = {'$gt': self.minimum_run_number}
+        q.update(self.number_query())
+
         cursor = self.collection.find(
             q,
             projection=[self.runid_field])
         return [x[self.runid_field] for x in cursor]
 
     def _scan_runs(self, store_fields):
-        if self.minimum_run_number:
-            query = {'number': {'$gt': self.minimum_run_number}}
-        else:
-            query = {}
+        query = self.number_query()
         projection = strax.to_str_tuple(list(store_fields))
         # Replace fields by their subfields if requested only take the most
         # "specific" projection
@@ -281,6 +293,16 @@ class RunDB(strax.StorageFrontend):
         if self.reader_ini_name_is_mode:
             doc['mode'] = doc.get('reader', {}).get('ini', {}).get('name', '')
         return doc
+
+    def number_query(self):
+        q_number = {}
+        if self.minimum_run_number:
+            q_number = {'$gt': self.minimum_run_number}
+        if self.maximum_run_number is not None:
+            q_number.update({'$lt': self.maximum_run_number})
+        if q_number:
+            return {'number': q_number}
+        return {}
 
     @staticmethod
     def key_to_rucio_did(key: strax.DataKey):

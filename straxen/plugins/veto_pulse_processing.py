@@ -258,6 +258,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         return dtype
 
     def compute(self, raw_records_mv):
-        if self.config['check_raw_record_overlaps']:
-            straxen.check_overlaps(raw_records_mv, n_channels=3000)
+#         TODO -> Reactivate        
+#         if self.config['check_raw_record_overlaps']:
+#             straxen.check_overlaps(raw_records_mv, n_channels=3000)
         return super().compute(raw_records_mv)
