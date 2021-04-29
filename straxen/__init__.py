@@ -1,4 +1,4 @@
-__version__ = '0.18.0'
+__version__ = '0.18.1'
 
 # Import of utilix config for only once. NB: Should be first due to circular imports
 from utilix import uconfig
