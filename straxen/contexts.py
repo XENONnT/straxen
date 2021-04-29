@@ -290,7 +290,7 @@ x1t_common_config = dict(
     # Events*
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
-    elife_conf=('elife','v1', False),
+    elife_conf=('elife', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
 )
 

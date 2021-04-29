@@ -39,10 +39,16 @@ def correction_options(get_correction_function):
 @export
 @correction_options
 def get_to_pe(run_id, conf, n_pmts):
-
+    """
+    To pe values for TPC, n-veto mu-veto PMTs, this is also now as gains
+    :param run_id: run id from runDB
+    :param conf: configuration 
+    :n_pmts: number of PMTs
+    :return: array of to_pe values
+    """
     if isinstance(conf, str) and conf.startswith('https://raw'):
         # Legacy support for pax files
-        x = straxen.get_resource(elife_conf, fmt='npy')
+        x = straxen.get_resource(conf, fmt='npy')
         run_index = np.where(x['run_id'] == int(run_id))[0]
         if not len(run_index):
             # Electron lifetime not known: using placeholders
@@ -72,7 +78,7 @@ def get_to_pe(run_id, conf, n_pmts):
             to_pe = FIXED_TO_PE[model_conf]
             if len(to_pe) != n_pmts:
                 raise ValueError(
-                    f"Gain model {gain_model} resulted in a to_pe "
+                    f"Gain model {model_conf} resulted in a to_pe "
                     f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
                 
             return to_pe
@@ -82,7 +88,7 @@ def get_to_pe(run_id, conf, n_pmts):
                 "FIXED_TO_PE ={str(my_constant_gains): np.repeat(0.005, straxen.n_tpc_pmts)}")            
 
     else:
-        raise NotImplementedError(f"Gain model type {model_conf} not implemented")
+        raise NotImplementedError(f"To pe model type {conf} not implemented")
 
 FIXED_TO_PE = {
     'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
@@ -98,6 +104,13 @@ FIXED_TO_PE = {
 @export
 @correction_options
 def get_correction_from_cmt(run_id, conf):
+    """
+    Get correction from CMT
+    :param run_id: run id from runDB
+    :param conf: configuration 
+    :return: correction
+    """
+ 
     if isinstance(conf, str) and conf.startswith('https://raw'):
         # Legacy support for pax files
         return conf
@@ -107,14 +120,14 @@ def get_correction_from_cmt(run_id, conf):
         correction = global_version  # in case is a single value
         if 'constant' in model_conf:
             if not isinstance(global_version, (float, int)):
-                raise ValueError(f"User specify a model type {model_type} "
+                raise ValueError(f"User specify a model type {model_conf} "
                                  "and should provide a number. Got: "
                                  f"{type(global_version)}")
         else:
             cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
             correction = cmt.get_corrections_config(run_id, conf[:2])
             if correction.size == 0:
-                raise ValueError(f"Could not find a value for {model_type} "
+                raise ValueError(f"Could not find a value for {model_conf} "
                                  "please check it is implemented in CMT. "
                                  f"for nT = {is_nt}")
             if model_conf in corrections_w_file:
