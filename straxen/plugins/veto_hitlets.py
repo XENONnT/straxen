@@ -40,8 +40,8 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
-    strax.Option('gain_model_nv', default=("CMT_model", ("to_pe_model_nv", "ONLINE")),
-             help='PMT gain model. Specify as (model_type, model_config)'),
+    strax.Option('gain_model_nv', 
+             help='PMT gain model. Specify as (model_type, model_config). Default set by context'),
 )
 class nVETOHitlets(strax.Plugin):
     """
