@@ -167,7 +167,7 @@ class nVETOEventDisplay:
         """
         matrix_plot = hv.Segments(hv_point_data.data,
                                   kdims=['time', 'channel', 'endtime', 'channel']
-                                  ).opts(tools='Hover',
+                                  ).opts(tools=['hover'],
                                          aspect=4,
                                          responsive='width',
                                          )
