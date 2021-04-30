@@ -1,3 +1,14 @@
+0.18.1 / 2021-04-23
+---------------------
+- Allow faster NV/MV by bootstrax (#440)
+- Change records default processor (#441)
+- Require data to be transferred to dali to load (#445)
+- Wrap correction functions for mc optional config (#443)
+- Use did for finding several runs (#451, 59afa35)
+- Mveto events (#447)
+
+
+
 0.18.0 / 2021-04-16
 ---------------------
 - Clustering and classification update (#436)
