@@ -200,6 +200,10 @@ def xenonnt_simulation(output_folder='./strax_data'):
                     ),
         **straxen.contexts.xnt_common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
+    # Deregister NV/MV
+    for plugin in list(st._plugin_class_registry.keys()):
+        if plugin.endswith('_nv') or plugin.endswith('_mv'):
+            del st._plugin_class_registry[plugin]
     return st
 
 
@@ -389,5 +393,5 @@ def xenon1t_simulation(output_folder='./strax_data'):
             detector='XENON1T',
             **straxen.contexts.x1t_common_config),
         **straxen.contexts.common_opts)
-    st.register(wfsim.RawRecordsFromFax1T)
+    st.register([wfsim.RawRecordsFromFax1T, straxen.PeakPositions1T])
     return st
