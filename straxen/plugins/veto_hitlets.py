@@ -88,31 +88,14 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
     def compute(self, records_nv, start, end):
-        # Search again for hits in records:
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
-        # Merge concatenate overlapping  within a channel. This is important
-        # in case hits were split by record boundaries. In case we
-        # accidentally concatenate two PMT signals we split them later again.
-        hits = strax.concat_overlapping_hits(hits,
-                                             self.config['save_outside_hits_nv'],
-                                             self.channel_range,
-                                             start,
-                                             end)
-        hits = strax.sort_by_time(hits)
-
-        # Now convert hits into temp_hitlets including the data field:
-        nsamples = 200
-        if len(hits):
-            nsamples = max(hits['length'].max(), nsamples)
-
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
-    
-        # Generating hitlets and copying relevant information from hits to hitlets.
-        # These hitlets are not stored in the end since this array also contains a data
-        # field which we will drop later.
-        strax.refresh_hit_to_hitlets(hits, temp_hitlets)
+        temp_hitlets = create_hitlets_from_hits(hits,
+                                                self.config['save_outside_hits'],
+                                                self.channel_range,
+                                                chunk_start=start,
+                                                chunk_end=end)
         del hits
-        
+
         # Get hitlet data and split hitlets:
         strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
 
@@ -135,6 +118,43 @@ class nVETOHitlets(strax.Plugin):
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
         strax.copy_to_buffer(temp_hitlets, hitlets, '_copy_hitlets')
         return hitlets
+
+
+def create_hitlets_from_hits(hits,
+                             save_outside_hits,
+                             channel_range,
+                             chunk_start=0,
+                             chunk_end=np.inf,
+                             min_samples_data_field=100,):
+    """
+
+    :param hits: Hits found in records.
+    :param save_outside_hits: Tuple with left and right hit extension.
+    :param channel_range: Detectors change range from channelmap.
+    :param chunk_start: Start of the chunk or run.
+    :param chunk_end: End of the chunk or run.
+    :param min_samples_data_field: Minimal length of the hitlet data field.
+
+    :return: Hitlets with temporary fields (data, max_goodness_of_split...)
+    """
+    # Merge concatenate overlapping  within a channel. This is important
+    # in case hits were split by record boundaries. In case we
+    # accidentally concatenate two PMT signals we split them later again.
+    hits = strax.concat_overlapping_hits(hits,
+                                         save_outside_hits,
+                                         channel_range,
+                                         chunk_start,
+                                         chunk_end,)
+    hits = strax.sort_by_time(hits)
+
+    # Now convert hits into temp_hitlets including the data field:
+    nsamples = min_samples_data_field
+    if len(hits):
+        nsamples = max(hits['length'].max(), nsamples)
+
+    temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
+    strax.copy_to_buffer(hits, temp_hitlets, '_refresh_hit_to_hitlets')
+    return temp_hitlets
 
 
 @export
