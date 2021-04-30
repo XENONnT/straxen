@@ -99,11 +99,11 @@ def _test_disjoint(intervals, time, length, channel, dt):
                                  hypothesis.HealthCheck.too_slow],
           deadline=None)
 @given(create_disjoint_intervals(strax.hitlet_dtype(),
-                                 n_intervals=50,
+                                 n_intervals=7,
                                  dt=1,
-                                 time_range=(0, 1000),
-                                 channel_range=(2000, 2119),
-                                 length_range=(20, 80), ),
+                                 time_range=(0, 15),
+                                 channel_range=(2000, 2010),
+                                 length_range=(1, 4), ),
        hst.integers(1, 3),
        )
 def test_nveto_event_building(hitlets,
@@ -172,12 +172,12 @@ def _test_ambiguity(hitlets_ids_in_event):
                                  hypothesis.HealthCheck.too_slow],
           deadline=None)
 @given(create_disjoint_intervals(strax.hitlet_dtype(),
-                                 n_intervals=50,
+                                 n_intervals=7,
                                  dt=1,
-                                 time_range=(0, 1000),
-                                 channel_range=(2000, 2119),
-                                 length_range=(20, 80), ),
-       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=50),
+                                 time_range=(0, 15),
+                                 channel_range=(2000, 2010),
+                                 length_range=(1, 4), ),
+       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=7),
        )
 def test_nveto_event_plugin(hitlets, area):
     hitlets['area'] = area
