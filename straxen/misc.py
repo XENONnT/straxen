@@ -79,3 +79,16 @@ def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
                 straxen.uconfig.get(header, section) is not None)
     except NoSectionError:
         return False
+
+
+@export
+def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
+    """
+    Converts the specified array into a DataFrame drops all higher
+    dimensional fields during the process.
+
+    :param array: numpy.array to be converted.
+    :returns: DataFrame with higher dimensions dropped.
+    """
+    keys = [key for key in array.dtype.names if array[key].ndim == 1]
+    return pd.DataFrame(array[keys])

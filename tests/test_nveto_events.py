@@ -251,6 +251,14 @@ def test_nveto_event_plugin(hitlets, area):
     angle = angle % (2*np.pi)
     truth_angle = truth_angle % (2*np.pi)
 
+    # Sometimes it may happen due to numerical precision that one angle is slightly
+    # larger than 2 pi while the other is slightly smaller. In that case we have to
+    # fix it:
+    if np.isclose(angle, 2*np.pi):
+        angle -= 2*np.pi
+    if np.isclose(truth_angle, 2*np.pi):
+        truth_angle -= 2*np.pi
+
     # Compare angle, also indirectly tests average x/y/z
     mes = f'Event angle did not match expected {truth_angle}, got {angle}.'
     assert np.isclose(angle, truth_angle), mes
