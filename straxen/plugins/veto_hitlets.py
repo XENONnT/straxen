@@ -90,7 +90,7 @@ class nVETOHitlets(strax.Plugin):
     def compute(self, records_nv, start, end):
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
         temp_hitlets = create_hitlets_from_hits(hits,
-                                                self.config['save_outside_hits'],
+                                                self.config['save_outside_hits_nv'],
                                                 self.channel_range,
                                                 chunk_start=start,
                                                 chunk_end=end)
