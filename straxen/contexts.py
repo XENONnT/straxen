@@ -200,10 +200,6 @@ def xenonnt_simulation(output_folder='./strax_data'):
                     ),
         **straxen.contexts.xnt_common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
-    # Deregister NV/MV
-    for plugin in list(st._plugin_class_registry.keys()):
-        if plugin.endswith('_nv') or plugin.endswith('_mv'):
-            del st._plugin_class_registry[plugin]
     return st
 
 
