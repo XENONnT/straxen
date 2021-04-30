@@ -149,19 +149,29 @@ class nVETOEventDisplay:
         if not _hitlet_points:
             _hitlet_points = self.hitlets_to_hv_points(hitlets, )
 
-        hitlet_matrix = plot_record_polygons(_hitlet_points,
-                                             center_time=False,
-                                             scaling=1
-                                             ).opts(title='Hitlet Matrix',
-                                                    xlabel='Time [ns]',
-                                                    ylabel='PMT channel',
-                                                    aspect=None, height=300,
-                                                    tools=['hover'],
-                                                    colorbar=True,
-                                                    clabel='Area [pe]',
-                                                    ylim=(1995, 2125)
-                                                    )
+        hitlet_matrix = self._plot_base_matrix(_hitlet_points).opts(title='Hitlet Matrix',
+                                                                    xlabel='Time [ns]',
+                                                                    ylabel='PMT channel',
+                                                                    ylim=(1995, 2125),
+                                                                    color='area',
+                                                                    clabel='Area [pe]',
+                                                                    cmap='viridis',
+                                                                    colorbar=True
+                                                                    )
         return hitlet_matrix
+
+    @staticmethod
+    def _plot_base_matrix(hv_point_data):
+        """
+        Base function to plot record or hitlet matrix.
+        """
+        matrix_plot = hv.Segments(hv_point_data.data,
+                                  kdims=['time', 'channel', 'endtime', 'channel']
+                                  ).opts(tools='Hover',
+                                         aspect=4,
+                                         responsive='width',
+                                         )
+        return matrix_plot
 
     def plot_nveto(self,
                    hitlets,
@@ -324,6 +334,7 @@ class nVETOEventDisplay:
                             t_ref,
                             unit_conversion=1)
         hitlets['time'] = time
+        hitlets['endtime'] = strax.endtime(hitlets.to_records())
 
         hitlet_points = hv.Points(hitlets)
 
