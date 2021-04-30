@@ -2,12 +2,41 @@ import numpy as np
 import strax
 import straxen
 from warnings import warn
+from functools import wraps
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
 
 
+def correction_options(get_correction_function):
+    """
+    A wrapper function for functions here in the get_corrections module
+    Search for special options like ["MC", ] and apply arg shuffling accordingly
+    Example: get_to_pe(
+        run_id, ('MC', cmt_run_id, 'CMT_model', ('to_pe_model', 'ONLINE')), n_tpc_pmts])
+
+    :param get_correction_function: A function here in the get_corrections module
+    :returns: The function wrapped with the option search
+    """
+    @wraps(get_correction_function)
+    def correction_options_wrapped(run_id, conf, *arg):
+        if isinstance(conf, tuple):
+            # MC chain simulation can put run_id inside configuration
+            if 'MC' in conf:
+                tag, cmt_run_id, *conf = conf
+                if tag != 'MC':
+                    raise ValueError('Get corrections require input in the from of tuple '
+                                     '("MC", run_id, *conf) when "MC" option is invoked')
+                return get_correction_function(cmt_run_id, tuple(conf), *arg)
+
+        # Else use the get corrections as they are
+        return get_correction_function(run_id, conf, *arg)
+
+    return correction_options_wrapped
+
+
 @export
+@correction_options
 def get_to_pe(run_id, gain_model, n_pmts):
     if not isinstance(gain_model, tuple):
         raise ValueError(f"gain_model must be a tuple")
@@ -83,6 +112,7 @@ FIXED_TO_PE = {
 
 
 @export
+@correction_options
 def get_correction_from_cmt(run_id, conf):
     if isinstance(conf, str) and conf.startswith('https://raw'):
         # Legacy support for pax files
@@ -118,6 +148,7 @@ def get_correction_from_cmt(run_id, conf):
 
 
 @export
+@correction_options
 def get_config_from_cmt(run_id, conf):
     if isinstance(conf, str) and conf.startswith('https://raw'):
         # Legacy support for pax files
