@@ -33,11 +33,6 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
             for i, x in enumerate(row.values.tolist())]) + ' |\n'
     return table
 
-def _force_int(df, columns):
-    for c in strax.to_str_tuple(columns):
-        df[c] = df[c].values.astype(np.int64)
-    return df
-
 
 @export
 def print_versions(modules=('strax', 'straxen'), return_string=False):
