@@ -387,7 +387,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config='fax_config_1t.json',
             detector='XENON1T',
-            **straxen.contexts.x1t_common_config),
-        **straxen.contexts.common_opts)
+            **x1t_common_config),
+        **x1t_context_config)
     st.register(wfsim.RawRecordsFromFax1T)
     return st
