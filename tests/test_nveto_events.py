@@ -99,11 +99,11 @@ def _test_disjoint(intervals, time, length, channel, dt):
                                  hypothesis.HealthCheck.too_slow],
           deadline=None)
 @given(create_disjoint_intervals(strax.hitlet_dtype(),
-                                 n_intervals=50,
+                                 n_intervals=7,
                                  dt=1,
-                                 time_range=(0, 1000),
-                                 channel_range=(2000, 2119),
-                                 length_range=(20, 80), ),
+                                 time_range=(0, 15),
+                                 channel_range=(2000, 2010),
+                                 length_range=(1, 4), ),
        hst.integers(1, 3),
        )
 def test_nveto_event_building(hitlets,
@@ -172,12 +172,12 @@ def _test_ambiguity(hitlets_ids_in_event):
                                  hypothesis.HealthCheck.too_slow],
           deadline=None)
 @given(create_disjoint_intervals(strax.hitlet_dtype(),
-                                 n_intervals=50,
+                                 n_intervals=7,
                                  dt=1,
-                                 time_range=(0, 1000),
-                                 channel_range=(2000, 2119),
-                                 length_range=(20, 80), ),
-       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=50),
+                                 time_range=(0, 15),
+                                 channel_range=(2000, 2010),
+                                 length_range=(1, 4), ),
+       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=7),
        )
 def test_nveto_event_plugin(hitlets, area):
     hitlets['area'] = area
@@ -250,6 +250,14 @@ def test_nveto_event_plugin(hitlets, area):
     # issue.
     angle = angle % (2*np.pi)
     truth_angle = truth_angle % (2*np.pi)
+
+    # Sometimes it may happen due to numerical precision that one angle is slightly
+    # larger than 2 pi while the other is slightly smaller. In that case we have to
+    # fix it:
+    if np.isclose(angle, 2*np.pi):
+        angle -= 2*np.pi
+    if np.isclose(truth_angle, 2*np.pi):
+        truth_angle -= 2*np.pi
 
     # Compare angle, also indirectly tests average x/y/z
     mes = f'Event angle did not match expected {truth_angle}, got {angle}.'

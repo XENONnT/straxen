@@ -29,9 +29,8 @@ export, __all__ = strax.exporter()
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
-    # TODO, should be True but need to check.
     strax.Option('check_raw_record_overlaps_nv',
-                 default=False, track=False,
+                 default=True, track=False,
                  help='Crash if any of the pulses in raw_records overlap with others '
                       'in the same channel'),
 )
