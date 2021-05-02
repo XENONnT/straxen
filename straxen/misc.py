@@ -216,4 +216,3 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
-
