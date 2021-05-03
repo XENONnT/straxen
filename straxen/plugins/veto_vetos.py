@@ -27,9 +27,9 @@ export, __all__ = strax.exporter()
 )
 class nVETOveto(strax.OverlapWindowPlugin):
     """
-    This is a default plugin, like used by many plugins in straxen. It
-    takes hitlets and multipliers their area with a user defined
-    multiplier.
+    Plugin which defines the time intervals in which peaks should be
+    tagged as vetoed. An event must surpass all three criteria to trigger
+    a veto.
     """
     __version__ = '0.0.1'
 
@@ -42,9 +42,7 @@ class nVETOveto(strax.OverlapWindowPlugin):
     ends_with = '_nv'
 
     def get_window_size(self):
-        # Take a large window for safety, events can be ~500 ns large
-        return 10 * (self.config['veto_left_nv']
-                     + self.config['veto_right_nv'])
+        return 10 * (self.config['veto_left_nv'] + self.config['veto_right_nv'])
 
     def compute(self, events_nv, start, end):
         vetos = create_veto_intervals(events_nv,
@@ -142,11 +140,7 @@ def _create_veto_intervals(events,
         help='Veto time in ns right to the end of a vetoing event.'),
 )
 class muVETOveto(nVETOveto):
-    """
-    This is a default plugin, like used by many plugins in straxen. It
-    takes hitlets and multipliers their area with a user defined
-    multiplier.
-    """
+    __doc__ = straxen.plugins.veto_hitlets.MV_PREAMBLE + nVETOveto.__doc__
     __version__ = '0.0.1'
 
     depends_on = 'events_mv'
@@ -158,9 +152,7 @@ class muVETOveto(nVETOveto):
     ends_with = '_mv'
 
     def get_window_size(self):
-        # Take a large window for safety, events can be ~500 ns large
-        return 10 * (self.config['veto_left_mv']
-                     + self.config['veto_right_mv'])
+        return 10 * (self.config['veto_left_mv'] + self.config['veto_right_mv'])
 
     def compute(self, events_mv, start, end):
         return super().compue(events_mv, start, end)
