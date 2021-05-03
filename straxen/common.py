@@ -8,6 +8,7 @@ import json
 import os
 import os.path as osp
 import pickle
+import dill
 import socket
 import sys
 import tarfile
@@ -105,10 +106,16 @@ def open_resource(file_name: str, fmt='text'):
             result = result_slurped
     elif fmt == 'pkl':
         with open(file_name, 'rb') as f:
-            result = pickle.load(f)
+            result = pickle.load(f)  # nosec
     elif fmt == 'pkl.gz':
         with gzip.open(file_name, 'rb') as f:
-            result = pickle.load(f)
+            result = pickle.load(f)  # nosec
+    elif fmt == 'dill':
+        with open(file_name, 'rb') as f:
+            result = dill.load(f)  # nosec
+    elif fmt == 'dill.gz':
+        with gzip.open(file_name, 'rb') as f:
+            result = dill.load(f)  # nosec
     elif fmt == 'json.gz':
         with gzip.open(file_name, 'rb') as f:
             result = json.load(f)
