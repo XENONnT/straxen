@@ -89,7 +89,7 @@ def create_veto_intervals(events,
                                  left_extension,
                                  right_extension,
                                  res, )
-    res = merge_intervals(res)
+    res = straxen.merge_intervals(res)
 
     return res
 
@@ -116,42 +116,3 @@ def _create_veto_intervals(events,
         offset += 1
     return res[:offset]
 
-
-def merge_intervals(intervals):
-    """
-    Function which merges overlapping intervals into a single one.
-    """
-    res = np.zeros(len(intervals), dtype=strax.time_fields)
-    res = _merge_intervals(intervals['time'],
-                           intervals['endtime'],
-                           res)
-    return res
-
-
-@numba.njit(cache=True, nogil=True)
-def _merge_intervals(start, end, res):
-    offset = 0
-
-    int_s = start[0]
-    int_e = end[0]
-    for s, e in zip(start[1:], end[1:]):
-        if int_e >= s:
-            # Interval overlaps, updated only end:
-            int_e = e
-            continue
-
-        # Intervals do not overlap, save interval:
-        res[offset]['time'] = int_s
-        res[offset]['endtime'] = int_e
-        offset += 1
-
-        # New interval:
-        int_s = s
-        int_e = e
-
-    # Save last interval:
-    res[offset]['time'] = int_s
-    res[offset]['endtime'] = int_e
-    offset += 1
-
-    return res[:offset]
