@@ -420,26 +420,26 @@ def merge_intervals(intervals):
 def _merge_intervals(start, end, res):
     offset = 0
 
-    int_s = start[0]
-    int_e = end[0]
-    for s, e in zip(start[1:], end[1:]):
-        if int_e >= s:
+    interval_start = start[0]
+    interval_end = end[0]
+    for next_interval_start, next_interval_end in zip(start[1:], end[1:]):
+        if interval_end >= next_interval_start:
             # Interval overlaps, updated only end:
-            int_e = e
+            interval_end = next_interval_end
             continue
 
         # Intervals do not overlap, save interval:
-        res[offset]['time'] = int_s
-        res[offset]['endtime'] = int_e
+        res[offset]['time'] = interval_start
+        res[offset]['endtime'] = interval_end
         offset += 1
 
         # New interval:
-        int_s = s
-        int_e = e
+        interval_start = next_interval_start
+        interval_end = next_interval_end
 
     # Save last interval:
-    res[offset]['time'] = int_s
-    res[offset]['endtime'] = int_e
+    res[offset]['time'] = interval_start
+    res[offset]['endtime'] = interval_end
     offset += 1
 
     return res[:offset]
