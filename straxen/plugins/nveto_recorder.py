@@ -407,10 +407,14 @@ def _coincidence(rr, nfold=4, resolving_time=300):
 def merge_intervals(intervals):
     """
     Function which merges overlapping intervals into a single one.
+
+    :param intervals: Any numpy array with strax time fields.
+    :returns: New intervals with time and endtime according to the
+        overlapping intervals.
     """
     res = np.zeros(len(intervals), dtype=strax.time_fields)
     res = _merge_intervals(intervals['time'],
-                           intervals['endtime'],
+                           strax.endtime(intervals),
                            res)
     return res
 
