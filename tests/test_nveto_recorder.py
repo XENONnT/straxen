@@ -54,22 +54,22 @@ class TestCoincidence(unittest.TestCase):
 
     def test_empty_inputs(self):
         intervals = np.zeros(0, dtype=strax.time_fields)
-        intervals = straxen.coincidence(intervals)
+        intervals = straxen.find_coincidence(intervals)
         assert len(intervals) == 0, 'Empty input should return empty intervals!'
 
     def test_without_coincidence(self):
-        coincidence = straxen.coincidence(self.intervals, nfold=1, resolving_time=10, pre_trigger=0)
+        coincidence = straxen.find_coincidence(self.intervals, nfold=1, resolving_time=10, pre_trigger=0)
         assert len(coincidence) == 2, 'Have not found the correct number of coincidences'
         assert np.all(coincidence['time'] == (3, 38)), 'Coincidence does not have the correct time'
         assert np.all(coincidence['endtime'] == (19, 48)), 'Coincidence doe snot have the correct time'
 
     def test_coincidence(self):
-        coincidence = straxen.coincidence(self.intervals, nfold=3, resolving_time=10, pre_trigger=0)
+        coincidence = straxen.find_coincidence(self.intervals, nfold=3, resolving_time=10, pre_trigger=0)
         assert len(coincidence) == 1, 'Have not found the correct number of coincidences'
         assert coincidence['time'] == 3, 'Coincidence does not have the correct time'
         assert coincidence['endtime'] == 13, 'Coincidence doe snot have the correct time'
 
-        coincidence = straxen.coincidence(self.intervals, nfold=3, resolving_time=10, pre_trigger=2)
+        coincidence = straxen.find_coincidence(self.intervals, nfold=3, resolving_time=10, pre_trigger=2)
         assert len(coincidence) == 1, 'Have not found the correct number of coincidences'
         assert coincidence['time'] == 1, 'Coincidence does not have the correct time'
         assert coincidence['endtime'] == 13, 'Coincidence doe snot have the correct time'

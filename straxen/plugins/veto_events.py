@@ -156,12 +156,12 @@ def find_veto_events(hitlets: np.ndarray,
     :returns: events, hitelt_ids_per_event
     """
     # Find intervals which satisfy requirement:
-    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets,
-                                                           coincidence_level,
-                                                           resolving_time,
-                                                           left_extension,
+    intervals = straxen.plugins.nveto_recorder.find_coincidence(hitlets,
+                                                                coincidence_level,
+                                                                resolving_time,
+                                                                left_extension,
 
-                                                           )
+                                                                )
 
     # Create some preliminary events:
     event_intervals = np.zeros(len(intervals),

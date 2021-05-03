@@ -108,10 +108,10 @@ class nVETORecorder(strax.Plugin):
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
-        intervals = coincidence(hits,
-                                self.config['coincidence_level_recorder_nv'],
-                                self.config['resolving_time_recorder_nv'],
-                                self.config['pre_trigger_time_nv'])
+        intervals = find_coincidence(hits,
+                                     self.config['coincidence_level_recorder_nv'],
+                                     self.config['resolving_time_recorder_nv'],
+                                     self.config['pre_trigger_time_nv'])
         del hits
 
         # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
@@ -334,7 +334,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
 
 @export
-def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
+def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
     """
     Checks if n-neighboring events are less apart from each other then
     the specified resolving time.

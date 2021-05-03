@@ -114,9 +114,9 @@ def test_nveto_event_building(hitlets,
     """
     hitlets = strax.sort_by_time(hitlets)
 
-    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets,
-                                                           coincidence,
-                                                           300)
+    intervals = straxen.plugins.nveto_recorder.find_coincidence(hitlets,
+                                                                coincidence,
+                                                                300)
 
     # Create event_intervals:
     event_intervals = np.zeros(len(intervals),
