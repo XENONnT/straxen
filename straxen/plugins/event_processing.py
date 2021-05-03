@@ -353,10 +353,9 @@ class EventPositions(strax.Plugin):
         is_CMT = isinstance(self.config['fdc_map'], tuple)
         self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         if is_CMT:
-            is_nt = self.config['fdc_map'][-1]
-            conf = self.config['fdc_map'][:2]
-            map_algo = (f'{conf[0]}_{self.config["default_reconstruction_algorithm"]}')
-            cmt_conf = map_algo, conf[1], is_nt
+            config_name, cmt_version, is_nt = self.config['fdc_map']
+            map_algo = f'{config_name}_{self.config["default_reconstruction_algorithm"]}'
+            cmt_conf = map_algo, cmt_version, is_nt
             self.map = InterpolatingMap(
                 get_resource(get_correction_from_cmt(self.run_id, cmt_conf), fmt='binary'))
             self.map.scale_coordinates([1., 1., -self.electron_drift_velocity])
@@ -452,10 +451,9 @@ class CorrectedAreas(strax.Plugin):
     def setup(self):
         is_CMT = isinstance(self.config['s1_xyz_correction_map'], tuple)
         if is_CMT:
-            is_nt = self.config['s1_xyz_correction_map'][-1]
-            conf = self.config['s1_xyz_correction_map'][:2]
-            map_algo = (f'{conf[0]}_{self.config["default_reconstruction_algorithm"]}')
-            cmt_conf = map_algo, conf[1], is_nt
+            config_name, cmt_version, is_nt = self.config['s1_xyz_correction_map']
+            map_algo = f'{config_name}_{self.config["default_reconstruction_algorithm"]}'
+            cmt_conf = map_algo, cmt_version, is_nt
             self.s1_map = InterpolatingMap(get_resource(get_correction_from_cmt(self.run_id, cmt_conf)))
         else:
             self.s1_map = InterpolatingMap(
