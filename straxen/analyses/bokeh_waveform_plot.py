@@ -206,7 +206,7 @@ def event_display_interactive(events,
                                                                  tools=[],
                                                                  )
         # Create record polygons:
-        polys = plot_record_polygons(record_points, width=1.1)
+        polys = plot_record_polygons(record_points)
         records_in_window = polys.apply(get_records_matrix_in_window,
                                         streams=[time_stream],
                                         time_slice=plot_records_threshold)

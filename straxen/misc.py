@@ -33,11 +33,6 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
             for i, x in enumerate(row.values.tolist())]) + ' |\n'
     return table
 
-def _force_int(df, columns):
-    for c in strax.to_str_tuple(columns):
-        df[c] = df[c].values.astype(np.int64)
-    return df
-
 
 @export
 def print_versions(modules=('strax', 'straxen'), return_string=False):
@@ -79,3 +74,16 @@ def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
                 straxen.uconfig.get(header, section) is not None)
     except NoSectionError:
         return False
+
+
+@export
+def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
+    """
+    Converts the specified array into a DataFrame drops all higher
+    dimensional fields during the process.
+
+    :param array: numpy.array to be converted.
+    :returns: DataFrame with higher dimensions dropped.
+    """
+    keys = [key for key in array.dtype.names if array[key].ndim == 1]
+    return pd.DataFrame(array[keys])

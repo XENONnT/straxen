@@ -40,7 +40,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
-    strax.Option('gain_model_nv',
+    strax.Option('gain_model_nv', default=("CMT_model", ("to_pe_model_nv", "ONLINE")),
              help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class nVETOHitlets(strax.Plugin):
@@ -88,33 +88,16 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
     def compute(self, records_nv, start, end):
-        # Search again for hits in records:
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
-        # Merge concatenate overlapping  within a channel. This is important
-        # in case hits were split by record boundaries. In case we
-        # accidentally concatenate two PMT signals we split them later again.
-        hits = strax.concat_overlapping_hits(hits,
-                                             self.config['save_outside_hits_nv'],
-                                             self.channel_range,
-                                             start,
-                                             end)
-        hits = strax.sort_by_time(hits)
-
-        # Now convert hits into temp_hitlets including the data field:
-        nsamples = 200
-        if len(hits):
-            nsamples = max(hits['length'].max(), nsamples)
-
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
-    
-        # Generating hitlets and copying relevant information from hits to hitlets.
-        # These hitlets are not stored in the end since this array also contains a data
-        # field which we will drop later.
-        strax.refresh_hit_to_hitlets(hits, temp_hitlets)
+        temp_hitlets = strax.create_hitlets_from_hits(hits,
+                                                      self.config['save_outside_hits_nv'],
+                                                      self.channel_range,
+                                                      chunk_start=start,
+                                                      chunk_end=end)
         del hits
-        
+
         # Get hitlet data and split hitlets:
-        strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
+        temp_hitlets = strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
 
         temp_hitlets = strax.split_peaks(temp_hitlets,
                                          records_nv,
@@ -171,9 +154,9 @@ class nVETOHitlets(strax.Plugin):
         default=False, track=True,
         child_option=True, parent_option_name='entropy_square_data_nv',
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
-    strax.Option('gain_model_mv',
+    strax.Option('gain_model_mv', default=("to_pe_constant", "adc_mv"),
                  child_option=True, parent_option_name='gain_model_nv',
-             help='PMT gain model. Specify as (model_type, model_config)'),
+                 help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOHitlets(nVETOHitlets):
     __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
