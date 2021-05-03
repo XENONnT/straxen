@@ -17,8 +17,6 @@ export, __all__ = strax.exporter()
                  help="Resolving time for fixed window coincidence [ns]."),
     strax.Option('event_min_hits_nv', default=3,
                  help="Minimum number of fully confined hitlets to define an event."),
-    strax.Option('gain_model_nv', default=("CMT_model", ("to_pe_model_nv", "ONLINE")),
-                 help='PMT gain model. Specify as (model_type, model_config)'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
@@ -44,11 +42,6 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         self.channel_range = self.config['channel_map']['nveto']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_event_dtype(self.name_event_number, self.n_channel)
-
-    def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model_nv'],
-                                       self.n_channel)
 
     def get_window_size(self):
         return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
@@ -437,9 +430,6 @@ def first_hitlets(hitlets_per_event: np.ndarray,
     strax.Option('event_min_hits_mv', default=3,
                  child_option=True, parent_option_name='event_min_hits_nv',
                  help="Minimum number of fully confined hitlets to define an event."),
-    strax.Option('gain_model_mv', default=("to_pe_constant", "adc_mv"),
-                 child_option=True, parent_option_name='gain_model_nv',
-                 help='PMT gain model. Specify as (model_type, model_config)'),
 )
 class muVETOEvents(nVETOEvents):
     """Plugin which computes the boundaries of veto events.
@@ -462,11 +452,6 @@ class muVETOEvents(nVETOEvents):
         self.channel_range = self.config['channel_map']['mv']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_event_dtype(self.name_event_number, self.n_channel)
-
-    def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model_mv'],
-                                       self.n_channel)
 
     def get_window_size(self):
         return self.config['event_left_extension_mv'] + self.config['event_resolving_time_mv'] + 1
