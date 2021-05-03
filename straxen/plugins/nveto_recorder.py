@@ -446,4 +446,3 @@ def _merge_intervals(start, end, res):
     offset += 1
 
     return res[:offset]
-
