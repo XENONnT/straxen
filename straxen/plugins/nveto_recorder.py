@@ -364,7 +364,6 @@ def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
         intervals['endtime'] = start_times + resolving_time
         intervals = merge_intervals(intervals)
     else:
-        #TODO still needed?
         intervals = np.zeros(0, dtype=strax.time_fields)
     return intervals
 
@@ -388,7 +387,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     t_diff = np.diff(start_times, prepend=start_times[0])
 
     # 2. Now we have to check if n-events are within resolving time:
-    #   -> use moving average with size n to accumulate time between n-pulses
+    #   -> use moving sum with size n to accumulate time between n-pulses
     #   -> check if accumulated time is below resolving time
 
     # generate kernel:
