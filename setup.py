@@ -51,7 +51,7 @@ setuptools.setup(name='straxen',
                           'bin/refresh_raw_records'],
                  packages=setuptools.find_packages(),
                  classifiers=[
-                     'Development Status :: 5 - Production/Stable,
+                     'Development Status :: 5 - Production/Stable',
                      'License :: OSI Approved :: BSD License',
                      'Natural Language :: English',
                      'Programming Language :: Python :: 3.6',
