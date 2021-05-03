@@ -46,18 +46,7 @@ def get_to_pe(run_id, conf, n_pmts):
     :n_pmts: number of PMTs
     :return: array of to_pe values
     """
-    if isinstance(conf, str) and conf.startswith('https://raw'):
-        # Legacy support for pax files
-        x = straxen.get_resource(conf, fmt='npy')
-        run_index = np.where(x['run_id'] == int(run_id))[0]
-        if not len(run_index):
-            # Electron lifetime not known: using placeholders
-            e = 623e3
-        else:
-            e = x[run_index[0]]['e_life']
-        return float(e)
-
-    elif isinstance(conf, tuple) and len(conf) == 3:
+    if isinstance(conf, tuple) and len(conf) == 3:
         is_nt = conf[-1]
         model_conf, global_version = conf[:2]
         if 'to_pe_model' in model_conf:
