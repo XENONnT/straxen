@@ -120,23 +120,23 @@ def _create_veto_intervals(events,
 
 @strax.takes_config(
     strax.Option(
-        'min_veto_area_mv', default=5, type=float, track=True,
+        'min_veto_area_mv', default=10, type=float, track=True,
         child_option=True,
         help='Minimal area required in pe to trigger veto.'),
     strax.Option(
-        'min_veto_hits_mv', default=10, type=int, track=True,
+        'min_veto_hits_mv', default=0, type=int, track=True,
         child_option=True,
         help='Minimal number of hitlets in event to trigger veto.'),
     strax.Option(
-        'min_veto_channel_mv', default=0, type=int, track=True,
+        'min_veto_channel_mv', default=8, type=int, track=True,
         child_option=True,
         help='Minimal number PMT channel contributing to the event.'),
     strax.Option(
-        'veto_left_mv', default=500_000, type=int, track=True,
+        'veto_left_mv', default=500, type=int, track=True,
         child_option=True,
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
-        'veto_right_mv', default=0, type=int, track=True,
+        'veto_right_mv', default=500, type=int, track=True,
         child_option=True,
         help='Veto time in ns right to the end of a vetoing event.'),
 )
