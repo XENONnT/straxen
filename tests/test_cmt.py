@@ -83,7 +83,7 @@ def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
         assert isinstance(correction, np.ndarray)
     else:
         correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
-        assert isinstance(correction, str) or isinstance(correction, float) or isinstance(correction, int) 
+        assert isinstance(correction, (float, int, str))
 
 def test_mc_wrapper_elife(run_id='009000',
                           cmt_id='016000',
