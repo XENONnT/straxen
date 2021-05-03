@@ -38,6 +38,7 @@ class nVETOveto(strax.OverlapWindowPlugin):
     data_kind = 'veto_nv'
 
     dtype = strax.time_fields
+    ends_with = '_nv'
 
     def get_window_size(self):
         # Take a large window for safety, events can be ~500 ns large
@@ -117,3 +118,47 @@ def _create_veto_intervals(events,
         offset += 1
     return res[:offset]
 
+@strax.takes_config(
+    strax.Option(
+        'min_veto_area_mv', default=5, type=float, track=True,
+        child_option=True,
+        help='Minimal area required in pe to trigger veto.'),
+    strax.Option(
+        'min_veto_hits_mv', default=10, type=int, track=True,
+        child_option=True,
+        help='Minimal number of hitlets in event to trigger veto.'),
+    strax.Option(
+        'min_veto_channel_mv', default=0, type=int, track=True,
+        child_option=True,
+        help='Minimal number PMT channel contributing to the event.'),
+    strax.Option(
+        'veto_left_mv', default=500_000, type=int, track=True,
+        child_option=True,
+        help='Veto time in ns left t the start of a vetoing event.'),
+    strax.Option(
+        'veto_right_mv', default=0, type=int, track=True,
+        child_option=True,
+        help='Veto time in ns right to the end of a vetoing event.'),
+)
+class muVETOveto(nVETOveto):
+    """
+    This is a default plugin, like used by many plugins in straxen. It
+    takes hitlets and multipliers their area with a user defined
+    multiplier.
+    """
+    __version__ = '0.0.1'
+
+    depends_on = 'events_mv'
+    provides = 'veto_mv'
+    data_kind = 'veto_mv'
+
+    dtype = strax.time_fields
+    ends_with = '_mv'
+
+    def get_window_size(self):
+        # Take a large window for safety, events can be ~500 ns large
+        return 10 * (self.config['veto_left_mv']
+                     + self.config['veto_right_mv'])
+
+    def compute(self, events_mv, start, end):
+        return super().compue(events_mv, start, end)
