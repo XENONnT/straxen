@@ -117,6 +117,7 @@ def _create_veto_intervals(events,
         offset += 1
     return res[:offset]
 
+
 @strax.takes_config(
     strax.Option(
         'min_veto_area_mv', default=10, type=float, track=True,

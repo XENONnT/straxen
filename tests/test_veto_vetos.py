@@ -1,8 +1,8 @@
-import strax
 import straxen
 
 import numpy as np
 import unittest
+
 
 class TestCreateVetoIntervals(unittest.TestCase):
     def setUp(self):
@@ -51,10 +51,9 @@ class TestCreateVetoIntervals(unittest.TestCase):
         events['n_hits'] = 1
         events['n_contributing_pmt'] = 1
 
-        self._test_threshold_type(events, 'area', 'min_area',  2)
+        self._test_threshold_type(events, 'area', 'min_area', 2)
         self._test_threshold_type(events, 'n_hits', 'min_hits', 2)
         self._test_threshold_type(events, 'n_contributing_pmt', 'min_contributing_channels', 2)
-
 
     @staticmethod
     def _test_threshold_type(events, field, threshold_type, threshold):
