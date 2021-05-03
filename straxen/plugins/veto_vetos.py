@@ -36,6 +36,7 @@ class nVETOveto(strax.OverlapWindowPlugin):
     depends_on = 'events_nv'
     provides = 'veto_nv'
     data_kind = 'veto_nv'
+    save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
     ends_with = '_nv'
@@ -151,6 +152,7 @@ class muVETOveto(nVETOveto):
     depends_on = 'events_mv'
     provides = 'veto_mv'
     data_kind = 'veto_mv'
+    save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
     ends_with = '_mv'
