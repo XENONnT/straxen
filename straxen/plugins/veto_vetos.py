@@ -129,15 +129,15 @@ def _create_veto_intervals(events,
         child_option=True,
         help='Minimal number of hitlets in event to trigger veto.'),
     strax.Option(
-        'min_veto_channel_mv', default=8, type=int, track=True,
+        'min_veto_channel_mv', default=5, type=int, track=True,
         child_option=True,
         help='Minimal number PMT channel contributing to the event.'),
     strax.Option(
-        'veto_left_mv', default=500, type=int, track=True,
+        'veto_left_mv', default=0, type=int, track=True,
         child_option=True,
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
-        'veto_right_mv', default=500, type=int, track=True,
+        'veto_right_mv', default=1_000, type=int, track=True,
         child_option=True,
         help='Veto time in ns right to the end of a vetoing event.'),
 )
