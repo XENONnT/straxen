@@ -122,23 +122,23 @@ def _create_veto_intervals(events,
 @strax.takes_config(
     strax.Option(
         'min_veto_area_mv', default=10, type=float, track=True,
-        child_option=True,
+        child_option=True, parent_option_name='min_veto_area_nv',
         help='Minimal area required in pe to trigger veto.'),
     strax.Option(
         'min_veto_hits_mv', default=0, type=int, track=True,
-        child_option=True,
+        child_option=True, parent_option_name='min_veto_hits_nv',
         help='Minimal number of hitlets in event to trigger veto.'),
     strax.Option(
         'min_veto_channel_mv', default=5, type=int, track=True,
-        child_option=True,
+        child_option=True, parent_option_name='min_veto_channel_nv',
         help='Minimal number PMT channel contributing to the event.'),
     strax.Option(
         'veto_left_mv', default=0, type=int, track=True,
-        child_option=True,
+        child_option=True, parent_option_name='veto_left_nv',
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
         'veto_right_mv', default=1_000, type=int, track=True,
-        child_option=True,
+        child_option=True, parent_option_name='veto_right_nv',
         help='Veto time in ns right to the end of a vetoing event.'),
 )
 class muVETOveto(nVETOveto):
