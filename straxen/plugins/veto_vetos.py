@@ -6,6 +6,7 @@ import numba
 
 export, __all__ = strax.exporter()
 
+MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
 
 @export
 @strax.takes_config(
@@ -141,7 +142,7 @@ def _create_veto_intervals(events,
         help='Veto time in ns right to the end of a vetoing event.'),
 )
 class muVETOveto(nVETOveto):
-    __doc__ = straxen.plugins.veto_hitlets.MV_PREAMBLE + nVETOveto.__doc__
+    __doc__ = MV_PREAMBLE + nVETOveto.__doc__
     __version__ = '0.0.1'
 
     depends_on = 'events_mv'
