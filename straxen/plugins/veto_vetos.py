@@ -19,10 +19,10 @@ export, __all__ = strax.exporter()
         'min_veto_channel_nv', default=0, type=int, track=True,
         help='Minimal number PMT channel contributing to the event.'),
     strax.Option(
-        'veto_left_nv', default=1_000_000, type=int, track=True,
+        'veto_left_nv', default=500_000, type=int, track=True,
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
-        'veto_right_nv', default=2_600_000, type=int, track=True,
+        'veto_right_nv', default=0, type=int, track=True,
         help='Veto time in ns right to the end of a vetoing event.'),
 )
 class nVETOveto(strax.OverlapWindowPlugin):
