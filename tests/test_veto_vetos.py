@@ -47,6 +47,9 @@ class TestCreateVetoIntervals(unittest.TestCase):
         events = np.zeros(1, dtype=self.dtype)
         events['time'] = 2
         events['endtime'] = 3
+        events['area'] = 1
+        events['n_hits'] = 1
+        events['n_contributing_pmt'] = 1
 
         self._test_threshold_type(events, 'area', 'min_area',  2)
         self._test_threshold_type(events, 'n_hits', 'min_hits', 2)
@@ -73,4 +76,4 @@ class TestCreateVetoIntervals(unittest.TestCase):
                                                                  left_extension=0,
                                                                  right_extension=0)
         assert len(vetos) == 1, f'{threshold_type} threshold did not work, have a wrong number of vetos!'
-        events[field] = 0
+        events[field] = 1

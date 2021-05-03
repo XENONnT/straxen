@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 @export
 @strax.takes_config(
     strax.Option(
-        'min_veto_area_nv', default=10, type=float, track=True,
+        'min_veto_area_nv', default=5, type=float, track=True,
         help='Minimal area required in pe to trigger veto.'),
     strax.Option(
         'min_veto_hits_nv', default=10, type=int, track=True,
@@ -48,6 +48,7 @@ class nVETOveto(strax.OverlapWindowPlugin):
         vetos = create_veto_intervals(events_nv,
                                       self.config['min_veto_area_nv'],
                                       self.config['min_veto_hits_nv'],
+                                      self.config['min_veto_channel_nv'],
                                       self.config['veto_left_nv'],
                                       self.config['veto_right_nv'])
 
@@ -106,8 +107,8 @@ def _create_veto_intervals(events,
 
     for ev in events:
         satisfies_veto_trigger = (ev['area'] >= min_area
-                                  or ev['n_hits'] >= min_hits
-                                  or ev['n_contributing_pmt'] >= min_contributing_channels)
+                                  and ev['n_hits'] >= min_hits
+                                  and ev['n_contributing_pmt'] >= min_contributing_channels)
         if not satisfies_veto_trigger:
             continue
 
