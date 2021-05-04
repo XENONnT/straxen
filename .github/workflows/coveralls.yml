@@ -45,7 +45,6 @@ jobs:
         SCADA_URL: ${{ secrets.SCADA_URL }}
         SCADA_VALUE_URL: ${{ secrets.SCADA_VALUE_URL }}
         SCADA_USER: ${{ secrets.SCADA_USER }}
-        SCADA_KEY: ${{ secrets.SCADA_KEY }}
         SCADA_LOGIN_URL: $ {{ secrets.SCADA_LOGIN_URL }}
         SCADA_PWD:  $ {{ secrets.SCADA_PWD }}
     - name: Coveralls
