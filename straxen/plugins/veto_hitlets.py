@@ -131,7 +131,7 @@ def remove_switched_off_channels(hits, to_pe):
     channel_off = np.argwhere(to_pe == 0).flatten()
     mask_off = np.isin(hits['channel'], channel_off)
     hits = hits[~mask_off]
-
+    return hits
 
 @export
 @strax.takes_config(
