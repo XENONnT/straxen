@@ -137,8 +137,8 @@ class RunDB(strax.StorageFrontend):
                     # TODO remove the meta.lineage since this doc
                     #  entry is deprecated. Also this $OR is too broad!!
                     '$and': [{'$or': [
-                        {'meta.lineage': key.lineage,
-                         'did': {'$regex': f'/*{key.data_type}-{key.lineage_hash}'},
+                        {'meta.lineage': key.lineage},
+                        {'did': {'$regex': f'/*{key.data_type}-{key.lineage_hash}'},
                         }
                     ]},
                     {'$or': self.available_query}]}}}
