@@ -89,8 +89,7 @@ class nVETOHitlets(strax.Plugin):
 
     def compute(self, records_nv, start, end):
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
-        active_channel = np.argwhere(self.to_pe > 0).flatten()
-        hits = hits[np.isin(hits['channel'], active_channel)]
+        hits = remove_switched_off_channels(hits, self.channel_range, self.to_pe)
 
         temp_hitlets = strax.create_hitlets_from_hits(hits,
                                                       self.config['save_outside_hits_nv'],
@@ -121,6 +120,23 @@ class nVETOHitlets(strax.Plugin):
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
         strax.copy_to_buffer(temp_hitlets, hitlets, '_copy_hitlets')
         return hitlets
+
+
+def remove_switched_off_channels(hits, channel_range, to_pe):
+    """Removes hits which were found in a channel without any gain.
+
+    :param hits: Hits found in records.
+    :param channel_range: Tuple of min/max channel. E.g. (2000, 2119)
+        for the neutron-veto.
+    :param to_pe: conversion factor from ADC per sample.
+    :return: Hits
+    """
+    channel_on = np.argwhere(to_pe > 0).flatten()
+    all_channel = np.arange(channel_range[0], channel_range[1] + 1)
+    channel_off = set(all_channel) - set(channel_on)
+    mask_on = ~np.isin(hits['channel'], list(channel_off))
+    hits = hits[mask_on]
+    return hits
 
 
 @export
