@@ -88,33 +88,18 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
     def compute(self, records_nv, start, end):
-        # Search again for hits in records:
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
-        # Merge concatenate overlapping  within a channel. This is important
-        # in case hits were split by record boundaries. In case we
-        # accidentally concatenate two PMT signals we split them later again.
-        hits = strax.concat_overlapping_hits(hits,
-                                             self.config['save_outside_hits_nv'],
-                                             self.channel_range,
-                                             start,
-                                             end)
-        hits = strax.sort_by_time(hits)
+        hits = remove_switched_off_channels(hits, self.to_pe)
 
-        # Now convert hits into temp_hitlets including the data field:
-        nsamples = 200
-        if len(hits):
-            nsamples = max(hits['length'].max(), nsamples)
-
-        temp_hitlets = np.zeros(len(hits), strax.hitlet_with_data_dtype(n_samples=nsamples))
-    
-        # Generating hitlets and copying relevant information from hits to hitlets.
-        # These hitlets are not stored in the end since this array also contains a data
-        # field which we will drop later.
-        strax.refresh_hit_to_hitlets(hits, temp_hitlets)
+        temp_hitlets = strax.create_hitlets_from_hits(hits,
+                                                      self.config['save_outside_hits_nv'],
+                                                      self.channel_range,
+                                                      chunk_start=start,
+                                                      chunk_end=end)
         del hits
-        
+
         # Get hitlet data and split hitlets:
-        strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
+        temp_hitlets = strax.get_hitlets_data(temp_hitlets, records_nv, to_pe=self.to_pe)
 
         temp_hitlets = strax.split_peaks(temp_hitlets,
                                          records_nv,
@@ -136,6 +121,17 @@ class nVETOHitlets(strax.Plugin):
         strax.copy_to_buffer(temp_hitlets, hitlets, '_copy_hitlets')
         return hitlets
 
+
+def remove_switched_off_channels(hits, to_pe):
+    """Removes hits which were found in a channel without any gain.
+    :param hits: Hits found in records.
+    :param to_pe: conversion factor from ADC per sample.
+    :return: Hits
+    """
+    channel_off = np.argwhere(to_pe == 0).flatten()
+    mask_off = np.isin(hits['channel'], channel_off)
+    hits = hits[~mask_off]
+    return hits
 
 @export
 @strax.takes_config(
