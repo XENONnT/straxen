@@ -89,6 +89,8 @@ class nVETOHitlets(strax.Plugin):
 
     def compute(self, records_nv, start, end):
         hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = remove_switched_off_channels(hits, self.to_pe)
+
         temp_hitlets = strax.create_hitlets_from_hits(hits,
                                                       self.config['save_outside_hits_nv'],
                                                       self.channel_range,
@@ -119,6 +121,17 @@ class nVETOHitlets(strax.Plugin):
         strax.copy_to_buffer(temp_hitlets, hitlets, '_copy_hitlets')
         return hitlets
 
+
+def remove_switched_off_channels(hits, to_pe):
+    """Removes hits which were found in a channel without any gain.
+    :param hits: Hits found in records.
+    :param to_pe: conversion factor from ADC per sample.
+    :return: Hits
+    """
+    channel_off = np.argwhere(to_pe == 0).flatten()
+    mask_off = np.isin(hits['channel'], channel_off)
+    hits = hits[~mask_off]
+    return hits
 
 @export
 @strax.takes_config(
