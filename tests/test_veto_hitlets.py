@@ -23,9 +23,13 @@ class TestRemoveSwtichedOffChannels(unittest.TestCase):
         hits = np.zeros(2, strax.hit_dtype)
         hits[0]['channel'] = 15
         hits[1]['channel'] = 18
-        hits = straxen.veto_hitlets.remove_switched_off_channels(hits,
-                                                                 self.channel_range,
-                                                                 self.to_pe)
-        assert hits['channel'] == 15, 'Returned a wrong channel.'
+        hits_returned = straxen.veto_hitlets.remove_switched_off_channels(hits,
+                                                                          self.channel_range,
+                                                                          self.to_pe)
+        assert hits_returned['channel'] == 15, 'Returned a wrong channel.'
 
-
+        self.to_pe[:] = 1
+        hits_returned = straxen.veto_hitlets.remove_switched_off_channels(hits,
+                                                                          self.channel_range,
+                                                                          self.to_pe)
+        assert len(hits_returned) == 2, 'Did not return all channels.'
