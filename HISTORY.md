@@ -1,3 +1,19 @@
+0.18.2 / 2021-05-04
+---------------------
+- Nveto event display (#444)
+- do check for overlaps in NV (#458)
+- Refactor veto plugins (#463)
+- Remove zero gain hits (#468)
+- Time widget misc2 (#449)
+- Added changes for user credentials (#392)
+- Scada allowed, fix (#469)
+- Added support of dill for resource files (#459)
+- Reduce Pep8 gitHub bot verbosity (#466, #467)
+- fix 1T sim context to have working dep. trees (#461)
+- Reduced test complexity (#462)
+- test python 3.9 (#407)
+- fix keyerror for uploading data in selectruns (#455)
+
 0.18.1 / 2021-04-23
 ---------------------
 - Allow faster NV/MV by bootstrax (#440)
