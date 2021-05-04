@@ -413,9 +413,11 @@ def merge_intervals(intervals):
         overlapping intervals.
     """
     res = np.zeros(len(intervals), dtype=strax.time_fields)
-    res = _merge_intervals(intervals['time'],
-                           strax.endtime(intervals),
-                           res)
+
+    if len(intervals):
+        res = _merge_intervals(intervals['time'],
+                               strax.endtime(intervals),
+                               res)
     return res
 
 
