@@ -35,6 +35,7 @@ jobs:
     - name: patch utilix file
       run: bash .github/scripts/create_readonly_utilix_config.sh
       env:
+        # Database
         RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
         RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
         RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
@@ -42,11 +43,12 @@ jobs:
         PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
         PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
         PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
+        # SCADA
         SCADA_URL: ${{ secrets.SCADA_URL }}
         SCADA_VALUE_URL: ${{ secrets.SCADA_VALUE_URL }}
         SCADA_USER: ${{ secrets.SCADA_USER }}
-        SCADA_LOGIN_URL: $ {{ secrets.SCADA_LOGIN_URL }}
-        SCADA_PWD:  $ {{ secrets.SCADA_PWD }}
+        SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
+        SCADA_PWD: ${{ secrets.SCADA_PWD }}
     - name: Coveralls
       env:
         NUMBA_DISABLE_JIT: 1
