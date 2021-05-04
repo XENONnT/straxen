@@ -122,21 +122,15 @@ class nVETOHitlets(strax.Plugin):
         return hitlets
 
 
-def remove_switched_off_channels(hits, channel_range, to_pe):
+def remove_switched_off_channels(hits, to_pe):
     """Removes hits which were found in a channel without any gain.
-
     :param hits: Hits found in records.
-    :param channel_range: Tuple of min/max channel. E.g. (2000, 2119)
-        for the neutron-veto.
     :param to_pe: conversion factor from ADC per sample.
     :return: Hits
     """
-    channel_on = np.argwhere(to_pe > 0).flatten()
-    all_channel = np.arange(channel_range[0], channel_range[1] + 1)
-    channel_off = set(all_channel) - set(channel_on)
-    mask_on = ~np.isin(hits['channel'], list(channel_off))
-    hits = hits[mask_on]
-    return hits
+    channel_off = np.argwhere(to_pe == 0).flatten()
+    mask_off = np.isin(hits['channel'], channel_off)
+    hits = hits[~mask_off]
 
 
 @export
