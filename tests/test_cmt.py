@@ -51,22 +51,6 @@ def test_1T_elife():
     mes = 'Elife values do not match. Please check'
     assert elife_cmt == elife, mes
 
-def test_nT_to_pe_values(execute=True):
-    """
-    Test to_pe average values nT
-    """
-    if not straxen.utilix_is_configured() or not execute:
-        warn('Cannot do test becaus  '
-             'no have access to the database.')
-        return
-
-    gain_model = ('to_pe_model', 'ONLINE', True)
-    to_pe_cmt = straxen.get_to_pe(test_run_id_nT, gain_model, straxen.n_tpc_pmts)
-    ave_to_pe_cmt = round(np.average(to_pe_cmt), 3)
-    ave_to_pe = 0.003  # average value for the nT test run
-    mes = 'Average values do not match. Please check'
-    assert np.isclose(ave_to_pe_cmt, ave_to_pe), mes
-
 def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
     """
     Test CMT conf options 
@@ -78,12 +62,8 @@ def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
         return
 
     conf = option, version, is_nT
-    if option == 'to_pe_model':
-        correction = straxen.get_to_pe(test_run_id_nT, conf, straxen.n_tpc_pmts)
-        assert isinstance(correction, np.ndarray)
-    else:
-        correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
-        assert isinstance(correction, (float, int, str))
+    correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
+    assert isinstance(correction, (float, int, str, np.ndarray))
 
 def test_mc_wrapper_elife(run_id='009000',
                           cmt_id='016000',
@@ -149,25 +129,22 @@ def test_mc_wrapper_gains(run_id='009000',
     assert np.abs(int(run_id) - int(cmt_id)) > 500, 'runs must be far apart'
 
     # First for the run-id let's get the value
-    gains = straxen.get_to_pe(
+    gains = straxen.get_correction_from_cmt(
         run_id,
-        ('to_pe_model', 'ONLINE', True),
-        straxen.n_tpc_pmts)
+        ('to_pe_model', 'ONLINE', True))
 
     # Now, we repeat the same query using the MC wrapper, this should
     # give us a different result since we are now asking for a very
     # different run-number.
-    mc_gains_diff = straxen.get_to_pe(
+    mc_gains_diff = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', cmt_id, 'to_pe_model', 'ONLINE', True),
-        straxen.n_tpc_pmts)
+        ('MC', cmt_id, 'to_pe_model', 'ONLINE', True))
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `gains` above
-    mc_gains_same = straxen.get_to_pe(
+    mc_gains_same = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', run_id, 'to_pe_model', 'ONLINE', True),
-        straxen.n_tpc_pmts)
+        ('MC', run_id, 'to_pe_model', 'ONLINE', True))
 
     assert not np.all(gains == mc_gains_diff)
     assert np.all(gains == mc_gains_same)

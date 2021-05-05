@@ -35,49 +35,69 @@ def correction_options(get_correction_function):
 
     return correction_options_wrapped
 
-
 @export
 @correction_options
-def get_to_pe(run_id, conf, n_pmts):
+def get_correction_from_cmt(run_id, conf):
     """
-    To pe values for TPC, n-veto mu-veto PMTs, this is also now as gains
+    Get correction from CMT general format is
+    conf = ('correction_name', 'version', True)
+    where True means looking at nT runs, e.g. 
+    get_correction_from_cmt(run_id, conf[:2])
+    special cases:
+    version can be replaced by consant int, float or array
+    when user specify value(s)
     :param run_id: run id from runDB
     :param conf: configuration 
-    :n_pmts: number of PMTs
-    :return: array of to_pe values
+    :return: correction value(s)
     """
-    if isinstance(conf, tuple) and len(conf) == 3:
-        is_nt = conf[-1]
-        model_conf, global_version = conf[:2]
-        if 'to_pe_model' in model_conf:
-            corrections = straxen.CorrectionsManagementServices(is_nt=is_nt)
-            to_pe = corrections.get_corrections_config(run_id, conf[:2])
+ 
+    if isinstance(conf, str) and conf.startswith('https://raw'):
+        # Legacy support for pax files
+        return conf
 
-            return to_pe
+    elif isinstance(conf, tuple) and len(conf) == 2:
+        model_conf, cte_value = conf[:2]
+
+        # special case constant to_pe values 
+        if model_conf in FIXED_TO_PE:
+            correction = FIXED_TO_PE[model_conf]
+            return correction
+
+        # special case constant single value
+        elif 'constant' in model_conf:
+            if not isinstance(cte_value, (float, int)):
+                raise ValueError(f"User specify a model type {model_conf} "
+                                 "and should provide a number. Got: "
+                                 f"{type(cte_value)}")
+            correction = cte_value
+            return correction
+
+    elif isinstance(conf, tuple) and len(conf) == 3:
+        model_conf, global_version, is_nt = conf[:3]
+        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+        correction = cmt.get_corrections_config(run_id, conf[:2])
+        if correction.size == 0:
+            raise ValueError(f"Could not find a value for {model_conf} "
+                             f"please check it is implemented in CMT. ")
+
+        if 'to_pe_model' in model_conf:  # to_pe array
+            return correction
+
+        elif model_conf in corrections_w_file: # file's name (maps, NN, etc) 
+            correction = ' '.join(map(str, correction))
+            return correction
+
+        elif 'samples' in model_conf: # int baseline samples, etc
+            return int(correction)
+
         else:
-            raise ValueError("Wrong configuration. "
+            return float(correction) # float elife, drift velocity, etc
+
+    else:
+        raise ValueError("Wrong configuration. "
                          "Please use the following format: "
                          "(config->str, model_config->str or number, is_nT->bool) "
                          f"User specify {conf} please modify")
-
-
-    elif isinstance(conf, tuple) and len(conf) == 2:
-        model_conf = conf[0]
-        if model_conf in FIXED_TO_PE:
-            to_pe = FIXED_TO_PE[model_conf]
-            if len(to_pe) != n_pmts:
-                raise ValueError(
-                    f"Gain model {model_conf} resulted in a to_pe "
-                    f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
-                
-            return to_pe
-        else:
-            raise ValueError(
-                "User must add his/her own values to FIXED_TO_PE as: "
-                "FIXED_TO_PE ={str(my_constant_gains): np.repeat(0.005, straxen.n_tpc_pmts)}")            
-
-    else:
-        raise NotImplementedError(f"To pe model type {conf} not implemented")
 
 FIXED_TO_PE = {
     'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
@@ -88,49 +108,3 @@ FIXED_TO_PE = {
     'adc_mv': np.ones(straxen.n_mveto_pmts),
     'adc_nv': np.ones(straxen.n_nveto_pmts)
 }
-
-
-@export
-@correction_options
-def get_correction_from_cmt(run_id, conf):
-    """
-    Get correction from CMT
-    :param run_id: run id from runDB
-    :param conf: configuration 
-    :return: correction
-    """
- 
-    if isinstance(conf, str) and conf.startswith('https://raw'):
-        # Legacy support for pax files
-        return conf
-    if isinstance(conf, tuple) and len(conf) == 3:
-        is_nt = conf[-1]
-        model_conf, global_version = conf[:2]
-        correction = global_version  # in case is a single value
-        if 'constant' in model_conf:
-            if not isinstance(global_version, (float, int)):
-                raise ValueError(f"User specify a model type {model_conf} "
-                                 "and should provide a number. Got: "
-                                 f"{type(global_version)}")
-        else:
-            cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
-            correction = cmt.get_corrections_config(run_id, conf[:2])
-            if correction.size == 0:
-                raise ValueError(f"Could not find a value for {model_conf} "
-                                 "please check it is implemented in CMT. "
-                                 f"for nT = {is_nt}")
-            if model_conf in corrections_w_file:
-                this_file = ' '.join(map(str, correction))
-                return this_file
-
-        if 'samples' in model_conf:
-            return int(correction)
-
-        else:
-            return float(correction)
-
-    else:
-        raise ValueError("Wrong configuration. "
-                         "Please use the following format: "
-                         "(config->str, model_config->str or number, is_nT->bool) "
-                         f"User specify {conf} please modify")

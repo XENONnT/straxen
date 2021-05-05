@@ -53,7 +53,7 @@ xnt_simulation_config = deepcopy(xnt_common_config)
 xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
                              gain_model_nv=("adc_nv", True),
                              gain_model_mv=("adc_mv", True),
-                             elife_conf=('elife_constant', 1e6, True),
+                             elife_conf=('elife_constant', 1e6),
                              )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -314,8 +314,8 @@ def demo():
     st.set_config(dict(
         hev_gain_model=('1T_to_pe_placeholder', False),
         gain_model=('1T_to_pe_placeholder', False),
-        elife_conf=('elife_constant', 1e6, False),
-        electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
+        elife_conf=('elife_constant', 1e6),
+        electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
         ))
     return st
 

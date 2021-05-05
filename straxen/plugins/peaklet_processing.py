@@ -105,9 +105,8 @@ class Peaklets(strax.Plugin):
                 f"interferes with lone_hit definition. "
                 f"See github.com/XENONnT/straxen/issues/295")
 
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
 
     def compute(self, records, start, end):
         r = records
@@ -422,9 +421,8 @@ class PeakletsHighEnergy(Peaklets):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
 
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
