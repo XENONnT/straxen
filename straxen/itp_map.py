@@ -84,8 +84,8 @@ class InterpolatingMap:
         etc
 
     Default method return inverse-distance weighted average of nearby 2 * dim points
-    Extra supports include interp2d, RectBivariateSpline in scipy by pass keyword argument like
-        method='interp2d'
+    Extra support include RectBivariateSpline in scipy by pass keyword argument like
+        method='RectBivariateSpline'
     """
     metadata_field_names = ['timestamp', 'description', 'coordinate_system',
                             'name', 'irregular', 'compressed', 'quantized']
@@ -151,12 +151,8 @@ class InterpolatingMap:
             elif method == 'RectBivariateSpline':
                 assert self.dimensions == 2, 'interp2d interpolate maps of dimension 2'
                 assert not array_valued, 'interp2d does not support interpolating array values'
-                itp_fun = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs)
-
-            elif method == 'interp2d':
-                assert self.dimensions == 2, 'interp2d interpolate maps of dimension 2'
-                assert not array_valued, 'interp2d does not support interpolating array values'
-                itp_fun = interp2d(cs[:, 0], cs[:, 1], map_data, **kwargs)
+                map_data = map_data.reshape((len(grid[0]), len(grid[1])))
+                itp_fun = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs).ev
 
             elif method == 'WeightedNearestNeighbours':
                 itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
@@ -168,12 +164,12 @@ class InterpolatingMap:
 
             self.interpolators[map_name] = itp_fun
 
-    def __call__(self, positions, map_name='map'):
+    def __call__(self, *args, map_name='map'):
         """Returns the value of the map at the position given by coordinates
         :param positions: array (n_dim) or (n_points, n_dim) of positions
         :param map_name: Name of the map to use. Default is 'map'.
         """
-        return self.interpolators[map_name](positions)
+        return self.interpolators[map_name](*args)
 
     def scale_coordinates(self, scaling_factor, map_name='map'):
         """Scales the coordinate system by the specified factor
