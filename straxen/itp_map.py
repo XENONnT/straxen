@@ -90,7 +90,7 @@ class InterpolatingMap:
     metadata_field_names = ['timestamp', 'description', 'coordinate_system',
                             'name', 'irregular', 'compressed', 'quantized']
 
-    def __init__(self, data, method='WeightedNearestNeighbours', **kwargs):
+    def __init__(self, data, method='WeightedNearestNeighbors', **kwargs):
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
         if isinstance(data, (str, bytes)):
@@ -154,7 +154,7 @@ class InterpolatingMap:
                 map_data = map_data.reshape((len(grid[0]), len(grid[1])))
                 itp_fun = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs).ev
 
-            elif method == 'WeightedNearestNeighbours':
+            elif method == 'WeightedNearestNeighbors':
                 itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
                                                     values=np.array(map_data),
                                                     array_valued=array_valued)
