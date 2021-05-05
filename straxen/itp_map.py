@@ -5,6 +5,7 @@ import re
 
 import numpy as np
 from scipy.spatial import cKDTree
+from scipy.interpolate import RectBivariateSpline, interp2d
 
 import strax
 export, __all__ = strax.exporter()
@@ -82,29 +83,20 @@ class InterpolatingMap:
         'map': 42,
         etc
 
+    Default method return inverse-distance weighted average of nearby 2 * dim points
+    Extra supports include interp2d, RectBivariateSpline in scipy by pass keyword argument like
+        method='interp2d'
     """
-    data_field_names = ['timestamp', 'description', 'coordinate_system',
-                        'name', 'irregular']
+    metadata_field_names = ['timestamp', 'description', 'coordinate_system',
+                            'name', 'irregular', 'compressed', 'quantized']
 
-    def __init__(self, data):
+    def __init__(self, data, method='WeightedNearestNeighbours', **kwargs):
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
         if isinstance(data, (str, bytes)):
             data = json.loads(data)
         assert isinstance(data, dict), f"Expected dictionary data, got {type(data)}"
         self.data = data
-
-        # Decompress / dequantize the map
-        # TODO: support multiple map names
-        if 'compressed' in self.data:
-            compressor, dtype, shape = self.data['compressed']
-            self.data['map'] = np.frombuffer(
-                strax.io.COMPRESSORS[compressor]['decompress'](self.data['map']),
-                dtype=dtype).reshape(*shape)
-            del self.data['compressed']
-        if 'quantized' in self.data:
-            self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
-            del self.data['quantized']
 
         cs = self.data['coordinate_system']
         if not len(cs):
@@ -118,34 +110,61 @@ class InterpolatingMap:
             cs = np.array(cs).reshape((-1, len(grid)))
             self.dimensions = len(grid)
         else:
+            cs = np.array(cs)
+            grid = [np.unique(cs[:, i]) for i in range(len(cs[0]))]
             self.dimensions = len(cs[0])
 
         self.coordinate_system = cs
         self.interpolators = {}
         self.map_names = sorted([k for k in self.data.keys()
-                                 if k not in self.data_field_names])
+                                 if k not in self.metadata_field_names])
 
         log = logging.getLogger('InterpolatingMap')
         log.debug('Map name: %s' % self.data['name'])
         log.debug('Map description:\n    ' +
-                       re.sub(r'\n', r'\n    ', self.data['description']))
+                  re.sub(r'\n', r'\n    ', self.data['description']))
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
+            # Decompress / dequantize the map
+            # TODO: support multiple map names
+            if 'compressed' in self.data:
+                compressor, dtype, shape = self.data['compressed']
+                self.data[map_name] = np.frombuffer(
+                    strax.io.COMPRESSORS[compressor]['decompress'](self.data[map_name]),
+                    dtype=dtype).reshape(*shape)
+            if 'quantized' in self.data:
+                self.data[map_name] = self.data['quantized'] * self.data[map_name].astype(np.float32)
+
             # Specify dtype float to set Nones to nan
             map_data = np.array(self.data[map_name], dtype=np.float)
             array_valued = len(map_data.shape) == self.dimensions + 1
+            if array_valued:
+                map_data = map_data.reshape((-1, map_data.shape[-1]))
+
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
                 # and always return a single value
                 def itp_fun(positions):
                     return np.array([map_data])
-            else:
-                if array_valued:
-                    map_data = map_data.reshape((-1, map_data.shape[-1]))
+
+            elif method == 'RectBivariateSpline':
+                assert self.dimensions == 2, 'interp2d interpolate maps of dimension 2'
+                assert not array_valued, 'interp2d does not support interpolating array values'
+                itp_fun = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs)
+
+            elif method == 'interp2d':
+                assert self.dimensions == 2, 'interp2d interpolate maps of dimension 2'
+                assert not array_valued, 'interp2d does not support interpolating array values'
+                itp_fun = interp2d(cs[:, 0], cs[:, 1], map_data, **kwargs)
+
+            elif method == 'WeightedNearestNeighbours':
                 itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
                                                     values=np.array(map_data),
                                                     array_valued=array_valued)
+
+            else:
+                raise ValueError(f'Interpolation method {method} is not supported')
 
             self.interpolators[map_name] = itp_fun
 
@@ -163,7 +182,9 @@ class InterpolatingMap:
         if self.dimensions == 0:
             return
         if hasattr(scaling_factor, '__len__'):
-            assert (len(scaling_factor) == self.dimensions), f"Scaling factor array dimension {len(scaling_factor)} does not match grid dimension {self.dimensions}"
+            assert (len(scaling_factor) == self.dimensions), \
+                f"Scaling factor array dimension {len(scaling_factor)} " \
+                f"does not match grid dimension {self.dimensions}"
             self._sf = scaling_factor
         if isinstance(scaling_factor, (int, float)):
             self._sf = [scaling_factor] * self.dimensions
