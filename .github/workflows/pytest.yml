@@ -38,8 +38,8 @@ jobs:
             pip install git+https://github.com/AxFoundation/strax.git
       - name: Install python dependencies
         uses: py-actions/py-dependency-install@v2
-      - name: install tf and dask 
-        # TODO, let's remove this and set it in the pre-requirements 
+      - name: install tf and dask
+        # TODO, let's remove this and set it in the pre-requirements
         # See https://github.com/XENONnT/straxen/pull/474
         if: matrix.python-version != 3.9
         run: |
