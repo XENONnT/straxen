@@ -1,3 +1,9 @@
+0.18.3 / 2021-05-06
+---------------------
+- Update classifiers for pipy (#464)
+- Fix for scan runs query (0cc47f2 )
+
+
 0.18.2 / 2021-05-04
 ---------------------
 - Nveto event display (#444)
@@ -14,6 +20,7 @@
 - test python 3.9 (#407)
 - fix keyerror for uploading data in selectruns (#455)
 
+
 0.18.1 / 2021-04-23
 ---------------------
 - Allow faster NV/MV by bootstrax (#440)
@@ -22,7 +29,6 @@
 - Wrap correction functions for mc optional config (#443)
 - Use did for finding several runs (#451, 59afa35)
 - Mveto events (#447)
-
 
 
 0.18.0 / 2021-04-16
