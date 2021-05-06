@@ -4,6 +4,7 @@ import straxen
 from warnings import warn
 from functools import wraps
 from straxen.corrections_services import corrections_w_file
+from straxen.corrections_services import single_value_corrections
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
@@ -80,19 +81,18 @@ def get_correction_from_cmt(run_id, conf):
             raise ValueError(f"Could not find a value for {model_conf} "
                              f"please check it is implemented in CMT. ")
 
-        if 'to_pe_model' in model_conf:  # to_pe array
-            return correction
-
-        elif model_conf in corrections_w_file: # file's name (maps, NN, etc) 
+        if model_conf in corrections_w_file: # file's name (maps, NN, etc) 
             correction = ' '.join(map(str, correction))
             return correction
 
-        elif 'samples' in model_conf: # int baseline samples, etc
-            return int(correction)
-
-        else:
-            return float(correction) # float elife, drift velocity, etc
-
+        elif model_conf in single_value_corrections:
+            if 'samples' in model_conf: # int baseline samples, etc
+                return int(correction)
+            else:
+                return float(correction) # float elife, drift velocity, etc
+        
+        return correction
+    
     else:
         raise ValueError("Wrong configuration. "
                          "Please use the following format: "
