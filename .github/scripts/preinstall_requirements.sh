@@ -9,3 +9,6 @@ cat sel_pre_requirements.txt
 echo "Start preinstall and rm pre-requirements:"
 pip install -r sel_pre_requirements.txt
 rm pre_requirements.txt sel_pre_requirements.txt
+
+echo "fix https://github.com/XENONnT/straxen/pull/474"
+pip install jupyter-client==6.1.12 
