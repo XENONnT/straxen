@@ -137,7 +137,7 @@ def _create_veto_intervals(events,
         child_option=True, parent_option_name='veto_left_nv',
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
-        'veto_right_mv', default=1_000, type=int, track=True,
+        'veto_right_mv', default=1_000_000, type=int, track=True,
         child_option=True, parent_option_name='veto_right_nv',
         help='Veto time in ns right to the end of a vetoing event.'),
 )
