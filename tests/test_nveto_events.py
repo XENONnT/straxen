@@ -114,16 +114,9 @@ def test_nveto_event_building(hitlets,
     """
     hitlets = strax.sort_by_time(hitlets)
 
-    intervals = straxen.plugins.nveto_recorder.coincidence(hitlets,
-                                                           coincidence,
-                                                           300)
-
-    # Create event_intervals:
-    event_intervals = np.zeros(len(intervals),
-                               dtype=strax.time_fields
-                               )
-    event_intervals['time'] = intervals[:, 0]
-    event_intervals['endtime'] = intervals[:, 1]
+    event_intervals = straxen.plugins.nveto_recorder.find_coincidence(hitlets,
+                                                                      coincidence,
+                                                                      300)
 
     mes = 'Found overlapping events returned by "coincidence".'
     assert np.all(event_intervals['endtime'][:-1] - event_intervals['time'][1:] < 0), mes

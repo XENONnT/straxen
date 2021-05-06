@@ -105,29 +105,37 @@ class nVETORecorder(strax.Plugin):
                                min_amplitude=self.config['hit_min_amplitude_nv'])
         del temp_records
 
-
         # First we have to split rr into records and lone records:
         # Please note that we consider everything as a lone record which
         # does not satisfy the coincidence requirement
-        intervals = coincidence(hits,
-                                self.config['coincidence_level_recorder_nv'],
-                                self.config['resolving_time_recorder_nv'],
-                                self.config['pre_trigger_time_nv'])
+        intervals = find_coincidence(hits,
+                                     self.config['coincidence_level_recorder_nv'],
+                                     self.config['resolving_time_recorder_nv'],
+                                     self.config['pre_trigger_time_nv'])
         del hits
 
         # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
         # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
         if len(intervals):
-            intervals_with_bounds = np.zeros((len(intervals) + 2, 2), dtype=np.int64)
-            intervals_with_bounds[1:-1, :] = intervals
-            intervals_with_bounds[0, :] = start, min(start + self.config['resolving_time_recorder_nv'], intervals[0, 0])
-            intervals_with_bounds[-1, :] = max(end - self.config['resolving_time_recorder_nv'], intervals[-1, 1]), end
+            intervals_with_bounds = np.zeros(len(intervals) + 2, dtype=strax.time_fields)
+            intervals_with_bounds['time'][1:-1] = intervals['time']
+            intervals_with_bounds['endtime'][1:-1] = intervals['endtime']
+            intervals_with_bounds['time'][0] = start
+            intervals_with_bounds['endtime'][0] = min(start + self.config['resolving_time_recorder_nv'],
+                                                      intervals['time'][0])
+            intervals_with_bounds['time'][-1] = max(end - self.config['resolving_time_recorder_nv'],
+                                                    intervals['endtime'][-1])
+            intervals_with_bounds['endtime'][-1] = end
             del intervals
         else:
-            intervals_with_bounds = np.zeros((0, 2), dtype=np.int64)
+            intervals_with_bounds = np.zeros((0, 2), dtype=strax.time_fields)
 
         neighbors = strax.record_links(raw_records_nv)
-        mask = pulse_in_interval(raw_records_nv, neighbors, *np.transpose(intervals_with_bounds))
+        mask = pulse_in_interval(raw_records_nv,
+                                 neighbors,
+                                 intervals_with_bounds['time'],
+                                 intervals_with_bounds['endtime'],)
+
         rr, lone_records = straxen.mask_and_not(raw_records_nv, mask)
 
         # Compute some properties of the lone_records:
@@ -326,7 +334,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
 
 @export
-def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
+def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
     """
     Checks if n-neighboring events are less apart from each other then
     the specified resolving time.
@@ -351,10 +359,12 @@ def coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
             # In case of a "single-fold" coincidence every thing gives
             # the start of a new interval:
             start_times = records['time']
-        intervals = _merge_intervals(start_times-pre_trigger, 
-                                     resolving_time+pre_trigger)
+        intervals = np.zeros(len(start_times), dtype=strax.time_fields)
+        intervals['time'] = start_times - pre_trigger
+        intervals['endtime'] = start_times + resolving_time
+        intervals = merge_intervals(intervals)
     else:
-        intervals = np.zeros((0, 2), np.int64)
+        intervals = np.zeros(0, dtype=strax.time_fields)
     return intervals
 
 
@@ -377,7 +387,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     t_diff = np.diff(start_times, prepend=start_times[0])
 
     # 2. Now we have to check if n-events are within resolving time:
-    #   -> use moving average with size n to accumulate time between n-pulses
+    #   -> use moving sum with size n to accumulate time between n-pulses
     #   -> check if accumulated time is below resolving time
 
     # generate kernel:
@@ -393,34 +403,48 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     return start_times[mask]
 
 
-@numba.njit(nogil=True, cache=True)
-def _merge_intervals(start_time, resolving_time):
+@export
+def merge_intervals(intervals):
     """
-    Function which merges overlapping time intervals into a single one.
+    Function which merges overlapping intervals into a single one.
 
-    Note:
-        If start times of two intervals are exactly resolving_time apart
-        from each other they will be merged into a single interval.
+    :param intervals: Any numpy array with strax time fields.
+    :returns: New intervals with time and endtime according to the
+        overlapping intervals.
     """
-    if not len(start_time):
-        # If the input is empty return empty array:
-        return np.zeros((0, 2), dtype=np.int64)
+    res = np.zeros(len(intervals), dtype=strax.time_fields)
 
-    # check for gaps larger than resolving_time:
-    # The gaps will indicate the starts of new intervals
-    gaps = np.diff(start_time) > resolving_time
+    if len(intervals):
+        res = _merge_intervals(intervals['time'],
+                               strax.endtime(intervals),
+                               res)
+    return res
 
-    last_element = np.argwhere(gaps).flatten()
-    first_element = 0
-    # Creating output
-    # There is one more interval than gaps
-    intervals = np.zeros((np.sum(gaps) + 1, 2), dtype=np.int64)
 
-    # Looping over all intervals, except for the last one:
-    for ind, le in enumerate(last_element):
-        intervals[ind] = (start_time[first_element], start_time[le]+resolving_time)
-        first_element = le + 1
+@numba.njit(cache=True, nogil=True)
+def _merge_intervals(start, end, res):
+    offset = 0
 
-    # Now we have to deal with the last gap:
-    intervals[-1] = (start_time[first_element], start_time[first_element:][-1] + resolving_time)
-    return intervals
+    interval_start = start[0]
+    interval_end = end[0]
+    for next_interval_start, next_interval_end in zip(start[1:], end[1:]):
+        if interval_end >= next_interval_start:
+            # Interval overlaps, updated only end:
+            interval_end = next_interval_end
+            continue
+
+        # Intervals do not overlap, save interval:
+        res[offset]['time'] = interval_start
+        res[offset]['endtime'] = interval_end
+        offset += 1
+
+        # New interval:
+        interval_start = next_interval_start
+        interval_end = next_interval_end
+
+    # Save last interval:
+    res[offset]['time'] = interval_start
+    res[offset]['endtime'] = interval_end
+    offset += 1
+
+    return res[:offset]
