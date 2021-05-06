@@ -41,7 +41,8 @@ export, __all__ = strax.exporter()
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('gain_model',
-                 help='PMT gain model. Specify as (model_type, model_config)'),
+                 help='PMT gain model. Specify as '
+                 '(str(model_config), str(version), nT-->boolean'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
@@ -104,9 +105,8 @@ class Peaklets(strax.Plugin):
                 f"interferes with lone_hit definition. "
                 f"See github.com/XENONnT/straxen/issues/295")
 
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
 
     def compute(self, records, start, end):
         r = records
@@ -421,9 +421,8 @@ class PeakletsHighEnergy(Peaklets):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
 
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
