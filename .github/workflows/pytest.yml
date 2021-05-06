@@ -19,6 +19,7 @@ jobs:
     name: Pytest
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: true
       matrix:
         # NB: For python3.7 we are going to explicitly test without a database
         python-version: [3.6, 3.7, 3.8, 3.9]
@@ -37,6 +38,14 @@ jobs:
             pip install git+https://github.com/AxFoundation/strax.git
       - name: Install python dependencies
         uses: py-actions/py-dependency-install@v2
+      - name: install tf and dask
+        # TODO, let's remove this and set it in the pre-requirements
+        # See https://github.com/XENONnT/straxen/pull/474
+        if: matrix.python-version != 3.9
+        run: |
+          pip install tensorflow==2.4
+          python -m pip install "dask[dataframe]" --upgrade
+
       - name: patch utilix file
         # Since we skip this step for python 3.7, we are testing without the database
         if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8 || matrix.python-version == 3.9
