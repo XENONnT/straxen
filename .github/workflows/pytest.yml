@@ -38,6 +38,9 @@ jobs:
             pip install git+https://github.com/AxFoundation/strax.git
       - name: Install python dependencies
         uses: py-actions/py-dependency-install@v2
+      - name: install tf
+        if: matrix.python-version != 3.9
+        run: pip install tensorflow==2.4
       - name: patch utilix file
         # Since we skip this step for python 3.7, we are testing without the database
         if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8 || matrix.python-version == 3.9
