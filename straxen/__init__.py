@@ -1,10 +1,8 @@
-__version__ = '0.18.2'
+__version__ = '0.15.8'
 
-# Import of utilix config for only once. NB: Should be first due to circular imports
 from utilix import uconfig
-
-# Straxen imports:
 from .common import *
+# contexts.py below
 from .corrections_services import *
 from .get_corrections import *
 from .hitfinder_thresholds import *
@@ -17,18 +15,14 @@ from .online_monitor import *
 from .rundb import *
 from .scada import *
 from .bokeh_utils import *
+from .rucio import *
 
-# Nested structures:
+
 from . import plugins
 from .plugins import *
+
 from . import analyses
 
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
-
-try:
-    from . import holoviews_utils
-    from .holoviews_utils import *
-except ModuleNotFoundError:
-    pass
