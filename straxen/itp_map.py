@@ -5,7 +5,7 @@ import re
 
 import numpy as np
 from scipy.spatial import cKDTree
-from scipy.interpolate import RectBivariateSpline, interp2d
+from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
 
 import strax
 export, __all__ = strax.exporter()
@@ -84,7 +84,7 @@ class InterpolatingMap:
         etc
 
     Default method return inverse-distance weighted average of nearby 2 * dim points
-    Extra support include RectBivariateSpline in scipy by pass keyword argument like
+    Extra support includes RectBivariateSpline, RegularGridInterpolator in scipy by pass keyword argument like
         method='RectBivariateSpline'
     """
     metadata_field_names = ['timestamp', 'description', 'coordinate_system',
@@ -123,7 +123,6 @@ class InterpolatingMap:
             self.dimensions = len(grid)
         else:
             cs = np.array(cs)
-            grid = [np.unique(cs[:, i]) for i in range(len(cs[0]))]
             self.dimensions = len(cs[0])
 
         self.coordinate_system = cs
@@ -141,8 +140,6 @@ class InterpolatingMap:
             # Specify dtype float to set Nones to nan
             map_data = np.array(self.data[map_name], dtype=np.float)
             array_valued = len(map_data.shape) == self.dimensions + 1
-            if array_valued:
-                map_data = map_data.reshape((-1, map_data.shape[-1]))
 
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
@@ -151,15 +148,13 @@ class InterpolatingMap:
                     return np.array([map_data])
 
             elif method == 'RectBivariateSpline':
-                assert self.dimensions == 2, 'interp2d interpolate maps of dimension 2'
-                assert not array_valued, 'interp2d does not support interpolating array values'
-                map_data = map_data.reshape((len(grid[0]), len(grid[1])))
-                itp_fun = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs).ev
+                itp_fun = self._RectBivariateSpline(cs, map_data, array_valued, **kwargs)
+
+            elif method == 'RegularGridInterpolator':
+                itp_fun = self._RegularGridInterpolator(cs, map_data, array_valued, **kwargs)
 
             elif method == 'WeightedNearestNeighbors':
-                itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
-                                                    values=np.array(map_data),
-                                                    array_valued=array_valued)
+                itp_fun = self._WeightedNearestNeighbors(cs, map_data, array_valued, **kwargs)
 
             else:
                 raise ValueError(f'Interpolation method {method} is not supported')
@@ -172,6 +167,38 @@ class InterpolatingMap:
         :param map_name: Name of the map to use. Default is 'map'.
         """
         return self.interpolators[map_name](*args)
+
+    @staticmethod
+    def _RectBivariateSpline(cs, map_data, array_valued, **kwargs):
+        dimensions = len(cs[0])
+        grid = [np.unique(cs[:, i]) for i in range(dimensions)]
+        grid_shape = [len(g) for g in grid]
+
+        assert dimensions == 2, 'RectBivariateSpline interpolate maps of dimension 2'
+        assert not array_valued, 'RectBivariateSpline does not support interpolating array values'
+        map_data = map_data.reshape(*grid_shape)
+
+        return RectBivariateSpline(grid[0], grid[1], map_data, **kwargs).ev
+
+    @staticmethod
+    def _RegularGridInterpolator(cs, map_data, array_valued, **kwargs):
+        dimensions = len(cs[0])
+        grid = [np.unique(cs[:, i]) for i in range(dimensions)]
+        grid_shape = [len(g) for g in grid]
+
+        if array_valued:
+            map_data = map_data.reshape((*grid_shape, map_data.shape[-1]))
+        else:
+            map_data = map_data.reshape(*grid_shape)
+
+        return RegularGridInterpolator(tuple(grid), map_data, **kwargs)
+
+    @staticmethod
+    def _WeightedNearestNeighbors(cs, map_data, array_valued, **kwargs):
+        if array_valued:
+            map_data = map_data.reshape((-1, map_data.shape[-1]))
+
+        return InterpolateAndExtrapolate(cs, map_data, array_valued, **kwargs)
 
     def scale_coordinates(self, scaling_factor, map_name='map'):
         """Scales the coordinate system by the specified factor
