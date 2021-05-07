@@ -105,14 +105,24 @@ class PeakBasics(strax.Plugin):
         return result
 
     @staticmethod
-    def check_area(area_per_channel_sum, peaks):
-        """Check if the area of the sum-wf is the same as the total area"""
-        pos_area = peaks['area'] > 0
-        if not np.sum(pos_area):
+    def check_area(area_per_channel_sum, peaks) -> None:
+        """
+        Check if the area of the sum-wf is the same as the total area
+            (if the area of the peak is positively defined).
+
+        :param area_per_channel_sum: the summation of the
+            peaks['area_per_channel'] which will be checked against the
+             values of peaks['area'].
+        :param peaks: array of peaks.
+        :raises: ValueError if the peak area and the area-per-channel
+            sum are not sufficiently close
+        """
+        positive_area = peaks['area'] > 0
+        if not np.sum(positive_area):
             return
 
-        is_close = np.isclose(area_per_channel_sum[pos_area],
-                              peaks[pos_area]['area'])
+        is_close = np.isclose(area_per_channel_sum[positive_area],
+                              peaks[positive_area]['area'])
         if not is_close.all():
             for p in peaks[~is_close]:
                 print('bad area')
@@ -121,10 +131,8 @@ class PeakBasics(strax.Plugin):
             p_i = np.where(~is_close)[0][0]
             p = peaks[p_i]
             area_fraction_off = 1 - area_per_channel_sum[p_i] / p['area']
-            message = (
-                'Area not calculated correctly. '
-                f'it is {100*area_fraction_off} % off'
-                f'Timestamp: {p["time"]}')
+            message = (f'Area not calculated correctly, it\'s '
+                       f'{100*area_fraction_off} % off, time: {p["time"]}')
             raise ValueError(message)
 
 
