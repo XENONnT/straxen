@@ -98,6 +98,18 @@ class InterpolatingMap:
         assert isinstance(data, dict), f"Expected dictionary data, got {type(data)}"
         self.data = data
 
+        # Decompress / dequantize the map
+        # TODO: support multiple map names
+        if 'compressed' in self.data:
+            compressor, dtype, shape = self.data['compressed']
+            self.data['map'] = np.frombuffer(
+                strax.io.COMPRESSORS[compressor]['decompress'](self.data['map']),
+                dtype=dtype).reshape(*shape)
+            del self.data['compressed']
+        if 'quantized' in self.data:
+            self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
+            del self.data['quantized']
+
         cs = self.data['coordinate_system']
         if not len(cs):
             self.dimensions = 0
@@ -126,16 +138,6 @@ class InterpolatingMap:
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
-            # Decompress / dequantize the map
-            # TODO: support multiple map names
-            if 'compressed' in self.data:
-                compressor, dtype, shape = self.data['compressed']
-                self.data[map_name] = np.frombuffer(
-                    strax.io.COMPRESSORS[compressor]['decompress'](self.data[map_name]),
-                    dtype=dtype).reshape(*shape)
-            if 'quantized' in self.data:
-                self.data[map_name] = self.data['quantized'] * self.data[map_name].astype(np.float32)
-
             # Specify dtype float to set Nones to nan
             map_data = np.array(self.data[map_name], dtype=np.float)
             array_valued = len(map_data.shape) == self.dimensions + 1
