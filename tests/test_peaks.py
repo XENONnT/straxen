@@ -1,7 +1,9 @@
-import unittest
 import strax
 import straxen
+
 import numpy as np
+
+import unittest
 from strax.testutils import run_id
 from hypothesis import strategies, given, settings
 
@@ -10,6 +12,7 @@ TEST_DATA_LENGTH = 3
 
 class TestComputePeakBasics(unittest.TestCase):
     """Tests for peak basics plugin"""
+
     def setUp(self, context=straxen.contexts.demo):
         self.st = context()
         self.n_top = self.st.config.get('n_top_pmts', 2)
@@ -17,7 +20,7 @@ class TestComputePeakBasics(unittest.TestCase):
 
     @settings(deadline=None)
     @given(strategies.integers(min_value=0,
-                               max_value=TEST_DATA_LENGTH-1),
+                               max_value=TEST_DATA_LENGTH - 1),
            )
     def test_aft_equals1(self, test_peak_idx):
         """Fill top array with area 1"""
@@ -32,7 +35,7 @@ class TestComputePeakBasics(unittest.TestCase):
                              max_value=2,
                              ),
            strategies.integers(min_value=0,
-                               max_value=TEST_DATA_LENGTH-1),
+                               max_value=TEST_DATA_LENGTH - 1),
            )
     def test_bad_peak(self, off_by_factor, test_peak_idx):
         if np.isclose(off_by_factor, 1) or np.isclose(off_by_factor, 0):
@@ -48,9 +51,9 @@ class TestComputePeakBasics(unittest.TestCase):
     def get_test_data(n_top, length=2, sum_wf_samples=10):
         test_data = np.zeros(TEST_DATA_LENGTH,
                              dtype=strax.dtypes.peak_dtype(
-                                 n_channels=n_top+1,
+                                 n_channels=n_top + 1,
                                  n_sum_wv_samples=sum_wf_samples)
-                                  )
+                             )
         test_data['time'] = range(TEST_DATA_LENGTH)
         test_data['time'] *= length * 2
         test_data['dt'] = 1
