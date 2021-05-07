@@ -125,7 +125,7 @@ class PeakBasics(strax.Plugin):
                               peaks[positive_area]['area'])
 
         if not is_close.all():
-            for peak in peaks[~is_close & positive_area]:
+            for peak in peaks[positive_area][~is_close]:
                 print('bad area')
                 strax.print_record(peak)
 

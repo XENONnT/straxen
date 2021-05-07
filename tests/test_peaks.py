@@ -3,17 +3,19 @@ import strax
 import straxen
 import numpy as np
 from strax.testutils import run_id
-from hypothesis import strategies, given
+from hypothesis import strategies, given, settings
 
-TEST_DATA_LENGTH =2
+TEST_DATA_LENGTH = 3
 
 
 class TestComputePeakBasics(unittest.TestCase):
+    """Tests for peak basics plugin"""
     def setUp(self, context=straxen.contexts.demo):
         self.st = context()
         self.n_top = self.st.config.get('n_top_pmts', 2)
         self.peaks_basics_compute = self.st.get_single_plugin(run_id, 'peak_basics').compute
 
+    @settings(deadline=None)
     @given(strategies.integers(min_value=0,
                                max_value=TEST_DATA_LENGTH-1),
            )
@@ -25,6 +27,7 @@ class TestComputePeakBasics(unittest.TestCase):
         peaks = self.peaks_basics_compute(test_data)
         assert peaks[test_peak_idx]['area_fraction_top'] == 1
 
+    @settings(deadline=None)
     @given(strategies.floats(min_value=0,
                              max_value=2,
                              ),
