@@ -114,12 +114,13 @@ class InterpolatingMap:
         csys = self.data['coordinate_system']
         if not len(csys):
             self.dimensions = 0
-        elif isinstance(csys[0], list) and isinstance(csys[0][0], str):
+        elif isinstance(csys[0][0], str):
             # Support for specifying coordinate system as a gridspec
             grid = [np.linspace(left, right, points)
                     for _, (left, right, points) in csys]
             csys = np.array(np.meshgrid(*grid, indexing='ij'))
-            csys = np.transpose(csys, np.roll(np.arange(len(grid)+1), -1))
+            axes = np.roll(np.arange(len(grid) + 1), -1)
+            csys = np.transpose(csys, axes)
             csys = np.array(csys).reshape((-1, len(grid)))
             self.dimensions = len(grid)
         else:
