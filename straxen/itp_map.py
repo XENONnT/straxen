@@ -84,7 +84,8 @@ class InterpolatingMap:
         etc
 
     Default method return inverse-distance weighted average of nearby 2 * dim points
-    Extra support includes RectBivariateSpline, RegularGridInterpolator in scipy by pass keyword argument like
+    Extra support includes RectBivariateSpline, RegularGridInterpolator in scipy
+    by pass keyword argument like
         method='RectBivariateSpline'
     """
     metadata_field_names = ['timestamp', 'description', 'coordinate_system',
@@ -110,22 +111,22 @@ class InterpolatingMap:
             self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
             del self.data['quantized']
 
-        cs = self.data['coordinate_system']
-        if not len(cs):
+        csys = self.data['coordinate_system']
+        if not len(csys):
             self.dimensions = 0
-        elif isinstance(cs[0], list) and isinstance(cs[0][0], str):
+        elif isinstance(csys[0], list) and isinstance(csys[0][0], str):
             # Support for specifying coordinate system as a gridspec
             grid = [np.linspace(left, right, points)
-                    for _, (left, right, points) in cs]
-            cs = np.array(np.meshgrid(*grid, indexing='ij'))
-            cs = np.transpose(cs, np.roll(np.arange(len(grid)+1), -1))
-            cs = np.array(cs).reshape((-1, len(grid)))
+                    for _, (left, right, points) in csys]
+            csys = np.array(np.meshgrid(*grid, indexing='ij'))
+            csys = np.transpose(csys, np.roll(np.arange(len(grid)+1), -1))
+            csys = np.array(csys).reshape((-1, len(grid)))
             self.dimensions = len(grid)
         else:
-            cs = np.array(cs)
-            self.dimensions = len(cs[0])
+            csys = np.array(csys)
+            self.dimensions = len(csys[0])
 
-        self.coordinate_system = cs
+        self.coordinate_system = csys
         self.interpolators = {}
         self.map_names = sorted([k for k in self.data.keys()
                                  if k not in self.metadata_field_names])
@@ -148,13 +149,13 @@ class InterpolatingMap:
                     return np.array([map_data])
 
             elif method == 'RectBivariateSpline':
-                itp_fun = self._RectBivariateSpline(cs, map_data, array_valued, **kwargs)
+                itp_fun = self._rect_bivariate_spline(csys, map_data, array_valued, **kwargs)
 
             elif method == 'RegularGridInterpolator':
-                itp_fun = self._RegularGridInterpolator(cs, map_data, array_valued, **kwargs)
+                itp_fun = self._regular_grid_interpolator(csys, map_data, array_valued, **kwargs)
 
             elif method == 'WeightedNearestNeighbors':
-                itp_fun = self._WeightedNearestNeighbors(cs, map_data, array_valued, **kwargs)
+                itp_fun = self._weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs)
 
             else:
                 raise ValueError(f'Interpolation method {method} is not supported')
@@ -169,9 +170,9 @@ class InterpolatingMap:
         return self.interpolators[map_name](*args)
 
     @staticmethod
-    def _RectBivariateSpline(cs, map_data, array_valued, **kwargs):
-        dimensions = len(cs[0])
-        grid = [np.unique(cs[:, i]) for i in range(dimensions)]
+    def _rect_bivariate_spline(csys, map_data, array_valued, **kwargs):
+        dimensions = len(csys[0])
+        grid = [np.unique(csys[:, i]) for i in range(dimensions)]
         grid_shape = [len(g) for g in grid]
 
         assert dimensions == 2, 'RectBivariateSpline interpolate maps of dimension 2'
@@ -181,9 +182,9 @@ class InterpolatingMap:
         return RectBivariateSpline(grid[0], grid[1], map_data, **kwargs).ev
 
     @staticmethod
-    def _RegularGridInterpolator(cs, map_data, array_valued, **kwargs):
-        dimensions = len(cs[0])
-        grid = [np.unique(cs[:, i]) for i in range(dimensions)]
+    def _regular_grid_interpolator(csys, map_data, array_valued, **kwargs):
+        dimensions = len(csys[0])
+        grid = [np.unique(csys[:, i]) for i in range(dimensions)]
         grid_shape = [len(g) for g in grid]
 
         if array_valued:
@@ -194,11 +195,11 @@ class InterpolatingMap:
         return RegularGridInterpolator(tuple(grid), map_data, **kwargs)
 
     @staticmethod
-    def _WeightedNearestNeighbors(cs, map_data, array_valued, **kwargs):
+    def _weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs):
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
 
-        return InterpolateAndExtrapolate(cs, map_data, array_valued, **kwargs)
+        return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
 
     def scale_coordinates(self, scaling_factor, map_name='map'):
         """Scales the coordinate system by the specified factor
@@ -214,15 +215,15 @@ class InterpolatingMap:
         if isinstance(scaling_factor, (int, float)):
             self._sf = [scaling_factor] * self.dimensions
 
-        alt_cs = self.coordinate_system
+        alt_csys = self.coordinate_system
         for i, gp in enumerate(self.coordinate_system):
-            alt_cs[i] = [gc * k for (gc, k) in zip(gp, self._sf)]
+            alt_csys[i] = [gc * k for (gc, k) in zip(gp, self._sf)]
 
         map_data = np.array(self.data[map_name])
         array_valued = len(map_data.shape) == self.dimensions + 1
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
-        itp_fun = InterpolateAndExtrapolate(points=np.array(alt_cs),
+        itp_fun = InterpolateAndExtrapolate(points=np.array(alt_csys),
                                             values=np.array(map_data),
                                             array_valued=array_valued)
         self.interpolators[map_name] = itp_fun
