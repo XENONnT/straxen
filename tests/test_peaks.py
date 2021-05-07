@@ -18,7 +18,7 @@ class TestComputePeakBasics(unittest.TestCase):
         self.n_top = self.st.config.get('n_top_pmts', 2)
 
         # Make sure that the check is on. Otherwise we cannot test it.
-        self.st.config({'check_peak_sum_area': True})
+        self.st.set_config({'check_peak_sum_area': True})
         self.peaks_basics_compute = self.st.get_single_plugin(run_id, 'peak_basics').compute
 
     @settings(deadline=None)
