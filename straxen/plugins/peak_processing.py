@@ -14,7 +14,11 @@ from .pulse_processing import  HE_PREAMBLE
 @export
 @strax.takes_config(
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
-                 help="Number of top PMTs"))
+                 help="Number of top PMTs"),
+    strax.Option('check_peak_sum_area', default=True, track=False,
+                 help="Check if the sum area and the sum of area per "
+                      "channel are the same.")
+)
 class PeakBasics(strax.Plugin):
     """
     Compute the basic peak-properties, thereby dropping structured
@@ -74,12 +78,16 @@ class PeakBasics(strax.Plugin):
 
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
+        # Recalculate to prevent numerical inaccuracy #442
+        area_total = p['area_per_channel'].sum(axis=1)
         # Negative-area peaks get NaN AFT
-        m = p['area'] > 0
-        r['area_fraction_top'][m] = area_top[m]/p['area'][m]
+        m = area_total > 0
+        r['area_fraction_top'][m] = area_top[m]/area_total[m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
-        
+
+        if self.config['check_peak_sum_area']:
+            self.check_area(area_total, p)
         # Negative or zero-area peaks have centertime at startime
         r['center_time'] = p['time']
         r['center_time'][m] += self.compute_center_times(peaks[m])
@@ -96,11 +104,34 @@ class PeakBasics(strax.Plugin):
             result[p_i] = t / p['area']
         return result
 
+    @staticmethod
+    def check_area(area_per_channel_sum, peaks):
+        """Check if the area of the sum-wf is the same as the total area"""
+        pos_area = peaks['area'] > 0
+        if not np.sum(pos_area):
+            return
+
+        is_close = np.isclose(area_per_channel_sum[pos_area],
+                              peaks[pos_area]['area'])
+        if not is_close.all():
+            for p in peaks[~is_close]:
+                print('bad area')
+                strax.print_record(p)
+
+            p_i = np.where(~is_close)[0][0]
+            p = peaks[p_i]
+            area_fraction_off = 1 - area_per_channel_sum[p_i] / p['area']
+            message = (
+                'Area not calculated correctly. '
+                f'it is {100*area_fraction_off} % off'
+                f'Timestamp: {p["time"]}')
+            raise ValueError(message)
+
 
 @export
 class PeakBasicsHighEnergy(PeakBasics):
     __doc__ = HE_PREAMBLE + PeakBasics.__doc__
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
     child_ends_with = '_he'
