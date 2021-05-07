@@ -17,7 +17,7 @@ from .pulse_processing import  HE_PREAMBLE
                  help="Number of top PMTs"),
     strax.Option('check_peak_sum_area', default=True, track=False,
                  help="Check if the sum area and the sum of area per "
-                      "channel are the same.")
+                      "channel are the same."),
 )
 class PeakBasics(strax.Plugin):
     """
@@ -81,7 +81,7 @@ class PeakBasics(strax.Plugin):
         # Recalculate to prevent numerical inaccuracy #442
         area_total = p['area_per_channel'].sum(axis=1)
         # Negative-area peaks get NaN AFT
-        m = area_total > 0
+        m = p['area'] > 0
         r['area_fraction_top'][m] = area_top[m]/area_total[m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
@@ -123,16 +123,17 @@ class PeakBasics(strax.Plugin):
 
         is_close = np.isclose(area_per_channel_sum[positive_area],
                               peaks[positive_area]['area'])
+
         if not is_close.all():
-            for p in peaks[~is_close]:
+            for peak in peaks[~is_close & positive_area]:
                 print('bad area')
-                strax.print_record(p)
+                strax.print_record(peak)
 
             p_i = np.where(~is_close)[0][0]
-            p = peaks[p_i]
-            area_fraction_off = 1 - area_per_channel_sum[p_i] / p['area']
+            peak = peaks[positive_area][p_i]
+            area_fraction_off = 1 - area_per_channel_sum[p_i] / peak['area']
             message = (f'Area not calculated correctly, it\'s '
-                       f'{100*area_fraction_off} % off, time: {p["time"]}')
+                       f'{100*area_fraction_off} % off, time: {peak["time"]}')
             raise ValueError(message)
 
 
