@@ -20,8 +20,7 @@ common_opts = dict(
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number',
-        'start', 'end', 'livetime', 'mode'),
-)
+        'start', 'end', 'livetime', 'mode'))
 
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
@@ -244,7 +243,7 @@ x1t_context_config = {
         check_available=('raw_records', 'records', 'peaklets',
                          'events', 'event_info'),
         free_options=('channel_map',),
-        use_per_run_defaults=False,
+        use_per_run_defaults=True,
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
