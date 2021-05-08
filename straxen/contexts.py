@@ -60,7 +60,7 @@ xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
-xnt_common_opts = deepcopy(common_opts)
+xnt_common_opts = common_opts.copy()
 xnt_common_opts['register'] = common_opts['register'] + [
     straxen.PeakPositionsCNN,
     straxen.PeakPositionsMLP,
