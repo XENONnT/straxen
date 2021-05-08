@@ -20,7 +20,8 @@ common_opts = dict(
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number',
-        'start', 'end', 'livetime', 'mode'))
+        'start', 'end', 'livetime', 'mode'),
+)
 
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
@@ -60,27 +61,27 @@ xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts['register'] = common_opts['register'] + [
-    straxen.PeakPositionsCNN,
-    straxen.PeakPositionsMLP,
-    straxen.PeakPositionsGCN,
-    straxen.PeakPositionsNT,
-    straxen.PeakBasicsHighEnergy,
-    straxen.PeaksHighEnergy,
-    straxen.PeakletsHighEnergy,
-    straxen.PeakletClassificationHighEnergy,
-    straxen.MergedS2sHighEnergy,
-]
-xnt_common_opts['register_all'] = common_opts['register_all'] + [
-    straxen.nveto_recorder,
-    straxen.veto_pulse_processing,
-    straxen.veto_hitlets,
-    straxen.veto_events,
-    straxen.acqmon_processing,
-    straxen.pulse_processing,
-    straxen.peaklet_processing,
-    straxen.online_monitor,
-]
+xnt_common_opts.update({
+    'register': common_opts['register'] + [straxen.PeakPositionsCNN,
+                                           straxen.PeakPositionsMLP,
+                                           straxen.PeakPositionsGCN,
+                                           straxen.PeakPositionsNT,
+                                           straxen.PeakBasicsHighEnergy,
+                                           straxen.PeaksHighEnergy,
+                                           straxen.PeakletsHighEnergy,
+                                           straxen.PeakletClassificationHighEnergy,
+                                           straxen.MergedS2sHighEnergy, ],
+    'register_all': common_opts['register_all'] + [straxen.nveto_recorder,
+                                                   straxen.veto_pulse_processing,
+                                                   straxen.veto_hitlets,
+                                                   straxen.veto_events,
+                                                   straxen.acqmon_processing,
+                                                   straxen.pulse_processing,
+                                                   straxen.peaklet_processing,
+                                                   straxen.online_monitor,
+                                                   ],
+    'use_per_run_defaults': False,
+})
 
 ##
 # XENONnT
@@ -243,6 +244,7 @@ x1t_context_config = {
         check_available=('raw_records', 'records', 'peaklets',
                          'events', 'event_info'),
         free_options=('channel_map',),
+        use_per_run_defaults=False,
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
@@ -295,7 +297,6 @@ x1t_common_config = dict(
     elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
 )
-
 
 
 def demo():
