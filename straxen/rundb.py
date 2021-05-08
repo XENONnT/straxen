@@ -135,13 +135,13 @@ class RunDB(strax.StorageFrontend):
                 '$elemMatch': {
                     'type': key.data_type,
                     # TODO remove the meta.lineage since this doc
-                    #  entry is deprecated. Also this $OR is too broad!!
+                    #  entry is deprecated.
                     '$and': [{'$or': [
                         {'meta.lineage': key.lineage},
                         {'did': {'$regex': f'/*{key.data_type}-{key.lineage_hash}'},
-                        }
+                         }
                     ]},
-                    {'$or': self.available_query}]}}}
+                        {'$or': self.available_query}]}}}
 
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
@@ -157,12 +157,19 @@ class RunDB(strax.StorageFrontend):
         # Check that we are in rucio backend
         if self.rucio_path is not None:
             rucio_key = self.key_to_rucio_did(key)
+            rucio_available_query = self.available_query[-1]
             dq = {
                 'data': {
                     '$elemMatch': {
                         'type': key.data_type,
-                        'did': rucio_key}}}
-            doc = self.collection.find_one({**run_query, **dq},
+                        'did': rucio_key,
+                        **rucio_available_query,
+                    },
+
+                }}
+            doc = self.collection.find_one({**run_query,
+                                            **dq,
+                                            },
                                            projection=dq)
             if doc is not None:
                 datum = doc['data'][0]
@@ -213,7 +220,7 @@ class RunDB(strax.StorageFrontend):
         return datum['protocol'], datum['location']
 
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
-        if kwargs['fuzzy_for'] or kwargs['fuzzy_for_options']:
+        if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
         if not len(keys):
             return []
