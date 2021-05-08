@@ -138,8 +138,11 @@ class RunDB(strax.StorageFrontend):
                     #  entry is deprecated.
                     '$and': [{'$or': [
                         {'meta.lineage': key.lineage},
-                        {'did': {'$regex': f'/*{key.data_type}-{key.lineage_hash}'},
-                         }
+                        {'did':
+                             {'$regex':
+                                  f'/*{key.data_type}-{key.lineage_hash}'
+                              },
+                         },
                     ]},
                         {'$or': self.available_query}]}}}
 
@@ -165,7 +168,6 @@ class RunDB(strax.StorageFrontend):
                         'did': rucio_key,
                         **rucio_available_query,
                     },
-
                 }}
             doc = self.collection.find_one({**run_query,
                                             **dq,
