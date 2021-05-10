@@ -50,7 +50,6 @@ xnt_common_config = dict(
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-# This gain model is the average to_pe. For something more fancy use the CMT
 xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
                              gain_model_nv=("to_pe_constant", 0.01),
                              gain_model_mv=("to_pe_constant", "adc_mv"),
