@@ -87,6 +87,11 @@ class InterpolatingMap:
     Extra support includes RectBivariateSpline, RegularGridInterpolator in scipy
     by pass keyword argument like
         method='RectBivariateSpline'
+
+    The interpolators are called with
+        'positions' :  [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
+        but [[x1, x2, x3, ...], [y1, y2, y3, ...]], if the method is RectBivariateSpline
+        'map_name'  :  key to switch to map interpolator other than the default 'map'
     """
     metadata_field_names = ['timestamp', 'description', 'coordinate_system',
                             'name', 'irregular', 'compressed', 'quantized']
