@@ -10,6 +10,10 @@ from hypothesis import strategies, given, settings
 TEST_DATA_LENGTH = 3
 
 
+def _not_close_to_0_or_1(x):
+    return not (np.isclose(x, 1) or np.isclose(x, 0))
+
+
 class TestComputePeakBasics(unittest.TestCase):
     """Tests for peak basics plugin"""
 
@@ -36,17 +40,16 @@ class TestComputePeakBasics(unittest.TestCase):
     @settings(deadline=None)
     @given(strategies.floats(min_value=0,
                              max_value=2,
-                             ),
+                             ).filter(_not_close_to_0_or_1),
            strategies.integers(min_value=0,
-                               max_value=TEST_DATA_LENGTH - 1),
+                               max_value=TEST_DATA_LENGTH - 1,
+                               ),
            )
     def test_bad_peak(self, off_by_factor, test_peak_idx):
         """
         Lets deliberately make some data that is not self-consistent to
             run into the error in the test.
         """
-        if np.isclose(off_by_factor, 1) or np.isclose(off_by_factor, 0):
-            return
         test_data = self.get_test_peaks(self.n_top)
         test_data[test_peak_idx]['area_per_channel'][:self.n_top] = 1
         area = np.sum(test_data[test_peak_idx]['area_per_channel'])
