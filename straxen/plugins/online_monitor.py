@@ -164,7 +164,7 @@ class OnlinePeakMonitor(strax.Plugin):
         # Estimate Single Electron (SE) gain
         se_hist, se_bins = np.histogram(peaks['area'], bins=n_bins,
                                         range=self.config['online_se_bounds'])
-        bin_centers = (se_bins[1:] + se_bins[:1]) / 2
+        bin_centers = (se_bins[1:] + se_bins[:-1]) / 2
         res['online_se_gain'] = bin_centers[np.argmax(se_hist)]
         return res
 
