@@ -5,6 +5,7 @@ from warnings import warn
 from functools import wraps
 from straxen.corrections_services import corrections_w_file
 from straxen.corrections_services import single_value_corrections
+from straxen.corrections_services import arrays_corrections
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
@@ -90,7 +91,12 @@ def get_correction_from_cmt(run_id, conf):
                 return int(correction)
             else:
                 return float(correction) # float elife, drift velocity, etc
-        
+
+        elif model_conf in arrays_corrections:
+            np_correction = correction.reshape(correction.size)
+            np_correction = np_correction.astype(np.int16)  # not sure if straxen can handle dtype:object therefore specify dtype
+            return np_correction
+
         return correction
     
     else:
