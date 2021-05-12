@@ -1,7 +1,7 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-
+from copy import deepcopy
 
 common_opts = dict(
     register_all=[
@@ -47,6 +47,14 @@ xnt_common_config = dict(
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
 )
+# these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
+# s1,s2 and fd corrections are still problematic
+xnt_simulation_config = deepcopy(xnt_common_config)
+xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
+                             gain_model_nv=("to_pe_constant", 0.01),
+                             gain_model_mv=("to_pe_constant", "adc_mv"),
+                             elife_conf=('elife_constant', 1e6),
+                             )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
@@ -180,50 +188,18 @@ def xenonnt_led(**kwargs):
     return st
 
 
-# This gain model is the average to_pe. For something more fancy use the CMT
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
-    xnt_common_config['gain_model'] = ('to_pe_constant', 0.01)
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
                     fax_config='fax_config_nt_design.json',
                     check_raw_record_overlaps=True,
-                    **straxen.contexts.xnt_common_config,
+                    **straxen.contexts.xnt_simulation_config,
                     ),
         **straxen.contexts.xnt_common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
     return st
-
-
-def xenonnt_temporary_five_pmts(**kwargs):
-    """Temporary context for selected PMTs"""
-    # Start from the online context
-    st_online = xenonnt_online(**kwargs)
-
-    temporary_five_pmts_config = {
-        'gain_model': ('CMT_model', ("to_pe_model", "xenonnt_temporary_five_pmts")),
-        'peak_min_pmts': 2,
-        'peaklet_gap_threshold': 300,
-    }
-    # If there are any config overwrites in the kwargs, us those,
-    # otherwise use the config as in the dict above.
-
-    for k in list(temporary_five_pmts_config.keys()):
-        if k in kwargs:
-            temporary_five_pmts_config[k] = kwargs[k]
-
-    # Copy the online context and change the configuration here
-    st = st_online.new_context()
-    st.set_config(temporary_five_pmts_config)
-
-    return st
-
-
-def xenonnt_initial_commissioning(*args, **kwargs):
-    raise ValueError(
-        'Use xenonnt_online. See' 
-        'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts#update_09_nov_20')  # noqa
 
 ##
 # XENON1T
@@ -411,7 +387,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config='fax_config_1t.json',
             detector='XENON1T',
-            **straxen.contexts.x1t_common_config),
-        **straxen.contexts.common_opts)
+            **x1t_common_config),
+        **x1t_context_config)
     st.register(wfsim.RawRecordsFromFax1T)
     return st

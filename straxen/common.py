@@ -8,6 +8,7 @@ import json
 import os
 import os.path as osp
 import pickle
+import dill
 import socket
 import sys
 import tarfile
@@ -24,7 +25,7 @@ import straxen
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
             'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E',
-            'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius']
+            'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius', 'cryostat_outer_radius']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -32,6 +33,7 @@ straxen_dir = os.path.dirname(os.path.abspath(
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
 tpc_r = 66.4  # [CM], Not really radius, but apothem: from MC paper draft 1.0
+cryostat_outer_radius = 81.5  # [cm] radius of the outer cylinder wall.
 tpc_z = 148.6515  # [CM], distance between the bottom of gate and top of cathode wires
 n_tpc_pmts = 494
 n_top_pmts = 253
@@ -104,10 +106,16 @@ def open_resource(file_name: str, fmt='text'):
             result = result_slurped
     elif fmt == 'pkl':
         with open(file_name, 'rb') as f:
-            result = pickle.load(f)
+            result = pickle.load(f)  # nosec
     elif fmt == 'pkl.gz':
         with gzip.open(file_name, 'rb') as f:
-            result = pickle.load(f)
+            result = pickle.load(f)  # nosec
+    elif fmt == 'dill':
+        with open(file_name, 'rb') as f:
+            result = dill.load(f)  # nosec
+    elif fmt == 'dill.gz':
+        with gzip.open(file_name, 'rb') as f:
+            result = dill.load(f)  # nosec
     elif fmt == 'json.gz':
         with gzip.open(file_name, 'rb') as f:
             result = json.load(f)
