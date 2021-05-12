@@ -278,3 +278,45 @@ class PeakProximity(strax.OverlapWindowPlugin):
             n_tot[i] = n_left[i] + np.sum(areas[i + 1:right_i] > threshold)
 
         return n_left, n_tot
+
+
+class PeakVetoTagging(strax.Plugin):
+    """
+    Plugin which tags S1 peaks according to the muon and neutron-veto.
+
+        * untagged: 0
+        * neutron-veto: 1
+        * muon-veto: 2
+        * both vetos: 3
+    """
+    __version__ = '0.0.1'
+    depends_on = ('peak_basics', 'veto_nv', 'veto_mv')
+    provides = ('peak_veto_tags')
+    save_when = strax.SaveWhen.NEVER
+
+    dtype = [('veto_tag',
+              np.int8,
+              'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3')] + \
+            strax.time_fields
+
+    def compute(self, peaks, veto_nv, veto_mv):
+        touching_mv = strax.touching_windows(peaks, veto_mv)
+        touching_nv = strax.touching_windows(peaks, veto_nv)
+
+        tags = np.zeros(len(peaks))
+        tags = tag_peaks(tags, touching_nv, 1)
+        tags = tag_peaks(tags, touching_mv, 2)
+
+        tags[peaks['type'] == 2] = 0
+
+        return {'time': peaks['time'],
+                'endtime': strax.endtime(peaks),
+                'veto_tag': tags
+                }
+
+
+@numba.njit(cache=True, nogil=True)
+def tag_peaks(tags, touching_windows, tag_number):
+    for start, end in touching_windows:
+        tags[start:end] += tag_number
+    return tags
