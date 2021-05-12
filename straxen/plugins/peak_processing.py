@@ -281,8 +281,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
 
 class PeakVetoTagging(strax.Plugin):
-    """
-    Plugin which tags S1 peaks according to the muon and neutron-veto.
+    """Plugin which tags S1 peaks according to the muon and neutron-veto.
 
         * untagged: 0
         * neutron-veto: 1
@@ -311,7 +310,7 @@ class PeakVetoTagging(strax.Plugin):
 
         return {'time': peaks['time'],
                 'endtime': strax.endtime(peaks),
-                'veto_tag': tags
+                'veto_tag': tags,
                 }
 
 
