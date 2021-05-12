@@ -5,7 +5,7 @@ import strax
 import straxen
 import sys
 import warnings
-from datetime import datetime, timedelta
+import datetime
 import pytz
 
 try:
@@ -103,8 +103,8 @@ class TimeWidgets:
             Please be aware that the correct format for the time field
             is HH:MM.
         """
-        utcend = datetime.utcnow()
-        deltat = timedelta(minutes=60)
+        utcend = datetime.datetime.utcnow()
+        deltat = datetime.timedelta(minutes=60)
         utcstart = utcend - deltat
 
         self._start_widget = self._create_date_and_time_widget(utcstart, 'Start')
@@ -142,9 +142,9 @@ class TimeWidgets:
 
     @staticmethod
     def _create_date_and_time_widget(date_and_time, widget_describtion):
-        date = datetime(date_and_time.year,
-                        date_and_time.month,
-                        date_and_time.day)
+        date = datetime.date(date_and_time.year,
+                             date_and_time.month,
+                             date_and_time.day)
         date = widgets.DatePicker(description=widget_describtion,
                                   value=date,
                                   layout=Layout(width='225px'),
@@ -184,12 +184,12 @@ class TimeWidgets:
         """
         date_and_time = [c.value for c in time_widget.children]
         try:
-            hour_and_minutes = datetime.strptime(date_and_time[1], '%H:%M')
+            hour_and_minutes = datetime.datetime.strptime(date_and_time[1], '%H:%M')
         except ValueError as e:
             raise ValueError('Cannot convert time into datetime object. '
                              f'Expected the following formating HH:MM. {e}')
 
-        time = date_and_time[0]
+        time = datetime.datetime.combine(date_and_time[0], datetime.time())
         time = time.replace(hour=hour_and_minutes.hour,
                             minute=hour_and_minutes.minute)
         time_zone = pytz.timezone(time_zone)
