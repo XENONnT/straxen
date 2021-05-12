@@ -6,183 +6,7 @@ from scipy import special
 from scipy.special import betainc, gammaln
 from scipy.stats import binom_test, binom
 
-export, __all__ = strax.exporter()
-
-@export
-@strax.takes_config(
-    strax.Option('n_tpc_pmts', type=int,
-                 help='Number of TPC PMTs'),
-)
-class EventAreaPerChannel(strax.LoopPlugin):
-    """
-    Simple plugin that provides area per channel for main 
-    and alternative S1/S2 in the event. 
-    """
-    depends_on = ('events', 'event_basics', 'peaks')
-    parallel = False
-    provides = "EventAreaPerChannel"
-    __version__ = '0.0.3'
-    def infer_dtype(self):
-        dtype = []
-        dtype += strax.time_fields
-        dtype.append( (("Area per channel for main S2","s2_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        dtype.append( (("Area per channel for alternative S2","alt_s2_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        dtype.append( (("Area per channel for main S1","s1_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        dtype.append( (("Area per channel for alternative S1","alt_s1_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        
-        return dtype
-    
-    def compute_loop(self, event, peaks):
-        result = dict()
-        result['time'], result['endtime'] = event['time'], strax.endtime(event)
-        for type_ in ['s1','s2','alt_s1','alt_s2']:
-            result[type_+'_area_per_channel'] = (peaks['area_per_channel'][event[type_+"_index"]]
-                                             if event[type_+"_index"]!=-1 else 0.0)
-            
-            return result
-        
-
-def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
-    """ 
-    Modified poisson distribution with proper normalization for shifted poisson. 
-    
-    mu - expected number of photons per channel
-    areas  - observed areas per channel
-    mean_sPhoton - mean 
-    """
-    res     = 2.*(mu - (areas/mean_sPhoton)*np.log(mu) + special.loggamma((areas/mean_sPhoton)+1) + np.log(mean_sPhoton)) 
-    is_zero = ~(areas>0) # If area equals or smaller than 0 - assume 0
-    res[is_zero] = 2.*mu[is_zero]
-    # if zero channel has negative expectation, assume LLH to be 0 there
-    # this happens for normalization factor
-    neg_mu              = mu<0.0 
-    res[is_zero*neg_mu] = 0.0 # 
-    return(res)
-
-# Continuos and discrete binomial test 
-# https://github.com/poliastro/cephes/blob/master/src/bdtr.c
-
-def bdtrc(k, n, p):
-    if (k < 0):  return (1.0)
-    if (k == n): return (0.0)
-    dn = n - k
-    if (k == 0):
-        if (p < .01): dk = -np.expm1(dn * np.log1p(-p))
-        else:         dk = 1.0 - np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = betainc(dk, dn, p)
-    return dk
- 
-def bdtr(k, n, p):
-    if (k < 0):  return np.nan
-    if (k == n): return (1.0)
-    dn = n - k
-    if (k == 0): dk = np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = betainc(dn, dk, 1.0 - p)
-    return dk
-
-# Continuos binomial distribution
-def binom_pmf(k, n, p):
-    scale_log = gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
-    ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
-    return np.exp(ret_log)
- 
-def binom_cdf(k, n, p):
-    return bdtr(k, n, p)
- 
-def binom_sf(k, n, p):
-    return bdtrc(k, n, p)
- 
-def binom_test(k, n, p):
-    '''
-    The main purpose of this algorithm is to find the value j on the
-    other side of the mean that has the same probability as k, and
-    integrate the tails outward from k and j. In the case where either
-    k or j are zero, only the non-zero tail is integrated.
-    
-    Temporarily version since I have found many events with n < k    
-    '''
-    check = True
-    if n < k:                 
-        print(f'n {n} must be >= k {k}')#raise ValueError("n must be >= k")
-        check = False
-    if (p > 1.0) or (p < 0.0): 
-        print(f'p {p} must be in range [0, 1]')#raise ValueError("p must be in range [0, 1]")
-        check = False
-    if k < 0:                  
-        print(f'k {k} must be >= 0')#raise ValueError("k must be >= 0")
-        check = False
-        
-    if check:
-        d      = binom_pmf(k, n, p)
-        rerr   = 1 + 1e-7
-        d      = d * rerr
-        n_iter = int(max(np.round(np.log10(n)) + 1, 2))   
-        
-        if k < n * p:
-            if binom_pmf(n, n, p) > d:
-                for n_ in np.arange(n, 2*n, 1):
-                    if binom_pmf(n_, n, p) < d:
-                        j_min, j_max = k, n_
-                        do_test = True
-                        break
-                    do_test = False                  
-            else: 
-                j_min, j_max = k, n 
-                do_test = True
-            def check(d, y0, y1): return (d>y1)and(d<=y0)
-            
-        else:
-            if binom_pmf(0, n, p) > d: 
-                n_iter, j_min, j_max = 0, 0, 0
-                do_test = True
-            else:                      
-                j_min, j_max = 0, k
-                do_test = True
-            def check(d, y0, y1): return (d>=y0)and(d<y1)
-        
-        # if B(k;n,p) is already 0 or I can't find the k' in the other side of the mean
-        # the returned binomial test is 0
-        if (d==0)|(not do_test):
-            pval = 0
-            return pval
-        
-        else:
-            for i in range(n_iter):      
-                #n_pts   = 50 if i == 0 else 10
-                n_pts   = int(j_max - j_min)
-                j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
-                y       = binom_pmf(j_range, n, p)
-                for i in range(len(j_range) - 1):
-                    if check(d, y[i], y[i + 1]):                    
-                        j_min, j_max = j_range[i], j_range[i + 1]
-                        break      
-            j = max(min((j_min + j_max) / 2, n), 0)
-
-            if k * j == 0:  pval = binom_sf(max(k, j), n, p)
-            else:           pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
-            return min(1.0, pval)
-    else:
-        return np.nan
-
-def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuos'):
-    """
-    Wrapper that does the S1 AFT probability calculation for you
-    """
-    size_top = area_tot * area_fraction_top
-    size_tot = area_tot
-
-    if mode == 'discrete': 
-        return binom_pmf(size_top, size_tot, aft_prob)
-    else:                  
-        return binom_test(size_top, size_tot, aft_prob)
+export, __all__ = strax.exporter()    
 
 @export
 @strax.takes_config(
@@ -387,3 +211,141 @@ class EventPatternFit(strax.Plugin):
                 store_2LLH_ch[:,self.pmtbool_top]=norm_llh_val
                 result[t_+'_2llh_per_channel'][cur_s2_bool]=store_2LLH_ch
             ####
+            
+            
+def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
+    """ 
+    Modified poisson distribution with proper normalization for shifted poisson. 
+    
+    mu - expected number of photons per channel
+    areas  - observed areas per channel
+    mean_sPhoton - mean 
+    """
+    res     = 2.*(mu - (areas/mean_sPhoton)*np.log(mu) + special.loggamma((areas/mean_sPhoton)+1) + np.log(mean_sPhoton)) 
+    is_zero = ~(areas>0) # If area equals or smaller than 0 - assume 0
+    res[is_zero] = 2.*mu[is_zero]
+    # if zero channel has negative expectation, assume LLH to be 0 there
+    # this happens for normalization factor
+    neg_mu              = mu<0.0 
+    res[is_zero*neg_mu] = 0.0 # 
+    return(res)
+
+# Continuos and discrete binomial test 
+# https://github.com/poliastro/cephes/blob/master/src/bdtr.c
+
+def bdtrc(k, n, p):
+    if (k < 0):  return (1.0)
+    if (k == n): return (0.0)
+    dn = n - k
+    if (k == 0):
+        if (p < .01): dk = -np.expm1(dn * np.log1p(-p))
+        else:         dk = 1.0 - np.exp(dn * np.log(1.0 - p))
+    else:
+        dk = k + 1
+        dk = betainc(dk, dn, p)
+    return dk
+ 
+def bdtr(k, n, p):
+    if (k < 0):  return np.nan
+    if (k == n): return (1.0)
+    dn = n - k
+    if (k == 0): dk = np.exp(dn * np.log(1.0 - p))
+    else:
+        dk = k + 1
+        dk = betainc(dn, dk, 1.0 - p)
+    return dk
+
+# Continuos binomial distribution
+def binom_pmf(k, n, p):
+    scale_log = gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
+    ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
+    return np.exp(ret_log)
+ 
+def binom_cdf(k, n, p):
+    return bdtr(k, n, p)
+ 
+def binom_sf(k, n, p):
+    return bdtrc(k, n, p)
+ 
+def binom_test(k, n, p):
+    '''
+    The main purpose of this algorithm is to find the value j on the
+    other side of the mean that has the same probability as k, and
+    integrate the tails outward from k and j. In the case where either
+    k or j are zero, only the non-zero tail is integrated.
+    
+    Temporarily version since I have found many events with n < k    
+    '''
+    check = True
+    if n < k:                 
+        print(f'n {n} must be >= k {k}')#raise ValueError("n must be >= k")
+        check = False
+    if (p > 1.0) or (p < 0.0): 
+        print(f'p {p} must be in range [0, 1]')#raise ValueError("p must be in range [0, 1]")
+        check = False
+    if k < 0:                  
+        print(f'k {k} must be >= 0')#raise ValueError("k must be >= 0")
+        check = False
+        
+    if check:
+        d      = binom_pmf(k, n, p)
+        rerr   = 1 + 1e-7
+        d      = d * rerr
+        n_iter = int(max(np.round(np.log10(n)) + 1, 2))   
+        
+        if k < n * p:
+            if binom_pmf(n, n, p) > d:
+                for n_ in np.arange(n, 2*n, 1):
+                    if binom_pmf(n_, n, p) < d:
+                        j_min, j_max = k, n_
+                        do_test = True
+                        break
+                    do_test = False                  
+            else: 
+                j_min, j_max = k, n 
+                do_test = True
+            def check(d, y0, y1): return (d>y1)and(d<=y0)
+            
+        else:
+            if binom_pmf(0, n, p) > d: 
+                n_iter, j_min, j_max = 0, 0, 0
+                do_test = True
+            else:                      
+                j_min, j_max = 0, k
+                do_test = True
+            def check(d, y0, y1): return (d>=y0)and(d<y1)
+        
+        # if B(k;n,p) is already 0 or I can't find the k' in the other side of the mean
+        # the returned binomial test is 0
+        if (d==0)|(not do_test):
+            pval = 0
+            return pval
+        
+        else:
+            for i in range(n_iter):      
+                n_pts   = int(j_max - j_min)
+                j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
+                y       = binom_pmf(j_range, n, p)
+                for i in range(len(j_range) - 1):
+                    if check(d, y[i], y[i + 1]):                    
+                        j_min, j_max = j_range[i], j_range[i + 1]
+                        break      
+            j = max(min((j_min + j_max) / 2, n), 0)
+
+            if k * j == 0:  pval = binom_sf(max(k, j), n, p)
+            else:           pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
+            return min(1.0, pval)
+    else:
+        return np.nan
+    
+def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuos'):
+    """
+    Wrapper that does the S1 AFT probability calculation for you
+    """
+    size_top = area_tot * area_fraction_top
+    size_tot = area_tot
+
+    if mode == 'discrete': 
+        return binom_pmf(size_top, size_tot, aft_prob)
+    else:                  
+        return binom_test(size_top, size_tot, aft_prob)
