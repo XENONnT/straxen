@@ -43,7 +43,11 @@ class EventPatternFit(strax.Plugin):
     """
     depends_on = ('event_area_per_channel','event_info')
     provides = "event_patternfit"
+<<<<<<< HEAD:straxen/plugins/event_patternfit.py
     __version__="0.0.4"
+=======
+    __version__="0.0.0"
+>>>>>>> 4ad5e9787e25966d97bf127ea5623e4b337a27a0:straxen/plugins/event_patterfit.py
     
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
