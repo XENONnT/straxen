@@ -1,10 +1,12 @@
 import strax
 import straxen
+import ntauxfiles
 import numpy as np
 from scipy import special
 
 from scipy.special import betainc, gammaln
 from scipy.stats import binom_test, binom
+import warnings
 
 export, __all__ = strax.exporter()    
 
@@ -28,16 +30,20 @@ export, __all__ = strax.exporter()
                  help='Skip reconstruction if S2 area (PE) is less than this'),
     strax.Option("StorePerChannel", default=False, type=bool,
                  help="Store normalized LLH per channel for each peak"),
-    strax.Option('s1_aft_map', default='./s1_aft_xyz_XENONnT_Kr83m_32100eV_14Apr2021.json',
-                 help="S1 area fraction top map. Where should I put the map?")
+    strax.Option('data_driven', default=True,
+                 help="If it is True load the data drive map. Otherwise the simulated driven one."),
+    strax.Option('s1_aft_map_data_driven', default='s1_aft_xyz_XENONnT_Kr83m_41500eV_12May2021.json',
+                 help="Date drive S1 area fraction top map."),
+    strax.Option('s1_aft_map_simulated_driven', default=None,
+                 help="Simulated drive S1 area fraction top map.")
 )
 class EventPatternFit(strax.Plugin):
     """
     Plugin that provides patter information for events
     """
-    depends_on = ('EventAreaPerChannel','event_info')
+    depends_on = ('event_area_per_channel','event_info')
     provides = "event_patternfit"
-    __version__="0.0.3"
+    __version__="0.0.4"
     
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -72,8 +78,15 @@ class EventPatternFit(strax.Plugin):
         self.mean_sPhoton = self.config['MeanPEperPhoton']
         
         ## Getting S1 AFT maps
-        self.s1_aft_map = straxen.InterpolatingMap(
-            straxen.get_resource(self.config['s1_aft_map'], fmt='json') )
+        if self.event_patternfit:
+            self.s1_aft_map = straxen.InterpolatingMap(
+                ntauxfiles.get_strax_file(self.config['s1_aft_map_data_driven'])
+                )
+        else:
+            self.s1_aft_map = straxen.InterpolatingMap(
+                straxen.get_resource(self.config['s1_aft_map_simulated_driven'], fmt='json')
+            )
+            
         
         ## Getting optical maps
         downloader  = straxen.MongoDownloader()
@@ -273,18 +286,16 @@ def binom_test(k, n, p):
     other side of the mean that has the same probability as k, and
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
-    
-    Temporarily version since I have found many events with n < k    
     '''
     check = True
     if n < k:                 
-        print(f'n {n} must be >= k {k}')#raise ValueError("n must be >= k")
+        warnings.warn(f'n {n} must be >= k {k}')
         check = False
     if (p > 1.0) or (p < 0.0): 
-        print(f'p {p} must be in range [0, 1]')#raise ValueError("p must be in range [0, 1]")
+        warnings.warn(f'p {p} must be in range [0, 1]')
         check = False
     if k < 0:                  
-        print(f'k {k} must be >= 0')#raise ValueError("k must be >= 0")
+        warnings.warn(f'k {k} must be >= 0')
         check = False
         
     if check:

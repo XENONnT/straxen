@@ -33,6 +33,7 @@ class event_area_per_channel(strax.LoopPlugin):
     def compute_loop(self, event, peaks):
         result = dict()
         result['time'], result['endtime'] = event['time'], strax.endtime(event)
+        print('\n', event['time'])
         for type_ in ['s1','s2','alt_s1','alt_s2']:
             result[type_+'_area_per_channel'] = (peaks['area_per_channel'][event[type_+"_index"]] 
                                              if event[type_+"_index"]!=-1 else 0.0)
