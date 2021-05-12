@@ -35,9 +35,9 @@ class EventPatternFit(strax.Plugin):
     """
     Plugin that provides patter information for events
     """
-    depends_on = ('EventAreaPerChannel','event_info')
+    depends_on = ('event_area_per_channel','event_info')
     provides = "event_patternfit"
-    __version__="0.0.3"
+    __version__="0.0.0"
     
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
