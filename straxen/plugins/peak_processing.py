@@ -15,9 +15,11 @@ from .pulse_processing import  HE_PREAMBLE
 @strax.takes_config(
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"),
-    strax.Option('check_peak_sum_area', default=True, track=False,
+    strax.Option('check_peak_sum_area_rtol', default=None, track=False,
                  help="Check if the sum area and the sum of area per "
-                      "channel are the same."),
+                      "channel are the same. If None, don't do the "
+                      "check. To perform the check, set to the desired "
+                      " rtol value used e.g. '1e-4' (see np.isclose)."),
 )
 class PeakBasics(strax.Plugin):
     """
@@ -86,8 +88,8 @@ class PeakBasics(strax.Plugin):
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
 
-        if self.config['check_peak_sum_area']:
-            self.check_area(area_total, p)
+        if self.config['check_peak_sum_area_rtol'] is not None:
+            self.check_area(area_total, p, self.config['check_peak_sum_area_rtol'])
         # Negative or zero-area peaks have centertime at startime
         r['center_time'] = p['time']
         r['center_time'][m] += self.compute_center_times(peaks[m])
@@ -105,7 +107,7 @@ class PeakBasics(strax.Plugin):
         return result
 
     @staticmethod
-    def check_area(area_per_channel_sum, peaks) -> None:
+    def check_area(area_per_channel_sum, peaks, rtol) -> None:
         """
         Check if the area of the sum-wf is the same as the total area
             (if the area of the peak is positively defined).
@@ -114,6 +116,8 @@ class PeakBasics(strax.Plugin):
             peaks['area_per_channel'] which will be checked against the
              values of peaks['area'].
         :param peaks: array of peaks.
+        :param rtol: relative tolerance for difference between
+            area_per_channel_sum and peaks['area']. See np.isclose.
         :raises: ValueError if the peak area and the area-per-channel
             sum are not sufficiently close
         """
@@ -122,7 +126,9 @@ class PeakBasics(strax.Plugin):
             return
 
         is_close = np.isclose(area_per_channel_sum[positive_area],
-                              peaks[positive_area]['area'])
+                              peaks[positive_area]['area'],
+                              rtol=rtol,
+                             )
 
         if not is_close.all():
             for peak in peaks[positive_area][~is_close]:
@@ -131,7 +137,7 @@ class PeakBasics(strax.Plugin):
 
             p_i = np.where(~is_close)[0][0]
             peak = peaks[positive_area][p_i]
-            area_fraction_off = 1 - area_per_channel_sum[p_i] / peak['area']
+            area_fraction_off = 1 - area_per_channel_sum[positive_area][p_i] / peak['area']
             message = (f'Area not calculated correctly, it\'s '
                        f'{100*area_fraction_off} % off, time: {peak["time"]}')
             raise ValueError(message)

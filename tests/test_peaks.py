@@ -8,10 +8,10 @@ from strax.testutils import run_id
 from hypothesis import strategies, given, settings
 
 TEST_DATA_LENGTH = 3
+R_TOL_DEFAULT = 1e-5
 
-
-def _not_close_to_0_or_1(x):
-    return not (np.isclose(x, 1) or np.isclose(x, 0))
+def _not_close_to_0_or_1(x, rtol=R_TOL_DEFAULT):
+    return not (np.isclose(x, 1, rtol=rtol) or np.isclose(x, 0, rtol=rtol))
 
 
 class TestComputePeakBasics(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestComputePeakBasics(unittest.TestCase):
         self.n_top = self.st.config.get('n_top_pmts', 2)
 
         # Make sure that the check is on. Otherwise we cannot test it.
-        self.st.set_config({'check_peak_sum_area': True})
+        self.st.set_config({'check_peak_sum_area_rtol': R_TOL_DEFAULT})
         self.peaks_basics_compute = self.st.get_single_plugin(run_id, 'peak_basics').compute
 
     @settings(deadline=None)
