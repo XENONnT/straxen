@@ -16,6 +16,9 @@ from .peak_processing import *
 from .position_reconstruction import *
 from . import position_reconstruction
 
+from . import event_patterfit
+from .event_patterfit import *
+
 from . import event_processing
 from .event_processing import *
 
