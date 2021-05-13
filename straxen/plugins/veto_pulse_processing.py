@@ -159,7 +159,7 @@ def _correct_baseline(records):
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_mv',
-        default=10, track=True,
+        default=100, track=True,
         child_option=True, parent_option_name='baseline_samples_nv',
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
