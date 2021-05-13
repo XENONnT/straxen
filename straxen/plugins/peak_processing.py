@@ -316,6 +316,8 @@ class PeakVetoTagging(strax.Plugin):
 
 @numba.njit(cache=True, nogil=True)
 def tag_peaks(tags, touching_windows, tag_number):
+    pre_tags = np.zeros(len(tags), dtype=np.int8)
     for start, end in touching_windows:
-        tags[start:end] += tag_number
+        pre_tags[start:end] = tag_number
+    tags += pre_tags
     return tags
