@@ -12,6 +12,9 @@ export, __all__ = strax.exporter()
 
 @export
 class RucioFrontend(strax.StorageFrontend):
+    """
+    Uses the rucio client for the data find.
+    """
     local_rses = {'UC_DALI_USERDISK': r'.rcc.'}
     local_did_cache = None
 
@@ -20,9 +23,11 @@ class RucioFrontend(strax.StorageFrontend):
                  runs_to_consider=None,
                  *args, **kwargs):
         """
-        :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites
-        :param args:
-        :param kwargs:
+        :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites (TODO: not implemented yet)
+        :param minimum_run_number: only consider run numbers larger than this
+        :param runs_to_consider: list of runs to consider, so we don't automatically search for ALL data.
+        :param args: Passed to strax.StorageFrontend
+        :param kwargs: Passed to strax.StorageFrontend
         """
         super().__init__(*args, **kwargs)
         # initialize rucio clients
@@ -97,9 +102,9 @@ class RucioFrontend(strax.StorageFrontend):
             self.local_did_cache = datasets
 
         ret = []
-        for k in keys:
-            did = self.key_to_rucio_did(k)
-            backend_key = f'{k.run_id}-{k.data_type}-{k.lineage_hash}'
+        for key in keys:
+            did = self.key_to_rucio_did(key)
+            backend_key = f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
             if did in self.local_did_cache and self.did_is_local(did):
                 ret.append((strax.rucio.__name__, backend_key))
             else:
@@ -125,15 +130,26 @@ class RucioFrontend(strax.StorageFrontend):
         return prefix
 
     def did_is_local(self, did):
+        """
+        Determines whether or not a given did is on a local RSE. If there is no local RSE, returns False.
+        :param did: Rucio DID string
+        :return: boolean for whether DID is local or not.
+        """
         if self.local_rse is None:
             return False
         rules = self.list_rules(did, rse_expression=self.local_rse, state='OK')
-        if len(rules) > 0:
+        if len(rules):
             return True
-        else:
-            return False
+        return False
 
     def list_rules(self, did, **filters):
+        """
+        Fetches list of replication rules using the rucio client.
+        :param did: Rucio DID string
+        :param filters: Kwargs that allow for selecting only certain rules.
+        For example, rse_expression={rse} will return only the rules at the RSE {rse}. Another useful one is state='OK'
+        :return: List of dictionaries with replication rule information.
+        """
         scope, name = did.split(':')
         rules = self.rucio_client.list_did_rules(scope, name)
         # get rules that pass some filter(s)

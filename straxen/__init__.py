@@ -1,4 +1,4 @@
-__version__ = '0.15.8'
+__version__ = '0.18.3'
 
 from utilix import uconfig
 from .common import *
@@ -15,7 +15,6 @@ from .online_monitor import *
 from .rundb import *
 from .scada import *
 from .bokeh_utils import *
-from .rucio import *
 
 
 from . import plugins
