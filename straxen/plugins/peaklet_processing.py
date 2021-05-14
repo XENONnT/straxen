@@ -90,7 +90,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.8'
+    __version__ = '0.3.9'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -108,13 +108,22 @@ class Peaklets(strax.Plugin):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
                                        self.config['gain_model'])
 
+        # Check config of `hit_min_amplitude_tpc` and define hit thresholds
+        # if cmt config
+        if isinstance(self.config['hit_min_amplitude_tpc'], tuple) and 
+            len(self.config['hit_min_amplitude_tpc'])==3 and 
+            type(self.config['hit_min_amplitude_tpc'][0]==str) and
+            type(self.config['hit_min_amplitude_tpc'][1]==str) and
+            type(self.config['hit_min_amplitude_tpc'][0]==bool):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_tpc'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_tpc']
+
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(
-            r,
-            min_amplitude=straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude']))
+        hits = strax.find_hits(r,min_amplitude=self.thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -413,7 +422,7 @@ class PeakletsHighEnergy(Peaklets):
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
@@ -427,6 +436,18 @@ class PeakletsHighEnergy(Peaklets):
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.config['le_to_he_amplification']
+
+        # Check config of `hit_min_amplitude_he` and define hit thresholds
+        # if cmt config
+        if isinstance(self.config['hit_min_amplitude_he'], tuple) and 
+            len(self.config['hit_min_amplitude_he'])==3 and 
+            type(self.config['hit_min_amplitude_he'][0]==str) and
+            type(self.config['hit_min_amplitude_he'][1]==str) and
+            type(self.config['hit_min_amplitude_he'][0]==bool):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)

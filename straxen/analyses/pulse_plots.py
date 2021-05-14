@@ -111,17 +111,14 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          color='k',
                          label=f'Median Bas.: {median:.0f} ADC')
 
-            axes.axhline(median - p.config['hit_min_amplitude_nv'],
+            axes.axhline(median - p.thresholds[rr_pulse['channel']],
                          ls='dotted', color='orange'
                          )
 
         hits = None  # needed for delet if false
         if plot_hits:
-            if detector_ending:
-                min_amplitude = p.config['hit_min_amplitude'+detector_ending]
-            else:
-                min_amplitude = straxen.hit_min_amplitude(p.config['hit_min_amplitude'])
-                min_amplitude = min_amplitude[rr_pulse[0]['channel']]
+            min_amplitude = p.thresholds
+            min_amplitude = min_amplitude[rr_pulse[0]['channel']]
             
             axes.axhline(baseline - min_amplitude,
                          color='orange', label='Hitfinder threshold')

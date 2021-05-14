@@ -17,9 +17,11 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_nv',
-        default=20, track=True,
+        default=('hit_thresholds_nv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length 120, or a number.'),
+             'Specify as a tuple of length n_nveto_pmts, or a number,'
+             'or a tuple like (correction=str, version=str, nT=boolean),'
+             'which means we are using cmt.'),
     strax.Option(
         'min_split_nv',
         default=100, track=True,
@@ -60,7 +62,7 @@ class nVETOHitlets(strax.Plugin):
     Note:
         Hitlets are getting chopped if extended in not recorded regions.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
 
     parallel = 'process'
     rechunk_on_save = True
@@ -86,8 +88,20 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
+        # Check config of `hit_min_amplitude_nv` and define hit thresholds
+        # if cmt config
+        if isinstance(self.config['hit_min_amplitude_nv'], tuple) and 
+            len(self.config['hit_min_amplitude_nv'])==3 and 
+            type(self.config['hit_min_amplitude_nv'][0]==str) and
+            type(self.config['hit_min_amplitude_nv'][1]==str) and
+            type(self.config['hit_min_amplitude_nv'][0]==bool):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_nv'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_nv']
+
     def compute(self, records_nv, start, end):
-        hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(records_nv, min_amplitude=self.thresholds)
         hits = remove_switched_off_channels(hits, self.to_pe)
 
         temp_hitlets = strax.create_hitlets_from_hits(hits,
@@ -141,10 +155,11 @@ def remove_switched_off_channels(hits, to_pe):
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=20, track=True,
-        child_option=True, parent_option_name='hit_min_amplitude_nv',
+        default=('hit_thresholds_mv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length 120, or a number.'),
+             'Specify as a tuple of length n_mveto_pmts, or a number,'
+             'or a tuple like (correction=str, version=str, nT=boolean),'
+             'which means we are using cmt.'),
     strax.Option(
         'min_split_mv', 
         default=100, track=True,
@@ -172,7 +187,7 @@ def remove_switched_off_channels(hits, to_pe):
 )
 class muVETOHitlets(nVETOHitlets):
     __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     depends_on = 'records_mv'
 
     provides = 'hitlets_mv'
@@ -191,6 +206,18 @@ class muVETOHitlets(nVETOHitlets):
         # Create to_pe array of size max channel:
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
+
+        # Check config of `hit_min_amplitude_mv` and define hit thresholds
+        # if cmt config
+        if isinstance(self.config['hit_min_amplitude_mv'], tuple) and 
+            len(self.config['hit_min_amplitude_mv'])==3 and 
+            type(self.config['hit_min_amplitude_mv'][0]==str) and
+            type(self.config['hit_min_amplitude_mv'][1]==str) and
+            type(self.config['hit_min_amplitude_mv'][0]==bool):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_mv'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_mv']
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)
