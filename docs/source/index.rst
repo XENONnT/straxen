@@ -18,6 +18,14 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     tutorials/Open_data.ipynb
     tutorials/mini_analyses
 
+
+.. toctree::
+    :maxdepth: 2
+    :caption: XENONnT Online monitor
+
+    online_monitor
+
+
 .. toctree::
     :maxdepth: 2
     :caption: Configuration storage
@@ -38,6 +46,14 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     :caption: 1T Datastructure
 
     reference/datastructure_1T
+
+.. toctree::
+    :maxdepth: 2
+    :caption: scripts
+
+    scripts
+    bootstrax
+
 
 .. toctree::
     :maxdepth: 1
