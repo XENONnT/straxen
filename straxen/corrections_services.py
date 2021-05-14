@@ -19,7 +19,7 @@ single_value_corrections = ['elife', 'baseline_samples_nv',
                             'electron_drift_velocity']
 
 arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
-                      'hit_thresholds_nv']
+                      'hit_thresholds_nv', 'hit_thresholds_mv']
 
 @export
 class CorrectionsManagementServices():
