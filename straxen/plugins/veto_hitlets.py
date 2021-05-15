@@ -90,11 +90,11 @@ class nVETOHitlets(strax.Plugin):
 
         # Check config of `hit_min_amplitude_nv` and define hit thresholds
         # if cmt config
-        if isinstance(self.config['hit_min_amplitude_nv'], tuple) and 
+        if (isinstance(self.config['hit_min_amplitude_nv'], tuple) and 
             len(self.config['hit_min_amplitude_nv'])==3 and 
             type(self.config['hit_min_amplitude_nv'][0]==str) and
             type(self.config['hit_min_amplitude_nv'][1]==str) and
-            type(self.config['hit_min_amplitude_nv'][0]==bool):
+            type(self.config['hit_min_amplitude_nv'][0]==bool)):
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_nv'])
         else: # int or array
@@ -209,11 +209,11 @@ class muVETOHitlets(nVETOHitlets):
 
         # Check config of `hit_min_amplitude_mv` and define hit thresholds
         # if cmt config
-        if isinstance(self.config['hit_min_amplitude_mv'], tuple) and 
+        if (isinstance(self.config['hit_min_amplitude_mv'], tuple) and 
             len(self.config['hit_min_amplitude_mv'])==3 and 
             type(self.config['hit_min_amplitude_mv'][0]==str) and
             type(self.config['hit_min_amplitude_mv'][1]==str) and
-            type(self.config['hit_min_amplitude_mv'][0]==bool):
+            type(self.config['hit_min_amplitude_mv'][0]==bool)):
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_mv'])
         else: # int or array
