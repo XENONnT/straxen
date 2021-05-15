@@ -214,9 +214,7 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(
-                r,
-                min_amplitude=self.thresholds
+            hits = strax.find_hits(r, min_amplitude=self.thresholds)
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
