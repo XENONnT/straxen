@@ -7,7 +7,6 @@ from utilix import uconfig
 from .common import *
 from .corrections_services import *
 from .get_corrections import *
-from .hitfinder_thresholds import *
 from .itp_map import *
 from .matplotlib_utils import *
 from .mini_analysis import *
