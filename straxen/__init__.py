@@ -15,7 +15,7 @@ from .online_monitor import *
 from .rundb import *
 from .scada import *
 from .bokeh_utils import *
-
+from .rucio import *
 
 from . import plugins
 from .plugins import *
