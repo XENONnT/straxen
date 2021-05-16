@@ -64,6 +64,9 @@ def plot_pulses(context, raw_records, run_id, time_range,
     strax.zero_out_of_bounds(records)
 
     baseline_key = 'baseline_samples'+detector_ending
+    if detector_ending == '_he':
+        # We don't have 'baseline_samples_he' at all!
+        baseline_key = 'baseline_samples' 
     if isinstance(p.config[baseline_key], int):
         baseline_samples = p.config[baseline_key]
     else:
@@ -111,7 +114,7 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          color='k',
                          label=f'Median Bas.: {median:.0f} ADC')
 
-            axes.axhline(median - p.thresholds[rr_pulse['channel']],
+            axes.axhline(median - p.thresholds[rr_pulse['channel']][0],
                          ls='dotted', color='orange'
                          )
 
@@ -126,7 +129,11 @@ def plot_pulses(context, raw_records, run_id, time_range,
             hits = strax.find_hits(r_pulse,
                                    min_amplitude=min_amplitude
                                    )
-            le, re = p.config['save_outside_hits'+detector_ending]
+            if detector_ending != '_he':
+                # We don't have 'save_outside_hits_he' at all!
+                le, re = p.config['save_outside_hits'+detector_ending]
+            else:
+                le, re = p.config['save_outside_hits']
             start = (hits['time'] - r_pulse[0]['time']) / r_pulse[0]['dt'] - le
             end = (strax.endtime(hits) - r_pulse[0]['time']) / r_pulse[0]['dt'] + re
 
