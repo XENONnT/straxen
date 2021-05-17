@@ -46,6 +46,8 @@ xnt_common_config = dict(
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    g1=0.1426,
+    g2=11.55,
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
