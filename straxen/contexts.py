@@ -25,9 +25,9 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
-    gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
-    gain_model_mv=("to_pe_constant", "adc_mv"),
+    gain_model=("to_pe_model", "ONLINE", True),
+    gain_model_nv=("to_pe_model_nv", "ONLINE", True),
+    gain_model_mv=("adc_mv", True),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -43,16 +43,16 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     s1_max_rise_time=100,
-    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
-    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
-    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
+    fdc_map=('fdc_map', "ONLINE", True),
+    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
-                             gain_model_nv=("to_pe_constant", 0.01),
-                             gain_model_mv=("to_pe_constant", "adc_mv"),
+xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
+                             gain_model_nv=("adc_nv", True),
+                             gain_model_mv=("adc_mv", True),
                              elife_conf=('elife_constant', 1e6),
                              )
 
@@ -232,8 +232,7 @@ x1t_common_config = dict(
         diagnostic=(248, 253),
         aqmon=(254, 999)),
     # Records
-    hev_gain_model=('to_pe_per_run',
-                    'to_pe.npy'),
+    hev_gain_model=('to_pe_model', "v1", False),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
@@ -245,8 +244,7 @@ x1t_common_config = dict(
     save_outside_hits=(3, 3),
     # Peaklets
     peaklet_gap_threshold=350,
-    gain_model=('to_pe_per_run',
-                'to_pe.npy'),
+    gain_model=('to_pe_model', "v1", False),
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
@@ -261,7 +259,7 @@ x1t_common_config = dict(
     # Events*
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
-    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    elife_conf=('elife', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
 )
 
@@ -283,11 +281,11 @@ def demo():
 
     # Use configs that are always available
     st.set_config(dict(
-        hev_gain_model=('to_pe_per_run', straxen.aux_repo +
-                        '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
-        gain_model=('to_pe_per_run', straxen.aux_repo +
-                    '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
-    ))
+        hev_gain_model=('1T_to_pe_placeholder', False),
+        gain_model=('1T_to_pe_placeholder', False),
+        elife_conf=('elife_constant', 1e6),
+        electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
+        ))
     return st
 
 
