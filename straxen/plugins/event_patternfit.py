@@ -28,7 +28,7 @@ export, __all__ = strax.exporter()
                  help='Skip reconstruction if S1 area (PE) is less than this'),
     strax.Option('s2_min_reconstruction_area',
                  help='Skip reconstruction if S2 area (PE) is less than this'),
-    strax.Option("StorePerChannel", default=False, type=bool,
+    strax.Option('StorePerChannel', default=False, type=bool,
                  help="Store normalized LLH per channel for each peak"),
     strax.Option('data_driven', default=True,
                  help="If it is True load the data drive map. Otherwise the simulated driven one."),
@@ -43,7 +43,7 @@ class EventPatternFit(strax.Plugin):
     """
     depends_on = ('event_area_per_channel','event_info')
     provides = "event_patternfit"
-    __version__="0.0.0"
+    __version__="0.0.1"
    
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -59,7 +59,11 @@ class EventPatternFit(strax.Plugin):
                  ('s1_area_fraction_top_continuos_probability', np.float32, 
                   'Continuos binomial test for S1 area fraction top'),
                  ('s1_area_fraction_top_discrete_probability', np.float32, 
-                  'Discrete binomial test for S1 area fraction top')]  
+                  'Discrete binomial test for S1 area fraction top'),
+                 ('s1_photon_fraction_top_continuos_probability', np.float32, 
+                  'Continuos binomial test for S1 photon fraction top'),
+                 ('s1_photon_fraction_top_discrete_probability', np.float32, 
+                  'Discrete binomial test for S1 photon fraction top')]  
         
         if self.config['StorePerChannel']:
             dtype.append( (("LLH per channel for main S2","s2_2llh_per_channel"), 
@@ -78,7 +82,7 @@ class EventPatternFit(strax.Plugin):
         self.mean_sPhoton = self.config['MeanPEperPhoton']
         
         ## Getting S1 AFT maps
-        if self.event_patternfit:
+        if self.config['data_driven']:
             self.s1_aft_map = straxen.InterpolatingMap(
                 ntauxfiles.get_strax_file(self.config['s1_aft_map_data_driven'])
                 )
@@ -130,6 +134,18 @@ class EventPatternFit(strax.Plugin):
             for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
         ]
         
+        result['s1_photon_fraction_top_continuos_probability'] = [
+            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
+            else np.nan
+            for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
+        ]
+        
+        result['s1_photon_fraction_top_discrete_probability']  = [
+            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
+            else np.nan
+            for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
+        ]
+        
         return(result)
     
     def compute_s1_llhvalue(self, events, result):
@@ -144,7 +160,7 @@ class EventPatternFit(strax.Plugin):
         x, y, z      = events['x'], events['y'], events['z']
         cur_s1_bool  = events['s1_area']>self.config['s1_min_reconstruction_area']
         cur_s1_bool &= events['s1_index']!=-1
-        cur_s1_bool &= events['s1_area_fraction_top']>0
+        cur_s1_bool &= events['s1_area_fraction_top']>=0
 
         ### Making expectation patterns [ in PE ]
         s1_map_effs = self.s1_pattern_map(np.array([x,y,z]).T)[cur_s1_bool,:]
