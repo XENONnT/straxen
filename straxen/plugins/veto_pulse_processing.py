@@ -159,13 +159,13 @@ def _correct_baseline(records):
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_mv',
-        default=10, track=True,
+        default=100, track=True,
         child_option=True, parent_option_name='baseline_samples_nv',
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=20, track=True,
+        default=80, track=True,
         child_option=True, parent_option_name='hit_min_amplitude_nv',
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number.'),
@@ -193,7 +193,6 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         return dtype
 
     def compute(self, raw_records_mv):
-#         TODO -> Reactivate        
-#         if self.config['check_raw_record_overlaps']:
-#             straxen.check_overlaps(raw_records_mv, n_channels=3000)
+        if self.config['check_raw_record_overlaps']:
+            straxen.check_overlaps(raw_records_mv, n_channels=3000)
         return super().compute(raw_records_mv)

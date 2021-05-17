@@ -141,7 +141,7 @@ def remove_switched_off_channels(hits, to_pe):
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=20, track=True,
+        default=80, track=True,
         child_option=True, parent_option_name='hit_min_amplitude_nv',
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length 120, or a number.'),
