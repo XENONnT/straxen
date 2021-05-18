@@ -12,3 +12,4 @@ numba>=0.50.0
 requests
 commentjson
 rucio-clients==1.21.7
+zstd~=1.4.9 # Temporary
