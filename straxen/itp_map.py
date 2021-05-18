@@ -90,7 +90,6 @@ class InterpolatingMap:
 
     The interpolators are called with
         'positions' :  [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
-        but [[x1, x2, x3, ...], [y1, y2, y3, ...]], if the method is RectBivariateSpline
         'map_name'  :  key to switch to map interpolator other than the default 'map'
     """
     metadata_field_names = ['timestamp', 'description', 'coordinate_system',
@@ -184,8 +183,14 @@ class InterpolatingMap:
         assert dimensions == 2, 'RectBivariateSpline interpolate maps of dimension 2'
         assert not array_valued, 'RectBivariateSpline does not support interpolating array values'
         map_data = map_data.reshape(*grid_shape)
+        rbs = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs)
 
-        return RectBivariateSpline(grid[0], grid[1], map_data, **kwargs).ev
+        def arg_formated_rbs(positions):
+            if isinstance(positions, list):
+                positions = np.array(positions)
+            return rbs.ev(positions[:, 0], positions[:, 1])
+
+        return arg_formated_rbs
 
     @staticmethod
     def _regular_grid_interpolator(csys, map_data, array_valued, **kwargs):
