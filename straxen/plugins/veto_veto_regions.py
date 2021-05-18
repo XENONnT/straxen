@@ -1,12 +1,11 @@
 import strax
 import straxen
-
 import numpy as np
 import numba
 
 export, __all__ = strax.exporter()
-
 MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-Plugin.\n'
+
 
 @export
 @strax.takes_config(
@@ -15,18 +14,18 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-Plugin.\n'
         help='Minimal area required in pe to trigger veto.'),
     strax.Option(
         'min_veto_hits_nv', default=10, type=int, track=True,
-        help='Minimal number of hitlets in event to trigger veto.'),
+        help='Minimal number of hitlets in n/mveto_event to trigger a veto.'),
     strax.Option(
         'min_veto_channel_nv', default=0, type=int, track=True,
-        help='Minimal number PMT channel contributing to the event.'),
+        help='Minimal number PMT channel contributing to the n/mveto_event.'),
     strax.Option(
-        'veto_left_nv', default=500_000, type=int, track=True,
+        'veto_left_extension_nv', default=500_000, type=int, track=True,
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
-        'veto_right_nv', default=0, type=int, track=True,
+        'veto_right_extension_nv', default=0, type=int, track=True,
         help='Veto time in ns right to the end of a vetoing event.'),
 )
-class nVETOveto(strax.OverlapWindowPlugin):
+class nVETOVetoRegions(strax.OverlapWindowPlugin):
     """
     Plugin which defines the time intervals in which peaks should be
     tagged as vetoed. An event must surpass all three criteria to trigger
@@ -35,23 +34,23 @@ class nVETOveto(strax.OverlapWindowPlugin):
     __version__ = '0.0.1'
 
     depends_on = 'events_nv'
-    provides = 'veto_nv'
-    data_kind = 'veto_nv'
+    provides = 'veto_regions_nv'
+    data_kind = 'veto_regions_nv'
     save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
     ends_with = '_nv'
 
     def get_window_size(self):
-        return 10 * (self.config['veto_left_nv'] + self.config['veto_right_nv'])
+        return 10 * (self.config['veto_left_extension_nv'] + self.config['veto_right_extension_nv'])
 
     def compute(self, events_nv, start, end):
         vetos = create_veto_intervals(events_nv,
                                       self.config['min_veto_area_nv'],
                                       self.config['min_veto_hits_nv'],
                                       self.config['min_veto_channel_nv'],
-                                      self.config['veto_left_nv'],
-                                      self.config['veto_right_nv'])
+                                      self.config['veto_left_extension_nv'],
+                                      self.config['veto_right_extension_nv'])
 
         # Now we have to do clip all times and end endtimes in case
         # they go beyond a chunk boundary:
@@ -133,21 +132,21 @@ def _create_veto_intervals(events,
         child_option=True, parent_option_name='min_veto_channel_nv',
         help='Minimal number PMT channel contributing to the event.'),
     strax.Option(
-        'veto_left_mv', default=0, type=int, track=True,
-        child_option=True, parent_option_name='veto_left_nv',
+        'veto_left_extension_mv', default=0, type=int, track=True,
+        child_option=True, parent_option_name='veto_left_extension_nv',
         help='Veto time in ns left t the start of a vetoing event.'),
     strax.Option(
-        'veto_right_mv', default=1_000_000, type=int, track=True,
-        child_option=True, parent_option_name='veto_right_nv',
+        'veto_right_extension_mv', default=1_000_000, type=int, track=True,
+        child_option=True, parent_option_name='veto_right_extension_nv',
         help='Veto time in ns right to the end of a vetoing event.'),
 )
-class muVETOveto(nVETOveto):
-    __doc__ = MV_PREAMBLE + nVETOveto.__doc__
+class muVETOVetoRegions(nVETOVetoRegions):
+    __doc__ = MV_PREAMBLE + nVETOVetoRegions.__doc__
     __version__ = '0.0.1'
 
     depends_on = 'events_mv'
-    provides = 'veto_mv'
-    data_kind = 'veto_mv'
+    provides = 'veto_regions_mv'
+    data_kind = 'veto_regions_mv'
     save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
