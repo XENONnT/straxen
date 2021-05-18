@@ -50,7 +50,7 @@ class TestCoincidence(unittest.TestCase):
         truth_time = np.array([self.intervals['time'][0],
                                self.intervals['time'][-1]])
         truth_endtime = np.array([self.intervals['time'][-2],
-                                  self.intervals['time'][-1]]) + resolving_time,
+                                  self.intervals['time'][-1]]) + resolving_time
         self._test_coincidence(resolving_time=resolving_time,
                                coincidence=1,
                                pre_trigger=0,
