@@ -4,12 +4,10 @@ from tqdm import tqdm
 import json
 import os
 import hashlib
-import logging
 from rucio.client.client import Client
 from rucio.client.rseclient import RSEClient
 from rucio.client.replicaclient import ReplicaClient
 from rucio.client.downloadclient import DownloadClient
-import admix
 from utilix import xent_collection
 import strax
 
@@ -46,7 +44,7 @@ class RucioFrontend(strax.StorageFrontend):
         """
         super().__init__(*args, **kwargs)
         # initialize rucio clients
-        # TODO eventually will just have admix calls for this
+        # TODO eventually just have admix calls for this?
         self.rucio_client = Client()
         self.rse_client = RSEClient()
         self.replica_client = ReplicaClient()
@@ -77,9 +75,7 @@ class RucioFrontend(strax.StorageFrontend):
         self.local_rse = local_rse
 
         if include_remote:
-            # TODO
             self.backends.append(RucioRemoteBackend(staging_dir))
-            #raise NotImplementedError
 
         # find run numbers to consider
         if runs_to_consider:
@@ -200,11 +196,6 @@ class RucioFrontend(strax.StorageFrontend):
         """Convert a strax.datakey to a rucio did field in rundoc"""
         return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
 
-    def get_rse_prefix(self, rse):
-        rse_info = self.rse_client.get_rse(rse)
-        prefix = rse_info['protocols'][0]['prefix']
-        return prefix
-
 
 @export
 class RucioLocalBackend(strax.FileSytemBackend):
@@ -241,8 +232,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     def __init__(self, staging_dir, *args, **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be a writable location.
-        :param *args:
-        :param **kwargs:
+        :param *args: Passed to strax.FileSystemBackend
+        :param **kwargs: Passed to strax.FileSystemBackend
         """
 
         if os.path.exists(staging_dir):
@@ -256,13 +247,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 raise PermissionError(f"You told the rucio backend to download data to {staging_dir}, "
                                       f"but that path is not writable by your user")
 
-
-        # setup a special logger for the downloads
-        logger = logging.Logger("straxen-rucio-downloads", level="DEBUG")
-
         super().__init__(*args, **kwargs)
         self.staging_dir = staging_dir
-        self.download_client = DownloadClient(logger=logger)
+        self.download_client = DownloadClient()
 
 
     def get_metadata(self, dset_did, rse='UC_OSG_USERDISK', **kwargs):
@@ -313,8 +300,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         return strax.load_file(chunk_path, dtype=dtype, compressor=compressor)
 
     def _saver(self, dirname, metadata):
-        raise NotImplementedError(
-            "Cannot save directly into rucio (yet), upload with admix instead")
+        raise NotImplementedError("Cannot save directly into rucio (yet), upload with admix instead")
 
     def _download(self, did_dict_list):
         # need to pass a list of dicts
@@ -325,7 +311,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             if _try > 1:
                 did_dict_list['rse'] = None
             try:
-                result = self.download_client.download_dids(did_dict_list)
+                self.download_client.download_dids(did_dict_list)
                 success = True
             except KeyboardInterrupt:
                 raise
@@ -335,8 +321,6 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             _try += 1
         if not success:
             raise DownloadError(f"Error downloading from rucio.")
-
-
 
 
 class RucioSaver(strax.Saver):
