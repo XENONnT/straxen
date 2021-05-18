@@ -38,9 +38,9 @@ class TestCreateVetoIntervals(unittest.TestCase):
         assert time_is_correct, 'First veto event has the wrong endtime!'
 
         time_is_correct = vetos[1]['time'] == self.events['time'][-1] - left_extension
-        assert time_is_correct, 'First veto event has the wrong time!'
+        assert time_is_correct, 'Second veto event has the wrong time!'
         time_is_correct = vetos[1]['endtime'] == self.events['endtime'][-1] + right_extension
-        assert time_is_correct, 'First veto event has the wrong endtime!'
+        assert time_is_correct, 'Second veto event has the wrong endtime!'
 
     def test_thresholds(self):
         events = np.copy(self.events[:1])
