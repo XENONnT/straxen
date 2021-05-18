@@ -29,7 +29,7 @@ class TestMergeIntervals(unittest.TestCase):
 
         time_is_correct = intervals[-1]['time'] == self.intervals['time'][-1]
         assert time_is_correct, 'Second interval has the wrong time!'
-        time_is_correct = intervals[-1]['endime'] == self.intervals['endime'][-1]
+        time_is_correct = intervals[-1]['endtime'] == self.intervals['endtime'][-1]
         assert time_is_correct, 'Second interval has the wrong endtime!'
 
 
