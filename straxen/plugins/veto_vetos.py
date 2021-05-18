@@ -6,7 +6,7 @@ import numba
 
 export, __all__ = strax.exporter()
 
-MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-Plugin.\n'
 
 @export
 @strax.takes_config(
