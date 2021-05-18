@@ -198,7 +198,9 @@ class InterpolatingMap:
         else:
             map_data = map_data.reshape(*grid_shape)
 
-        return RegularGridInterpolator(tuple(grid), map_data, **kwargs)
+        config = dict(bounds_error=False, fill_value=None)
+        config.update(kwargs)
+        return RegularGridInterpolator(tuple(grid), map_data, **config)
 
     @staticmethod
     def _weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs):
