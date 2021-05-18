@@ -1,11 +1,11 @@
 import strax
 import straxen
-import ntauxfiles
+
 import numpy as np
 from scipy import special
-
 from scipy.special import betainc, gammaln
 from scipy.stats import binom_test, binom
+
 import warnings
 
 export, __all__ = strax.exporter()    
@@ -16,6 +16,8 @@ export, __all__ = strax.exporter()
                  default="XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"),
     strax.Option('s2_optical_map', help="S2 (x, y) optical/pattern map.",
                  default="XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"),
+    strax.Option('s1_aft_map', help="Date drive S1 area fraction top map.",
+                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_12May2021.json'),
     strax.Option('MeanPEperPhoton', help="Mean of full VUV single photon responce",
                  default=1.2),
     strax.Option('gain_model',
@@ -30,12 +32,6 @@ export, __all__ = strax.exporter()
                  help='Skip reconstruction if S2 area (PE) is less than this'),
     strax.Option('StorePerChannel', default=False, type=bool,
                  help="Store normalized LLH per channel for each peak"),
-    strax.Option('data_driven', default=True,
-                 help="If it is True load the data drive map. Otherwise the simulated driven one."),
-    strax.Option('s1_aft_map_data_driven', default='s1_aft_xyz_XENONnT_Kr83m_41500eV_12May2021.json',
-                 help="Date drive S1 area fraction top map."),
-    strax.Option('s1_aft_map_simulated_driven', default=None,
-                 help="Simulated drive S1 area fraction top map.")
 )
 class EventPatternFit(strax.Plugin):
     """
@@ -43,7 +39,7 @@ class EventPatternFit(strax.Plugin):
     """
     depends_on = ('event_area_per_channel','event_info')
     provides = "event_patternfit"
-    __version__="0.0.1"
+    __version__="0.0.2"
    
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -82,16 +78,9 @@ class EventPatternFit(strax.Plugin):
         self.mean_sPhoton = self.config['MeanPEperPhoton']
         
         ## Getting S1 AFT maps
-        if self.config['data_driven']:
-            self.s1_aft_map = straxen.InterpolatingMap(
-                ntauxfiles.get_strax_file(self.config['s1_aft_map_data_driven'])
-                )
-        else:
-            self.s1_aft_map = straxen.InterpolatingMap(
-                straxen.get_resource(self.config['s1_aft_map_simulated_driven'], fmt='json')
-            )
-            
-        
+        self.s1_aft_map = straxen.InterpolatingMap(
+            straxen.get_resource(self.config['s1_aft_map'], fmt='json'))
+                    
         ## Getting optical maps
         downloader  = straxen.MongoDownloader()
         s1_map_file = downloader.download_single(self.config['s1_optical_map'])
