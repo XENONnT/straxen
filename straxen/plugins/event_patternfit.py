@@ -32,6 +32,8 @@ export, __all__ = strax.exporter()
                  help='Skip reconstruction if S2 area (PE) is less than this'),
     strax.Option('StorePerChannel', default=False, type=bool,
                  help="Store normalized LLH per channel for each peak"),
+    strax.Option("max_r", default = straxen.tpc_r, type=float, 
+                 help = "Maximal radius of the peaks where llh calculation will be perfromed")
 )
 class EventPatternFit(strax.Plugin):
     """
@@ -150,6 +152,7 @@ class EventPatternFit(strax.Plugin):
         cur_s1_bool &= np.isfinite(x)
         cur_s1_bool &= np.isfinite(y)
         cur_s1_bool &= np.isfinite(z)
+        cur_s1_bool &= (x**2 + y**2) < self.config['max_r']**2
         
         ### Making expectation patterns [ in PE ]
         s1_map_effs = self.s1_pattern_map(np.array([x,y,z]).T)[cur_s1_bool,:]
@@ -204,7 +207,7 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool  = (events[t_+'_area']>self.config['s2_min_reconstruction_area'])
             cur_s2_bool &= (events[t_+'_index']!=-1)
             cur_s2_bool &= (events["s2_area_fraction_top"]>0)
-            
+            cur_s2_bool &= (x**2 + y**2) < self.config['max_r']**2            
             ### Making expectation patterns [ in PE ]
             s2_map_effs = self.s2_pattern_map(np.array([x,y]).T)[cur_s2_bool,0:self.config['n_top_pmts']]
             s2_map_effs = s2_map_effs[:,self.pmtbool_top]
