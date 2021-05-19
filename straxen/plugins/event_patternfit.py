@@ -39,7 +39,7 @@ class EventPatternFit(strax.Plugin):
     """
     depends_on = ('event_area_per_channel','event_info')
     provides = "event_patternfit"
-    __version__="0.0.2"
+    __version__="0.0.3"
    
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -78,20 +78,16 @@ class EventPatternFit(strax.Plugin):
         self.mean_sPhoton = self.config['MeanPEperPhoton']
         
         ## Getting S1 AFT maps
-        self.s1_aft_map = straxen.InterpolatingMap(
-            straxen.get_resource(self.config['s1_aft_map'], fmt='json'))
+        self.s1_aft_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s1_aft_map'], fmt='json'))
                     
         ## Getting optical maps
-        downloader  = straxen.MongoDownloader()
-        s1_map_file = downloader.download_single(self.config['s1_optical_map'])
-        s2_map_file = downloader.download_single(self.config['s2_optical_map'])
-        self.s1_pattern_map = straxen.InterpolatingMap(straxen.get_resource(s1_map_file, fmt='pkl'))
-        self.s2_pattern_map = straxen.InterpolatingMap(straxen.get_resource(s2_map_file, fmt='pkl'))
+        self.s1_pattern_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s1_optical_map'], fmt='pkl'))
+        self.s2_pattern_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s2_optical_map'], fmt='pkl'))
         
         ## Getting gain model to get dead PMTs
-        self.to_pe     = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
-        self.dead_PMTs = np.where(self.to_pe==0)[0]
-        self.pmtbool   = ~np.in1d(np.arange(0,self.config['n_tpc_pmts']), self.dead_PMTs)
+        self.to_pe          = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
+        self.dead_PMTs      = np.where(self.to_pe==0)[0]
+        self.pmtbool        = ~np.in1d(np.arange(0,self.config['n_tpc_pmts']), self.dead_PMTs)
         self.pmtbool_top    = self.pmtbool[:self.config['n_top_pmts']]
         self.pmtbool_bottom = self.pmtbool[self.config['n_top_pmts']:]
 
@@ -155,8 +151,12 @@ class EventPatternFit(strax.Plugin):
         s1_map_effs = self.s1_pattern_map(np.array([x,y,z]).T)[cur_s1_bool,:]
         s1_area     = events['s1_area'][cur_s1_bool]
         s1_pattern  = s1_area[:,None]*(s1_map_effs[:,self.pmtbool])/np.sum(s1_map_effs[:,self.pmtbool], axis=1)[:,None] 
-        s1_pattern_top = (events['s1_area_fraction_top'][cur_s1_bool]*s1_area)[:,None]*((s1_map_effs[:,:self.config['n_top_pmts']])[:,self.pmtbool_top])/np.sum((s1_map_effs[:,:self.config['n_top_pmts']])[:,self.pmtbool_top], axis=1)[:,None] 
-        s1_pattern_bottom = ((1-events['s1_area_fraction_top'][cur_s1_bool])*s1_area)[:,None]*((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom])/np.sum((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom], axis=1)[:,None] 
+        _s1_pattern_top     = (events['s1_area_fraction_top'][cur_s1_bool]*s1_area)
+        s1_pattern_top      = _s1_pattern_top[:,None]*((s1_map_effs[:,:self.config['n_top_pmts']])[:,self.pmtbool_top])
+        s1_pattern_top     /= np.sum((s1_map_effs[:,:self.config['n_top_pmts']])[:,self.pmtbool_top], axis=1)[:,None] 
+        _s1_pattern_bottom  = ((1-events['s1_area_fraction_top'][cur_s1_bool])*s1_area)
+        s1_pattern_bottom   = _s1_pattern_bottom[:,None]*((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom])
+        s1_pattern_bottom  /= np.sum((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom], axis=1)[:,None] 
 
         ## Getting pattern from data
         s1_area_per_channel_ = events['s1_area_per_channel'][cur_s1_bool,:]
@@ -192,18 +192,20 @@ class EventPatternFit(strax.Plugin):
             # - must have total area larger minimal one
             # - must have positive AFT
             x,y = events[t_+'_x'], events[t_+'_y']
-            cur_s2_bool = (events[t_+'_area']>self.config['s2_min_reconstruction_area'])
-            cur_s2_bool*= (events[t_+'_index']!=-1)
-            cur_s2_bool*= (events["s2_area_fraction_top"]>0)
+            cur_s2_bool  = (events[t_+'_area']>self.config['s2_min_reconstruction_area'])
+            cur_s2_bool *= (events[t_+'_index']!=-1)
+            cur_s2_bool *= (events["s2_area_fraction_top"]>0)
+            
             ### Making expectation patterns [ in PE ]
-            s2_map_effs = self.s2_pattern_map(
-                                np.array([x,y]).T)[cur_s2_bool,0:self.config['n_top_pmts']]
+            s2_map_effs = self.s2_pattern_map(np.array([x,y]).T)[cur_s2_bool,0:self.config['n_top_pmts']]
             s2_map_effs = s2_map_effs[:,self.pmtbool_top]
             s2_top_area = (events["s2_area_fraction_top"]*events["s2_area"])[cur_s2_bool]        
-            s2_pattern = s2_top_area[:,None]*s2_map_effs/np.sum(s2_map_effs,axis=1)[:,None]  
+            s2_pattern  = s2_top_area[:,None]*s2_map_effs/np.sum(s2_map_effs,axis=1)[:,None]  
+            
             ## Getting pattern from data
             s2_top_area_per_channel = events['s2_area_per_channel'][cur_s2_bool,0:self.config['n_top_pmts']]
             s2_top_area_per_channel = s2_top_area_per_channel[:,self.pmtbool_top]
+            
             ## Calculating LLH, this is shifted Poisson
             # we get area expectation and we need to scale them to get
             # photon expectation
@@ -239,8 +241,8 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
     areas  - observed areas per channel
     mean_sPhoton - mean 
     """
-    res     = 2.*(mu - (areas/mean_sPhoton)*np.log(mu) + special.loggamma((areas/mean_sPhoton)+1) + np.log(mean_sPhoton)) 
-    is_zero = ~(areas>0) # If area equals or smaller than 0 - assume 0
+    res          = 2.*(mu - (areas/mean_sPhoton)*np.log(mu) + special.loggamma((areas/mean_sPhoton)+1) + np.log(mean_sPhoton)) 
+    is_zero      = ~(areas>0)    # If area equals or smaller than 0 - assume 0
     res[is_zero] = 2.*mu[is_zero]
     # if zero channel has negative expectation, assume LLH to be 0 there
     # this happens for normalization factor
