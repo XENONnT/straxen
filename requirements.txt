@@ -11,3 +11,4 @@ immutabledict
 numba>=0.50.0
 requests
 commentjson
+zstd~=1.4.9 # Temporary
