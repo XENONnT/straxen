@@ -190,6 +190,7 @@ class EventPatternFit(strax.Plugin):
             store_2LLH_ch = np.zeros((norm_llh_val.shape[0],self.config['n_tpc_pmts']) )
             store_2LLH_ch[:,self.pmtbool]=norm_llh_val
             result['s1_2llh_per_channel'][cur_s1_bool]=store_2LLH_ch
+            
         # Top
         arg1         = s1_pattern_top/self.mean_sPhoton,          s1_area_per_channel_top, self.mean_sPhoton
         arg2         = s1_area_per_channel_top/self.mean_sPhoton, s1_area_per_channel_top, self.mean_sPhoton
@@ -319,6 +320,9 @@ def binom_test(k, n, p):
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
     '''
+    
+    # Raise a warning in case one of these thres condition is verified
+    # and return binomial test equal to nan since they are not physical 
     check = True
     if n < k:                 
         warnings.warn(f'n {n} must be >= k {k}')
@@ -334,9 +338,15 @@ def binom_test(k, n, p):
         d      = binom_pmf(k, n, p)
         rerr   = 1 + 1e-7
         d      = d * rerr
+        # define number of intereation for finding the the value j
+        # the exeptional case of n<=0, is avoid since n_iter is at least 2
         n_iter = int(max(np.round(np.log10(n)) + 1, 2))   
         
         if k < n * p:
+            # if binom_pmf(n, n, p) > d, with d<<1e-3, means that we have 
+            # to look for j value above n. It is likely that the binomial
+            # test for such j is extremely low such that we can stop
+            # the alogorithm and return 0
             if binom_pmf(n, n, p) > d:
                 for n_ in np.arange(n, 2*n, 1):
                     if binom_pmf(n_, n, p) < d:
@@ -358,13 +368,14 @@ def binom_test(k, n, p):
                 do_test = True
             def check(d, y0, y1): return (d>=y0)and(d<y1)
         
-        # if B(k;n,p) is already 0 or I can't find the k' in the other side of the mean
+        # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
         # the returned binomial test is 0
         if (d==0)|(not do_test):
             pval = 0
             return pval
         
         else:
+            # Here we are actually looking for j
             for i in range(n_iter):      
                 n_pts   = int(j_max - j_min)
                 j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
@@ -374,7 +385,9 @@ def binom_test(k, n, p):
                         j_min, j_max = j_range[i], j_range[i + 1]
                         break      
             j = max(min((j_min + j_max) / 2, n), 0)
-
+            
+            # One side or two side 
+            # binomial test
             if k * j == 0:  pval = binom_sf(max(k, j), n, p)
             else:           pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
             return min(1.0, pval)
