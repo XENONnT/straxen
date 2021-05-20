@@ -22,12 +22,12 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
              'Specify as a tuple of length 120, or a number.'),
     strax.Option(
         'min_split_nv',
-        default=100, track=True,
+        default=0.063, track=True,
         help='Minimum height difference pe/sample between local minimum and maximum, '
              'that a pulse get split.'),
     strax.Option(
         'min_split_ratio_nv',
-        default=0, track=True,
+        default=0.75, track=True,
         help='Min ratio between local maximum and minimum to split pulse (zero to switch this off).'),
     strax.Option(
         'entropy_template_nv',
