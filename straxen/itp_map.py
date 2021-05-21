@@ -11,12 +11,12 @@ export, __all__ = strax.exporter()
 
 
 @export
-class InterpolateAndExtrapolate(object):
+class InterpolateAndExtrapolate:
     """Linearly interpolate- and extrapolate using inverse-distance
     weighted averaging between nearby points.
     """
 
-    def __init__(self, points, values, neighbours_to_use=None):
+    def __init__(self, points, values, neighbours_to_use=None, array_valued=False):
         """
         :param points: array (n_points, n_dims) of coordinates
         :param values: array (n_points) of values
@@ -28,23 +28,34 @@ class InterpolateAndExtrapolate(object):
         if neighbours_to_use is None:
             neighbours_to_use = points.shape[1] * 2
         self.neighbours_to_use = neighbours_to_use
+        self.array_valued = array_valued
+        if array_valued:
+            self.n_dim = self.values.shape[-1]
 
     def __call__(self, points):
         distances, indices = self.kdtree.query(points, self.neighbours_to_use)
+
+        result = np.ones(len(points)) * float('nan')
+        if self.array_valued:
+            result = np.repeat(result.reshape(-1, 1), self.n_dim, axis=1)
+
         # If one of the coordinates is NaN, the neighbour-query fails.
         # If we don't filter these out, it would result in an IndexError
         # as the kdtree returns an invalid index if it can't find neighbours.
-        result = np.ones(len(points)) * float('nan')
         valid = (distances < float('inf')).max(axis=-1)
-        result[valid] = np.average(
-            self.values[indices[valid]],
-            weights=1/np.clip(distances[valid], 1e-6, float('inf')),
-            axis=-1)
+
+        values = self.values[indices[valid]]
+        weights = 1 / np.clip(distances[valid], 1e-6, float('inf'))
+        if self.array_valued:
+            weights = np.repeat(weights, self.n_dim).reshape(values.shape)
+
+        result[valid] = np.average(values, weights=weights,
+                                   axis=-2 if self.array_valued else -1)
         return result
 
 
 @export
-class InterpolatingMap(object):
+class InterpolatingMap:
     """Correction map that computes values using inverse-weighted distance
     interpolation.
 
@@ -58,6 +69,12 @@ class InterpolatingMap(object):
 
     with the straightforward generalization to 1d and 3d.
 
+    Alternatively, a grid coordinate system can be specified as follows:
+        'coordinate_system' :   [['x', [x_min, x_max, n_x]], [['y', [y_min, y_max, n_y]]
+
+    Alternatively, an N-vector-valued map can be specified by an array with
+    last dimension N in 'map'.
+
     The default map name is 'map', I'd recommend you use that.
 
     For a 0d placeholder map, use
@@ -70,35 +87,64 @@ class InterpolatingMap(object):
                         'name', 'irregular']
 
     def __init__(self, data):
-        self.log = logging.getLogger('InterpolatingMap')
-
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
-        self.data = json.loads(data)
+        if isinstance(data, (str, bytes)):
+            data = json.loads(data)
+        assert isinstance(data, dict), f"Expected dictionary data, got {type(data)}"
+        self.data = data
 
-        self.coordinate_system = cs = self.data['coordinate_system']
+        # Decompress / dequantize the map
+        # TODO: support multiple map names
+        if 'compressed' in self.data:
+            compressor, dtype, shape = self.data['compressed']
+            self.data['map'] = np.frombuffer(
+                strax.io.COMPRESSORS[compressor]['decompress'](self.data['map']),
+                dtype=dtype).reshape(*shape)
+            del self.data['compressed']
+        if 'quantized' in self.data:
+            self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
+            del self.data['quantized']
+
+        cs = self.data['coordinate_system']
         if not len(cs):
             self.dimensions = 0
+        elif isinstance(cs[0], list) and isinstance(cs[0][0], str):
+            # Support for specifying coordinate system as a gridspec
+            grid = [np.linspace(left, right, points)
+                    for _, (left, right, points) in cs]
+            cs = np.array(np.meshgrid(*grid, indexing='ij'))
+            cs = np.transpose(cs, np.roll(np.arange(len(grid)+1), -1))
+            cs = np.array(cs).reshape((-1, len(grid)))
+            self.dimensions = len(grid)
         else:
             self.dimensions = len(cs[0])
+
+        self.coordinate_system = cs
         self.interpolators = {}
         self.map_names = sorted([k for k in self.data.keys()
                                  if k not in self.data_field_names])
-        self.log.debug('Map name: %s' % self.data['name'])
-        self.log.debug('Map description:\n    ' +
+
+        log = logging.getLogger('InterpolatingMap')
+        log.debug('Map name: %s' % self.data['name'])
+        log.debug('Map description:\n    ' +
                        re.sub(r'\n', r'\n    ', self.data['description']))
-        self.log.debug("Map names found: %s" % self.map_names)
+        log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
             map_data = np.array(self.data[map_name])
+            array_valued = len(map_data.shape) == self.dimensions + 1
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
                 # and always return a single value
                 def itp_fun(positions):
-                    return map_data * np.ones_like(positions)
+                    return np.array([map_data])
             else:
+                if array_valued:
+                    map_data = map_data.reshape((-1, map_data.shape[-1]))
                 itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
-                                                    values=np.array(map_data))
+                                                    values=np.array(map_data),
+                                                    array_valued=array_valued)
 
             self.interpolators[map_name] = itp_fun
 
