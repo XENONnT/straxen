@@ -2,6 +2,8 @@
 a field (i.e. can build the dependencies in the context correctly)
 See issue #233 and PR #236"""
 from straxen.contexts import *
+import tempfile
+import os
 
 
 def import_wfsim():
@@ -35,11 +37,6 @@ def xenon_xenonnt_simulation():
         st.search_field('time')
 
 
-def xenonnt_temporary_five_pmts():
-    st = xenonnt_temporary_five_pmts(_database_init=False)
-    st.search_field('time')
-
-
 ##
 # XENON1T
 ##
@@ -50,8 +47,21 @@ def test_xenon1t_dali():
 
 
 def test_demo():
-    st = demo()
-    st.search_field('time')
+    """
+    Test the demo context. Since we download the folder to the current
+        working directory, make sure we are in a tempfolder where we
+        can write the data to
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            print("Temporary directory is ", temp_dir)
+            os.chdir(temp_dir)
+            st = demo()
+            st.search_field('time')
+        # On windows, you cannot delete the current process'
+        # working directory, so we have to chdir out first.
+        finally:
+            os.chdir('..')
 
 
 def test_fake_daq():

@@ -1,4 +1,163 @@
-0.14.5 / 2020-01-29
+0.18.4 / 2021-05-20
+---------------------
+- Documentation and package maintenance (#481)
+- Veto plugins (#465)
+- Changed nveto splitting thresholds. (#490)
+- Remove old unused contexts (#485)
+- Use_per_run_defaults explicitly for 1T (#484)
+- Set event_info_double as endpoint for kr (#480)
+- Fix difference between datetime and date (#473)
+- Fix _find for rucio to include transferred. Set kwarg defaults (#483)
+- Fix AFT close but not quite 1 (#477)
+- Fix online_monitor (#486)
+- Activated overlapping check for mveto again. (#489)
+
+
+0.18.3 / 2021-05-06
+---------------------
+- Update classifiers for pipy (#464)
+- Fix for scan runs query (0cc47f2 )
+
+
+0.18.2 / 2021-05-04
+---------------------
+- Nveto event display (#444)
+- do check for overlaps in NV (#458)
+- Refactor veto plugins (#463)
+- Remove zero gain hits (#468)
+- Time widget misc2 (#449)
+- Added changes for user credentials (#392)
+- Scada allowed, fix (#469)
+- Added support of dill for resource files (#459)
+- Reduce Pep8 gitHub bot verbosity (#466, #467)
+- fix 1T sim context to have working dep. trees (#461)
+- Reduced test complexity (#462)
+- test python 3.9 (#407)
+- fix keyerror for uploading data in selectruns (#455)
+
+
+0.18.1 / 2021-04-23
+---------------------
+- Allow faster NV/MV by bootstrax (#440)
+- Change records default processor (#441)
+- Require data to be transferred to dali to load (#445)
+- Wrap correction functions for mc optional config (#443)
+- Use did for finding several runs (#451, 59afa35)
+- Mveto events (#447)
+
+
+0.18.0 / 2021-04-16
+---------------------
+- Clustering and classification update (#436)
+- Documentation: add 1T, fix #31, compact config display (#434)
+- Implement nT S1 correction (#430)
+- Use CMT to get electron drift velocity (#437)
+- Set max-runnumber (#433)
+- Update update-context-collection.py (#438)
+- Raise notimplemented error for peak_min_pmts > 2 (#432)
+- Update apply_function_to_data (#431)
+- use strax.apply_selection in om (#435)
+
+
+0.17.0 / 2021-04-09
+--------------------
+- Extend event_basics and remove event_posrec_many (#420)
+- Add nveto event tests (#425)
+- Update veto_pulse_processing.py (#427)
+- add option abbreviate event_display (#418)
+- fix logic linked mode (#426)
+- fix test to use tempdir (#423)
+- Added output_notebook to data selector. (#421)
+- bootstrax, fix abandonning (#422)
+
+
+0.16.0 / 2021-04-02
+--------------------
+- add get_correction_from_cmt to corrections_services.py (#404, #409)
+- Updated on the nveto plugins and new event plugins (#416, #389)
+- New EventPositions for XENONnT (#396)
+- Check for overlapping raw_records in nT sims (#413)
+- Get n_veto gains from CMT (#406)
+- Bug fix: Added fixed minimal length for temp_hitlets. #415
+- use dependabot for actions (#414)
+- Event display update, record matrix and dynamic data selector (#401)
+- Remove duplicate call to 1T sim config (#411)
+- Fix abandonning (#412)
+
+0.15.9 / 2021-03-24
+--------------------
+- Use multiple targets for better online support (#397)
+- Use code style commentator (#399, #405)
+- Add daq-plots to minianalysies (#394)
+- Check for raw-record overlaps veto systems (#390)
+- Infer-target update (#395)
+- Prevent abandonment of done runs (#398)
+- Upload compressor from metadata to rundoc (#410)
+- Cleanup ajax (#402)
+- Context cleanup (#403)
+- Change default nT fax config (#391)
+
+
+0.15.8 / 2021-03-02
+--------------------
+- Update daq-tagging for abandoned runs (#374)
+- Remove nones and replace with nans for itp map (#388)
+- Check for raw-record overlaps (#387)
+
+
+0.15.7 / 2021-02-26
+--------------------
+- Fix for commentjson-package for zipped json (#386)
+
+
+0.15.6 / 2021-02-26
+--------------------
+- Scada updates (#378, #383)
+- Correct S2(x,y) with CMT (#382)
+- Correct elife with CMT (#385)
+- Replace json with commentjson (#384)
+
+
+0.15.5 / 2021-02-22
+--------------------
+- Patch version 0.15.3 (b5433bd)
+
+
+0.15.3 / 2021-02-22
+--------------------
+- Test with database (#360)
+- Fix issue #371 - alt s2 in event_posrec_many (#372)
+- Update issue templates (#375)
+- Link data structure to github page (#377)
+- Fixes/improvements for 'plot_pulses' (#379)
+- Remove unused code block (#380)
+
+
+0.15.2 / 2021-02-17
+--------------------
+- GCN and CNN version bump for CMT bugfix (#367)
+- Veto compression updates (#365)
+- Simulation context fixed gains (363)
+
+
+0.15.1 / 2021-02-11
+--------------------
+- Change event extensions (#364)
+
+
+0.15.0 / 2021-02-09
+--------------------
+- Datarate dependent compressor (#358)
+- Reduce n-files/run (#343)
+- PulseProcessing save_when = strax.SaveWhen.TARGET (#352)
+- Online events monitor (#349)
+- Changed nveto baseline length (#362)
+- Use DAQ logger (#354)
+- Small hit pattern plotting bugfix (#357)
+- Allow dynamic copy of dtype (#361)
+
+
+0.14.5 / 2021-01-29
 --------------------
 - Function for version printing (#344)
 - Extending the event window (#345)
@@ -6,7 +165,7 @@
 - Update create-utilix-config.sh (#348)
 
 
-0.14.4 / 2020-01-22
+0.14.4 / 2021-01-22
 --------------------
 - Nveto changes (#319)
 - travis test at pinned environments (#335)
@@ -15,12 +174,12 @@
 - Listen to utilix, remove depricated function from straxen #340
 
 
-0.14.3 / 2020-01-15
+0.14.3 / 2021-01-15
 --------------------
 - EventBasics dtype should be ordered (8665256)
 
 
-0.14.2 / 2020-01-15
+0.14.2 / 2021-01-15
 --------------------
 - Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
 - Matplotlib event display (#326)
@@ -29,7 +188,7 @@
 - Scada-interface updates (#321,  #324)
 
 
-0.14.1 / 2020-01-04
+0.14.1 / 2021-01-04
 --------------------
 - bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
 

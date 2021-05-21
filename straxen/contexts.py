@@ -1,8 +1,7 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-import numpy as np
-
+from copy import deepcopy
 
 common_opts = dict(
     register_all=[
@@ -26,10 +25,8 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    n_mveto_pmts=straxen.n_mveto_pmts,
-    n_nveto_pmts=straxen.n_nveto_pmts,
     gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
-    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
     gain_model_mv=("to_pe_constant", "adc_mv"),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
@@ -46,32 +43,48 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     s1_max_rise_time=100,
+    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
+    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    g1=0.1426,
+    g2=11.55,
 )
+# these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
+# s1,s2 and fd corrections are still problematic
+xnt_simulation_config = deepcopy(xnt_common_config)
+xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
+                             gain_model_nv=("to_pe_constant", 0.01),
+                             gain_model_mv=("to_pe_constant", "adc_mv"),
+                             elife_conf=('elife_constant', 1e6),
+                             )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts['register'] = common_opts['register'] + [
-    straxen.PeakPositionsCNN,
-    straxen.PeakPositionsMLP,
-    straxen.PeakPositionsGCN,
-    straxen.PeakPositionsNT,
-    straxen.PeakBasicsHighEnergy,
-    straxen.PeaksHighEnergy,
-    straxen.PeakletsHighEnergy,
-    straxen.PeakletClassificationHighEnergy,
-    straxen.MergedS2sHighEnergy,
-]
-xnt_common_opts['register_all'] = common_opts['register_all'] + [
-    straxen.nveto_recorder,
-    straxen.veto_pulse_processing,
-    straxen.veto_hitlets,
-    straxen.acqmon_processing,
-    straxen.pulse_processing,
-    straxen.peaklet_processing,
-    straxen.online_monitor,
-]
+xnt_common_opts.update({
+    'register': common_opts['register'] + [straxen.PeakPositionsCNN,
+                                           straxen.PeakPositionsMLP,
+                                           straxen.PeakPositionsGCN,
+                                           straxen.PeakPositionsNT,
+                                           straxen.PeakBasicsHighEnergy,
+                                           straxen.PeaksHighEnergy,
+                                           straxen.PeakletsHighEnergy,
+                                           straxen.PeakletClassificationHighEnergy,
+                                           straxen.MergedS2sHighEnergy,
+                                          ],
+    'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
+                                                   straxen.nveto_recorder,
+                                                   straxen.veto_pulse_processing,
+                                                   straxen.veto_hitlets,
+                                                   straxen.veto_events,
+                                                   straxen.acqmon_processing,
+                                                   straxen.pulse_processing,
+                                                   straxen.peaklet_processing,
+                                                   straxen.online_monitor,
+                                                   ],
+    'use_per_run_defaults': False,
+})
 
 ##
 # XENONnT
@@ -81,9 +94,37 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
+                   _maximum_run_number=None,
                    _database_init=True,
+                   _forbid_creation_of=None,
+                   _rucio_path='/dali/lgrandi/rucio/',
+                   _raw_path='/dali/lgrandi/xenonnt/raw',
+                   _processed_path='/dali/lgrandi/xenonnt/processed',
+                   _add_online_monitor_frontend=False,
+                   _context_config_overwrite=None,
                    **kwargs):
-    """XENONnT online processing and analysis"""
+    """
+    XENONnT online processing and analysis
+
+    :param output_folder: str, Path of the strax.DataDirectory where new
+        data can be stored
+    :param we_are_the_daq: bool, if we have admin access to upload data
+    :param _minimum_run_number: int, lowest number to consider
+    :param _maximum_run_number: Highest number to consider. When None
+        (the default) consider all runs that are higher than the
+        minimum_run_number.
+    :param _database_init: bool, start the database (for testing)
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
+        being written (raw_records* is always forbidden).
+    :param _rucio_path: str, path of rucio
+    :param _raw_path: str, common path of the raw-data
+    :param _processed_path: str. common path of output data
+    :param _context_config_overwrite: dict, overwrite config
+    :param _add_online_monitor_frontend: bool, should we add the online
+        monitor storage frontend.
+    :param kwargs: dict, context options
+    :return: strax.Context
+    """
     context_options = {
         **straxen.contexts.xnt_common_opts,
         **kwargs}
@@ -93,40 +134,48 @@ def xenonnt_online(output_folder='./strax_data',
         **context_options)
     st.register([straxen.DAQReader, straxen.LEDCalibration])
 
-    st.storage = [straxen.RunDB(
-        readonly=not we_are_the_daq,
-        minimum_run_number=_minimum_run_number,
-        runid_field='number',
-        new_data_path=output_folder,
-        rucio_path='/dali/lgrandi/rucio/')
-        ] if _database_init else []
+    st.storage = [
+        straxen.RunDB(
+            readonly=not we_are_the_daq,
+            minimum_run_number=_minimum_run_number,
+            maximum_run_number=_maximum_run_number,
+            runid_field='number',
+            new_data_path=output_folder,
+            rucio_path=_rucio_path,
+        )] if _database_init else []
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
-                '/dali/lgrandi/xenonnt/raw',
+                _raw_path,
                 readonly=True,
                 take_only=straxen.DAQReader.provides),
             strax.DataDirectory(
-                '/dali/lgrandi/xenonnt/processed',
-                readonly=True)]
+                _processed_path,
+                readonly=True,
+            )]
         if output_folder:
             st.storage.append(
                 strax.DataDirectory(output_folder))
 
-        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides + ('records',)
+        st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
+        if _forbid_creation_of is not None:
+            st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
     # Only the online monitor backend for the DAQ
-    elif _database_init:
+    if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
-                       'online_monitor',))]
+                       'online_peak_monitor',
+                       'event_basics',))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797. Runs
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.common.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
+    if _context_config_overwrite is not None:
+        st.set_context_config(_context_config_overwrite)
     return st
 
 
@@ -143,50 +192,18 @@ def xenonnt_led(**kwargs):
     return st
 
 
-# This gain model is a temporary solution until we have a nice stable one
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
-    xnt_common_config['gain_model'] = ('to_pe_per_run', 'to_pe_nt.npy')
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config='fax_config_nt.json',
-                    check_raw_record_overlaps=False,
-                    **straxen.contexts.xnt_common_config,
+                    fax_config='fax_config_nt_design.json',
+                    check_raw_record_overlaps=True,
+                    **straxen.contexts.xnt_simulation_config,
                     ),
         **straxen.contexts.xnt_common_opts)
     st.register(wfsim.RawRecordsFromFaxNT)
     return st
-
-
-def xenonnt_temporary_five_pmts(**kwargs):
-    """Temporary context for selected PMTs"""
-    # Start from the online context
-    st_online = xenonnt_online(**kwargs)
-
-    temporary_five_pmts_config = {
-        'gain_model': ('CMT_model', ("to_pe_model", "xenonnt_temporary_five_pmts")),
-        'peak_min_pmts': 2,
-        'peaklet_gap_threshold': 300,
-    }
-    # If there are any config overwrites in the kwargs, us those,
-    # otherwise use the config as in the dict above.
-
-    for k in list(temporary_five_pmts_config.keys()):
-        if k in kwargs:
-            temporary_five_pmts_config[k] = kwargs[k]
-
-    # Copy the online context and change the configuration here
-    st = st_online.new_context()
-    st.set_config(temporary_five_pmts_config)
-
-    return st
-
-
-def xenonnt_initial_commissioning(*args, **kwargs):
-    raise ValueError(
-        'Use xenonnt_online. See' 
-        'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts#update_09_nov_20')  # noqa
 
 ##
 # XENON1T
@@ -199,6 +216,7 @@ x1t_context_config = {
         check_available=('raw_records', 'records', 'peaklets',
                          'events', 'event_info'),
         free_options=('channel_map',),
+        use_per_run_defaults=True,
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
@@ -218,28 +236,38 @@ x1t_common_config = dict(
         tpc=(0, 247),
         diagnostic=(248, 253),
         aqmon=(254, 999)),
+    # Records
     hev_gain_model=('to_pe_per_run',
                     'to_pe.npy'),
-    gain_model=('to_pe_per_run',
-                'to_pe.npy'),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
         -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    tail_veto_threshold=int(1e5),
-    # Smaller right extension since we applied the filter
-    peak_right_extension=30,
-    peak_min_pmts=2,
-    save_outside_hits=(3, 3),
     hit_min_amplitude='XENON1T_SR1',
+    tail_veto_threshold=int(1e5),
+    save_outside_hits=(3, 3),
+    # Peaklets
+    peaklet_gap_threshold=350,
+    gain_model=('to_pe_per_run',
+                'to_pe.npy'),
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
         ((2, 1), (4.5, 0.4))),
+    peak_min_pmts=2,
+    # MergedS2s
+    s2_merge_max_duration=15_000,
+    s2_merge_max_gap=3500,
+    # Peaks
+    # Smaller right extension since we applied the filter
+    peak_right_extension=30,
+    # Events*
     left_event_extension=int(1e6),
     right_event_extension=int(1e6),
+    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
 )
 
 
@@ -332,8 +360,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
         config=dict(
             fax_config='fax_config_1t.json',
             detector='XENON1T',
-            check_raw_record_overlaps=False,
-            **straxen.contexts.x1t_common_config),
-        **straxen.contexts.common_opts)
+            **x1t_common_config),
+        **x1t_context_config)
     st.register(wfsim.RawRecordsFromFax1T)
     return st

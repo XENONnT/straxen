@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Create config with write permissions!
 cat > $HOME/.xenon_config <<EOF
 [RunDB]
 rundb_api_url = $RUNDB_API_URL

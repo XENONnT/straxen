@@ -62,13 +62,21 @@ def plot_pulses(context, raw_records, run_id, time_range,
     records = strax.raw_to_records(raw_records)
     records = strax.sort_by_time(records)
     strax.zero_out_of_bounds(records)
+
+    baseline_key = 'baseline_samples'+detector_ending
+    if isinstance(p.config[baseline_key], int):
+        baseline_samples = p.config[baseline_key]
+    else:
+        baseline_samples = straxen.get_correction_from_cmt(
+            run_id, p.config[baseline_key])
+
     strax.baseline(records,
-                   baseline_samples=p.config['baseline_samples'+detector_ending],
+                   baseline_samples=baseline_samples,
                    flip=True)
 
     nfigs = 1
     if store_pdf:
-        fname = f'pulses_{run_id}_{time_range["time"]}_{time_range["time"]}.pdf'
+        fname = f'pulses_{run_id}_{time_range[0]}_{time_range[1]}.pdf'
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)
 
@@ -138,7 +146,7 @@ def plot_pulses(context, raw_records, run_id, time_range,
             pdf.savefig(fig)
 
         nfigs += 1
-        if nfigs > max_plots:
+        if max_plots is not None and nfigs > max_plots:
             break
 
     if store_pdf:

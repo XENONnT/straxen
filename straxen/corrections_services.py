@@ -4,14 +4,19 @@ import pytz
 import numpy as np
 from functools import lru_cache
 import strax
-try:
-    import utilix
-except (RuntimeError, FileNotFoundError):
-    # We might be on a travis job
-    pass
+import utilix
 import straxen
 import os
+
 export, __all__ = strax.exporter()
+
+corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
+                      's2_xy_map', 's1_xyz_map_mlp', 's1_xyz_map_cnn',
+                      's1_xyz_map_gcn', 'fdc_map_mlp', 'fdc_map_gcn',
+                      'fdc_map_cnn']
+
+single_value_corrections = ['elife', 'baseline_samples_nv',
+                            'electron_drift_velocity']
 
 
 @export
@@ -22,6 +27,7 @@ class CorrectionsManagementServices():
     stage to remove detector effects. Information on the strax implementation
     can be found at https://github.com/AxFoundation/strax/blob/master/strax/corrections.py
     """
+
     def __init__(self, username=None, password=None, mongo_url=None, is_nt=True):
         """
         :param username: corrections DB username
@@ -74,17 +80,20 @@ class CorrectionsManagementServices():
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, global_version)
-        elif 'elife' in model_type:
-            return self.get_elife(run_id, model_type, global_version)
+        elif model_type in single_value_corrections:
+            return self._get_correction(run_id, model_type, global_version)
+        elif model_type in corrections_w_file:
+            return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
-            raise ValueError(f'{correction} not found')
+            raise ValueError(f"{config_model} not found, currently these are "
+                             f"available {single_value_corrections} and "
+                             f"{corrections_w_file} ")
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
     # entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
-    def _get_correction(self, run_id, correction, global_version,
-                        correction_dtype=np.float64):
+    def _get_correction(self, run_id, correction, global_version):
         """
         Smart logic to get correction from DB
         :param run_id: run id from runDB
@@ -105,63 +114,18 @@ class CorrectionsManagementServices():
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
                         df = self.interface.interpolate(df, when, how='fill')
+                    if correction in corrections_w_file:
+                        # is this the best solution?
+                        df = self.interface.interpolate(df, when, how='fill')
                     else:
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
         except KeyError:
-            raise ValueError(f'Global version {global_version} not found for correction {correction}')
+            raise ValueError(f"Global version {global_version} not found for correction {correction}")
 
-        # for single value corrections, e.g. elife correction
-        if len(corrections) == 1:
-            return float(corrections)
         else:
             return corrections
-
-    def _read_and_interpolate(self, it_correction, version,  when, buffer=None, buffer_idx=None):
-        """
-
-        :param it_correction: correction item e.g. pmt_209_gain_xenon1t
-        :param version: version of correction e.g. ONLINE or v1
-        :param when: datetime object at which to interpolate
-        :param buffer: optional, if provided will fill value at buffer_idx
-        :param buffer_idx: index where tho store result in the buffer
-        :return: single value (if no buffer is specified, if there is a
-        buffer, fill it).
-        """
-        itp_kwargs = {}
-        if version == "ONLINE":
-            itp_kwargs['how'] = 'fill'
-        df = self.interface.read(it_correction)
-        df = self.interface.interpolate(df, when, **itp_kwargs)
-        if buffer is None:
-            return df.loc[df.index == when, version].values[0]
-        elif buffer_idx is not None:
-            buffer[buffer_idx] = (df.loc[df.index == when, version].values[0])
-        else:
-            raise ValueError('Provided "buffer" but no "buffer_idx" to fill at')
-
-    def get_elife(self, run_id, model_type, global_version):
-        """
-        Smart logic to return electron lifetime correction
-        :param run_id: run id from runDB
-        :param model_type: choose either elife_model or elife_constant
-        :param global_version: global version, or float (if model_type == elife_constant)
-        :return: electron lifetime correction value
-        """
-        if model_type == 'elife_model':
-            return self._get_correction(run_id, 'elife', global_version)
-
-        elif model_type == 'elife_constant':
-            # This is nothing more than just returning the value we put in
-            if not isinstance(global_version, float):
-                raise ValueError(f'User specify a model type {model_type} '
-                                 f'and should provide a float. Got: '
-                                 f'{type(global_version)}')
-            return float(global_version)
-
-        else:
-            raise ValueError(f'model type {model_type} not implemented for electron lifetime')
 
     def get_pmt_gains(self, run_id, model_type, global_version,
                       cacheable_versions=('ONLINE',),
@@ -202,13 +166,13 @@ class CorrectionsManagementServices():
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
                 raise ValueError(
-                        f'to_pe(PMT gains) values are NaN, no data available'
-                        f' for {run_id} in the gain model with version '
-                        f'{global_version}, please set constant values for '
-                        f'{run_id}')
+                    f"to_pe(PMT gains) values are NaN, no data available "
+                    f"for {run_id} in the gain model with version "
+                    f"{global_version}, please set constant values for "
+                    f"{run_id}")
 
         else:
-            raise ValueError(f'{model_type} not implemented for to_pe values')
+            raise ValueError(f"{model_type} not implemented for to_pe values")
 
         # Double check the dtype of the gains
         to_pe = np.array(to_pe, dtype=gain_dtype)
@@ -231,24 +195,27 @@ class CorrectionsManagementServices():
             np.save(cache_name, to_pe, allow_pickle=False)
         return to_pe
 
-    def get_lce(self, run_id, s, position, global_version='v1'):
+    def get_config_from_cmt(self, run_id, model_type, global_version='ONLINE'):
         """
-        Smart logic to return light collection eff map values.
+        Smart logic to return NN weights file name to be downloader by
+        straxen.MongoDownloader()
         :param run_id: run id from runDB
-        :param s: S1 map or S2 map
-        :param global_version:
-        :param position: event position
+        :param model_type: model type and neural network type; model_mlp,
+        or model_gcn or model_cnn
+        :param global_version: global version
+        :param return: NN weights file name
         """
-        raise NotImplementedError
+        if model_type not in corrections_w_file:
+            raise ValueError(f"{model_type} is not stored in CMT "
+                             f"please check, these are available {corrections_w_file}")
 
-    def get_fdc(self, run_id, position, global_version='v1'):
-        """
-        Smart logic to return field distortion map values.
-        :param run_id: run id from runDB
-        :param position: event position
-        :param global_version: global version (str type)
-        """
-        raise NotImplementedError
+        file_name = self._get_correction(run_id, model_type, global_version)
+
+        if not file_name:
+            raise ValueError(f"You have the right option but could not find a file"
+                             f"Please contact CMT manager and yell at him")
+
+        return file_name
 
     # TODO change to st.estimate_start_time
     def get_start_time(self, run_id):
@@ -263,8 +230,8 @@ class CorrectionsManagementServices():
             run_id = int(run_id)
 
         rundoc = self.collection.find_one(
-                {'number' if self.is_nt else 'name': run_id},
-                {'start': 1})
+            {'number' if self.is_nt else 'name': run_id},
+            {'start': 1})
         if rundoc is None:
             raise ValueError(f'run_id = {run_id} not found')
         time = rundoc['start']

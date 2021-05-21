@@ -5,14 +5,13 @@ import strax
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 from strax.processing.general import _touching_windows
-from warnings import warn
 
 export, __all__ = strax.exporter()
 
 
 @export
 @strax.takes_config(
-    strax.Option('peaklet_gap_threshold', default=350,
+    strax.Option('peaklet_gap_threshold', default=700,
                  help="No hits for this many ns triggers a new peak"),
     strax.Option('peak_left_extension', default=30,
                  help="Include this many ns left of hits in peaks"),
@@ -27,8 +26,8 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1), (4, 0.4)),
-                     ((2, 1), (4.5, 0.4))),
+                     ((0.5, 1.), (6.0, 0.4)),
+                     ((2., 1.), (4.5, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
     strax.Option('peak_split_filter_wing_width', default=70,
@@ -61,8 +60,10 @@ export, __all__ = strax.exporter()
     strax.Option('saturation_min_reference_length', default=20,
                  help="Minimum number of reference sample used "
                       "to correct saturated samples"),
-    strax.Option('store_top_waveform',default=False,
+    strax.Option('store_top_waveform',default=True,
                  help='Bool for storing the top array waveform seperately'),
+    strax.Option('peaklet_max_duration', default=int(10e6),
+                 help="Maximum duration [ns] of a peaklet"),
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
@@ -92,7 +93,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.7'
+    __version__ = '0.3.8'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(n_channels=self.config['n_tpc_pmts']),
@@ -100,11 +101,12 @@ class Peaklets(strax.Plugin):
 
     def setup(self):
         if self.config['peak_min_pmts'] > 2:
-            # Can fix by resplitting, NotImplemented
-            raise warn(f"Raising the peak_min_pmts to "
-                       f"{self.config['peak_min_pmts']} interferes with "
-                       f"lone_hit definition. See "
-                       f"github.com/XENONnT/straxen/issues/295")
+            # Can fix by re-splitting,
+            raise NotImplementedError(
+                f"Raising the peak_min_pmts to {self.config['peak_min_pmts']} "
+                f"interferes with lone_hit definition. "
+                f"See github.com/XENONnT/straxen/issues/295")
+
         self.to_pe = straxen.get_to_pe(self.run_id,
                                        self.config['gain_model'],
                                        self.config['n_tpc_pmts'])
@@ -131,7 +133,9 @@ class Peaklets(strax.Plugin):
             left_extension=self.config['peak_left_extension'],
             right_extension=self.config['peak_right_extension'],
             min_channels=self.config['peak_min_pmts'],
-            result_dtype=self.dtype_for('peaklets'))
+            result_dtype=self.dtype_for('peaklets'),
+            max_duration=self.config['peaklet_max_duration'],
+        )
 
         # Make sure peaklets don't extend out of the chunk boundary
         # This should be very rare in normal data due to the ADC pretrigger
@@ -416,8 +420,9 @@ class PeakletsHighEnergy(Peaklets):
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     child_plugin = True
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
@@ -451,10 +456,9 @@ class PeakletClassification(strax.Plugin):
     provides = 'peaklet_classification'
     depends_on = ('peaklets',)
     parallel = True
-    dtype = (
-        strax.interval_dtype +
-        [('type', np.int8, 'Classification of the peak(let)'),])
-    __version__ = '0.2.0'
+    dtype = (strax.peak_interval_dtype
+             + [('type', np.int8, 'Classification of the peak(let)')])
+    __version__ = '0.2.1'
 
     def compute(self, peaklets):
         peaks = peaklets
@@ -493,7 +497,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     __doc__ = HE_PREAMBLE + PeakletClassification.__doc__
     provides = 'peaklet_classification_he'
     depends_on = ('peaklets_he',)
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     child_plugin = True
 
     def compute(self, peaklets_he):
@@ -507,9 +511,9 @@ FAKE_MERGED_S2_TYPE = -42
 @strax.takes_config(
     strax.Option('s2_merge_max_area', default=5000.,
                  help="Merge peaklet cluster only if area < this [PE]"),
-    strax.Option('s2_merge_max_gap', default=3500,
+    strax.Option('s2_merge_max_gap', default=5_000,
                  help="Maximum separation between peaklets to allow merging [ns]"),
-    strax.Option('s2_merge_max_duration', default=15_000,
+    strax.Option('s2_merge_max_duration', default=35_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"),
     strax.Option('store_top_waveform',default=False,

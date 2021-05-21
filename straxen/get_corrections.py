@@ -2,12 +2,41 @@ import numpy as np
 import strax
 import straxen
 from warnings import warn
+from functools import wraps
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
 
 
+def correction_options(get_correction_function):
+    """
+    A wrapper function for functions here in the get_corrections module
+    Search for special options like ["MC", ] and apply arg shuffling accordingly
+    Example: get_to_pe(
+        run_id, ('MC', cmt_run_id, 'CMT_model', ('to_pe_model', 'ONLINE')), n_tpc_pmts])
+
+    :param get_correction_function: A function here in the get_corrections module
+    :returns: The function wrapped with the option search
+    """
+    @wraps(get_correction_function)
+    def correction_options_wrapped(run_id, conf, *arg):
+        if isinstance(conf, tuple):
+            # MC chain simulation can put run_id inside configuration
+            if 'MC' in conf:
+                tag, cmt_run_id, *conf = conf
+                if tag != 'MC':
+                    raise ValueError('Get corrections require input in the from of tuple '
+                                     '("MC", run_id, *conf) when "MC" option is invoked')
+                return get_correction_function(cmt_run_id, tuple(conf), *arg)
+
+        # Else use the get corrections as they are
+        return get_correction_function(run_id, conf, *arg)
+
+    return correction_options_wrapped
+
+
 @export
+@correction_options
 def get_to_pe(run_id, gain_model, n_pmts):
     if not isinstance(gain_model, tuple):
         raise ValueError(f"gain_model must be a tuple")
@@ -59,13 +88,13 @@ def get_to_pe(run_id, gain_model, n_pmts):
             # Uniform gain, specified as a to_pe factor
             to_pe = np.ones(n_pmts, dtype=np.float32) * model_conf
         except np.core._exceptions.UFuncTypeError as e:
-            raise(str(e) +
-                  f'\nTried multiplying by {model_conf}. Insert a number instead.')
+            raise (str(e) +
+                   f"\nTried multiplying by {model_conf}. Insert a number instead.")
     else:
         raise NotImplementedError(f"Gain model type {model_type} not implemented")
 
     if len(to_pe) != n_pmts:
-       raise ValueError(
+        raise ValueError(
             f"Gain model {gain_model} resulted in a to_pe "
             f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
     return to_pe
@@ -83,29 +112,74 @@ FIXED_TO_PE = {
 
 
 @export
-def get_elife(run_id, elife_conf):
-    if isinstance(elife_conf, tuple) and len(elife_conf) == 3:
-        # We want to use corrections management
-        is_nt = elife_conf[-1]
-        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+@correction_options
+def get_correction_from_cmt(run_id, conf):
+    if isinstance(conf, str) and conf.startswith('https://raw'):
+        # Legacy support for pax files
+        return conf
+    if isinstance(conf, tuple) and len(conf) == 3:
+        is_nt = conf[-1]
 
-        e = cmt.get_corrections_config(run_id, elife_conf[:2])
-
-    elif isinstance(elife_conf, str):
-        warn("get_elife will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
-        # Let's remove these functions and only rely on the CMT in the future
-        x = straxen.get_resource(elife_conf, fmt='npy')
-        run_index = np.where(x['run_id'] == int(run_id))[0]
-        if not len(run_index):
-            # Gains not known: using placeholders
-            e = 623e3
+        model_type, global_version = conf[:2]
+        correction = global_version  # in case is a single value
+        if 'constant' in model_type:
+            if not isinstance(global_version, (float, int)):
+                raise ValueError(f"User specify a model type {model_type} "
+                                 "and should provide a number. Got: "
+                                 f"{type(global_version)}")
         else:
-            e = x[run_index[0]]['e_life']
+            cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+            correction = cmt.get_corrections_config(run_id, conf[:2])
+            if correction.size == 0:
+                raise ValueError(f"Could not find a value for {model_type} "
+                                 "please check it is implemented in CMT. "
+                                 f"for nT = {is_nt}")
+
+        if 'samples' in model_type:
+            return int(correction)
+        else:
+            return float(correction)
+
     else:
-        raise ValueError(
-            'Wrong elife model. Either specify a string (url) or the '
-            'Corrections Management Tools format: '
-            '(model_type->str, model_config->str, is_nT->bool)'
-            '')
-    return e
+        raise ValueError("Wrong configuration. "
+                         "Please use the following format: "
+                         "(model_type->str, model_config->str or number, is_nT->bool) "
+                         f"User specify {conf} please modify")
+
+
+@export
+@correction_options
+def get_config_from_cmt(run_id, conf):
+    if isinstance(conf, str) and conf.startswith('https://raw'):
+        # Legacy support for pax files
+        return conf
+    if not isinstance(conf, tuple):
+        raise ValueError("conf must be a tuple")
+    if not len(conf) == 3:
+        raise ValueError("conf must have three elements: "
+                         "the model type, its specific configuration "
+                         "and detector (True = nT)")
+    model_type, model_conf, is_nt = conf
+    if model_type == 'CMT_model':
+        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+        this_file = cmt.get_corrections_config(run_id, model_conf)
+        this_file = ' '.join(map(str, this_file))
+
+    else:
+        raise ValueError(f"Wrong NN configuration, please look at this {conf} "
+                         "and modify it accordingly")
+
+    return this_file
+
+
+def get_elife(run_id, elife_conf):
+    # 1T support for electron lifetimes from a file
+    # Let's remove these functions and only rely on the CMT in the future
+    x = straxen.get_resource(elife_conf, fmt='npy')
+    run_index = np.where(x['run_id'] == int(run_id))[0]
+    if not len(run_index):
+        # Electron lifetime not known: using placeholders
+        e = 623e3
+    else:
+        e = x[run_index[0]]['e_life']
+    return float(e)

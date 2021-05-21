@@ -10,7 +10,7 @@ https://github.com/AxFoundation/strax/pull/345
 import straxen
 import os
 import tempfile
-from .test_basics import test_run_id
+from .test_basics import test_run_id_1T
 
 
 # Offending peak-timestamps. These were causing the issues described in
@@ -46,18 +46,18 @@ def test_time_selection():
             st.set_context_config({'free_options': tuple(st.config.keys())})
 
             print("Making peak basics")
-            st.make(test_run_id, 'peak_basics')
+            st.make(test_run_id_1T, 'peak_basics')
 
             print("Making sure that we have the data")
             for t in ('peaklets', 'peak_basics'):
-                assert st.is_stored(test_run_id, t), f'{t} should be stored'
+                assert st.is_stored(test_run_id_1T, t), f'{t} should be stored'
 
             print("Testing if we can open the offending time ranges")
             for t0, t1 in OFFENDING_PEAK_TIMESTAMPS:
                 # This will run into ValueErrors and RuntimeErrors if
                 # there is a problem with the plugin handling in strax:
                 # https://github.com/AxFoundation/strax/pull/345
-                st.get_array(test_run_id, targets='peaks', time_range=(t0, t1))
+                st.get_array(test_run_id_1T, targets='peaks', time_range=(t0, t1))
 
         # On windows, you cannot delete the current process'
         # working directory, so we have to chdir out first.

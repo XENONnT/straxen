@@ -1,14 +1,15 @@
 import strax
 import straxen
 from straxen.contexts import *
-from utilix import db
+from utilix import DB
 import datetime
+
+db = DB()
 
 # list of contexts that gets tracked in runDB context collection
 # needs to be maintained for each straxen release
 context_list = ['xenonnt_led',
                 'xenonnt_online',
-                'xenonnt_temporary_five_pmts',
                ]
 
 

@@ -9,6 +9,10 @@ import straxen
 from warnings import warn
 export, __all__ = strax.exporter()
 
+DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
+                 help="default reconstruction algorithm that provides (x,y)",
+                 default="mlp",
+                 )])
 
 @export
 @strax.takes_config(
@@ -18,6 +22,7 @@ export, __all__ = strax.exporter()
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
+
 class PeakPositionsBaseNT(strax.Plugin):
     """
     Base class for reconstructions.
@@ -98,22 +103,31 @@ class PeakPositionsBaseNT(strax.Plugin):
         return result
 
     def _get_model_file_name(self):
-        config_file = f'file_{self.algorithm}'
-        model_file = self.config.get(config_file, "No file")
-        if model_file == 'No file':
+
+        config_file = f'{self.algorithm}_model'
+        model_from_config = self.config.get(config_file, 'No file')
+        if model_from_config == 'No file':
             raise ValueError(f'{__class__.__name__} should have {config_file} '
                              f'provided as an option.')
-        return model_file
+        if isinstance(model_from_config, str) and os.path.exists(model_from_config):
+            # Allow direct path specification
+            return model_from_config
+        if model_from_config is None:
+            # Allow None to be specified (disables processing for given posrec)
+            return model_from_config
 
+        # Use CMT
+        model_file = straxen.get_config_from_cmt(self.run_id, model_from_config)
+        return model_file
 
 @export
 @strax.takes_config(
-    strax.Option("file_mlp",
-                 help="Name of saved MLP model file in the aux file data base."
-                      "The file contains both structure and weights. Set to "
-                      "None to skip the computation of this plugin.",
-                 default="xnt_mlp_wfsim_20201214.tar.gz"
-                 )
+    strax.Option('mlp_model',
+                 help='Neural network model.' 
+                      'If CMT, specify as (CMT_model, (mlp_model, ONLINE), True)))'
+                      'Set to None to skip the computation of this plugin.',
+                 default=("CMT_model", ('mlp_model', "ONLINE"), True)
+                )
 )
 class PeakPositionsMLP(PeakPositionsBaseNT):
     """Multilayer Perceptron (MLP) neural net for position reconstruction"""
@@ -123,40 +137,39 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 
 @export
 @strax.takes_config(
-    strax.Option("file_gcn",
-                 help="Name of saved GCN model file in the aux file data base."
-                      "The file contains both structure and weights. Set to "
-                      "None to skip the computation of this plugin.",
-                 default="xnt_gcn_wfsim_20201203.tar.gz",
-                 )
+    strax.Option('gcn_model',
+                 help='Neural network model.' 
+                      'If CMT, specify as (CMT_model, (gcn_model, ONLINE), True)))'
+                      'Set to None to skip the computation of this plugin.',
+                 default=("CMT_model", ('gcn_model', "ONLINE"), True)
+                )
 )
 class PeakPositionsGCN(PeakPositionsBaseNT):
     """Graph Convolutional Network (GCN) neural net for position reconstruction"""
     provides = "peak_positions_gcn"
     algorithm = "gcn"
+    __version__ = '0.0.1'
 
 
 @export
 @strax.takes_config(
-    strax.Option("file_cnn",
-                 help="Name of saved CNN model file in the aux file data base."
-                      "The file contains both structure and weights. Set to "
-                      "None to skip the computation of this plugin.",
-                 default="xnt_cnn_wfsim_A_5_2000_20210112.tar.gz",
-                 )
+    strax.Option('cnn_model',
+                 help='Neural network model.' 
+                      'If CMT, specify as (CMT_model, (cnn_model, ONLINE), True)))'
+                      'Set to None to skip the computation of this plugin.',
+                 default=("CMT_model", ('cnn_model', "ONLINE"), True)
+                )
 )
 class PeakPositionsCNN(PeakPositionsBaseNT):
     """Convolutional Neural Network (CNN) neural net for position reconstruction"""
     provides = "peak_positions_cnn"
     algorithm = "cnn"
+    __version__ = '0.0.1'
 
 
 @export
 @strax.takes_config(
-    strax.Option("default_reconstruction_algorithm",
-                 help="default reconstruction algorithm that provides (x,y)",
-                 default="mlp",
-                 )
+    *DEFAULT_POSREC_ALGO_OPTION
 )
 class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
