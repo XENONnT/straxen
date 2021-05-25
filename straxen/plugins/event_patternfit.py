@@ -296,8 +296,10 @@ def bdtrc(k, n, p):
     return dk
 
 def bdtr(k, n, p):
-    if (k < 0):  return np.nan
-    if (k == n): return (1.0)
+    if (k < 0):
+        return np.nan
+    if (k == n):
+        return (1.0)
     dn = n - k
     if (k == 0):
         dk = np.exp(dn * np.log(1.0 - p))
