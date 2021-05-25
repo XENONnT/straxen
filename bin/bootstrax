@@ -110,7 +110,7 @@ parser.add_argument(
     help="Maximum number of workers to use in a strax process.")
 parser.add_argument(
     '--targets', nargs='*',
-    default=['event_info', 'online_monitor', 'hitlets_nv'],
+    default=['event_info', 'online_peak_monitor', 'hitlets_nv'],
     help="Strax data type name(s) that should be produced with live processing")
 parser.add_argument(
     '--post_process', nargs='*',
@@ -547,8 +547,8 @@ def infer_target(rd: dict) -> dict:
     :param rd: rundoc
     :return: dict with the targets and the targets for post processing
     """
-    targets = args.targets
-    post_process = args.post_process
+    targets = args.targets.copy()
+    post_process = args.post_process.copy()
 
     if args.fix_target:
         return {'targets': strax.to_str_tuple(targets),
