@@ -1,13 +1,10 @@
 import strax
 import straxen
-
 import numpy as np
 from scipy.special import betainc, gammaln, loggamma
-from scipy.stats import binom_test, binom
-
 import warnings
-
 export, __all__ = strax.exporter()
+
 
 @export
 @strax.takes_config(
@@ -16,7 +13,7 @@ export, __all__ = strax.exporter()
     strax.Option('s2_optical_map', help="S2 (x, y) optical/pattern map.",
                  default="XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"),
     strax.Option('s1_aft_map', help="Date drive S1 area fraction top map.",
-                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_12May2021.json'),
+                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_25May2021.json'),
     strax.Option('MeanPEperPhoton', help="Mean of full VUV single photon responce",
                  default=1.2),
     strax.Option('gain_model',
@@ -39,21 +36,21 @@ class EventPatternFit(strax.Plugin):
     Plugin that provides patter information for events
     """
     
-    depends_on = ('event_area_per_channel', 'event_info')
-    provides = "event_patternfit"
+    depends_on  = ('event_area_per_channel', 'event_info')
+    provides    = "event_patternfit"
     __version__ = "0.0.3"
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S2 in the event'),
+                  'Modified Poisson likelihood value for main S2 in the event'),
                  ('alt_s2_2llh', np.float32,
-                  f'Modified Poisson likelihood value for alternative S2'),
+                  'Modified Poisson likelihood value for alternative S2'),
                  ('s1_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S1'),
+                  'Modified Poisson likelihood value for main S1'),
                  ('s1_top_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S1, calculated from top array'),
+                  'Modified Poisson likelihood value for main S1, calculated from top array'),
                  ('s1_bottom_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S1, calculated from bottom array'),
+                  'Modified Poisson likelihood value for main S1, calculated from bottom array'),
                  ('s1_area_fraction_top_continuos_probability', np.float32,
                   'Continuos binomial test for S1 area fraction top'),
                  ('s1_area_fraction_top_discrete_probability', np.float32,
@@ -64,17 +61,17 @@ class EventPatternFit(strax.Plugin):
                   'Discrete binomial test for S1 photon fraction top')]
         
         if self.config['StorePerChannel']:
-            dtype.append((("2LLH per channel for main S2","s2_2llh_per_channel"),
+            dtype.append((("2LLH per channel for main S2", "s2_2llh_per_channel"),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("2LLH per channel for alternative S2","alt_s2_2llh_per_channel"),
+            dtype.append((("2LLH per channel for alternative S2", "alt_s2_2llh_per_channel"),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("Pattern main S2","s2_pattern"),
+            dtype.append((("Pattern main S2", "s2_pattern"),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("Pattern alt S2","alt_s2_pattern"),
+            dtype.append((("Pattern alt S2", "alt_s2_pattern"),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("Pattern for main S1","s1_pattern"),
+            dtype.append((("Pattern for main S1", "s1_pattern"),
                        np.float32, (self.config['n_tpc_pmts'], )))
-            dtype.append((("2LLH per channel for main S1","s1_2llh_per_channel"),
+            dtype.append((("2LLH per channel for main S1", "s1_2llh_per_channel"),
                        np.float32, (self.config['n_tpc_pmts'], )))
         dtype += strax.time_fields
         return dtype
@@ -82,56 +79,59 @@ class EventPatternFit(strax.Plugin):
     def setup(self):
         self.mean_sPhoton = self.config['MeanPEperPhoton']
         
-        ## Getting S1 AFT maps
+        # Getting S1 AFT maps
         self.s1_aft_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s1_aft_map'], fmt='json'))
                     
-        ## Getting optical maps
+        # Getting optical maps
         self.s1_pattern_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s1_optical_map'], fmt='pkl'))
         self.s2_pattern_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s2_optical_map'], fmt='pkl'))
         
-        ## Getting gain model to get dead PMTs
+        # Getting gain model to get dead PMTs
         self.to_pe          = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
         self.dead_PMTs      = np.where(self.to_pe==0)[0]
         self.pmtbool        = ~np.in1d(np.arange(0,self.config['n_tpc_pmts']), self.dead_PMTs)
         self.pmtbool_top    = self.pmtbool[:self.config['n_top_pmts']]
         self.pmtbool_bottom = self.pmtbool[self.config['n_top_pmts']:self.config['n_tpc_pmts']]
-
         
     def compute(self, events):
         
         result = np.zeros(len(events), dtype=self.dtype)
         result['time'], result['endtime'] = events['time'], strax.endtime(events)
 
-        ## Computing LLH values for S1s
+        # Computing LLH values for S1s
         self.compute_s1_llhvalue(events, result)
         
-        ## Computing LLH values for S2s
+        # Computing LLH values for S2s
         self.compute_s2_llhvalue(events, result)
         
-        ## Computing binomial test for s1 area fraction top
+        # Computing binomial test for s1 area fraction top
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob  = self.s1_aft_map(positions)
         
         result['s1_area_fraction_top_continuos_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1, _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
+            s1_area_fraction_top_probability(_aft, _s1, _s1_aft) 
+            if not np.isnan(_aft*_s1*_s1_aft) 
             else np.nan
             for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
         ]
         
         result['s1_area_fraction_top_discrete_probability']  = [
-            s1_area_fraction_top_probability(_aft, _s1, _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
+            s1_area_fraction_top_probability(_aft, _s1, _s1_aft, mode='discrete') 
+            if not np.isnan(_aft*_s1*_s1_aft)
             else np.nan
             for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
         ]
         
         result['s1_photon_fraction_top_continuos_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
+            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) 
+            if not np.isnan(_aft*_s1*_s1_aft) 
             else np.nan
             for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
         ]
         
         result['s1_photon_fraction_top_discrete_probability']  = [
-            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
+            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') 
+            if not np.isnan(_aft*_s1*_s1_aft)
             else np.nan
             for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
         ]
@@ -143,7 +143,7 @@ class EventPatternFit(strax.Plugin):
         result['s1_top_2llh'][:]    = 0.0
         result['s1_bottom_2llh'][:] = 0.0
 
-        ### Selecting S1s for pattern fit calculation
+        # Selecting S1s for pattern fit calculation
         # - must exist (index != -1)
         # - must have total area larger minimal one
         # - must have positive AFT
@@ -156,7 +156,7 @@ class EventPatternFit(strax.Plugin):
         cur_s1_bool &= np.isfinite(z)
         cur_s1_bool &= (x**2 + y**2) < self.config['max_r']**2
         
-        ### Making expectation patterns [ in PE ]
+        # Making expectation patterns [ in PE ]
         s1_map_effs = self.s1_pattern_map(np.array([x,y,z]).T)[cur_s1_bool,:]
         s1_area     = events['s1_area'][cur_s1_bool]
         s1_pattern  = s1_area[:,None]*(s1_map_effs[:,self.pmtbool])/np.sum(s1_map_effs[:,self.pmtbool], axis=1)[:,None] 
@@ -168,7 +168,7 @@ class EventPatternFit(strax.Plugin):
         s1_pattern_bottom   = s1_pattern_bottom[:,None]*((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom])
         s1_pattern_bottom  /= np.sum((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom], axis=1)[:,None] 
 
-        ## Getting pattern from data
+        # Getting pattern from data
         s1_area_per_channel_ = events['s1_area_per_channel'][cur_s1_bool,:]
         s1_area_per_channel  = s1_area_per_channel_[:, self.pmtbool]
         s1_area_per_channel_top    = (s1_area_per_channel_[:, :self.config['n_top_pmts']])[:, self.pmtbool_top]
@@ -179,14 +179,15 @@ class EventPatternFit(strax.Plugin):
         arg2         = s1_area_per_channel/self.mean_sPhoton, s1_area_per_channel, self.mean_sPhoton
         norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
         result['s1_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+        
         # If needed to stire - store only top and bottom array, but not together
         if self.config['StorePerChannel']:
-            ## Storring pattern information
+            # Storring pattern information
             result['s1_pattern'][:]=0.0     
             store_patterns = np.zeros((s1_pattern.shape[0],self.config['n_tpc_pmts']) )  
             store_patterns[:,self.pmtbool]=s1_pattern
             result['s1_pattern'][cur_s1_bool] = store_patterns
-            ## Storing actual LLH values
+            # Storing actual LLH values
             store_2LLH_ch = np.zeros((norm_llh_val.shape[0],self.config['n_tpc_pmts']) )
             store_2LLH_ch[:,self.pmtbool]=norm_llh_val
             result['s1_2llh_per_channel'][cur_s1_bool]=store_2LLH_ch
@@ -208,7 +209,7 @@ class EventPatternFit(strax.Plugin):
         for t_ in ['s2', 'alt_s2']:
             result[t_+'_2llh'][:]=0.0
 
-            ### Selecting S2s for pattern fit calculation
+            # Selecting S2s for pattern fit calculation
             # - must exist (index != -1)
             # - must have total area larger minimal one
             # - must have positive AFT
@@ -217,17 +218,17 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool &= (events[t_+'_index']!=-1)
             cur_s2_bool &= (events["s2_area_fraction_top"]>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r']**2            
-            ### Making expectation patterns [ in PE ]
+            # Making expectation patterns [ in PE ]
             s2_map_effs = self.s2_pattern_map(np.array([x,y]).T)[cur_s2_bool,0:self.config['n_top_pmts']]
             s2_map_effs = s2_map_effs[:,self.pmtbool_top]
             s2_top_area = (events["s2_area_fraction_top"]*events["s2_area"])[cur_s2_bool]        
             s2_pattern  = s2_top_area[:,None]*s2_map_effs/np.sum(s2_map_effs,axis=1)[:,None]  
             
-            ## Getting pattern from data
+            # Getting pattern from data
             s2_top_area_per_channel = events['s2_area_per_channel'][cur_s2_bool,0:self.config['n_top_pmts']]
             s2_top_area_per_channel = s2_top_area_per_channel[:,self.pmtbool_top]
             
-            ## Calculating LLH, this is shifted Poisson
+            # Calculating LLH, this is shifted Poisson
             # we get area expectation and we need to scale them to get
             # photon expectation
             norm_llh_val = (neg2llh_modpoisson(
@@ -247,12 +248,10 @@ class EventPatternFit(strax.Plugin):
                 store_patterns = np.zeros((s2_pattern.shape[0],self.config['n_top_pmts']) )
                 store_patterns[:,self.pmtbool_top]=s2_pattern
                 result[t_+'_pattern'][cur_s2_bool]=store_patterns#:s2_pattern[cur_s2_bool]
-                ### 
+                
                 store_2LLH_ch = np.zeros((norm_llh_val.shape[0],self.config['n_top_pmts']) )
                 store_2LLH_ch[:,self.pmtbool_top]=norm_llh_val
                 result[t_+'_2llh_per_channel'][cur_s2_bool]=store_2LLH_ch
-            ####
-
 
 def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
     """ 
