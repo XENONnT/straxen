@@ -263,11 +263,11 @@ max_queue_new_runs = 2
 # NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
 remove_target_after_fails = dict(events=2,
                                  hitlets=2,
-                                 peaks=3,
-                                 peak_basics=3,
-                                 peaklets=4,
-                                 online=4,
-                                 ALL=5)
+                                 peaks=4,
+                                 peak_basics=5,
+                                 peaklets=6,
+                                 online=5,
+                                 ALL=7)
 
 ##
 # Initialize globals (e.g. rundb connection)
@@ -560,9 +560,11 @@ def infer_target(rd: dict) -> dict:
         log.debug(f'Deleting targets')
         for rm_target, rm_after_n in remove_target_after_fails.items():
             for target_i, targ in enumerate(targets):
-                if targ in rm_target and n_fails > rm_after_n:
+                if rm_target in targ and n_fails > rm_after_n:
                     log.debug(f'Remove {targ}')
                     del targets[target_i]
+                else:
+                    log.debug(f'Keep {targ} for not in {rm_target} ({n_fails}<{rm_after_n})')
             for post_i, post_targ in enumerate(post_process):
                 if post_targ in rm_target and n_fails > rm_after_n:
                     log.debug(f'Remove {post_targ}')
