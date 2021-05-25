@@ -20,11 +20,11 @@ export, __all__ = strax.exporter()
     strax.Option('left_event_extension', default=int(0.25e6),
                  help='Extend events this many ns to the left from each '
                       'triggering peak. This extension is added to the maximum '
-                      'drift time.'
-                      ),
+                      'drift time.',
+                 ),
     strax.Option('right_event_extension', default=int(0.25e6),
                  help='Extend events this many ns to the right from each '
-                      'triggering peak.'
+                      'triggering peak.',
                  ),
     strax.Option(name='electron_drift_velocity',
                  default=("electron_drift_velocity", "ONLINE", True),
