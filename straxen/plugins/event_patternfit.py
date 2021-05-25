@@ -354,7 +354,7 @@ def binom_test(k, n, p):
             else:
                 j_min, j_max = k, n
                 do_test = True
-            def check(d, y0, y1):
+            def _check_(d, y0, y1):
                 return (d>y1)and(d<=y0)
         else:
             if binom_pmf(0, n, p) > d:
@@ -363,7 +363,7 @@ def binom_test(k, n, p):
             else:
                 j_min, j_max = 0, k
                 do_test = True
-            def check(d, y0, y1):
+            def _check_(d, y0, y1):
                 return (d>=y0)and(d<y1)
         
         # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
@@ -378,7 +378,7 @@ def binom_test(k, n, p):
                 j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
                 y = binom_pmf(j_range, n, p)
                 for i in range(len(j_range) - 1):
-                    if check(d, y[i], y[i + 1]):
+                    if _check_(d, y[i], y[i + 1]):
                         j_min, j_max = j_range[i], j_range[i + 1]
                         break
             j = max(min((j_min + j_max) / 2, n), 0)
