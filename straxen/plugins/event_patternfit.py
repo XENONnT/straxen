@@ -2,13 +2,12 @@ import strax
 import straxen
 
 import numpy as np
-from scipy import special
-from scipy.special import betainc, gammaln
+from scipy.special import betainc, gammaln, loggamma
 from scipy.stats import binom_test, binom
 
 import warnings
 
-export, __all__ = strax.exporter()    
+export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
@@ -32,50 +31,51 @@ export, __all__ = strax.exporter()
                  help='Skip reconstruction if S2 area (PE) is less than this'),
     strax.Option('StorePerChannel', default=False, type=bool,
                  help="Store normalized LLH per channel for each peak"),
-    strax.Option("max_r", default = straxen.tpc_r, type=float, 
-                 help = "Maximal radius of the peaks where llh calculation will be perfromed")
+    strax.Option("max_r", default = straxen.tpc_r, type=float,
+                 help = "Maximal radius of the peaks where llh calculation will be perfromed"),
 )
 class EventPatternFit(strax.Plugin):
     """
     Plugin that provides patter information for events
     """
-    depends_on = ('event_area_per_channel','event_info')
+    
+    depends_on = ('event_area_per_channel', 'event_info')
     provides = "event_patternfit"
-    __version__="0.0.3"
-   
+    __version__ = "0.0.3"
+
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
                   f'Modified Poisson likelihood value for main S2 in the event'),
                  ('alt_s2_2llh', np.float32,
-                  f'Modified Poisson likelihood value for alternative S2 in the event'),
+                  f'Modified Poisson likelihood value for alternative S2'),
                  ('s1_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S1 in the event'),
+                  f'Modified Poisson likelihood value for main S1'),
                  ('s1_top_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S1, observed from the top array, in the event'),
+                  f'Modified Poisson likelihood value for main S1, calculated from top array'),
                  ('s1_bottom_2llh', np.float32,
-                  f'Modified Poisson likelihood value for main S1, observed from the bottom array, in the event'),
-                 ('s1_area_fraction_top_continuos_probability', np.float32, 
+                  f'Modified Poisson likelihood value for main S1, calculated from bottom array'),
+                 ('s1_area_fraction_top_continuos_probability', np.float32,
                   'Continuos binomial test for S1 area fraction top'),
-                 ('s1_area_fraction_top_discrete_probability', np.float32, 
+                 ('s1_area_fraction_top_discrete_probability', np.float32,
                   'Discrete binomial test for S1 area fraction top'),
-                 ('s1_photon_fraction_top_continuos_probability', np.float32, 
+                 ('s1_photon_fraction_top_continuos_probability', np.float32,
                   'Continuos binomial test for S1 photon fraction top'),
-                 ('s1_photon_fraction_top_discrete_probability', np.float32, 
-                  'Discrete binomial test for S1 photon fraction top')]  
+                 ('s1_photon_fraction_top_discrete_probability', np.float32,
+                  'Discrete binomial test for S1 photon fraction top')]
         
         if self.config['StorePerChannel']:
-            dtype.append( (("2LLH per channel for main S2","s2_2llh_per_channel"), 
-                       np.float32, (self.config['n_top_pmts'],)) )
-            dtype.append( (("2LLH per channel for alternative S2","alt_s2_2llh_per_channel"), 
-                       np.float32, (self.config['n_top_pmts'],)) )
-            dtype.append( (("Pattern main S2","s2_pattern"), 
-                       np.float32, (self.config['n_top_pmts'],)) )
-            dtype.append( (("Pattern alt S2","alt_s2_pattern"), 
-                       np.float32, (self.config['n_top_pmts'],)) )
-            dtype.append( (("Pattern for main S1","s1_pattern"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-            dtype.append( (("2LLH per channel for main S1","s1_2llh_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
+            dtype.append((("2LLH per channel for main S2","s2_2llh_per_channel"),
+                       np.float32, (self.config['n_top_pmts'], )))
+            dtype.append((("2LLH per channel for alternative S2","alt_s2_2llh_per_channel"),
+                       np.float32, (self.config['n_top_pmts'], )))
+            dtype.append((("Pattern main S2","s2_pattern"),
+                       np.float32, (self.config['n_top_pmts'], )))
+            dtype.append((("Pattern alt S2","alt_s2_pattern"),
+                       np.float32, (self.config['n_top_pmts'], )))
+            dtype.append((("Pattern for main S1","s1_pattern"),
+                       np.float32, (self.config['n_tpc_pmts'], )))
+            dtype.append((("2LLH per channel for main S1","s1_2llh_per_channel"),
+                       np.float32, (self.config['n_tpc_pmts'], )))
         dtype += strax.time_fields
         return dtype
     
@@ -265,7 +265,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
     with np.errstate(divide='ignore', invalid='ignore'):
         res          = 2.*(mu - 
                            (areas/mean_sPhoton)*np.log(mu) + 
-                           special.loggamma((areas/mean_sPhoton)+1) + 
+                           loggamma((areas/mean_sPhoton)+1) + 
                            np.log(mean_sPhoton)
                           ) 
     is_zero      = ~(areas>0)    # If area equals or smaller than 0 - assume 0
