@@ -252,8 +252,8 @@ class EventPatternFit(strax.Plugin):
                 store_2LLH_ch[:,self.pmtbool_top]=norm_llh_val
                 result[t_+'_2llh_per_channel'][cur_s2_bool]=store_2LLH_ch
             ####
-            
-            
+
+
 def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
     """ 
     Modified poisson distribution with proper normalization for shifted poisson. 
@@ -267,35 +267,40 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
                            (areas/mean_sPhoton)*np.log(mu) + 
                            loggamma((areas/mean_sPhoton)+1) + 
                            np.log(mean_sPhoton)
-                          ) 
+                          )
     is_zero      = ~(areas>0)    # If area equals or smaller than 0 - assume 0
     res[is_zero] = 2.*mu[is_zero]
     # if zero channel has negative expectation, assume LLH to be 0 there
     # this happens in the normalization factor calculation when mu is received from area
-    neg_mu              = mu<0.0 
+    neg_mu              = mu<0.0
     res[is_zero*neg_mu] = 0.0 # 
     return(res)
 
-# Continuos and discrete binomial test 
+# Continuos and discrete binomial test
 # https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
 def bdtrc(k, n, p):
-    if (k < 0):  return (1.0)
-    if (k == n): return (0.0)
+    if (k < 0):
+        return (1.0)
+    if (k == n):
+        return (0.0)
     dn = n - k
     if (k == 0):
-        if (p < .01): dk = -np.expm1(dn * np.log1p(-p))
-        else:         dk = 1.0 - np.exp(dn * np.log(1.0 - p))
+        if (p < .01):
+            dk = -np.expm1(dn * np.log1p(-p))
+        else:
+            dk = 1.0 - np.exp(dn * np.log(1.0 - p))
     else:
         dk = k + 1
         dk = betainc(dk, dn, p)
     return dk
- 
+
 def bdtr(k, n, p):
     if (k < 0):  return np.nan
     if (k == n): return (1.0)
     dn = n - k
-    if (k == 0): dk = np.exp(dn * np.log(1.0 - p))
+    if (k == 0):
+        dk = np.exp(dn * np.log(1.0 - p))
     else:
         dk = k + 1
         dk = betainc(dn, dk, 1.0 - p)
@@ -306,13 +311,13 @@ def binom_pmf(k, n, p):
     scale_log = gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
     return np.exp(ret_log)
- 
+
 def binom_cdf(k, n, p):
     return bdtr(k, n, p)
- 
+
 def binom_sf(k, n, p):
     return bdtrc(k, n, p)
- 
+
 def binom_test(k, n, p):
     '''
     The main purpose of this algorithm is to find the value j on the
@@ -320,30 +325,30 @@ def binom_test(k, n, p):
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
     '''
-    
+
     # Raise a warning in case one of these thres condition is verified
-    # and return binomial test equal to nan since they are not physical 
+    # and return binomial test equal to nan since they are not physical
     check = True
-    if n < k:                 
+    if n < k:
         warnings.warn(f'n {n} must be >= k {k}')
         check = False
-    if (p > 1.0) or (p < 0.0): 
+    if (p > 1.0) or (p < 0.0):
         warnings.warn(f'p {p} must be in range [0, 1]')
         check = False
-    if k < 0:                  
+    if k < 0:
         warnings.warn(f'k {k} must be >= 0')
         check = False
-        
+
     if check:
         d      = binom_pmf(k, n, p)
         rerr   = 1 + 1e-7
         d      = d * rerr
         # define number of intereation for finding the the value j
         # the exeptional case of n<=0, is avoid since n_iter is at least 2
-        n_iter = int(max(np.round(np.log10(n)) + 1, 2))   
+        n_iter = int(max(np.round(np.log10(n)) + 1, 2))
         
         if k < n * p:
-            # if binom_pmf(n, n, p) > d, with d<<1e-3, means that we have 
+            # if binom_pmf(n, n, p) > d, with d<<1e-3, means that we have
             # to look for j value above n. It is likely that the binomial
             # test for such j is extremely low such that we can stop
             # the alogorithm and return 0
@@ -353,20 +358,21 @@ def binom_test(k, n, p):
                         j_min, j_max = k, n_
                         do_test = True
                         break
-                    do_test = False                  
-            else: 
-                j_min, j_max = k, n 
+                    do_test = False
+            else:
+                j_min, j_max = k, n
                 do_test = True
-            def check(d, y0, y1): return (d>y1)and(d<=y0)
-            
+            def check(d, y0, y1):
+                return (d>y1)and(d<=y0)
         else:
-            if binom_pmf(0, n, p) > d: 
+            if binom_pmf(0, n, p) > d:
                 n_iter, j_min, j_max = 0, 0, 0
                 do_test = True
-            else:                      
+            else:
                 j_min, j_max = 0, k
                 do_test = True
-            def check(d, y0, y1): return (d>=y0)and(d<y1)
+            def check(d, y0, y1):
+                return (d>=y0)and(d<y1)
         
         # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
         # the returned binomial test is 0
@@ -376,24 +382,26 @@ def binom_test(k, n, p):
         
         else:
             # Here we are actually looking for j
-            for i in range(n_iter):      
+            for i in range(n_iter):
                 n_pts   = int(j_max - j_min)
                 j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
                 y       = binom_pmf(j_range, n, p)
                 for i in range(len(j_range) - 1):
-                    if check(d, y[i], y[i + 1]):                    
+                    if check(d, y[i], y[i + 1]):
                         j_min, j_max = j_range[i], j_range[i + 1]
-                        break      
+                        break
             j = max(min((j_min + j_max) / 2, n), 0)
             
-            # One side or two side 
+            # One side or two side
             # binomial test
-            if k * j == 0:  pval = binom_sf(max(k, j), n, p)
-            else:           pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
+            if k * j == 0:
+                pval = binom_sf(max(k, j), n, p)
+            else:
+                pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
             return min(1.0, pval)
     else:
         return np.nan
-    
+
 def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuos'):
     """
     Wrapper that does the S1 AFT probability calculation for you
@@ -401,7 +409,7 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
     size_top = area_tot * area_fraction_top
     size_tot = area_tot
 
-    if mode == 'discrete': 
+    if mode == 'discrete':
         return binom_pmf(size_top, size_tot, aft_prob)
-    else:                  
+    else:
         return binom_test(size_top, size_tot, aft_prob)
