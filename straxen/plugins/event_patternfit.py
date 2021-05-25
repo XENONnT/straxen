@@ -113,32 +113,28 @@ class EventPatternFit(strax.Plugin):
             if not np.isnan(_aft*_s1*_s1_aft) 
             else np.nan
             for _aft, _s1, _s1_aft in 
-            zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
-        ]
+            zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         result['s1_area_fraction_top_discrete_probability'] = [
             s1_area_fraction_top_probability(_aft, _s1, _s1_aft, mode='discrete') 
             if not np.isnan(_aft*_s1*_s1_aft)
             else np.nan
             for _aft, _s1, _s1_aft 
-            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
-        ]
+            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         result['s1_photon_fraction_top_continuos_probability'] = [
             s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) 
             if not np.isnan(_aft*_s1*_s1_aft) 
             else np.nan
             for _aft, _s1, _s1_aft 
-            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
-        ]
+            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         result['s1_photon_fraction_top_discrete_probability'] = [
             s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') 
             if not np.isnan(_aft*_s1*_s1_aft)
             else np.nan
             for _aft, _s1, _s1_aft 
-            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])
-        ]
+            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         return(result)
     
