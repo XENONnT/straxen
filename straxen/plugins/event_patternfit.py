@@ -80,16 +80,19 @@ class EventPatternFit(strax.Plugin):
         self.mean_sPhoton = self.config['MeanPEperPhoton']
         
         # Getting S1 AFT maps
-        self.s1_aft_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s1_aft_map'], fmt='json'))
+        self.s1_aft_map = straxen.InterpolatingMap(
+            straxen.get_resource(self.config['s1_aft_map'], fmt='json'))
                     
         # Getting optical maps
-        self.s1_pattern_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s1_optical_map'], fmt='pkl'))
-        self.s2_pattern_map = straxen.InterpolatingMap(straxen.get_resource(self.config['s2_optical_map'], fmt='pkl'))
+        self.s1_pattern_map = straxen.InterpolatingMap(
+            straxen.get_resource(self.config['s1_optical_map'], fmt='pkl'))
+        self.s2_pattern_map = straxen.InterpolatingMap(
+            straxen.get_resource(self.config['s2_optical_map'], fmt='pkl'))
         
         # Getting gain model to get dead PMTs
         self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
         self.dead_PMTs = np.where(self.to_pe==0)[0]
-        self.pmtbool = ~np.in1d(np.arange(0,self.config['n_tpc_pmts']), self.dead_PMTs)
+        self.pmtbool = ~np.in1d(np.arange(0, self.config['n_tpc_pmts']), self.dead_PMTs)
         self.pmtbool_top = self.pmtbool[:self.config['n_top_pmts']]
         self.pmtbool_bottom = self.pmtbool[self.config['n_top_pmts']:self.config['n_tpc_pmts']]
         
@@ -109,39 +112,27 @@ class EventPatternFit(strax.Plugin):
         aft_prob = self.s1_aft_map(positions)
         
         result['s1_area_fraction_top_continuos_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1, _s1_aft) 
-            if not np.isnan(_aft*_s1*_s1_aft) 
-            else np.nan
-            for _aft, _s1, _s1_aft in 
-            zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+            s1_area_fraction_top_probability(_aft, _s1, _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
+            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         result['s1_area_fraction_top_discrete_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1, _s1_aft, mode='discrete') 
-            if not np.isnan(_aft*_s1*_s1_aft)
-            else np.nan
-            for _aft, _s1, _s1_aft 
-            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+            s1_area_fraction_top_probability(_aft, _s1, _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
+            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         result['s1_photon_fraction_top_continuos_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) 
-            if not np.isnan(_aft*_s1*_s1_aft) 
-            else np.nan
-            for _aft, _s1, _s1_aft 
-            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
+            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         result['s1_photon_fraction_top_discrete_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') 
-            if not np.isnan(_aft*_s1*_s1_aft)
-            else np.nan
-            for _aft, _s1, _s1_aft 
-            in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
+            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
         
         return(result)
     
     def compute_s1_llhvalue(self, events, result):
-        result['s1_2llh'][:] = 0.0
-        result['s1_top_2llh'][:] = 0.0
-        result['s1_bottom_2llh'][:] = 0.0
+        result['s1_2llh'] = np.zeros(len(events))
+        result['s1_top_2llh'] = np.zeros(len(events))
+        result['s1_bottom_2llh'] = np.zeros(len(events))
 
         # Selecting S1s for pattern fit calculation
         # - must exist (index != -1)
@@ -157,16 +148,16 @@ class EventPatternFit(strax.Plugin):
         cur_s1_bool &= (x**2 + y**2) < self.config['max_r']**2
         
         # Making expectation patterns [ in PE ]
-        s1_map_effs = self.s1_pattern_map(np.array([x,y,z]).T)[cur_s1_bool,:]
+        s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
         s1_area = events['s1_area'][cur_s1_bool]
-        s1_pattern = s1_area[:,None]*(s1_map_effs[:,self.pmtbool])/np.sum(s1_map_effs[:,self.pmtbool], axis=1)[:,None] 
+        s1_pattern = s1_area[:, None]*(s1_map_effs[:, self.pmtbool])/np.sum(s1_map_effs[:, self.pmtbool], axis=1)[:, None] 
 
         s1_pattern_top = (events['s1_area_fraction_top'][cur_s1_bool]*s1_area)
-        s1_pattern_top = s1_pattern_top[:,None]*((s1_map_effs[:,:self.config['n_top_pmts']])[:,self.pmtbool_top])
-        s1_pattern_top /= np.sum((s1_map_effs[:,:self.config['n_top_pmts']])[:,self.pmtbool_top], axis=1)[:,None] 
+        s1_pattern_top = s1_pattern_top[:, None]*((s1_map_effs[:, :self.config['n_top_pmts']])[:, self.pmtbool_top])
+        s1_pattern_top /= np.sum((s1_map_effs[:, :self.config['n_top_pmts']])[:, self.pmtbool_top], axis=1)[:,None] 
         s1_pattern_bottom = ((1-events['s1_area_fraction_top'][cur_s1_bool])*s1_area)
-        s1_pattern_bottom = s1_pattern_bottom[:,None]*((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom])
-        s1_pattern_bottom /= np.sum((s1_map_effs[:,self.config['n_top_pmts']:])[:,self.pmtbool_bottom], axis=1)[:,None] 
+        s1_pattern_bottom = s1_pattern_bottom[:, None]*((s1_map_effs[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom])
+        s1_pattern_bottom /= np.sum((s1_map_effs[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom], axis=1)[:,None] 
 
         # Getting pattern from data
         s1_area_per_channel_ = events['s1_area_per_channel'][cur_s1_bool,:]
@@ -185,11 +176,11 @@ class EventPatternFit(strax.Plugin):
             # Storring pattern information
             result['s1_pattern'][:] = 0.0     
             store_patterns = np.zeros((s1_pattern.shape[0], self.config['n_tpc_pmts']) )  
-            store_patterns[:,self.pmtbool] = s1_pattern
+            store_patterns[:, self.pmtbool] = s1_pattern
             result['s1_pattern'][cur_s1_bool] = store_patterns
             # Storing actual LLH values
             store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_tpc_pmts']) )
-            store_2LLH_ch[:,self.pmtbool] = norm_llh_val
+            store_2LLH_ch[:, self.pmtbool] = norm_llh_val
             result['s1_2llh_per_channel'][cur_s1_bool] = store_2LLH_ch
             
         # Top
@@ -205,9 +196,9 @@ class EventPatternFit(strax.Plugin):
         result['s1_bottom_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
 
             
-    def compute_s2_llhvalue(self, events,result):
+    def compute_s2_llhvalue(self, events, result):
         for t_ in ['s2', 'alt_s2']:
-            result[t_+'_2llh'][:] = 0.0
+            result[t_+'_2llh'][:] = np.zeros(len(events))#0.0
 
             # Selecting S2s for pattern fit calculation
             # - must exist (index != -1)
@@ -219,14 +210,14 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool &= (events["s2_area_fraction_top"]>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r']**2            
             # Making expectation patterns [ in PE ]
-            s2_map_effs = self.s2_pattern_map(np.array([x,y]).T)[cur_s2_bool,0:self.config['n_top_pmts']]
-            s2_map_effs = s2_map_effs[:,self.pmtbool_top]
+            s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
+            s2_map_effs = s2_map_effs[:, self.pmtbool_top]
             s2_top_area = (events["s2_area_fraction_top"]*events["s2_area"])[cur_s2_bool]        
-            s2_pattern  = s2_top_area[:,None]*s2_map_effs/np.sum(s2_map_effs,axis=1)[:,None]  
+            s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]  
             
             # Getting pattern from data
-            s2_top_area_per_channel = events['s2_area_per_channel'][cur_s2_bool,0:self.config['n_top_pmts']]
-            s2_top_area_per_channel = s2_top_area_per_channel[:,self.pmtbool_top]
+            s2_top_area_per_channel = events['s2_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
+            s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
             
             # Calculating LLH, this is shifted Poisson
             # we get area expectation and we need to scale them to get
@@ -241,16 +232,16 @@ class EventPatternFit(strax.Plugin):
                                  areas = s2_top_area_per_channel, 
                                  mean_sPhoton=self.mean_sPhoton)
                            )
-            result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val,axis=1)
+            result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val, axis=1)
             if self.config['StorePerChannel']:
                 result[t_+'_pattern'][:]=0.0
                 result[t_+'_2llh_per_channel'][:]=0.0
-                store_patterns = np.zeros((s2_pattern.shape[0],self.config['n_top_pmts']) )
-                store_patterns[:,self.pmtbool_top]=s2_pattern
+                store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
+                store_patterns[:, self.pmtbool_top]=s2_pattern
                 result[t_+'_pattern'][cur_s2_bool]=store_patterns#:s2_pattern[cur_s2_bool]
                 
-                store_2LLH_ch = np.zeros((norm_llh_val.shape[0],self.config['n_top_pmts']) )
-                store_2LLH_ch[:,self.pmtbool_top]=norm_llh_val
+                store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
+                store_2LLH_ch[:, self.pmtbool_top]=norm_llh_val
                 result[t_+'_2llh_per_channel'][cur_s2_bool]=store_2LLH_ch
 
 def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
