@@ -13,9 +13,9 @@ class event_area_per_channel(strax.LoopPlugin):
     Simple plugin that provides area per channel for main 
     and alternative S1/S2 in the event. 
     """
-    depends_on  = ('events', 'event_basics', 'peaks')
-    parallel    = False
-    provides    = "event_area_per_channel"
+    depends_on = ('events', 'event_basics', 'peaks')
+    parallel = False
+    provides = "event_area_per_channel"
     __version__ = '0.0.0'
     def infer_dtype(self):
         dtype = []
