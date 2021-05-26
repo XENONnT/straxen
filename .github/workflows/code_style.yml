@@ -1,10 +1,9 @@
 name: Python style
-on: 
+on:
   pull_request:
     types:
       - created
 jobs:
-
   qa:
     name: Quality check
     runs-on: ubuntu-18.04
