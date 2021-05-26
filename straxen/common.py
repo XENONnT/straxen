@@ -125,7 +125,7 @@ def open_resource(file_name: str, fmt='text'):
     elif fmt == 'binary':
         with open(file_name, mode='rb') as f:
             result = f.read()
-    elif fmt == 'text':
+    elif fmt in ['text', 'txt']:
         with open(file_name, mode='r') as f:
             result = f.read()
     elif fmt == 'csv':
@@ -327,6 +327,27 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
+
+@export
+def pre_apply_function(data, run_id, target, function_name='pre_apply_function'):
+    """
+    Prior to returning the data (from one chunk) see if any function(s) need to
+    be applied.
+
+    :param data: one chunk of data for the requested target(s)
+    :param run_id: Single run-id of of the chunk of data
+    :param target: one or more targets
+    :param function_name: the name of the function to be applied. The
+        function_name.py should be stored in the database.
+    :return: Data where the function is applied.
+    """
+    if function_name not in locals():
+        # only load the function once, after that it should not change.
+        function = str(get_resource(f'{function_name}.py', fmt='txt'))
+        exec(function)
+    data = locals().get(function_name)(data, run_id, strax.to_str_tuple(target))
+    return data
 
 
 @export
