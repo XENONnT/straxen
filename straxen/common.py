@@ -349,7 +349,7 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
         home = os.environ.get('HOME')
         if home is not None and os.path.exists(os.path.join(home, function_file)):
             # For testing purposes allow loading from home
-            function_file = os.path.exists(os.path.join(home, function_file))
+            function_file = os.path.join(home, function_file)
         print(f'Download {function_file}')
         function = get_resource(function_file, fmt='txt')
         # pylint: disable=exec-used
