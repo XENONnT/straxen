@@ -10,6 +10,7 @@ jobs:
         DEPLOY_ME=true
 install:
 - bash .github/scripts/preinstall_requirements.sh
+- bash .github/scripts/create_pre_apply_function.sh $HOME
 - echo "strax install"
 - pip install git+https://github.com/AxFoundation/strax.git
 - pip install -r requirements.txt
