@@ -1,5 +1,8 @@
 name: Python style
-on: [pull_request]
+on: 
+  pull_request:
+    types:
+      - created
 jobs:
 
   qa:
