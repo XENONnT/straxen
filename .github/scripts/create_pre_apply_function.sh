@@ -7,5 +7,5 @@ echo "write to $1/pre_apply_function.py"
 cat > "$1/pre_apply_function.py" <<EOF
 def pre_apply_function(data, run_id, target):
     print(f'Pre-applying function to {run_id}-{target}')
-    pass
+    return data
 EOF
