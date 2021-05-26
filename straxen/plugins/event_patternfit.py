@@ -198,7 +198,7 @@ class EventPatternFit(strax.Plugin):
             
     def compute_s2_llhvalue(self, events, result):
         for t_ in ['s2', 'alt_s2']:
-            result[t_+'_2llh'][:] = np.zeros(len(events))#0.0
+            result[t_+'_2llh'][:] = np.zeros(len(events))
 
             # Selecting S2s for pattern fit calculation
             # - must exist (index != -1)
@@ -234,15 +234,15 @@ class EventPatternFit(strax.Plugin):
                            )
             result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val, axis=1)
             if self.config['StorePerChannel']:
-                result[t_+'_pattern'][:]=0.0
-                result[t_+'_2llh_per_channel'][:]=0.0
+                result[t_+'_pattern'][:] = 0.0
+                result[t_+'_2llh_per_channel'][:] = 0.0
                 store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
-                store_patterns[:, self.pmtbool_top]=s2_pattern
-                result[t_+'_pattern'][cur_s2_bool]=store_patterns#:s2_pattern[cur_s2_bool]
+                store_patterns[:, self.pmtbool_top] = s2_pattern
+                result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
                 
                 store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
-                store_2LLH_ch[:, self.pmtbool_top]=norm_llh_val
-                result[t_+'_2llh_per_channel'][cur_s2_bool]=store_2LLH_ch
+                store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
+                result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
 
 def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
     """ 
@@ -340,7 +340,7 @@ def binom_test(k, n, p):
             j_min, j_max = k, n
             do_test = True
         def _check_(d, y0, y1):
-            return (d>y1)and(d<=y0)
+            return (d>y1) and (d<=y0)
     else:
         if binom_pmf(0, n, p) > d:
             n_iter, j_min, j_max = 0, 0, 0
@@ -348,7 +348,7 @@ def binom_test(k, n, p):
             j_min, j_max = 0, k
         do_test = True
         def _check_(d, y0, y1):
-            return (d>=y0)and(d<y1)
+            return (d>=y0) and (d<y1)
 
     # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
     # the returned binomial test is 0
