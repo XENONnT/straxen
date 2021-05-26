@@ -141,18 +141,20 @@ def _run_plugins(st,
         # The stuff should be there
         assert st.is_stored(run_id, target), f'Could not make {target}'
 
-        if make_all:
-            end_targets = set(st._get_end_targets(st._plugin_class_registry))
-            for p in end_targets-set(forbidden_plugins):
-                st.make(run_id, p)
-            # Now make sure we can get some data for all plugins
-            all_datatypes = set(st._plugin_class_registry.keys())
-            for p in all_datatypes-set(forbidden_plugins):
-                should_be_stored = (st._plugin_class_registry[p].save_when ==
-                                    strax.SaveWhen.ALWAYS)
-                if should_be_stored:
-                    is_stored = st.is_stored(run_id, p)
-                    assert is_stored, f"{p} did not save correctly!"
+        if not make_all:
+            return
+
+        end_targets = set(st._get_end_targets(st._plugin_class_registry))
+        for p in end_targets-set(forbidden_plugins):
+            st.make(run_id, p)
+        # Now make sure we can get some data for all plugins
+        all_datatypes = set(st._plugin_class_registry.keys())
+        for p in all_datatypes-set(forbidden_plugins):
+            should_be_stored = (st._plugin_class_registry[p].save_when ==
+                                strax.SaveWhen.ALWAYS)
+            if should_be_stored:
+                is_stored = st.is_stored(run_id, p)
+                assert is_stored, f"{p} did not save correctly!"
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
