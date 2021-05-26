@@ -66,11 +66,9 @@ jobs:
           SCADA_PWD: ${{ secrets.SCADA_PWD }}
       - name: Create pre-apply file
         run: |
-          echo `pwd`
-          bash .github/scripts/create_pre_apply_function.sh `pwd`
+          bash .github/scripts/create_pre_apply_function.sh $HOME
       - name: Test package
         run: |
-          echo `pwd`
           python setup.py test -v
       - name: goodbye
         run: echo goodbye

@@ -49,6 +49,9 @@ jobs:
         SCADA_USER: ${{ secrets.SCADA_USER }}
         SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
         SCADA_PWD: ${{ secrets.SCADA_PWD }}
+    - name: Create pre-apply file
+      run: |
+        bash .github/scripts/create_pre_apply_function.sh $HOME
     - name: Coveralls
       env:
         NUMBA_DISABLE_JIT: 1
