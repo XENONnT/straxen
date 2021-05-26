@@ -342,11 +342,15 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
         function_name.py should be stored in the database.
     :return: Data where the function is applied.
     """
-    if function_name not in locals():
-        # only load the function once, after that it should not change.
-        function = str(get_resource(f'{function_name}.py', fmt='txt'))
+
+    if function_name not in _resource_cache:
+        # only load the function once and put it in the resource cache
+        function_file = f'{function_name}.py'
+        function = get_resource(function_file, fmt='txt')
+        # pylint: disable=exec-used
         exec(function)
-    data = locals().get(function_name)(data, run_id, strax.to_str_tuple(target))
+        _resource_cache[function_name] = locals().get(function_name)
+    data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
     return data
 
 

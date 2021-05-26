@@ -45,8 +45,6 @@ jobs:
         run: |
           pip install tensorflow==2.4
           python -m pip install "dask[dataframe]" --upgrade
-      - name: Create pre-apply file
-        run: bash .github/scripts/create_pre_apply_function.sh `pwd`
       - name: patch utilix file
         # Since we skip this step for python 3.7, we are testing without the database
         if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8 || matrix.python-version == 3.9
@@ -66,8 +64,13 @@ jobs:
           SCADA_USER: ${{ secrets.SCADA_USER }}
           SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
           SCADA_PWD: ${{ secrets.SCADA_PWD }}
+      - name: Create pre-apply file
+        run: |
+          echo `pwd`
+          bash .github/scripts/create_pre_apply_function.sh `pwd`
       - name: Test package
         run: |
+          echo `pwd`
           python setup.py test -v
       - name: goodbye
         run: echo goodbye
