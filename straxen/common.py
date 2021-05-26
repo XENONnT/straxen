@@ -342,21 +342,27 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
         function_name.py should be stored in the database.
     :return: Data where the function is applied.
     """
-
     if function_name not in _resource_cache:
         # only load the function once and put it in the resource cache
         function_file = f'{function_name}.py'
-        home = os.environ.get('HOME')
-        if home is not None and os.path.exists(os.path.join(home, function_file)):
-            # For testing purposes allow loading from home
-            function_file = os.path.join(home, function_file)
-        print(f'Download {function_file}')
+        function_file = _load_function_file_from_home(function_file)
         function = get_resource(function_file, fmt='txt')
         # pylint: disable=exec-used
         exec(function)
+        # Cache the function to reduce reloading & eval operations
         _resource_cache[function_name] = locals().get(function_name)
     data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
     return data
+
+
+def _load_function_file_from_home(function_file):
+    """For testing purposes allow this function file to be loaded from HOME"""
+    home = os.environ.get('HOME')
+    if home is not None and os.path.exists(os.path.join(home, function_file)):
+        # For testing purposes allow loading from home
+        print(f'Using local function: {function_file}!')
+        function_file = os.path.join(home, function_file)
+    return function_file
 
 
 @export

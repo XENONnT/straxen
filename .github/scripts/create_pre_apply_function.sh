@@ -1,5 +1,6 @@
 #!/bin/bash
-# Argument 1 tells where to put the file (should be in straxen)
+# Argument 1 tells where to put the file (should be in $HOME or the folder
+# where one is testing)
 
 echo "write to $1/pre_apply_function.py"
 
