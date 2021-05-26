@@ -92,6 +92,7 @@ def open_resource(file_name: str, fmt='text'):
     :param fmt: format of the file
     :return: opened file
     """
+    raise ValueError(os.path.abspath('.'))
     if file_name in _resource_cache:
         # Retrieve from in-memory cache
         return _resource_cache[file_name]
@@ -346,6 +347,7 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     if function_name not in _resource_cache:
         # only load the function once and put it in the resource cache
         function_file = f'{function_name}.py'
+        print(f'Download {function_file}')
         function = get_resource(function_file, fmt='txt')
         # pylint: disable=exec-used
         exec(function)
