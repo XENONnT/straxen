@@ -157,6 +157,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     provides = ('veto_proximity')
     data_kind = ('events')
     save_when = strax.SaveWhen.NEVER
+    veto_names = ['busy', 'he', 'hev']
     
     def infer_dtype(self):
         dtype = []
@@ -172,8 +173,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     
     def setup(self):
         self.states = ['on', 'off']
-        self.veto_names = ['busy', 'he', 'hev']
-    
+
     def get_window_size(self):
         return (self.config['veto_proximity_window'] * 10)
         
