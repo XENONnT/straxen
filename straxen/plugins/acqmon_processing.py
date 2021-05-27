@@ -88,7 +88,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         # Give a very wide window
-        return (self.config['max_veto_window'] * 100)
+        return int(self.config['max_veto_window'] * 100)
 
     def compute(self, aqmon_hits, start, end):
         hits = aqmon_hits
@@ -115,6 +115,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
                         result["endtime"][vetos_seen] = veto_hits_stop['time'][inx]
                         result["veto_type"][vetos_seen] = name + 'veto'
                         vetos_seen += 1
+        result = result[:vetos_seen]
         result['time'] = np.clip(strax.endtime(result), start, end)
         result['endtime'] = np.clip(strax.endtime(result), 0, end)
         sort = np.argsort(result['endtime'])
@@ -172,7 +173,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         self.states = ['on', 'off']
 
     def get_window_size(self):
-        return (self.config['veto_proximity_window'] * 100)
+        return int(self.config['veto_proximity_window'] * 100)
 
     def compute(self, events, aqmon_hits):
         result = np.zeros(len(events), self.dtype)
