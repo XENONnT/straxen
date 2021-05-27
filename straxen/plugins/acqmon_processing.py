@@ -118,7 +118,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         result = result[:vetos_seen]
         result['time'] = np.clip(strax.endtime(result), start, end)
         result['endtime'] = np.clip(strax.endtime(result), 0, end)
-        sort = np.argsort(result['endtime'])
+        sort = np.argsort(result['time'])
         result = result[sort]
         return result
 
