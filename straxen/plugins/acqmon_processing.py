@@ -1,10 +1,7 @@
-import sys
 import strax
 import straxen
 import numba
 import numpy as np
-from immutabledict import immutabledict
-from collections import defaultdict
 
 export, __all__ = strax.exporter()
 
@@ -82,8 +79,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         return dtype
 
     def setup(self):
-        # Keeping ch_range as class attribute for now, maybe will need it for other features
-        self.channel_range = self.config['channel_map']['aqmon']
         self.veto_names = ['busy_', 'he_', 'hev_']
         self.channel_map = {name: ch + straxen.n_hard_aqmon_start for ch, name in
                             enumerate(['sum_wf', 'm_veto_sync',
