@@ -71,7 +71,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     hev_*   <= DDC10 hardware high energy veto
     """
 
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
     depends_on = ('aqmon_hits')
     provides = ('veto_intervals')
     data_kind = ('veto_intervals')
@@ -119,16 +119,14 @@ class VetoIntervals(strax.OverlapWindowPlugin):
                     else:
                         result['veto_interval'][vetos_seen] = veto_hits_stop['time'][inx] - time
                         result["time"][vetos_seen] = time
+                        assert time < veto_hits_stop['time'][inx]
                         result["endtime"][vetos_seen] = veto_hits_stop['time'][inx]
                         result["veto_type"][vetos_seen] = name + 'veto'
                         vetos_seen += 1
-
-        result = result[:vetos_seen]
+        result['time'] = np.clip(strax.endtime(result), start, end)
         result['endtime'] = np.clip(strax.endtime(result), 0, end)
-        if np.any(result['endtime']>end):
-            print(result['endtime'])
-            print(end)
-            print(result['endtime']>end)
+        sort = np.argsort(result['endtime'])
+        result = result[sort]
         return result
 
 
@@ -140,7 +138,7 @@ def channel_select_(rr, ch):
 
 @export
 @strax.takes_config(
-    strax.Option('veto_proximity_window', default=int(5e8), type=int, track=True,
+    strax.Option('veto_proximity_window', default=int(5e6), type=int, track=True,
                  help='Maximum separation between veto stop and start pulses [ns]'))
 class VetoProximity(strax.OverlapWindowPlugin):
     """ 
@@ -154,7 +152,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         - hev_x:  high energy veto on/off signal
     """
         
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     depends_on = ('events', 'veto_intervals')
     provides = ('veto_proximity')
     data_kind = ('events')
@@ -177,7 +175,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         self.states = ['on', 'off']
 
     def get_window_size(self):
-        return (self.config['veto_proximity_window'] * 100)
+        return (self.config['veto_proximity_window'])
         
     def compute(self, events, veto_intervals):
         result = np.zeros(len(events), self.dtype)
