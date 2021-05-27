@@ -151,9 +151,10 @@ class muVETOVetoRegions(nVETOVetoRegions):
 
     dtype = strax.time_fields
     ends_with = '_mv'
+    child_plugin = True
 
     def get_window_size(self):
-        return 10 * (self.config['veto_left_mv'] + self.config['veto_right_mv'])
+        return 10 * (self.config['veto_left_extension_mv'] + self.config['veto_left_extension_mv'])
 
     def compute(self, events_mv, start, end):
-        return super().compue(events_mv, start, end)
+        return super().compute(events_mv, start, end)
