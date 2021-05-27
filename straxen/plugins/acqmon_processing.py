@@ -77,10 +77,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     data_kind = ('veto_intervals')
 
     def infer_dtype(self):
-        dtype = [
-            # (('veto start time since unix epoch [ns]', 'time'), np.int64),
-            #      (('veto end time since unix epoch [ns]', 'endtime'), np.int64),
-                 (('veto interval [ns]', 'veto_interval'), np.int64),
+        dtype = [(('veto interval [ns]', 'veto_interval'), np.int64),
                  (('veto signal type', 'veto_type'), np.str_('U9'))]
         dtype += strax.time_fields
         return dtype
@@ -102,30 +99,31 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     def compute(self, aqmon_hits, start, end):
         hits = aqmon_hits
+        result = np.zeros(len(aqmon_hits)*len(self.veto_names), self.dtype)
+        vetos_seen = 0
 
-        res = defaultdict(list)
-
-        for n, name in enumerate(self.veto_names):
+        for name in self.veto_names:
             veto_hits_start = channel_select_(hits, self.channel_map[name + 'start'])
             veto_hits_stop = channel_select_(hits, self.channel_map[name + 'stop'])
 
-            inx = 0
             # Here we rely on the fact that for each start, there is a single stop that 
             # follows it in time. If this is not true, our hardware does not work. 
             if len(veto_hits_start):
+                inx = 0
                 for t, time in enumerate(veto_hits_start['time']): 
                     # Find the time of stop_j that is closest to time of start_i
-                    inx = np.searchsorted(veto_hits_stop['time'][inx:], time, side = 'right')
+                    inx = np.searchsorted(veto_hits_stop['time'][inx:], time, side='right')
                     
                     if inx == len(veto_hits_stop['time']):
                         continue
                     else:
-                        res['veto_interval'].append(veto_hits_stop['time'][inx] - time)
-                        res["time"].append(time)
-                        res["endtime"].append(veto_hits_stop['time'][inx])
-                        res["veto_type"].append(name + 'veto')
-        
-        result = strax.dict_to_rec(res, self.dtype)
+                        result['veto_interval'][vetos_seen] = veto_hits_stop['time'][inx] - time
+                        result["time"][vetos_seen] = time
+                        result["endtime"][vetos_seen] = veto_hits_stop['time'][inx]
+                        result["veto_type"][vetos_seen] = name + 'veto'
+                        vetos_seen += 1
+
+        result = result[:vetos_seen]
         result['endtime'] = np.clip(strax.endtime(result), 0, end)
         return result
 
@@ -175,44 +173,45 @@ class VetoProximity(strax.OverlapWindowPlugin):
         self.states = ['on', 'off']
 
     def get_window_size(self):
-        return (self.config['veto_proximity_window'] * 10)
+        return (self.config['veto_proximity_window'] * 100)
         
     def compute(self, events, veto_intervals):
-        res = defaultdict(list)
-        
+        result = np.zeros(len(events), self.dtype)
         t_event_centers = (events['time'] + events['endtime'])//2
 
-        for n, name in enumerate(self.veto_names):
-            veto_selection = veto_intervals[veto_intervals['veto_type'] == ('%s_veto' %name)]
+        for name in self.veto_names:
+            veto_selection = veto_intervals[veto_intervals['veto_type'] == f'{name}_veto']
             
             # For each state find the next and previous veto
             for state in self.states:
-                prev = 'previous_%s_%s' %(name, state)
-                nxt = 'next_%s_%s' %(name, state)
+                prev = f'previous_{name}_{state}'
+                nxt = f'next_{name}_{state}'
                 
                 if state == 'on':
                     veto_start_time_selection = veto_selection['time']
                 else:
                     veto_start_time_selection = veto_selection['endtime']
-                    
-                for t, time in enumerate(t_event_centers):
-                    inx = np.searchsorted(veto_start_time_selection, time, side = 'right')
-                    
+
+                inx = 0
+                for event_i, event_center in enumerate(t_event_centers):
+                    inx = np.searchsorted(veto_start_time_selection[inx:], event_center, side='right')
+
                     # Time to previous veto on/off
                     # Just using maxsize as a huge value that will not fit in any potential VetoCut range
                     if inx == 0:
-                        res[prev].append(T_NO_VETO_FOUND)
+                        previous_veto = T_NO_VETO_FOUND
                     else:
-                        res[prev].append(time - veto_start_time_selection[inx - 1]) 
-            
+                        previous_veto = event_center - veto_start_time_selection[inx - 1]
                     # Time to next veto on/off
                     if inx == len(veto_selection):
-                        res[nxt].append(T_NO_VETO_FOUND)
+                        next_veto = T_NO_VETO_FOUND
                     else:
-                        res[nxt].append(veto_start_time_selection[inx] - time)
+                        next_veto = veto_start_time_selection[inx] - event_center
+
+                    result[event_i][prev] = previous_veto
+                    result[event_i][nxt] = next_veto
 
         # Add the events time and endtime to the final result
-        res['time'].extend(events['time'])
-        res['endtime'].extend(events['endtime'])
-        result = strax.dict_to_rec(res, self.dtype)
+        result['time'] = events['time']
+        result['endtime'] = events['endtime']
         return result
