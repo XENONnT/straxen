@@ -129,13 +129,10 @@ def channel_select_(rr, ch):
     return rr[rr['channel'] == ch] 
 
 
-
-
 @export
 @strax.takes_config(
     strax.Option('veto_proximity_window', default=int(5e8), type=int, track=True,
                  help='Maximum separation between veto stop and start pulses [ns]'))
-
 class VetoProximity(strax.OverlapWindowPlugin):
     """ 
     Find the closest next/previous veto start and end to each event center.
@@ -149,9 +146,9 @@ class VetoProximity(strax.OverlapWindowPlugin):
     """
         
     __version__ = '0.0.2'
-    depends_on = ('veto_intervals','events') 
-    provides  = ('veto_proximity')
-    data_kind = ('veto_proximity')
+    depends_on = ('events', 'veto_intervals')
+    provides = ('veto_proximity')
+    data_kind = ('events')
     
     veto_names = ['busy', 'he', 'hev']
     
