@@ -1,9 +1,8 @@
 import strax
 import numpy as np
 from warnings import warn
-import straxen
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
-from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
 from straxen.get_corrections import get_correction_from_cmt, get_config_from_cmt, get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
@@ -568,9 +567,9 @@ class EventInfo(strax.MergeOnlyPlugin):
         event_info_function = self.config['event_info_function']
         event_info = super().compute(**kwargs)
         if event_info_function != 'disabled':
-            event_info = straxen.pre_apply_function(event_info,
-                                                    self.run_id,
-                                                    self.provides,
-                                                    event_info_function,
-                                                    )
+            event_info = pre_apply_function(event_info,
+                                            self.run_id,
+                                            self.provides,
+                                            event_info_function,
+                                            )
         return event_info
