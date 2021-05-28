@@ -387,10 +387,11 @@ def check_loading_allowed(data, run_id, target,
     :raise: RuntimeError if more than max_in_disallowed targets
         are requested
     """
-    n_targets_in_disallowed = sum([t in disallowed for t in target])
+    n_targets_in_disallowed = sum([t in disallowed for t in
+                                   strax.to_str_tuple(target)])
     if n_targets_in_disallowed > max_in_disallowed:
         raise RuntimeError(
-            f'Don\'t load {disallowed} separately, use event_info_instead')
+            f'Don\'t load {disallowed} separately, use "event_info" instead')
     return data
 
 
