@@ -173,7 +173,9 @@ def xenonnt_online(output_folder='./strax_data',
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,
+                                                   straxen.check_loading_allowed,
+                                                   )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
     return st
@@ -268,6 +270,7 @@ x1t_common_config = dict(
     right_event_extension=int(1e6),
     elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
+    event_info_function='disabled',
 )
 
 

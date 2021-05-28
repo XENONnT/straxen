@@ -366,6 +366,35 @@ def _load_function_file_from_home(function_file):
 
 
 @export
+def check_loading_allowed(data, run_id, target,
+                          max_in_disallowed = 1,
+                          disallowed=('event_positions',
+                                      'corrected_areas',
+                                      'energy_estimates')
+                          ):
+    """
+    Check that the loading of the specified targets is not
+    disallowed
+
+    :param data: chunk of data
+    :param run_id: run_id of the run
+    :param target: list of targets requested by the user
+    :param max_in_disallowed: the max number of targets that are
+        in the disallowed list
+    :param disallowed: list of targets that are not allowed to be
+        loaded simultaneously by the user
+    :return: data
+    :raise: RuntimeError if more than max_in_disallowed targets
+        are requested
+    """
+    n_targets_in_disallowed = sum([t in disallowed for t in target])
+    if n_targets_in_disallowed > max_in_disallowed:
+        raise RuntimeError(
+            f'Don\'t load {disallowed} separately, use event_info_instead')
+    return data
+
+
+@export
 def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     """
     There were some errors in the channel mapping of old data as described in

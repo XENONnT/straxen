@@ -550,7 +550,7 @@ class EnergyEstimates(strax.Plugin):
 @strax.takes_config(
     strax.Option(
         name='event_info_function',
-        default='apply_function_to_data',
+        default='pre_apply_function',
         help="Function that must be applied to all event_info data. Do not change.",
     )
 )
@@ -567,9 +567,10 @@ class EventInfo(strax.MergeOnlyPlugin):
     def compute(self, **kwargs):
         event_info_function = self.config['event_info_function']
         event_info = super().compute(**kwargs)
-        event_info = straxen.pre_apply_function(event_info,
-                                                self.run_id,
-                                                self.provides,
-                                                event_info_function,
-                                                )
+        if event_info_function != 'disabled':
+            event_info = straxen.pre_apply_function(event_info,
+                                                    self.run_id,
+                                                    self.provides,
+                                                    event_info_function,
+                                                    )
         return event_info
