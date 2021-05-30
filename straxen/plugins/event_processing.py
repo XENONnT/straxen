@@ -1,5 +1,6 @@
 import strax
 import numpy as np
+import straxen
 from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
 from straxen.common import pax_file, get_resource, first_sr1_run
@@ -16,12 +17,24 @@ export, __all__ = strax.exporter()
     strax.Option('trigger_max_competing', default=7,
                  help='Peaks must have FEWER nearby larger or slightly smaller'
                       ' peaks to cause events'),
-    strax.Option('left_event_extension', default=int(2.7e6),
+    strax.Option('left_event_extension', default=int(0.25e6),
                  help='Extend events this many ns to the left from each '
-                      'triggering peak'),
-    strax.Option('right_event_extension', default=int(0.5e6),
+                      'triggering peak. This extension is added to the maximum '
+                      'drift time.',
+                 ),
+    strax.Option('right_event_extension', default=int(0.25e6),
                  help='Extend events this many ns to the right from each '
-                      'triggering peak'),
+                      'triggering peak.',
+                 ),
+    strax.Option(name='electron_drift_velocity',
+                 default=("electron_drift_velocity", "ONLINE", True),
+                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
+                 ),
+    strax.Option(name='max_drift_length',
+                 default=straxen.tpc_z,
+                 help='Total length of the TPC from the bottom of gate to the '
+                      'top of cathode wires [cm]',
+                 ),
 )
 class Events(strax.OverlapWindowPlugin):
     """
@@ -40,20 +53,30 @@ class Events(strax.OverlapWindowPlugin):
         boundaries. This happens at invalid boundaries of the
     """
     depends_on = ['peak_basics', 'peak_proximity']
+    provides = 'events'
     data_kind = 'events'
+    __version__ = '0.0.1'
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
         ('time', np.int64, 'Event start time in ns since the unix epoch'),
         ('endtime', np.int64, 'Event end time in ns since the unix epoch')]
+
     events_seen = 0
+
+    def setup(self):
+        electron_drift_velocity = get_correction_from_cmt(
+            self.run_id,
+            self.config['electron_drift_velocity'])
+        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
         return 10 * (self.config['left_event_extension']
+                     + self.drift_time_max
                      + self.config['right_event_extension'])
 
     def compute(self, peaks, start, end):
-        le = self.config['left_event_extension']
+        le = self.config['left_event_extension'] + self.drift_time_max
         re = self.config['right_event_extension']
 
         triggers = peaks[

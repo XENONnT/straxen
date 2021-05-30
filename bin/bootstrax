@@ -110,7 +110,7 @@ parser.add_argument(
     help="Maximum number of workers to use in a strax process.")
 parser.add_argument(
     '--targets', nargs='*',
-    default=['event_info', 'online_monitor', 'hitlets_nv'],
+    default=['event_info', 'online_peak_monitor', 'hitlets_nv'],
     help="Strax data type name(s) that should be produced with live processing")
 parser.add_argument(
     '--post_process', nargs='*',
@@ -263,11 +263,11 @@ max_queue_new_runs = 2
 # NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
 remove_target_after_fails = dict(events=2,
                                  hitlets=2,
-                                 peaks=3,
-                                 peak_basics=3,
-                                 peaklets=4,
-                                 online=4,
-                                 ALL=5)
+                                 peaks=4,
+                                 peak_basics=5,
+                                 peaklets=6,
+                                 online=5,
+                                 ALL=7)
 
 ##
 # Initialize globals (e.g. rundb connection)
@@ -547,8 +547,8 @@ def infer_target(rd: dict) -> dict:
     :param rd: rundoc
     :return: dict with the targets and the targets for post processing
     """
-    targets = args.targets
-    post_process = args.post_process
+    targets = args.targets.copy()
+    post_process = args.post_process.copy()
 
     if args.fix_target:
         return {'targets': strax.to_str_tuple(targets),
@@ -560,9 +560,11 @@ def infer_target(rd: dict) -> dict:
         log.debug(f'Deleting targets')
         for rm_target, rm_after_n in remove_target_after_fails.items():
             for target_i, targ in enumerate(targets):
-                if targ in rm_target and n_fails > rm_after_n:
+                if rm_target in targ and n_fails > rm_after_n:
                     log.debug(f'Remove {targ}')
                     del targets[target_i]
+                else:
+                    log.debug(f'Keep {targ} for not in {rm_target} ({n_fails}<{rm_after_n})')
             for post_i, post_targ in enumerate(post_process):
                 if post_targ in rm_target and n_fails > rm_after_n:
                     log.debug(f'Remove {post_targ}')
@@ -1057,12 +1059,17 @@ def check_data_written(rd):
     """
     files_written = 0
     for ddoc in rd['data']:
-        if ddoc['host'] == hostname:
-            if os.path.exists(ddoc['location']):
+        ddoc_loc = ddoc.get('location', 'NO LOCATION')
+        ddoc_host = ddoc.get('host', 'NO HOST')
+        log.debug(f'Checking {ddoc_loc} on {ddoc_host}')
+        if ddoc_host == hostname:
+            if os.path.exists(ddoc_loc):
+                log.debug(f'{ddoc_loc} written')
                 files_written += 1
             else:
-                log.info(f'No data at {ddoc["location"]}')
+                log.info(f'No data at {ddoc_loc}')
                 return False
+    log.info(f'{files_written} files are saved')
     return files_written > 0
 
 
@@ -1077,7 +1084,9 @@ def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
     """
     start = time.time()
     while not check_data_written(rd):
+        log.debug(f'{rd["number"]} not all saved')
         if time.time() - start > wait_max:
+
             log_warning(f'Not all files saved for {rd["number"]}@{hostname}?!',
                         priority='warning')
             return False
