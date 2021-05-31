@@ -207,16 +207,16 @@ class EventPatternFit(strax.Plugin):
             x,y = events[t_+'_x'], events[t_+'_y']
             cur_s2_bool = (events[t_+'_area']>self.config['s2_min_reconstruction_area'])
             cur_s2_bool &= (events[t_+'_index']!=-1)
-            cur_s2_bool &= (events["s2_area_fraction_top"]>0)
+            cur_s2_bool &= (events[t_+"_area_fraction_top"]>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r']**2            
             # Making expectation patterns [ in PE ]
             s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
             s2_map_effs = s2_map_effs[:, self.pmtbool_top]
-            s2_top_area = (events["s2_area_fraction_top"]*events["s2_area"])[cur_s2_bool]        
-            s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]  
+            s2_top_area = (events[t_+"_area_fraction_top"]*events[t_+"_area"])[cur_s2_bool]
+            s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]
             
             # Getting pattern from data
-            s2_top_area_per_channel = events['s2_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
+            s2_top_area_per_channel = events[t_+'_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
             s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
             
             # Calculating LLH, this is shifted Poisson
