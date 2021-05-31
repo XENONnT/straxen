@@ -77,7 +77,7 @@ class EventPatternFit(strax.Plugin):
         return dtype
     
     def setup(self):
-        self.mean_sPhoton = self.config['MeanPEperPhoton']
+        self.mean_pe_photon = self.config['MeanPEperPhoton']
         
         # Getting S1 AFT maps
         self.s1_aft_map = straxen.InterpolatingMap(
@@ -166,8 +166,8 @@ class EventPatternFit(strax.Plugin):
         s1_area_per_channel_bottom = (s1_area_per_channel_[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom]
 
         # Top and bottom
-        arg1 = s1_pattern/self.mean_sPhoton, s1_area_per_channel, self.mean_sPhoton
-        arg2 = s1_area_per_channel/self.mean_sPhoton, s1_area_per_channel, self.mean_sPhoton
+        arg1 = s1_pattern/self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
+        arg2 = s1_area_per_channel/self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
         norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
         result['s1_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
         
@@ -184,14 +184,14 @@ class EventPatternFit(strax.Plugin):
             result['s1_2llh_per_channel'][cur_s1_bool] = store_2LLH_ch
             
         # Top
-        arg1 = s1_pattern_top/self.mean_sPhoton, s1_area_per_channel_top, self.mean_sPhoton
-        arg2 = s1_area_per_channel_top/self.mean_sPhoton, s1_area_per_channel_top, self.mean_sPhoton
+        arg1 = s1_pattern_top/self.mean_pe_photon, s1_area_per_channel_top, self.mean_pe_photon
+        arg2 = s1_area_per_channel_top/self.mean_pe_photon, s1_area_per_channel_top, self.mean_pe_photon
         norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
         result['s1_top_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
 
         # Bottom
-        arg1 = s1_pattern_bottom/self.mean_sPhoton, s1_area_per_channel_bottom, self.mean_sPhoton
-        arg2 = s1_area_per_channel_bottom/self.mean_sPhoton, s1_area_per_channel_bottom, self.mean_sPhoton
+        arg1 = s1_pattern_bottom/self.mean_pe_photon, s1_area_per_channel_bottom, self.mean_pe_photon
+        arg2 = s1_area_per_channel_bottom/self.mean_pe_photon, s1_area_per_channel_bottom, self.mean_pe_photon
         norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
         result['s1_bottom_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
 
@@ -223,14 +223,14 @@ class EventPatternFit(strax.Plugin):
             # we get area expectation and we need to scale them to get
             # photon expectation
             norm_llh_val = (neg2llh_modpoisson(
-                                 mu    = s2_pattern/self.mean_sPhoton, 
+                                 mu    = s2_pattern/self.mean_pe_photon, 
                                  areas = s2_top_area_per_channel, 
-                                 mean_sPhoton=self.mean_sPhoton)
+                                 mean_pe_photon=self.mean_pe_photon)
                                     - 
                             neg2llh_modpoisson(
-                                 mu    = s2_top_area_per_channel/self.mean_sPhoton, 
+                                 mu    = s2_top_area_per_channel/self.mean_pe_photon, 
                                  areas = s2_top_area_per_channel, 
-                                 mean_sPhoton=self.mean_sPhoton)
+                                 mean_pe_photon=self.mean_pe_photon)
                            )
             result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val, axis=1)
             if self.config['StorePerChannel']:
@@ -244,19 +244,19 @@ class EventPatternFit(strax.Plugin):
                 store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
                 result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
 
-def neg2llh_modpoisson(mu=None, areas=None, mean_sPhoton=1.0):
+def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     """ 
     Modified poisson distribution with proper normalization for shifted poisson. 
     
     mu - expected number of photons per channel
     areas  - observed areas per channel
-    mean_sPhoton - mean 
+    mean_pe_photon - mean of area responce for one photon
     """
     with np.errstate(divide='ignore', invalid='ignore'):
         res = 2.*(mu - 
-                  (areas/mean_sPhoton)*np.log(mu) + 
-                  loggamma((areas/mean_sPhoton)+1) + 
-                  np.log(mean_sPhoton)
+                  (areas/mean_pe_photon)*np.log(mu) + 
+                  loggamma((areas/mean_pe_photon)+1) + 
+                  np.log(mean_pe_photon)
                  )
     is_zero = ~(areas>0)    # If area equals or smaller than 0 - assume 0
     res[is_zero] = 2.*mu[is_zero]
