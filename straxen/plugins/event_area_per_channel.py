@@ -8,13 +8,12 @@ export, __all__ = strax.exporter()
     strax.Option('n_tpc_pmts', type=int,
                  help='Number of TPC PMTs'),
 )
-class event_area_per_channel(strax.LoopPlugin):
+class EventAreaPerChannel(strax.LoopPlugin):
     """
     Simple plugin that provides area per channel for main 
     and alternative S1/S2 in the event. 
     """
-    depends_on = ('events', 'event_basics', 'peaks')
-    parallel = False
+    depends_on = ('event_basics', 'peaks')
     provides = "event_area_per_channel"
     __version__ = '0.0.0'
     def infer_dtype(self):
