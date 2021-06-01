@@ -16,7 +16,7 @@ importlib-metadata==2.0.0; python_version=="3.7"
 ## Other requirements
 blosc==1.10.2      # Strax dependency
 bokeh==2.3.1
-boltons==20.2.1
+boltons==21.0.0
 datashader==0.12.1
 dill==0.3.3        # Strax dependency
 coveralls==3.0.1
