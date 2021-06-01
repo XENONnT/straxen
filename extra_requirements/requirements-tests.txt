@@ -1,20 +1,20 @@
-# File for the requirements of the automated tests
-blosc==1.10.2       # Strax dependency
+# File for the requirements of straxen with the automated tests
+blosc==1.10.2      # Strax dependency
 bokeh==2.3.1
 boltons==20.2.1
 datashader==0.12.1
-dill==0.3.3      # Strax dependency
+dill==0.3.3        # Strax dependency
 coveralls==3.0.1
 commentjson==0.9.0
 flake8==3.9.1
 holoviews==1.14.3
 hypothesis==6.10.1
 ipywidgets==7.6.3
-npshmex==0.2.1    # Strax dependency
-numba==0.53.1     # Strax dependency
+npshmex==0.2.1     # Strax dependency
+numba==0.53.1      # Strax dependency
 numpy==1.19.5
-pandas==1.1.5     # Strax dependency
-psutil==5.8.0     # Strax dependency
+pandas==1.1.5      # Strax dependency
+psutil==5.8.0      # Strax dependency
 pytest==6.2.4
 pytest-cov==2.12.0
 scikit-learn==0.24.2
@@ -22,7 +22,7 @@ scipy==1.5.4
 tqdm==4.60.0
 xarray==0.16.2
 utilix==0.6.0
-zstd==1.4.9.1     # Strax dependency
+zstd==1.4.9.1      # Strax dependency
 
 # python 3.x specifics
 # Tensorflow
