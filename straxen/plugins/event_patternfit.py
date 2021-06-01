@@ -8,13 +8,13 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('s1_optical_map', help="S1 (x, y, z) optical/pattern map.",
-                 default="XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"),
-    strax.Option('s2_optical_map', help="S2 (x, y) optical/pattern map.",
-                 default="XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"),
-    strax.Option('s1_aft_map', help="Date drive S1 area fraction top map.",
+    strax.Option('s1_optical_map', help='S1 (x, y, z) optical/pattern map.',
+                 default='XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
+    strax.Option('s2_optical_map', help='S2 (x, y) optical/pattern map.',
+                 default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
+    strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.',
                  default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_25May2021.json'),
-    strax.Option('MeanPEperPhoton', help="Mean of full VUV single photon responce",
+    strax.Option('MeanPEperPhoton', help='Mean of full VUV single photon responce',
                  default=1.2),
     strax.Option('gain_model',
                  help='PMT gain model. Specify as (model_type, model_config)'),
@@ -22,23 +22,23 @@ export, __all__ = strax.exporter()
                  help='Number of TPC PMTs'),
     strax.Option('n_top_pmts', type=int,
                  help='Number of top TPC PMTs'),
-    strax.Option('s1_min_reconstruction_area',
-                 help='Skip reconstruction if S1 area (PE) is less than this'),
-    strax.Option('s2_min_reconstruction_area',
-                 help='Skip reconstruction if S2 area (PE) is less than this'),
+    strax.Option('s1_min_reconstruction_area', help='Skip reconstruction if S1 area (PE) is less than this',
+                 default=3),
+    strax.Option('s2_min_reconstruction_area', help='Skip reconstruction if S2 area (PE) is less than this',
+                 default=10),
     strax.Option('StorePerChannel', default=False, type=bool,
-                 help="Store normalized LLH per channel for each peak"),
-    strax.Option("max_r", default = straxen.tpc_r, type=float,
-                 help = "Maximal radius of the peaks where llh calculation will be perfromed"),
+                 help='Store normalized LLH per channel for each peak'),
+    strax.Option('max_r', default = straxen.tpc_r, type=float,
+                 help = 'Maximal radius of the peaks where llh calculation will be perfromed'),
 )
 class EventPatternFit(strax.Plugin):
-    """
+    '''
     Plugin that provides patter information for events
-    """
+    '''
     
     depends_on = ('event_area_per_channel', 'event_info')
-    provides = "event_patternfit"
-    __version__ = "0.0.3"
+    provides = 'event_patternfit'
+    __version__ = '0.0.4'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -58,20 +58,28 @@ class EventPatternFit(strax.Plugin):
                  ('s1_photon_fraction_top_continuos_probability', np.float32,
                   'Continuos binomial test for S1 photon fraction top'),
                  ('s1_photon_fraction_top_discrete_probability', np.float32,
-                  'Discrete binomial test for S1 photon fraction top')]
+                  'Discrete binomial test for S1 photon fraction top'),
+                 ('alt_s1_area_fraction_top_continuos_probability', np.float32,
+                  'Continuos binomial test for alternative S1 area fraction top'),
+                 ('alt_s1_area_fraction_top_discrete_probability', np.float32,
+                  'Discrete binomial test for alternative S1 area fraction top'),
+                 ('alt_s1_photon_fraction_top_continuos_probability', np.float32,
+                  'Continuos binomial test for alternative S1 photon fraction top'),
+                 ('alt_s1_photon_fraction_top_discrete_probability', np.float32,
+                  'Discrete binomial test for alternative S1 photon fraction top')]
         
         if self.config['StorePerChannel']:
-            dtype.append((("2LLH per channel for main S2", "s2_2llh_per_channel"),
+            dtype.append((('2LLH per channel for main S2', 's2_2llh_per_channel'),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("2LLH per channel for alternative S2", "alt_s2_2llh_per_channel"),
+            dtype.append((('2LLH per channel for alternative S2', 'alt_s2_2llh_per_channel'),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("Pattern main S2", "s2_pattern"),
+            dtype.append((('Pattern main S2', 's2_pattern'),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("Pattern alt S2", "alt_s2_pattern"),
+            dtype.append((('Pattern alt S2', 'alt_s2_pattern'),
                        np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((("Pattern for main S1", "s1_pattern"),
+            dtype.append((('Pattern for main S1', 's1_pattern'),
                        np.float32, (self.config['n_tpc_pmts'], )))
-            dtype.append((("2LLH per channel for main S1", "s1_2llh_per_channel"),
+            dtype.append((('2LLH per channel for main S1', 's1_2llh_per_channel'),
                        np.float32, (self.config['n_tpc_pmts'], )))
         dtype += strax.time_fields
         return dtype
@@ -108,27 +116,46 @@ class EventPatternFit(strax.Plugin):
         self.compute_s2_llhvalue(events, result)
         
         # Computing binomial test for s1 area fraction top
+        s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
-        result['s1_area_fraction_top_continuos_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1, _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
-            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+        # main s1 events
+        mask_s1 = ~np.isnan(aft_prob)
+        mask_s1 &= ~np.isnan(events['s1_area'])
+        mask_s1 &= ~np.isnan(events['s1_area_fraction_top'])
+       
+        arg = aft_prob[mask_s1], events['s1_area'][mask_s1], events['s1_area_fraction_top'][mask_s1]
+        result['s1_area_fraction_top_continuos_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
+        result['s1_area_fraction_top_continuos_probability'][~mask_s1] = np.nan
+        result['s1_area_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        result['s1_area_fraction_top_discrete_probability'][~mask_s1] = np.nan
         
-        result['s1_area_fraction_top_discrete_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1, _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
-            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+        arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.config['MeanPEperPhoton'], events['s1_area_fraction_top'][mask_s1]
+        result['s1_photon_fraction_top_continuos_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
+        result['s1_photon_fraction_top_continuos_probability'][~mask_s1] = np.nan
+        result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        result['s1_photon_fraction_top_discrete_probability'][~mask_s1] = np.nan
         
-        result['s1_photon_fraction_top_continuos_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft) if not np.isnan(_aft*_s1*_s1_aft) 
-            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
+        # alternative s1 events
+        mask_alt_s1 = ~np.isnan(aft_prob)
+        mask_alt_s1 &= ~np.isnan(events['alt_s1_area'])
+        mask_alt_s1 &= ~np.isnan(events['alt_s1_area_fraction_top'])
+       
+        arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
+        result['s1_area_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
+        result['s1_area_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
+        result['s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        result['s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
         
-        result['s1_photon_fraction_top_discrete_probability'] = [
-            s1_area_fraction_top_probability(_aft, _s1/self.config['MeanPEperPhoton'], _s1_aft, mode='discrete') if not np.isnan(_aft*_s1*_s1_aft)
-            else np.nan for _aft, _s1, _s1_aft in zip(aft_prob, events['s1_area'], events['s1_area_fraction_top'])]
-        
+        arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['MeanPEperPhoton'], events['alt_s1_area_fraction_top'][mask_alt_s1]
+        result['alt_s1_photon_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
+        result['alt_s1_photon_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
+        result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        result['alt_s1_photon_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
+                
         return(result)
-    
+
     def compute_s1_llhvalue(self, events, result):
         result['s1_2llh'] = np.zeros(len(events))
         result['s1_top_2llh'] = np.zeros(len(events))
@@ -207,12 +234,12 @@ class EventPatternFit(strax.Plugin):
             x,y = events[t_+'_x'], events[t_+'_y']
             cur_s2_bool = (events[t_+'_area']>self.config['s2_min_reconstruction_area'])
             cur_s2_bool &= (events[t_+'_index']!=-1)
-            cur_s2_bool &= (events[t_+"_area_fraction_top"]>0)
+            cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r']**2            
             # Making expectation patterns [ in PE ]
             s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
             s2_map_effs = s2_map_effs[:, self.pmtbool_top]
-            s2_top_area = (events[t_+"_area_fraction_top"]*events[t_+"_area"])[cur_s2_bool]
+            s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[cur_s2_bool]
             s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]
             
             # Getting pattern from data
@@ -245,13 +272,13 @@ class EventPatternFit(strax.Plugin):
                 result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
 
 def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
-    """ 
+    ''' 
     Modified poisson distribution with proper normalization for shifted poisson. 
     
     mu - expected number of photons per channel
     areas  - observed areas per channel
     mean_pe_photon - mean of area responce for one photon
-    """
+    '''
     with np.errstate(divide='ignore', invalid='ignore'):
         res = 2.*(mu - 
                   (areas/mean_pe_photon)*np.log(mu) + 
@@ -358,6 +385,7 @@ def binom_test(k, n, p):
         # Here we are actually looking for j
         for i in range(n_iter):
             n_pts = int(j_max - j_min)
+            if i<2 and n_pts < 50: n_pts = 50
             j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
             y = binom_pmf(j_range, n, p)
             for i in range(len(j_range) - 1):
@@ -376,35 +404,35 @@ def binom_test(k, n, p):
         
     return pval
 
-def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuos'):
-    """
+
+def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuos'):
+    '''
     Wrapper that does the S1 AFT probability calculation for you
-    """
+    '''
     
-    size_top = area_tot * area_fraction_top
-    size_tot = area_tot
+    area_top = area_tot * area_fraction_top
     
     # Raise a warning in case one of these three condition is verified
     # and return binomial test equal to nan since they are not physical
     # k: size_top, n: size_tot, p: aft_prob
     do_test = True
-    if size_tot < size_top:
-        warnings.warn(f'n {size_tot} must be >= k {size_top}')
+    if area_tot < area_top:
+        warnings.warn(f'n {area_tot} must be >= k {area_top}')
         binomial_test = np.nan
         do_test = False
     if (aft_prob > 1.0) or (aft_prob < 0.0):
         warnings.warn(f'p {aft_prob} must be in range [0, 1]')
         binomial_test = np.nan
         do_test = False
-    if size_top < 0:
-        warnings.warn(f'k {size_top} must be >= 0')
+    if area_top < 0:
+        warnings.warn(f'k {area_top} must be >= 0')
         binomial_test = np.nan
         do_test = False
         
     if do_test:
         if mode == 'discrete':
-            binomial_test = binom_pmf(size_top, size_tot, aft_prob)
+            binomial_test = binom_pmf(area_top, area_tot, aft_prob)
         else:
-            binomial_test =  binom_test(size_top, size_tot, aft_prob)
+            binomial_test =  binom_test(area_top, area_tot, aft_prob)
             
     return binomial_test
