@@ -29,9 +29,7 @@ setuptools.setup(name='straxen',
                  long_description_content_type="text/markdown",
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
-                 tests_require=requires + [
-
-                 ],
+                 tests_require=requires + tests_requires,
                  python_requires=">=3.6",
                  extras_require={
                      'docs': doc_requirements,
