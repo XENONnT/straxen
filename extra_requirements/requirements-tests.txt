@@ -27,8 +27,8 @@ zstd==1.4.9.1     # Strax dependency
 # python 3.x specifics
 # Tensorflow
 tensorflow==2.4.0 ; python_version=="3.6"
-tensorflow==2.4.0 ; python_version>="3.7"
+tensorflow~=2.4.0 ; python_version>="3.7"
 
 # Dask
-dask==2021.3.1; python_version>="3.7"
+dask~=2021.3; python_version>="3.7"
 dask<=2021.2.0; python_version=="3.6"
