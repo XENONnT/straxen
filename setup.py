@@ -24,9 +24,6 @@ setuptools.setup(name='straxen',
                  tests_require=requires + [
                      'tensorflow; python_version>="3.7"',
                      'dask; python_version>="3.7"',
-                     # python 3.6
-                     'tensorflow~=2.4.0; python_version=="3.6"',
-                     'dask<=2021.3.0; python_version=="3.6"',
                      'pytest',
                      'hypothesis',
                      'holoviews',
@@ -38,6 +35,10 @@ setuptools.setup(name='straxen',
                      'boltons',
                      'ipython',
                      'ipywidgets',
+                     # python 3.6
+                     'tensorflow~=2.4.0; python_version=="3.6"',
+                     'dask<=2021.3.0; python_version=="3.6"',
+                     'dask[dataframe]; python_version=="3.6"'
                  ],
                  python_requires=">=3.6",
                  extras_require={
