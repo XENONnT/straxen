@@ -15,7 +15,7 @@ class EventAreaPerChannel(strax.LoopPlugin):
     """
     depends_on = ('event_basics', 'peaks')
     provides = "event_area_per_channel"
-    __version__ = '0.0.1'
+    __version__ = '0.0.0'
     def infer_dtype(self):
         dtype = [(("Area per channel for main S2", "s2_area_per_channel"), 
                   np.float32, (self.config['n_tpc_pmts'],)),
@@ -30,7 +30,7 @@ class EventAreaPerChannel(strax.LoopPlugin):
         return dtype
     
     def compute_loop(self, event, peaks):
-        result = np.zeros(1, self.dtype)
+        result = dict()
         result['time'] = event['time']
         result['endtime'] = strax.endtime(event)
         
