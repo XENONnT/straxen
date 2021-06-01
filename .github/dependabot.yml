@@ -16,8 +16,8 @@ updates:
   - package-ecosystem: "pip"
     directory: "/extra_requirements"
     schedule:
-      # Check for updates to requirements every day
-      interval: "daily"
+      # Check for updates to requirements every week
+      interval: "weekly"
     open-pull-requests-limit: 15
     assignees:
       - jorana
