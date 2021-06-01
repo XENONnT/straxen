@@ -35,6 +35,7 @@ jobs:
 #            bash .github/scripts/preinstall_requirements.sh
       - name: Install strax
         run: |
+            pip install -r extra_requirements/requirements-tests.txt
             pip install git+https://github.com/AxFoundation/strax.git
 #      - name: Install python dependencies
 #        uses: py-actions/py-dependency-install@v2
