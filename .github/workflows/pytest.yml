@@ -44,11 +44,11 @@ jobs:
         if: matrix.python-version == 3.6
         run: |
           yes | pip uninstall holoviews
-          pip install dask==2021.3.0 holoviews bokeh ipython tensorflow~=2.4.0 xarray datashader boltons ipython ipywidgets
+          pip install dask==2021.2.0 holoviews bokeh ipython tensorflow~=2.4.0 xarray datashader boltons ipython ipywidgets dask[dataframe]
           python -m pip install "dask[dataframe]" --upgrade
       - name: patch utilix file
         # Since we skip this step for python 3.7, we are testing without the database
-        if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8 || matrix.python-version == 3.9
+        if:  matrix.python-version == 3.8 || matrix.python-version == 3.9
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
           # Rundb
