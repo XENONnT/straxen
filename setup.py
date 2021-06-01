@@ -34,6 +34,7 @@ setuptools.setup(name='straxen',
                      'boltons',
                      'ipython',
                      'ipywidgets',
+                     'dask[complete]',
                  ],
                  python_requires=">=3.6",
                  extras_require={
