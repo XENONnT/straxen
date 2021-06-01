@@ -11,4 +11,5 @@ immutabledict
 numba>=0.50.0
 requests
 commentjson
-zstd~=1.4.9 # Temporary
+dask; python_version>="3.7"
+dask<=2021.3.0; python_version<"3.7"
