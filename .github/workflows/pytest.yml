@@ -19,7 +19,7 @@ jobs:
     name: Pytest
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         # NB: For python 3.6 and 3.7 we are going to explicitly test without a database
         python-version: [3.6, 3.7, 3.8, 3.9]
@@ -30,22 +30,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v2
-      - name: install pre requirements
+      - name: Install requirements for tests and latest strax
         run: |
-            bash .github/scripts/preinstall_requirements.sh
-      - name: Install strax
-        run: |
+            pip install -r extra_requirements/requirements-tests.txt
             pip install git+https://github.com/AxFoundation/strax.git
-      - name: Install python dependencies
-        uses: py-actions/py-dependency-install@v2
-      - name: install tf and dask for py36
-        # It's ugly and  I don't like it but it's hard to solve. See:
-        #  - https://github.com/XENONnT/straxen/pull/474
-        #  - https://github.com/XENONnT/straxen/pull/503
-        if: matrix.python-version == 3.6
-        run: |
-          pip install dask==2021.2.0 holoviews bokeh ipython tensorflow~=2.4.0 xarray datashader boltons ipython ipywidgets dask[dataframe]
-          python -m pip install "dask[dataframe]" --upgrade
       - name: patch utilix file
         # Since we skip this step for python 3.6 and 3.7, we are testing without the database
         if:  matrix.python-version == 3.8 || matrix.python-version == 3.9
