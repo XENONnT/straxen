@@ -14,7 +14,7 @@ updates:
       - jorana
   # Maintain the requirements requirements folder
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/extra_requirements"
     schedule:
       # Check for updates to requirements every day
       interval: "dayly"
