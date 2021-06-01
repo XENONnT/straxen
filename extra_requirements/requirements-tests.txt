@@ -2,7 +2,7 @@
 
 ## python 3.x specifics
 # Tensorflow
-tensorflow==2.4.1 ; python_version=="3.6"
+tensorflow~=2.5.0 ; python_version=="3.6"
 tensorflow~=2.4 ; python_version>="3.7"
 
 # Dask
@@ -15,14 +15,13 @@ importlib-metadata==2.0.0; python_version=="3.7"
 
 ## Other requirements
 blosc==1.10.2      # Strax dependency
-bokeh==2.3.1
 boltons==21.0.0
 datashader==0.12.1
 dill==0.3.3        # Strax dependency
 coveralls==3.0.1
 commentjson==0.9.0
 coverage==5.5
-flake8==3.9.1
+flake8==3.9.2
 holoviews==1.14.4
 hypothesis==6.10.1
 ipywidgets==7.6.2
@@ -36,7 +35,7 @@ pytest==6.2.4
 pytest-cov==2.12.0
 scikit-learn==0.24.2
 scipy==1.5.4
-tqdm==4.60.0
+tqdm==4.61.0
 xarray==0.16.2
 utilix==0.6.0
-zstd==1.4.9.1      # Strax dependency
+zstd==1.5.0.2      # Strax dependency
