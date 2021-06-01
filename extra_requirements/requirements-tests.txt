@@ -1,16 +1,17 @@
 # File for the requirements of the automated tests
-pytest==5.4.2
-hypothesis==5.15.1
-holoviews==1.14.3
-flake8==3.8.2
-pytest-cov==2.12.1
+pytest==5.4.1
+hypothesis==5.15.0
+holoviews==1.14.2
+flake8==3.8.1
+pytest-cov==2.12.0
 coveralls==3.1.0
-xarray==0.16.1
+xarray==0.16.0
 datashader==0.10.0
 boltons==20.0.0
-ipywidgets==7.5.1
+ipywidgets==7.5.0
 bokeh==2.3.1
-tensorflow==2.5.0
+tensorflow==2.4.0
+numpy==1.19.0
 
 # python 3.x specifics
 # Dask
