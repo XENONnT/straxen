@@ -1,10 +1,18 @@
 import setuptools
 
+
+def open_requirements(path):
+    with open(path) as f:
+        requires = [
+            r.split('/')[-1] if r.startswith('git+') else r
+            for r in f.read().splitlines()]
+    return requires
+
+
 # Get requirements from requirements.txt, stripping the version tags
-with open('requirements.txt') as f:
-    requires = [
-        r.split('/')[-1] if r.startswith('git+') else r
-        for r in f.read().splitlines()]
+requires = open_requirements('requirements/requirements.txt')
+tests_requires = open_requirements('requirements/requirements-tests.txt')
+doc_requirements = open_requirements('requirements/requirements-tests.txt')
 
 with open('README.md') as file:
     readme = file.read()
@@ -22,30 +30,11 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + [
-                     'tensorflow; python_version>="3.7"',
-                     'dask; python_version>="3.7"',
-                     'pytest',
-                     'hypothesis',
-                     'holoviews',
-                     'flake8',
-                     'pytest-cov',
-                     'coveralls',
-                     'xarray',
-                     'datashader',
-                     'boltons',
-                     'ipython',
-                     'ipywidgets',
-                     # python 3.6
-                     'tensorflow~=2.4.0; python_version=="3.6"',
-                     'dask<=2021.2.0; python_version=="3.6"',
+
                  ],
                  python_requires=">=3.6",
                  extras_require={
-                     'docs': ['sphinx',
-                              'sphinx_rtd_theme',
-                              'nbsphinx',
-                              'recommonmark',
-                              'graphviz'],
+                     'docs': doc_requirements,
                      'microstrax': ['hug'],
                  },
                  scripts=[

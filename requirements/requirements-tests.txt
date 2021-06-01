@@ -1,0 +1,17 @@
+tensorflow; python_version>="3.7"
+dask; python_version>="3.7"
+pytest
+hypothesis
+holoviews
+flake8
+pytest-cov
+coveralls
+xarray
+datashader
+boltons
+ipython
+ipywidgets
+
+# python 3.6 specific
+tensorflow~=2.4.0; python_version=="3.6"
+dask<=2021.2.0; python_version=="3.6"
