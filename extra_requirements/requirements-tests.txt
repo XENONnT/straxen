@@ -13,7 +13,7 @@ ipywidgets==7.6.3
 npshmex==0.2.1    # Strax dependency
 numba==0.53.1     # Strax dependency
 numpy==1.19.5
-pandas==1.2.4     # Strax dependency
+pandas==1.1.5     # Strax dependency
 psutil==5.8.0     # Strax dependency
 pytest==6.2.4
 pytest-cov==2.12.0
@@ -27,7 +27,7 @@ zstd==1.4.9.1     # Strax dependency
 # python 3.x specifics
 # Tensorflow
 tensorflow==2.4.0 ; python_version=="3.6"
-tensorflow~=2.4.0 ; python_version>="3.7"
+tensorflow~=2.4 ; python_version>="3.7"
 
 # Dask
 dask~=2021.3; python_version>="3.7"
