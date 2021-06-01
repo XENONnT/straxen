@@ -15,23 +15,28 @@ class EventAreaPerChannel(strax.LoopPlugin):
     """
     depends_on = ('event_basics', 'peaks')
     provides = "event_area_per_channel"
-    __version__ = '0.0.0'
+    __version__ = '0.0.1'
     def infer_dtype(self):
-        dtype = []
-        dtype.append( (("Area per channel for main S2", "s2_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        dtype.append( (("Area per channel for alternative S2", "alt_s2_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        dtype.append( (("Area per channel for main S1", "s1_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
-        dtype.append( (("Area per channel for alternative S1", "alt_s1_area_per_channel"), 
-                       np.float32, (self.config['n_tpc_pmts'],)) )
+        dtype = [(("Area per channel for main S2", "s2_area_per_channel"), 
+                  np.float32, (self.config['n_tpc_pmts'],)),
+                 (("Area per channel for alternative S2", "alt_s2_area_per_channel"),
+                  np.float32, (self.config['n_tpc_pmts'],)),
+                 (("Area per channel for main S1", "s1_area_per_channel"), 
+                  np.float32, (self.config['n_tpc_pmts'],)),
+                 (("Area per channel for alternative S1", "alt_s1_area_per_channel"), 
+                  np.float32, (self.config['n_tpc_pmts'],)),
+                ]
         dtype += strax.time_fields
         return dtype
     
     def compute_loop(self, event, peaks):
-        result = dict()
-        result['time'], result['endtime'] = event['time'], strax.endtime(event)
-        for type_ in ['s1','s2','alt_s1','alt_s2']:
-            result[type_+'_area_per_channel'] = (peaks['area_per_channel'][event[type_+"_index"]] if event[type_+"_index"]!=-1 else 0.0)
+        result = np.zeros(1, self.dtype)
+        result['time'] = event['time']
+        result['endtime'] = strax.endtime(event)
+        
+        for type_ in ['s1', 's2', 'alt_s1', 'alt_s2']:
+            type_index = event[f'{type_}_index']
+            if type_index != -1:
+                type_ara_per_channel = peaks['area_per_channel'][type_index]
+                result[f'{type_}_area_per_channel'] = type_ara_per_channel
         return result

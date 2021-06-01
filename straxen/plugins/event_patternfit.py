@@ -14,7 +14,7 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.',
                  default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_25May2021.json'),
-    strax.Option('MeanPEperPhoton', help='Mean of full VUV single photon responce',
+    strax.Option('MeanPEperPhoton', help='Mean of full VUV single photon response',
                  default=1.2),
     strax.Option('gain_model',
                  help='PMT gain model. Specify as (model_type, model_config)'),
@@ -29,7 +29,7 @@ export, __all__ = strax.exporter()
     strax.Option('StorePerChannel', default=False, type=bool,
                  help='Store normalized LLH per channel for each peak'),
     strax.Option('max_r', default = straxen.tpc_r, type=float,
-                 help = 'Maximal radius of the peaks where llh calculation will be perfromed'),
+                 help = 'Maximal radius of the peaks where llh calculation will be performed'),
 )
 class EventPatternFit(strax.Plugin):
     '''
@@ -107,7 +107,8 @@ class EventPatternFit(strax.Plugin):
     def compute(self, events):
         
         result = np.zeros(len(events), dtype=self.dtype)
-        result['time'], result['endtime'] = events['time'], strax.endtime(events)
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
 
         # Computing LLH values for S1s
         self.compute_s1_llhvalue(events, result)
@@ -157,10 +158,6 @@ class EventPatternFit(strax.Plugin):
         return(result)
 
     def compute_s1_llhvalue(self, events, result):
-        result['s1_2llh'] = np.zeros(len(events))
-        result['s1_top_2llh'] = np.zeros(len(events))
-        result['s1_bottom_2llh'] = np.zeros(len(events))
-
         # Selecting S1s for pattern fit calculation
         # - must exist (index != -1)
         # - must have total area larger minimal one
@@ -201,7 +198,6 @@ class EventPatternFit(strax.Plugin):
         # If needed to stire - store only top and bottom array, but not together
         if self.config['StorePerChannel']:
             # Storring pattern information
-            result['s1_pattern'][:] = 0.0     
             store_patterns = np.zeros((s1_pattern.shape[0], self.config['n_tpc_pmts']) )  
             store_patterns[:, self.pmtbool] = s1_pattern
             result['s1_pattern'][cur_s1_bool] = store_patterns
@@ -225,8 +221,6 @@ class EventPatternFit(strax.Plugin):
             
     def compute_s2_llhvalue(self, events, result):
         for t_ in ['s2', 'alt_s2']:
-            result[t_+'_2llh'][:] = np.zeros(len(events))
-
             # Selecting S2s for pattern fit calculation
             # - must exist (index != -1)
             # - must have total area larger minimal one
@@ -261,8 +255,6 @@ class EventPatternFit(strax.Plugin):
                            )
             result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val, axis=1)
             if self.config['StorePerChannel']:
-                result[t_+'_pattern'][:] = 0.0
-                result[t_+'_2llh_per_channel'][:] = 0.0
                 store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
                 store_patterns[:, self.pmtbool_top] = s2_pattern
                 result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
@@ -385,7 +377,8 @@ def binom_test(k, n, p):
         # Here we are actually looking for j
         for i in range(n_iter):
             n_pts = int(j_max - j_min)
-            if i<2 and n_pts < 50: n_pts = 50
+            if (i<2) and (n_pts < 50): 
+                n_pts = 50
             j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
             y = binom_pmf(j_range, n, p)
             for i in range(len(j_range) - 1):
