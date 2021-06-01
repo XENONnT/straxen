@@ -5,11 +5,13 @@ utilix>=0.5.3
 # datashader         # Optional, to enable wf display
 bokeh>=2.2.3
 multihist>=0.6.3
-matplotlib
 packaging
 immutabledict
 numba>=0.50.0
 requests
 commentjson
 dask; python_version>="3.7"
-dask<=2021.3.0; python_version<"3.7"
+matplotlib; python_version>="3.7"
+# Python 3.6
+dask<=2021.3.0; python_version=="3.6"
+matplotlib<3.4; python_version=="3.6"
