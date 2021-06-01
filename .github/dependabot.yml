@@ -17,7 +17,7 @@ updates:
     directory: "/extra_requirements"
     schedule:
       # Check for updates to requirements every day
-      interval: "dayly"
+      interval: "daily"
     open-pull-requests-limit: 5
     assignees:
       - jorana
