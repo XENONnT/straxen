@@ -38,7 +38,6 @@ setuptools.setup(name='straxen',
                      # python 3.6
                      'tensorflow~=2.4.0; python_version=="3.6"',
                      'dask<=2021.2.0; python_version=="3.6"',
-                     'dask[dataframe]; python_version=="3.6"',
                  ],
                  python_requires=">=3.6",
                  extras_require={
