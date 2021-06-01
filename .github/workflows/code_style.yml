@@ -1,8 +1,7 @@
 name: Python style
 on:
   pull_request:
-    types:
-      - created
+    types: [created]
 jobs:
   qa:
     name: Quality check
