@@ -14,5 +14,5 @@ ipython
 ipywidgets
 
 # python 3.6 specific
-tensorflow~=2.4.0; python_version=="3.6"
+tensorflow~=2.5.0; python_version=="3.6"
 dask<=2021.2.0; python_version=="3.6"
