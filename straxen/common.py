@@ -450,7 +450,7 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
             if _rep not in data_keys:
                 # Apparently this data doesn't have the entry we want to replace
                 continue
-            if _dat['channel'].ndim != 1:
+            if _rep == 'channel' and _dat['channel'].ndim != 1:
                 # Only convert channel if they are flat and not nested.
                 continue
             # Make a buffer we can overwrite and replace with an remapped array
