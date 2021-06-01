@@ -22,7 +22,11 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + [
-                     'tensorflow',
+                     'tensorflow; python_version>="3.7"',
+                     'dask; python_version>="3.7"',
+                     # python 3.6
+                     'tensorflow~=2.4.0; python_version=="3.6"',
+                     'dask<=2021.3.0; python_version=="3.6"',
                      'pytest',
                      'hypothesis',
                      'holoviews',
