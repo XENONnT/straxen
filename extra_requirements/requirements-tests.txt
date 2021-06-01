@@ -1,3 +1,4 @@
+# File for the requirements of the automated tests
 tensorflow; python_version>="3.7"
 dask; python_version>="3.7"
 pytest

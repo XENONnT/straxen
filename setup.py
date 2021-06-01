@@ -10,9 +10,9 @@ def open_requirements(path):
 
 
 # Get requirements from requirements.txt, stripping the version tags
-requires = open_requirements('requirements/requirements.txt')
-tests_requires = open_requirements('requirements/requirements-tests.txt')
-doc_requirements = open_requirements('requirements/requirements-tests.txt')
+requires = open_requirements('requirements.txt')
+tests_requires = open_requirements('extra_requirements/requirements-tests.txt')
+doc_requirements = open_requirements('extra_requirements/requirements-docs.txt')
 
 with open('README.md') as file:
     readme = file.read()
