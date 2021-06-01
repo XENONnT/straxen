@@ -11,7 +11,7 @@ boltons==20.0.0
 ipywidgets==7.5.0
 bokeh==2.3.1
 tensorflow==2.4.0
-numpy==1.19.0
+numpy==1.19.2
 
 # python 3.x specifics
 # Dask
