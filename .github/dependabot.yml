@@ -18,6 +18,6 @@ updates:
     schedule:
       # Check for updates to requirements every day
       interval: "daily"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 15
     assignees:
       - jorana

@@ -1,4 +1,19 @@
 # File for the requirements of straxen with the automated tests
+
+## python 3.x specifics
+# Tensorflow
+tensorflow==2.4.1 ; python_version=="3.6"
+tensorflow~=2.4 ; python_version>="3.7"
+
+# Dask
+dask~=2021.3; python_version>="3.7"
+dask<=2021.2.0; python_version=="3.6"
+
+# Importlib-metadata
+importlib-metadata==2.0.0; python_version=="3.7"
+
+
+## Other requirements
 blosc==1.10.2      # Strax dependency
 bokeh==2.3.1
 boltons==20.2.1
@@ -6,6 +21,7 @@ datashader==0.12.1
 dill==0.3.3        # Strax dependency
 coveralls==3.0.1
 commentjson==0.9.0
+coverage==5.5
 flake8==3.9.1
 holoviews==1.14.3
 hypothesis==6.10.1
@@ -24,16 +40,3 @@ tqdm==4.60.0
 xarray==0.16.2
 utilix==0.6.0
 zstd==1.4.9.1      # Strax dependency
-
-
-# python 3.x specifics
-# Tensorflow
-tensorflow==2.4.1 ; python_version=="3.6"
-tensorflow~=2.4 ; python_version>="3.7"
-
-# Dask
-dask~=2021.3; python_version>="3.7"
-dask<=2021.2.0; python_version=="3.6"
-
-# Importlib-metadata
-importlib-metadata==2.0.0; python_version=="3.7"

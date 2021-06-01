@@ -9,8 +9,7 @@ jobs:
         PYTHON=3.7
         DEPLOY_ME=true
 install:
-- bash .github/scripts/preinstall_requirements.sh
-- echo "strax install"
+- pip install -r extra_requirements/requirements-tests.txt
 - pip install git+https://github.com/AxFoundation/strax.git
 - pip install -r requirements.txt
 script:
