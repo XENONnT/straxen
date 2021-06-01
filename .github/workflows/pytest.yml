@@ -43,7 +43,7 @@ jobs:
         # See https://github.com/XENONnT/straxen/pull/474
         if: matrix.python-version == 3.6
         run: |
-          pip uninstall holoviews
+          yes | pip uninstall holoviews
           pip install dask==2021.3.0
           python -m pip install "dask[dataframe]" --upgrade
       - name: patch utilix file
