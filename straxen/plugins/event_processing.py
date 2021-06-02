@@ -3,7 +3,7 @@ import numpy as np
 import straxen
 from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
-from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
 from straxen.get_corrections import get_correction_from_cmt
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
