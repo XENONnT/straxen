@@ -139,24 +139,20 @@ def _run_plugins(st,
         # The stuff should be there
         assert st.is_stored(run_id, target), f'Could not make {target}'
 
-        # I'm only going to do this for nT because:
-        #  A) Doing this many more times does not give us much more
-        #     info (everything above already worked fine)
-        #  B) Most development will be on nT, 1T may get less changes
-        #     in the near future
-        if make_all:
-            # Now make sure we can get some data for all plugins
-            for p in list(st._plugin_class_registry.keys()):
-                if p not in forbidden_plugins:
-                    st.get_array(run_id=run_id,
-                                 targets=p,
-                                 **proces_kwargs)
+        if not make_all:
+            return
 
-                    # Check for types that we want to save that they are stored.
-                    if (int(st._plugin_class_registry['peaks'].save_when) >
-                            int(strax.SaveWhen.TARGET)):
-                        is_stored = st.is_stored(run_id, p)
-                        assert is_stored, f"{p} did not save correctly!"
+        end_targets = set(st._get_end_targets(st._plugin_class_registry))
+        for p in end_targets-set(forbidden_plugins):
+            st.make(run_id, p)
+        # Now make sure we can get some data for all plugins
+        all_datatypes = set(st._plugin_class_registry.keys())
+        for p in all_datatypes-set(forbidden_plugins):
+            should_be_stored = (st._plugin_class_registry[p].save_when ==
+                                strax.SaveWhen.ALWAYS)
+            if should_be_stored:
+                is_stored = st.is_stored(run_id, p)
+                assert is_stored, f"{p} did not save correctly!"
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 

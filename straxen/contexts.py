@@ -43,9 +43,11 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     s1_max_rise_time=100,
-    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
-    fdc_map=('fdc_map', "ONLINE", True),
-    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
+    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
+    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
+    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    g1=0.1426,
+    g2=11.55,
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -60,27 +62,29 @@ xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts['register'] = common_opts['register'] + [
-    straxen.PeakPositionsCNN,
-    straxen.PeakPositionsMLP,
-    straxen.PeakPositionsGCN,
-    straxen.PeakPositionsNT,
-    straxen.PeakBasicsHighEnergy,
-    straxen.PeaksHighEnergy,
-    straxen.PeakletsHighEnergy,
-    straxen.PeakletClassificationHighEnergy,
-    straxen.MergedS2sHighEnergy,
-]
-xnt_common_opts['register_all'] = common_opts['register_all'] + [
-    straxen.nveto_recorder,
-    straxen.veto_pulse_processing,
-    straxen.veto_hitlets,
-    straxen.veto_events,
-    straxen.acqmon_processing,
-    straxen.pulse_processing,
-    straxen.peaklet_processing,
-    straxen.online_monitor,
-]
+xnt_common_opts.update({
+    'register': common_opts['register'] + [straxen.PeakPositionsCNN,
+                                           straxen.PeakPositionsMLP,
+                                           straxen.PeakPositionsGCN,
+                                           straxen.PeakPositionsNT,
+                                           straxen.PeakBasicsHighEnergy,
+                                           straxen.PeaksHighEnergy,
+                                           straxen.PeakletsHighEnergy,
+                                           straxen.PeakletClassificationHighEnergy,
+                                           straxen.MergedS2sHighEnergy,
+                                          ],
+    'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
+                                                   straxen.nveto_recorder,
+                                                   straxen.veto_pulse_processing,
+                                                   straxen.veto_hitlets,
+                                                   straxen.veto_events,
+                                                   straxen.acqmon_processing,
+                                                   straxen.pulse_processing,
+                                                   straxen.peaklet_processing,
+                                                   straxen.online_monitor,
+                                                   ],
+    'use_per_run_defaults': False,
+})
 
 ##
 # XENONnT
@@ -169,7 +173,9 @@ def xenonnt_online(output_folder='./strax_data',
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,
+                                                   straxen.check_loading_allowed,
+                                                   )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
     return st
@@ -212,6 +218,7 @@ x1t_context_config = {
         check_available=('raw_records', 'records', 'peaklets',
                          'events', 'event_info'),
         free_options=('channel_map',),
+        use_per_run_defaults=True,
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
@@ -257,12 +264,13 @@ x1t_common_config = dict(
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
     # Events*
-    left_event_extension=int(1e6),
+    left_event_extension=int(0.7e6),
     right_event_extension=int(1e6),
     elife_conf=('elife', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
+    event_info_function='disabled',
+    max_drift_length=96.9,
 )
-
 
 
 def demo():
