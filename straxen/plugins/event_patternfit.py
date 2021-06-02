@@ -144,10 +144,10 @@ class EventPatternFit(strax.Plugin):
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area_fraction_top'])
        
         arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
-        result['s1_area_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
-        result['s1_area_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
-        result['s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-        result['s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
+        result['alt_s1_area_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
+        result['alt_s1_area_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
+        result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        result['alt_s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
         
         arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['MeanPEperPhoton'], events['alt_s1_area_fraction_top'][mask_alt_s1]
         result['alt_s1_photon_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
@@ -372,7 +372,7 @@ def binom_test(k, n, p):
     # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
     # the returned binomial test is 0
     if (d==0)|(not do_test):
-        pval = 0
+        pval = 0.0
     else:
         # Here we are actually looking for j
         for i in range(n_iter):
@@ -427,5 +427,5 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
         else:
             binomial_test =  binom_test(area_top, area_tot, aft_prob)
-            
+        
     return binomial_test
