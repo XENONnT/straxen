@@ -3,7 +3,7 @@ import numpy as np
 import straxen
 from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
-from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
 from straxen.get_corrections import get_correction_from_cmt, get_config_from_cmt, get_elife
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
@@ -569,6 +569,13 @@ class EnergyEstimates(strax.Plugin):
         return self.config['lxe_w'] * x / self.config['g2']
 
 
+@strax.takes_config(
+    strax.Option(
+        name='event_info_function',
+        default='pre_apply_function',
+        help="Function that must be applied to all event_info data. Do not change.",
+    )
+)
 class EventInfo(strax.MergeOnlyPlugin):
     """
     Plugin which merges the information of all event data_kinds into a
@@ -578,3 +585,14 @@ class EventInfo(strax.MergeOnlyPlugin):
                   'event_basics', 'event_positions', 'corrected_areas',
                   'energy_estimates']
     save_when = strax.SaveWhen.ALWAYS
+
+    def compute(self, **kwargs):
+        event_info_function = self.config['event_info_function']
+        event_info = super().compute(**kwargs)
+        if event_info_function != 'disabled':
+            event_info = pre_apply_function(event_info,
+                                            self.run_id,
+                                            self.provides,
+                                            event_info_function,
+                                            )
+        return event_info
