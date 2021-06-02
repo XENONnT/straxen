@@ -10,7 +10,7 @@ dask~=2021.5; python_version>="3.7"
 dask<=2021.2.0; python_version=="3.6"
 
 # Importlib-metadata
-importlib-metadata==2.0.0; python_version=="3.7"
+importlib-metadata==4.4.0; python_version=="3.7"
 
 
 ## Other requirements
@@ -18,13 +18,13 @@ blosc==1.10.2      # Strax dependency
 boltons==21.0.0
 datashader==0.12.1
 dill==0.3.3        # Strax dependency
-coveralls==3.0.1
+coveralls==3.1.0
 commentjson==0.9.0
 coverage==5.5
 flake8==3.9.2
 holoviews==1.14.4
-hypothesis==6.10.1
-ipywidgets==7.6.2
+ipywidgets==7.6.3
+hypothesis==6.13.10
 jupyter-client==6.1.12  # (for ipywidgets)
 npshmex==0.2.1     # Strax dependency
 numba==0.53.1      # Strax dependency
