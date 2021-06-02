@@ -14,7 +14,7 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.',
                  default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_25May2021.json'),
-    strax.Option('MeanPEperPhoton', help='Mean of full VUV single photon response',
+    strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
                  default=1.2),
     strax.Option('gain_model',
                  help='PMT gain model. Specify as (model_type, model_config)'),
@@ -26,9 +26,9 @@ export, __all__ = strax.exporter()
                  default=3),
     strax.Option('s2_min_reconstruction_area', help='Skip reconstruction if S2 area (PE) is less than this',
                  default=10),
-    strax.Option('StorePerChannel', default=False, type=bool,
+    strax.Option('store_per_channel', default=False, type=bool,
                  help='Store normalized LLH per channel for each peak'),
-    strax.Option('max_r', default = straxen.tpc_r, type=float,
+    strax.Option('max_r_patternfit', default = straxen.tpc_r, type=float,
                  help = 'Maximal radius of the peaks where llh calculation will be performed'),
 )
 class EventPatternFit(strax.Plugin):
@@ -68,7 +68,7 @@ class EventPatternFit(strax.Plugin):
                  ('alt_s1_photon_fraction_top_discrete_probability', np.float32,
                   'Discrete binomial test for alternative S1 photon fraction top')]
         
-        if self.config['StorePerChannel']:
+        if self.config['store_per_channel']:
             dtype.append((('2LLH per channel for main S2', 's2_2llh_per_channel'),
                        np.float32, (self.config['n_top_pmts'], )))
             dtype.append((('2LLH per channel for alternative S2', 'alt_s2_2llh_per_channel'),
@@ -85,7 +85,7 @@ class EventPatternFit(strax.Plugin):
         return dtype
     
     def setup(self):
-        self.mean_pe_photon = self.config['MeanPEperPhoton']
+        self.mean_pe_photon = self.config['mean_pe_per_photon']
         
         # Getting S1 AFT maps
         self.s1_aft_map = straxen.InterpolatingMap(
@@ -132,7 +132,7 @@ class EventPatternFit(strax.Plugin):
         result['s1_area_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
         result['s1_area_fraction_top_discrete_probability'][~mask_s1] = np.nan
         
-        arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.config['MeanPEperPhoton'], events['s1_area_fraction_top'][mask_s1]
+        arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.config['mean_pe_per_photon'], events['s1_area_fraction_top'][mask_s1]
         result['s1_photon_fraction_top_continuos_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
         result['s1_photon_fraction_top_continuos_probability'][~mask_s1] = np.nan
         result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
@@ -149,7 +149,7 @@ class EventPatternFit(strax.Plugin):
         result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
         result['alt_s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
         
-        arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['MeanPEperPhoton'], events['alt_s1_area_fraction_top'][mask_alt_s1]
+        arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
         result['alt_s1_photon_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
         result['alt_s1_photon_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
         result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
@@ -169,7 +169,7 @@ class EventPatternFit(strax.Plugin):
         cur_s1_bool &= np.isfinite(x)
         cur_s1_bool &= np.isfinite(y)
         cur_s1_bool &= np.isfinite(z)
-        cur_s1_bool &= (x**2 + y**2) < self.config['max_r']**2
+        cur_s1_bool &= (x**2 + y**2) < self.config['max_r_patternfit']**2
         
         # Making expectation patterns [ in PE ]
         s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
@@ -196,7 +196,7 @@ class EventPatternFit(strax.Plugin):
         result['s1_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
         
         # If needed to stire - store only top and bottom array, but not together
-        if self.config['StorePerChannel']:
+        if self.config['store_per_channel']:
             # Storring pattern information
             store_patterns = np.zeros((s1_pattern.shape[0], self.config['n_tpc_pmts']) )  
             store_patterns[:, self.pmtbool] = s1_pattern
@@ -229,7 +229,7 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool = (events[t_+'_area']>self.config['s2_min_reconstruction_area'])
             cur_s2_bool &= (events[t_+'_index']!=-1)
             cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
-            cur_s2_bool &= (x**2 + y**2) < self.config['max_r']**2            
+            cur_s2_bool &= (x**2 + y**2) < self.config['max_r_patternfit']**2            
             # Making expectation patterns [ in PE ]
             s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
             s2_map_effs = s2_map_effs[:, self.pmtbool_top]
@@ -254,7 +254,7 @@ class EventPatternFit(strax.Plugin):
                                  mean_pe_photon=self.mean_pe_photon)
                            )
             result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val, axis=1)
-            if self.config['StorePerChannel']:
+            if self.config['store_per_channel']:
                 store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
                 store_patterns[:, self.pmtbool_top] = s2_pattern
                 result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
