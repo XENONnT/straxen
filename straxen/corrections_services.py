@@ -260,10 +260,15 @@ class GainsNotFoundError(Exception):
 def apply_cmt_version(context, cmt_version):
     """Sets all the relevant correction variables"""
     cmt_config = dict(gain_model=('CMT_model', ("to_pe_model", cmt_version)),
+                      gain_model_nv=('CMT_model', ("to_pe_model_nv", cmt_version)),
+                      s1_xyz_correction_map=("CMT_model", ('s1_xyz_map_mlp', cmt_version), True),
                       s2_xy_correction_map=("CMT_model", ('s2_xy_map', cmt_version), True),
                       elife_conf=("elife", cmt_version, True),
                       mlp_model=("CMT_model", ("mlp_model", cmt_version), True),
                       gcn_model=("CMT_model", ("gcn_model", cmt_version), True),
-                      cnn_model=("CMT_model", ("cnn_model", cmt_version), True)
+                      cnn_model=("CMT_model", ("cnn_model", cmt_version), True),
+                      fdc_map=("CMT_model", ("fdc_map_mlp", cmt_version), True),
+                      electron_drift_velocity=("electron_drift_velocity", cmt_version, True),
+                      baseline_samples_nv=('baseline_samples_nv', cmt_version, True),
                       )
     context.set_config(cmt_config)
