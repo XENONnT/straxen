@@ -44,6 +44,10 @@ setuptools.setup(name='straxen',
                      'bin/refresh_raw_records',
                  ],
                  packages=setuptools.find_packages(),
+                 include_package_data=True,
+                 package_data={
+                     'extra_requirements': ['*.txt'],
+                 },
                  classifiers=[
                      'Development Status :: 5 - Production/Stable',
                      'License :: OSI Approved :: BSD License',
