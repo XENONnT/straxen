@@ -263,6 +263,7 @@ def apply_cmt_version(context, cmt_version):
                       s2_xy_correction_map=("CMT_model", ('s2_xy_map', cmt_version), True),
                       elife_conf=("elife", cmt_version, True),
                       mlp_model=("CMT_model", ("mlp_model", cmt_version), True),
-                      gcn_model=("CMT_model", ("gcn_model", cmt_version), True)
+                      gcn_model=("CMT_model", ("gcn_model", cmt_version), True),
+                      cnn_model=("CMT_model", ("cnn_model", cmt_version), True)
                       )
     context.set_config(cmt_config)
