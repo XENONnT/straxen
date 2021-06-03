@@ -91,6 +91,13 @@ xnt_common_opts.update({
 ##
 
 
+def xenonnt(cmt_version='ONLINE', **kwargs):
+    """XENONnT context"""
+    st = straxen.contexts.xenonnt_online(**kwargs)
+    st.apply_cmt_version(cmt_version)
+    return st
+
+
 def xenonnt_online(output_folder='./strax_data',
                    we_are_the_daq=False,
                    _minimum_run_number=7157,

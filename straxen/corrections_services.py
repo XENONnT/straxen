@@ -254,3 +254,15 @@ def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
 class GainsNotFoundError(Exception):
     """Fatal error if a None value is returned by the corrections"""
     pass
+
+
+@strax.Context.add_method
+def apply_cmt_version(context, cmt_version):
+    """Sets all the relevant correction variables"""
+    cmt_config = dict(gain_model=('CMT_model', ("to_pe_model", cmt_version)),
+                      s2_xy_correction_map=("CMT_model", ('s2_xy_map', cmt_version), True),
+                      elife_conf=("elife", cmt_version, True),
+                      mlp_model=("CMT_model", ("mlp_model", cmt_version), True),
+                      gcn_model=("CMT_model", ("gcn_model", cmt_version), True)
+                      )
+    context.set_config(cmt_config)
