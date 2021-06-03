@@ -1,3 +1,8 @@
+0.18.6 / 2021-06-03
+-------------------
+- Patch installation for pypi (#529)
+
+
 0.18.5 / 2021-06-03
 ---------------------
 - Allow variable event duration (#494, #528)
