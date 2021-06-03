@@ -1,6 +1,6 @@
-0.18.6 / 2021-06-03
+0.18.6-0.18.8 / 2021-06-03
 -------------------
-- Patch installation for pypi (#529)
+- Patches installation for pypi (#529, e880420, fce6d87)
 
 
 0.18.5 / 2021-06-03
