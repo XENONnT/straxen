@@ -46,6 +46,8 @@ xnt_common_config = dict(
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    g1=0.1426,
+    g2=11.55,
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -60,27 +62,29 @@ xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts['register'] = common_opts['register'] + [
-    straxen.PeakPositionsCNN,
-    straxen.PeakPositionsMLP,
-    straxen.PeakPositionsGCN,
-    straxen.PeakPositionsNT,
-    straxen.PeakBasicsHighEnergy,
-    straxen.PeaksHighEnergy,
-    straxen.PeakletsHighEnergy,
-    straxen.PeakletClassificationHighEnergy,
-    straxen.MergedS2sHighEnergy,
-]
-xnt_common_opts['register_all'] = common_opts['register_all'] + [
-    straxen.nveto_recorder,
-    straxen.veto_pulse_processing,
-    straxen.veto_hitlets,
-    straxen.veto_events,
-    straxen.acqmon_processing,
-    straxen.pulse_processing,
-    straxen.peaklet_processing,
-    straxen.online_monitor,
-]
+xnt_common_opts.update({
+    'register': common_opts['register'] + [straxen.PeakPositionsCNN,
+                                           straxen.PeakPositionsMLP,
+                                           straxen.PeakPositionsGCN,
+                                           straxen.PeakPositionsNT,
+                                           straxen.PeakBasicsHighEnergy,
+                                           straxen.PeaksHighEnergy,
+                                           straxen.PeakletsHighEnergy,
+                                           straxen.PeakletClassificationHighEnergy,
+                                           straxen.MergedS2sHighEnergy,
+                                          ],
+    'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
+                                                   straxen.nveto_recorder,
+                                                   straxen.veto_pulse_processing,
+                                                   straxen.veto_hitlets,
+                                                   straxen.veto_events,
+                                                   straxen.acqmon_processing,
+                                                   straxen.pulse_processing,
+                                                   straxen.peaklet_processing,
+                                                   straxen.online_monitor,
+                                                   ],
+    'use_per_run_defaults': False,
+})
 
 ##
 # XENONnT
@@ -169,7 +173,9 @@ def xenonnt_online(output_folder='./strax_data',
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,
+                                                   straxen.check_loading_allowed,
+                                                   )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
     return st
@@ -188,7 +194,6 @@ def xenonnt_led(**kwargs):
     return st
 
 
-# This gain model is the average to_pe. For something more fancy use the CMT
 def xenonnt_simulation(output_folder='./strax_data'):
     import wfsim
     st = strax.Context(
@@ -202,36 +207,6 @@ def xenonnt_simulation(output_folder='./strax_data'):
     st.register(wfsim.RawRecordsFromFaxNT)
     return st
 
-
-def xenonnt_temporary_five_pmts(**kwargs):
-    """Temporary context for selected PMTs"""
-    # Start from the online context
-    st_online = xenonnt_online(**kwargs)
-
-    temporary_five_pmts_config = {
-        'gain_model': ('CMT_model', ("to_pe_model", "xenonnt_temporary_five_pmts")),
-        'peak_min_pmts': 2,
-        'peaklet_gap_threshold': 300,
-    }
-    # If there are any config overwrites in the kwargs, us those,
-    # otherwise use the config as in the dict above.
-
-    for k in list(temporary_five_pmts_config.keys()):
-        if k in kwargs:
-            temporary_five_pmts_config[k] = kwargs[k]
-
-    # Copy the online context and change the configuration here
-    st = st_online.new_context()
-    st.set_config(temporary_five_pmts_config)
-
-    return st
-
-
-def xenonnt_initial_commissioning(*args, **kwargs):
-    raise ValueError(
-        'Use xenonnt_online. See' 
-        'https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:commissioning:straxen_contexts#update_09_nov_20')  # noqa
-
 ##
 # XENON1T
 ##
@@ -243,6 +218,7 @@ x1t_context_config = {
         check_available=('raw_records', 'records', 'peaklets',
                          'events', 'event_info'),
         free_options=('channel_map',),
+        use_per_run_defaults=True,
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
@@ -290,12 +266,13 @@ x1t_common_config = dict(
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
     # Events*
-    left_event_extension=int(1e6),
+    left_event_extension=int(0.7e6),
     right_event_extension=int(1e6),
     elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
+    event_info_function='disabled',
+    max_drift_length=96.9,
 )
-
 
 
 def demo():

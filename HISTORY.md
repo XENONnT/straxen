@@ -1,3 +1,18 @@
+0.18.4 / 2021-05-20
+---------------------
+- Documentation and package maintenance (#481)
+- Veto plugins (#465)
+- Changed nveto splitting thresholds. (#490)
+- Remove old unused contexts (#485)
+- Use_per_run_defaults explicitly for 1T (#484)
+- Set event_info_double as endpoint for kr (#480)
+- Fix difference between datetime and date (#473)
+- Fix _find for rucio to include transferred. Set kwarg defaults (#483)
+- Fix AFT close but not quite 1 (#477)
+- Fix online_monitor (#486)
+- Activated overlapping check for mveto again. (#489)
+
+
 0.18.3 / 2021-05-06
 ---------------------
 - Update classifiers for pipy (#464)
