@@ -26,6 +26,9 @@ class DownloadError(Exception):
     pass
 
 
+RAW_TYPES = ['raw_records', 'raw_records_nv', 'raw_records_he']
+
+
 @export
 class RucioFrontend(strax.StorageFrontend):
     """
@@ -35,7 +38,9 @@ class RucioFrontend(strax.StorageFrontend):
     local_did_cache = None
     local_rucio_path = None
 
-    def __init__(self, include_remote=False,
+    def __init__(self,
+                 include_remote=False,
+                 download_raw=False,
                  staging_dir='./strax_data',
                  minimum_run_number=7157,
                  runs_to_consider=None,
@@ -82,7 +87,7 @@ class RucioFrontend(strax.StorageFrontend):
         self.local_rse = local_rse
 
         if include_remote:
-            self.backends.append(RucioRemoteBackend(staging_dir))
+            self.backends.append(RucioRemoteBackend(staging_dir, download_raw=download_raw))
 
         # find run numbers to consider
         if runs_to_consider:
@@ -127,9 +132,8 @@ class RucioFrontend(strax.StorageFrontend):
         ret = []
         for key in keys:
             did = self.key_to_rucio_did(key)
-            backend_key = f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
             if did in self.local_did_cache and self.did_is_local(did):
-                ret.append((strax.rucio.__name__, backend_key))
+                ret.append(('RucioLocalBackend', did))
             else:
                 ret.append(False)
         return ret
@@ -180,10 +184,11 @@ class RucioFrontend(strax.StorageFrontend):
         """
         scope, name = did.split(':')
         for chunk in md.get('chunks', []):
-            _did = f"{scope}:{chunk['filename']}"
-            ch_path = rucio_path(self.local_rucio_path, _did)
-            if not os.path.exists(ch_path):
-                return False
+            if chunk.get('filename'):
+                _did = f"{scope}:{chunk['filename']}"
+                ch_path = rucio_path(self.local_rucio_path, _did)
+                if not os.path.exists(ch_path):
+                    return False
         return True
 
     def list_rules(self, did, **filters):
@@ -262,7 +267,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
 @export
 class RucioRemoteBackend(strax.FileSytemBackend):
     """Get data from remote Rucio RSE"""
-    def __init__(self, staging_dir, *args, **kwargs):
+    def __init__(self, staging_dir, download_raw=False, **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be a writable location.
         :param *args: Passed to strax.FileSystemBackend
@@ -280,9 +285,10 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 raise PermissionError(f"You told the rucio backend to download data to {staging_dir}, "
                                       f"but that path is not writable by your user")
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_client = DownloadClient()
+        self.download_raw = download_raw
 
 
     def get_metadata(self, dset_did, rse='UC_OSG_USERDISK', **kwargs):
@@ -315,8 +321,13 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
         chunk_file = chunk_info['filename']
         chunk_path = os.path.join(base_dir, chunk_file)
-
         if not os.path.exists(chunk_path):
+            number, datatype, hsh = parse_did(dset_did)
+            if datatype in RAW_TYPES and not self.download_raw:
+                raise DownloadError("For space reasons we don't want to have everyone downloading raw data. "
+                                    "If you know what you're doing, pass download_raw=True to the Rucio frontend. "
+                                    "If not, check your context and/or ask someone if this raw data is needed locally."
+                                    )
             scope, name = dset_did.split(':')
             chunk_did = f"{scope}:{chunk_file}"
             print(f"Downloading {chunk_did}")
