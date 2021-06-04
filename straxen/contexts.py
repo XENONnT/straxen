@@ -264,7 +264,7 @@ x1t_common_config = dict(
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
     # Events*
-    left_event_extension=int(0.7e6),
+    left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
     elife_conf=('elife', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
