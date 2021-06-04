@@ -10,6 +10,8 @@ from rucio.client.client import Client
 from rucio.client.rseclient import RSEClient
 from rucio.client.replicaclient import ReplicaClient
 from rucio.client.downloadclient import DownloadClient
+from rucio.client.didclient import DIDClient
+from rucio.common.exception import DataIdentifierNotFound
 from utilix import xent_collection
 import strax
 
@@ -51,6 +53,7 @@ class RucioFrontend(strax.StorageFrontend):
         self.rucio_client = Client()
         self.rse_client = RSEClient()
         self.replica_client = ReplicaClient()
+        self.did_client = DIDClient()
         self.collection = xent_collection()
 
         # check if there is a local rse for the host we are running on
@@ -139,7 +142,14 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         else:
-            return "RucioRemoteBackend", did
+            # check if did exists
+            try:
+                scope, name = did.split(':')
+                did_info = self.did_client.get_did(scope, name)
+                return "RucioRemoteBackend", did
+            except DataIdentifierNotFound:
+                pass
+        raise strax.DataNotAvailable
 
     def get_rse_prefix(self, rse):
         """TODO will eventually do an admix call here"""
