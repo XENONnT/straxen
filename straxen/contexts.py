@@ -27,7 +27,7 @@ xnt_common_config = dict(
     n_top_pmts=straxen.n_top_pmts,
     gain_model=("to_pe_model", "ONLINE", True),
     gain_model_nv=("to_pe_model_nv", "ONLINE", True),
-    gain_model_mv=("adc_mv", True),
+    gain_model_mv=("to_pe_model_mv", "ONLINE", True),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -45,9 +45,9 @@ xnt_common_config = dict(
     s1_max_rise_time=100,
     gcn_model=None,
     # Event level parameters
-    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
-    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
-    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
+    fdc_map=('fdc_map', "ONLINE", True),
+    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
     g1=0.1426,
     g2=11.55,
 )
