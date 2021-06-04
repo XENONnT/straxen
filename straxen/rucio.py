@@ -171,10 +171,7 @@ class RucioFrontend(strax.StorageFrontend):
         except (strax.DataNotAvailable, strax.DataCorrupted):
             return False
 
-        if self._all_chunk_stored(md, did):
-            return True
-
-        return False
+        return self._all_chunk_stored(md, did)
 
     def _all_chunk_stored(self, md: dict, did: str) -> bool:
         """
