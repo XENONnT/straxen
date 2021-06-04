@@ -28,6 +28,7 @@ testing_config_nT = dict(
     baseline_samples_nv=10,
     fdc_map=pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
     gain_model_nv=("adc_nv", True),
+    gain_model_mv=("adc_mv", True),
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
