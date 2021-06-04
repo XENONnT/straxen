@@ -43,6 +43,8 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     s1_max_rise_time=100,
+    gcn_model=None,
+    # Event level parameters
     s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
     fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
     s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
