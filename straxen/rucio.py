@@ -2,8 +2,10 @@ import socket
 import re
 from tqdm import tqdm
 import json
+from bson import json_util
 import os
 import hashlib
+import time
 from rucio.client.client import Client
 from rucio.client.rseclient import RSEClient
 from rucio.client.replicaclient import ReplicaClient
@@ -29,6 +31,7 @@ class RucioFrontend(strax.StorageFrontend):
     """
     local_rses = {'UC_DALI_USERDISK': r'.rcc.'}
     local_did_cache = None
+    local_rucio_path = None
 
     def __init__(self, include_remote=False,
                  staging_dir='./strax_data',
@@ -71,6 +74,7 @@ class RucioFrontend(strax.StorageFrontend):
         if local_rse:
             rucio_prefix = self.get_rse_prefix(local_rse)
             self.backends.append(RucioLocalBackend(rucio_prefix))
+            self.local_rucio_path = rucio_prefix
 
         self.local_rse = local_rse
 
@@ -133,8 +137,7 @@ class RucioFrontend(strax.StorageFrontend):
 
         did = self.key_to_rucio_did(key)
         if self.did_is_local(did):
-            backend_key = f'{key.run_id}-{key.data_type}-{key.lineage_hash}'
-            return "RucioLocalBackend", backend_key
+            return "RucioLocalBackend", did
         else:
             return "RucioRemoteBackend", did
 
@@ -150,12 +153,31 @@ class RucioFrontend(strax.StorageFrontend):
         :param did: Rucio DID string
         :return: boolean for whether DID is local or not.
         """
+
         if self.local_rse is None:
             return False
-        rules = self.list_rules(did, rse_expression=self.local_rse, state='OK')
-        if len(rules):
+        try:
+            md = self.backends[0].get_metadata(did)
+        except (strax.DataNotAvailable, strax.DataCorrupted):
+            return False
+
+        if self._all_chunk_stored(md, did):
             return True
+
         return False
+
+    def _all_chunk_stored(self, md: dict, did: str) -> bool:
+        """
+        Check if all the chunks are stored that are claimed in the
+        metadata-file
+        """
+        scope, name = did.split(':')
+        for chunk in md.get('chunks', []):
+            _did = f"{scope}:{chunk['filename']}"
+            ch_path = rucio_path(self.local_rucio_path, _did)
+            if not os.path.exists(ch_path):
+                return False
+        return True
 
     def list_rules(self, did, **filters):
         """
@@ -204,27 +226,31 @@ class RucioLocalBackend(strax.FileSytemBackend):
         super().__init__(*args, **kwargs)
         self.rucio_dir = rucio_dir
 
-    def get_metadata(self, dirname:str, **kwargs):
-        prefix = strax.dirname_to_prefix(dirname)
-        metadata_json = f'{prefix}-metadata.json'
-        fn = rucio_path(self.rucio_dir, metadata_json, dirname)
-        folder = os.path.join('/', *fn.split('/')[:-1])
-        if not os.path.exists(folder):
-            raise strax.DataNotAvailable(f"No folder for metadata at {fn}")
-        if not os.path.exists(fn):
-            raise strax.DataCorrupted(f"Folder exists but no metadata at {fn}")
+    def get_metadata(self, did: str, **kwargs):
+        scope, name = did.split(':')
+        number, dtype, hsh = parse_did(did)
+        metadata_json = f'{dtype}-{hsh}-metadata.json'
+        metadata_did = f'{scope}:{metadata_json}'
 
-        with open(fn, mode='r') as f:
+        metadata_path = rucio_path(self.rucio_dir, metadata_did)
+        folder = os.path.join('/', *metadata_path.split('/')[:-1])
+        if not os.path.exists(folder):
+            raise strax.DataNotAvailable(f"No folder for metadata at {metadata_path}")
+        if not os.path.exists(metadata_path):
+            raise strax.DataCorrupted(f"Folder exists but no metadata at {metadata_path}")
+
+        with open(metadata_path, mode='r') as f:
             return json.loads(f.read())
 
-    def _read_chunk(self, dirname, chunk_info, dtype, compressor):
-        fn = rucio_path(self.rucio_dir, chunk_info['filename'], dirname)
+    def _read_chunk(self, did, chunk_info, dtype, compressor):
+        scope, name = did.split(':')
+        did = f"{scope}:{chunk_info['filename']}"
+        fn = rucio_path(self.rucio_dir, did)
         return strax.load_file(fn, dtype=dtype, compressor=compressor)
 
     def _saver(self, **kwargs):
         raise NotImplementedError(
             "Cannot save directly into rucio (yet), upload with admix instead")
-
 
 @export
 class RucioRemoteBackend(strax.FileSytemBackend):
@@ -268,6 +294,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                             no_subdir=True,
                             rse=rse
                             )
+            print(f"Downloading {metadata_did}")
             self._download([did_dict])
 
         # check again
@@ -309,7 +336,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         _try = 1
         while _try <= 3 and not success:
             if _try > 1:
-                did_dict_list['rse'] = None
+                for did_dict in did_dict_list:
+                    did_dict['rse'] = None
             try:
                 self.download_client.download_dids(did_dict_list)
                 success = True
@@ -318,6 +346,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             except:
                 sleep = 3**_try
                 print(f"Download try #{_try} failed. Sleeping for {sleep} seconds and trying again...")
+                time.sleep(sleep)
             _try += 1
         if not success:
             raise DownloadError(f"Error downloading from rucio.")
@@ -332,12 +361,11 @@ class RucioSaver(strax.Saver):
         raise NotImplementedError
 
 
-def rucio_path(root_dir, filename, dirname):
+def rucio_path(root_dir, did):
     """Convert target to path according to rucio convention.
     See the __hash method here: https://github.com/rucio/rucio/blob/1.20.15/lib/rucio/rse/protocols/protocol.py"""
-    scope = "xnt_"+dirname.split('-')[0]
-    rucio_did = "{0}:{1}".format(scope, filename)
-    rucio_md5 = hashlib.md5(rucio_did.encode('utf-8')).hexdigest()
+    scope, filename = did.split(':')
+    rucio_md5 = hashlib.md5(did.encode('utf-8')).hexdigest()
     t1 = rucio_md5[0:2]
     t2 = rucio_md5[2:4]
     return os.path.join(root_dir, scope, t1, t2, filename)
@@ -358,3 +386,19 @@ def did_to_dirname(did):
         raise RuntimeError(f"The DID {did} does not seem to be a dataset DID. Is it possible you passed a file DID?")
     dirname = did.replace(':', '-').replace('xnt_', '')
     return dirname
+
+
+def key_to_rucio_did(key: strax.DataKey) -> str:
+    """Convert a strax.datakey to a rucio did field in rundoc"""
+    return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
+
+
+def key_to_rucio_meta(key: strax.DataKey) -> str:
+    return f'{str(key.data_type)}-{key.lineage_hash}-metadata.json'
+
+
+def read_md(path: str) -> json:
+    with open(path, mode='r') as f:
+        md = json.loads(f.read(),
+                        object_hook=json_util.object_hook)
+    return md
