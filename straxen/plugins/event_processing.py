@@ -355,7 +355,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics', )
     
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
 
     dtype = [
         ('x', np.float32,
