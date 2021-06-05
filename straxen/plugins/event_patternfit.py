@@ -38,7 +38,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_info')
     provides = 'event_patternfit'
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -51,20 +51,20 @@ class EventPatternFit(strax.Plugin):
                   'Modified Poisson likelihood value for main S1, calculated from top array'),
                  ('s1_bottom_2llh', np.float32,
                   'Modified Poisson likelihood value for main S1, calculated from bottom array'),
-                 ('s1_area_fraction_top_continuos_probability', np.float32,
-                  'Continuos binomial test for S1 area fraction top'),
+                 ('s1_area_fraction_top_continuous_probability', np.float32,
+                  'Continuous binomial test for S1 area fraction top'),
                  ('s1_area_fraction_top_discrete_probability', np.float32,
                   'Discrete binomial test for S1 area fraction top'),
-                 ('s1_photon_fraction_top_continuos_probability', np.float32,
-                  'Continuos binomial test for S1 photon fraction top'),
+                 ('s1_photon_fraction_top_continuous_probability', np.float32,
+                  'Continuous binomial test for S1 photon fraction top'),
                  ('s1_photon_fraction_top_discrete_probability', np.float32,
                   'Discrete binomial test for S1 photon fraction top'),
-                 ('alt_s1_area_fraction_top_continuos_probability', np.float32,
-                  'Continuos binomial test for alternative S1 area fraction top'),
+                 ('alt_s1_area_fraction_top_continuous_probability', np.float32,
+                  'Continuous binomial test for alternative S1 area fraction top'),
                  ('alt_s1_area_fraction_top_discrete_probability', np.float32,
                   'Discrete binomial test for alternative S1 area fraction top'),
-                 ('alt_s1_photon_fraction_top_continuos_probability', np.float32,
-                  'Continuos binomial test for alternative S1 photon fraction top'),
+                 ('alt_s1_photon_fraction_top_continuous_probability', np.float32,
+                  'Continuous binomial test for alternative S1 photon fraction top'),
                  ('alt_s1_photon_fraction_top_discrete_probability', np.float32,
                   'Discrete binomial test for alternative S1 photon fraction top')]
         
@@ -125,34 +125,38 @@ class EventPatternFit(strax.Plugin):
         mask_s1 = ~np.isnan(aft_prob)
         mask_s1 &= ~np.isnan(events['s1_area'])
         mask_s1 &= ~np.isnan(events['s1_area_fraction_top'])
-       
-        arg = aft_prob[mask_s1], events['s1_area'][mask_s1], events['s1_area_fraction_top'][mask_s1]
-        result['s1_area_fraction_top_continuos_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
-        result['s1_area_fraction_top_continuos_probability'][~mask_s1] = np.nan
-        result['s1_area_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        
+        # compute binomial test only if we have events that have valid aft prob, s1 area and s1 aft
+        if len(mask_s1):
+            arg = aft_prob[mask_s1], events['s1_area'][mask_s1], events['s1_area_fraction_top'][mask_s1]
+            result['s1_area_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
+            result['s1_area_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+            arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.config['mean_pe_per_photon'], events['s1_area_fraction_top'][mask_s1]
+            result['s1_photon_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
+            result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        # nan if one among aft prob, s1 area and s1 aft are nan    
+        result['s1_area_fraction_top_continuous_probability'][~mask_s1] = np.nan
         result['s1_area_fraction_top_discrete_probability'][~mask_s1] = np.nan
-        
-        arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.config['mean_pe_per_photon'], events['s1_area_fraction_top'][mask_s1]
-        result['s1_photon_fraction_top_continuos_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
-        result['s1_photon_fraction_top_continuos_probability'][~mask_s1] = np.nan
-        result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-        result['s1_photon_fraction_top_discrete_probability'][~mask_s1] = np.nan
-        
+        result['s1_photon_fraction_top_continuous_probability'][~mask_s1] = np.nan
+        result['s1_photon_fraction_top_discrete_probability'][~mask_s1] = np.nan       
+
         # alternative s1 events
         mask_alt_s1 = ~np.isnan(aft_prob)
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area'])
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area_fraction_top'])
-       
-        arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
-        result['alt_s1_area_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
-        result['alt_s1_area_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
-        result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-        result['alt_s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
         
-        arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
-        result['alt_s1_photon_fraction_top_continuos_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
-        result['alt_s1_photon_fraction_top_continuos_probability'][~mask_alt_s1] = np.nan
-        result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        # compute binomial test only if we have events that have valid aft prob, alt s1 area and alt s1 aft
+        if len(mask_alt_s1):
+            arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
+            result['alt_s1_area_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
+            result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+            arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
+            result['alt_s1_photon_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
+            result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        # nan if one amongs aft prob, alt s1 area and alt s1 aft are nan
+        result['alt_s1_area_fraction_top_continuous_probability'][~mask_alt_s1] = np.nan
+        result['alt_s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan        
+        result['alt_s1_photon_fraction_top_continuous_probability'][~mask_alt_s1] = np.nan
         result['alt_s1_photon_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
                 
         return(result)
@@ -285,7 +289,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     res[is_zero*neg_mu] = 0.0 # 
     return(res)
 
-# Continuos and discrete binomial test
+# continuous and discrete binomial test
 # https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
 def bdtrc(k, n, p):
@@ -317,7 +321,7 @@ def bdtr(k, n, p):
         dk = betainc(dn, dk, 1.0 - p)
     return dk
 
-# Continuos binomial distribution
+# continuous binomial distribution
 def binom_pmf(k, n, p):
     scale_log = gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
@@ -398,7 +402,7 @@ def binom_test(k, n, p):
     return pval
 
 
-def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuos'):
+def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
     '''
     Wrapper that does the S1 AFT probability calculation for you
     '''
