@@ -6,14 +6,18 @@ from bson import json_util
 import os
 import hashlib
 import time
-from rucio.client.client import Client
-from rucio.client.rseclient import RSEClient
-from rucio.client.replicaclient import ReplicaClient
-from rucio.client.downloadclient import DownloadClient
-from rucio.client.didclient import DIDClient
-from rucio.common.exception import DataIdentifierNotFound
 from utilix import xent_collection
 import strax
+import warnings
+try:
+    from rucio.client.client import Client
+    from rucio.client.rseclient import RSEClient
+    from rucio.client.replicaclient import ReplicaClient
+    from rucio.client.downloadclient import DownloadClient
+    from rucio.client.didclient import DIDClient
+    from rucio.common.exception import DataIdentifierNotFound
+except ModuleNotFoundError:
+    warnings.warn("No installation of rucio-clients found. Cant use rucio functionality")
 
 export, __all__ = strax.exporter()
 
@@ -76,15 +80,15 @@ class RucioFrontend(strax.StorageFrontend):
         if local_rse is None and not include_remote:
             raise RuntimeError(f"Could not find a local RSE for hostname {hostname}, and include_remote is False.")
 
-        # get the rucio prefix for the local rse, and setup strax rucio backend to read from that path
-
         self.backends = []
         if local_rse:
+            # get the rucio prefix for the local rse, and setup strax rucio backend to read from that path
             rucio_prefix = self.get_rse_prefix(local_rse)
             self.backends.append(RucioLocalBackend(rucio_prefix))
             self.local_rucio_path = rucio_prefix
 
         self.local_rse = local_rse
+        self.include_remote = include_remote
 
         if include_remote:
             self.backends.append(RucioRemoteBackend(staging_dir, download_raw=download_raw))
@@ -105,12 +109,11 @@ class RucioFrontend(strax.StorageFrontend):
                                    "as it will just return all our data. ")
         else:
             if self.local_did_cache is None:
-                datasets = self.get_rse_datasets(self.local_rse)
-                self.local_did_cache = datasets
+                self.local_did_cache = self.get_rse_datasets(self.local_rse)
 
             # sometimes there's crap in rucio from testing days, so lets do a query to find the real TPC data there
             # plus we will have MC data in rucio as well at some point
-            query = {'data.did': {'$in': datasets}}
+            query = {'data.did': {'$in': self.local_did_cache}}
             projection = {field: 1 for field in store_fields}
             # don't care about the _id
             projection['_id'] = 0
@@ -146,13 +149,15 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         else:
-            # check if did exists
-            try:
-                scope, name = did.split(':')
-                did_info = self.did_client.get_did(scope, name)
-                return "RucioRemoteBackend", did
-            except DataIdentifierNotFound:
-                pass
+            # only do this part if we include the remote backend
+            if self.include_remote:
+                try:
+                    # check if the DID exists
+                    scope, name = did.split(':')
+                    did_info = self.did_client.get_did(scope, name)
+                    return "RucioRemoteBackend", did
+                except DataIdentifierNotFound:
+                    pass
         raise strax.DataNotAvailable
 
     def get_rse_prefix(self, rse):
@@ -213,6 +218,7 @@ class RucioFrontend(strax.StorageFrontend):
         return ret
 
     def get_rse_datasets(self, rse):
+        """Gets the list of datasets that have ever been at an RSE. Note this does not check the current status."""
         datasets = self.replica_client.list_datasets_per_rse(rse)
         ret = []
         for d in tqdm(datasets, desc=f'Finding all datasets at {rse}'):
@@ -224,11 +230,6 @@ class RucioFrontend(strax.StorageFrontend):
                 did = f"{d['scope']}:{d['name']}"
                 ret.append(did)
         return ret
-
-    @staticmethod
-    def key_to_rucio_did(key: strax.DataKey):
-        """Convert a strax.datakey to a rucio did field in rundoc"""
-        return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
 
 
 @export
@@ -361,7 +362,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 success = True
             except KeyboardInterrupt:
                 raise
-            except:
+            except Exception:
                 sleep = 3**_try
                 print(f"Download try #{_try} failed. Sleeping for {sleep} seconds and trying again...")
                 time.sleep(sleep)
