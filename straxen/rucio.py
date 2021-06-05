@@ -123,7 +123,7 @@ class RucioFrontend(strax.StorageFrontend):
                 yield doc
 
     def find_several(self, keys, **kwargs):
-        if kwargs['fuzzy_for'] or kwargs['fuzzy_for_options']:
+        if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
             raise NotImplementedError("Can't do fuzzy with RunDB yet.")
         if not len(keys):
             return []
