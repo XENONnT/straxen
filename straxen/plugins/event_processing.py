@@ -363,7 +363,7 @@ class EventPositions(strax.Plugin):
         ('y', np.float32,
          'Interaction y-position, field-distortion corrected (cm)'),
         ('z', np.float32,
-         'Interaction z-position, field-distortion corrected (cm)'),
+         'Interaction z-position using mean drift velocity only (cm)'),
         ('r', np.float32,
          'Interaction radial position, field-distortion corrected (cm)'),
         ('z_naive', np.float32,
