@@ -1,3 +1,24 @@
+0.18.6-0.18.8 / 2021-06-03
+-------------------
+- Patches installation for pypi (#529, e880420, fce6d87)
+
+
+0.18.5 / 2021-06-03
+---------------------
+- Allow variable event duration (#494, #528)
+- Veto Proximity Plugin (#296)
+- Apply database function prior to returning the data (#497)
+- Max-size for rechunkable raw-records (#495)
+- Itp map patch (#471)
+- Bin updates (#502)
+- Split requirement files, set autoupdate dependabot (#504)
+- Fix failing tests (#503)
+- Reduce review dog verbosity (#498)
+- Reduce plugin testing time (#500)
+- Patch remap cabled (#501)
+- Fix veto veto regions (#493)
+
+
 0.18.4 / 2021-05-20
 ---------------------
 - Documentation and package maintenance (#481)
