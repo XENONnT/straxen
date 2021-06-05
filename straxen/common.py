@@ -125,7 +125,7 @@ def open_resource(file_name: str, fmt='text'):
     elif fmt == 'binary':
         with open(file_name, mode='rb') as f:
             result = f.read()
-    elif fmt == 'text':
+    elif fmt in ['text', 'txt']:
         with open(file_name, mode='r') as f:
             result = f.read()
     elif fmt == 'csv':
@@ -327,6 +327,72 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
+
+@export
+def pre_apply_function(data, run_id, target, function_name='pre_apply_function'):
+    """
+    Prior to returning the data (from one chunk) see if any function(s) need to
+    be applied.
+
+    :param data: one chunk of data for the requested target(s)
+    :param run_id: Single run-id of of the chunk of data
+    :param target: one or more targets
+    :param function_name: the name of the function to be applied. The
+        function_name.py should be stored in the database.
+    :return: Data where the function is applied.
+    """
+    if function_name not in _resource_cache:
+        # only load the function once and put it in the resource cache
+        function_file = f'{function_name}.py'
+        function_file = _load_function_file_from_home(function_file)
+        function = get_resource(function_file, fmt='txt')
+        # pylint: disable=exec-used
+        exec(function)
+        # Cache the function to reduce reloading & eval operations
+        _resource_cache[function_name] = locals().get(function_name)
+    data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
+    return data
+
+
+def _load_function_file_from_home(function_file):
+    """For testing purposes allow this function file to be loaded from HOME"""
+    home = os.environ.get('HOME')
+    if home is not None and os.path.exists(os.path.join(home, function_file)):
+        # For testing purposes allow loading from home
+        print(f'Using local function: {function_file}!')
+        function_file = os.path.join(home, function_file)
+    return function_file
+
+
+@export
+def check_loading_allowed(data, run_id, target,
+                          max_in_disallowed = 1,
+                          disallowed=('event_positions',
+                                      'corrected_areas',
+                                      'energy_estimates')
+                          ):
+    """
+    Check that the loading of the specified targets is not
+    disallowed
+
+    :param data: chunk of data
+    :param run_id: run_id of the run
+    :param target: list of targets requested by the user
+    :param max_in_disallowed: the max number of targets that are
+        in the disallowed list
+    :param disallowed: list of targets that are not allowed to be
+        loaded simultaneously by the user
+    :return: data
+    :raise: RuntimeError if more than max_in_disallowed targets
+        are requested
+    """
+    n_targets_in_disallowed = sum([t in disallowed for t in
+                                   strax.to_str_tuple(target)])
+    if n_targets_in_disallowed > max_in_disallowed:
+        raise RuntimeError(
+            f'Don\'t load {disallowed} separately, use "event_info" instead')
+    return data
 
 
 @export
