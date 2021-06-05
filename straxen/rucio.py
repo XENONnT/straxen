@@ -95,7 +95,7 @@ class RucioFrontend(strax.StorageFrontend):
         else:
             if minimum_run_number is None:
                 minimum_run_number = 0
-            query = {'number': {'$gte': minimum_run_number}}
+            query = {'number': {'$gt': minimum_run_number}}
             self.runs_to_consider = [r['number'] for r in self.collection.find(query, {'number': 1})]
 
     def _scan_runs(self, store_fields):
