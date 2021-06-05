@@ -32,6 +32,7 @@ testing_config_nT = dict(
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
 )
 
 testing_config_1T = dict(
@@ -39,6 +40,7 @@ testing_config_1T = dict(
     gain_model=('1T_to_pe_placeholder', False),
     elife_conf=('elife_constant', 1e6),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
 
 test_run_id_nT = '008900'
