@@ -98,8 +98,7 @@ class EventPatternFit(strax.Plugin):
             straxen.get_resource(self.config['s2_optical_map'], fmt='pkl'))
         
         # Getting gain model to get dead PMTs
-        #self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
-        self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
+        self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
         self.dead_PMTs = np.where(self.to_pe==0)[0]
         self.pmtbool = ~np.in1d(np.arange(0, self.config['n_tpc_pmts']), self.dead_PMTs)
         self.pmtbool_top = self.pmtbool[:self.config['n_top_pmts']]
@@ -128,7 +127,7 @@ class EventPatternFit(strax.Plugin):
         mask_s1 &= ~np.isnan(events['s1_area_fraction_top'])
         
         # compute binomial test only if we have events that have valid aft prob, s1 area and s1 aft
-        if np.sum(mask_s1):
+        if len(mask_s1):
             arg = aft_prob[mask_s1], events['s1_area'][mask_s1], events['s1_area_fraction_top'][mask_s1]
             result['s1_area_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
             result['s1_area_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
@@ -147,7 +146,7 @@ class EventPatternFit(strax.Plugin):
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area_fraction_top'])
         
         # compute binomial test only if we have events that have valid aft prob, alt s1 area and alt s1 aft
-        if np.sum(mask_alt_s1):
+        if len(mask_alt_s1):
             arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_area_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
