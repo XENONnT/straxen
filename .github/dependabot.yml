@@ -9,7 +9,7 @@ updates:
     directory: "/"
     schedule:
       # Check for updates to GitHub Actions every weekday
-      interval: "monthly"
+      interval: "weekly"
     assignees:
       - jorana
   # Maintain the requirements requirements folder
@@ -17,7 +17,7 @@ updates:
     directory: "/extra_requirements"
     schedule:
       # Check for updates to requirements every week
-      interval: "weekly"
+      interval: "monthly"
     open-pull-requests-limit: 15
     assignees:
       - jorana
