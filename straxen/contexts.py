@@ -7,8 +7,6 @@ common_opts = dict(
     register_all=[
         straxen.event_processing,
         straxen.double_scatter,
-        straxen.event_area_per_channel,
-        straxen.event_patternfit,
     ],
     # Register all peak/pulse processing by hand as 1T does not need to have
     # the high-energy plugins.
@@ -87,6 +85,8 @@ xnt_common_opts.update({
                                                    straxen.pulse_processing,
                                                    straxen.peaklet_processing,
                                                    straxen.online_monitor,
+                                                   straxen.event_area_per_channel,
+                                                   straxen.event_patternfit,
                                                    ],
     'use_per_run_defaults': False,
 })
