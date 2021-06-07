@@ -71,18 +71,20 @@ class EventPatternFit(strax.Plugin):
                   'Discrete binomial test for alternative S1 photon fraction top')]
         
         if self.config['store_per_channel']:
-            dtype.append((('2LLH per channel for main S2', 's2_2llh_per_channel'),
-                       np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((('2LLH per channel for alternative S2', 'alt_s2_2llh_per_channel'),
-                       np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((('Pattern main S2', 's2_pattern'),
-                       np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((('Pattern alt S2', 'alt_s2_pattern'),
-                       np.float32, (self.config['n_top_pmts'], )))
-            dtype.append((('Pattern for main S1', 's1_pattern'),
-                       np.float32, (self.config['n_tpc_pmts'], )))
-            dtype.append((('2LLH per channel for main S1', 's1_2llh_per_channel'),
-                       np.float32, (self.config['n_tpc_pmts'], )))
+            dtype += [
+                (('2LLH per channel for main S2', 's2_2llh_per_channel'),
+                 np.float32, (self.config['n_top_pmts'], )),
+                (('2LLH per channel for alternative S2', 'alt_s2_2llh_per_channel'),
+                 np.float32, (self.config['n_top_pmts'], )),
+                (('Pattern main S2', 's2_pattern'),
+                 np.float32, (self.config['n_top_pmts'], )),
+                (('Pattern alt S2', 'alt_s2_pattern'),
+                 np.float32, (self.config['n_top_pmts'], )),
+                (('Pattern for main S1', 's1_pattern'),
+                 np.float32, (self.config['n_tpc_pmts'], )),
+                (('2LLH per channel for main S1', 's1_2llh_per_channel'),
+                 np.float32, (self.config['n_tpc_pmts'], )),
+            ]
         dtype += strax.time_fields
         return dtype
     
@@ -275,7 +277,7 @@ class EventPatternFit(strax.Plugin):
                 result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
 
     @staticmethod
-    def _infer_map_format(map_name, known_formats=('pkl', 'json')):
+    def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
         for fmt in known_formats:
             if map_name.endswith(fmt):
                 return fmt
@@ -283,13 +285,13 @@ class EventPatternFit(strax.Plugin):
 
 
 def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
-    ''' 
+    """
     Modified poisson distribution with proper normalization for shifted poisson. 
     
     mu - expected number of photons per channel
     areas  - observed areas per channel
     mean_pe_photon - mean of area responce for one photon
-    '''
+    """
     with np.errstate(divide='ignore', invalid='ignore'):
         res = 2.*(mu - 
                   (areas/mean_pe_photon)*np.log(mu) + 
@@ -301,8 +303,8 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     # if zero channel has negative expectation, assume LLH to be 0 there
     # this happens in the normalization factor calculation when mu is received from area
     neg_mu = mu<0.0
-    res[is_zero*neg_mu] = 0.0 # 
-    return(res)
+    res[is_zero*neg_mu] = 0.0
+    return res
 
 # continuous and discrete binomial test
 # https://github.com/poliastro/cephes/blob/master/src/bdtr.c
