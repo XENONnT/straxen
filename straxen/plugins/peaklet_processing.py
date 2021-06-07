@@ -342,7 +342,13 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
         # Define the reference region as reference_length before the first saturation point
         # unless there are not enough samples
-        s0 = np.argmax(b >= r0['baseline'])
+        bl = np.inf
+        for record_i in b_index[ch]:
+            if record_i == -1:
+                break
+            bl = min(bl, records['baseline'][record_i])
+
+        s0 = np.argmax(b >= int(bl))
         ref = slice(max(0, s0-reference_length), s0)
 
         if (b[ref] * to_pe[ch] > 1).sum() < min_reference_length:
@@ -352,7 +358,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
         if (b_sumwf[ref] > 1).sum() < min_reference_length:
             # the same condition applies to the waveform model
             continue
-        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) < 1:
+        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) > 1:
             # The pulse is saturated, but insufficient information is available in the other channels
             # to reliably reconstruct it
             continue
@@ -361,6 +367,8 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
         # Loop over the record indices of the saturated channel (saved in b_index buffer)
         for record_i in b_index[ch]:
+            if record_i == -1:
+                break
             r = records[record_i]
             r_slice, b_slice = strax.overlap_indices(
                 r['time'] // dt, r['length'],
