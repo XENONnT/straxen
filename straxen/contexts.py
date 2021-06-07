@@ -7,7 +7,6 @@ common_opts = dict(
     register_all=[
         straxen.event_processing,
         straxen.double_scatter,
-        
     ],
     # Register all peak/pulse processing by hand as 1T does not need to have
     # the high-energy plugins.
