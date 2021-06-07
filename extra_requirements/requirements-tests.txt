@@ -14,7 +14,7 @@ importlib-metadata==4.4.0; python_version=="3.7"
 
 
 ## Other requirements
-blosc==1.10.2      # Strax dependency
+blosc==1.10.4      # Strax dependency
 boltons==21.0.0
 datashader==0.12.1
 dill==0.3.3        # Strax dependency
