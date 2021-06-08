@@ -53,14 +53,12 @@ class RucioFrontend(strax.StorageFrontend):
                  staging_dir='./strax_data',
                  *args, **kwargs):
         """
-        :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites (TODO: not implemented yet)
+        :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites
         :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
         :param args: Passed to strax.StorageFrontend
         :param kwargs: Passed to strax.StorageFrontend
         """
         super().__init__(*args, **kwargs)
-        # initialize rucio clients
-        # TODO eventually just have admix calls for this?
         self.collection = xent_collection()
 
         # check if there is a local rse for the host we are running on
@@ -68,11 +66,10 @@ class RucioFrontend(strax.StorageFrontend):
         local_rse = None
         for rse, host_regex in self.local_rses.items():
             if re.search(host_regex, hostname):
-                if local_rse is None:
-                    local_rse = rse
-                else:
+                if local_rse is not None:
                     raise ValueError(f"The regex {host_regex} matches two RSEs {rse} and {local_rse}. "
                                      f"I'm not sure what to do with that.")
+                local_rse = rse
 
         # if there is no local host and we don't want to include the remote ones, we can't do anything
         if local_rse is None and not include_remote:
