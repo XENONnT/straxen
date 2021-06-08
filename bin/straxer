@@ -24,7 +24,7 @@ def parse_args():
         help="ID of the run to process; usually the run name.")
     parser.add_argument(
         '--context',
-        default='xenon1t_dali',
+        default='xenonnt_online',
         help="Name of straxen context to use")
     parser.add_argument(
         '--target',

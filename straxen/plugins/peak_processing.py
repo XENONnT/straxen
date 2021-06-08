@@ -14,14 +14,20 @@ from .pulse_processing import  HE_PREAMBLE
 @export
 @strax.takes_config(
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
-                 help="Number of top PMTs"))
+                 help="Number of top PMTs"),
+    strax.Option('check_peak_sum_area_rtol', default=None, track=False,
+                 help="Check if the sum area and the sum of area per "
+                      "channel are the same. If None, don't do the "
+                      "check. To perform the check, set to the desired "
+                      " rtol value used e.g. '1e-4' (see np.isclose)."),
+)
 class PeakBasics(strax.Plugin):
     """
     Compute the basic peak-properties, thereby dropping structured
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.0.8"
+    __version__ = "0.0.9"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -74,12 +80,16 @@ class PeakBasics(strax.Plugin):
 
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
+        # Recalculate to prevent numerical inaccuracy #442
+        area_total = p['area_per_channel'].sum(axis=1)
         # Negative-area peaks get NaN AFT
         m = p['area'] > 0
-        r['area_fraction_top'][m] = area_top[m]/p['area'][m]
+        r['area_fraction_top'][m] = area_top[m]/area_total[m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
-        
+
+        if self.config['check_peak_sum_area_rtol'] is not None:
+            self.check_area(area_total, p, self.config['check_peak_sum_area_rtol'])
         # Negative or zero-area peaks have centertime at startime
         r['center_time'] = p['time']
         r['center_time'][m] += self.compute_center_times(peaks[m])
@@ -96,11 +106,47 @@ class PeakBasics(strax.Plugin):
             result[p_i] = t / p['area']
         return result
 
+    @staticmethod
+    def check_area(area_per_channel_sum, peaks, rtol) -> None:
+        """
+        Check if the area of the sum-wf is the same as the total area
+            (if the area of the peak is positively defined).
+
+        :param area_per_channel_sum: the summation of the
+            peaks['area_per_channel'] which will be checked against the
+             values of peaks['area'].
+        :param peaks: array of peaks.
+        :param rtol: relative tolerance for difference between
+            area_per_channel_sum and peaks['area']. See np.isclose.
+        :raises: ValueError if the peak area and the area-per-channel
+            sum are not sufficiently close
+        """
+        positive_area = peaks['area'] > 0
+        if not np.sum(positive_area):
+            return
+
+        is_close = np.isclose(area_per_channel_sum[positive_area],
+                              peaks[positive_area]['area'],
+                              rtol=rtol,
+                             )
+
+        if not is_close.all():
+            for peak in peaks[positive_area][~is_close]:
+                print('bad area')
+                strax.print_record(peak)
+
+            p_i = np.where(~is_close)[0][0]
+            peak = peaks[positive_area][p_i]
+            area_fraction_off = 1 - area_per_channel_sum[positive_area][p_i] / peak['area']
+            message = (f'Area not calculated correctly, it\'s '
+                       f'{100*area_fraction_off} % off, time: {peak["time"]}')
+            raise ValueError(message)
+
 
 @export
 class PeakBasicsHighEnergy(PeakBasics):
     __doc__ = HE_PREAMBLE + PeakBasics.__doc__
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
     child_ends_with = '_he'

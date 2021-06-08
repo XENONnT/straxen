@@ -19,8 +19,9 @@ jobs:
     name: Pytest
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: true
       matrix:
-        # NB: For python3.7 we are going to explicitly test without a database
+        # NB: For python 3.6 and 3.7 we are going to explicitly test without a database
         python-version: [3.6, 3.7, 3.8, 3.9]
     steps:
       - name: Setup python
@@ -29,17 +30,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v2
-      - name: install pre requirements
+      - name: Install requirements for tests and latest strax
         run: |
-            bash .github/scripts/preinstall_requirements.sh
-      - name: Install strax
-        run: |
+            pip install -r extra_requirements/requirements-tests.txt
             pip install git+https://github.com/AxFoundation/strax.git
-      - name: Install python dependencies
-        uses: py-actions/py-dependency-install@v2
       - name: patch utilix file
-        # Since we skip this step for python 3.7, we are testing without the database
-        if: matrix.python-version == 3.6 ||  matrix.python-version == 3.8 || matrix.python-version == 3.9
+        # Since we skip this step for python 3.6 and 3.7, we are testing without the database
+        if:  matrix.python-version == 3.8 || matrix.python-version == 3.9
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
           # Rundb
@@ -56,6 +53,9 @@ jobs:
           SCADA_USER: ${{ secrets.SCADA_USER }}
           SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
           SCADA_PWD: ${{ secrets.SCADA_PWD }}
+      - name: Create pre-apply function file
+        run: |
+          bash .github/scripts/create_pre_apply_function.sh $HOME
       - name: Test package
         run: |
           python setup.py test -v
