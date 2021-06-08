@@ -40,7 +40,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_info')
     provides = 'event_patternfit'
-    __version__ = '0.0.5'
+    __version__ = '0.0.6'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -144,6 +144,7 @@ class EventPatternFit(strax.Plugin):
             arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.config['mean_pe_per_photon'], events['s1_area_fraction_top'][mask_s1]
             result['s1_photon_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
             result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        
         # nan if one among aft prob, s1 area and s1 aft are nan    
         result['s1_area_fraction_top_continuous_probability'][~mask_s1] = np.nan
         result['s1_area_fraction_top_discrete_probability'][~mask_s1] = np.nan
@@ -163,6 +164,7 @@ class EventPatternFit(strax.Plugin):
             arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_photon_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
+        
         # nan if one among aft prob, alt s1 area and alt s1 aft are nan
         result['alt_s1_area_fraction_top_continuous_probability'][~mask_alt_s1] = np.nan
         result['alt_s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan        
@@ -186,51 +188,57 @@ class EventPatternFit(strax.Plugin):
         cur_s1_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
 
         # Making expectation patterns [ in PE ]
-        s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
-        s1_area = events['s1_area'][cur_s1_bool]
-        s1_pattern = s1_area[:, None]*(s1_map_effs[:, self.pmtbool])/np.sum(s1_map_effs[:, self.pmtbool], axis=1)[:, None] 
+        if np.sum(cur_s1_bool):
+            s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
+            s1_area = events['s1_area'][cur_s1_bool]
+            s1_pattern = s1_area[:, None]*(s1_map_effs[:, self.pmtbool])/np.sum(s1_map_effs[:, self.pmtbool], axis=1)[:, None] 
 
-        s1_pattern_top = (events['s1_area_fraction_top'][cur_s1_bool]*s1_area)
-        s1_pattern_top = s1_pattern_top[:, None]*((s1_map_effs[:, :self.config['n_top_pmts']])[:, self.pmtbool_top])
-        s1_pattern_top /= np.sum((s1_map_effs[:, :self.config['n_top_pmts']])[:, self.pmtbool_top], axis=1)[:, None] 
-        s1_pattern_bottom = ((1-events['s1_area_fraction_top'][cur_s1_bool])*s1_area)
-        s1_pattern_bottom = s1_pattern_bottom[:, None]*((s1_map_effs[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom])
-        s1_pattern_bottom /= np.sum((s1_map_effs[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom], axis=1)[:, None] 
+            s1_pattern_top = (events['s1_area_fraction_top'][cur_s1_bool]*s1_area)
+            s1_pattern_top = s1_pattern_top[:, None]*((s1_map_effs[:, :self.config['n_top_pmts']])[:, self.pmtbool_top])
+            s1_pattern_top /= np.sum((s1_map_effs[:, :self.config['n_top_pmts']])[:, self.pmtbool_top], axis=1)[:, None] 
+            s1_pattern_bottom = ((1-events['s1_area_fraction_top'][cur_s1_bool])*s1_area)
+            s1_pattern_bottom = s1_pattern_bottom[:, None]*((s1_map_effs[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom])
+            s1_pattern_bottom /= np.sum((s1_map_effs[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom], axis=1)[:, None] 
 
-        # Getting pattern from data
-        s1_area_per_channel_ = events['s1_area_per_channel'][cur_s1_bool,:]
-        s1_area_per_channel = s1_area_per_channel_[:, self.pmtbool]
-        s1_area_per_channel_top = (s1_area_per_channel_[:, :self.config['n_top_pmts']])[:, self.pmtbool_top]
-        s1_area_per_channel_bottom = (s1_area_per_channel_[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom]
+            # Getting pattern from data
+            s1_area_per_channel_ = events['s1_area_per_channel'][cur_s1_bool,:]
+            s1_area_per_channel = s1_area_per_channel_[:, self.pmtbool]
+            s1_area_per_channel_top = (s1_area_per_channel_[:, :self.config['n_top_pmts']])[:, self.pmtbool_top]
+            s1_area_per_channel_bottom = (s1_area_per_channel_[:, self.config['n_top_pmts']:])[:, self.pmtbool_bottom]
 
-        # Top and bottom
-        arg1 = s1_pattern/self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
-        arg2 = s1_area_per_channel/self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
-        norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
-        result['s1_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
-        
-        # If needed to stire - store only top and bottom array, but not together
-        if self.config['store_per_channel']:
-            # Storring pattern information
-            store_patterns = np.zeros((s1_pattern.shape[0], self.config['n_tpc_pmts']) )  
-            store_patterns[:, self.pmtbool] = s1_pattern
-            result['s1_pattern'][cur_s1_bool] = store_patterns
-            # Storing actual LLH values
-            store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_tpc_pmts']) )
-            store_2LLH_ch[:, self.pmtbool] = norm_llh_val
-            result['s1_2llh_per_channel'][cur_s1_bool] = store_2LLH_ch
+            # Top and bottom
+            arg1 = s1_pattern/self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
+            arg2 = s1_area_per_channel/self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
+            norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
+            result['s1_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+
+            # If needed to stire - store only top and bottom array, but not together
+            if self.config['store_per_channel']:
+                # Storring pattern information
+                store_patterns = np.zeros((s1_pattern.shape[0], self.config['n_tpc_pmts']) )  
+                store_patterns[:, self.pmtbool] = s1_pattern
+                result['s1_pattern'][cur_s1_bool] = store_patterns
+                # Storing actual LLH values
+                store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_tpc_pmts']) )
+                store_2LLH_ch[:, self.pmtbool] = norm_llh_val
+                result['s1_2llh_per_channel'][cur_s1_bool] = store_2LLH_ch
+
+            # Top
+            arg1 = s1_pattern_top/self.mean_pe_photon, s1_area_per_channel_top, self.mean_pe_photon
+            arg2 = s1_area_per_channel_top/self.mean_pe_photon, s1_area_per_channel_top, self.mean_pe_photon
+            norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
+            result['s1_top_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+
+            # Bottom
+            arg1 = s1_pattern_bottom/self.mean_pe_photon, s1_area_per_channel_bottom, self.mean_pe_photon
+            arg2 = s1_area_per_channel_bottom/self.mean_pe_photon, s1_area_per_channel_bottom, self.mean_pe_photon
+            norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
+            result['s1_bottom_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
             
-        # Top
-        arg1 = s1_pattern_top/self.mean_pe_photon, s1_area_per_channel_top, self.mean_pe_photon
-        arg2 = s1_area_per_channel_top/self.mean_pe_photon, s1_area_per_channel_top, self.mean_pe_photon
-        norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
-        result['s1_top_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
-
-        # Bottom
-        arg1 = s1_pattern_bottom/self.mean_pe_photon, s1_area_per_channel_bottom, self.mean_pe_photon
-        arg2 = s1_area_per_channel_bottom/self.mean_pe_photon, s1_area_per_channel_bottom, self.mean_pe_photon
-        norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
-        result['s1_bottom_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+        else:
+            result['s1_2llh'][~cur_s1_bool] = np.nan
+            result['s1_top_2llh'][~cur_s1_bool] = np.nan
+            result['s1_bottom_2llh'][~cur_s1_bool] = np.nan
             
     def compute_s2_llhvalue(self, events, result):
         for t_ in ['s2', 'alt_s2']:
@@ -243,39 +251,45 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool &= (events[t_+'_index']!=-1)
             cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
+            
             # Making expectation patterns [ in PE ]
-            s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
-            s2_map_effs = s2_map_effs[:, self.pmtbool_top]
-            s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[cur_s2_bool]
-            s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]
-            
-            # Getting pattern from data
-            s2_top_area_per_channel = events[t_+'_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
-            s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
-            
-            # Calculating LLH, this is shifted Poisson
-            # we get area expectation and we need to scale them to get
-            # photon expectation
-            norm_llh_val = (neg2llh_modpoisson(
-                                 mu    = s2_pattern/self.mean_pe_photon, 
-                                 areas = s2_top_area_per_channel, 
-                                 mean_pe_photon=self.mean_pe_photon)
-                                    - 
-                            neg2llh_modpoisson(
-                                 mu    = s2_top_area_per_channel/self.mean_pe_photon, 
-                                 areas = s2_top_area_per_channel, 
-                                 mean_pe_photon=self.mean_pe_photon)
-                           )
-            result[t_+'_2llh'][cur_s2_bool]=np.sum(norm_llh_val, axis=1)
-            if self.config['store_per_channel']:
-                store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
-                store_patterns[:, self.pmtbool_top] = s2_pattern
-                result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
-                
-                store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
-                store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
-                result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
+            if np.sum(cur_s2_bool):
+                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
+                s2_map_effs = s2_map_effs[:, self.pmtbool_top]
+                s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[cur_s2_bool]
+                s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]
 
+                # Getting pattern from data
+                s2_top_area_per_channel = events[t_+'_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
+                s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
+
+                # Calculating LLH, this is shifted Poisson
+                # we get area expectation and we need to scale them to get
+                # photon expectation
+                norm_llh_val = (neg2llh_modpoisson(
+                                     mu    = s2_pattern/self.mean_pe_photon, 
+                                     areas = s2_top_area_per_channel, 
+                                     mean_pe_photon=self.mean_pe_photon)
+                                        - 
+                                neg2llh_modpoisson(
+                                     mu    = s2_top_area_per_channel/self.mean_pe_photon, 
+                                     areas = s2_top_area_per_channel, 
+                                     mean_pe_photon=self.mean_pe_photon)
+                               )
+                result[t_+'_2llh'][cur_s2_bool] = np.sum(norm_llh_val, axis=1)
+
+                if self.config['store_per_channel']:
+                    store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
+                    store_patterns[:, self.pmtbool_top] = s2_pattern
+                    result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
+
+                    store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
+                    store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
+                    result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
+                    
+            else:
+                 result[t_+'_2llh'][~cur_s2_bool] = np.nan
+                    
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
         for fmt in known_formats:
