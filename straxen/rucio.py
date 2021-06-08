@@ -4,6 +4,7 @@ from tqdm import tqdm
 import json
 from bson import json_util
 import os
+import glob
 import hashlib
 import time
 from utilix import xent_collection
@@ -16,6 +17,13 @@ try:
     from rucio.client.downloadclient import DownloadClient
     from rucio.client.didclient import DIDClient
     from rucio.common.exception import DataIdentifierNotFound
+
+    rucio_client = Client()
+    rse_client = RSEClient()
+    replica_client = ReplicaClient()
+    did_client = DIDClient()
+    download_client = DownloadClient()
+
 except ModuleNotFoundError:
     warnings.warn("No installation of rucio-clients found. Cant use rucio functionality")
 
@@ -30,9 +38,6 @@ class DownloadError(Exception):
     pass
 
 
-RAW_TYPES = ['raw_records', 'raw_records_nv', 'raw_records_he']
-
-
 @export
 class RucioFrontend(strax.StorageFrontend):
     """
@@ -44,25 +49,18 @@ class RucioFrontend(strax.StorageFrontend):
 
     def __init__(self,
                  include_remote=False,
-                 download_raw=False,
+                 download_heavy=False,
                  staging_dir='./strax_data',
-                 minimum_run_number=7157,
-                 runs_to_consider=None,
                  *args, **kwargs):
         """
         :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites (TODO: not implemented yet)
-        :param minimum_run_number: only consider run numbers larger than this
-        :param runs_to_consider: list of runs to consider, so we don't automatically search for ALL data.
+        :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
         :param args: Passed to strax.StorageFrontend
         :param kwargs: Passed to strax.StorageFrontend
         """
         super().__init__(*args, **kwargs)
         # initialize rucio clients
         # TODO eventually just have admix calls for this?
-        self.rucio_client = Client()
-        self.rse_client = RSEClient()
-        self.replica_client = ReplicaClient()
-        self.did_client = DIDClient()
         self.collection = xent_collection()
 
         # check if there is a local rse for the host we are running on
@@ -91,16 +89,7 @@ class RucioFrontend(strax.StorageFrontend):
         self.include_remote = include_remote
 
         if include_remote:
-            self.backends.append(RucioRemoteBackend(staging_dir, download_raw=download_raw))
-
-        # find run numbers to consider
-        if runs_to_consider:
-            self.runs_to_consider = runs_to_consider
-        else:
-            if minimum_run_number is None:
-                minimum_run_number = 0
-            query = {'number': {'$gt': minimum_run_number}}
-            self.runs_to_consider = [r['number'] for r in self.collection.find(query, {'number': 1})]
+            self.backends.append(RucioRemoteBackend(staging_dir, download_heavy=download_heavy))
 
     def _scan_runs(self, store_fields):
         if self.local_rse is None:
@@ -142,10 +131,7 @@ class RucioFrontend(strax.StorageFrontend):
         return ret
 
     def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
-        if fuzzy_for or fuzzy_for_options:
-            raise NotImplementedError("Can't do fuzzy with rucio yet.")
-
-        did = self.key_to_rucio_did(key)
+        did = key_to_rucio_did(key)
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         else:
@@ -154,15 +140,24 @@ class RucioFrontend(strax.StorageFrontend):
                 try:
                     # check if the DID exists
                     scope, name = did.split(':')
-                    did_info = self.did_client.get_did(scope, name)
+                    did_info = did_client.get_did(scope, name)
                     return "RucioRemoteBackend", did
                 except DataIdentifierNotFound:
                     pass
+
+        if fuzzy_for or fuzzy_for_options:
+            base_dir = did_to_dirname(did)
+            matches_to = self._match_fuzzy(key,
+                                           base_dir,
+                                           fuzzy_for,
+                                           fuzzy_for_options)
+            if matches_to:
+                return matches_to
+
         raise strax.DataNotAvailable
 
     def get_rse_prefix(self, rse):
-        """TODO will eventually do an admix call here"""
-        rse_info = self.rse_client.get_rse(rse)
+        rse_info = rse_client.get_rse(rse)
         prefix = rse_info['protocols'][0]['prefix']
         return prefix
 
@@ -196,40 +191,39 @@ class RucioFrontend(strax.StorageFrontend):
                     return False
         return True
 
-    def list_rules(self, did, **filters):
-        """
-        Fetches list of replication rules using the rucio client.
-        :param did: Rucio DID string
-        :param filters: Kwargs that allow for selecting only certain rules.
-        For example, rse_expression={rse} will return only the rules at the RSE {rse}. Another useful one is state='OK'
-        :return: List of dictionaries with replication rule information.
-        """
-        scope, name = did.split(':')
-        rules = self.rucio_client.list_did_rules(scope, name)
-        # get rules that pass some filter(s)
-        ret = []
-        for rule in rules:
-            selected = True
-            for key, val in filters.items():
-                if rule[key] != val:
-                    selected = False
-            if selected:
-                ret.append(rule)
-        return ret
-
     def get_rse_datasets(self, rse):
         """Gets the list of datasets that have ever been at an RSE. Note this does not check the current status."""
-        datasets = self.replica_client.list_datasets_per_rse(rse)
+        datasets = replica_client.list_datasets_per_rse(rse)
         ret = []
         for d in tqdm(datasets, desc=f'Finding all datasets at {rse}'):
             try:
                 number = int(d['scope'].split('_')[1])
             except (ValueError, IndexError):
                 continue
-            if number in self.runs_to_consider:
-                did = f"{d['scope']}:{d['name']}"
-                ret.append(did)
         return ret
+
+    def _match_fuzzy(self,
+                     key: strax.DataKey,
+                     base_dir: str,
+                     fuzzy_for: tuple,
+                     fuzzy_for_options: tuple,
+                     ) -> tuple:
+        # fuzzy for local backend
+        mds = glob.glob(self.path + f'/xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
+        for md in mds:
+            md_dict = read_md(md)
+            if self._matches(md_dict['lineage'],
+                             key.lineage,
+                             fuzzy_for,
+                             fuzzy_for_options):
+                fuzzy_lineage_hash = md_dict['lineage_hash']
+                did = f'xnt_{key.run_id}:{key.data_type}-{fuzzy_lineage_hash}'
+                fuzzy_key = strax.DataKey(run_id=key.run_id,
+                                          data_type=key.data_type,
+                                          lineage=md_dict['lineage'])
+                self.log.warning(f'Was asked for {key} returning {md}')
+                if self._all_chunk_stored(md, base_dir, fuzzy_key):
+                    return 'RucioLocalBackend', did
 
 
 @export
@@ -268,7 +262,11 @@ class RucioLocalBackend(strax.FileSytemBackend):
 @export
 class RucioRemoteBackend(strax.FileSytemBackend):
     """Get data from remote Rucio RSE"""
-    def __init__(self, staging_dir, download_raw=False, **kwargs):
+
+    # datatypes we don't want to download since they're too heavy
+    heavy_types = ['raw_records', 'raw_records_nv', 'raw_records_he']
+
+    def __init__(self, staging_dir, download_heavy=False, **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be a writable location.
         :param *args: Passed to strax.FileSystemBackend
@@ -288,8 +286,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
-        self.download_client = DownloadClient()
-        self.download_raw = download_raw
+        self.download_heavy = download_heavy
 
 
     def get_metadata(self, dset_did, rse='UC_OSG_USERDISK', **kwargs):
@@ -324,9 +321,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         chunk_path = os.path.join(base_dir, chunk_file)
         if not os.path.exists(chunk_path):
             number, datatype, hsh = parse_did(dset_did)
-            if datatype in RAW_TYPES and not self.download_raw:
+            if datatype in self.heavy_types and not self.download_heavy:
                 raise DownloadError("For space reasons we don't want to have everyone downloading raw data. "
-                                    "If you know what you're doing, pass download_raw=True to the Rucio frontend. "
+                                    "If you know what you're doing, pass download_heavy=True to the Rucio frontend. "
                                     "If not, check your context and/or ask someone if this raw data is needed locally."
                                     )
             scope, name = dset_did.split(':')
@@ -358,7 +355,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 for did_dict in did_dict_list:
                     did_dict['rse'] = None
             try:
-                self.download_client.download_dids(did_dict_list)
+                download_client.download_dids(did_dict_list)
                 success = True
             except KeyboardInterrupt:
                 raise
@@ -421,3 +418,7 @@ def read_md(path: str) -> json:
         md = json.loads(f.read(),
                         object_hook=json_util.object_hook)
     return md
+
+def list_datasets(scope):
+    datasets = [d for d in rucio_client.list_dids(scope, {'type': 'dataset'}, type='dataset')]
+    return datasets
