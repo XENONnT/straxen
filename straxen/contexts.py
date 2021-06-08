@@ -92,6 +92,7 @@ xnt_common_opts.update({
 
 
 def xenonnt_online(output_folder='./strax_data',
+                   use_rucio=True,
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
@@ -108,6 +109,7 @@ def xenonnt_online(output_folder='./strax_data',
 
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
+    :param use_rucio: bool, whether or not to use the rucio frontend
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param _minimum_run_number: int, lowest number to consider
     :param _maximum_run_number: Highest number to consider. When None
@@ -143,6 +145,8 @@ def xenonnt_online(output_folder='./strax_data',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
         )] if _database_init else []
+    if use_rucio:
+        st.storage.append(straxen.rucio.RucioFrontend(include_remote=True, staging_dir=output_folder))
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
