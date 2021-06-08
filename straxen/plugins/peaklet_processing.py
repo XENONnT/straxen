@@ -318,7 +318,7 @@ def peak_saturation_correction(records, peaks, to_pe,
     strax.sum_waveform(peaks, records, to_pe, peak_list)
 
 
-@numba.jit(nopython=True, nogil=True, cache=True)
+#@numba.jit(nopython=True, nogil=True, cache=True)
 def _peak_saturation_correction_inner(channel_saturated, records, p,
                                       to_pe, b_sumwf, b_pulse, b_index,
                                       reference_length=100,
