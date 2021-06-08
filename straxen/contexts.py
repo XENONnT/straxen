@@ -147,8 +147,6 @@ def xenonnt_online(output_folder='./strax_data',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
         )] if _database_init else []
-    if use_rucio:
-        st.storage.append(straxen.rucio.RucioFrontend(include_remote=True, staging_dir=output_folder))
     if not we_are_the_daq:
         st.storage += [
             strax.DataDirectory(
@@ -166,6 +164,11 @@ def xenonnt_online(output_folder='./strax_data',
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
         if _forbid_creation_of is not None:
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
+
+    # if we said so, add the rucio frontend to storage
+    if use_rucio:
+        st.storage.append(straxen.rucio.RucioFrontend(include_remote=True, staging_dir=output_folder))
+
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
