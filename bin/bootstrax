@@ -73,7 +73,7 @@ what bootstrax is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this bootstrax instance
    is writing to (in percent).
 """
-__version__ = '1.1.5'
+__version__ = '1.1.6'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1059,12 +1059,17 @@ def check_data_written(rd):
     """
     files_written = 0
     for ddoc in rd['data']:
-        if ddoc['host'] == hostname:
-            if os.path.exists(ddoc['location']):
+        ddoc_loc = ddoc.get('location', 'NO LOCATION')
+        ddoc_host = ddoc.get('host', 'NO HOST')
+        log.debug(f'Checking {ddoc_loc} on {ddoc_host}')
+        if ddoc_host == hostname:
+            if os.path.exists(ddoc_loc):
+                log.debug(f'{ddoc_loc} written')
                 files_written += 1
             else:
-                log.info(f'No data at {ddoc["location"]}')
+                log.info(f'No data at {ddoc_loc}')
                 return False
+    log.info(f'{files_written} files are saved')
     return files_written > 0
 
 
@@ -1079,7 +1084,9 @@ def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
     """
     start = time.time()
     while not check_data_written(rd):
+        log.debug(f'{rd["number"]} not all saved')
         if time.time() - start > wait_max:
+
             log_warning(f'Not all files saved for {rd["number"]}@{hostname}?!',
                         priority='warning')
             return False
@@ -1128,7 +1135,10 @@ def upload_file_metadata(rd):
 
             run_coll.update_one(
                 {'_id': rd['_id'],
-                 'data.location': ddoc['location']},
+                'data': {
+                    '$elemMatch': {
+                        'location': ddoc['location'],
+                        'host': ddoc['host']}}},
                 {'$set':
                      {'data.$.file_count': file_count,
                       'data.$.meta.strax_version': strax.__version__,
