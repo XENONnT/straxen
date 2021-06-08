@@ -33,8 +33,8 @@ testing_config_nT = dict(
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
     s1_aft_map=aux_repo + 'ffdadba3439ae7922b19f5dd6479348b253c09b0/strax_files/s1_aft_UNITY_xyz_XENONnT.json',
-    s2_optical_map='/home/joran/google_drive/ubuntu-windows/software/private_nt_aux_files/sim_files/XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl',
-    s1_optical_map='/home/joran/google_drive/ubuntu-windows/software/private_nt_aux_files/sim_files/XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl',
+    s2_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s2_map_UNITY_xy_XENONnT.json',
+    s1_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s1_lce_UNITY_xyz_XENONnT.json',
 )
 
 testing_config_1T = dict(
