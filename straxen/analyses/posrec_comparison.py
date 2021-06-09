@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-
 import strax
 import straxen
 
@@ -30,7 +28,7 @@ def load_corrected_positions(context, run_id, events,
         fdc_config = None
         try:
             fdc_config = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
-            cmt_version = fdc_config[1][1]
+            cmt_version = fdc_config[1]
         except IndexError as e:
             raise ValueError(f'CMT is not set? Your fdc config is {fdc_config}') from e
     
@@ -68,8 +66,8 @@ def load_corrected_positions(context, run_id, events,
     z_obs = - drift_speed * events['drift_time']
     
     for algo, v_cmt in zip(posrec_algos, cmt_version):
-        fdc_tmp = ('CMT_model', (f'fdc_map_{algo}', v_cmt), True)
-        map_tmp = straxen.get_config_from_cmt(run_id, fdc_tmp)
+        fdc_tmp = (f'fdc_map_{algo}', v_cmt, True)
+        map_tmp = straxen.get_correction_from_cmt(run_id, fdc_tmp)
         itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt='binary'))
         itp_tmp.scale_coordinates([1., 1., -drift_speed])
 
