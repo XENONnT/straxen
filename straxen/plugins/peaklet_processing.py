@@ -168,6 +168,9 @@ class Peaklets(strax.Plugin):
         # Saturation correction using non-saturated channels
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
+        if not records['data'].flags.writeable:
+            records['data'].flags.writeable = True
+
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
                 r, peaklets, self.to_pe,
