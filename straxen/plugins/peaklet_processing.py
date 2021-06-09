@@ -168,8 +168,11 @@ class Peaklets(strax.Plugin):
         # Saturation correction using non-saturated channels
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
+        # Cases when records is not writeable for unclear reason
+        # only see this when loading 1T test data
+        # more details on https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html
         if not records['data'].flags.writeable:
-            records['data'].flags.writeable = True
+            r = records.copy()
 
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
@@ -238,7 +241,7 @@ class Peaklets(strax.Plugin):
                 p['length'] = (end - p['time']) // p['dt']
 
 
-#@numba.jit(nopython=True, nogil=True, cache=True)
+@numba.jit(nopython=True, nogil=True, cache=True)
 def peak_saturation_correction(records, peaks, to_pe,
                                reference_length=100,
                                min_reference_length=20,
@@ -321,7 +324,7 @@ def peak_saturation_correction(records, peaks, to_pe,
     strax.sum_waveform(peaks, records, to_pe, peak_list)
 
 
-#@numba.jit(nopython=True, nogil=True, cache=True)
+@numba.jit(nopython=True, nogil=True, cache=True)
 def _peak_saturation_correction_inner(channel_saturated, records, p,
                                       to_pe, b_sumwf, b_pulse, b_index,
                                       reference_length=100,
