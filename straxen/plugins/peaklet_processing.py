@@ -169,10 +169,13 @@ class Peaklets(strax.Plugin):
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
         if self.config['saturation_correction_on']:
-            peak_saturation_correction(
+            peak_list = peak_saturation_correction(
                 r, peaklets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
+
+            # Compute the width again for corrected peaks
+            strax.compute_widths(peaklets, select_peaks_indicies=peak_list)
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -316,6 +319,7 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['dt'] = dt
 
     strax.sum_waveform(peaks, records, to_pe, peak_list)
+    return peak_list
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
