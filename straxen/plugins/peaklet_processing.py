@@ -354,7 +354,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
                 break
             bl = min(bl, records['baseline'][record_i])
 
-        s0 = np.argmax(b >= int(bl))
+        s0 = np.argmax(b >= np.int16(bl))
         ref = slice(max(0, s0-reference_length), s0)
 
         if (b[ref] * to_pe[ch] > 1).sum() < min_reference_length:
