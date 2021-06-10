@@ -20,10 +20,15 @@ export, __all__ = strax.exporter()
     strax.Option('baseline_samples_nv',
                  default=('baseline_samples_nv', 'ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
-    strax.Option('hit_min_amplitude_nv',
-                 default=20, track=True,
-                 help='Minimum hit amplitude in ADC counts above baseline. '
-                      'Specify as a tuple of length n_nveto_pmts, or a number.'),
+    strax.Option(
+        'hit_min_amplitude_nv',
+        default=('hit_thresholds_nv', 'ONLINE', True), track=True,
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_nveto_pmts, or a number, '
+             'or a string like "pmt_commissioning_initial" which means calling '
+             'hitfinder_thresholds.py, '
+             'or a tuple like (correction=str, version=str, nT=boolean), '
+             'which means we are using cmt.'),
     strax.Option('n_lone_records_nv', type=int, default=2, track=False,
                  help="Number of lone hits to be stored per channel for diagnostic reasons."),
     strax.Option('channel_map', track=False, type=immutabledict,
@@ -66,6 +71,22 @@ class nVETORecorder(strax.Plugin):
             self.baseline_samples = straxen.get_correction_from_cmt(
                 self.run_id, self.config['baseline_samples_nv'])
 
+        # Check config of `hit_min_amplitude_nv` and define hit thresholds
+        # if cmt config
+        if (isinstance(self.config['hit_min_amplitude_nv'], tuple) and 
+            len(self.config['hit_min_amplitude_nv'])==3 and 
+            type(self.config['hit_min_amplitude_nv'][0]==str) and
+            type(self.config['hit_min_amplitude_nv'][1]==str) and
+            type(self.config['hit_min_amplitude_nv'][0]==bool)):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_nv'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_nv'], str):
+            self.thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_nv'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_nv']
+
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
@@ -101,8 +122,7 @@ class nVETORecorder(strax.Plugin):
         strax.baseline(temp_records,
                        baseline_samples=self.baseline_samples,
                        flip=True)
-        hits = strax.find_hits(temp_records,
-                               min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(temp_records, min_amplitude=self.thresholds)
         del temp_records
 
         # First we have to split rr into records and lone records:
