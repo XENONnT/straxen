@@ -42,7 +42,6 @@ xnt_common_config = dict(
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
-    s1_max_rise_time=100,
     gcn_model=None,
     # Event level parameters
     s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
@@ -265,6 +264,8 @@ x1t_common_config = dict(
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
+    s1_max_rise_time=60,
+    s1_max_rise_time_post100=150,
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
