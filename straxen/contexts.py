@@ -275,6 +275,7 @@ x1t_common_config = dict(
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
     event_info_function='disabled',
     max_drift_length=96.9,
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
 
 

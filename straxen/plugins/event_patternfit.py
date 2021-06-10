@@ -136,6 +136,12 @@ class EventPatternFit(strax.Plugin):
         mask_s1 &= ~np.isnan(events['s1_area'])
         mask_s1 &= ~np.isnan(events['s1_area_fraction_top'])
         
+        # default value is nan, it will be ovewrite if the event satisfy the requirments
+        result['s1_area_fraction_top_continuous_probability'][:] = np.nan
+        result['s1_area_fraction_top_discrete_probability'][:] = np.nan
+        result['s1_photon_fraction_top_continuous_probability'][:] = np.nan
+        result['s1_photon_fraction_top_discrete_probability'][:] = np.nan
+        
         # compute binomial test only if we have events that have valid aft prob, s1 area and s1 aft
         if np.sum(mask_s1):
             arg = aft_prob[mask_s1], events['s1_area'][mask_s1], events['s1_area_fraction_top'][mask_s1]
@@ -145,16 +151,16 @@ class EventPatternFit(strax.Plugin):
             result['s1_photon_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
             result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
         
-        # nan if one among aft prob, s1 area and s1 aft are nan    
-        result['s1_area_fraction_top_continuous_probability'][~mask_s1] = np.nan
-        result['s1_area_fraction_top_discrete_probability'][~mask_s1] = np.nan
-        result['s1_photon_fraction_top_continuous_probability'][~mask_s1] = np.nan
-        result['s1_photon_fraction_top_discrete_probability'][~mask_s1] = np.nan       
-
         # alternative s1 events
         mask_alt_s1 = ~np.isnan(aft_prob)
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area'])
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area_fraction_top'])
+        
+        # default value is nan, it will be ovewrite if the event satisfy the requirments
+        result['alt_s1_area_fraction_top_continuous_probability'][:] = np.nan
+        result['alt_s1_area_fraction_top_discrete_probability'][:] = np.nan
+        result['alt_s1_photon_fraction_top_continuous_probability'][:] = np.nan
+        result['alt_s1_photon_fraction_top_discrete_probability'][:] = np.nan
         
         # compute binomial test only if we have events that have valid aft prob, alt s1 area and alt s1 aft
         if np.sum(mask_alt_s1):
@@ -164,12 +170,6 @@ class EventPatternFit(strax.Plugin):
             arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_photon_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-        
-        # nan if one among aft prob, alt s1 area and alt s1 aft are nan
-        result['alt_s1_area_fraction_top_continuous_probability'][~mask_alt_s1] = np.nan
-        result['alt_s1_area_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan        
-        result['alt_s1_photon_fraction_top_continuous_probability'][~mask_alt_s1] = np.nan
-        result['alt_s1_photon_fraction_top_discrete_probability'][~mask_alt_s1] = np.nan
                 
         return result
 
@@ -186,7 +186,12 @@ class EventPatternFit(strax.Plugin):
         cur_s1_bool &= np.isfinite(y)
         cur_s1_bool &= np.isfinite(z)
         cur_s1_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
-
+        
+        # default value is nan, it will be ovewrite if the event satisfy the requirments
+        result['s1_2llh'][:] = np.nan
+        result['s1_top_2llh'][:] = np.nan
+        result['s1_bottom_2llh'][:] = np.nan
+        
         # Making expectation patterns [ in PE ]
         if np.sum(cur_s1_bool):
             s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
@@ -235,11 +240,6 @@ class EventPatternFit(strax.Plugin):
             norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
             result['s1_bottom_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
             
-        else:
-            result['s1_2llh'][~cur_s1_bool] = np.nan
-            result['s1_top_2llh'][~cur_s1_bool] = np.nan
-            result['s1_bottom_2llh'][~cur_s1_bool] = np.nan
-            
     def compute_s2_llhvalue(self, events, result):
         for t_ in ['s2', 'alt_s2']:
             # Selecting S2s for pattern fit calculation
@@ -252,7 +252,9 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
             
-            result[t_+'_2llh'][:]=np.nan
+            # default value is nan, it will be ovewrite if the event satisfy the requirments
+            result[t_+'_2llh'][:] = np.nan
+            
             # Making expectation patterns [ in PE ]
             if np.sum(cur_s2_bool):
                 s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
