@@ -39,7 +39,6 @@ def plot_pulses(context, raw_records, run_id, time_range,
                 detector_ending=''):
     """
     Plots nveto pulses for a list of records.
-
     :param context: Context to be used.
     :param plot_hits: If True plot hit boundaries including the left
         and right extension as orange shaded regions.
@@ -114,17 +113,14 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          color='k',
                          label=f'Median Bas.: {median:.0f} ADC')
 
-            axes.axhline(median - p.config['hit_min_amplitude_nv'],
+            axes.axhline(median - p.thresholds[rr_pulse['channel']][0],
                          ls='dotted', color='orange'
                          )
 
         hits = None  # needed for delet if false
         if plot_hits:
-            if detector_ending:
-                min_amplitude = p.config['hit_min_amplitude'+detector_ending]
-            else:
-                min_amplitude = straxen.hit_min_amplitude(p.config['hit_min_amplitude'])
-                min_amplitude = min_amplitude[rr_pulse[0]['channel']]
+            min_amplitude = p.thresholds
+            min_amplitude = min_amplitude[rr_pulse[0]['channel']]
             
             axes.axhline(baseline - min_amplitude,
                          color='orange', label='Hitfinder threshold')
@@ -132,7 +128,11 @@ def plot_pulses(context, raw_records, run_id, time_range,
             hits = strax.find_hits(r_pulse,
                                    min_amplitude=min_amplitude
                                    )
-            le, re = p.config['save_outside_hits'+detector_ending]
+            if detector_ending != '_he':
+                # We don't have 'save_outside_hits_he' at all!
+                le, re = p.config['save_outside_hits'+detector_ending]
+            else:
+                le, re = p.config['save_outside_hits']
             start = (hits['time'] - r_pulse[0]['time']) / r_pulse[0]['dt'] - le
             end = (strax.endtime(hits) - r_pulse[0]['time']) / r_pulse[0]['dt'] + re
 
@@ -160,11 +160,9 @@ def plot_pulses(context, raw_records, run_id, time_range,
 def _yield_pulse_indices(records):
     """
     Function which yields indices of records which are within a pulse.
-
     Note:
         Only finds fragments of the pulse if record_i == 0 is within list
         of records.
-
     :yields: indices of fragments to make the corresponding pulse.
     """
     # Get record links and find start indicies:
