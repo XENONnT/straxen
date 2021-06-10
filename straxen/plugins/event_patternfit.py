@@ -252,6 +252,7 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
             
+            result[t_+'_2llh'][:]=np.nan
             # Making expectation patterns [ in PE ]
             if np.sum(cur_s2_bool):
                 s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
@@ -286,9 +287,6 @@ class EventPatternFit(strax.Plugin):
                     store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
                     store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
                     result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
-                    
-            else:
-                 result[t_+'_2llh'][~cur_s2_bool] = np.nan
                     
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
