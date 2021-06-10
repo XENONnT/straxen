@@ -165,9 +165,10 @@ class PulseProcessing(strax.Plugin):
             type(self.config['hit_min_amplitude_tpc'][0]==bool)):
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_tpc'])
+        # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_tpc'], str):
             self.thresholds = straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude'])
+                self.config['hit_min_amplitude_tpc'])
         else: # int or array
             self.thresholds = self.config['hit_min_amplitude_tpc']
         
@@ -280,6 +281,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
             type(self.config['hit_min_amplitude_he'][0]==bool)):
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_he'], str):
             self.thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude_he'])
