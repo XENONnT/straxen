@@ -11,19 +11,26 @@ __all__ += ['NO_PULSE_COUNTS']
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
-        'hit_min_amplitude',
-        default='pmt_commissioning_initial',
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'See straxen.hit_min_amplitude for options.'
+    'hit_min_amplitude_tpc',
+    default=('hit_thresholds_tpc', 'ONLINE', True), track=True,
+    help='Minimum hit amplitude in ADC counts above baseline. '
+            'Specify as a tuple of length n_tpc_pmts, or a number,'
+            'or a string like "pmt_commissioning_initial" which means calling'
+            'hitfinder_thresholds.py'
+            'or a tuple like (correction=str, version=str, nT=boolean),'
+            'which means we are using cmt.'
     )])
 
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
-        'hit_min_amplitude_he', track=True,
-        default="pmt_commissioning_initial_he",
-        child_option=True, parent_option_name='hit_min_amplitude',
-        help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
-             'See straxen.hit_min_amplitude for options.'
+    'hit_min_amplitude_he',
+    default=('hit_thresholds_he', 'ONLINE', True), track=True,
+    help='Minimum hit amplitude in ADC counts above baseline. '
+            'Specify as a tuple of length n_tpc_pmts, or a number,'
+            'or a string like "pmt_commissioning_initial" which means calling'
+            'hitfinder_thresholds.py'
+            'or a tuple like (correction=str, version=str, nT=boolean),'
+            'which means we are using cmt.'
     )])
 
 HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
@@ -148,6 +155,21 @@ class PulseProcessing(strax.Plugin):
         if self.hev_enabled:
             self.to_pe = straxen.get_correction_from_cmt(self.run_id,
                                            self.config['hev_gain_model'])
+
+        # Check config of `hit_min_amplitude_tpc` and define hit thresholds
+        # if cmt config
+        if (isinstance(self.config['hit_min_amplitude_tpc'], tuple) and 
+            len(self.config['hit_min_amplitude_tpc'])==3 and 
+            type(self.config['hit_min_amplitude_tpc'][0]==str) and
+            type(self.config['hit_min_amplitude_tpc'][1]==str) and
+            type(self.config['hit_min_amplitude_tpc'][0]==bool)):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_tpc'])
+        elif isinstance(self.config['hit_min_amplitude_tpc'], str):
+            self.thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_tpc']
         
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
@@ -199,10 +221,7 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(
-                r,
-                min_amplitude=straxen.hit_min_amplitude(
-                    self.config['hit_min_amplitude']))
+            hits = strax.find_hits(r, min_amplitude=self.thresholds)
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
@@ -251,7 +270,21 @@ class PulseProcessingHighEnergy(PulseProcessing):
     def setup(self):
         self.hev_enabled = False
         self.config['n_tpc_pmts'] = self.config['n_he_pmts']
-        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
+        
+        # Check config of `hit_min_amplitude_tpc` and define hit thresholds
+        # if cmt config
+        if (isinstance(self.config['hit_min_amplitude_he'], tuple) and 
+            len(self.config['hit_min_amplitude_he'])==3 and 
+            type(self.config['hit_min_amplitude_he'][0]==str) and
+            type(self.config['hit_min_amplitude_he'][1]==str) and
+            type(self.config['hit_min_amplitude_he'][0]==bool)):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
         result = super().compute(raw_records_he, start, end)
