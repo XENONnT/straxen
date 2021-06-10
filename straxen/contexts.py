@@ -3,6 +3,25 @@ import strax
 import straxen
 from copy import deepcopy
 
+# initialize runDB API if utilix is configured.
+if straxen.utilix_is_configured():
+    from utilix.mongo_files import APIDownloader
+    downloader = APIDownloader(store_files_at='./')
+
+
+def load_context(context_name, file='xenonnt.py', **kwargs):
+    """Downloads a context file from the files database, imports it, and initializes it.
+    :param context_name: name of context to be imported
+    :param file: the name of the file that will be downloaded."""
+    # download file
+    assert file.endswith('.py'), f"The contexts file must have a .py suffix. You passed {file}"
+    path = downloader.download_single(file, human_readable_file_name=True)
+    module = file.split('.')[0]
+    exec(f'import {module}')
+    st = getattr(eval(module), context_name)(**kwargs)
+    return st
+
+
 common_opts = dict(
     register_all=[
         straxen.event_processing,
