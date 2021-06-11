@@ -104,56 +104,60 @@ class CorrectionsManagementServices():
         when = self.get_start_time(run_id)
 
         if 'local' in global_version:
-            values = []
-            # hack to workaround "local version" for pmt gains
-            # because every pmt is its own dataframe...of course
-            version = global_version[6:] # remove local
-            if correction in {'pmt', 'n_veto', 'mu_veto'}:
-                # get lists of pmts 
-                df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
-                gains = df_global['ONLINE'][0]
-                pmts = list(gains.keys())
-                for it_correction in pmts: # loop over all PMTs
-                    if correction in it_correction:
-                        df = self.interface.read(it_correction)
-                        df = self.interface.interpolate(df, when)
-                        values.append(df.loc[df.index == when, version].values[0])
-            else:
-                df = self.interface.read(correction)
-                if correction in corrections_w_file:
-                    df = self.interface.interpolate(df, when, how='fill')
+            try:
+                values = []
+                # hack to workaround "local version" for pmt gains
+                # because every pmt is its own dataframe...of course
+                version = global_version[6:] # remove local
+                if correction in {'pmt', 'n_veto', 'mu_veto'}:
+                    # get lists of pmts 
+                    df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
+                    gains = df_global['ONLINE'][0]
+                    pmts = list(gains.keys())
+                    for it_correction in pmts: # loop over all PMTs
+                        if correction in it_correction:
+                            df = self.interface.read(it_correction)
+                            df = self.interface.interpolate(df, when)
+                            values.append(df.loc[df.index == when, version].values[0])
                 else:
-                    df = self.interface.interpolate(df, when)
-                values.append(df.loc[df.index == when, version].values[0])
-            corrections = np.asarray(values)
-
-            if not corrections:
-                raise ValueError(f"Local version {global_version} not found for correction {correction}")
-
-            return corrections
-
-        else:
-            df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
-            values = []
-            for it_correction, version in df_global.iloc[-1][global_version].items():
-                if correction in it_correction:
-                    df = self.interface.read(it_correction)
-                    if global_version in ('ONLINE', 'xenonnt_temporary_five_pmts'):
-                        # We don't want to have different versions based
-                        # on when something was processed therefore
-                        # don't interpolate but forward fill.
-                        df = self.interface.interpolate(df, when, how='fill')
+                    df = self.interface.read(correction)
                     if correction in corrections_w_file:
-                        # is this the best solution?
                         df = self.interface.interpolate(df, when, how='fill')
                     else:
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
-            corrections = np.asarray(values)
-            if not corrections:
-                raise ValueError(f"Global version {global_version} not found for correction {correction}")
+                corrections = np.asarray(values)
+                print(corrections)
+            except KeyError:
+                raise ValueError(f"Local version {global_version} not found for correction {correction}")
 
-            return corrections
+            else:
+                return corrections
+
+        else:
+            df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
+            try:
+                values = []
+                for it_correction, version in df_global.iloc[-1][global_version].items():
+                    if correction in it_correction:
+                        df = self.interface.read(it_correction)
+                        if global_version in ('ONLINE', 'xenonnt_temporary_five_pmts'):
+                            # We don't want to have different versions based
+                            # on when something was processed therefore
+                            # don't interpolate but forward fill.
+                            df = self.interface.interpolate(df, when, how='fill')
+                        if correction in corrections_w_file:
+                            # is this the best solution?
+                            df = self.interface.interpolate(df, when, how='fill')
+                        else:
+                            df = self.interface.interpolate(df, when)
+                        values.append(df.loc[df.index == when, version].values[0])
+                corrections = np.asarray(values)
+            except KeyError:
+                raise ValueError(f"Global version {global_version} not found for correction {correction}")
+            
+            else:
+                return corrections
 
     def get_pmt_gains(self, run_id, model_type, global_version,
                       cacheable_versions=('ONLINE',),
