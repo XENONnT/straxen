@@ -82,7 +82,7 @@ class CorrectionsManagementServices():
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, global_version)
-        elif model_type in single_value_corrections:
+        elif model_type in single_value_corrections or model_type in arrays_corrections:
             return self._get_correction(run_id, model_type, global_version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, global_version)
