@@ -103,6 +103,13 @@ def plot_pulses(context, raw_records, run_id, time_range,
                           [baseline - baseline_rms] * 2,
                           color='gray', alpha=0.4
                           )
+        
+        # check type of p.thresholds
+        if isinstance(p.thresholds,int):
+            thr = p.thresholds
+        elif isinstance(p.thresholds,np.ndarray):
+            thr = p.thresholds[rr_pulse['channel']][0]
+
         if plot_median:
             # Plot median if asked.
             # Have to make pulse again:
@@ -113,14 +120,13 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          color='k',
                          label=f'Median Bas.: {median:.0f} ADC')
 
-            axes.axhline(median - p.thresholds[rr_pulse['channel']][0],
+            axes.axhline(median - thr,
                          ls='dotted', color='orange'
                          )
 
         hits = None  # needed for delet if false
         if plot_hits:
-            min_amplitude = p.thresholds
-            min_amplitude = min_amplitude[rr_pulse[0]['channel']]
+            min_amplitude = thr
             
             axes.axhline(baseline - min_amplitude,
                          color='orange', label='Hitfinder threshold')
@@ -185,4 +191,3 @@ def _yield_pulse_indices(records):
                 raise ValueError('Tried more than 5000 times to find subsequent record.'
                                  ' Am I stuck in a loop?')
         yield inds
-        
