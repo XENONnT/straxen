@@ -91,6 +91,11 @@ def get_correction_from_cmt(run_id, conf):
             else:
                 return float(correction) # float elife, drift velocity, etc
         
+        elif model_conf in arrays_corrections:
+            np_correction = correction.reshape(correction.size)
+            np_correction = np_correction.astype(np.int16)  # not sure if straxen can handle dtype:object therefore specify dtype
+            return np_correction
+        
         return correction
     
     else:
