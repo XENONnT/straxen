@@ -26,8 +26,8 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1.), (6.0, 0.4)),
-                     ((2., 1.), (4.5, 0.4))),
+                     ((0.5, 1.0), (6.0, 0.4)),
+                     ((2.5, 1.0), (5.625, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
     strax.Option('peak_split_filter_wing_width', default=70,
@@ -435,9 +435,9 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_rise_time', default=60,
+    strax.Option('s1_max_rise_time', default=110,
                  help="Maximum S1 rise time for < 100 PE [ns]"),
-    strax.Option('s1_max_rise_time_post100', default=150,
+    strax.Option('s1_max_rise_time_post100', default=200,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
     strax.Option('s1_min_coincidence', default=3,
                  help="Minimum tight coincidence necessary to make an S1"),
@@ -503,9 +503,9 @@ FAKE_MERGED_S2_TYPE = -42
 @strax.takes_config(
     strax.Option('s2_merge_max_area', default=5000.,
                  help="Merge peaklet cluster only if area < this [PE]"),
-    strax.Option('s2_merge_max_gap', default=5_000,
+    strax.Option('s2_merge_max_gap', default=10_000,
                  help="Maximum separation between peaklets to allow merging [ns]"),
-    strax.Option('s2_merge_max_duration', default=35_000,
+    strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):
