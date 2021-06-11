@@ -127,7 +127,6 @@ class CorrectionsManagementServices():
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
                 corrections = np.asarray(values)
-                print(corrections)
             except KeyError:
                 raise ValueError(f"Local version {global_version} not found for correction {correction}")
 
