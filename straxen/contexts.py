@@ -6,7 +6,8 @@ from copy import deepcopy
 common_opts = dict(
     register_all=[
         straxen.event_processing,
-        straxen.double_scatter],
+        straxen.double_scatter,
+    ],
     # Register all peak/pulse processing by hand as 1T does not need to have
     # the high-energy plugins.
     register=[
@@ -83,6 +84,8 @@ xnt_common_opts.update({
                                                    straxen.pulse_processing,
                                                    straxen.peaklet_processing,
                                                    straxen.online_monitor,
+                                                   straxen.event_area_per_channel,
+                                                   straxen.event_patternfit,
                                                    ],
     'use_per_run_defaults': False,
 })
@@ -273,6 +276,7 @@ x1t_common_config = dict(
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
     event_info_function='disabled',
     max_drift_length=96.9,
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
 
 
