@@ -297,7 +297,7 @@ def apply_cmt_version(context, cmt_version):
                       gain_model_mv=("to_pe_model_mv", 'local_'+local_version['mu_veto_000_gain_xenonnt'], True),
                       s1_xyz_correction_map=('s1_xyz_map_mlp', 'local_'+local_version['s1_xyz_map_mlp'], True),
                       s2_xy_correction_map=('s2_xy_map', 'local_'+local_version['s2_xy_map'], True),
-                      elife_conf=("elife", 'local_'+local_version['elife_xenonnt'], True),
+                      elife_conf=("elife", 'local_'+local_version['elife'], True),
                       mlp_model=("mlp_model", 'local_'+local_version['mlp_model'], True),
                       gcn_model=("gcn_model", 'local_'+local_version['gcn_model'], True),
                       cnn_model=("cnn_model", 'local_'+local_version['cnn_model'], True),
