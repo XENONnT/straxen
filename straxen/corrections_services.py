@@ -289,13 +289,13 @@ class GainsNotFoundError(Exception):
 
 @strax.Context.add_method
 def apply_cmt_version(context, cmt_version):
+    """Sets all the relevant correction variables"""
 
     cmt=straxen.CorrectionsManagementServices()
     cmt_inter = cmt.interface
 
     cmt_global = cmt_inter.read('global')  
     local_version = cmt_global[cmt_version][0] # get local versions from global
-    """Sets all the relevant correction variables"""
     cmt_config = dict(gain_model=("to_pe_model", 'local_'+local_version['pmt_000_gain_xenonnt'], True),
                       gain_model_nv=("to_pe_model_nv", 'local_'+local_version['n_veto_000_gain_xenonnt'], True),
                       gain_model_mv=("to_pe_model_mv", 'local_'+local_version['mu_veto_000_gain_xenonnt'], True),
