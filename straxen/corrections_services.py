@@ -98,13 +98,42 @@ class CorrectionsManagementServices():
         Smart logic to get correction from DB
         :param run_id: run id from runDB
         :param correction: correction's name, key word (str type)
-        :param global_version: global version (str type)
+        :param global_version: global version (str type) it can be also a local version
         :return: correction value(s)
         """
         when = self.get_start_time(run_id)
-        df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
 
-        try:
+        if 'local' in global_version:
+            values = []
+            # hack to workaround "local version" for pmt gains
+            # because every pmt is its own dataframe...of course
+            version = global_version[6:] # remove local
+            if correction in {'pmt', 'n_veto', 'mu_veto'}:
+                # get lists of pmts 
+                df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
+                gains = df_global['ONLINE'][0]
+                pmts = list(gains.keys())
+                for it_correction in pmts: # loop over all PMTs
+                    if correction in it_correction:
+                        df = self.interface.read(it_correction)
+                        df = self.interface.interpolate(df, when)
+                        values.append(df.loc[df.index == when, version].values[0])
+            else:
+                df = self.interface.read(correction)
+                if correction in corrections_w_file:
+                    df = self.interface.interpolate(df, when, how='fill')
+                else:
+                    df = self.interface.interpolate(df, when)
+                values.append(df.loc[df.index == when, version].values[0])
+            corrections = np.asarray(values)
+
+            if not corrections:
+                raise ValueError(f"Local version {global_version} not found for correction {correction}")
+
+            return corrections
+
+        else:
+            df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
             values = []
             for it_correction, version in df_global.iloc[-1][global_version].items():
                 if correction in it_correction:
@@ -121,10 +150,9 @@ class CorrectionsManagementServices():
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
-        except KeyError:
-            raise ValueError(f"Global version {global_version} not found for correction {correction}")
+            if not corrections:
+                raise ValueError(f"Global version {global_version} not found for correction {correction}")
 
-        else:
             return corrections
 
     def get_pmt_gains(self, run_id, model_type, global_version,
@@ -257,18 +285,24 @@ class GainsNotFoundError(Exception):
 
 @strax.Context.add_method
 def apply_cmt_version(context, cmt_version):
+
+    cmt=straxen.CorrectionsManagementServices()
+    cmt_inter = cmt.interface
+
+    cmt_global = cmt_inter.read('global')  
+    local_version = cmt_global[cmt_version][0] # get local versions from global
     """Sets all the relevant correction variables"""
-    cmt_config = dict(gain_model=("to_pe_model", cmt_version, True),
-                      gain_model_nv=("to_pe_model_nv", cmt_version, True),
-                      gain_model_mv=("to_pe_model_mv", cmt_version, True),
-                      s1_xyz_correction_map=('s1_xyz_map_mlp', cmt_version, True),
-                      s2_xy_correction_map=('s2_xy_map', cmt_version, True),
-                      elife_conf=("elife", cmt_version, True),
-                      mlp_model=("mlp_model", cmt_version, True),
-                      gcn_model=("gcn_model", cmt_version, True),
-                      cnn_model=("cnn_model", cmt_version, True),
-                      fdc_map=("fdc_map_mlp", cmt_version, True),
-                      electron_drift_velocity=("electron_drift_velocity", cmt_version, True),
-                      baseline_samples_nv=('baseline_samples_nv', cmt_version, True),
+    cmt_config = dict(gain_model=("to_pe_model", 'local_'+local_version['pmt_000_gain_xenonnt'], True),
+                      gain_model_nv=("to_pe_model_nv", 'local_'+local_version['n_veto_000_gain_xenonnt'], True),
+                      gain_model_mv=("to_pe_model_mv", 'local_'+local_version['mu_veto_000_gain_xenonnt'], True),
+                      s1_xyz_correction_map=('s1_xyz_map_mlp', 'local_'+local_version['s1_xyz_map_mlp'], True),
+                      s2_xy_correction_map=('s2_xy_map', 'local_'+local_version['s2_xy_map'], True),
+                      elife_conf=("elife", 'local_'+local_version['elife_xenonnt'], True),
+                      mlp_model=("mlp_model", 'local_'+local_version['mlp_model'], True),
+                      gcn_model=("gcn_model", 'local_'+local_version['gcn_model'], True),
+                      cnn_model=("cnn_model", 'local_'+local_version['cnn_model'], True),
+                      fdc_map=("fdc_map_mlp", 'local_'+local_version['fdc_map_mlp'], True),
+                      electron_drift_velocity=("electron_drift_velocity", 'local_'+local_version['electron_drift_velocity'], True),
+                      baseline_samples_nv=('baseline_samples_nv', 'local_'+local_version['baseline_samples_nv'], True),
                       )
     context.set_config(cmt_config)
