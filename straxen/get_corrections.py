@@ -5,6 +5,8 @@ from warnings import warn
 from functools import wraps
 from straxen.corrections_services import corrections_w_file
 from straxen.corrections_services import single_value_corrections
+from straxen.corrections_services import arrays_corrections
+
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
