@@ -441,6 +441,22 @@ class PeakletsHighEnergy(Peaklets):
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.config['le_to_he_amplification']
 
+        # Check config of `hit_min_amplitude_he` and define hit thresholds
+        # if cmt config
+        if (isinstance(self.config['hit_min_amplitude_he'], tuple) and 
+            len(self.config['hit_min_amplitude_he'])==3 and 
+            type(self.config['hit_min_amplitude_he'][0]==str) and
+            type(self.config['hit_min_amplitude_he'][1]==str) and
+            type(self.config['hit_min_amplitude_he'][0]==bool)):
+            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.thresholds = self.config['hit_min_amplitude_he']
+
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)
         return result['peaklets']
