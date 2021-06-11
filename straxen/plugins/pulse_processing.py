@@ -11,8 +11,8 @@ __all__ += ['NO_PULSE_COUNTS']
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
-    'hit_min_amplitude_tpc',
-    default=('hit_thresholds_tpc', 'ONLINE', True), track=True,
+    'hit_min_amplitude_tpc', track=True,
+    default='pmt_commissioning_initial', 
     help='Minimum hit amplitude in ADC counts above baseline. '
             'Specify as a tuple of length n_tpc_pmts, or a number,'
             'or a string like "pmt_commissioning_initial" which means calling'
@@ -24,7 +24,7 @@ HITFINDER_OPTIONS = tuple([
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
     'hit_min_amplitude_he',
-    default=('hit_thresholds_he', 'ONLINE', True), track=True,
+    default='pmt_commissioning_initial_he', track=True,
     help='Minimum hit amplitude in ADC counts above baseline. '
             'Specify as a tuple of length n_tpc_pmts, or a number,'
             'or a string like "pmt_commissioning_initial" which means calling'
