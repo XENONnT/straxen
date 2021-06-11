@@ -88,7 +88,7 @@ class CorrectionsManagementServices():
             return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
             raise ValueError(f"{config_model} not found, currently these are "
-                             f"available {single_value_corrections} and "
+                             f"available {single_value_corrections}, {arrays_corrections} and "
                              f"{corrections_w_file} ")
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
@@ -116,13 +116,13 @@ class CorrectionsManagementServices():
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
                         df = self.interface.interpolate(df, when, how='fill')
-                    if correction in corrections_w_file:
+                    if correction in corrections_w_file or correction in arrays_corrections:
                         # is this the best solution?
                         df = self.interface.interpolate(df, when, how='fill')
                     else:
                         df = self.interface.interpolate(df, when)
                     values.append(df.loc[df.index == when, version].values[0])
-            corrections = np.asarray(values)
+            corrections = np.asarray(values, dtype="object")
         except KeyError:
             raise ValueError(f"Global version {global_version} not found for correction {correction}")
 

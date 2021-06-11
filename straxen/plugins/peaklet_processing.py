@@ -108,21 +108,21 @@ class Peaklets(strax.Plugin):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
                                        self.config['gain_model'])
 
-        # Check config of `hit_min_amplitude_tpc` and define hit thresholds
+        # Check config of `hit_min_amplitude` and define hit thresholds
         # if cmt config
-        if (isinstance(self.config['hit_min_amplitude_tpc'], tuple) and 
-            len(self.config['hit_min_amplitude_tpc'])==3 and 
-            type(self.config['hit_min_amplitude_tpc'][0]==str) and
-            type(self.config['hit_min_amplitude_tpc'][1]==str) and
-            type(self.config['hit_min_amplitude_tpc'][0]==bool)):
+        if (isinstance(self.config['hit_min_amplitude'], tuple) and 
+            len(self.config['hit_min_amplitude'])==3 and 
+            type(self.config['hit_min_amplitude'][0]==str) and
+            type(self.config['hit_min_amplitude'][1]==str) and
+            type(self.config['hit_min_amplitude'][0]==bool)):
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
-                self.config['hit_min_amplitude_tpc'])
+                self.config['hit_min_amplitude'])
         # if hitfinder_thresholds config
-        elif isinstance(self.config['hit_min_amplitude_tpc'], str):
+        elif isinstance(self.config['hit_min_amplitude'], str):
             self.thresholds = straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude_tpc'])
+                self.config['hit_min_amplitude'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude_tpc']
+            self.thresholds = self.config['hit_min_amplitude']
 
     def compute(self, records, start, end):
         r = records
