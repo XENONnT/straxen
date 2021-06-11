@@ -171,8 +171,8 @@ class Peaklets(strax.Plugin):
         # Cases when records is not writeable for unclear reason
         # only see this when loading 1T test data
         # more details on https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html
-        if not records['data'].flags.writeable:
-            r = records.copy()
+        if not r['data'].flags.writeable:
+            r = r.copy()
 
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
