@@ -137,9 +137,11 @@ class InterpolatingMap:
                                  if k not in self.metadata_field_names])
 
         log = logging.getLogger('InterpolatingMap')
-        log.debug('Map name: %s' % self.data['name'])
+        log.debug('Map name: %s' % self.data.get('name',
+                                                 "NO NAME?!"))
         log.debug('Map description:\n    ' +
-                  re.sub(r'\n', r'\n    ', self.data['description']))
+                  re.sub(r'\n', r'\n    ', self.data.get('description',
+                                                         "NO DESCRIPTION?!")))
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
