@@ -41,7 +41,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('gain_model_nv',
-                 default=("to_pe_model_nv", "local_ONLINE", True),
+                 default=("to_pe_model_nv", "ONLINE", True),
                  help='PMT gain model. Specify as (model_type, model_config, nT = True)'),
 )
 class nVETOHitlets(strax.Plugin):
@@ -168,7 +168,7 @@ def remove_switched_off_channels(hits, to_pe):
         child_option=True, parent_option_name='entropy_square_data_nv',
         help='Parameter which decides if data is first squared before normalized and compared to the template.'),
     strax.Option('gain_model_mv',
-                 default=("to_pe_model_mv", "local_ONLINE", True),
+                 default=("to_pe_model_mv", "ONLINE", True),
                  child_option=True, parent_option_name='gain_model_nv',
                  help='PMT gain model. Specify as (model_type, model_config)'),
 )

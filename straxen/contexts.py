@@ -26,9 +26,9 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=("to_pe_model", "local_ONLINE", True),
-    gain_model_nv=("to_pe_model_nv", "local_ONLINE", True),
-    gain_model_mv=("to_pe_model_mv", "local_ONLINE", True),
+    gain_model=("to_pe_model", "ONLINE", True),
+    gain_model_nv=("to_pe_model_nv", "ONLINE", True),
+    gain_model_mv=("to_pe_model_mv", "ONLINE", True),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -45,9 +45,9 @@ xnt_common_config = dict(
     # Clustering/classification parameters
     gcn_model=None,
     # Event level parameters
-    s2_xy_correction_map=('s2_xy_map', "local_ONLINE", True),
-    fdc_map=('fdc_map', "local_ONLINE", True),
-    s1_xyz_correction_map=("s1_xyz_map", "local_ONLINE", True),
+    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
+    fdc_map=('fdc_map', "ONLINE", True),
+    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
     g1=0.1426,
     g2=11.55,
 )
@@ -95,7 +95,7 @@ xnt_common_opts.update({
 ##
 
 
-def xenonnt(cmt_version='local_ONLINE', **kwargs):
+def xenonnt(cmt_version='ONLINE', **kwargs):
     """XENONnT context"""
     st = straxen.contexts.xenonnt_online(**kwargs)
     st.apply_cmt_version(cmt_version)
@@ -250,7 +250,7 @@ x1t_common_config = dict(
         diagnostic=(248, 253),
         aqmon=(254, 999)),
     # Records
-    hev_gain_model=('to_pe_model', "local_v1", False),
+    hev_gain_model=('to_pe_model', "v1", False),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
@@ -262,7 +262,7 @@ x1t_common_config = dict(
     save_outside_hits=(3, 3),
     # Peaklets
     peaklet_gap_threshold=350,
-    gain_model=('to_pe_model', "local_v1", False),
+    gain_model=('to_pe_model', "v1", False),
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
@@ -279,7 +279,7 @@ x1t_common_config = dict(
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife_conf=('elife_xenon1t', 'local_v1', False),
+    elife_conf=('elife_xenon1t', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
     event_info_function='disabled',
     max_drift_length=96.9,
