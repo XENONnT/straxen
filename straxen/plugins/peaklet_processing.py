@@ -594,7 +594,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # The merged peak would be too large
                 continue
 
-            if peaklet_gaps[gap_i] > self.merge_s2_threshold(np.log10(sum_area), gap_thresholds):
+            if peaklet_gaps[gap_i] > MergedS2s.merge_s2_threshold(np.log10(sum_area), gap_thresholds):
                 # Check with varing threshold based on peak area after merging
                 continue
 
@@ -626,8 +626,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     return g1
                 a0, g0 = gap_thresholds[i-1]
                 return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
-        else:
-            return g1
+        return g1
     
 @export
 class MergedS2sHighEnergy(MergedS2s):
