@@ -15,7 +15,7 @@ corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
                       's1_xyz_map_gcn', 'fdc_map_mlp', 'fdc_map_gcn',
                       'fdc_map_cnn']
 
-single_value_corrections = ['elife', 'baseline_samples_nv',
+single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
                             'electron_drift_velocity', 'electron_drift_time_gate']
 
 
@@ -125,7 +125,6 @@ class CorrectionsManagementServices():
                 else:
                     df = self.interface.read(correction)
                     if correction in corrections_w_file or version in 'ONLINE':
-                        print('here')
                         df = self.interface.interpolate(df, when, how='fill')
                     else:
                         df = self.interface.interpolate(df, when)
@@ -289,6 +288,7 @@ def apply_cmt_version(context, cmt_version):
                       cnn_model=("cnn_model", 'local_'+local_version['cnn_model'], True),
                       fdc_map=("fdc_map_mlp", 'local_'+local_version['fdc_map_mlp'], True),
                       electron_drift_velocity=("electron_drift_velocity", 'local_'+local_version['electron_drift_velocity'], True),
+                      electron_drift_time_gate=("electron_drift_time_gate", 'local_'+local_version['electron_drift_time_gate'], True),
                       baseline_samples_nv=('baseline_samples_nv', 'local_'+local_version['baseline_samples_nv'], True),
                       )
     context.set_config(cmt_config)
