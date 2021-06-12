@@ -29,7 +29,7 @@ def test_connect_to_db():
     corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
     client = corrections_collection.database.client     
     cmt = strax.CorrectionsInterface(client, database_name='corrections')
-    df = cmt.read('global')
+    df = cmt.read('global_xenonnt')
     mes = 'Return empty dataframe when reading DB. Please check'
     assert not df.empty, mes
 
