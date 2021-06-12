@@ -330,7 +330,7 @@ class EventBasics(strax.LoopPlugin):
     strax.Option(
         name='electron_drift_time_gate',
         help='Electron drift time from the gate in ns',
-        default=("electron_drift_time_gate", "ONLINE", True)
+        default=("electron_drift_time_gate", "local_ONLINE", True)
     ),
     strax.Option(
         name='fdc_map',
