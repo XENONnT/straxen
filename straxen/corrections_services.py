@@ -98,7 +98,7 @@ class CorrectionsManagementServices():
         Smart logic to get correction from DB
         :param run_id: run id from runDB
         :param correction: correction's name, key word (str type)
-        :param version: global version (str type) it can be also a local version
+        :param version: local version (str type)
         :return: correction value(s)
         """
         when = self.get_start_time(run_id)
@@ -109,8 +109,8 @@ class CorrectionsManagementServices():
             # because every pmt is its own dataframe...of course
             if correction in {'pmt', 'n_veto', 'mu_veto'}:
                 # get lists of pmts 
-                df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
-                gains = df_global['ONLINE'][0]
+                df_global = self.interface.read('global_xenonnt' if self.is_nt else 'global_xenon1t')
+                gains = df_global['global_ONLINE'][0]  # global is where all pmts are grouped
                 pmts = list(gains.keys())
                 for it_correction in pmts: # loop over all PMTs
                     if correction in it_correction:
@@ -129,8 +129,10 @@ class CorrectionsManagementServices():
                 values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
         except KeyError:
-            raise ValueError(f"Version {version} not found for correction {correction}")
-
+            if "global" in version:
+                raise ValueError(f"User is not allowed to pass {version} global version are not allowed")
+            raise ValueError(f"Version {version} not found for correction {correction}, please check")
+            
         else:
             return corrections
 
@@ -141,7 +143,7 @@ class CorrectionsManagementServices():
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
         :param model_type: to_pe_model (gain model)
-        :param version: global version
+        :param version: version
         :param cacheable_versions: versions that are allowed to be
         cached in ./resource_cache
         :param gain_dtype: dtype of the gains to be returned as array
@@ -209,7 +211,7 @@ class CorrectionsManagementServices():
         :param run_id: run id from runDB
         :param model_type: model type and neural network type; model_mlp,
         or model_gcn or model_cnn
-        :param version: global version
+        :param version: version
         :param return: NN weights file name
         """
         if model_type not in corrections_w_file:
@@ -270,7 +272,7 @@ def apply_cmt_version(context, cmt_global_version):
     cmt_inter = cmt.interface
     # CMT generates a global version, global version is just a set of local versions
     # With this we can do pretty easy bookkeping for offline contexts
-    cmt_global = cmt_inter.read('global')  
+    cmt_global = cmt_inter.read('global_xenonnt')  
     local_version = cmt_global[cmt_global_version][0] # get local versions from CMT global version
     cmt_config = dict(gain_model=("to_pe_model", local_version['pmt_000_gain_xenonnt'], True),
                       gain_model_nv=("to_pe_model_nv", local_version['n_veto_000_gain_xenonnt'], True),
