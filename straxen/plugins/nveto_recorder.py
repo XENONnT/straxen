@@ -18,7 +18,7 @@ export, __all__ = strax.exporter()
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
     strax.Option('baseline_samples_nv',
-                 default=('baseline_samples_nv', 'ONLINE', True), track=True,
+                 default=('baseline_samples_nv', 'local_ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option('hit_min_amplitude_nv',
                  default=20, track=True,

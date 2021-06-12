@@ -27,7 +27,7 @@ export, __all__ = strax.exporter()
                       'triggering peak.',
                  ),
     strax.Option(name='electron_drift_velocity',
-                 default=("electron_drift_velocity", "ONLINE", True),
+                 default=("electron_drift_velocity", "local_ONLINE", True),
                  help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
                  ),
     strax.Option(name='max_drift_length',
@@ -325,7 +325,7 @@ class EventBasics(strax.LoopPlugin):
     strax.Option(
         name='electron_drift_velocity',
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=("electron_drift_velocity", "ONLINE", True)
+        default=("electron_drift_velocity", "local_ONLINE", True)
     ),
     strax.Option(
         name='fdc_map',
@@ -442,7 +442,7 @@ class EventPositions(strax.Plugin):
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
    strax.Option(
         'elife_conf',
-        default=("elife", "ONLINE", True),
+        default=("elife", "local_ONLINE", True),
         help='Electron lifetime '
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife" or "elife_constant" '
