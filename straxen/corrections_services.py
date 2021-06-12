@@ -16,7 +16,7 @@ corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
                       'fdc_map_cnn']
 
 single_value_corrections = ['elife', 'baseline_samples_nv',
-                            'electron_drift_velocity']
+                            'electron_drift_velocity', 'electron_drift_time_gate']
 
 
 @export
