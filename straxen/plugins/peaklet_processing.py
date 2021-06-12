@@ -507,7 +507,10 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Maximum separation between peaklets to allow merging [ns]"),
     strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
-                      "longer than this [ns]"))
+                      "longer than this [ns]"),
+    strax.Option('s2_merge_gap_thresholds', default=((2, 10_000), (4, 0)),
+                 help="Points to define maximum separation between peaklets to allow "
+                      "merging [ns] depending on log10 area of the merged peak"))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -521,14 +524,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
-        return 5 * (self.config['s2_merge_max_gap']
+        return 5 * (self.config['s2_merge_gap_thresholds'][0][1]
                     + self.config['s2_merge_max_duration'])
 
     def compute(self, peaklets):
         if len(peaklets) <= 1:
             return peaklets[:0]
 
-        if self.config['s2_merge_max_gap'] < 0:
+        if self.config['s2_merge_gap_thresholds'][0][1] < 0:
             # Do not merge at all
             merged_s2s = np.zeros(0, dtype=peaklets.dtype)
         else:
@@ -536,7 +539,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 peaklets['time'], strax.endtime(peaklets),
                 areas=peaklets['area'],
                 types=peaklets['type'],
-                gap_thresholds=config['s2_merge_gap_thresholds'],
+                gap_thresholds=self.config['s2_merge_gap_thresholds'],
                 max_duration=self.config['s2_merge_max_duration'],
                 max_area=self.config['s2_merge_max_area'])
 
@@ -554,13 +557,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
     @numba.njit(cache=True, nogil=True)
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
-            gap_thresholds,
-            max_duration, max_area):
+            gap_thresholds, max_duration, max_area):
         """Finding the group of peaklets to merge
         returns: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged
         """
-
         peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
         n_gaps = len(peaklet_gaps)
 
@@ -593,7 +594,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # The merged peak would be too large
                 continue
 
-            if peaklet_gaps[gap_i] > merge_s2_threshold(np.log10(sum_area), gap_thresholds):
+            if peaklet_gaps[gap_i] > self.merge_s2_threshold(np.log10(sum_area), gap_thresholds):
                 # Check with varing threshold based on peak area after merging
                 continue
 
@@ -623,7 +624,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if log_area < a1:
                 if i == 0:
                     return g1
-                a0, g0 = s2_merge_gap_thresholds[i-1]
+                a0, g0 = gap_thresholds[i-1]
                 return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
         else:
             return g1
