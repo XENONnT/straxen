@@ -6,6 +6,8 @@ import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 from strax.processing.general import _touching_windows
 
+from straxen.get_corrections import is_cmt_option, test_is_cmt_option
+
 export, __all__ = strax.exporter()
 
 
@@ -110,11 +112,8 @@ class Peaklets(strax.Plugin):
 
         # Check config of `hit_min_amplitude` and define hit thresholds
         # if cmt config
-        if (isinstance(self.config['hit_min_amplitude'], tuple) and 
-            len(self.config['hit_min_amplitude'])==3 and 
-            type(self.config['hit_min_amplitude'][0]==str) and
-            type(self.config['hit_min_amplitude'][1]==str) and
-            type(self.config['hit_min_amplitude'][0]==bool)):
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            test_is_cmt_option()
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude'])
         # if hitfinder_thresholds config
@@ -443,11 +442,8 @@ class PeakletsHighEnergy(Peaklets):
 
         # Check config of `hit_min_amplitude_he` and define hit thresholds
         # if cmt config
-        if (isinstance(self.config['hit_min_amplitude_he'], tuple) and 
-            len(self.config['hit_min_amplitude_he'])==3 and 
-            type(self.config['hit_min_amplitude_he'][0]==str) and
-            type(self.config['hit_min_amplitude_he'][1]==str) and
-            type(self.config['hit_min_amplitude_he'][0]==bool)):
+        if is_cmt_option(self.config['hit_min_amplitude_he']):
+            test_is_cmt_option()
             self.thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_he'])
         # if hitfinder_thresholds config

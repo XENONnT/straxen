@@ -115,3 +115,22 @@ FIXED_TO_PE = {
     'adc_mv': np.ones(straxen.n_mveto_pmts),
     'adc_nv': np.ones(straxen.n_nveto_pmts)
 }
+
+def is_cmt_option(config):
+    """
+    Check if the input configuration is cmt style.
+    """
+    is_cmt = (isinstance(config, tuple) 
+               and len(config)==3 
+               and isinstance(config[0], str) 
+               and isinstance(config[1], (str, int, float))
+               and isinstance(config[2], bool))
+    return is_cmt
+
+def test_is_cmt_option():
+    """
+    Catches if we change the CMT option structure.
+    The example dummy_option works at least before Jun 13 2021
+    """
+    dummy_option = ('hit_thresholds_tpc', 'ONLINE', True)
+    assert is_cmt_option(dummy_option), 'Structure of CMT options changed!'
