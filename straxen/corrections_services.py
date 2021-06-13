@@ -255,4 +255,3 @@ def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
 class GainsNotFoundError(Exception):
     """Fatal error if a None value is returned by the corrections"""
     pass
-    
