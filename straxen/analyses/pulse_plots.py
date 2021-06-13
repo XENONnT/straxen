@@ -62,10 +62,8 @@ def plot_pulses(context, raw_records, run_id, time_range,
     records = strax.sort_by_time(records)
     strax.zero_out_of_bounds(records)
 
-    baseline_key = 'baseline_samples'+detector_ending
-    if detector_ending == '_he':
-        # We don't have 'baseline_samples_he' at all!
-        baseline_key = 'baseline_samples' 
+    baseline_key = [key for key  in p.config.keys() if 'baseline_samples' in key][0]
+
     if isinstance(p.config[baseline_key], int):
         baseline_samples = p.config[baseline_key]
     else:
