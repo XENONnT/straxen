@@ -568,7 +568,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         previous_valid_gap = np.arange(n_gaps) - 1
         previous_valid_gap[0] = 0
         next_valid_gap = np.arange(n_gaps) + 1
-        previous_valid_gap[n_gaps - 1] = n_gaps - 1
+        next_valid_gap[n_gaps - 1] = n_gaps - 1
 
         # gaps_to_merge includs two imaginary gaps before and after all peaklets
         gaps_to_merge = np.zeros(n_gaps + 2, np.bool_)
