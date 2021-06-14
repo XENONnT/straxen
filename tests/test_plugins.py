@@ -181,10 +181,10 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         st.set_config({'gain_model': fallback_gains})
         # Why you have to set gains again if you are setting testing_config_nt
         # ok, lets do the same for hit thresholds
-        st.set_conf({"hit_min_amplitude" : "pmt_commissioning_initial"})
-        st.set_conf({"hit_thresholds_he" : "pmt_commissioning_initial_he"})
-        st.set_conf({"hit_thresholds_nv" : 20})
-        st.set_conf({"hit_thresholds_mv" : 80})
+        st.set_config({"hit_min_amplitude" : "pmt_commissioning_initial"})
+        st.set_config({"hit_thresholds_he" : "pmt_commissioning_initial_he"})
+        st.set_config({"hit_thresholds_nv" : 20})
+        st.set_config({"hit_thresholds_mv" : 80})
                     
     elif not nt:
         st.set_config(testing_config_1T)
