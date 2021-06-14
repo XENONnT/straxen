@@ -148,3 +148,24 @@ def test_mc_wrapper_gains(run_id='009000',
 
     assert not np.all(gains == mc_gains_diff)
     assert np.all(gains == mc_gains_same)
+
+
+def test_is_cmt_option():
+    """
+    Catches if we change the CMT option structure.
+    The example dummy_option works at least before Jun 13 2021
+    """
+    dummy_option = ('hit_thresholds_tpc', 'ONLINE', True)
+    assert is_cmt_option(dummy_option), 'Structure of CMT options changed!'
+
+
+def is_cmt_option(config):
+    """
+    Check if the input configuration is cmt style.
+    """
+    is_cmt = (isinstance(config, tuple) 
+               and len(config)==3 
+               and isinstance(config[0], str) 
+               and isinstance(config[1], (str, int, float))
+               and isinstance(config[2], bool))
+    return is_cmt

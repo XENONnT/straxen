@@ -127,10 +127,3 @@ def is_cmt_option(config):
                and isinstance(config[2], bool))
     return is_cmt
 
-def test_is_cmt_option():
-    """
-    Catches if we change the CMT option structure.
-    The example dummy_option works at least before Jun 13 2021
-    """
-    dummy_option = ('hit_thresholds_tpc', 'ONLINE', True)
-    assert is_cmt_option(dummy_option), 'Structure of CMT options changed!'

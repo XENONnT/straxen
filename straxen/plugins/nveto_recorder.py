@@ -6,7 +6,7 @@ from immutabledict import immutabledict
 import strax
 import straxen
 
-from straxen.get_corrections import is_cmt_option, test_is_cmt_option
+from straxen.get_corrections import is_cmt_option
 
 export, __all__ = strax.exporter()
 
@@ -76,7 +76,6 @@ class nVETORecorder(strax.Plugin):
         # Check config of `hit_min_amplitude_nv` and define hit thresholds
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude_nv']):
-            test_is_cmt_option()
             self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_nv'])
         # if hitfinder_thresholds config

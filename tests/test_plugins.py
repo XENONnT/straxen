@@ -32,7 +32,10 @@ testing_config_nT = dict(
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    hit_min_amplitude='pmt_commissioning_initial'
+    hit_min_amplitude='pmt_commissioning_initial',
+    hit_thresholds_he='pmt_commissioning_initial_he',
+    hit_thresholds_nv=20,
+    hit_thresholds_mv=80
 )
 
 testing_config_1T = dict(
