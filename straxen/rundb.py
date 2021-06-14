@@ -6,6 +6,7 @@ from tqdm import tqdm
 from copy import deepcopy
 import strax
 from .rucio import key_to_rucio_did
+import warnings
 
 try:
     import utilix
@@ -265,10 +266,9 @@ class RunDB(strax.StorageFrontend):
 
     def _list_available(self, key: strax.DataKey,
                         allow_incomplete, fuzzy_for, fuzzy_for_options):
-        if fuzzy_for or fuzzy_for_options:
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
-        if allow_incomplete:
-            raise NotImplementedError("Can't allow_incomplete with RunDB yet")
+        if fuzzy_for or fuzzy_for_options or allow_incomplete:
+            # The RunDB frontend can do neither fuzzy nor incomplete
+            warnings.warn('RunDB cannot do fuzzy or incomplete')
 
         q = self._data_query(key)
         q.update(self.number_query())
