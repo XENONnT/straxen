@@ -114,19 +114,19 @@ class Peaklets(strax.Plugin):
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude']):
             test_is_cmt_option()
-            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude'], str):
-            self.thresholds = straxen.hit_min_amplitude(
+            self.hit_thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude']
+            self.hit_thresholds = self.config['hit_min_amplitude']
 
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(r, min_amplitude=self.thresholds)
+        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -444,14 +444,14 @@ class PeakletsHighEnergy(Peaklets):
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude_he']):
             test_is_cmt_option()
-            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_he'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_he'], str):
-            self.thresholds = straxen.hit_min_amplitude(
+            self.hit_thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude_he'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude_he']
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)

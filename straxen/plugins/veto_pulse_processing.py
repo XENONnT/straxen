@@ -68,14 +68,14 @@ class nVETOPulseProcessing(strax.Plugin):
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude_nv']):
             test_is_cmt_option()
-            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_nv'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_nv'], str):
-            self.thresholds = straxen.hit_min_amplitude(
+            self.hit_thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude_nv'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude_nv']
+            self.hit_thresholds = self.config['hit_min_amplitude_nv']
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -105,7 +105,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
         strax.zero_out_of_bounds(r)
 
-        hits = strax.find_hits(r, min_amplitude=self.thresholds)
+        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
         le, re = self.config['save_outside_hits_nv']
         r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
@@ -212,14 +212,14 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude_mv']):
             test_is_cmt_option()
-            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_mv'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_mv'], str):
-            self.thresholds = straxen.hit_min_amplitude(
+            self.hit_thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude_mv'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude_mv']
+            self.hit_thresholds = self.config['hit_min_amplitude_mv']
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(

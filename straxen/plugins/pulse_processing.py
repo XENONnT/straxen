@@ -162,14 +162,14 @@ class PulseProcessing(strax.Plugin):
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude']):
             test_is_cmt_option()
-            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude'], str):
-            self.thresholds = straxen.hit_min_amplitude(
+            self.hit_thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude']
+            self.hit_thresholds = self.config['hit_min_amplitude']
         
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
@@ -221,7 +221,7 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(r, min_amplitude=self.thresholds)
+            hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
@@ -275,14 +275,14 @@ class PulseProcessingHighEnergy(PulseProcessing):
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude_he']):
             test_is_cmt_option()
-            self.thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
                 self.config['hit_min_amplitude_he'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_he'], str):
-            self.thresholds = straxen.hit_min_amplitude(
+            self.hit_thresholds = straxen.hit_min_amplitude(
                 self.config['hit_min_amplitude_he'])
         else: # int or array
-            self.thresholds = self.config['hit_min_amplitude_he']
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
         result = super().compute(raw_records_he, start, end)
