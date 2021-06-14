@@ -10,6 +10,7 @@ import time
 from utilix import xent_collection
 import strax
 import warnings
+
 try:
     from rucio.client.client import Client
     from rucio.client.rseclient import RSEClient
@@ -23,9 +24,8 @@ try:
     replica_client = ReplicaClient()
     did_client = DIDClient()
     download_client = DownloadClient()
-
 except ModuleNotFoundError:
-    warnings.warn("No installation of rucio-clients found. Cant use rucio functionality")
+    warnings.warn("No installation of rucio-clients found. Can't use rucio remove backend")
 
 export, __all__ = strax.exporter()
 
@@ -71,23 +71,25 @@ class RucioFrontend(strax.StorageFrontend):
                                      f"I'm not sure what to do with that.")
                 local_rse = rse
 
-        # if there is no local host and we don't want to include the remote ones, we can't do anything
+        # if there is no local host and we don't want to include the
+        # remote ones, we can't do anything
         if local_rse is None and not include_remote:
-            raise RuntimeError(f"Could not find a local RSE for hostname {hostname}, and include_remote is False.")
-
-        self.backends = []
-        if local_rse:
-            # get the rucio prefix for the local rse, and setup strax rucio backend to read from that path
-            rucio_prefix = self.get_rse_prefix(local_rse)
-            self.backends.append(RucioLocalBackend(rucio_prefix))
-            self.local_rucio_path = rucio_prefix
+            raise RuntimeError(f"Could not find a local RSE for hostname {hostname}, "
+                               f"and include_remote is False.")
 
         self.local_rse = local_rse
         self.include_remote = include_remote
 
+        self.backends = []
+        if local_rse:
+            # get the rucio prefix for the local rse, and setup strax
+            # rucio backend to read from that path
+            rucio_prefix = self.get_rse_prefix(local_rse)
+            self.backends.append(RucioLocalBackend(rucio_prefix))
+            self.local_rucio_path = rucio_prefix
+
         if include_remote:
             self.backends.append(RucioRemoteBackend(staging_dir, download_heavy=download_heavy))
-
 
     def __repr__(self):
         # List the relevant attributes ('path' is actually for the
@@ -99,40 +101,14 @@ class RucioFrontend(strax.StorageFrontend):
                 representation += f', {attr}: {getattr(self, attr)}'
         return representation
 
-    def _scan_runs(self, store_fields):
-        if self.local_rse is None:
-            # Don't allow this to be called since it will just loop over all data.
-            raise TooMuchDataError("We don't want use the _scan_runs for the remote rucio backed "
-                                   "as it will just return all our data. ")
-        else:
-            if self.local_did_cache is None:
-                self.local_did_cache = self.get_rse_datasets(self.local_rse)
-
-            # sometimes there's crap in rucio from testing days, so lets do a query to find the real TPC data there
-            # plus we will have MC data in rucio as well at some point
-            query = {'data.did': {'$in': self.local_did_cache}}
-            projection = {field: 1 for field in store_fields}
-            # don't care about the _id
-            projection['_id'] = 0
-
-            cursor = self.collection.find(query, projection=projection)
-            for doc in cursor:
-                yield doc
-
     def find_several(self, keys, **kwargs):
-        if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
         if not len(keys):
             return []
 
-        if self.local_did_cache is None:
-            datasets = self.get_rse_datasets(self.local_rse)
-            self.local_did_cache = datasets
-
         ret = []
         for key in keys:
-            did = self.key_to_rucio_did(key)
-            if did in self.local_did_cache and self.did_is_local(did):
+            did = key_to_rucio_did(key)
+            if self.did_is_local(did):
                 ret.append(('RucioLocalBackend', did))
             else:
                 ret.append(False)
@@ -140,18 +116,22 @@ class RucioFrontend(strax.StorageFrontend):
 
     def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
         did = key_to_rucio_did(key)
+        if allow_incomplete or write:
+            raise RuntimeError(f'Allow incomplete/writing is not allowed for '
+                               f'{self.__class.__name} since data might not be '
+                               f'continuous')
         if self.did_is_local(did):
             return "RucioLocalBackend", did
-        else:
+        elif self.include_remote:
             # only do this part if we include the remote backend
-            if self.include_remote:
-                try:
-                    # check if the DID exists
-                    scope, name = did.split(':')
-                    did_info = did_client.get_did(scope, name)
-                    return "RucioRemoteBackend", did
-                except DataIdentifierNotFound:
-                    pass
+            try:
+                # check if the DID exists
+                scope, name = did.split(':')
+                # TODO, did_info is not used?
+                did_info = did_client.get_did(scope, name)
+                return "RucioRemoteBackend", did
+            except DataIdentifierNotFound:
+                pass
 
         if fuzzy_for or fuzzy_for_options:
             base_dir = did_to_dirname(did)
@@ -165,19 +145,25 @@ class RucioFrontend(strax.StorageFrontend):
         raise strax.DataNotAvailable
 
     def get_rse_prefix(self, rse):
-        rse_info = rse_client.get_rse(rse)
-        prefix = rse_info['protocols'][0]['prefix']
+        try:
+            rse_info = rse_client.get_rse(rse)
+            prefix = rse_info['protocols'][0]['prefix']
+        except NameError as e:
+            if self.local_rse == 'UC_DALI_USERDISK':
+                # If we cannot load rucio, let's try the default
+                prefix = '/dali/lgrandi/rucio/'
+            else:
+                raise e
         return prefix
 
     def did_is_local(self, did):
         """
-        Determines whether or not a given did is on a local RSE. If there is no local RSE, returns False.
+        Determines whether or not a given did is on a local RSE. If
+        there is no local RSE, returns False.
+
         :param did: Rucio DID string
         :return: boolean for whether DID is local or not.
         """
-
-        if self.local_rse is None:
-            return False
         try:
             md = self.backends[0].get_metadata(did)
         except (strax.DataNotAvailable, strax.DataCorrupted):
@@ -199,17 +185,6 @@ class RucioFrontend(strax.StorageFrontend):
                     return False
         return True
 
-    def get_rse_datasets(self, rse):
-        """Gets the list of datasets that have ever been at an RSE. Note this does not check the current status."""
-        datasets = replica_client.list_datasets_per_rse(rse)
-        ret = []
-        for d in tqdm(datasets, desc=f'Finding all datasets at {rse}'):
-            try:
-                number = int(d['scope'].split('_')[1])
-            except (ValueError, IndexError):
-                continue
-        return ret
-
     def _match_fuzzy(self,
                      key: strax.DataKey,
                      base_dir: str,
@@ -217,7 +192,7 @@ class RucioFrontend(strax.StorageFrontend):
                      fuzzy_for_options: tuple,
                      ) -> tuple:
         # fuzzy for local backend
-        mds = glob.glob(self.path + f'/xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
+        mds = glob.glob(self.local_rse + f'/xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
         for md in mds:
             md_dict = read_md(md)
             if self._matches(md_dict['lineage'],
@@ -226,11 +201,8 @@ class RucioFrontend(strax.StorageFrontend):
                              fuzzy_for_options):
                 fuzzy_lineage_hash = md_dict['lineage_hash']
                 did = f'xnt_{key.run_id}:{key.data_type}-{fuzzy_lineage_hash}'
-                fuzzy_key = strax.DataKey(run_id=key.run_id,
-                                          data_type=key.data_type,
-                                          lineage=md_dict['lineage'])
                 self.log.warning(f'Was asked for {key} returning {md}')
-                if self._all_chunk_stored(md, base_dir, fuzzy_key):
+                if self._all_chunk_stored(md, base_dir):
                     return 'RucioLocalBackend', did
 
 
@@ -295,7 +267,6 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
-
 
     def get_metadata(self, dset_did, rse='UC_OSG_USERDISK', **kwargs):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
@@ -426,6 +397,7 @@ def read_md(path: str) -> json:
         md = json.loads(f.read(),
                         object_hook=json_util.object_hook)
     return md
+
 
 def list_datasets(scope):
     datasets = [d for d in rucio_client.list_dids(scope, {'type': 'dataset'}, type='dataset')]

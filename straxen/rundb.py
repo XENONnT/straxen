@@ -5,7 +5,7 @@ import socket
 from tqdm import tqdm
 from copy import deepcopy
 import strax
-from pprint import pprint
+from .rucio import key_to_rucio_did
 
 try:
     import utilix
@@ -121,6 +121,7 @@ class RunDB(strax.StorageFrontend):
                 self.available_query.append({'host': host_alias})
 
         if self.rucio_path is not None:
+            # TODO replace with rucio backend in the rucio module
             self.backends.append(strax.rucio(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
@@ -159,7 +160,7 @@ class RunDB(strax.StorageFrontend):
 
         # Check that we are in rucio backend
         if self.rucio_path is not None:
-            rucio_key = self.key_to_rucio_did(key)
+            rucio_key = key_to_rucio_did(key)
             rucio_available_query = self.available_query[-1]
             dq = {
                 'data': {
@@ -323,8 +324,3 @@ class RunDB(strax.StorageFrontend):
         if q_number:
             return {'number': q_number}
         return {}
-
-    @staticmethod
-    def key_to_rucio_did(key: strax.DataKey):
-        """Convert a strax.datakey to a rucio did field in rundoc"""
-        return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
