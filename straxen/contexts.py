@@ -344,37 +344,6 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
     return st
 
 
-ap_opts = dict(
-    register_all=[
-        straxen.afterpulse_processing,],
-    store_run_fields=(
-        'name', 'number', 'reader.ini.name', 'tags.name',
-        'start', 'end', 'livetime'),
-    check_available=('raw_records',)
-    )
-
-ap_config_1t = dict(n_tpc_pmts = 248,
-                    gain_model = ('to_pe_per_run',
-                                 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/master/to_pe.npy'),
-                    LED_window_left = 140,
-                    LED_window_right = 180,
-                    hit_threshold = 15,
-                    baseline_samples = 40)
-
-def strax_afterpulseanalysis_xenon1t():
-    return strax.Context(
-        storage=[strax.DataDirectory('/dali/lgrandi/xenon1t/strax_converted/raw',
-                                     take_only='raw_records', provide_run_metadata=True,
-                                     deep_scan=False, readonly=True),
-                 strax.DataDirectory('/dali/lgrandi/hoetzsch/xenonnt/strax_data',
-                                     provide_run_metadata=False)],
-        allow_multiprocess=True,
-        forbid_creation_of=('raw_records',),
-        register=straxen.plugins.pax_interface.RecordsFromPax,
-        config=ap_config_1t,
-        **ap_opts)
-
-
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
     st.context_config['check_available'] = ('raw_records', 'led_calibration')
