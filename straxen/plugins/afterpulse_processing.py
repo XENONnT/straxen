@@ -7,58 +7,74 @@ import numba
 export, __all__ = strax.exporter()
 
 # define new data type for afterpulse data
-dtype_ap = [(('Channel/PMT number','channel'),
-              '<i2'),                                         # = PMT number
-             (('Time resolution in ns', 'dt'),
-               '<i2'),                                        # sample width = 10ns
-             (('Start time of the interval (ns since unix epoch)', 'time'),
-               '<i8'),                                        # start time of hit
-             (('Length of the interval in samples', 'length'), 
-               '<i4'),                                        # length of hit
-             (('Integral in ADC x samples', 'area'),
-               '<i4'),                                        # area of hit
-             (('Pulse area in PE', 'area_pe'),
-               '<f4'),                                        # area converted to PE
-             (('Index of sample in record in which hit starts', 'left'),
-               '<i2'),                                        # start sample of hit
-             (('Index of sample in record in which the hit area suceeds 10% of its total area', 'sample_10pc_area'),
-               '<i2'),                                        # 10% area quantile sample of hit
-             (('Index of sample in record in which the hit area suceeds 50% of its total area', 'sample_50pc_area'),
-               '<i2'),                                        # 50% area quantile sample of hit        
-             (('Index of sample in record in which the hit height suceeds 50% of maximum height', 'sample_50pc_height'),
-               '<i2'),                                        # sample where hit height first exceeds 10% of maxium height
-             (('Index of sample in record of hit maximum', 'max'),
-               '<i2'),                                        # sample of hit maximum
-             (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
-               '<i2'),                                        # first sample after last sample of hit
-             (('Height of hit in ADC counts', 'height'),
-               '<i4'),                                        # height of hit in ADC counts
-             (('Height of hit in PE', 'height_pe'),
-               '<f4'),                                        # height of hit converted to PE equivalent
-             (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
-               '<i2'),                                        # time delay of hit w.r.t to corresponding LED hit in the same WF in samples
-             (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
-               '<i4')                                         # record index in which hit was found
+dtype_ap = [(('Channel/PMT number', 'channel'),
+              '<i2'),
+              # = PMT number
+            (('Time resolution in ns', 'dt'),
+              '<i2'),
+              # sample width = 10ns
+            (('Start time of the interval (ns since unix epoch)', 'time'),
+              '<i8'),
+              # start time of hit
+            (('Length of the interval in samples', 'length'),
+              '<i4'),
+              # length of hit
+            (('Integral in ADC x samples', 'area'),
+              '<i4'),
+              # area of hit
+            (('Pulse area in PE', 'area_pe'),
+              '<f4'),
+              # area converted to PE
+            (('Sample index in which hit starts', 'left'),
+              '<i2'),
+              # start sample of hit
+            (('Sample index in which hit area succeeds 10% of total area', 'sample_10pc_area'),
+              '<i2'),
+              # 10% area quantile sample of hit
+            (('Sample index in which hit area succeeds 50% of total area', 'sample_50pc_area'),
+              '<i2'),
+              # 50% area quantile sample of hit
+            (('Sample index in which hit height suceeds 50% of max. height', 'sample_50pc_height'),
+              '<i2'),
+              # sample where hit height first exceeds 10% of maxium height
+            (('Sample index of hit maximum', 'max'),
+              '<i2'),
+              # sample of hit maximum
+            (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
+              '<i2'),
+              # first sample after last sample of hit
+            (('Height of hit in ADC counts', 'height'),
+              '<i4'),
+              # height of hit in ADC counts
+            (('Height of hit in PE', 'height_pe'),
+              '<f4'),
+              # height of hit converted to PE equivalent
+            (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
+              '<i2'),
+              # time delay of hit w.r.t to corresponding LED hit in the same WF in samples
+            (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
+              '<i4'),
+              # record index in which hit was found
             ]
 
 
 @export
 @strax.takes_config(
-    strax.Option('gain_model',
-                 help='PMT gain model. Specify as (model_type, model_config)'),
-    strax.Option('n_tpc_pmts',
-                 type=int,
-                 help="Number of PMTs in TPC"),
-    strax.Option('LED_window_left',
-                 default=50,
-                 help='Left boundary of sample range for LED pulse integration'),
-    strax.Option('LED_window_right',
-                 default=100,
-                 help='Right boundary of sample range for LED pulse integration'),
-    strax.Option('baseline_samples',
-                 default=40,
-                 help='Number of samples to use at the start of the pulse to determine the baseline'),
-    )
+            strax.Option('gain_model',
+                         help='PMT gain model. Specify as (model_type, model_config)'),
+            strax.Option('n_tpc_pmts',
+                         type=int,
+                         help="Number of PMTs in TPC"),
+            strax.Option('LED_window_left',
+                         default=50,
+                         help='Left boundary of sample range for LED pulse integration'),
+            strax.Option('LED_window_right',
+                         default=100,
+                         help='Right boundary of sample range for LED pulse integration'),
+            strax.Option('baseline_samples',
+                         default=40,
+                         help='Number of samples to use at start of WF to determine the baseline'),
+                   )
 class LEDAfterpulses(strax.Plugin):
     
     __version__ = '0.2.0'
