@@ -73,7 +73,8 @@ class LEDAfterpulses(strax.Plugin):
     
     def setup(self):
         
-        self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
+        #self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
 #         print('setup:\n   plugin version = ', self.__version__,
 #               #'\n   hit_threshold = ', self.config['hit_threshold'],
 #               '\n   gain_model = ', self.config['gain_model'],
