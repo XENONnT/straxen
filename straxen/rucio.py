@@ -59,6 +59,7 @@ class RucioFrontend(strax.StorageFrontend):
         :param kwargs: Passed to strax.StorageFrontend
         """
         super().__init__(*args, **kwargs)
+        self.readonly = True
         self.collection = xent_collection()
 
         # check if there is a local rse for the host we are running on
@@ -118,7 +119,7 @@ class RucioFrontend(strax.StorageFrontend):
         did = key_to_rucio_did(key)
         if allow_incomplete or write:
             raise RuntimeError(f'Allow incomplete/writing is not allowed for '
-                               f'{self.__class.__name} since data might not be '
+                               f'{self.__class.__name__} since data might not be '
                                f'continuous')
         if self.did_is_local(did):
             return "RucioLocalBackend", did
@@ -192,17 +193,20 @@ class RucioFrontend(strax.StorageFrontend):
                      fuzzy_for_options: tuple,
                      ) -> tuple:
         # fuzzy for local backend
-        mds = glob.glob(self.local_rse + f'/xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
+        pattern = os.path.join(self.get_rse_prefix(self.local_rse),
+                               f'xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
+        mds = glob.glob(pattern)
         for md in mds:
             md_dict = read_md(md)
             if self._matches(md_dict['lineage'],
-                             key.lineage,
+                             # Convert lineage dict to json like to compare
+                             json.loads(json.dumps(key.lineage, sort_keys=True)),
                              fuzzy_for,
                              fuzzy_for_options):
                 fuzzy_lineage_hash = md_dict['lineage_hash']
                 did = f'xnt_{key.run_id}:{key.data_type}-{fuzzy_lineage_hash}'
                 self.log.warning(f'Was asked for {key} returning {md}')
-                if self._all_chunk_stored(md, base_dir):
+                if self._all_chunk_stored(md_dict, did):
                     return 'RucioLocalBackend', did
 
 
