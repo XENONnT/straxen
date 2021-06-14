@@ -135,9 +135,7 @@ class RucioFrontend(strax.StorageFrontend):
                 pass
 
         if fuzzy_for or fuzzy_for_options:
-            base_dir = did_to_dirname(did)
             matches_to = self._match_fuzzy(key,
-                                           base_dir,
                                            fuzzy_for,
                                            fuzzy_for_options)
             if matches_to:
@@ -166,7 +164,7 @@ class RucioFrontend(strax.StorageFrontend):
         :return: boolean for whether DID is local or not.
         """
         try:
-            md = self.backends[0].get_metadata(did)
+            md = self._get_backend("RucioLocalBackend").get_metadata(did)
         except (strax.DataNotAvailable, strax.DataCorrupted):
             return False
 
@@ -188,7 +186,6 @@ class RucioFrontend(strax.StorageFrontend):
 
     def _match_fuzzy(self,
                      key: strax.DataKey,
-                     base_dir: str,
                      fuzzy_for: tuple,
                      fuzzy_for_options: tuple,
                      ) -> tuple:
@@ -242,6 +239,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
     def _saver(self, **kwargs):
         raise NotImplementedError(
             "Cannot save directly into rucio (yet), upload with admix instead")
+
 
 @export
 class RucioRemoteBackend(strax.FileSytemBackend):
@@ -305,17 +303,19 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         if not os.path.exists(chunk_path):
             number, datatype, hsh = parse_did(dset_did)
             if datatype in self.heavy_types and not self.download_heavy:
-                raise DownloadError("For space reasons we don't want to have everyone downloading raw data. "
-                                    "If you know what you're doing, pass download_heavy=True to the Rucio frontend. "
-                                    "If not, check your context and/or ask someone if this raw data is needed locally."
-                                    )
+                error_msg = ("For space reasons we don't want to have everyone "
+                             "downloading raw data. If you know what you're "
+                             "doing, pass download_heavy=True to the Rucio "
+                             "frontend. If not, check your context and/or ask "
+                             "someone if this raw data is needed locally.")
+                raise DownloadError(error_msg)
             scope, name = dset_did.split(':')
             chunk_did = f"{scope}:{chunk_file}"
             print(f"Downloading {chunk_did}")
             did_dict = dict(did=chunk_did,
                             base_dir=base_dir,
                             no_subdir=True,
-                            rse=rse
+                            rse=rse,
                             )
             self._download([did_dict])
 
