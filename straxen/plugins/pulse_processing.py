@@ -14,7 +14,7 @@ __all__ += ['NO_PULSE_COUNTS']
 HITFINDER_OPTIONS = tuple([
     strax.Option(
     'hit_min_amplitude', track=True,
-    default=('hit_thresholds_tpc', 'ONLINE', True), 
+    default='pmt_commissioning_initial'
     help='Minimum hit amplitude in ADC counts above baseline. '
             'Specify as a tuple of length n_tpc_pmts, or a number,'
             'or a string like "pmt_commissioning_initial" which means calling'
