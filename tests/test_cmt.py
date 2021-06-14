@@ -27,7 +27,7 @@ def test_connect_to_db():
                         'password': password,
                         'database': 'corrections'}
     corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
-    client = corrections_collection.database.client     
+    client = corrections_collection.database.client
     cmt = strax.CorrectionsInterface(client, database_name='corrections')
     df = cmt.read('global')
     mes = 'Return empty dataframe when reading DB. Please check'
@@ -53,7 +53,7 @@ def test_1T_elife():
 
 def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
     """
-    Test CMT conf options 
+    Test CMT conf options
     If wrong conf is passed it would raise an error accordingly
     """
     if not straxen.utilix_is_configured():
@@ -163,9 +163,9 @@ def is_cmt_option(config):
     """
     Check if the input configuration is cmt style.
     """
-    is_cmt = (isinstance(config, tuple) 
-               and len(config)==3 
-               and isinstance(config[0], str) 
-               and isinstance(config[1], (str, int, float))
-               and isinstance(config[2], bool))
+    is_cmt = (isinstance(config, tuple)
+              and len(config) == 3
+              and isinstance(config[0], str)
+              and isinstance(config[1], (str, int, float))
+              and isinstance(config[2], bool))
     return is_cmt
