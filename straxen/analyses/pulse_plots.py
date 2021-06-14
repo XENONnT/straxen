@@ -102,11 +102,11 @@ def plot_pulses(context, raw_records, run_id, time_range,
                           color='gray', alpha=0.4
                           )
         
-        # check type of p.thresholds
-        if isinstance(p.thresholds,int):
-            thr = p.thresholds
-        elif isinstance(p.thresholds,np.ndarray):
-            thr = p.thresholds[rr_pulse['channel']][0]
+        # check type of p.hit_thresholds
+        if isinstance(p.hit_thresholds,int):
+            thr = p.hit_thresholds
+        elif isinstance(p.hit_thresholds,np.ndarray):
+            thr = p.hit_thresholds[rr_pulse['channel']][0]
 
         if plot_median:
             # Plot median if asked.
