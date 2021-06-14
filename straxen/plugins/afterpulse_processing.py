@@ -61,7 +61,7 @@ dtype_ap = [(('Channel/PMT number','channel'),
     )
 class LEDAfterpulses(strax.Plugin):
     
-    __version__ = '0.1.2'
+    __version__ = '0.2.0'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -73,14 +73,7 @@ class LEDAfterpulses(strax.Plugin):
     
     def setup(self):
         
-        #self.to_pe = straxen.get_to_pe(self.run_id, self.config['gain_model'], self.config['n_tpc_pmts'])
         self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
-#         print('setup:\n   plugin version = ', self.__version__,
-#               #'\n   hit_threshold = ', self.config['hit_threshold'],
-#               '\n   gain_model = ', self.config['gain_model'],
-#               '\n   LED_window = ', self.config['LED_window_left'], '-', self.config['LED_window_right'],
-#               '\n\n to_pe =', self.to_pe,
-#              )
 
         
     def compute(self, raw_records):
@@ -114,7 +107,6 @@ class LEDAfterpulses(strax.Plugin):
         return result
 
 
-    
 # new data type for hits in AP data
 hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
              (('Time resolution in ns', 'dt'), '<i2'),
@@ -137,7 +129,6 @@ hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
 #   - all samples above threshold in LED window are combined into one LED hit
 #   - added timing parameters for hits
 #   - gives delay time of all hits in WF w.r.t. LED hit
-
 
 @export
 @strax.growing_result(hit_ap_dtype, chunk_size=int(1e2))
@@ -205,7 +196,6 @@ def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None
             if in_interval:
                 if not above_threshold:
                     # Hit ends at the start of this sample
-                    #if not LED_hit: # (LED hit end is determined already)
                     hit_end = i
                     in_interval = False
                     
@@ -225,7 +215,6 @@ def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None
                 if not in_interval:
                     # Hit is done, add it to the result
                     if hit_end == hit_start:
-                        #print(r['time'], r['channel'], hit_start)
                         raise ValueError(
                             "Caught attempt to save zero-length hit!")
                     
@@ -259,13 +248,6 @@ def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None
                     q10 = False
                     for data_i, d in enumerate(data):
                         area_sum += d
-                        
-                        #if area_sum < 0.1*area:
-                        #    continue
-                        #else:
-                        #    res['sample_10pc_area'] = hit_start + data_i
-                        #    break
-                        
                         if area_sum > 0.1 * area:
                             if not q10:
                                 q10 = True
@@ -273,8 +255,6 @@ def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None
                             if area_sum > 0.5 * area:
                                 res['sample_50pc_area'] = hit_start + data_i
                                 break
-                        
-                        
                     
                     # Get sample index where 50% of height is exceeded
                     for data_i, d in enumerate(data):
@@ -294,7 +274,6 @@ def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None
 
                     # reset for next hit
                     area = height = 0
-                    
 
                     # Yield buffer to caller if needed
                     offset += 1
