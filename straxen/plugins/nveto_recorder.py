@@ -24,7 +24,7 @@ export, __all__ = strax.exporter()
                  help="Number of samples used in baseline rms calculation"),
     strax.Option(
         'hit_min_amplitude_nv',
-        default=20, track=True,
+        default=('hit_thresholds_nv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number, '
              'or a string like "pmt_commissioning_initial" which means calling '
