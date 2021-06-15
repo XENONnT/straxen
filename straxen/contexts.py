@@ -95,10 +95,10 @@ xnt_common_opts.update({
 ##
 
 
-def xenonnt(cmt_version='ONLINE', **kwargs):
+def xenonnt(cmt_version='ONLINE', *args, **kwargs):
     """XENONnT context"""
     st = straxen.contexts.xenonnt_online(**kwargs)
-    st.apply_cmt_version(cmt_version)
+    st.apply_cmt_version(cmt_version, *args)
     return st
 
 

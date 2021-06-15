@@ -254,13 +254,15 @@ class CorrectionsManagementServices():
         """Returns a dict of local versions for a given global version"""
         # check that 'global' is in the passed string.
         if 'global' not in global_version:
-            warnings.warn("'global' does not appear in the passed global version. Are you sure this right??")
+            warnings.warn("'global' does not appear in the passed global version. Are you sure this right?")
         # CMT generates a global version, global version is just a set of local versions
         # With this we can do pretty easy bookkeping for offline contexts
 
         cmt_global = self.interface.read('global_xenonnt')
         if global_version not in cmt_global:
-            raise ValueError(f"Global version {global_version} not found!")
+            avail_global_versions_string = '\n'.join([f'\t\t{v}' for v in self.global_versions])
+            raise ValueError(f"Global version {global_version} not found! "
+                             f"Try one of these:\n{avail_global_versions_string}")
         # get local versions from CMT global version
         local_versions = cmt_global[global_version][0]
 
@@ -273,6 +275,10 @@ class CorrectionsManagementServices():
         # drop the per-PMT corrections
         pruned_local_versions = {key: val for key, val in local_versions.items() if "_gain_xenonnt" not in key}
         return pruned_local_versions
+
+    @property
+    def global_versions(self):
+        return self.interface.read('global_xenonnt').columns.tolist()
 
 
 def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
