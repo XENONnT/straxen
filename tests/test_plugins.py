@@ -34,6 +34,7 @@ testing_config_nT = dict(
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
     hit_min_amplitude='pmt_commissioning_initial',
     hit_min_amplitude_nv=20,
+    hit_min_amplitude_mv=80,
     hit_min_amplitude_he='pmt_commissioning_initial_he'
 )
 

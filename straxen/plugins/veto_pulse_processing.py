@@ -183,7 +183,7 @@ def _correct_baseline(records):
              'the baseline'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=80, track=True,
+        default=('hit_thresholds_mv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_mveto_pmts, or a number, '
              'or a string like "pmt_commissioning_initial" which means calling '
