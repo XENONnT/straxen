@@ -33,10 +33,8 @@ testing_config_nT = dict(
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
     hit_min_amplitude='pmt_commissioning_initial',
-    hit_thresholds_he='pmt_commissioning_initial_he',
     hit_min_amplitude_nv=20,
-    hit_thresholds_nv=20,
-    hit_thresholds_mv=80
+    hit_min_amplitude_he='pmt_commissioning_initial_he'
 )
 
 testing_config_1T = dict(
@@ -45,10 +43,6 @@ testing_config_1T = dict(
     elife_conf=('elife_constant', 1e6),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
     hit_min_amplitude='pmt_commissioning_initial',
-    hit_thresholds_he='pmt_commissioning_initial_he',
-    hit_min_amplitude_nv=20,
-    hit_thresholds_nv=20,
-    hit_thresholds_mv=80
 )
 
 test_run_id_nT = '008900'
@@ -181,14 +175,6 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         st.register(straxen.PeakPositions1T)
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
         st.set_config({'gain_model': fallback_gains})
-        # Why you have to set gains again if you are setting testing_config_nt
-        # ok, lets do the same for hit thresholds
-        st.set_config({"hit_min_amplitude" : "pmt_commissioning_initial"})
-        st.set_config({"hit_thresholds_he" : "pmt_commissioning_initial_he"})
-        st.set_config({"hit_min_amplitude_nv": 20})
-        st.set_config({"hit_thresholds_nv" : 20})
-        st.set_config({"hit_thresholds_mv" : 80})
-                    
     elif not nt:
         st.set_config(testing_config_1T)
 

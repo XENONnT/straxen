@@ -161,7 +161,7 @@ def remove_switched_off_channels(hits, to_pe):
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=('hit_thresholds_mv', 'ONLINE', True), track=True,
+        default=80, track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_mveto_pmts, or a number, '
              'or a string like "pmt_commissioning_initial" which means calling '
