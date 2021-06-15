@@ -299,7 +299,7 @@ def get_cmt_local_versions(global_version):
 
 
 @strax.Context.add_method
-def apply_cmt_version(context, cmt_global_version):
+def apply_cmt_version(context, cmt_global_version, posrec_algo='mlp'):
     """Sets all the relevant correction variables"""
 
     local_versions = get_cmt_local_versions(cmt_global_version)
@@ -307,15 +307,16 @@ def apply_cmt_version(context, cmt_global_version):
     cmt_config = dict(gain_model=("to_pe_model", local_versions['tpc_gain_model'], True),
                       gain_model_nv=("to_pe_model_nv", local_versions['nv_gain_model'], True),
                       gain_model_mv=("to_pe_model_mv", local_versions['mv_gain_model'], True),
-                      s1_xyz_correction_map=('s1_xyz_map_mlp', local_versions['s1_xyz_map_mlp'], True),
+                      s1_xyz_correction_map=(f's1_xyz_map_{posrec_algo}', local_versions[f's1_xyz_map_{posrec_algo}'], True),
+                      fdc_map=(f"fdc_map_{posrec_algo}", local_versions[f'fdc_map_{posrec_algo}'], True),
                       s2_xy_correction_map=('s2_xy_map', local_versions['s2_xy_map'], True),
                       elife_conf=("elife", local_versions['elife'], True),
                       mlp_model=("mlp_model", local_versions['mlp_model'], True),
                       gcn_model=("gcn_model", local_versions['gcn_model'], True),
                       cnn_model=("cnn_model", local_versions['cnn_model'], True),
-                      fdc_map=("fdc_map_mlp", local_versions['fdc_map_mlp'], True),
                       electron_drift_velocity=("electron_drift_velocity", local_versions['electron_drift_velocity'], True),
                       electron_drift_time_gate=("electron_drift_time_gate", local_versions['electron_drift_time_gate'], True),
                       baseline_samples_nv=('baseline_samples_nv', local_versions['baseline_samples_nv'], True),
                       )
+
     context.set_config(cmt_config)
