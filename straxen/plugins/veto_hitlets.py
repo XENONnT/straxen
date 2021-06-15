@@ -4,6 +4,9 @@ from immutabledict import immutabledict
 
 import strax
 import straxen
+
+from straxen.get_corrections import is_cmt_option
+
 export, __all__ = strax.exporter()
 
 
@@ -17,9 +20,13 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_nv',
-        default=20, track=True,
+        default=('hit_thresholds_nv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length 120, or a number.'),
+             'Specify as a tuple of length n_nveto_pmts, or a number, '
+             'or a string like "pmt_commissioning_initial" which means calling '
+             'hitfinder_thresholds.py, '
+             'or a tuple like (correction=str, version=str, nT=boolean), '
+             'which means we are using cmt.'),
     strax.Option(
         'min_split_nv',
         default=0.063, track=True,
@@ -87,8 +94,20 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
+        # Check config of `hit_min_amplitude_nv` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_nv']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_nv'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_nv'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_nv'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_nv']
+
     def compute(self, records_nv, start, end):
-        hits = strax.find_hits(records_nv, min_amplitude=self.config['hit_min_amplitude_nv'])
+        hits = strax.find_hits(records_nv, min_amplitude=self.hit_thresholds)
         hits = remove_switched_off_channels(hits, self.to_pe)
 
         temp_hitlets = strax.create_hitlets_from_hits(hits,
@@ -142,10 +161,13 @@ def remove_switched_off_channels(hits, to_pe):
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'hit_min_amplitude_mv',
-        default=80, track=True,
-        child_option=True, parent_option_name='hit_min_amplitude_nv',
+        default=('hit_thresholds_mv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length 120, or a number.'),
+             'Specify as a tuple of length n_mveto_pmts, or a number, '
+             'or a string like "pmt_commissioning_initial" which means calling '
+             'hitfinder_thresholds.py, '
+             'or a tuple like (correction=str, version=str, nT=boolean),'
+             'which means we are using cmt.'),
     strax.Option(
         'min_split_mv', 
         default=100, track=True,
@@ -193,6 +215,18 @@ class muVETOHitlets(nVETOHitlets):
         # Create to_pe array of size max channel:
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
+
+        # Check config of `hit_min_amplitude_mv` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_mv']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_mv'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_mv'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_mv'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_mv']
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)
