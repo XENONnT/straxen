@@ -16,8 +16,10 @@ corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
                       'fdc_map_cnn']
 
 single_value_corrections = ['elife', 'baseline_samples_nv',
-                            'electron_drift_velocity']
+                            'electron_drift_velocity', 'electron_drift_time_gate']
 
+arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
+                      'hit_thresholds_nv', 'hit_thresholds_mv']
 
 @export
 class CorrectionsManagementServices():
@@ -80,13 +82,13 @@ class CorrectionsManagementServices():
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, global_version)
-        elif model_type in single_value_corrections:
+        elif model_type in single_value_corrections or model_type in arrays_corrections:
             return self._get_correction(run_id, model_type, global_version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, global_version)
         else:
             raise ValueError(f"{config_model} not found, currently these are "
-                             f"available {single_value_corrections} and "
+                             f"available {single_value_corrections}, {arrays_corrections} and "
                              f"{corrections_w_file} ")
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
@@ -114,7 +116,7 @@ class CorrectionsManagementServices():
                         # on when something was processed therefore
                         # don't interpolate but forward fill.
                         df = self.interface.interpolate(df, when, how='fill')
-                    if correction in corrections_w_file:
+                    if correction in corrections_w_file or correction in arrays_corrections:
                         # is this the best solution?
                         df = self.interface.interpolate(df, when, how='fill')
                     else:
@@ -214,7 +216,6 @@ class CorrectionsManagementServices():
         if not file_name:
             raise ValueError(f"You have the right option but could not find a file"
                              f"Please contact CMT manager and yell at him")
-
         return file_name
 
     # TODO change to st.estimate_start_time

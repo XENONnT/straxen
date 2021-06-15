@@ -23,15 +23,10 @@ jobs:
         python-version: 3.8
     - name: Checkout repo
       uses: actions/checkout@v2
-    - name: install pre requirements
+    - name: Install requirements for tests and latest strax
       run: |
-        bash .github/scripts/preinstall_requirements.sh
-        pip install coveralls coverage
-    - name: Install strax
-      run: |
-          pip install git+https://github.com/AxFoundation/strax.git
-    - name: Install python dependencies
-      uses: py-actions/py-dependency-install@v2
+        pip install -r extra_requirements/requirements-tests.txt
+        pip install git+https://github.com/AxFoundation/strax.git
     - name: patch utilix file
       run: bash .github/scripts/create_readonly_utilix_config.sh
       env:
@@ -49,6 +44,9 @@ jobs:
         SCADA_USER: ${{ secrets.SCADA_USER }}
         SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
         SCADA_PWD: ${{ secrets.SCADA_PWD }}
+    - name: Create pre-apply function file
+      run: |
+        bash .github/scripts/create_pre_apply_function.sh $HOME
     - name: Coveralls
       env:
         NUMBA_DISABLE_JIT: 1

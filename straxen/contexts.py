@@ -6,7 +6,8 @@ from copy import deepcopy
 common_opts = dict(
     register_all=[
         straxen.event_processing,
-        straxen.double_scatter],
+        straxen.double_scatter,
+    ],
     # Register all peak/pulse processing by hand as 1T does not need to have
     # the high-energy plugins.
     register=[
@@ -25,9 +26,9 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=("CMT_model", ("to_pe_model", "ONLINE")),
-    gain_model_nv=("CMT_model", ("to_pe_model_nv", "ONLINE")),
-    gain_model_mv=("to_pe_constant", "adc_mv"),
+    gain_model=("to_pe_model", "ONLINE", True),
+    gain_model_nv=("to_pe_model_nv", "ONLINE", True),
+    gain_model_mv=("to_pe_model_mv", "ONLINE", True),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -42,17 +43,20 @@ xnt_common_config = dict(
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
-    s1_max_rise_time=100,
-    s2_xy_correction_map=("CMT_model", ('s2_xy_map', "ONLINE"), True),
-    fdc_map=("CMT_model", ('fdc_map', "ONLINE"), True),
-    s1_xyz_correction_map=("CMT_model", ("s1_xyz_map", "ONLINE"), True),
+    gcn_model=None,
+    # Event level parameters
+    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
+    fdc_map=('fdc_map', "ONLINE", True),
+    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
+    g1=0.1426,
+    g2=11.55,
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
-                             gain_model_nv=("to_pe_constant", 0.01),
-                             gain_model_mv=("to_pe_constant", "adc_mv"),
+xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
+                             gain_model_nv=("adc_nv", True),
+                             gain_model_mv=("adc_mv", True),
                              elife_conf=('elife_constant', 1e6),
                              )
 
@@ -60,27 +64,31 @@ xnt_simulation_config.update(gain_model=("to_pe_constant", 0.01),
 # processing there are plugins for High Energy plugins. Therefore do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts['register'] = common_opts['register'] + [
-    straxen.PeakPositionsCNN,
-    straxen.PeakPositionsMLP,
-    straxen.PeakPositionsGCN,
-    straxen.PeakPositionsNT,
-    straxen.PeakBasicsHighEnergy,
-    straxen.PeaksHighEnergy,
-    straxen.PeakletsHighEnergy,
-    straxen.PeakletClassificationHighEnergy,
-    straxen.MergedS2sHighEnergy,
-]
-xnt_common_opts['register_all'] = common_opts['register_all'] + [
-    straxen.nveto_recorder,
-    straxen.veto_pulse_processing,
-    straxen.veto_hitlets,
-    straxen.veto_events,
-    straxen.acqmon_processing,
-    straxen.pulse_processing,
-    straxen.peaklet_processing,
-    straxen.online_monitor,
-]
+xnt_common_opts.update({
+    'register': common_opts['register'] + [straxen.PeakPositionsCNN,
+                                           straxen.PeakPositionsMLP,
+                                           straxen.PeakPositionsGCN,
+                                           straxen.PeakPositionsNT,
+                                           straxen.PeakBasicsHighEnergy,
+                                           straxen.PeaksHighEnergy,
+                                           straxen.PeakletsHighEnergy,
+                                           straxen.PeakletClassificationHighEnergy,
+                                           straxen.MergedS2sHighEnergy,
+                                          ],
+    'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
+                                                   straxen.nveto_recorder,
+                                                   straxen.veto_pulse_processing,
+                                                   straxen.veto_hitlets,
+                                                   straxen.veto_events,
+                                                   straxen.acqmon_processing,
+                                                   straxen.pulse_processing,
+                                                   straxen.peaklet_processing,
+                                                   straxen.online_monitor,
+                                                   straxen.event_area_per_channel,
+                                                   straxen.event_patternfit,
+                                                   ],
+    'use_per_run_defaults': False,
+})
 
 ##
 # XENONnT
@@ -88,12 +96,14 @@ xnt_common_opts['register_all'] = common_opts['register_all'] + [
 
 
 def xenonnt_online(output_folder='./strax_data',
+                   use_rucio=True,
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
                    _database_init=True,
                    _forbid_creation_of=None,
                    _rucio_path='/dali/lgrandi/rucio/',
+                   _include_rucio_remote=False,
                    _raw_path='/dali/lgrandi/xenonnt/raw',
                    _processed_path='/dali/lgrandi/xenonnt/processed',
                    _add_online_monitor_frontend=False,
@@ -104,6 +114,7 @@ def xenonnt_online(output_folder='./strax_data',
 
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
+    :param use_rucio: bool, whether or not to use the rucio frontend
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param _minimum_run_number: int, lowest number to consider
     :param _maximum_run_number: Highest number to consider. When None
@@ -112,6 +123,7 @@ def xenonnt_online(output_folder='./strax_data',
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
         being written (raw_records* is always forbidden).
+    :param _include_rucio_remote: allow remote downloads in the context
     :param _rucio_path: str, path of rucio
     :param _raw_path: str, common path of the raw-data
     :param _processed_path: str. common path of output data
@@ -156,6 +168,13 @@ def xenonnt_online(output_folder='./strax_data',
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
         if _forbid_creation_of is not None:
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
+
+    # if we said so, add the rucio frontend to storage
+    if use_rucio:
+        st.storage.append(straxen.rucio.RucioFrontend(
+            include_remote=True,
+            staging_dir=output_folder))
+
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
@@ -169,7 +188,9 @@ def xenonnt_online(output_folder='./strax_data',
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({'apply_data_function': (straxen.remap_old,)})
+    st.set_context_config({'apply_data_function': (straxen.remap_old,
+                                                   straxen.check_loading_allowed,
+                                                   )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
     return st
@@ -212,6 +233,7 @@ x1t_context_config = {
         check_available=('raw_records', 'records', 'peaklets',
                          'events', 'event_info'),
         free_options=('channel_map',),
+        use_per_run_defaults=True,
         store_run_fields=tuple(
             [x for x in common_opts['store_run_fields'] if x != 'mode']
             + ['trigger.events_built', 'reader.ini.name']))}
@@ -232,8 +254,7 @@ x1t_common_config = dict(
         diagnostic=(248, 253),
         aqmon=(254, 999)),
     # Records
-    hev_gain_model=('to_pe_per_run',
-                    'to_pe.npy'),
+    hev_gain_model=('to_pe_model', "v1", False),
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
@@ -245,8 +266,7 @@ x1t_common_config = dict(
     save_outside_hits=(3, 3),
     # Peaklets
     peaklet_gap_threshold=350,
-    gain_model=('to_pe_per_run',
-                'to_pe.npy'),
+    gain_model=('to_pe_model', "v1", False),
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
@@ -258,13 +278,17 @@ x1t_common_config = dict(
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
+    s1_max_rise_time=60,
+    s1_max_rise_time_post100=150,
     # Events*
-    left_event_extension=int(1e6),
+    left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife_conf=straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    elife_conf=('elife', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
+    event_info_function='disabled',
+    max_drift_length=96.9,
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
-
 
 
 def demo():
@@ -283,11 +307,11 @@ def demo():
 
     # Use configs that are always available
     st.set_config(dict(
-        hev_gain_model=('to_pe_per_run', straxen.aux_repo +
-                        '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
-        gain_model=('to_pe_per_run', straxen.aux_repo +
-                    '3548132b55f81a43654dba5141366041e1daaf01/strax_files/to_pe.npy'),
-    ))
+        hev_gain_model=('1T_to_pe_placeholder', False),
+        gain_model=('1T_to_pe_placeholder', False),
+        elife_conf=('elife_constant', 1e6),
+        electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
+        ))
     return st
 
 

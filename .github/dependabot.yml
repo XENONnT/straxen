@@ -4,11 +4,20 @@
 
 version: 2
 updates:
+  # Maintain the requirements in the github actiuons
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       # Check for updates to GitHub Actions every weekday
       interval: "weekly"
-    # Raise all npm pull requests with an assignee
+    assignees:
+      - jorana
+  # Maintain the requirements requirements folder
+  - package-ecosystem: "pip"
+    directory: "/extra_requirements"
+    schedule:
+      # Check for updates to requirements every week
+      interval: "monthly"
+    open-pull-requests-limit: 15
     assignees:
       - jorana

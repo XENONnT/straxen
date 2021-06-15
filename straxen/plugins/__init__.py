@@ -16,6 +16,12 @@ from .peak_processing import *
 from .position_reconstruction import *
 from . import position_reconstruction
 
+from . import event_area_per_channel
+from .event_area_per_channel import *
+
+from . import event_patternfit
+from .event_patternfit import *
+
 from . import event_processing
 from .event_processing import *
 
@@ -38,6 +44,9 @@ from .veto_hitlets import *
 
 from . import veto_events
 from .veto_events import *
+
+from . import veto_veto_regions
+from .veto_veto_regions import *
 
 from . import acqmon_processing
 from .acqmon_processing import *

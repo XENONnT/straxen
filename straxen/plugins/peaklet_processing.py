@@ -6,6 +6,8 @@ import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 from strax.processing.general import _touching_windows
 
+from straxen.get_corrections import is_cmt_option
+
 export, __all__ = strax.exporter()
 
 
@@ -26,8 +28,8 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1.), (6.0, 0.4)),
-                     ((2., 1.), (4.5, 0.4))),
+                     ((0.5, 1.0), (6.0, 0.4)),
+                     ((2.5, 1.0), (5.625, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
     strax.Option('peak_split_filter_wing_width', default=70,
@@ -41,7 +43,8 @@ export, __all__ = strax.exporter()
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('gain_model',
-                 help='PMT gain model. Specify as (model_type, model_config)'),
+                 help='PMT gain model. Specify as '
+                 '(str(model_config), str(version), nT-->boolean'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
@@ -104,17 +107,25 @@ class Peaklets(strax.Plugin):
                 f"interferes with lone_hit definition. "
                 f"See github.com/XENONnT/straxen/issues/295")
 
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
+
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude']
 
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(
-            r,
-            min_amplitude=straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude']))
+        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -168,6 +179,12 @@ class Peaklets(strax.Plugin):
         # Saturation correction using non-saturated channels
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
+        # Cases when records is not writeable for unclear reason
+        # only see this when loading 1T test data
+        # more details on https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html
+        if not r['data'].flags.writeable:
+            r = r.copy()
+
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
                 r, peaklets, self.to_pe,
@@ -342,7 +359,13 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
         # Define the reference region as reference_length before the first saturation point
         # unless there are not enough samples
-        s0 = np.argmax(b >= r0['baseline'])
+        bl = np.inf
+        for record_i in b_index[ch]:
+            if record_i == -1:
+                break
+            bl = min(bl, records['baseline'][record_i])
+
+        s0 = np.argmax(b >= np.int16(bl))
         ref = slice(max(0, s0-reference_length), s0)
 
         if (b[ref] * to_pe[ch] > 1).sum() < min_reference_length:
@@ -352,7 +375,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
         if (b_sumwf[ref] > 1).sum() < min_reference_length:
             # the same condition applies to the waveform model
             continue
-        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) < 1:
+        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) > 1:
             # The pulse is saturated, but insufficient information is available in the other channels
             # to reliably reconstruct it
             continue
@@ -361,6 +384,8 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
         # Loop over the record indices of the saturated channel (saved in b_index buffer)
         for record_i in b_index[ch]:
+            if record_i == -1:
+                break
             r = records[record_i]
             r_slice, b_slice = strax.overlap_indices(
                 r['time'] // dt, r['length'],
@@ -421,13 +446,24 @@ class PeakletsHighEnergy(Peaklets):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
 
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.config['le_to_he_amplification']
+
+        # Check config of `hit_min_amplitude_he` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_he']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)
@@ -436,9 +472,9 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_rise_time', default=60,
+    strax.Option('s1_max_rise_time', default=110,
                  help="Maximum S1 rise time for < 100 PE [ns]"),
-    strax.Option('s1_max_rise_time_post100', default=150,
+    strax.Option('s1_max_rise_time_post100', default=200,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
     strax.Option('s1_min_coincidence', default=3,
                  help="Minimum tight coincidence necessary to make an S1"),
@@ -504,9 +540,9 @@ FAKE_MERGED_S2_TYPE = -42
 @strax.takes_config(
     strax.Option('s2_merge_max_area', default=5000.,
                  help="Merge peaklet cluster only if area < this [PE]"),
-    strax.Option('s2_merge_max_gap', default=5_000,
+    strax.Option('s2_merge_max_gap', default=10_000,
                  help="Maximum separation between peaklets to allow merging [ns]"),
-    strax.Option('s2_merge_max_duration', default=35_000,
+    strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"))
 class MergedS2s(strax.OverlapWindowPlugin):

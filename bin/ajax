@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 
 import argparse
 from datetime import datetime, timedelta
@@ -147,7 +147,7 @@ def clean_ceph():
     """
     set_state('clean_ceph')
     if not hostname == eb_can_clean_ceph:
-        log.info(f'clean_ceph::\tfor cleaning ceph, go to {eb_can_clean_ceph}')
+        log.info(f'for cleaning ceph, go to {eb_can_clean_ceph}')
         return
 
     rd = run_coll.find_one({'bootstrax.state': 'done',
@@ -161,10 +161,10 @@ def clean_ceph():
         return
     else:
         run_number = rd['number']
-        log.info(f'clean_ceph::\tremove data associated to run {run_number}')
+        log.info(f'remove data associated to run {run_number}')
         remove_run_from_host(run_number, delete_live=True, force=args.force,
                              reason='clean ceph')
-        log.info(f'clean_ceph::\tfinished for {run_number}, take a'
+        log.info(f'finished for {run_number}, take a'
                  f' {ajax_thresholds["short_nap"]} s nap')
         time.sleep(ajax_thresholds['short_nap'])
 
@@ -212,15 +212,15 @@ def clean_high_level_data():
                     continue
                 loc = ddoc['location']
                 if 'raw_records' in ddoc['type']:
-                    raise ValueError('clean_high_level_data::\t'
+                    raise ValueError(''
                                      'your regex syntax fails!')
                 elif os.path.exists(loc):
-                    log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    log.info(f'delete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute,
                                 reason='high level data')
                 else:
                     loc = loc + '_temp'
-                    log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    log.info(f'delete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute,
                                 reason='high level data')
 
@@ -810,6 +810,8 @@ if __name__ == '__main__':
     parser.add_argument('--execute', action='store_true',
                         help="Execute the deletion commands. If not specified, ajax "
                              "assumes you want to test")
+    parser.add_argument('--logging', default='DEBUG',
+                        help="logging level (DEBUG/INFO/WARNING)")
 
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--number', type=int, metavar='NUMBER',
@@ -830,13 +832,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
     hostname = socket.getfqdn()
 
+    if not hasattr(logging, args.logging):
+        raise AttributeError(f'Set --logging to a logging level like DEBUG or INFO')
+    logging_level = getattr(logging, args.logging)
     try:
         import daqnt
-        log_name = 'ajax_' + hostname + ('' if not args.execute else '_TESTING')
-        log = daqnt.get_daq_logger('main', log_name, level=logging.DEBUG)
+        log_name = 'ajax_' + hostname + ('' if args.execute else '_TESTING')
+        log = daqnt.get_daq_logger('main', log_name, level=logging_level)
     except ModuleNotFoundError:
         logging.basicConfig(
-            level=logging.INFO,
+            level=logging_level,
             format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
             datefmt='%m-%d %H:%M')
         log = logging.getLogger()
@@ -871,7 +876,7 @@ if __name__ == '__main__':
     non_registered_folder = '/data/xenonnt_unregistered/'
     for f in (output_folder, non_registered_folder):
         if os.access(f, os.W_OK) is not True:
-            log_warning(f'main::\tNo writing access to {f}', property='fatal')
+            log_warning(f'main::\tNo writing access to {f}', priority='fatal')
             raise IOError(f'main::\tNo writing access to {f}')
 
     # Runs database
