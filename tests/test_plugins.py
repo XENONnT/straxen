@@ -32,6 +32,10 @@ testing_config_nT = dict(
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
+    s1_aft_map=aux_repo + 'ffdadba3439ae7922b19f5dd6479348b253c09b0/strax_files/s1_aft_UNITY_xyz_XENONnT.json',
+    s2_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s2_map_UNITY_xy_XENONnT.json',
+    s1_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s1_lce_UNITY_xyz_XENONnT.json',
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
     hit_min_amplitude='pmt_commissioning_initial',
     hit_min_amplitude_nv=20,
     hit_min_amplitude_mv=80,
@@ -43,7 +47,7 @@ testing_config_1T = dict(
     gain_model=('1T_to_pe_placeholder', False),
     elife_conf=('elife_constant', 1e6),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    hit_min_amplitude='pmt_commissioning_initial',
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
 
 test_run_id_nT = '008900'
@@ -176,6 +180,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         st.register(straxen.PeakPositions1T)
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
         st.set_config({'gain_model': fallback_gains})
+
     elif not nt:
         st.set_config(testing_config_1T)
 
@@ -255,7 +260,8 @@ def test_1T(ncores=1):
 def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
-    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured())
+    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured(),
+                                         use_rucio=False)
     offline_gain_model = ("to_pe_placeholder", True)
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
@@ -270,3 +276,9 @@ def test_nT(ncores=1):
 def test_nT_mutlticore():
     print('nT multicore')
     test_nT(2)
+
+# Disable the test below as it saves some time in travis and gives limited new
+# information as most development is on nT-plugins.
+# def test_1T_mutlticore():
+#     print('1T multicore')
+#     test_1T(2)
