@@ -1,5 +1,7 @@
 """Return corrections from corrections DB
 """
+import warnings
+
 import pytz
 import numpy as np
 from functools import lru_cache
@@ -250,8 +252,12 @@ class CorrectionsManagementServices():
 
     def get_local_versions(self, global_version):
         """Returns a dict of local versions for a given global version"""
+        # check that 'global' is in the passed string.
+        if 'global' not in global_version:
+            warnings.warn("'global' does not appear in the passed global version. Are you sure this right??")
         # CMT generates a global version, global version is just a set of local versions
         # With this we can do pretty easy bookkeping for offline contexts
+
         cmt_global = self.interface.read('global_xenonnt')
         if global_version not in cmt_global:
             raise ValueError(f"Global version {global_version} not found!")
