@@ -248,6 +248,26 @@ class CorrectionsManagementServices():
         time = rundoc['start']
         return time.replace(tzinfo=pytz.utc)
 
+    def get_local_versions(self, global_version):
+        """Returns a dict of local versions for a given global version"""
+        # CMT generates a global version, global version is just a set of local versions
+        # With this we can do pretty easy bookkeping for offline contexts
+        cmt_global = self.interface.read('global_xenonnt')
+        if global_version not in cmt_global:
+            raise ValueError(f"Global version {global_version} not found!")
+        # get local versions from CMT global version
+        local_versions = cmt_global[global_version][0]
+
+        # to make returned dictionary more manageable, we prune all the per-PMT corrections
+        # first rename to more clear variable
+        local_versions['tpc_gain_model'] = local_versions['pmt_000_gain_xenonnt']
+        local_versions['nv_gain_model'] = local_versions['n_veto_000_gain_xenonnt']
+        local_versions['mv_gain_model'] = local_versions['mu_veto_000_gain_xenonnt']
+
+        # drop the per-PMT corrections
+        pruned_local_versions = {key: val for key, val in local_versions.items() if "_gain_xenonnt" not in key}
+        return pruned_local_versions
+
 
 def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
     """Convert args to consistent naming convention for array to be cached"""
@@ -267,28 +287,29 @@ class GainsNotFoundError(Exception):
     pass
 
 
+def get_cmt_local_versions(global_version):
+    cmt = CorrectionsManagementServices()
+    return cmt.get_local_versions(global_version)
+
+
 @strax.Context.add_method
 def apply_cmt_version(context, cmt_global_version):
     """Sets all the relevant correction variables"""
 
-    cmt=straxen.CorrectionsManagementServices()
-    cmt_inter = cmt.interface
-    # CMT generates a global version, global version is just a set of local versions
-    # With this we can do pretty easy bookkeping for offline contexts
-    cmt_global = cmt_inter.read('global_xenonnt')  
-    local_version = cmt_global[cmt_global_version][0] # get local versions from CMT global version
-    cmt_config = dict(gain_model=("to_pe_model", local_version['pmt_000_gain_xenonnt'], True),
-                      gain_model_nv=("to_pe_model_nv", local_version['n_veto_000_gain_xenonnt'], True),
-                      gain_model_mv=("to_pe_model_mv", local_version['mu_veto_000_gain_xenonnt'], True),
-                      s1_xyz_correction_map=('s1_xyz_map_mlp', local_version['s1_xyz_map_mlp'], True),
-                      s2_xy_correction_map=('s2_xy_map', local_version['s2_xy_map'], True),
-                      elife_conf=("elife", local_version['elife'], True),
-                      mlp_model=("mlp_model", local_version['mlp_model'], True),
-                      gcn_model=("gcn_model", local_version['gcn_model'], True),
-                      cnn_model=("cnn_model", local_version['cnn_model'], True),
-                      fdc_map=("fdc_map_mlp", local_version['fdc_map_mlp'], True),
-                      electron_drift_velocity=("electron_drift_velocity", local_version['electron_drift_velocity'], True),
-                      electron_drift_time_gate=("electron_drift_time_gate", local_version['electron_drift_time_gate'], True),
-                      baseline_samples_nv=('baseline_samples_nv', local_version['baseline_samples_nv'], True),
+    local_versions = get_cmt_local_versions(cmt_global_version)
+
+    cmt_config = dict(gain_model=("to_pe_model", local_versions['tpc_gain_model'], True),
+                      gain_model_nv=("to_pe_model_nv", local_versions['nv_gain_model'], True),
+                      gain_model_mv=("to_pe_model_mv", local_versions['mv_gain_model'], True),
+                      s1_xyz_correction_map=('s1_xyz_map_mlp', local_versions['s1_xyz_map_mlp'], True),
+                      s2_xy_correction_map=('s2_xy_map', local_versions['s2_xy_map'], True),
+                      elife_conf=("elife", local_versions['elife'], True),
+                      mlp_model=("mlp_model", local_versions['mlp_model'], True),
+                      gcn_model=("gcn_model", local_versions['gcn_model'], True),
+                      cnn_model=("cnn_model", local_versions['cnn_model'], True),
+                      fdc_map=("fdc_map_mlp", local_versions['fdc_map_mlp'], True),
+                      electron_drift_velocity=("electron_drift_velocity", local_versions['electron_drift_velocity'], True),
+                      electron_drift_time_gate=("electron_drift_time_gate", local_versions['electron_drift_time_gate'], True),
+                      baseline_samples_nv=('baseline_samples_nv', local_versions['baseline_samples_nv'], True),
                       )
     context.set_config(cmt_config)
