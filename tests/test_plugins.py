@@ -36,6 +36,10 @@ testing_config_nT = dict(
     s2_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s2_map_UNITY_xy_XENONnT.json',
     s1_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s1_lce_UNITY_xyz_XENONnT.json',
     electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
+    hit_min_amplitude='pmt_commissioning_initial',
+    hit_min_amplitude_nv=20,
+    hit_min_amplitude_mv=80,
+    hit_min_amplitude_he='pmt_commissioning_initial_he'
 )
 
 testing_config_1T = dict(
