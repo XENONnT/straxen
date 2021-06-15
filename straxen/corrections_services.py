@@ -18,6 +18,8 @@ corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
 single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
                             'electron_drift_velocity', 'electron_drift_time_gate']
 
+arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
+                      'hit_thresholds_nv', 'hit_thresholds_mv']
 
 @export
 class CorrectionsManagementServices():
@@ -86,7 +88,7 @@ class CorrectionsManagementServices():
             return self.get_config_from_cmt(run_id, model_type, version)
         else:
             raise ValueError(f"{config_model} not found, currently these are "
-                             f"available {single_value_corrections} and "
+                             f"available {single_value_corrections}, {arrays_corrections} and "
                              f"{corrections_w_file} ")
 
     # TODO add option to extract 'when'. Also, the start time might not be the best
@@ -105,6 +107,7 @@ class CorrectionsManagementServices():
 
         try:
             values = []
+
             # hack to workaround to group all pmts
             # because every pmt is its own dataframe...of course
             if correction in {'pmt', 'n_veto', 'mu_veto'}:

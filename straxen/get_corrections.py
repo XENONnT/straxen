@@ -5,6 +5,8 @@ from warnings import warn
 from functools import wraps
 from straxen.corrections_services import corrections_w_file
 from straxen.corrections_services import single_value_corrections
+from straxen.corrections_services import arrays_corrections
+
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
@@ -91,6 +93,11 @@ def get_correction_from_cmt(run_id, conf):
             else:
                 return float(correction) # float elife, drift velocity, etc
         
+        elif model_conf in arrays_corrections:
+            np_correction = correction.reshape(correction.size)
+            np_correction = np_correction.astype(np.int16)  # not sure if straxen can handle dtype:object therefore specify dtype
+            return np_correction
+        
         return correction
     
     else:
@@ -98,6 +105,18 @@ def get_correction_from_cmt(run_id, conf):
                          "Please use the following format: "
                          "(config->str, model_config->str or number, is_nT->bool) "
                          f"User specify {conf} please modify")
+
+def is_cmt_option(config):
+    """
+    Check if the input configuration is cmt style.
+    """
+    is_cmt = (isinstance(config, tuple)
+              and len(config)==3
+              and isinstance(config[0], str)
+              and isinstance(config[1], (str, int, float))
+              and isinstance(config[2], bool))
+    
+    return is_cmt
 
 FIXED_TO_PE = {
     'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
