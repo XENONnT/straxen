@@ -542,8 +542,6 @@ FAKE_MERGED_S2_TYPE = -42
 
 @export
 @strax.takes_config(
-    strax.Option('s2_merge_max_gap', default=10_000,
-                 help="Maximum separation between peaklets to allow merging [ns]"),
     strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"),
@@ -565,7 +563,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
-        return 5 * (self.config['s2_merge_gap_thresholds'][0][1]
+        return 5 * (int(self.config['s2_merge_gap_thresholds'][0][1])
                     + self.config['s2_merge_max_duration'])
 
     def compute(self, peaklets):
@@ -586,7 +584,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 peaklets['time'], strax.endtime(peaklets),
                 areas=peaklets['area'],
                 types=peaklets['type'],
-                gap_thresholds=self.config['s2_merge_gap_thresholds'],
+                gap_thresholds=gap_thresholds,
                 max_duration=self.config['s2_merge_max_duration'],
                 max_gap=max_gap,
                 max_area=max_area,)
@@ -614,9 +612,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         n_gaps = len(peaklet_gaps)
 
         previous_valid_gap = np.arange(n_gaps) - 1
-        previous_valid_gap[0] = 0
         next_valid_gap = np.arange(n_gaps) + 1
-        next_valid_gap[n_gaps - 1] = n_gaps - 1
 
         # gaps_to_merge includes two imaginary gaps before and after all peaklets
         gaps_to_merge = np.zeros(n_gaps + 2, np.bool_)
@@ -645,8 +641,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # Check with varying threshold based on peak area after merging
                 continue
 
-            next_valid_gap[previous_valid_gap[gap_i]] = next_valid_gap[gap_i]
-            previous_valid_gap[next_valid_gap[gap_i]] = previous_valid_gap[gap_i]
+            # Mark the current gap merged and update info of its previous and next gap
+            # There's no previous gap for gap[0], and no next gap for gap[n_gaps-1]
+            if gap_i != 0:
+                next_valid_gap[previous_valid_gap[gap_i]] = next_valid_gap[gap_i]
+            if gap_i != n_gaps - 1:
+                previous_valid_gap[next_valid_gap[gap_i]] = previous_valid_gap[gap_i]
 
             gaps_to_merge[gap_i + 1] = True
 
