@@ -162,7 +162,7 @@ def get_context(is_nt):
     :return: straxen context that mimics the xenonnt_online context without the rundb init
     """
     if is_nt:
-        st = straxen.contexts.xenonnt_online(_database_init=False)
+        st = straxen.contexts.xenonnt_online(_database_init=False, use_rucio=False)
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
     else:
         st = straxen.contexts.xenon1t_dali()
