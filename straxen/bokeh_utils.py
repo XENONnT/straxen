@@ -1,5 +1,6 @@
 import bokeh.plotting as bklt
-import bokeh
+from bokeh.embed import file_html
+from bokeh.resources import CDN
 import numpy as np
 import strax
 
@@ -17,7 +18,7 @@ def bokeh_to_wiki(fig, outputfile=None):
         can be simply copied into the wiki.
     """
     # convert plot to wiki format:
-    html = bokeh.embed.file_html(fig, bokeh.resources.CDN)
+    html = file_html(fig, CDN)
     html = '\n'.join((['<html>'] + html.split('\n')[6:]))
 
     if outputfile:
