@@ -123,16 +123,21 @@ def is_cmt_option(config):
 def get_cmt_options(context):
     """
     Function which loops over all plugin configs and returns dictionary
-    with option name as key and default values as values.
+    with option name as key and current settings as values.
 
     :param context: Context with registered plugins.
     """
-    default_cmt_options = {}
+    cmt_options = {}
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
-            if straxen.get_corrections.is_cmt_option(option.default):
-                default_cmt_options[option_key] = option.default
-    return default_cmt_options
+            if (option_key in context.config and
+                straxen.get_corrections.is_cmt_option(context.config[option_key])
+                ):
+                cmt_options[option_key] = context.config[option_key]
+            elif straxen.get_corrections.is_cmt_option(option.default):
+                cmt_options[option_key] = option.default
+
+    return cmt_options
 
 
 FIXED_TO_PE = {
