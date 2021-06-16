@@ -535,7 +535,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
-    
+
 
 FAKE_MERGED_S2_TYPE = -42
 
@@ -632,7 +632,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if peaklet_gaps[gap_i] > max_gap:
                 # From now on gaps are too large to merge
                 break
-                
+
             if sum_area > max_area:
                 # The merged peak would be too large
                 continue
