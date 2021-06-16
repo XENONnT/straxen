@@ -26,10 +26,13 @@ def test_xenonnt_online():
     st.search_field('time')
 
 
-def test_xennonnt():
+def test_xennonnt(cmt_version='ONLINE'):
     st = xenonnt(_database_init=False, use_rucio=False)
     st.search_field('time')
 
+def test_xennonnt_v1(cmt_version = 'v1'):
+    st = xenonnt(cmt_version=cmt_version, _database_init=False, use_rucio=False)
+    st.search_field('time')
 
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False, use_rucio=False)
