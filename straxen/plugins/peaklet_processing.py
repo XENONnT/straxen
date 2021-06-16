@@ -568,7 +568,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if len(peaklets) <= 1:
             return peaklets[:0]
 
-        if self.config['s2_merge_gap_thresholds'][0][1] < 0:
+        gap_thresholds = self.config['s2_merge_gap_thresholds']
+        if gap_thresholds[0][1] < 0:
             # Do not merge at all
             merged_s2s = np.zeros(0, dtype=peaklets.dtype)
         else:
@@ -636,8 +637,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # The merged peak would be too long
                 continue
 
-            if peaklet_gaps[gap_i] > merge_s2_threshold(np.log10(sum_area), gap_thresholds):
-                # Check with varing threshold based on peak area after merging
+            if peaklet_gaps[gap_i] > self.merge_s2_threshold(np.log10(sum_area), gap_thresholds):
+                # Check with varying threshold based on peak area after merging
                 continue
 
             next_valid_gap[previous_valid_gap[gap_i]] = next_valid_gap[gap_i]
@@ -654,21 +655,21 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         return start_merge_at[~start_merge_with_s1], end_merge_at[~start_merge_with_s1]
 
-
-@numba.njit(cache=True, nogil=True)
-def merge_s2_threshold(log_area, gap_thresholds):
-    """Return gap threshold for log_area of the merged S2
-    with linear interpolation given the points in gap_thresholds
-    :param log_area: Log 10 area of the merged S2
-    :param gap_thresholds: tuple (n, 2) of fix points for interpolation
-    """
-    for i, (a1, g1) in enumerate(gap_thresholds):
-        if log_area < a1:
-            if i == 0:
-                return g1
-            a0, g0 = gap_thresholds[i-1]
-            return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
-    return gap_thresholds[-1][1]
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def merge_s2_threshold(log_area, gap_thresholds):
+        """Return gap threshold for log_area of the merged S2
+        with linear interpolation given the points in gap_thresholds
+        :param log_area: Log 10 area of the merged S2
+        :param gap_thresholds: tuple (n, 2) of fix points for interpolation
+        """
+        for i, (a1, g1) in enumerate(gap_thresholds):
+            if log_area < a1:
+                if i == 0:
+                    return g1
+                a0, g0 = gap_thresholds[i-1]
+                return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
+        return gap_thresholds[-1][1]
 
 
 @export
