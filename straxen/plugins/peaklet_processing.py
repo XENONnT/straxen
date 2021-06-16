@@ -186,10 +186,13 @@ class Peaklets(strax.Plugin):
             r = r.copy()
 
         if self.config['saturation_correction_on']:
-            peak_saturation_correction(
+            peak_list = peak_saturation_correction(
                 r, peaklets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
+
+            # Compute the width again for corrected peaks
+            strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -213,13 +216,13 @@ class Peaklets(strax.Plugin):
             assert np.diff(hits['time']).min(initial=1) >= 0, "Hits not sorted"
             assert np.all(peaklets['time'][1:]
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
-        
+
         # Update nhits of peaklets:
         counts = strax.touching_windows(hits, peaklets)
         counts = np.diff(counts, axis=1).flatten()
         counts += 1
         peaklets['n_hits'] = counts
-        
+
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits)
 
@@ -333,6 +336,7 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['dt'] = dt
 
     strax.sum_waveform(peaks, records, to_pe, peak_list)
+    return peak_list
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
