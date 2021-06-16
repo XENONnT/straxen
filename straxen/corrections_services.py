@@ -79,17 +79,17 @@ class CorrectionsManagementServices():
         """
 
         if not isinstance(config_model, (tuple, list)) or len(config_model) != 2:
-            raise ValueError(f'config_model {config_model} must be a tuple')
+            raise ValueError(f'config_model {config_model} must be a tuple of length 2')
         model_type, version = config_model
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, version)
-        elif model_type in single_value_corrections:
+        elif model_type in single_value_corrections or model_type in arrays_corrections:
             return self._get_correction(run_id, model_type, version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, version)
         else:
-            raise ValueError(f"{config_model} not found, currently these are "
+            raise ValueError(f"{model_type} not found, currently these are "
                              f"available {single_value_corrections}, {arrays_corrections} and "
                              f"{corrections_w_file} ")
 
@@ -323,6 +323,10 @@ def apply_cmt_version(context, cmt_global_version, posrec_algo='mlp'):
                       electron_drift_velocity=("electron_drift_velocity", local_versions['electron_drift_velocity'], True),
                       electron_drift_time_gate=("electron_drift_time_gate", local_versions['electron_drift_time_gate'], True),
                       baseline_samples_nv=('baseline_samples_nv', local_versions['baseline_samples_nv'], True),
+                      hit_min_amplitude=('hit_thresholds_tpc', local_versions['hit_thresholds_tpc'], True),
+                      hit_min_amplitude_he=('hit_thresholds_he', local_versions['hit_thresholds_he'], True),
+                      hit_min_amplitude_nv=('hit_thresholds_nv', local_versions['hit_thresholds_nv'], True),
+                      hit_min_amplitude_mv=('hit_thresholds_mv', local_versions['hit_thresholds_mv'], True),
                       )
 
     context.set_config(cmt_config)
