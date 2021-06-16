@@ -24,7 +24,7 @@ try:
     replica_client = ReplicaClient()
     did_client = DIDClient()
     download_client = DownloadClient()
-except ModuleNotFoundError:
+except (ModuleNotFoundError, RuntimeError):
     warnings.warn("No installation of rucio-clients found. Can't use rucio remove backend")
 
 export, __all__ = strax.exporter()

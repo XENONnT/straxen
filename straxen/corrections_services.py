@@ -9,6 +9,8 @@ import strax
 import utilix
 import straxen
 import os
+from immutabledict import immutabledict
+
 
 export, __all__ = strax.exporter()
 
@@ -305,16 +307,16 @@ def get_cmt_local_versions(global_version):
 
 
 @strax.Context.add_method
-def apply_cmt_version(context, cmt_global_version, posrec_algo='mlp'):
+def apply_cmt_version(context, cmt_global_version, cmt_kwargs=immutabledict()):
     """Sets all the relevant correction variables"""
-
+    posrec_algo = cmt_kwargs.get('posrec_algo', 'mlp')
     local_versions = get_cmt_local_versions(cmt_global_version)
 
     cmt_config = dict(gain_model=("to_pe_model", local_versions['tpc_gain_model'], True),
                       gain_model_nv=("to_pe_model_nv", local_versions['nv_gain_model'], True),
                       gain_model_mv=("to_pe_model_mv", local_versions['mv_gain_model'], True),
-                      s1_xyz_correction_map=(f's1_xyz_map_{posrec_algo}', local_versions[f's1_xyz_map_{posrec_algo}'], True),
-                      fdc_map=(f"fdc_map_{posrec_algo}", local_versions[f'fdc_map_{posrec_algo}'], True),
+                      s1_xyz_correction_map=(f's1_xyz_map', local_versions[f's1_xyz_map_{posrec_algo}'], True),
+                      fdc_map=(f"fdc_map", local_versions[f'fdc_map_{posrec_algo}'], True),
                       s2_xy_correction_map=('s2_xy_map', local_versions['s2_xy_map'], True),
                       elife_conf=("elife", local_versions['elife'], True),
                       mlp_model=("mlp_model", local_versions['mlp_model'], True),
@@ -328,5 +330,4 @@ def apply_cmt_version(context, cmt_global_version, posrec_algo='mlp'):
                       hit_min_amplitude_nv=('hit_thresholds_nv', local_versions['hit_thresholds_nv'], True),
                       hit_min_amplitude_mv=('hit_thresholds_mv', local_versions['hit_thresholds_mv'], True),
                       )
-
     context.set_config(cmt_config)
