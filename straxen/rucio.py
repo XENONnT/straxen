@@ -24,10 +24,13 @@ try:
     replica_client = ReplicaClient()
     did_client = DIDClient()
     download_client = DownloadClient()
+    RUCIO_AVAILABLE = True
 except (ModuleNotFoundError, RuntimeError):
     warnings.warn("No installation of rucio-clients found. Can't use rucio remove backend")
+    RUCIO_AVAILABLE = False
 
 export, __all__ = strax.exporter()
+__all__ += ['RUCIO_AVAILABLE']
 
 
 class TooMuchDataError(Exception):

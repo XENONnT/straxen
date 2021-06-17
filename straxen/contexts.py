@@ -171,8 +171,9 @@ def xenonnt_online(output_folder='./strax_data',
     # if we said so, add the rucio frontend to storage
     if use_rucio:
         st.storage.append(straxen.rucio.RucioFrontend(
-            include_remote=True,
-            staging_dir=output_folder))
+            include_remote=straxen.RUCIO_AVAILABLE,
+            staging_dir=output_folder,
+        ))
 
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
