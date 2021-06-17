@@ -26,42 +26,46 @@ def test_xenonnt_online():
     st.search_field('time')
 
 
-# def test_xennonnt():
-#     st = xenonnt(_database_init=False, use_rucio=False)
-#     st.search_field('time')
+def test_xennonnt():
+    st = xenonnt(_database_init=False, use_rucio=False)
+    st.search_field('time')
 
-# def test_xennonnt_latest(cmt_version='latest'):
-#     st = xenonnt(cmt_version, _database_init=False, use_rucio=False)
-#     st.search_field('time')
+
+def test_xennonnt_latest(cmt_version='latest'):
+    if straxen.utilix_is_configured():
+        st = xenonnt(cmt_version, _database_init=False, use_rucio=False)
+        st.search_field('time')
+
 
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False, use_rucio=False)
     st.search_field('time')
 
 
-def xenon_xenonnt_simulation():
+def test_nt_is_nt_online():
+    if not straxen.utilix_is_configured():
+        # Cannot contact CMT without the database
+        return
+    # Test that nT and nT online are the same
+    st_online = xenonnt_online(_database_init=False, use_rucio=False)
+
+    st = xenonnt(_database_init=False, use_rucio=False)
+    for plugin in st._plugin_class_registry.keys():
+        print(f'Checking {plugin}')
+        nt_key = st.key_for('0', plugin)
+        nt_online_key = st_online.key_for('0', plugin)
+        assert str(nt_key) == str(nt_online_key)
+
+
+def test_xenonnt_simulation():
     if import_wfsim():
         st = xenonnt_simulation()
         st.search_field('time')
 
-
-# def test_nt_is_nt_online():
-#     # Test that nT and nT online are the same
-#     st_online = xenonnt_online(_database_init=False, use_rucio=False)
-#
-#     # Temporary
-#     st_online.set_config({'gcn_model': ('gcn_model', 'ONLINE', True)})
-#
-#     st = xenonnt(_database_init=False, use_rucio=False)
-#     for plugin in st._plugin_class_registry.keys():
-#         print(plugin)
-#         nt_key = st.key_for('0', plugin)
-#         nt_online_key = st_online.key_for('0', plugin)
-#         assert str(nt_key) == str(nt_online_key)
-
 ##
 # XENON1T
 ##
+
 
 def test_xenon1t_dali():
     st = xenon1t_dali()
@@ -96,7 +100,7 @@ def test_xenon1t_led():
     st.search_field('time')
 
 
-def xenon_xenon1t_simulation():
+def test_xenon1t_simulation():
     if import_wfsim():
         st = xenon1t_simulation()
         st.search_field('time')
