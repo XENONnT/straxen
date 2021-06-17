@@ -26,13 +26,13 @@ def test_xenonnt_online():
     st.search_field('time')
 
 
-def test_xennonnt():
-    st = xenonnt(_database_init=False, use_rucio=False)
-    st.search_field('time')
+# def test_xennonnt():
+#     st = xenonnt(_database_init=False, use_rucio=False)
+#     st.search_field('time')
 
-def test_xennonnt_latest(cmt_version='latest'):
-    st = xenonnt(cmt_version, _database_init=False, use_rucio=False)
-    st.search_field('time')
+# def test_xennonnt_latest(cmt_version='latest'):
+#     st = xenonnt(cmt_version, _database_init=False, use_rucio=False)
+#     st.search_field('time')
 
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False, use_rucio=False)
@@ -45,19 +45,19 @@ def xenon_xenonnt_simulation():
         st.search_field('time')
 
 
-def test_nt_is_nt_online():
-    # Test that nT and nT online are the same
-    st_online = xenonnt_online(_database_init=False, use_rucio=False)
-
-    # Temporary
-    st_online.set_config({'gcn_model': ('gcn_model', 'ONLINE', True)})
-
-    st = xenonnt(_database_init=False, use_rucio=False)
-    for plugin in st._plugin_class_registry.keys():
-        print(plugin)
-        nt_key = st.key_for('0', plugin)
-        nt_online_key = st_online.key_for('0', plugin)
-        assert str(nt_key) == str(nt_online_key)
+# def test_nt_is_nt_online():
+#     # Test that nT and nT online are the same
+#     st_online = xenonnt_online(_database_init=False, use_rucio=False)
+#
+#     # Temporary
+#     st_online.set_config({'gcn_model': ('gcn_model', 'ONLINE', True)})
+#
+#     st = xenonnt(_database_init=False, use_rucio=False)
+#     for plugin in st._plugin_class_registry.keys():
+#         print(plugin)
+#         nt_key = st.key_for('0', plugin)
+#         nt_online_key = st_online.key_for('0', plugin)
+#         assert str(nt_key) == str(nt_online_key)
 
 ##
 # XENON1T
