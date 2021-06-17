@@ -363,8 +363,8 @@ def rucio_path(root_dir, did):
     """Convert target to path according to rucio convention.
     See the __hash method here: https://github.com/rucio/rucio/blob/1.20.15/lib/rucio/rse/protocols/protocol.py"""
     scope, filename = did.split(':')
-    # pylint: disable=B303
-    rucio_md5 = hashlib.md5(did.encode('utf-8')).hexdigest()
+    # disable bandit
+    rucio_md5 = hashlib.md5(did.encode('utf-8')).hexdigest() # nosec
     t1 = rucio_md5[0:2]
     t2 = rucio_md5[2:4]
     return os.path.join(root_dir, scope, t1, t2, filename)
