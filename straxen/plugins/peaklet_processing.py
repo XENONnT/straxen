@@ -547,9 +547,11 @@ FAKE_MERGED_S2_TYPE = -42
                       "longer than this [ns]"),
     strax.Option('s2_merge_gap_thresholds', default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
                  help="Points to define maximum separation between peaklets to allow "
-                      "merging [ns] depending on log10 area of the merged peak\n"
-                      "where the gap size of the first point is the maximum gap to allow merging"
-                      "and the last area is the maximum area to allow merging"))
+                      "merging [ns] depending on log10 area of the merged peak "
+                      "where the gap size of the first point is the maximum gap to allow merging "
+                      "and the last area is the maximum area to allow merging. "
+                      "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+                      ))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
