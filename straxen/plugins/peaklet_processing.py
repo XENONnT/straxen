@@ -607,7 +607,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
             gap_thresholds, max_duration, max_gap, max_area):
-        """Finding the group of peaklets to merge
+        """Finding the group of peaklets to merge. To do this start with the 
+        smallest gaps and keep merging until the new, merged S2 has such a 
+        large area or gap to adjacent peaks that merging is not required 
+        anymore.
         returns: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged
         """
