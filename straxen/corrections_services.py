@@ -29,6 +29,11 @@ arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
 # important for apply_cmt_version
 posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map']
 
+
+class CMTVersionError(Exception):
+    pass
+
+
 @export
 class CorrectionsManagementServices():
     """
@@ -355,8 +360,3 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
                               f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
 
     context.set_config(cmt_config)
-
-
-class CMTVersionError(Exception):
-    pass
-
