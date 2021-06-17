@@ -23,12 +23,12 @@ def import_wfsim():
 
 
 def test_xenonnt_online():
-    st = xenonnt_online(_database_init=False)
+    st = xenonnt_online(_database_init=False, use_rucio=False)
     st.search_field('time')
 
 
 def test_xenonnt_led():
-    st = xenonnt_led(_database_init=False)
+    st = xenonnt_led(_database_init=False, use_rucio=False)
     st.search_field('time')
 
 
