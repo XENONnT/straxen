@@ -25,6 +25,10 @@ single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
 arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
                       'hit_thresholds_nv', 'hit_thresholds_mv']
 
+# needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
+# important for apply_cmt_version
+posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map']
+
 @export
 class CorrectionsManagementServices():
     """
@@ -270,9 +274,9 @@ class CorrectionsManagementServices():
 
         # to make returned dictionary more manageable, we prune all the per-PMT corrections
         # first rename to more clear variable
-        local_versions['tpc_gain_model'] = local_versions['pmt_000_gain_xenonnt']
-        local_versions['nv_gain_model'] = local_versions['n_veto_000_gain_xenonnt']
-        local_versions['mv_gain_model'] = local_versions['mu_veto_000_gain_xenonnt']
+        local_versions['to_pe_model'] = local_versions['pmt_000_gain_xenonnt']
+        local_versions['to_pe_model_nv'] = local_versions['n_veto_000_gain_xenonnt']
+        local_versions['to_pe_model_mv'] = local_versions['mu_veto_000_gain_xenonnt']
 
         # drop the per-PMT corrections
         pruned_local_versions = {key: val for key, val in local_versions.items() if "_gain_xenonnt" not in key}
@@ -307,27 +311,44 @@ def get_cmt_local_versions(global_version):
 
 
 @strax.Context.add_method
-def apply_cmt_version(context, cmt_global_version, cmt_kwargs=immutabledict()):
+def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     """Sets all the relevant correction variables"""
-    posrec_algo = cmt_kwargs.get('posrec_algo', 'mlp')
     local_versions = get_cmt_local_versions(cmt_global_version)
 
-    cmt_config = dict(gain_model=("to_pe_model", local_versions['tpc_gain_model'], True),
-                      gain_model_nv=("to_pe_model_nv", local_versions['nv_gain_model'], True),
-                      gain_model_mv=("to_pe_model_mv", local_versions['mv_gain_model'], True),
-                      s1_xyz_correction_map=(f's1_xyz_map', local_versions[f's1_xyz_map_{posrec_algo}'], True),
-                      fdc_map=(f"fdc_map", local_versions[f'fdc_map_{posrec_algo}'], True),
-                      s2_xy_correction_map=('s2_xy_map', local_versions['s2_xy_map'], True),
-                      elife_conf=("elife", local_versions['elife'], True),
-                      mlp_model=("mlp_model", local_versions['mlp_model'], True),
-                      gcn_model=("gcn_model", local_versions['gcn_model'], True),
-                      cnn_model=("cnn_model", local_versions['cnn_model'], True),
-                      electron_drift_velocity=("electron_drift_velocity", local_versions['electron_drift_velocity'], True),
-                      electron_drift_time_gate=("electron_drift_time_gate", local_versions['electron_drift_time_gate'], True),
-                      baseline_samples_nv=('baseline_samples_nv', local_versions['baseline_samples_nv'], True),
-                      hit_min_amplitude=('hit_thresholds_tpc', local_versions['hit_thresholds_tpc'], True),
-                      hit_min_amplitude_he=('hit_thresholds_he', local_versions['hit_thresholds_he'], True),
-                      hit_min_amplitude_nv=('hit_thresholds_nv', local_versions['hit_thresholds_nv'], True),
-                      hit_min_amplitude_mv=('hit_thresholds_mv', local_versions['hit_thresholds_mv'], True),
-                      )
+    # get the position algorithm we are using
+    # I feel like this should be easier...
+    posrec_option = 'default_reconstruction_algorithm'
+    if posrec_option in context.config:
+        posrec_algo = context.config[posrec_option]
+    else:
+        posrec_algo = context._plugin_class_registry['event_positions'].takes_config[posrec_option].default
+
+    cmt_options = straxen.get_corrections.get_cmt_options(context)
+
+    # catch here global versions that are not compatible with this straxen version
+    # this happens if a new correction was added to CMT that was not used in a fixed version
+    # we want this error to occur in order to keep fixed global versions
+    cmt_config = dict()
+    failed_keys = []
+    for option, tup in cmt_options.items():
+        try:
+            # might need to modify correction name to include position reconstruction algo
+            correction_name = tup[0]
+            if correction_name in posrec_corrections_basenames:
+                correction_name += f"_{posrec_algo}"
+            new_tup = (tup[0], local_versions[correction_name], tup[2])
+        except KeyError:
+            failed_keys.append(option)
+            continue
+        cmt_config[option] = new_tup
+    if len(failed_keys):
+        failed_keys = ', '.join(failed_keys)
+        raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
+                              f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
+
     context.set_config(cmt_config)
+
+
+class CMTVersionError(Exception):
+    pass
+
