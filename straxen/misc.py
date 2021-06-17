@@ -8,11 +8,6 @@ import warnings
 import datetime
 import pytz
 
-try:
-    import ipywidgets as widgets
-    from ipywidgets import Layout
-except ModuleNotFoundError:
-    pass
 export, __all__ = strax.exporter()
 from configparser import NoSectionError
 
@@ -106,6 +101,7 @@ class TimeWidgets:
         utcend = datetime.datetime.utcnow()
         deltat = datetime.timedelta(minutes=60)
         utcstart = utcend - deltat
+        import ipywidgets as widgets
 
         self._start_widget = self._create_date_and_time_widget(utcstart, 'Start')
         self._end_widget = self._create_date_and_time_widget(utcend, 'End')
@@ -142,6 +138,8 @@ class TimeWidgets:
 
     @staticmethod
     def _create_date_and_time_widget(date_and_time, widget_describtion):
+        import ipywidgets as widgets
+        from ipywidgets import Layout
         date = datetime.date(date_and_time.year,
                              date_and_time.month,
                              date_and_time.day)
@@ -164,6 +162,7 @@ class TimeWidgets:
 
     @staticmethod
     def _create_time_zone_widget():
+        import ipywidgets as widgets
         _time_zone_widget = widgets.Dropdown(options=[('CET', 0), ('UTC', 1)],
                                              value=0,
                                              description='Time Zone:',

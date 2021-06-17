@@ -43,7 +43,6 @@ xnt_common_config = dict(
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
-    gcn_model=None,
     # Event level parameters
     s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
     fdc_map=('fdc_map', "ONLINE", True),
