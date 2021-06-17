@@ -106,6 +106,7 @@ def get_correction_from_cmt(run_id, conf):
                          "(config->str, model_config->str or number, is_nT->bool) "
                          f"User specify {conf} please modify")
 
+
 def is_cmt_option(config):
     """
     Check if the input configuration is cmt style.
@@ -117,6 +118,27 @@ def is_cmt_option(config):
               and isinstance(config[2], bool))
     
     return is_cmt
+
+
+def get_cmt_options(context):
+    """
+    Function which loops over all plugin configs and returns dictionary
+    with option name as key and current settings as values.
+
+    :param context: Context with registered plugins.
+    """
+    cmt_options = {}
+    for data_type, plugin in context._plugin_class_registry.items():
+        for option_key, option in plugin.takes_config.items():
+            if (option_key in context.config and
+                straxen.get_corrections.is_cmt_option(context.config[option_key])
+                ):
+                cmt_options[option_key] = context.config[option_key]
+            elif straxen.get_corrections.is_cmt_option(option.default):
+                cmt_options[option_key] = option.default
+
+    return cmt_options
+
 
 FIXED_TO_PE = {
     'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),

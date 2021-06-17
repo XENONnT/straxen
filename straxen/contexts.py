@@ -94,6 +94,13 @@ xnt_common_opts.update({
 ##
 
 
+def xenonnt(cmt_version='global_ONLINE', **kwargs):
+    """XENONnT context"""
+    st = straxen.contexts.xenonnt_online(**kwargs)
+    st.apply_cmt_version(cmt_version)
+    return st
+
+
 def xenonnt_online(output_folder='./strax_data',
                    use_rucio=True,
                    we_are_the_daq=False,
@@ -282,7 +289,7 @@ x1t_common_config = dict(
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife_conf=('elife', 'v1', False),
+    elife_conf=('elife_xenon1t', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
     event_info_function='disabled',
     max_drift_length=96.9,
