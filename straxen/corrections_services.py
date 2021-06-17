@@ -257,8 +257,13 @@ class CorrectionsManagementServices():
         return time.replace(tzinfo=pytz.utc)
 
     def get_local_versions(self, global_version):
-        """Returns a dict of local versions for a given global version"""
+        """Returns a dict of local versions for a given global version. Use 'latest' to get newest version"""
         # check that 'global' is in the passed string.
+
+        if global_version == 'latest':
+            # CMT appends columns to the global versions dataframe, so taking last one is the latests
+            global_version = self.global_versions[-1]
+
         if 'global' not in global_version:
             warnings.warn("'global' does not appear in the passed global version. Are you sure this right?")
         # CMT generates a global version, global version is just a set of local versions
@@ -312,7 +317,10 @@ def get_cmt_local_versions(global_version):
 
 @strax.Context.add_method
 def apply_cmt_version(context: strax.Context, cmt_global_version: str):
-    """Sets all the relevant correction variables"""
+    """Sets all the relevant correction variables
+    :param cmt_global_version: A specific CMT global version, or 'latest' to get the newest one
+    :returns None
+    """
     local_versions = get_cmt_local_versions(cmt_global_version)
 
     # get the position algorithm we are using
@@ -321,7 +329,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     if posrec_option in context.config:
         posrec_algo = context.config[posrec_option]
     else:
-        posrec_algo = context._plugin_class_registry['event_positions'].takes_config[posrec_option].default
+        posrec_algo = context._plugin_class_registry['peak_positions'].takes_config[posrec_option].default
 
     cmt_options = straxen.get_corrections.get_cmt_options(context)
 
