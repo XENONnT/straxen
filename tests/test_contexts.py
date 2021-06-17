@@ -27,8 +27,9 @@ def test_xenonnt_online():
 
 
 def test_xennonnt():
-    st = xenonnt(_database_init=False, use_rucio=False)
-    st.search_field('time')
+    if straxen.utilix_is_configured():
+        st = xenonnt(_database_init=False, use_rucio=False)
+        st.search_field('time')
 
 
 def test_xennonnt_latest(cmt_version='latest'):
