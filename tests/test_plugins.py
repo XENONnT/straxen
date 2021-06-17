@@ -260,7 +260,8 @@ def test_1T(ncores=1):
 def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
-    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured())
+    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured(),
+                                         use_rucio=False)
     offline_gain_model = ("to_pe_placeholder", True)
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
