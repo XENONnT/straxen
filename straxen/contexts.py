@@ -216,17 +216,45 @@ def xenonnt_led(**kwargs):
     return st
 
 
-def xenonnt_simulation(output_folder='./strax_data'):
+def xenonnt_simulation(output_folder='./strax_data',
+                       cmt_run_id='020280',
+                       cmt_version='v4',
+                       cmt_kwargs=immutabledict(),
+                       cmt_overwrite=immutabledict(),
+                       **kwargs):
     import wfsim
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
                     fax_config='fax_config_nt_design.json',
                     check_raw_record_overlaps=True,
-                    **straxen.contexts.xnt_simulation_config,
+                    **straxen.contexts.xnt_common_config,
                     ),
-        **straxen.contexts.xnt_common_opts)
+        **straxen.contexts.xnt_common_opts,  **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
+
+    st.apply_cmt_version(f'global_{cmt_version}', **cmt_kwargs)
+    if not cmt_run_id:
+        raise ValueError('You have to specifiy a run_id which should be used to intialize '
+                         'the corrections.')
+
+    cmt_options = straxen.get_cmt_options(st)
+    for option_key, cmt_setting in cmt_options.items():
+        config_name, _, _ = cmt_setting
+        config_value = straxen.get_correction_from_cmt(cmt_run_id, cmt_setting)
+        if isinstance(config_value, np.ndarray):
+            # We have to convert the arrays into a list to write the metadata
+            # numpy arrays are not json serializable.
+            config_value = config_value.tolist()
+
+        cmt_options[option_key] = (config_name + '_constant',
+                                   config_value
+                                   )
+
+    for option_key, cmt_constant_value in cmt_overwrite.items():
+        cmt_options[option_key] = (cmt_options[option_key][0], cmt_constant_value)
+
+    st.set_config(cmt_options)
     return st
 
 ##
