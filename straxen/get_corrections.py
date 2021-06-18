@@ -66,11 +66,11 @@ def get_correction_from_cmt(run_id, conf):
             correction = FIXED_TO_PE[model_conf]
             return correction
 
-        # special case constant single value
+        # special case constant single value or list of values.
         elif 'constant' in model_conf:
-            if not isinstance(cte_value, (float, int, str)):
+            if not isinstance(cte_value, (float, int, str, list)):
                 raise ValueError(f"User specify a model type {model_conf} "
-                                 "and should provide a number. Got: "
+                                 "and should provide a number or list of numbers. Got: "
                                  f"{type(cte_value)}")
             correction = cte_value
             return correction
