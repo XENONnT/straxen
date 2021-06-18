@@ -1,6 +1,7 @@
 from immutabledict import immutabledict
 import strax
 import straxen
+import numpy as np
 from copy import deepcopy
 
 common_opts = dict(
@@ -238,9 +239,21 @@ def xenonnt_simulation(output_folder='./strax_data',
         raise ValueError('You have to specifiy a run_id which should be used to intialize '
                          'the corrections.')
 
-    cmt_options = straxen.get_cmt_options(st)
+    cmt_options = straxen.get_corrections.get_cmt_options(st)
+    
+    # Get default position reconstruction algorithm:
+    p = st.get_single_plugin('020280', 'peak_positions')
+    default_reconstruction_algorithm = p.config['default_reconstruction_algorithm']
+    
+    def _depends_on_pos_algo(cmt_setting):
+        config_name, setting, nT = cmt_setting
+        if config_name in ('s1_xyz_map', 'fdc_map'):
+            cmt_setting = (config_name + f'_{default_reconstruction_algorithm}', setting, nT)
+        return cmt_setting
+
     for option_key, cmt_setting in cmt_options.items():
-        config_name, _, _ = cmt_setting
+        cmt_setting = _depends_on_pos_algo(cmt_setting)
+        config_name, _, _ = _depends_on_pos_algo(cmt_setting)
         config_value = straxen.get_correction_from_cmt(cmt_run_id, cmt_setting)
         if isinstance(config_value, np.ndarray):
             # We have to convert the arrays into a list to write the metadata
