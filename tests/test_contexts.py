@@ -1,7 +1,9 @@
 """For all of the context, do a quick check to see that we are able to search
 a field (i.e. can build the dependencies in the context correctly)
 See issue #233 and PR #236"""
-from straxen.contexts import *
+from straxen.contexts import xenon1t_dali, xenon1t_led, xenon1t_simulation, fake_daq, demo
+from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt_simulation, xenonnt
+import straxen
 import tempfile
 import os
 
