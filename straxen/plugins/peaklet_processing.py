@@ -655,9 +655,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # end_merge_at is now exclusive
         end_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge + 1]] + 1
 
-        # Doesn't start with S2: do not merge
-        start_merge_with_s2 = types[start_merge_at] == 2
+        # Do not merge non S2 peaks if they are at the start
+        # Move start merge index up till there's only two peaks left
+        # and it still doesn't start with with S2
+        for i in range(len(start_merge_at)):
+            while types[start_merge_at[i]] != 2:
+                if end_merge_at[i] - start_merge_at[i] <= 2:
+                    break
+                start_merge_at[i] += 1
 
+        start_merge_with_s2 = types[start_merge_at] == 2
         return start_merge_at[start_merge_with_s2], end_merge_at[start_merge_with_s2]
 
 
