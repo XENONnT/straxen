@@ -549,7 +549,7 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Points to define maximum separation between peaklets to allow "
                       "merging [ns] depending on log10 area of the merged peak\n"
                       "where the gap size of the first point is the maximum gap to allow merging"
-                      "and the last area is the maximum area to allow merging"))
+                      "and the area of the last point is the maximum area to allow merging"))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -568,18 +568,18 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     def compute(self, peaklets):
         if len(peaklets) <= 1:
-            return peaklets[:0]
+            return np.zeros(0, dtype=peaklets.dtype)
 
         gap_thresholds = self.config['s2_merge_gap_thresholds']
-        if gap_thresholds[0][1] < 0:
+        max_gap = gap_thresholds[0][1]
+        max_area = 10 ** gap_thresholds[-1][0]
+
+        if max_gap < 0:
             # Do not merge at all
-            merged_s2s = np.zeros(0, dtype=peaklets.dtype)
+            return np.zeros(0, dtype=peaklets.dtype)
         else:
             # Max gap and area should be set by the gap thresholds
             # to avoid contradictions
-            max_gap = gap_thresholds[0][1]
-            max_area = 10 ** gap_thresholds[-1][0]
-
             start_merge_at, end_merge_at = self.get_merge_instructions(
                 peaklets['time'], strax.endtime(peaklets),
                 areas=peaklets['area'],
