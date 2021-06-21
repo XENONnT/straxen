@@ -657,8 +657,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
             gaps_to_merge[gap_i + 1] = True
 
         i_gaps_to_merge = np.where(gaps_to_merge)[0]
+        # Finding the first gaps that the gaps right before them is still open
+        # -1 to get the peak indices left of the first gaps
         start_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge - 1]] - 1
-        # end_merge_at is now exclusive
+        # Finding the last gaps that the gaps right after them is still open
+        # +1 to get the peak indices (exclusive) right of the last gaps
         end_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge + 1]] + 1
 
         # Do not merge non S2 peaks if they are at the start
