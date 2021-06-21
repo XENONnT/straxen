@@ -643,9 +643,9 @@ def set_state(state, update_fields=None):
     """
     # Find the last message of this host
     previous_entry = bs_coll.find_one({'host': hostname},
-                                      sort=[('time', pymongo.DESCENDING)])
-    if not state:
-        state = 'None' if not previous_entry else previous_entry.get('state')
+                                      sort=[('_id', pymongo.DESCENDING)])
+    if state is None:
+        state = 'None' if previous_entry is None else previous_entry.get('state')
 
     bootstrax_state = dict(
         host=hostname,
@@ -660,7 +660,7 @@ def set_state(state, update_fields=None):
     )
     if update_fields:
         bootstrax_state.update(update_fields)
-    if (not previous_entry or
+    if (previous_entry is None or
             (now() - previous_entry['_id'].generation_time).seconds > timeouts[
                 'min_status_interval']):
         bs_coll.insert_one(bootstrax_state)
@@ -1471,8 +1471,8 @@ def process_run(rd, send_heartbeats=args.production):
 
         while True:
             if send_heartbeats:
-                to_report = ('run_id', 'targets', 'cores', 'max_messages',
-                             'timeout', 'post_processing'),
+                to_report = ['run_id', 'targets', 'cores', 'max_messages',
+                             'timeout', 'post_processing']
                 update = {k: v for k, v in run_strax_config.items() if k in to_report}
                 send_heartbeat(update)
             ec = strax_proc.exitcode
