@@ -549,7 +549,9 @@ FAKE_MERGED_S2_TYPE = -42
                  help="Points to define maximum separation between peaklets to allow "
                       "merging [ns] depending on log10 area of the merged peak\n"
                       "where the gap size of the first point is the maximum gap to allow merging"
-                      "and the area of the last point is the maximum area to allow merging"))
+                      "and the area of the last point is the maximum area to allow merging. "
+                      "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+                ))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -558,6 +560,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
+    __version__ = '0.1.0'
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
@@ -604,7 +607,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
             gap_thresholds, max_duration, max_gap, max_area):
-        """Finding the group of peaklets to merge
+        """Finding the group of peaklets to merge. To do this start with the 
+        smallest gaps and keep merging until the new, merged S2 has such a 
+        large area or gap to adjacent peaks that merging is not required 
+        anymore.
         returns: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged
         """
