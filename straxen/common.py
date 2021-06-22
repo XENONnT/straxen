@@ -364,7 +364,7 @@ def _load_function_file_from_home(function_file, testing_folder='.straxen_testin
         warn(f'Using local function: {function_file} from {testing_file}! '
              f'If you are not integrated testing on github you should '
              f'absolutely remove this file. (See #559)')
-        function_file = os.path.join(home, function_file)
+        function_file = testing_file
     return function_file
 
 
