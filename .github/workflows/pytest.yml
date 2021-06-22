@@ -58,7 +58,7 @@ jobs:
         # The pre_apply_function (see #559)
         env:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
-        if: env.HAVE_ACCESS_TO_SECTETS == null
+        if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.python-version == 3.6 || matrix.python-version == 3.7
         run: |
           bash .github/scripts/create_pre_apply_function.sh $HOME
       - name: Test package
