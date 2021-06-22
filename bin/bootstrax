@@ -661,7 +661,7 @@ def set_state(state, update_fields=None):
     if update_fields:
         bootstrax_state.update(update_fields)
     if (previous_entry is None or
-            (now() - previous_entry['_id'].generation_time).seconds > timeouts[
+            (now() - previous_entry['time'].replace(tzinfo=pytz.utc).seconds > timeouts[
                 'min_status_interval']):
         bs_coll.insert_one(bootstrax_state)
     else:
