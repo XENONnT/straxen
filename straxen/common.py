@@ -345,7 +345,7 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     if function_name not in _resource_cache:
         # only load the function once and put it in the resource cache
         function_file = f'{function_name}.py'
-        function_file = _load_function_file_from_home(function_file)
+        function_file = _overwrite_testing_function_file(function_file)
         function = get_resource(function_file, fmt='txt')
         # pylint: disable=exec-used
         exec(function)
@@ -355,16 +355,23 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     return data
 
 
-def _load_function_file_from_home(function_file, testing_folder='.straxen_testing'):
-    """For testing purposes allow this function file to be loaded from HOME"""
+def _overwrite_testing_function_file(function_file,
+                                     testing_folder='.straxen_testing'):
+    """For testing purposes allow this function file to be loaded from HOME/testing_folder"""
     home = os.environ.get('HOME')
+    if home is None:
+        # Impossible to load from non-existent folder
+        return function_file
+
     testing_file = os.path.join(home, testing_folder, function_file)
-    if home is not None and os.path.exists(testing_file):
-        # For testing purposes allow loading from home
+
+    if os.path.exists(testing_file):
+        # For testing purposes allow loading from 'home/testing_folder'
         warn(f'Using local function: {function_file} from {testing_file}! '
              f'If you are not integrated testing on github you should '
              f'absolutely remove this file. (See #559)')
         function_file = testing_file
+
     return function_file
 
 
