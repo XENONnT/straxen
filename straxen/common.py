@@ -355,12 +355,15 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     return data
 
 
-def _load_function_file_from_home(function_file):
+def _load_function_file_from_home(function_file, testing_folder='.straxen_testing'):
     """For testing purposes allow this function file to be loaded from HOME"""
     home = os.environ.get('HOME')
-    if home is not None and os.path.exists(os.path.join(home, function_file)):
+    testing_file = os.path.join(home, testing_folder, function_file)
+    if home is not None and os.path.exists(testing_file):
         # For testing purposes allow loading from home
-        print(f'Using local function: {function_file}!')
+        warn(f'Using local function: {function_file} from {testing_file}! '
+             f'If you are not integrated testing on github you should '
+             f'absolutely remove this file. (See #559)')
         function_file = os.path.join(home, function_file)
     return function_file
 
