@@ -231,7 +231,7 @@ def test_nt_minianalyses():
             print("Temporary directory is ", temp_dir)
             os.chdir(temp_dir)
             from .test_plugins import DummyRawRecords, testing_config_nT, test_run_id_nT
-            st = straxen.contexts.xenonnt_online()
+            st = straxen.contexts.xenonnt_online(use_rucio=False)
             rundb = st.storage[0]
             rundb.readonly = True
             st.storage = [rundb, strax.DataDirectory(temp_dir)]

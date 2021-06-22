@@ -17,7 +17,7 @@ def load_corrected_positions(context, run_id, events,
     
     :param cmt_version: CMT version to use (it can be a list of same
         length as posrec_algos, if different versions are required for
-        different posrec algorithms, default 'ONLINE')
+        different posrec algorithms, default 'local_ONLINE')
     :param posrec_algos: list of position reconstruction algorithms to
         use (default ['mlp', 'gcn', 'cnn'])
     """

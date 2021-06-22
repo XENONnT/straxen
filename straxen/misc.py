@@ -68,7 +68,7 @@ def print_versions(modules=('strax', 'straxen'), return_string=False):
 
 
 @export
-def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
+def utilix_is_configured(header='RunDB', section='xent_database') -> bool:
     """
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?

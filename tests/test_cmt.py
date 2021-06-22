@@ -29,7 +29,7 @@ def test_connect_to_db():
     corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
     client = corrections_collection.database.client
     cmt = strax.CorrectionsInterface(client, database_name='corrections')
-    df = cmt.read('global')
+    df = cmt.read('global_xenonnt')
     mes = 'Return empty dataframe when reading DB. Please check'
     assert not df.empty, mes
 
@@ -42,7 +42,7 @@ def test_1T_elife():
              'no have access to the database.')
         return
 
-    elife_conf = ('elife', 'ONLINE', False)
+    elife_conf = ('elife_xenon1t', 'ONLINE', False)
     elife_cmt = straxen.get_correction_from_cmt(test_run_id_1T, elife_conf)
     elife_file = elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
     x = straxen.get_resource(elife_file, fmt='npy')
