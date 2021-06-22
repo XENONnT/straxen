@@ -590,6 +590,7 @@ class EventInfo(strax.MergeOnlyPlugin):
                   'event_basics', 'event_positions', 'corrected_areas',
                   'energy_estimates']
     save_when = strax.SaveWhen.ALWAYS
+    __version__ = '0.0.1'
 
     def compute(self, **kwargs):
         event_info_function = self.config['event_info_function']
