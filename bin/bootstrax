@@ -331,6 +331,7 @@ def new_context(cores=args.cores,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
         allow_lazy=False,
+        use_rucio=False,
         max_messages=max_messages,
         timeout=timeout)
     if not args.production:
