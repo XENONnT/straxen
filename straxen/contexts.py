@@ -200,7 +200,7 @@ def xenonnt_online(output_folder='./strax_data',
                                                    )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
-    st._plugin_class_registry['event_info'].depends_on = [st._plugin_class_registry['event_info'].depends_on + ['event_patternfit']]
+    st._plugin_class_registry['event_info'].depends_on = list(st._plugin_class_registry['event_info'].depends_on) + ['event_patternfit']
     return st
 
 
