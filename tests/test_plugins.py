@@ -185,8 +185,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
 
     elif not nt:
         if straxen.utilix_is_configured():
-            # Set some local gain version as this takes too long for 1T to load
-            # from CMT
+            # Set some placeholder gain as this takes too long for 1T to load from CMT
             st.set_config({k: v for k, v in testing_config_1T.items() if
                            k in ('hev_gain_model', 'gain_model')})
         else:
