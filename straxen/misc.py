@@ -216,3 +216,4 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
 def _is_on_pytest():
     """Check if we are on a pytest"""
     return 'PYTEST_CURRENT_TEST' in os_environ
+
