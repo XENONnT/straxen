@@ -53,6 +53,7 @@ testing_config_1T = dict(
 test_run_id_nT = '008900'
 test_run_id_1T = '180423_1021'
 
+
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
     strax.Option('n_chunks', default=2, track=False,
@@ -83,7 +84,8 @@ class DummyRawRecords(strax.Plugin):
                                  'nv': 'nveto',
                                  'aqmon': 'aqmon',
                                  'aux_mv': 'aux_mv',
-                                 's_mv': 'mv',}  # s_mv otherwise same as aux in endswith
+                                 's_mv': 'mv',
+                                 }  # s_mv otherwise same as aux in endswith
 
     def source_finished(self):
         return True
@@ -181,8 +183,14 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
         st.set_config({'gain_model': fallback_gains})
 
-    elif not nt and not straxen.utilix_is_configured():
-        st.set_config(testing_config_1T)
+    elif not nt:
+        if straxen.utilix_is_configured():
+            # Set some local gain version as this takes too long for 1T to load
+            # from CMT
+            st.set_config({k: v for k, v in testing_config_1T.items() if
+                           k in ('hev_gain_model', 'gain_model')})
+        else:
+            st.set_config(testing_config_1T)
 
     if max_workers - 1:
         st.set_context_config({
