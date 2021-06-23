@@ -8,6 +8,7 @@ import warnings
 import datetime
 import pytz
 from os import environ as os_environ
+
 export, __all__ = strax.exporter()
 from configparser import NoSectionError
 
@@ -216,4 +217,3 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
 def _is_on_pytest():
     """Check if we are on a pytest"""
     return 'PYTEST_CURRENT_TEST' in os_environ
-
