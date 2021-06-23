@@ -5,7 +5,7 @@ import socket
 from tqdm import tqdm
 from copy import deepcopy
 import strax
-from .rucio import key_to_rucio_did
+from .rucio import key_to_rucio_did, RucioLocalBackend
 import warnings
 
 try:
@@ -123,7 +123,7 @@ class RunDB(strax.StorageFrontend):
 
         if self.rucio_path is not None:
             # TODO replace with rucio backend in the rucio module
-            self.backends.append(strax.rucio(self.rucio_path))
+            self.backends.append(RucioLocalBackend(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK',
@@ -151,7 +151,7 @@ class RunDB(strax.StorageFrontend):
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+            warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
         # Check if the run exists
         if self.runid_field == 'name':
@@ -182,7 +182,8 @@ class RunDB(strax.StorageFrontend):
                 backend_name, backend_key = (
                     datum['protocol'],
                     f'{key.run_id}-{key.data_type}-{key.lineage_hash}')
-                return backend_name, backend_key
+                assert backend_name == 'rucio'
+                return 'RucioLocalBackend', datum['did']
 
         dq = self._data_query(key)
         doc = self.collection.find_one({**run_query, **dq}, projection=dq)
@@ -225,7 +226,7 @@ class RunDB(strax.StorageFrontend):
 
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
         if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+            warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
         if not len(keys):
             return []
         if not len(set([k.lineage_hash for k in keys])) == 1:
