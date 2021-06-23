@@ -39,7 +39,7 @@ def test_secret():
 # If one of the test below fail, perhaps these values need to be updated.
 # They were added on 27/11/2020 and may be outdated by now
 EXPECTED_OUTCOMES_TEST_SEVERAL = {
-    'n_peaks': 138,
+    'n_peaks': 128,
     'n_s1': 4,
     'run_live_time': 0.17933107,
     'n_events': 2
