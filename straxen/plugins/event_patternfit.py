@@ -445,15 +445,15 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
     # k: size_top, n: size_tot, p: aft_prob
     do_test = True
     if area_tot < area_top:
-        warnings.warn(f'n {area_tot} must be >= k {area_top}')
+        # warnings.warn(f'n {area_tot} must be >= k {area_top}')
         binomial_test = np.nan
         do_test = False
     if (aft_prob > 1.0) or (aft_prob < 0.0):
-        warnings.warn(f'p {aft_prob} must be in range [0, 1]')
+        # warnings.warn(f'p {aft_prob} must be in range [0, 1]')
         binomial_test = np.nan
         do_test = False
     if area_top < 0:
-        warnings.warn(f'k {area_top} must be >= 0')
+        # warnings.warn(f'k {area_top} must be >= 0')
         binomial_test = np.nan
         do_test = False
         
@@ -461,6 +461,6 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
         if mode == 'discrete':
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
         else:
-            binomial_test =  binom_test(area_top, area_tot, aft_prob)
+            binomial_test = binom_test(area_top, area_tot, aft_prob)
         
     return binomial_test
