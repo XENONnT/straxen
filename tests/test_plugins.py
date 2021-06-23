@@ -213,7 +213,7 @@ def _test_child_options(st, run_id):
         if data_type in already_seen or data_type in straxen.DAQReader.provides:
             continue
 
-        p = st.get_single_plugin('0', data_type)
+        p = st.get_single_plugin(run_id, data_type)
         plugins.append(p)
         already_seen += p.provides
 
@@ -257,10 +257,17 @@ def test_1T(ncores=1):
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
+
+    # Run the test
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_1T)
+
     # Test issue #233
     st.search_field('cs1')
+
+    # set all the configs to be non-CMT
+    st.set_config(testing_config_1T)
     _test_child_options(st, test_run_id_1T)
+
     print(st.context_config)
 
 
