@@ -355,15 +355,18 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     return data
 
 
-def _overwrite_testing_function_file(function_file,
-                                     testing_folder='.straxen_testing'):
+def _overwrite_testing_function_file(function_file):
     """For testing purposes allow this function file to be loaded from HOME/testing_folder"""
+    if not straxen._is_on_pytest():
+        # If we are not on a pytest, never try using a local file.
+        return function_file
+
     home = os.environ.get('HOME')
     if home is None:
         # Impossible to load from non-existent folder
         return function_file
 
-    testing_file = os.path.join(home, testing_folder, function_file)
+    testing_file = os.path.join(home, function_file)
 
     if os.path.exists(testing_file):
         # For testing purposes allow loading from 'home/testing_folder'
