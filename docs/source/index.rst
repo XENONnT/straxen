@@ -59,7 +59,7 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     :caption: Auxilliary tools
 
     scada_interface
-    tutorials/ScadaInterfaceExample.ipynb
+    ../notebooks/tutorials/ScadaInterfaceExample.ipynb
 
 .. toctree::
     :maxdepth: 1
