@@ -151,7 +151,7 @@ class RunDB(strax.StorageFrontend):
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
         if fuzzy_for or fuzzy_for_options:
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+            warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
         # Check if the run exists
         if self.runid_field == 'name':
@@ -225,7 +225,7 @@ class RunDB(strax.StorageFrontend):
 
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
         if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+            warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
         if not len(keys):
             return []
         if not len(set([k.lineage_hash for k in keys])) == 1:
