@@ -230,7 +230,7 @@ class SCADAInterface:
             raise ValueError('You specified an endtime which is smaller '
                              'than the start time.')
 
-        if (np.log10(start) > 18) or (np.log10(end) > 18):
+        if (np.log10(start) < 18) or (np.log10(end) < 18):
             raise ValueError('Expected the time to be in ns unix time (number with 19 digits or more).'
                              ' Have you specified the time maybe in seconds or micro-seconds?')
 
