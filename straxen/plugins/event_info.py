@@ -3,6 +3,7 @@ from straxen import pre_apply_function
 export, __all__ = strax.exporter()
 
 
+@export
 @strax.takes_config(
     strax.Option(
         name='event_info_function',
