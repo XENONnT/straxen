@@ -2,7 +2,7 @@ import tempfile
 import strax
 import numpy as np
 from immutabledict import immutabledict
-from strax.testutils import run_id, recs_per_chunk
+from strax.testutils import recs_per_chunk
 import straxen
 from straxen.common import pax_file, aux_repo
 ##
@@ -51,7 +51,7 @@ testing_config_1T = dict(
 )
 
 test_run_id_nT = '008900'
-
+test_run_id_1T = '180423_1021'
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
@@ -126,7 +126,7 @@ forbidden_plugins = tuple([p for p in
 
 def _run_plugins(st,
                  make_all=False,
-                 run_id=run_id,
+                 run_id=test_run_id_nT,
                  **proces_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
@@ -250,7 +250,7 @@ def test_1T(ncores=1):
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
-    _run_plugins(st, make_all=True, max_wokers=ncores)
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_1T)
     # Test issue #233
     st.search_field('cs1')
     _test_child_options(st)
