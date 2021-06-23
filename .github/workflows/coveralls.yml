@@ -45,6 +45,11 @@ jobs:
         SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
         SCADA_PWD: ${{ secrets.SCADA_PWD }}
     - name: Create pre-apply function file
+      # In case we do not have database. We need to make a local file for
+      # The pre_apply_function (see #559)
+      env:
+        HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+      if: env.HAVE_ACCESS_TO_SECTETS == null
       run: |
         bash .github/scripts/create_pre_apply_function.sh $HOME
     - name: Coveralls
