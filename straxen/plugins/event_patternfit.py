@@ -38,7 +38,7 @@ class EventPatternFit(strax.Plugin):
     Plugin that provides patter information for events
     '''
     
-    depends_on = ('event_area_per_channel', 'event_basics')
+    depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_patternfit'
     __version__ = '0.0.6'
 
