@@ -283,7 +283,7 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     peak_min_pmts=2,
     # MergedS2s
-    s2_merge_gap_thresholds=((1.7, 5e3), (4.0, 500), (5.0, 0.)),
+    s2_merge_gap_thresholds=((1.7, 5.0e3), (4.0, 500.), (5.0, 0.)),
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
