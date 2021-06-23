@@ -40,7 +40,7 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
 
 
 @export
-def print_versions(modules=('strax', 'straxen'), return_string=False):
+def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
     """
     Print versions of modules installed.
 
