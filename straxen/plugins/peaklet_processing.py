@@ -480,7 +480,7 @@ class PeakletsHighEnergy(Peaklets):
                  help="Maximum S1 rise time for < 100 PE [ns]"),
     strax.Option('s1_max_rise_time_post100', default=200,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=3,
+    strax.Option('s1_min_coincidence', default=2,
                  help="Minimum tight coincidence necessary to make an S1"),
     strax.Option('s2_min_pmts', default=4,
                  help="Minimum number of PMTs contributing to an S2"))
