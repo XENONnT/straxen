@@ -195,7 +195,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         print(k, v)
 
 
-def _test_child_options(st):
+def _test_child_options(st, run_id):
     """
     Test which checks if child options are handled correctly.
     """
@@ -253,7 +253,7 @@ def test_1T(ncores=1):
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_1T)
     # Test issue #233
     st.search_field('cs1')
-    _test_child_options(st)
+    _test_child_options(st, test_run_id_1T)
     print(st.context_config)
 
 
@@ -269,7 +269,7 @@ def test_nT(ncores=1):
     # Test issue #233
     st.search_field('cs1')
     # Test of child plugins:
-    _test_child_options(st)
+    _test_child_options(st, test_run_id_nT)
     print(st.context_config)
 
 
