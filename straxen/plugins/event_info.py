@@ -21,7 +21,7 @@ class EventInfo(strax.MergeOnlyPlugin):
                   'event_positions',
                   'corrected_areas',
                   'energy_estimates',
-                  # 'event_pattern_fit',
+                  # 'event_pattern_fit', <- this will be added soon
                   ]
     save_when = strax.SaveWhen.ALWAYS
     provides = 'event_info'
