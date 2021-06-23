@@ -40,9 +40,9 @@ def test_secret():
 # They were added on 27/11/2020 and may be outdated by now
 EXPECTED_OUTCOMES_TEST_SEVERAL = {
     'n_peaks': 128,
-    'n_s1': 4,
+    'n_s1': 6,
     'run_live_time': 0.17933107,
-    'n_events': 2
+    'n_events': 2,
 }
 
 

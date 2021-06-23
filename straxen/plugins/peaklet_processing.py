@@ -92,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.9'
+    __version__ = '0.3.10'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -480,7 +480,7 @@ class PeakletsHighEnergy(Peaklets):
                  help="Maximum S1 rise time for < 100 PE [ns]"),
     strax.Option('s1_max_rise_time_post100', default=200,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=3,
+    strax.Option('s1_min_coincidence', default=2,
                  help="Minimum tight coincidence necessary to make an S1"),
     strax.Option('s2_min_pmts', default=4,
                  help="Minimum number of PMTs contributing to an S2"))
@@ -779,7 +779,7 @@ def get_tight_coin(hit_max_times, peak_max_times, left, right):
 
             # if the hit is in the window, its a tight coin
             d = hit_max_times[left_hit_i] - p_t
-            if (-left < d) & (d < right):
+            if (-left <= d) & (d <= right):
                 n_coin[p_i] += 1
 
             # stop the loop when we know we're outside the range
