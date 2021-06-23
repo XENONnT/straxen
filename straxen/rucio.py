@@ -26,7 +26,7 @@ try:
     download_client = DownloadClient()
     RUCIO_AVAILABLE = True
 except (ModuleNotFoundError, RuntimeError):
-    warnings.warn("No installation of rucio-clients found. Can't use rucio remove backend")
+    warnings.warn("No installation of rucio-clients found. Can't use rucio remote backend.")
     RUCIO_AVAILABLE = False
 
 export, __all__ = strax.exporter()
