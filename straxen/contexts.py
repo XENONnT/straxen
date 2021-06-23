@@ -73,6 +73,7 @@ xnt_common_opts.update({
                                            straxen.PeakletsHighEnergy,
                                            straxen.PeakletClassificationHighEnergy,
                                            straxen.MergedS2sHighEnergy,
+                                           straxen.EventInfo,
                                           ],
     'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
                                                    straxen.nveto_recorder,
@@ -249,6 +250,7 @@ x1t_context_config.update(
     dict(register=common_opts['register'] +
                   [straxen.PeakPositions1T,
                    straxen.RecordsFromPax,
+                   straxen.EventInfo1T,
          ]))
 
 x1t_common_config = dict(
