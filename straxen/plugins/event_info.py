@@ -17,10 +17,11 @@ class EventInfo(strax.MergeOnlyPlugin):
     single data_type.
     """
     depends_on = ['events',
-                  'event_basics', 'event_positions', 'corrected_areas',
+                  'event_basics',
+                  'event_positions',
+                  'corrected_areas',
                   'energy_estimates',
                   'event_pattern_fit',
-                  'veto_proximity',
                   ]
     save_when = strax.SaveWhen.ALWAYS
     provides = 'event_info'
