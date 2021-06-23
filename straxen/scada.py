@@ -214,7 +214,7 @@ class SCADAInterface:
             mes = ('You are trying to query slow control data via run_ids'
                    ' but you have not specified the context you are '
                    'working with. Please set the context either via '
-                   '.st = YOURCONTEXT, or when initializing the '
+                   '.context = YOURCONTEXT, or when initializing the '
                    'interface.')
             raise ValueError(mes)
 
