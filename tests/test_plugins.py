@@ -1,4 +1,4 @@
-import tempfile
+    import tempfile
 import strax
 import numpy as np
 from immutabledict import immutabledict
@@ -181,7 +181,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
         st.set_config({'gain_model': fallback_gains})
 
-    elif not nt:
+    elif not nt and not straxen.utilix_is_configured():
         st.set_config(testing_config_1T)
 
     if max_workers - 1:
