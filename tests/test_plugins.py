@@ -1,4 +1,4 @@
-    import tempfile
+import tempfile
 import strax
 import numpy as np
 from immutabledict import immutabledict
