@@ -17,6 +17,9 @@ class EventAreaPerChannel(strax.LoopPlugin):
     provides = "event_area_per_channel"
     __version__ = '0.0.0'
 
+    compressor = 'zstd'
+    save_when = strax.SaveWhen.EXPLICIT
+
     def infer_dtype(self):
         dtype = [(("Area per channel for main S2", "s2_area_per_channel"), 
                   np.float32, (self.config['n_tpc_pmts'],)),
