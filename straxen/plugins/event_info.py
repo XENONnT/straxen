@@ -21,7 +21,7 @@ class EventInfo(strax.MergeOnlyPlugin):
                   'event_positions',
                   'corrected_areas',
                   'energy_estimates',
-                  'event_pattern_fit',
+                  # 'event_pattern_fit',
                   ]
     save_when = strax.SaveWhen.ALWAYS
     provides = 'event_info'
@@ -48,7 +48,9 @@ class EventInfo1T(strax.MergeOnlyPlugin):
     This only uses 1T data-types as several event-plugins are nT only
     """
     depends_on = ['events',
-                  'event_basics', 'event_positions', 'corrected_areas',
+                  'event_basics',
+                  'event_positions',
+                  'corrected_areas',
                   'energy_estimates']
     provides = 'event_info'
     save_when = strax.SaveWhen.ALWAYS

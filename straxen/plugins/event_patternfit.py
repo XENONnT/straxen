@@ -40,7 +40,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.0.6'
+    __version__ = '0.0.7'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -136,7 +136,7 @@ class EventPatternFit(strax.Plugin):
         mask_s1 &= ~np.isnan(events['s1_area'])
         mask_s1 &= ~np.isnan(events['s1_area_fraction_top'])
         
-        # default value is nan, it will be ovewrite if the event satisfy the requirments
+        # default value is nan, it will be overwrite if the event satisfy the requirements
         result['s1_area_fraction_top_continuous_probability'][:] = np.nan
         result['s1_area_fraction_top_discrete_probability'][:] = np.nan
         result['s1_photon_fraction_top_continuous_probability'][:] = np.nan
@@ -365,18 +365,21 @@ def binom_sf(k, n, p):
     return bdtrc(k, n, p)
 
 def binom_test(k, n, p):
-    '''
+    """
     The main purpose of this algorithm is to find the value j on the
     other side of the mean that has the same probability as k, and
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
-    '''
+    """
     d = binom_pmf(k, n, p)
     rerr = 1 + 1e-7
     d = d * rerr
-    # define number of intereation for finding the the value j
-    # the exeptional case of n<=0, is avoid since n_iter is at least 2
-    n_iter = int(max(np.round(np.log10(n)) + 1, 2))
+    # define number of interaction for finding the the value j
+    # the exceptional case of n<=0, is avoid since n_iter is at least 2
+    if n > 0:
+        n_iter = int(max(np.round(np.log10(n)) + 1, 2))
+    else:
+        n_iter = 2
 
     if k < n * p:
         # if binom_pmf(n, n, p) > d, with d<<1e-3, means that we have
