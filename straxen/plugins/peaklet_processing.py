@@ -627,7 +627,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             left_i = previous_valid_gap[gap_i] + 1
             # the right is inclusive
             right_i = next_valid_gap[gap_i]
-
+            assert left_i <= right_i, 'Something went wrong, left is bigger then right?!'
             sum_area = areas[left_i:right_i + 1].sum()
 
             if peaklet_gaps[gap_i] > max_gap:
