@@ -125,7 +125,7 @@ def open_resource(file_name: str, fmt='text'):
     elif fmt == 'binary':
         with open(file_name, mode='rb') as f:
             result = f.read()
-    elif fmt == 'text':
+    elif fmt in ['text', 'txt']:
         with open(file_name, mode='r') as f:
             result = f.read()
     elif fmt == 'csv':
@@ -330,6 +330,85 @@ def get_livetime_sec(context, run_id, things=None):
 
 
 @export
+def pre_apply_function(data, run_id, target, function_name='pre_apply_function'):
+    """
+    Prior to returning the data (from one chunk) see if any function(s) need to
+    be applied.
+
+    :param data: one chunk of data for the requested target(s)
+    :param run_id: Single run-id of of the chunk of data
+    :param target: one or more targets
+    :param function_name: the name of the function to be applied. The
+        function_name.py should be stored in the database.
+    :return: Data where the function is applied.
+    """
+    if function_name not in _resource_cache:
+        # only load the function once and put it in the resource cache
+        function_file = f'{function_name}.py'
+        function_file = _overwrite_testing_function_file(function_file)
+        function = get_resource(function_file, fmt='txt')
+        # pylint: disable=exec-used
+        exec(function)
+        # Cache the function to reduce reloading & eval operations
+        _resource_cache[function_name] = locals().get(function_name)
+    data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
+    return data
+
+
+def _overwrite_testing_function_file(function_file):
+    """For testing purposes allow this function file to be loaded from HOME/testing_folder"""
+    if not straxen._is_on_pytest():
+        # If we are not on a pytest, never try using a local file.
+        return function_file
+
+    home = os.environ.get('HOME')
+    if home is None:
+        # Impossible to load from non-existent folder
+        return function_file
+
+    testing_file = os.path.join(home, function_file)
+
+    if os.path.exists(testing_file):
+        # For testing purposes allow loading from 'home/testing_folder'
+        warn(f'Using local function: {function_file} from {testing_file}! '
+             f'If you are not integrated testing on github you should '
+             f'absolutely remove this file. (See #559)')
+        function_file = testing_file
+
+    return function_file
+
+
+@export
+def check_loading_allowed(data, run_id, target,
+                          max_in_disallowed = 1,
+                          disallowed=('event_positions',
+                                      'corrected_areas',
+                                      'energy_estimates')
+                          ):
+    """
+    Check that the loading of the specified targets is not
+    disallowed
+
+    :param data: chunk of data
+    :param run_id: run_id of the run
+    :param target: list of targets requested by the user
+    :param max_in_disallowed: the max number of targets that are
+        in the disallowed list
+    :param disallowed: list of targets that are not allowed to be
+        loaded simultaneously by the user
+    :return: data
+    :raise: RuntimeError if more than max_in_disallowed targets
+        are requested
+    """
+    n_targets_in_disallowed = sum([t in disallowed for t in
+                                   strax.to_str_tuple(target)])
+    if n_targets_in_disallowed > max_in_disallowed:
+        raise RuntimeError(
+            f'Don\'t load {disallowed} separately, use "event_info" instead')
+    return data
+
+
+@export
 def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     """
     There were some errors in the channel mapping of old data as described in
@@ -384,7 +463,7 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
             if _rep not in data_keys:
                 # Apparently this data doesn't have the entry we want to replace
                 continue
-            if _dat['channel'].ndim != 1:
+            if _rep == 'channel' and _dat['channel'].ndim != 1:
                 # Only convert channel if they are flat and not nested.
                 continue
             # Make a buffer we can overwrite and replace with an remapped array

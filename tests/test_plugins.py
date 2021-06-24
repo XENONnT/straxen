@@ -2,7 +2,7 @@ import tempfile
 import strax
 import numpy as np
 from immutabledict import immutabledict
-from strax.testutils import run_id, recs_per_chunk
+from strax.testutils import recs_per_chunk
 import straxen
 from straxen.common import pax_file, aux_repo
 ##
@@ -22,27 +22,36 @@ testing_config_nT = dict(
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
     nn_weights=
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
-    gain_model=
-    ('to_pe_per_run',
-     aux_repo + '58e615f99a4a6b15e97b12951c510de91ce06045/fax_files/to_pe_nt.npy'),
+    gain_model=("to_pe_placeholder", True),
     s2_xy_correction_map=pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
-    elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
+    elife_conf=('elife_constant', 1e6),
     baseline_samples_nv=10,
     fdc_map=pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
-    gain_model_nv=("to_pe_constant", "adc_nv"),
+    gain_model_nv=("adc_nv", True),
+    gain_model_mv=("adc_mv", True),
     nveto_pmt_position_map=nveto_pmt_dummy_df,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
-    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, True),
+    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
+    s1_aft_map=aux_repo + 'ffdadba3439ae7922b19f5dd6479348b253c09b0/strax_files/s1_aft_UNITY_xyz_XENONnT.json',
+    s2_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s2_map_UNITY_xy_XENONnT.json',
+    s1_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s1_lce_UNITY_xyz_XENONnT.json',
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
+    hit_min_amplitude='pmt_commissioning_initial',
+    hit_min_amplitude_nv=20,
+    hit_min_amplitude_mv=80,
+    hit_min_amplitude_he='pmt_commissioning_initial_he'
 )
 
 testing_config_1T = dict(
-    hev_gain_model=('to_pe_constant', 0.0085),
-    gain_model=('to_pe_constant', 0.0085),
-    elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy',
-    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4, False),
+    hev_gain_model=('1T_to_pe_placeholder', False),
+    gain_model=('1T_to_pe_placeholder', False),
+    elife_conf=('elife_constant', 1e6),
+    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
+    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
 
 test_run_id_nT = '008900'
+test_run_id_1T = '180423_1021'
 
 
 @strax.takes_config(
@@ -75,7 +84,8 @@ class DummyRawRecords(strax.Plugin):
                                  'nv': 'nveto',
                                  'aqmon': 'aqmon',
                                  'aux_mv': 'aux_mv',
-                                 's_mv': 'mv',}  # s_mv otherwise same as aux in endswith
+                                 's_mv': 'mv',
+                                 }  # s_mv otherwise same as aux in endswith
 
     def source_finished(self):
         return True
@@ -118,7 +128,7 @@ forbidden_plugins = tuple([p for p in
 
 def _run_plugins(st,
                  make_all=False,
-                 run_id=run_id,
+                 run_id=test_run_id_nT,
                  **proces_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
@@ -141,24 +151,20 @@ def _run_plugins(st,
         # The stuff should be there
         assert st.is_stored(run_id, target), f'Could not make {target}'
 
-        # I'm only going to do this for nT because:
-        #  A) Doing this many more times does not give us much more
-        #     info (everything above already worked fine)
-        #  B) Most development will be on nT, 1T may get less changes
-        #     in the near future
-        if make_all:
-            # Now make sure we can get some data for all plugins
-            for p in list(st._plugin_class_registry.keys()):
-                if p not in forbidden_plugins:
-                    st.get_array(run_id=run_id,
-                                 targets=p,
-                                 **proces_kwargs)
+        if not make_all:
+            return
 
-                    # Check for types that we want to save that they are stored.
-                    if (int(st._plugin_class_registry['peaks'].save_when) >
-                            int(strax.SaveWhen.TARGET)):
-                        is_stored = st.is_stored(run_id, p)
-                        assert is_stored, f"{p} did not save correctly!"
+        end_targets = set(st._get_end_targets(st._plugin_class_registry))
+        for p in end_targets-set(forbidden_plugins):
+            st.make(run_id, p)
+        # Now make sure we can get some data for all plugins
+        all_datatypes = set(st._plugin_class_registry.keys())
+        for p in all_datatypes-set(forbidden_plugins):
+            should_be_stored = (st._plugin_class_registry[p].save_when ==
+                                strax.SaveWhen.ALWAYS)
+            if should_be_stored:
+                is_stored = st.is_stored(run_id, p)
+                assert is_stored, f"{p} did not save correctly!"
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
@@ -178,7 +184,12 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         st.set_config({'gain_model': fallback_gains})
 
     elif not nt:
-        st.set_config(testing_config_1T)
+        if straxen.utilix_is_configured():
+            # Set some placeholder gain as this takes too long for 1T to load from CMT
+            st.set_config({k: v for k, v in testing_config_1T.items() if
+                           k in ('hev_gain_model', 'gain_model')})
+        else:
+            st.set_config(testing_config_1T)
 
     if max_workers - 1:
         st.set_context_config({
@@ -191,7 +202,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         print(k, v)
 
 
-def _test_child_options(st):
+def _test_child_options(st, run_id):
     """
     Test which checks if child options are handled correctly.
     """
@@ -202,7 +213,7 @@ def _test_child_options(st):
         if data_type in already_seen or data_type in straxen.DAQReader.provides:
             continue
 
-        p = st.get_single_plugin('0', data_type)
+        p = st.get_single_plugin(run_id, data_type)
         plugins.append(p)
         already_seen += p.provides
 
@@ -246,25 +257,33 @@ def test_1T(ncores=1):
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
-    _run_plugins(st, make_all=True, max_wokers=ncores)
+
+    # Run the test
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_1T)
+
     # Test issue #233
     st.search_field('cs1')
-    _test_child_options(st)
+
+    # set all the configs to be non-CMT
+    st.set_config(testing_config_1T)
+    _test_child_options(st, test_run_id_1T)
+
     print(st.context_config)
 
 
 def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
-    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured())
-    offline_gain_model = ('to_pe_constant', 'gain_placeholder')
+    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured(),
+                                         use_rucio=False)
+    offline_gain_model = ("to_pe_placeholder", True)
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
     _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_nT)
     # Test issue #233
     st.search_field('cs1')
     # Test of child plugins:
-    _test_child_options(st)
+    _test_child_options(st, test_run_id_nT)
     print(st.context_config)
 
 

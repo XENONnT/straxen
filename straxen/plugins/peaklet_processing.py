@@ -6,6 +6,8 @@ import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 from strax.processing.general import _touching_windows
 
+from straxen.get_corrections import is_cmt_option
+
 export, __all__ = strax.exporter()
 
 
@@ -26,8 +28,8 @@ export, __all__ = strax.exporter()
                  # for more information
                  default=(
                      None,  # Reserved
-                     ((0.5, 1.), (6.0, 0.4)),
-                     ((2., 1.), (4.5, 0.4))),
+                     ((0.5, 1.0), (6.0, 0.4)),
+                     ((2.5, 1.0), (5.625, 0.4))),
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
     strax.Option('peak_split_filter_wing_width', default=70,
@@ -41,7 +43,8 @@ export, __all__ = strax.exporter()
     strax.Option('diagnose_sorting', track=False, default=False,
                  help="Enable runtime checks for sorting and disjointness"),
     strax.Option('gain_model',
-                 help='PMT gain model. Specify as (model_type, model_config)'),
+                 help='PMT gain model. Specify as '
+                 '(str(model_config), str(version), nT-->boolean'),
     strax.Option('tight_coincidence_window_left', default=50,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
@@ -93,7 +96,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.8'
+    __version__ = '0.3.10'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(n_channels=self.config['n_tpc_pmts']),
@@ -107,17 +110,25 @@ class Peaklets(strax.Plugin):
                 f"interferes with lone_hit definition. "
                 f"See github.com/XENONnT/straxen/issues/295")
 
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
+
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude']
 
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(
-            r,
-            min_amplitude=straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude']))
+        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -173,12 +184,21 @@ class Peaklets(strax.Plugin):
         # Saturation correction using non-saturated channels
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
+        # Cases when records is not writeable for unclear reason
+        # only see this when loading 1T test data
+        # more details on https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html
+        if not r['data'].flags.writeable:
+            r = r.copy()
+
         if self.config['saturation_correction_on']:
             peak_saturation_correction(
                 r, peaklets, self.to_pe, n_top_pmts=self.config['n_top_pmts'],
                 store_top_waveform=self.config['store_top_waveform'],
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
+
+            # Compute the width again for corrected peaks
+            strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -202,13 +222,13 @@ class Peaklets(strax.Plugin):
             assert np.diff(hits['time']).min(initial=1) >= 0, "Hits not sorted"
             assert np.all(peaklets['time'][1:]
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
-        
+
         # Update nhits of peaklets:
         counts = strax.touching_windows(hits, peaklets)
         counts = np.diff(counts, axis=1).flatten()
         counts += 1
         peaklets['n_hits'] = counts
-        
+
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits)
 
@@ -349,7 +369,13 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
         # Define the reference region as reference_length before the first saturation point
         # unless there are not enough samples
-        s0 = np.argmax(b >= r0['baseline'])
+        bl = np.inf
+        for record_i in b_index[ch]:
+            if record_i == -1:
+                break
+            bl = min(bl, records['baseline'][record_i])
+
+        s0 = np.argmax(b >= np.int16(bl))
         ref = slice(max(0, s0-reference_length), s0)
 
         if (b[ref] * to_pe[ch] > 1).sum() < min_reference_length:
@@ -359,7 +385,7 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
         if (b_sumwf[ref] > 1).sum() < min_reference_length:
             # the same condition applies to the waveform model
             continue
-        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) < 1:
+        if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) > 1:
             # The pulse is saturated, but insufficient information is available in the other channels
             # to reliably reconstruct it
             continue
@@ -368,6 +394,8 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
         # Loop over the record indices of the saturated channel (saved in b_index buffer)
         for record_i in b_index[ch]:
+            if record_i == -1:
+                break
             r = records[record_i]
             r_slice, b_slice = strax.overlap_indices(
                 r['time'] // dt, r['length'],
@@ -428,13 +456,24 @@ class PeakletsHighEnergy(Peaklets):
         return strax.peak_dtype(n_channels=self.config['n_he_pmts'])
 
     def setup(self):
-        self.to_pe = straxen.get_to_pe(self.run_id,
-                                       self.config['gain_model'],
-                                       self.config['n_tpc_pmts'])
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                       self.config['gain_model'])
 
         buffer_pmts = np.zeros(self.config['he_channel_offset'])
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.config['le_to_he_amplification']
+
+        # Check config of `hit_min_amplitude_he` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_he']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)
@@ -443,11 +482,11 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_rise_time', default=60,
+    strax.Option('s1_max_rise_time', default=110,
                  help="Maximum S1 rise time for < 100 PE [ns]"),
-    strax.Option('s1_max_rise_time_post100', default=150,
+    strax.Option('s1_max_rise_time_post100', default=200,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=3,
+    strax.Option('s1_min_coincidence', default=2,
                  help="Minimum tight coincidence necessary to make an S1"),
     strax.Option('s2_min_pmts', default=4,
                  help="Minimum number of PMTs contributing to an S2"))
@@ -502,23 +541,26 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
-    
+
 
 FAKE_MERGED_S2_TYPE = -42
 
 
 @export
 @strax.takes_config(
-    strax.Option('s2_merge_max_area', default=5000.,
-                 help="Merge peaklet cluster only if area < this [PE]"),
-    strax.Option('s2_merge_max_gap', default=5_000,
-                 help="Maximum separation between peaklets to allow merging [ns]"),
-    strax.Option('s2_merge_max_duration', default=35_000,
+    strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"),
     strax.Option('store_top_waveform',default=True,
                  help='Bool for storing the top array waveform seperately'),
                       )
+    strax.Option('s2_merge_gap_thresholds', default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
+                 help="Points to define maximum separation between peaklets to allow "
+                      "merging [ns] depending on log10 area of the merged peak\n"
+                      "where the gap size of the first point is the maximum gap to allow merging"
+                      "and the area of the last point is the maximum area to allow merging. "
+                      "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+                ))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -527,35 +569,37 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
+    __version__ = '0.1.0'
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
-        return 5 * (self.config['s2_merge_max_gap']
+        return 5 * (int(self.config['s2_merge_gap_thresholds'][0][1])
                     + self.config['s2_merge_max_duration'])
 
     def compute(self, peaklets):
-        if not len(peaklets):
-            return peaklets[:0]
+        if len(peaklets) <= 1:
+            return np.zeros(0, dtype=peaklets.dtype)
 
-        if self.config['s2_merge_max_gap'] < 0:
+        gap_thresholds = self.config['s2_merge_gap_thresholds']
+        max_gap = gap_thresholds[0][1]
+        max_area = 10 ** gap_thresholds[-1][0]
+
+        if max_gap < 0:
             # Do not merge at all
-            merged_s2s = np.zeros(0, dtype=peaklets.dtype)
+            return np.zeros(0, dtype=peaklets.dtype)
         else:
-            # Find all groups of peaklets separated by < the gap
-            cluster_starts, cluster_stops = strax.find_peak_groups(
-                peaklets,
-                self.config['s2_merge_max_gap'])
-
+            # Max gap and area should be set by the gap thresholds
+            # to avoid contradictions
             start_merge_at, end_merge_at = self.get_merge_instructions(
                 peaklets['time'], strax.endtime(peaklets),
                 areas=peaklets['area'],
                 types=peaklets['type'],
-                cluster_starts=cluster_starts,
-                cluster_stops=cluster_stops,
+                gap_thresholds=gap_thresholds,
                 max_duration=self.config['s2_merge_max_duration'],
-                max_area=self.config['s2_merge_max_area'])
+                max_gap=max_gap,
+                max_area=max_area,)
 
             merged_s2s = strax.merge_peaks(
                 peaklets,
@@ -572,47 +616,93 @@ class MergedS2s(strax.OverlapWindowPlugin):
     @numba.njit(cache=True, nogil=True)
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
-            cluster_starts, cluster_stops,
-            max_duration, max_area):
-        start_merge_at = np.zeros(len(cluster_starts), dtype=np.int32)
-        end_merge_at = np.zeros(len(cluster_starts), dtype=np.int32)
-        n_to_merge = 0
-        left_i = 0
+            gap_thresholds, max_duration, max_gap, max_area):
+        """Finding the group of peaklets to merge. To do this start with the 
+        smallest gaps and keep merging until the new, merged S2 has such a 
+        large area or gap to adjacent peaks that merging is not required 
+        anymore.
+        returns: list of the first index of peaklet to be merged and
+        list of the exclusive last index of peaklet to be merged
+        """
+        peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
+        n_gaps = len(peaklet_gaps)
 
-        for cluster_i, cluster_start in enumerate(cluster_starts):
-            cluster_stop = cluster_stops[cluster_i]
+        previous_valid_gap = np.arange(n_gaps) - 1
+        next_valid_gap = np.arange(n_gaps) + 1
 
-            if cluster_stop - cluster_start > max_duration:
+        # gaps_to_merge includes two imaginary gaps before and after all peaklets
+        gaps_to_merge = np.zeros(n_gaps + 2, np.bool_)
+
+        # Check gaps from small to large
+        for gap_i in np.argsort(peaklet_gaps):
+            left_i = previous_valid_gap[gap_i] + 1
+            # the right is inclusive
+            right_i = next_valid_gap[gap_i]
+
+            sum_area = areas[left_i:right_i+1].sum()
+
+            if peaklet_gaps[gap_i] > max_gap:
+                # From now on gaps are too large to merge
+                break
+
+            if sum_area > max_area:
+                # The merged peak would be too large
                 continue
 
-            # Recover left and right indices of the clusters.
-            # stops are inclusive for a few lines... sorry...
-            while peaklet_starts[left_i] < cluster_start:
-                left_i += 1
-            right_i = left_i
-            while peaklet_ends[right_i] < cluster_stop:
-                right_i += 1
-
-            if left_i == right_i:
-                # One peak, nothing to merge
+            if (peaklet_ends[right_i] - peaklet_starts[left_i]) > max_duration:
+                # The merged peak would be too long
                 continue
 
-            if types[left_i] != 2:
-                # Doesn't start with S2: do not merge
+            if peaklet_gaps[gap_i] > merge_s2_threshold(np.log10(sum_area), gap_thresholds):
+                # Check with varying threshold based on peak area after merging
                 continue
 
-            right_i += 1   # From here on, right_i is exclusive
+            # Mark the current gap merged and update info of its previous and next gap
+            # There's no previous gap for gap[0], and no next gap for gap[n_gaps-1]
+            if gap_i != 0:
+                next_valid_gap[previous_valid_gap[gap_i]] = next_valid_gap[gap_i]
+            if gap_i != n_gaps - 1:
+                previous_valid_gap[next_valid_gap[gap_i]] = previous_valid_gap[gap_i]
 
-            if areas[left_i:right_i].sum() > max_area:
-                continue
+            gaps_to_merge[gap_i + 1] = True
 
-            start_merge_at[n_to_merge] = left_i
-            end_merge_at[n_to_merge] = right_i
-            n_to_merge += 1
+        i_gaps_to_merge = np.where(gaps_to_merge)[0]
+        # Finding the first gaps that the gaps right before them is still open
+        # -1 to get the peak indices left of the first gaps
+        start_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge - 1]] - 1
+        # Finding the last gaps that the gaps right after them is still open
+        # +1 to get the peak indices (exclusive) right of the last gaps
+        end_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge + 1]] + 1
 
-        return start_merge_at[:n_to_merge], end_merge_at[:n_to_merge]
+        # Do not merge non S2 peaks if they are at the start
+        # Move start merge index up till there's only two peaks left
+        # and it still doesn't start with with S2
+        for i_merge, _start in enumerate(start_merge_at):
+            while types[start_merge_at[i_merge]] != 2:
+                if end_merge_at[i_merge] - start_merge_at[i_merge] <= 2:
+                    break
+                start_merge_at[i_merge] += 1
 
-    
+        start_merge_with_s2 = types[start_merge_at] == 2
+        return start_merge_at[start_merge_with_s2], end_merge_at[start_merge_with_s2]
+
+
+@numba.njit(cache=True, nogil=True)
+def merge_s2_threshold(log_area, gap_thresholds):
+    """Return gap threshold for log_area of the merged S2
+    with linear interpolation given the points in gap_thresholds
+    :param log_area: Log 10 area of the merged S2
+    :param gap_thresholds: tuple (n, 2) of fix points for interpolation
+    """
+    for i, (a1, g1) in enumerate(gap_thresholds):
+        if log_area < a1:
+            if i == 0:
+                return g1
+            a0, g0 = gap_thresholds[i-1]
+            return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
+    return gap_thresholds[-1][1]
+
+
 @export
 class MergedS2sHighEnergy(MergedS2s):
     __doc__ = HE_PREAMBLE + MergedS2s.__doc__
@@ -699,7 +789,7 @@ def get_tight_coin(hit_max_times, peak_max_times, left, right):
 
             # if the hit is in the window, its a tight coin
             d = hit_max_times[left_hit_i] - p_t
-            if (-left < d) & (d < right):
+            if (-left <= d) & (d <= right):
                 n_coin[p_i] += 1
 
             # stop the loop when we know we're outside the range

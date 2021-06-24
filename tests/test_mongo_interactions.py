@@ -24,7 +24,7 @@ def test_select_runs(check_n_runs=2):
              'have access to the database.')
         return
     assert check_n_runs >= 1
-    st = straxen.contexts.xenonnt_online()
+    st = straxen.contexts.xenonnt_online(use_rucio=False)
     run_col = st.storage[0].collection
 
     # Find the latest run in the runs collection
@@ -72,7 +72,7 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
     if not straxen.utilix_is_configured():
         warn('Cannot test online monitor because utilix is not configured')
         return
-    st = straxen.contexts.xenonnt_online()
+    st = straxen.contexts.xenonnt_online(use_rucio=False)
     om = _patch_om_init(target)
     st.storage = [om]
     max_run = None

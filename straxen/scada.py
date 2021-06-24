@@ -214,7 +214,7 @@ class SCADAInterface:
             mes = ('You are trying to query slow control data via run_ids'
                    ' but you have not specified the context you are '
                    'working with. Please set the context either via '
-                   '.st = YOURCONTEXT, or when initializing the '
+                   '.context = YOURCONTEXT, or when initializing the '
                    'interface.')
             raise ValueError(mes)
 
@@ -230,7 +230,7 @@ class SCADAInterface:
             raise ValueError('You specified an endtime which is smaller '
                              'than the start time.')
 
-        if len(str(start)) < 19 or len(str(end)) < 19:
+        if (np.log10(start) < 18) or (np.log10(end) < 18):
             raise ValueError('Expected the time to be in ns unix time (number with 19 digits or more).'
                              ' Have you specified the time maybe in seconds or micro-seconds?')
 
