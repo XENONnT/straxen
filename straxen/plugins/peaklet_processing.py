@@ -649,9 +649,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
             # Mark the current gap merged and update info of its previous and next gap
             # There's no previous gap for gap[0], and no next gap for gap[n_gaps-1]
-            if gap_i != 0:
+            if previous_valid_gap[gap_i] != -1:
                 next_valid_gap[previous_valid_gap[gap_i]] = next_valid_gap[gap_i]
-            if gap_i != n_gaps - 1:
+            if next_valid_gap[gap_i] != n_gaps:
                 previous_valid_gap[next_valid_gap[gap_i]] = previous_valid_gap[gap_i]
 
             gaps_to_merge[gap_i + 1] = True
