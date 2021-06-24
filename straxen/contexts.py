@@ -15,6 +15,7 @@ common_opts = dict(
         straxen.PeakletClassification,
         straxen.MergedS2s,
         straxen.Peaks,
+        straxen.PeaksExtended,
         straxen.PeakBasics,
         straxen.PeakProximity],
     check_available=('raw_records', 'peak_basics'),

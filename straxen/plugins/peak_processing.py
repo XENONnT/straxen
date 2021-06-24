@@ -9,6 +9,156 @@ import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
 from .pulse_processing import  HE_PREAMBLE
+from copy import deepcopy
+
+@export
+class PeaksExtended(strax.Plugin):
+    __version__='0.0.2'
+    depends_on=('peaks')
+    arrays = ('top','bottom','full')
+    provides=('peaks_extended')
+    
+    def infer_dtype(self):
+        n_sum_wv_samples=200
+        n_widths=11
+        
+        dtype=deepcopy(strax.peak_interval_dtype)
+        for array in self.arrays:
+            dtype += [
+            ((f'Integral across channels [PE] for array {array}',
+              f'area_{array}'), np.float32),
+            ((f'Waveform data in PE/sample for array {array} (not PE/ns!)',
+              f'data_{array}'), np.float32, n_sum_wv_samples),
+            ((f'Peak widths in range of central area fraction [ns] for array {array}',
+              f'width_{array}'), np.float32, n_widths),
+            ((f'Peak widths: time between nth and 5th area decile [ns] for array {array}',
+              f'area_decile_from_midpoint_{array}'), np.float32, n_widths),
+            ((f'Center time for array {array}',
+              f'center_time_{array}'), np.int32),
+            ]
+        return dtype
+            
+    def compute(self,peaks):
+        results = np.zeros(len(peaks),dtype=self.dtype)
+        for v in ('dt','length','time'):
+            results[f'{v}']=peaks[f'{v}']
+        
+        results['data_full']=peaks['data']
+        results['data_top']=peaks['data_top']
+        results['data_bottom']=peaks['data']-peaks['data_top']
+            
+        for array in self.arrays:
+            results[f'area_{array}']=np.sum(results[f'data_{array}'],axis=1)
+
+        center_times=self.compute_widths(results)
+        m = peaks['area'] > 0
+        results['center_time_top'] = peaks['time']
+        results['center_time_bottom'] = peaks['time']
+        results['center_time_full'] = peaks['time']
+
+        center_times=self.compute_center_times(results)
+        results['center_time_top']+=center_times[:,0]
+        results['center_time_bottom']+=center_times[:,1]
+        results['center_time_full']+=center_times[:,2]
+        return results
+        
+    def compute_widths(self,peaks):
+        """Compute widths in ns at desired area fractions for peaks
+        returns (n_peaks, n_widths) array
+        """
+        if not len(peaks):
+            return
+
+        desired_widths = np.linspace(0, 1, len(peaks[0]['width_full']))
+        # 0% are width is 0 by definition, and it messes up the calculation below
+        desired_widths = desired_widths[1:]
+
+        # Which area fractions do we need times for?
+        desired_fr = np.concatenate([0.5 - desired_widths / 2,
+                                     0.5 + desired_widths / 2])
+
+        # We lose the 50% fraction with this operation, let's add it back
+        desired_fr = np.sort(np.unique(np.append(desired_fr, [0.5])))
+
+        for array in self.arrays:
+            fr_times = index_of_fraction(peaks, array, desired_fr)
+            fr_times *= peaks['dt'].reshape(-1, 1)
+
+            i = len(desired_fr) // 2
+            peaks[f'width_{array}'] = fr_times[:, i:] - fr_times[:, ::-1][:, i:]
+            peaks[f'area_decile_from_midpoint_{array}'] = fr_times[:, ::2] - fr_times[:, i].reshape(-1,1)
+            
+    def compute_center_times(self,peaks):
+        result = np.zeros((len(peaks),3), dtype=np.int32)
+        for p_i, p in enumerate(peaks):
+            for ix,array in enumerate(self.arrays):
+                if p[f'area_{array}']==0.0:
+                    continue
+                t = 0
+                for t_i, weight in enumerate(p[f'data_{array}']):
+                    t += t_i * p['dt'] * weight
+                result[p_i][ix] = t / p[f'area_{array}']
+        return result
+        
+
+# @numba.njit(cache=True, nogil=True)
+def index_of_fraction(peaks, array,fractions_desired):
+    """Return the (fractional) indices at which the peaks reach
+    fractions_desired of their area
+    :param peaks: strax peak(let)s or other data-bearing dtype
+    :param fractions_desired: array of floats between 0 and 1
+    :returns: (len(peaks), len(fractions_desired)) array of floats
+    """
+    results = np.zeros((len(peaks), len(fractions_desired)), dtype=np.float32)
+
+    for p_i, p in enumerate(peaks):
+        if p[f'area_{array}'] <= 0:
+            continue  # TODO: These occur a lot. Investigate!
+        results[p_i]=compute_index_of_fraction(p, array, fractions_desired, results[p_i])
+    return results
+
+
+# @numba.jit(nopython=True, nogil=True, cache=True)
+def compute_index_of_fraction(peak, array,fractions_desired, result):
+    """Store the (fractional) indices at which peak reaches
+    fractions_desired of their area in result
+    :param peak: single strax peak(let) or other data-bearing dtype
+    :param fractions_desired: array of floats between 0 and 1
+    :returns: len(fractions_desired) array of floats
+    """
+    area_tot = peak[f'area_{array}']
+    fraction_seen = 0
+    current_fraction_index = 0
+    needed_fraction = fractions_desired[current_fraction_index]
+    for i, x in enumerate(peak['data_'+array][:peak['length']]):
+        # How much of the area is in this sample?
+        fraction_this_sample = x / area_tot
+        # Are we passing any desired fractions in this sample?
+        while fraction_seen + fraction_this_sample >= needed_fraction:
+
+            area_needed = area_tot * (needed_fraction - fraction_seen)
+            if x != 0:
+                result[current_fraction_index] = i + area_needed / x
+            else:
+                result[current_fraction_index] = i
+
+            # Advance to the next fraction
+            current_fraction_index += 1
+            if current_fraction_index > len(fractions_desired) - 1:
+                break
+            needed_fraction = fractions_desired[current_fraction_index]
+
+        if current_fraction_index > len(fractions_desired) - 1:
+            break
+
+        # Add this sample's area to the area seen
+        fraction_seen += fraction_this_sample
+
+    if needed_fraction == 1:
+        # Sometimes floating-point errors prevent the full area
+        # from being reached before the waveform ends
+        result[-1] = peak['length']
+    return result
 
 
 @export

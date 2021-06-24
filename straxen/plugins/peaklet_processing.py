@@ -516,7 +516,7 @@ FAKE_MERGED_S2_TYPE = -42
     strax.Option('s2_merge_max_duration', default=35_000,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"),
-    strax.Option('store_top_waveform',default=False,
+    strax.Option('store_top_waveform',default=True,
                  help='Bool for storing the top array waveform seperately'),
                       )
 class MergedS2s(strax.OverlapWindowPlugin):
