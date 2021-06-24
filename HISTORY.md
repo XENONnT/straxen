@@ -21,6 +21,7 @@ patches and fixes:
 - Add scada interface to docs (#560)
 - Tweaks for new release 0.19.0 (#562)
 
+
 0.18.6-0.18.8 / 2021-06-03
 -------------------
 - Patches installation for pypi (#529, e880420, fce6d87)
