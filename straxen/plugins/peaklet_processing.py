@@ -638,7 +638,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # The merged peak would be too large
                 continue
 
-            if (peaklet_ends[right_i - 1] - peaklet_starts[left_i]) >= max_duration:
+            if (peaklet_ends[right_i] - peaklet_starts[left_i]) >= max_duration:
                 # The merged peak would be too long
                 continue
 
