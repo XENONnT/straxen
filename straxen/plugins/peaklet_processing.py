@@ -557,7 +557,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.1.2'
+    __version__ = '0.2.0'
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
