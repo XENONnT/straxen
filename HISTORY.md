@@ -1,5 +1,10 @@
-0.19.0 / 2021-06-23
+0.19.1 / 2021-06-24
 -------------------
+- Fix merged S2s upgrade #548 (#566, a2f5062, #568)
+- Disable rucio frontend as default temporarily (#567)
+
+0.19.0 / 2021-06-23 (bugged)
+----------------------------
 minor changes
 - S1/S2 event patternfit and S1 AFT test (#499)
 - Change tight_coincidence (#564)
