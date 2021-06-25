@@ -261,7 +261,8 @@ class EventBasics(strax.Plugin):
         return posrec_dtpye
 
     def compute(self, events, peaks):
-        result = np.ones(len(events), self.dtype) * -1
+        result = np.ones(len(events), dtype=self.dtype)
+        result *= -1
 
         fully_contained_in = strax.fully_contained_in(peaks, events)
         for event_i, event in events:
