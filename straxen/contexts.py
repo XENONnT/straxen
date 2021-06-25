@@ -260,33 +260,7 @@ def xenonnt_simulation(output_folder='./strax_data',
         raise ValueError('You have to specify a run_id which should be used to initialize '
                          'the corrections.')
 
-    cmt_options = straxen.get_corrections.get_cmt_options(st)
-
-    p = st.get_single_plugin(cmt_run_id, 'peak_positions')
-    default_reconstruction_algorithm = p.config['default_reconstruction_algorithm']
-    
-    def _depends_on_pos_algo(cmt_setting):
-        """
-        Checks if CMT setting depends on a position reconstruction
-        algorithm.
-        """
-        config_name, setting, nT = cmt_setting
-        if config_name in ('s1_xyz_map', 'fdc_map'):
-            cmt_setting = (config_name + f'_{default_reconstruction_algorithm}', setting, nT)
-        return cmt_setting
-
-    for option_key, cmt_setting in cmt_options.items():
-        cmt_setting = _depends_on_pos_algo(cmt_setting)
-        config_name, _, _ = _depends_on_pos_algo(cmt_setting)
-        config_value = straxen.get_correction_from_cmt(cmt_run_id, cmt_setting)
-        if isinstance(config_value, np.ndarray):
-            # We have to convert the arrays into a list to write the metadata
-            # numpy arrays are not json serializable.
-            config_value = config_value.tolist()
-
-        cmt_options[option_key] = (config_name + '_constant',
-                                   config_value
-                                   )
+    cmt_options = st.pre_initlize_cmt_corrections(cmt_run_id)
 
     fax_config = straxen.get_resource(fax_config, fmt='json')
     for fax_option_key, fax_option_value in fax_config:
