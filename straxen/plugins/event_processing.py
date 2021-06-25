@@ -127,7 +127,7 @@ class Events(strax.OverlapWindowPlugin):
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
              "in the peaklet classification")
 )
-class EventBasics(strax.LoopPlugin):
+class EventBasics(strax.Plugin):
     """
     Computes the basic properties of the main/alternative S1/S2 within
     an event.
@@ -135,7 +135,7 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.6.1'
+    __version__ = '1.0.0'
 
     depends_on = ('events',
                   'peak_basics',
@@ -145,27 +145,9 @@ class EventBasics(strax.LoopPlugin):
     data_kind = 'events'
     loop_over = 'events'
 
-    def setup(self):
-        self._set_posrec_save()
-        # Properties to store for each peak (main and alternate S1 and S2)
-        self.peak_properties = (
-            # name                dtype       comment
-            ('time',              np.int64,   'start time since unix epoch [ns]'),
-            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
-            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
-            ('area',              np.float32, 'area, uncorrected [PE]'),
-            ('n_channels',        np.int32,   'count of contributing PMTs'),
-            ('n_competing',       np.float32, 'number of competing PMTs'),
-            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
-            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
-            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
-            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
-            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
-            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
-        )
-
     def infer_dtype(self):
         # Basic event properties
+        self.set_dtype_requirements()
         dtype = []
         dtype += strax.time_fields
         dtype += [('n_peaks', np.int32,
@@ -193,6 +175,26 @@ class EventBasics(strax.LoopPlugin):
         dtype += self._get_posrec_dtypes()
 
         return dtype
+
+    def set_dtype_requirements(self):
+        """Needs to be run before inferring dtype as it is needed there"""
+        self._set_posrec_save()
+        # Properties to store for each peak (main and alternate S1 and S2)
+        self.peak_properties = (
+            # name                dtype       comment
+            ('time',              np.int64,   'start time since unix epoch [ns]'),
+            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
+            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
+            ('area',              np.float32, 'area, uncorrected [PE]'),
+            ('n_channels',        np.int32,   'count of contributing PMTs'),
+            ('n_competing',       np.float32, 'number of competing PMTs'),
+            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
+            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
+            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
+            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
+            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
+            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
+        )
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -257,27 +259,39 @@ class EventBasics(strax.LoopPlugin):
 
         return posrec_dtpye
 
-    def compute_loop(self, event, peaks):
-        result = dict(n_peaks=len(peaks),
-                      time=event['time'],
-                      endtime=strax.endtime(event))
+    def compute(self, events, peaks):
+        result = np.ones(len(events), self.dtype) * -1
+
+        fully_contained_in = strax.fully_contained_in(peaks, events)
+        for event_i, event in events:
+            peak_mask = fully_contained_in == event_i
+            result_i = self.get_results_for_event(peaks[peak_mask])
+            for field, value in result_i.items():
+                result[event_i][field] = value
+        return result
+
+    # TODO numbafy
+    def get_results_for_event(self, peaks):
+        res = {}
 
         if not len(peaks):
-            return result
+            return res
         main_s = dict()
         secondary_s = dict()
 
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
+            # TODO numbafy
             _res, _main, _second = self.get_result_for_si(
                 peaks, s_i, main_s, secondary_s)
-            result.update(_res)
+            res.update(_res)
             main_s.update(_main)
             secondary_s.update(_second)
 
-        result = self.get_event_properties(result, main_s, secondary_s, peaks)
-        return result
+        res = self.get_event_properties(res, main_s, secondary_s, peaks)
+        return res
 
+    # TODO numbafy
     def get_event_properties(self, result, main_s, secondary_s, peaks):
         """Get properties like drift time and area before main S2"""
         # Compute drift times only if we have a valid S1-S2 pair
@@ -303,6 +317,7 @@ class EventBasics(strax.LoopPlugin):
                 result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
         return result
 
+    # todo numbaft
     def get_result_for_si(self, peaks, s_i, main_si, secondary_si):
         """Get the extracted S1/S2 properties"""
         result_si = {}
@@ -364,8 +379,7 @@ class EventBasics(strax.LoopPlugin):
                     result_si[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
             # Compute delay time properties
             result_si[f'alt_s{s_i}_delay'] = (secondary_si[s_i]['center_time']
-                                           - main_si[s_i]['center_time'])
-
+                                              - main_si[s_i]['center_time'])
         return result_si, main_si, secondary_si
 
 
