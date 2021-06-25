@@ -260,9 +260,16 @@ class EventBasics(strax.Plugin):
 
         return posrec_dtpye
 
+    def set_nan_defaults(self, result):
+        # TODO don't remember which where the important ones
+        nan_types = 's2_x', 's2_y'
+        for field in result.dtype.names:
+            if any([field in n for n in nan_types]):
+                result[field][:] = np.nan
+
     def compute(self, events, peaks):
         result = np.ones(len(events), dtype=self.dtype)
-        result *= -1
+        self.set_nan_defaults(result)
 
         fully_contained_in = strax.fully_contained_in(peaks, events)
         for event_i, event in events:
