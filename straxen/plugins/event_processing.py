@@ -268,13 +268,16 @@ class EventBasics(strax.Plugin):
                 result[field][:] = np.nan
 
     def compute(self, events, peaks):
-        result = np.ones(len(events), dtype=self.dtype)
+        result = np.zeros(len(events), dtype=self.dtype)
         self.set_nan_defaults(result)
 
         fully_contained_in = strax.fully_contained_in(peaks, events)
-        for event_i, event in events:
+        for event_i, event in enumerate(events):
             peak_mask = fully_contained_in == event_i
             result_i = self.get_results_for_event(peaks[peak_mask])
+
+            result[event_i]['time'] = event['time']
+            result[event_i]['endtime'] = event['endtime']
             for field, value in result_i.items():
                 result[event_i][field] = value
         return result
@@ -291,17 +294,15 @@ class EventBasics(strax.Plugin):
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
             # TODO numbafy
-            _res, _main, _second = self.get_result_for_si(
-                peaks, s_i, main_s, secondary_s)
-            res.update(_res)
-            main_s.update(_main)
-            secondary_s.update(_second)
+            res, main_s, secondary_s = self.get_result_for_si(
+                res, peaks, s_i, main_s, secondary_s)
 
         res = self.get_event_properties(res, main_s, secondary_s, peaks)
         return res
 
     # TODO numbafy
-    def get_event_properties(self, result, main_s, secondary_s, peaks):
+    @staticmethod
+    def get_event_properties(result, main_s, secondary_s, peaks):
         """Get properties like drift time and area before main S2"""
         # Compute drift times only if we have a valid S1-S2 pair
         if len(main_s) == 2:
@@ -327,9 +328,8 @@ class EventBasics(strax.Plugin):
         return result
 
     # todo numbaft
-    def get_result_for_si(self, peaks, s_i, main_si, secondary_si):
+    def get_result_for_si(self, result, peaks, s_i, main_si, secondary_si):
         """Get the extracted S1/S2 properties"""
-        result_si = {}
         # Which properties do we need?
         to_store = [name for name, _, _ in self.peak_properties]
         if s_i == 2:
@@ -340,7 +340,7 @@ class EventBasics(strax.Plugin):
         if not self.config['allow_posts2_s1s']:
             # Only peaks *before* the main S2 are allowed to be
             # the main or alternate S1
-            if s_i == 1 and result_si[f's2_index'] != -1:
+            if s_i == 1 and result[f's2_index'] != -1:
                 s_mask &= peaks['time'] < main_si[2]['time']
 
         if s_i == 1:
@@ -365,31 +365,31 @@ class EventBasics(strax.Plugin):
 
         # Store main signal properties
         if _main_i is None:
-            result_si[f's{s_i}_index'] = -1
+            result[f's{s_i}_index'] = -1
         else:
             main_si[s_i] = ss[_main_i]
-            result_si[f's{s_i}_index'] = s_indices[_main_i]
+            result[f's{s_i}_index'] = s_indices[_main_i]
             for name in to_store:
-                result_si[f's{s_i}_{name}'] = main_si[s_i][name]
+                result[f's{s_i}_{name}'] = main_si[s_i][name]
             if s_i == 2:
                 for name in self.posrec_save:
-                    result_si[f's{s_i}_{name}'] = main_si[s_i][name]
+                    result[f's{s_i}_{name}'] = main_si[s_i][name]
 
         # Store alternate signal properties
         if _alt_i is None:
-            result_si[f'alt_s{s_i}_index'] = -1
+            result[f'alt_s{s_i}_index'] = -1
         else:
             secondary_si[s_i] = ss[_alt_i]
-            result_si[f'alt_s{s_i}_index'] = s_indices[_alt_i]
+            result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
             for name in to_store:
-                result_si[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
+                result[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
             if s_i == 2:
                 for name in self.posrec_save:
-                    result_si[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
+                    result[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
             # Compute delay time properties
-            result_si[f'alt_s{s_i}_delay'] = (secondary_si[s_i]['center_time']
+            result[f'alt_s{s_i}_delay'] = (secondary_si[s_i]['center_time']
                                               - main_si[s_i]['center_time'])
-        return result_si, main_si, secondary_si
+        return result, main_si, secondary_si
 
 
 @export
