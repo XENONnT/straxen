@@ -220,32 +220,56 @@ def xenonnt_led(**kwargs):
 def xenonnt_simulation(output_folder='./strax_data',
                        cmt_run_id='020280',
                        cmt_version='v4',
-                       cmt_kwargs=immutabledict(),
                        cmt_overwrite=immutabledict(),
+                       fax_config='fax_config_nt_design.json',
+                       overwrite_from_fax_file=False,
+                       _allow_diverging_settings=False,
                        **kwargs):
+    """
+    Context with already pre-initialized corrections values for CMT.
+    Sets correction values according cmt_run_id and specified version.
+    Settings can be overwritten via cmt_overwrite or fax config file.
+
+    :param output_folder: Output folder for strax data.
+    :param cmt_run_id: Run id which should be used to load corrections.
+    :param cmt_version: Global version for corrections to be loaded.
+    :param cmt_overwrite: Dictionary to overwrite CMT settings. Keys
+        must be valid CMT option keys.
+    :param fax_config: Fax config file to use.
+    :param overwrite_from_fax_file: If true overwrites CMT settings
+        from fax file.
+    :param _allow_diverging_settings: Disable check for matching CMT
+        settings in context and fax file settings. Experts use only.
+    :param kwargs: Additional kwargs taken by strax.Context.
+
+    :return: strax.Context instance
+    """
     import wfsim
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config='fax_config_nt_design.json',
+                    fax_config=fax_config,
                     check_raw_record_overlaps=True,
                     **straxen.contexts.xnt_common_config,
                     ),
         **straxen.contexts.xnt_common_opts,  **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
 
-    st.apply_cmt_version(f'global_{cmt_version}', **cmt_kwargs)
+    st.apply_cmt_version(f'global_{cmt_version}')
     if not cmt_run_id:
-        raise ValueError('You have to specifiy a run_id which should be used to intialize '
+        raise ValueError('You have to specify a run_id which should be used to initialize '
                          'the corrections.')
 
     cmt_options = straxen.get_corrections.get_cmt_options(st)
-    
-    # Get default position reconstruction algorithm:
-    p = st.get_single_plugin('020280', 'peak_positions')
+
+    p = st.get_single_plugin(cmt_run_id, 'peak_positions')
     default_reconstruction_algorithm = p.config['default_reconstruction_algorithm']
     
     def _depends_on_pos_algo(cmt_setting):
+        """
+        Checks if CMT setting depends on a position reconstruction
+        algorithm.
+        """
         config_name, setting, nT = cmt_setting
         if config_name in ('s1_xyz_map', 'fdc_map'):
             cmt_setting = (config_name + f'_{default_reconstruction_algorithm}', setting, nT)
@@ -264,8 +288,27 @@ def xenonnt_simulation(output_folder='./strax_data',
                                    config_value
                                    )
 
+    fax_config = straxen.get_resource(fax_config, fmt='json')
+    for fax_option_key, fax_option_value in fax_config:
+        if fax_option_key not in cmt_options.keys():
+            continue
+
+        if overwrite_from_fax_file:
+            cmt_option_name = cmt_options[fax_option_key][0]
+            cmt_options[fax_option_key] = (cmt_option_name, fax_option_value)
+
+        cmt_config_value = cmt_options[fax_option_key][1]
+        if not _allow_diverging_settings and fax_option_value != cmt_config_value:
+            raise ValueError(f'Found diverging setting for {fax_option_key} between fax file and'
+                             f' CMT setting. CMT: {cmt_config_value} FAX: {fax_option_value}')
+
     for option_key, cmt_constant_value in cmt_overwrite.items():
-        cmt_options[option_key] = (cmt_options[option_key][0], cmt_constant_value)
+        if option_key in cmt_options.keys():
+            cmt_option_name = cmt_options[option_key][0]
+            cmt_options[option_key] = (cmt_option_name, cmt_constant_value)
+        else:
+            raise ValueError(f'Cannot find {option_key} among keys for CMT. Please specify as '
+                             f'key valid CMT option names. ')
 
     st.set_config(cmt_options)
     return st
