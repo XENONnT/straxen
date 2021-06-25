@@ -1,5 +1,6 @@
 import strax
 import numpy as np
+import numba
 import straxen
 from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
@@ -135,7 +136,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = 'bla' #1.0.0'
+    __version__ = '1.0.0'
 
     depends_on = ('events',
                   'peak_basics',
@@ -276,6 +277,10 @@ class EventBasics(strax.Plugin):
         self.set_nan_defaults(result)
 
         fully_contained_in = strax.fully_contained_in(peaks, events)
+        self.fill_events(result, events, peaks, fully_contained_in)
+        return result
+
+    def fill_events(self, result, events, peaks, fully_contained_in):
         for event_i, event in enumerate(events):
             peak_mask = fully_contained_in == event_i
             n_peaks = np.sum(peak_mask)
@@ -290,7 +295,6 @@ class EventBasics(strax.Plugin):
             result_i = self.get_results_for_event(peaks[peak_mask])
             for field, value in result_i.items():
                 result[event_i][field] = value
-        return result
 
     # TODO numbafy
     def get_results_for_event(self, peaks):
