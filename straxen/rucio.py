@@ -26,7 +26,7 @@ try:
     download_client = DownloadClient()
     RUCIO_AVAILABLE = True
 except (ModuleNotFoundError, RuntimeError):
-    warnings.warn("No installation of rucio-clients found. Can't use rucio remove backend")
+    warnings.warn("No installation of rucio-clients found. Can't use rucio remote backend.")
     RUCIO_AVAILABLE = False
 
 export, __all__ = strax.exporter()
@@ -96,9 +96,8 @@ class RucioFrontend(strax.StorageFrontend):
             self.backends.append(RucioRemoteBackend(staging_dir, download_heavy=download_heavy))
 
     def __repr__(self):
-        # List the relevant attributes ('path' is actually for the
-        # strax.DataDirectory but it makes more sense to put it here).
-        attributes = ('include_remote', 'exclude', 'take_only')
+        # List the relevant attributes
+        attributes = ('include_remote', 'exclude', 'take_only', 'readonly')
         representation = f'{self.__class__.__module__}.{self.__class__.__name__}'
         for attr in attributes:
             if hasattr(self, attr) and getattr(self, attr):
