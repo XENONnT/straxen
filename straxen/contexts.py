@@ -289,7 +289,7 @@ def xenonnt_simulation(output_folder='./strax_data',
                                    )
 
     fax_config = straxen.get_resource(fax_config, fmt='json')
-    for fax_option_key, fax_option_value in fax_config:
+    for fax_option_key, fax_option_value in fax_config.items():
         if fax_option_key not in cmt_options.keys():
             continue
 
