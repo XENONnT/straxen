@@ -125,7 +125,7 @@ class Events(strax.OverlapWindowPlugin):
         name='event_s1_min_coincidence',
         default=2,
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
-             "in the peaklet classification")
+             "in the peaklet classification"),
 )
 class EventBasics(strax.Plugin):
     """
@@ -179,6 +179,7 @@ class EventBasics(strax.Plugin):
     def set_dtype_requirements(self):
         """Needs to be run before inferring dtype as it is needed there"""
         self._set_posrec_save()
+
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
             # name                dtype       comment
