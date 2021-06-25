@@ -135,7 +135,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.0.0'
+    __version__ = 'bla' #1.0.0'
 
     depends_on = ('events',
                   'peak_basics',
@@ -173,7 +173,6 @@ class EventBasics(strax.Plugin):
         ]
 
         dtype += self._get_posrec_dtypes()
-
         return dtype
 
     def set_dtype_requirements(self):
@@ -260,11 +259,16 @@ class EventBasics(strax.Plugin):
 
         return posrec_dtpye
 
-    def set_nan_defaults(self, result):
-        # TODO don't remember which where the important ones
-        nan_types = 's2_x', 's2_y'
+    @staticmethod
+    def set_nan_defaults(result):
+        """
+        When constructing the dtype, take extra care to set values to
+        np.Nan / -1 (for ints) as 0 might have a meaning
+        """
         for field in result.dtype.names:
-            if any([field in n for n in nan_types]):
+            if np.issubdtype(result.dtype[field], np.integer):
+                result[field][:] = -1
+            else:
                 result[field][:] = np.nan
 
     def compute(self, events, peaks):
@@ -274,10 +278,16 @@ class EventBasics(strax.Plugin):
         fully_contained_in = strax.fully_contained_in(peaks, events)
         for event_i, event in enumerate(events):
             peak_mask = fully_contained_in == event_i
-            result_i = self.get_results_for_event(peaks[peak_mask])
+            n_peaks = np.sum(peak_mask)
 
             result[event_i]['time'] = event['time']
             result[event_i]['endtime'] = event['endtime']
+            result[event_i]['n_peaks'] = n_peaks
+
+            if not n_peaks:
+                continue
+
+            result_i = self.get_results_for_event(peaks[peak_mask])
             for field, value in result_i.items():
                 result[event_i][field] = value
         return result
@@ -327,7 +337,7 @@ class EventBasics(strax.Plugin):
                 result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
         return result
 
-    # todo numbaft
+    # todo numbafy
     def get_result_for_si(self, result, peaks, s_i, main_si, secondary_si):
         """Get the extracted S1/S2 properties"""
         # Which properties do we need?
