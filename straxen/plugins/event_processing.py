@@ -120,7 +120,12 @@ class Events(strax.OverlapWindowPlugin):
     strax.Option(
         name='force_main_before_alt', default=False,
         help="Make the alternate S1 (and likewise S2) the main S1 if "
-             "occurs before the main S1.")
+             "occurs before the main S1."),
+    strax.Option(
+        name='event_s1_min_coincidence',
+        default=2,
+        help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
+             "in the peaklet classification")
 )
 class EventBasics(strax.LoopPlugin):
     """
@@ -252,6 +257,10 @@ class EventBasics(strax.LoopPlugin):
                 # the main or alternate S1
                 if s_i == 1 and result[f's2_index'] != -1:
                     s_mask &= peaks['time'] < main_s[2]['time']
+            if s_i == 1:
+                # If we have an event-level S1 tight coincidence, let's apply that here too
+                s_mask &= peaks['tight_coincidence'] > self.config['event_s1_min_coincidence']
+
             ss = peaks[s_mask]
             s_indices = np.arange(len(peaks))[s_mask]
 
