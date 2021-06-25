@@ -74,6 +74,7 @@ xnt_common_opts.update({
                                            straxen.PeakletsHighEnergy,
                                            straxen.PeakletClassificationHighEnergy,
                                            straxen.MergedS2sHighEnergy,
+                                           straxen.EventInfo,
                                           ],
     'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
                                                    straxen.nveto_recorder,
@@ -103,7 +104,7 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
 
 
 def xenonnt_online(output_folder='./strax_data',
-                   use_rucio=True,
+                   use_rucio=False,
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
@@ -201,6 +202,7 @@ def xenonnt_online(output_folder='./strax_data',
                                                    )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
+
     return st
 
 
@@ -306,6 +308,7 @@ x1t_context_config.update(
     dict(register=common_opts['register'] +
                   [straxen.PeakPositions1T,
                    straxen.RecordsFromPax,
+                   straxen.EventInfo1T,
          ]))
 
 x1t_common_config = dict(
@@ -338,19 +341,18 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     peak_min_pmts=2,
     # MergedS2s
-    s2_merge_max_duration=15_000,
-    s2_merge_max_gap=3500,
+    s2_merge_gap_thresholds=((1.7, 5.0e3), (4.0, 500.), (5.0, 0.)),
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
     s1_max_rise_time=60,
     s1_max_rise_time_post100=150,
+    s1_min_coincidence=3,
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
     elife_conf=('elife_xenon1t', 'v1', False),
-    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
-    event_info_function='disabled',
+    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
     max_drift_length=96.9,
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
