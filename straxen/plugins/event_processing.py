@@ -135,7 +135,7 @@ class EventBasics(strax.LoopPlugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '0.6.0'
+    __version__ = '0.6.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -145,50 +145,35 @@ class EventBasics(strax.LoopPlugin):
     data_kind = 'events'
     loop_over = 'events'
 
-    # Properties to store for each peak (main and alternate S1 and S2)
-    peak_properties = (
-        # name                dtype       comment
-        ('time',              np.int64,   'start time since unix epoch [ns]'),
-        ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
-        ('endtime',           np.int64,   'end time since unix epoch [ns]'),
-        ('area',              np.float32, 'area, uncorrected [PE]'),
-        ('n_channels',        np.int32,   'count of contributing PMTs'),
-        ('n_competing',       np.float32, 'number of competing PMTs'),
-        ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
-        ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
-        ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
-        ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
-        ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
-        ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'))
+    def setup(self):
+        self._set_posrec_save()
+        # Properties to store for each peak (main and alternate S1 and S2)
+        self.peak_properties = (
+            # name                dtype       comment
+            ('time',              np.int64,   'start time since unix epoch [ns]'),
+            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
+            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
+            ('area',              np.float32, 'area, uncorrected [PE]'),
+            ('n_channels',        np.int32,   'count of contributing PMTs'),
+            ('n_competing',       np.float32, 'number of competing PMTs'),
+            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
+            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
+            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
+            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
+            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
+            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
+        )
 
     def infer_dtype(self):
         # Basic event properties
         dtype = []
         dtype += strax.time_fields
-        dtype += [('n_peaks', np.int32, 'Number of peaks in the event'),
+        dtype += [('n_peaks', np.int32,
+                   'Number of peaks in the event'),
                   ('drift_time', np.int32,
                    'Drift time between main S1 and S2 in ns')]
 
-        for i in [1, 2]:
-            # Peak indices
-            dtype += [
-                (f's{i}_index', np.int32,
-                 f'Main S{i} peak index in event'),
-                (f'alt_s{i}_index', np.int32,
-                 f'Alternate S{i} peak index in event')]
-
-            # Peak properties
-            for name, dt, comment in self.peak_properties:
-                dtype += [
-                    (f's{i}_{name}', dt, f'Main S{i} {comment}'),
-                    (f'alt_s{i}_{name}', dt, f'Alternate S{i} {comment}')]
-
-            # Drifts and delays
-            dtype += [
-                (f'alt_s{i}_interaction_drift_time', np.int32,
-                 f'Drift time using alternate S{i} [ns]'),
-                (f'alt_s{i}_delay', np.int32,
-                 f'Time between main and alternate S{i} [ns]')]
+        dtype += self._get_si_dtypes(self.peak_properties)
 
         dtype += [
             (f's2_x', np.float32,
@@ -198,26 +183,69 @@ class EventBasics(strax.LoopPlugin):
             (f'alt_s2_x', np.float32,
              f'Alternate S2 reconstructed X position, uncorrected [cm]'),
             (f'alt_s2_y', np.float32,
-             f'Alternate S2 reconstructed Y position, uncorrected [cm]')]
-
-        # area before main S2
-        dtype += [
+             f'Alternate S2 reconstructed Y position, uncorrected [cm]'),
             (f'area_before_main_s2', np.float32,
              f'Sum of areas before Main S2 [PE]'),
             (f'large_s2_before_main_s2', np.float32,
-             f'The largest S2 before the Main S2 [PE]')]
+             f'The largest S2 before the Main S2 [PE]')
+        ]
 
-        # parse x_mlp et cetera if needed to get the algorithms used.
-        self.pos_rec_labels = list(
-            set(d.split('_')[-1] for d in
-                self.deps['peak_positions'].dtype_for('peak_positions').names
-                if 'x_' in d))
+        dtype += self._get_posrec_dtypes()
+
+        return dtype
+
+    @staticmethod
+    def _get_si_dtypes(peak_properties):
+        """Get properties for S1/S2 from peaks directly"""
+        si_dtype = []
+        for s_i in [1, 2]:
+            # Peak indices
+            si_dtype += [
+                (f's{s_i}_index', np.int32,
+                 f'Main S{s_i} peak index in event'),
+                (f'alt_s{s_i}_index', np.int32,
+                 f'Alternate S{s_i} peak index in event')]
+
+            # Peak properties
+            for name, dt, comment in peak_properties:
+                si_dtype += [
+                    (f's{s_i}_{name}', dt,
+                     f'Main S{s_i} {comment}'),
+                    (f'alt_s{s_i}_{name}', dt,
+                     f'Alternate S{s_i} {comment}')]
+
+            # Drifts and delays
+            si_dtype += [
+                (f'alt_s{s_i}_interaction_drift_time', np.int32,
+                 f'Drift time using alternate S{s_i} [ns]'),
+                (f'alt_s{s_i}_delay', np.int32,
+                 f'Time between main and alternate S{s_i} [ns]')]
+        return si_dtype
+
+    def _set_posrec_save(self):
+        """
+        parse x_mlp et cetera if needed to get the algorithms used and
+        set required class attributes
+        """
+        posrec_fields = self.deps['peak_positions'].dtype_for('peak_positions').names
+        posrec_names = [d.split('_')[-1] for d in posrec_fields
+                        if 'x_' in d]
+
         # Preserve order. "set" is not ordered and dtypes should always be ordered
+        self.pos_rec_labels = list(set(posrec_names))
         self.pos_rec_labels.sort()
+
+        self.posrec_save = [(xy + algo)
+                            for xy in ['x_', 'y_']
+                            for algo in self.pos_rec_labels]
+
+    def _get_posrec_dtypes(self):
+        """Get S2 positions for each of the position reconstruction algorithms"""
+        posrec_dtpye = []
 
         for algo in self.pos_rec_labels:
             # S2 positions
-            dtype += [
+            posrec_dtpye += [
                 (f's2_x_{algo}', np.float32,
                  f'Main S2 {algo}-reconstructed X position, uncorrected [cm]'),
                 (f's2_y_{algo}', np.float32,
@@ -227,15 +255,12 @@ class EventBasics(strax.LoopPlugin):
                 (f'alt_s2_y_{algo}', np.float32,
                  f'Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]')]
 
-        return dtype
+        return posrec_dtpye
 
     def compute_loop(self, event, peaks):
         result = dict(n_peaks=len(peaks),
                       time=event['time'],
                       endtime=strax.endtime(event))
-        posrec_save = [(xy + algo)
-                       for xy in ['x_', 'y_']
-                       for algo in self.pos_rec_labels]
 
         if not len(peaks):
             return result
@@ -244,66 +269,17 @@ class EventBasics(strax.LoopPlugin):
 
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         for s_i in [2, 1]:
+            _res, _main, _second = self.get_result_for_si(
+                peaks, s_i, main_s, secondary_s)
+            result.update(_res)
+            main_s.update(_main)
+            secondary_s.update(_second)
 
-            # Which properties do we need?
-            to_store = [name for name, _, _ in self.peak_properties]
-            if s_i == 2:
-                to_store += ['x', 'y']
+        result = self.get_event_properties(result, main_s, secondary_s, peaks)
+        return result
 
-            # Find all peaks of this type (S1 or S2)
-            s_mask = peaks['type'] == s_i
-            if not self.config['allow_posts2_s1s']:
-                # Only peaks *before* the main S2 are allowed to be
-                # the main or alternate S1
-                if s_i == 1 and result[f's2_index'] != -1:
-                    s_mask &= peaks['time'] < main_s[2]['time']
-            if s_i == 1:
-                # If we have an event-level S1 tight coincidence, let's apply that here too
-                s_mask &= peaks['tight_coincidence'] > self.config['event_s1_min_coincidence']
-
-            ss = peaks[s_mask]
-            s_indices = np.arange(len(peaks))[s_mask]
-
-            # Decide which of these signals is the main and alternate
-            if len(ss) > 1:
-                # Start by choosing the largest two signals
-                _alt_i, _main_i = np.argsort(ss['area'])[-2:]
-                if (self.config['force_main_before_alt']
-                        and ss[_alt_i]['time'] < ss[_main_i]['time']):
-                    # Promote alternate to main since it occurs earlier
-                    _alt_i, _main_i = _main_i, _alt_i
-            elif len(ss) == 1:
-                _main_i, _alt_i = 0, None
-            else:
-                _alt_i, _main_i = None, None
-
-            # Store main signal properties
-            if _main_i is None:
-                result[f's{s_i}_index'] = -1
-            else:
-                main_s[s_i] = ss[_main_i]
-                result[f's{s_i}_index'] = s_indices[_main_i]
-                for name in to_store:
-                    result[f's{s_i}_{name}'] = main_s[s_i][name]
-                if s_i == 2:
-                    for name in posrec_save:
-                        result[f's{s_i}_{name}'] = main_s[s_i][name]
-
-            # Store alternate signal properties
-            if _alt_i is None:
-                result[f'alt_s{s_i}_index'] = -1
-            else:
-                secondary_s[s_i] = ss[_alt_i]
-                result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
-                for name in to_store:
-                    result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
-                if s_i == 2:
-                    for name in posrec_save:
-                        result[f'alt_s{s_i}_{name}'] = secondary_s[s_i][name]
-                # Compute delay time properties
-                result[f'alt_s{s_i}_delay'] = (secondary_s[s_i]['center_time']
-                                               - main_s[s_i]['center_time'])
-
+    def get_event_properties(self, result, main_s, secondary_s, peaks):
+        """Get properties like drift time and area before main S2"""
         # Compute drift times only if we have a valid S1-S2 pair
         if len(main_s) == 2:
             result['drift_time'] = \
@@ -325,8 +301,72 @@ class EventBasics(strax.LoopPlugin):
                 result['large_s2_before_main_s2'] = 0
             else:
                 result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
-
         return result
+
+    def get_result_for_si(self, peaks, s_i, main_si, secondary_si):
+        """Get the extracted S1/S2 properties"""
+        result_si = {}
+        # Which properties do we need?
+        to_store = [name for name, _, _ in self.peak_properties]
+        if s_i == 2:
+            to_store += ['x', 'y']
+
+        # Find all peaks of this type (S1 or S2)
+        s_mask = peaks['type'] == s_i
+        if not self.config['allow_posts2_s1s']:
+            # Only peaks *before* the main S2 are allowed to be
+            # the main or alternate S1
+            if s_i == 1 and result_si[f's2_index'] != -1:
+                s_mask &= peaks['time'] < main_si[2]['time']
+
+        if s_i == 1:
+            # If we have an event-level S1 tight coincidence, let's apply that here too
+            s_mask &= peaks['tight_coincidence'] > self.config['event_s1_min_coincidence']
+
+        ss = peaks[s_mask]
+        s_indices = np.arange(len(peaks))[s_mask]
+
+        # Decide which of these signals is the main and alternate
+        if len(ss) > 1:
+            # Start by choosing the largest two signals
+            _alt_i, _main_i = np.argsort(ss['area'])[-2:]
+            if (self.config['force_main_before_alt']
+                    and ss[_alt_i]['time'] < ss[_main_i]['time']):
+                # Promote alternate to main since it occurs earlier
+                _alt_i, _main_i = _main_i, _alt_i
+        elif len(ss) == 1:
+            _main_i, _alt_i = 0, None
+        else:
+            _alt_i, _main_i = None, None
+
+        # Store main signal properties
+        if _main_i is None:
+            result_si[f's{s_i}_index'] = -1
+        else:
+            main_si[s_i] = ss[_main_i]
+            result_si[f's{s_i}_index'] = s_indices[_main_i]
+            for name in to_store:
+                result_si[f's{s_i}_{name}'] = main_si[s_i][name]
+            if s_i == 2:
+                for name in self.posrec_save:
+                    result_si[f's{s_i}_{name}'] = main_si[s_i][name]
+
+        # Store alternate signal properties
+        if _alt_i is None:
+            result_si[f'alt_s{s_i}_index'] = -1
+        else:
+            secondary_si[s_i] = ss[_alt_i]
+            result_si[f'alt_s{s_i}_index'] = s_indices[_alt_i]
+            for name in to_store:
+                result_si[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
+            if s_i == 2:
+                for name in self.posrec_save:
+                    result_si[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
+            # Compute delay time properties
+            result_si[f'alt_s{s_i}_delay'] = (secondary_si[s_i]['center_time']
+                                           - main_si[s_i]['center_time'])
+
+        return result_si, main_si, secondary_si
 
 
 @export
