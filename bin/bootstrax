@@ -477,7 +477,6 @@ def main_loop():
             process_run(rd)
             continue
         # Nothing to do, let's do some cleanup
-        delete_temp_files()
         if not args.production:
             log.info(f'We have gone through the rundDB in a readonly mode there are no '
                      f'runs left. We looked at {new_runs_seen} new runs and '
@@ -660,6 +659,8 @@ def set_state(state, update_fields=None):
         production_mode=args.production
     )
     if update_fields:
+        update_fields = strax.storage.mongo.remove_np(update_fields)
+        log.debug(f'Update fields {update_fields}')
         bootstrax_state.update(update_fields)
 
     need_new_doc = (
@@ -898,21 +899,6 @@ def sufficient_diskspace():
     message = f"No disk space to write to. Kill bootstrax on {hostname}"
     log_warning(message, priority='fatal')
     raise RuntimeError(message)
-
-
-def delete_temp_files():
-    """
-    removes _temp files from output_folder if successfully processed
-    """
-    temp_files = [f for f in os.listdir(output_folder) if f.endswith('_temp')]
-    for f in temp_files:
-        run_id = int(f.split('-')[0])
-        if run_coll.find_one(
-                {'bootstrax.state': 'done',
-                 'number': run_id},
-                {'_id': 1}):
-            log.info(f'removing {output_folder}/{f}')
-            shutil.rmtree(f'{output_folder}/{f}')
 
 
 def delete_live_data(rd, live_data_path):
