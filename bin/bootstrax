@@ -205,7 +205,7 @@ timeouts = {
     # Maximum time we can take to can infer the datarate (s).
     'max_data_rate_infer_time': 60,
     # Minimum time we have to be in the run before we can infer the datarate (s).
-    'min_data_rate_infer_time': 15,
+    'min_data_rate_infer_time': 7.5,
     # Bootstrax can abandon runs for this time based on a tag, after that it
     # should not be on the DAQ any way or can be manually failed using the
     # --abandon option. We can abandon a run only for this many seconds:
@@ -774,13 +774,20 @@ def infer_mode(rd):
     should be used based on an estimated data rate.
     """
     # Get data rate from dispatcher
+    data_rate = 0
+    if 'rate' in rd:
+        # When a run finishes, the rundb is updated with the rates by the
+        # dispatcher. Especially useful if the aggregate status does not
+        # have the run anymore.
+        data_rate = float(sum([detector['max'] for detector in rd['rate'].values()]))
     try:
         started_looking = time.time()
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
                 tzinfo=timezone.utc) - now()).seconds
         if time_to_wait > 0:
+            log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
             time.sleep(time_to_wait)
-        while True:
+        while data_rate == 0:
             # For runs that are still running, we should be able to get the
             # info from the aggregate status collection.
             docs = ag_stat_coll.aggregate([
@@ -788,20 +795,11 @@ def infer_mode(rd):
                 {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
             ])
             data_rate = float(sum([d['rate'] for d in docs]))
-
-            # When a run finishes, the rundb is updated with the rates by the
-            # dispatcher. Especially useful if the aggregate status does not
-            # have the run anymore.
-            finished_rate = float(sum([detector['max'] for detector in rd.get('rate', {}).values()]))
-
             if data_rate > 0:
-                break
-            elif finished_rate > 0:
-                # Take the rate from the rundoc and continue
-                data_rate = finished_rate
                 break
             elif time.time() - started_looking > timeouts['max_data_rate_infer_time']:
                 raise RuntimeError(f'Could not infer_mode for {rd["number"]}')
+            log.debug(f'No rate inferred for {rd["number"]} after {time.time()-started_looking:.1} s.')
             time.sleep(2)
 
     except Exception as e:
