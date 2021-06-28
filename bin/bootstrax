@@ -56,7 +56,7 @@ parser.add_argument(
     help="Strax data type name(s) that should be produced with live processing")
 parser.add_argument(
     '--post_process', nargs='*',
-    default='veto_intervals',
+    default=['veto_intervals'],
     help="Target(s) for other sub-detectors. If not produced automatically "
          "when processing tpc data, st.make the requested data later.")
 parser.add_argument(
