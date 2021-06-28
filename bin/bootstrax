@@ -1437,8 +1437,9 @@ def process_run(rd, send_heartbeats=args.production):
                 log.info(f"Strax done on run {run_id}, performing basic data quality check")
                 if args.ignore_checks:
                     # I hope you know what you are doing, we are not going to
-                    # do any of the checks below
-                    pass
+                    # do any of the checks below.
+                    # Make sure to fetch the latest rundoc
+                    rd = get_run(mongo_id=rd['_id'])
                 else:
                     log.info(f"Open metadata")
                     try:
@@ -1495,6 +1496,7 @@ def process_run(rd, send_heartbeats=args.production):
                 log.info(f"Run {run_id} processed successfully")
                 if args.production:
                     set_run_state(rd, 'done', **info)
+
                     set_status_finished(rd)
                     upload_file_metadata(rd)
 
