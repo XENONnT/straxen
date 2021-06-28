@@ -223,8 +223,8 @@ wait_diskspace_dt = 60  # seconds
 if timeouts['bootstrax_presumed_dead'] < wait_diskspace_dt:
     raise ValueError("wait_diskspace_dt too large")
 
-# Fields in the run docs that bootstrax uses. Pay attention to the taling spaces!
-bootstrax_projection = ("name start end number bootstrax status mode detectors "
+# Fields in the run docs that bootstrax uses. Pay attention to the tailing spaces!
+bootstrax_projection = ("name start end number bootstrax status mode detectors rate "
                         "data.host "
                         "data.type "
                         "data.location "
@@ -781,16 +781,28 @@ def infer_mode(rd):
         if time_to_wait > 0:
             time.sleep(time_to_wait)
         while True:
+            # For runs that are still running, we should be able to get the
+            # info from the aggregate status collection.
             docs = ag_stat_coll.aggregate([
                 {'$match': {'number': rd['number']}},
                 {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
             ])
-            data_rate = int(sum([d['rate'] for d in docs]))
-            if data_rate is not None:
+            data_rate = float(sum([d['rate'] for d in docs]))
+
+            # When a run finishes, the rundb is updated with the rates by the
+            # dispatcher. Especially useful if the aggregate status does not
+            # have the run anymore.
+            finished_rate = float(sum([detector['max'] for detector in rd.get('rate', {}).values()]))
+
+            if data_rate > 0:
+                break
+            elif finished_rate > 0:
+                # Take the rate from the rundoc and continue
+                data_rate = finished_rate
                 break
             elif time.time() - started_looking > timeouts['max_data_rate_infer_time']:
-                raise RuntimeError
-            time.sleep(5)
+                raise RuntimeError(f'Could not infer_mode for {rd["number"]}')
+            time.sleep(2)
 
     except Exception as e:
         log_warning(f'infer_mode ran into {e}. Cannot infer datarate, using default mode.',
