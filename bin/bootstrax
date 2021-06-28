@@ -6,74 +6,16 @@ How to use
 ----------------
     <activate conda environment>
     bootstrax --production
+
+    or with the preferred settings:
+    bootstrax --production --infer_mode --delete_live --undying
+
 ----------------
 
-First draft: Jelle Aalbers, 2018
-With additional input from: Joran Angevaare, 2020
-
-This script watches for new runs to appear from the DAQ, then starts a
-strax process to process them. If a run fails, it will retry it with
-exponential backoff.
-
-You can run more than one bootstrax instance, but only one per machine.
-If you start a second one on the same machine, it will try to kill the
-first one.
-
-
-Philosophy
-----------------
-Bootstrax has a crash-only / recovery first philosophy. Any error in
-the core code causes a crash; there is no nice exit or mandatory
-cleanup. Bootstrax focuses on recovery after restarts: before starting
-work, we look for and fix any mess left by crashes.
-
-This ensures that hangs and hard crashes do not require expert tinkering
-to repair databases. Plus, you can just stop the program with ctrl-c
-(or, in principle, pulling the machine's power plug) at any time.
-
-Errors during run processing are assumed to be retry-able. We track the
-number of failures per run to decide how long to wait until we retry;
-only if a user marks a run as 'abandoned' (using an external system,
-e.g. the website) do we stop retrying.
-
-
-Mongo documents
-----------------
-Bootstrax records its status in a document in the 'bootstrax' collection
-in the runs db. These documents contain:
-  - **host**: socket.getfqdn()
-  - **time**: last time this bootstrax showed life signs
-  - **state**: one of the following:
-    - **busy**: doing something
-    - **idle**: NOT doing something; available for processing new runs
-
-Additionally, bootstrax tracks information with each run in the
-'bootstrax' field of the run doc. We could also put this elsewhere, but
-it seemed convenient. This field contains the following subfields:
-  - **state**: one of the following:
-    - **considering**: a bootstrax is deciding what to do with it
-    - **busy**: a strax process is working on it
-    - **failed**: something is wrong, but we will retry after some
-    amount of time.
-    - **abandoned**: bootstrax will ignore this run
-  - **reason**: reason for last failure, if there ever was one
-  (otherwise this field does not exists). Thus, it's quite possible for
-  this field to exist (and show an exception) when the state is 'done':
-  that just means it failed at least once but succeeded later. Tracking
-  failure history is primarily the DAQ log's reponsibility; this message
-   is only provided for convenience.
-   - **n_failures**: number of failures on this run, if there ever was
-   one (otherwise this field does not exist).
-  - **next_retry**: time after which bootstrax might retry processing
-  this run. Like 'reason', this will refer to the last failure.
-Finally, bootstrax outputs the load on the eventbuilder machine(s)
-whereon it is running to a collection in the DAQ database into the
-capped collection 'eb_monitor'. This collection contains information on
-what bootstrax is thinking of at the moment.
-  - **disk_used**: used part of the disk whereto this bootstrax instance
-   is writing to (in percent).
+For more info, see the documentation:
+https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.1.6'
+__version__ = '1.1.7'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -110,11 +52,11 @@ parser.add_argument(
     help="Maximum number of workers to use in a strax process.")
 parser.add_argument(
     '--targets', nargs='*',
-    default=['event_info', 'online_peak_monitor', 'hitlets_nv'],
+    default='event_info events_nv events_mv online_peak_monitor veto_proximity'.split(),
     help="Strax data type name(s) that should be produced with live processing")
 parser.add_argument(
     '--post_process', nargs='*',
-    default=['raw_records_he', 'raw_records_nv', 'raw_records_mv', 'veto_intervals'],
+    default=['veto_intervals'],
     help="Target(s) for other sub-detectors. If not produced automatically "
          "when processing tpc data, st.make the requested data later.")
 parser.add_argument(
@@ -205,7 +147,7 @@ timeouts = {
     # Maximum time we can take to can infer the datarate (s).
     'max_data_rate_infer_time': 60,
     # Minimum time we have to be in the run before we can infer the datarate (s).
-    'min_data_rate_infer_time': 15,
+    'min_data_rate_infer_time': 7.5,
     # Bootstrax can abandon runs for this time based on a tag, after that it
     # should not be on the DAQ any way or can be manually failed using the
     # --abandon option. We can abandon a run only for this many seconds:
@@ -223,8 +165,8 @@ wait_diskspace_dt = 60  # seconds
 if timeouts['bootstrax_presumed_dead'] < wait_diskspace_dt:
     raise ValueError("wait_diskspace_dt too large")
 
-# Fields in the run docs that bootstrax uses. Pay attention to the taling spaces!
-bootstrax_projection = ("name start end number bootstrax status mode detectors "
+# Fields in the run docs that bootstrax uses. Pay attention to the tailing spaces!
+bootstrax_projection = ("name start end number bootstrax status mode detectors rate "
                         "data.host "
                         "data.type "
                         "data.location "
@@ -774,23 +716,33 @@ def infer_mode(rd):
     should be used based on an estimated data rate.
     """
     # Get data rate from dispatcher
+    data_rate = 0
+    if 'rate' in rd:
+        # When a run finishes, the rundb is updated with the rates by the
+        # dispatcher. Especially useful if the aggregate status does not
+        # have the run anymore.
+        data_rate = float(sum([detector['max'] for detector in rd['rate'].values()]))
     try:
         started_looking = time.time()
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
                 tzinfo=timezone.utc) - now()).seconds
         if time_to_wait > 0:
+            log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
             time.sleep(time_to_wait)
-        while True:
+        while data_rate == 0:
+            # For runs that are still running, we should be able to get the
+            # info from the aggregate status collection.
             docs = ag_stat_coll.aggregate([
                 {'$match': {'number': rd['number']}},
                 {'$group': {'_id': '$detector', 'rate': {'$max': '$rate'}}}
             ])
-            data_rate = int(sum([d['rate'] for d in docs]))
-            if data_rate is not None:
+            data_rate = float(sum([d['rate'] for d in docs]))
+            if data_rate > 0:
                 break
             elif time.time() - started_looking > timeouts['max_data_rate_infer_time']:
-                raise RuntimeError
-            time.sleep(5)
+                raise RuntimeError(f'Could not infer_mode for {rd["number"]}')
+            log.debug(f'No rate inferred for {rd["number"]} after {time.time()-started_looking:.1} s.')
+            time.sleep(2)
 
     except Exception as e:
         log_warning(f'infer_mode ran into {e}. Cannot infer datarate, using default mode.',
@@ -799,7 +751,7 @@ def infer_mode(rd):
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
-    log.info(f'Data rate: {data_rate} MB/s. New_eb: {is_new_eb}')
+    log.info(f'Data rate: {data_rate:.1f} MB/s. New_eb: {is_new_eb}')
     benchmark = {
         'mbs': [0, 70, 90, 110, 150, 220, 290, 360, 390, 420, 500, 550],
         'cores_old': [39, 35, 35, 30, 30, 20, 12, 12, 10, 10, 10, 8],
