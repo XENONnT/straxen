@@ -50,11 +50,6 @@ def test_nt_is_nt_online():
         assert str(nt_key) == str(nt_online_key)
 
 
-def test_xenonnt_simulation():
-    if import_wfsim():
-        st = xenonnt_simulation()
-        st.search_field('time')
-
 ##
 # XENON1T
 ##
