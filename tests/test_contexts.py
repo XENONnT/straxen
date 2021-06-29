@@ -1,22 +1,12 @@
 """For all of the context, do a quick check to see that we are able to search
 a field (i.e. can build the dependencies in the context correctly)
 See issue #233 and PR #236"""
-from straxen.contexts import xenon1t_dali, xenon1t_led, xenon1t_simulation, fake_daq, demo
-from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt_simulation, xenonnt
+from straxen.contexts import xenon1t_dali, xenon1t_led, fake_daq, demo
+from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
 import straxen
 import tempfile
 import os
 
-
-def import_wfsim():
-    """Check if we can test the wfsim-related contexts. This is not the case
-    for e.g. travis checks as we don't install wfsim by default."""
-    try:
-        import wfsim
-        return True
-    except ImportError:
-        # We cannot test the wfsim as it is not installed.
-        return False
 
 ##
 # XENONnT
@@ -101,9 +91,3 @@ def test_fake_daq():
 def test_xenon1t_led():
     st = xenon1t_led()
     st.search_field('time')
-
-
-def test_xenon1t_simulation():
-    if import_wfsim():
-        st = xenon1t_simulation()
-        st.search_field('time')
