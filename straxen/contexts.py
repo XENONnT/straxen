@@ -223,6 +223,7 @@ def xenonnt_simulation(output_folder='./strax_data',
                        cmt_run_id='020280',
                        cmt_version='v3',
                        fax_config='fax_config_nt_design.json',
+                       cmt_option_overwrite=immutabledict(),
                        overwrite_from_fax_file=False,
                        _allow_diverging_settings=False,
                        _config_overlap={'drift_time_gate': 'electron_drift_time_gate',
@@ -236,6 +237,8 @@ def xenonnt_simulation(output_folder='./strax_data',
     :param cmt_run_id: Run id which should be used to load corrections.
     :param cmt_version: Global version for corrections to be loaded.
     :param fax_config: Fax config file to use.
+    :param cmt_option_overwrite: Dictionary to overwrite CMT settings. Keys
+        must be valid CMT option keys.
     :param overwrite_from_fax_file: If true overwrites CMT options with
         constants from fax file.
     :param _allow_diverging_settings: Disable overwrite to and from both
@@ -264,6 +267,9 @@ def xenonnt_simulation(output_folder='./strax_data',
     cmt_options = straxen.get_corrections.get_cmt_options(st)
     for option in cmt_options:
         cmt_options[option] = tuple(['cmt_run_id', cmt_run_id, *cmt_options[option]])
+
+        if option in cmt_option_overwrite.keys():
+            cmt_options[option] = (cmt_options[0] + '_constant', cmt_option_overwrite[option])
 
     # Do nothing if user does not want to sync simulation and processing
     if _allow_diverging_settings:
