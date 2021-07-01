@@ -221,7 +221,7 @@ def xenonnt_led(**kwargs):
 
 def xenonnt_simulation(output_folder='./strax_data',
                        cmt_run_id='020280',
-                       cmt_version='ONLINE',
+                       cmt_version='v3',
                        fax_config='fax_config_nt_design.json',
                        overwrite_from_fax_file=False,
                        _allow_diverging_settings=False,
@@ -230,18 +230,17 @@ def xenonnt_simulation(output_folder='./strax_data',
                                         'electron_lifetime_liquid': 'elife_conf'},
                        **kwargs):
     """
-    Context with already pre-initialized corrections values for CMT.
-    Sets correction values according cmt_run_id and specified version.
-    Settings can be overwritten via cmt_overwrite or fax config file.
+    Context with CMT options updated with cmt_run_id.
+    CMT options can also be overwritten via fax config file.
     :param output_folder: Output folder for strax data.
     :param cmt_run_id: Run id which should be used to load corrections.
     :param cmt_version: Global version for corrections to be loaded.
     :param fax_config: Fax config file to use.
-    :param overwrite_from_fax_file: If true overwrites CMT settings
-        from fax file.
-    :param _allow_diverging_settings: Disable check for matching CMT
-        settings in context and fax file settings. Experts use only.
-    :param _config_overlap: Dictionary of overlapping settings. Keys
+    :param overwrite_from_fax_file: If true overwrites CMT options with
+        constants from fax file.
+    :param _allow_diverging_settings: Disable overwrite to and from both
+        directions. Experts use only.
+    :param _config_overlap: Dictionary of options to overwrite. Keys
         must be simulation config keys, values must be valid CMT option keys.
     :param kwargs: Additional kwargs taken by strax.Context.
     :return: strax.Context instance
@@ -266,19 +265,19 @@ def xenonnt_simulation(output_folder='./strax_data',
     for option in cmt_options:
         cmt_options[option] = tuple(['cmt_run_id', cmt_run_id, *cmt_options[option]])
 
-    # Take fax config and put into context option if user wants to
-    if overwrite_from_fax_file:
+    # Do nothing if user does not want to sync simulaton and processing
+    if _allow_diverging_settings:
+        pass
+
+    # Take fax config and put into context option
+    elif overwrite_from_fax_file:
         fax_config = straxen.get_resource(fax_config, fmt='json')
 
         for fax_field, cmt_field in _config_overlap.items():
             cmt_options[cmt_field] = tuple([cmt_options[cmt_field][2]+'_constant',
                                             fax_config[fax_field]])
 
-    # Do nothing if user does not want to sync simulaton and processing
-    elif _allow_diverging_settings:
-        pass
-
-    # Pass the CMT options to simulation
+    # Pass the CMT options to simulation (override all other config input method)
     else:
         fax_config_overide_from_cmt = dict()
         for fax_field, cmt_field in _config_overlap.items():
