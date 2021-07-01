@@ -29,7 +29,7 @@ jupyter-client==6.1.12  # (for ipywidgets)
 npshmex==0.2.1     # Strax dependency
 numba==0.53.1      # Strax dependency
 numpy==1.19.5
-pandas==1.1.5      # Strax dependency
+pandas==1.2.5      # Strax dependency
 psutil==5.8.0      # Strax dependency
 pytest==6.2.4
 pytest-cov==2.12.1
