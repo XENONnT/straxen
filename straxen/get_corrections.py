@@ -16,9 +16,9 @@ def correction_options(get_correction_function):
     """
     A wrapper function for functions here in the get_corrections module
     Search for special options like ["cmt_run_id", "prefix", "suffix"] and apply arg shuffling accordingly
-    Example conf:
+    Example confs:
         ('cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
-        ('cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
+        ('suffix', suffix, 'cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
 
     :param get_correction_function: A function here in the get_corrections module
     :returns: The function wrapped with the option search
