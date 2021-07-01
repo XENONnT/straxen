@@ -4,7 +4,7 @@ import straxen
 from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
 from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
-from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource
+from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
@@ -382,14 +382,22 @@ class EventPositions(strax.Plugin):
 
         self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
-        self.map = InterpolatingMap(
-            get_cmt_resource(self.run_id,
-                             tuple(['suffix',
-                                    self.config["default_reconstruction_algorithm"],
-                                    *self.config['fdc_map']]),
-                             fmt='binary'))
+        
+        if isinstance(self.config['fdc_map'], str):
+            self.map = InterpolatingMap(
+                get_resource(self.config['fdc_map'], fmt='binary'))
 
-        self.map.scale_coordinates([1., 1., - self.electron_drift_velocity])
+        elif is_cmt_option(self.config['fdc_map']):
+            self.map = InterpolatingMap(
+                get_cmt_resource(self.run_id,
+                                 tuple(['suffix',
+                                        self.config['default_reconstruction_algorithm'],
+                                        *self.config['fdc_map']]),
+                                 fmt='binary'))
+            self.map.scale_coordinates([1., 1., - self.electron_drift_velocity])
+
+        else:
+            raise NotImplementedError('FDC map format not understood.')
 
     def compute(self, events):
 
@@ -479,6 +487,11 @@ class CorrectedAreas(strax.Plugin):
 
     def setup(self):
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
+
+        if isinstance(self.config['s1_xyz_correction_map'], str):
+            self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
+        if isinstance(self.config['s2_xy_correction_map'], str):
+            self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
 
         self.s1_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
