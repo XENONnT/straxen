@@ -265,7 +265,7 @@ def xenonnt_simulation(output_folder='./strax_data',
     for option in cmt_options:
         cmt_options[option] = tuple(['cmt_run_id', cmt_run_id, *cmt_options[option]])
 
-    # Do nothing if user does not want to sync simulaton and processing
+    # Do nothing if user does not want to sync simulation and processing
     if _allow_diverging_settings:
         pass
 
@@ -277,13 +277,13 @@ def xenonnt_simulation(output_folder='./strax_data',
             cmt_options[cmt_field] = tuple([cmt_options[cmt_field][2]+'_constant',
                                             fax_config[fax_field]])
 
-    # Pass the CMT options to simulation (override all other config input method)
+    # Pass the CMT options to simulation (override all other config input methods)
     else:
-        fax_config_overide_from_cmt = dict()
+        fax_config_override_from_cmt = dict()
         for fax_field, cmt_field in _config_overlap.items():
-            fax_config_overide_from_cmt[fax_field] = cmt_options[cmt_field]
+            fax_config_override_from_cmt[fax_field] = cmt_options[cmt_field]
 
-        st.set_config({'fax_config_overide_from_cmt': fax_config_overide_from_cmt})
+        st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
 
     st.set_config(cmt_options)
     return st
