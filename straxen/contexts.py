@@ -292,6 +292,9 @@ def xenonnt_simulation(output_folder='./strax_data',
         st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
 
     st.set_config(cmt_options)
+    
+    # Only for simulations
+    st.set_config({"event_info_function": "disabled"})
     return st
 
 ##
