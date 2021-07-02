@@ -10,7 +10,7 @@ dask~=2021.6; python_version>="3.7"
 dask<=2021.2.0; python_version=="3.6"
 
 # Importlib-metadata
-importlib-metadata==4.5.0; python_version=="3.7"
+importlib-metadata==4.6.0; python_version=="3.7"
 
 
 ## Other requirements
