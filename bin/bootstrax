@@ -1171,7 +1171,7 @@ def fail_run(rd, reason, error_traceback=''):
     if 'number' not in rd:
         long_run_id = f"run <no run number!!?>:{rd['_id']}"
     else:
-        long_run_id = f"run {rd['number']}:{rd['_id']}"
+        long_run_id = f"run {rd['number']}"
 
     # No bootstrax info is present when manually failing a run with args.fail
     if 'bootstrax' not in rd.keys():
