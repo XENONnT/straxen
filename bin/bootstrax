@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.1.7'
+__version__ = '1.1.8'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -602,7 +602,6 @@ def set_state(state, update_fields=None):
     )
     if update_fields:
         update_fields = strax.storage.mongo.remove_np(update_fields)
-        log.debug(f'Update fields {update_fields}')
         bootstrax_state.update(update_fields)
 
     need_new_doc = (
@@ -741,13 +740,13 @@ def infer_mode(rd):
                 break
             elif time.time() - started_looking > timeouts['max_data_rate_infer_time']:
                 raise RuntimeError(f'Could not infer_mode for {rd["number"]}')
-            log.debug(f'No rate inferred for {rd["number"]} after {time.time()-started_looking:.1} s.')
+            log.debug(f'No rate inferred for {rd["number"]} after {time.time()-started_looking:.1f} s.')
             time.sleep(2)
 
     except Exception as e:
         log_warning(f'infer_mode ran into {e}. Cannot infer datarate, using default mode.',
                     run_id=f'{rd["number"]:06}', priority='warning')
-        data_rate = None
+        data_rate = 0
 
     # Find out if eb is new (eb3-eb5):
     is_new_eb = int(hostname[2]) >= 3  # ebX.xenon.local
@@ -1300,10 +1299,12 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
             with strax.profile_threaded(prof_file):
                 st_make()
     except Exception as e:
+        log.warning(f'Ran into {e} while processing {run_id}', exc_info=True)
         # Write exception to file, so bootstrax can read it
         exc_info = strax.formatted_exception()
         with open(exception_tempfile, mode='w') as f:
             f.write(exc_info)
+        os.makedirs('./bootstrax_exceptions', exist_ok=True)
         with open(f'./bootstrax_exceptions/{run_id}_exception.txt', mode='w') as f:
             f.write(exc_info)
         raise
