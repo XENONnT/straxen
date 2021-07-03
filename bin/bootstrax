@@ -1299,8 +1299,10 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                 st_make()
     except Exception as e:
         log.warning(f'Ran into {e} while processing {run_id}', exc_info=True)
+
         # Write exception to file, so bootstrax can read it
         exc_info = strax.formatted_exception()
+        log.warning(f'Uploading traceback {exc_info}')
         with open(exception_tempfile, mode='w') as f:
             f.write(exc_info)
         os.makedirs('./bootstrax_exceptions', exist_ok=True)
