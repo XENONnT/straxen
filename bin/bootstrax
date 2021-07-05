@@ -343,6 +343,7 @@ def main():
             message = f"Trying to process single run but no run numbered {number} exists"
             log_warning(message, priority='fatal')
             raise ValueError(message)
+        set_state('busy')
         process_run(rd)
         log.info(
             f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
