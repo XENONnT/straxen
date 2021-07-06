@@ -116,7 +116,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
                         result["veto_type"][vetos_seen] = name + 'veto'
                         vetos_seen += 1
         result = result[:vetos_seen]
-        result['time'] = np.clip(strax.endtime(result), start, end)
+        result['time'] = np.clip(result['time'], start, end)
         result['endtime'] = np.clip(strax.endtime(result), 0, end)
         sort = np.argsort(result['time'])
         result = result[sort]
@@ -197,7 +197,8 @@ class VetoProximity(strax.OverlapWindowPlugin):
                         inx = np.searchsorted(veto_start_time_selection, event_center, side='right')
 
                     # Time to previous veto on/off
-                    # Just using maxsize as a huge value that will not fit in any potential VetoCut range
+                    # Just using a huge value that will not fit in any potential
+                    # DAQVetoCut range
                     if inx == 0:
                         previous_veto = T_NO_VETO_FOUND
                     else:
