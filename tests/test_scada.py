@@ -8,6 +8,7 @@ def test_query_sc_values():
     Unity test for the SCADAInterface. Query a fixed range and check if 
     return is correct.
     """
+
     if not straxen.utilix_is_configured('scada', 'scdata_url'):
         warnings.warn('Cannot test scada since we have no access to xenon secrets.')
         return
