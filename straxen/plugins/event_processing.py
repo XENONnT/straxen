@@ -145,7 +145,8 @@ class EventBasics(strax.Plugin):
 
     def infer_dtype(self):
         # Basic event properties
-        self.set_dtype_requirements()
+        self._set_posrec_save()
+        self._set_dtype_requirements()
         dtype = []
         dtype += strax.time_fields
         dtype += [('n_peaks', np.int32,
@@ -173,24 +174,22 @@ class EventBasics(strax.Plugin):
         dtype += self._get_posrec_dtypes()
         return dtype
 
-    def set_dtype_requirements(self):
+    def _set_dtype_requirements(self):
         """Needs to be run before inferring dtype as it is needed there"""
-        self._set_posrec_save()
-
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
             # name                dtype       comment
-            ('time', np.int64, 'start time since unix epoch [ns]'),
-            ('center_time', np.int64, 'weighted center time since unix epoch [ns]'),
-            ('endtime', np.int64, 'end time since unix epoch [ns]'),
-            ('area', np.float32, 'area, uncorrected [PE]'),
-            ('n_channels', np.int32, 'count of contributing PMTs'),
-            ('n_competing', np.float32, 'number of competing PMTs'),
-            ('max_pmt', np.int16, 'PMT number which contributes the most PE'),
-            ('max_pmt_area', np.float32, 'area in the largest-contributing PMT (PE)'),
-            ('range_50p_area', np.float32, 'width, 50% area [ns]'),
-            ('range_90p_area', np.float32, 'width, 90% area [ns]'),
-            ('rise_time', np.float32, 'time between 10% and 50% area quantiles [ns]'),
+            ('time',              np.int64,   'start time since unix epoch [ns]'),
+            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
+            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
+            ('area',              np.float32, 'area, uncorrected [PE]'),
+            ('n_channels',        np.int32,   'count of contributing PMTs'),
+            ('n_competing',       np.float32, 'number of competing PMTs'),
+            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
+            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
+            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
+            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
+            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
             ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
         )
 
@@ -252,16 +251,16 @@ class EventBasics(strax.Plugin):
         return posrec_dtpye
 
     @staticmethod
-    def set_nan_defaults(result):
+    def set_nan_defaults(buffer):
         """
         When constructing the dtype, take extra care to set values to
         np.Nan / -1 (for ints) as 0 might have a meaning
         """
-        for field in result.dtype.names:
-            if np.issubdtype(result.dtype[field], np.integer):
-                result[field][:] = -1
+        for field in buffer.dtype.names:
+            if np.issubdtype(buffer.dtype[field], np.integer):
+                buffer[field][:] = -1
             else:
-                result[field][:] = np.nan
+                buffer[field][:] = np.nan
 
     def compute(self, events, peaks):
         result = np.zeros(len(events), dtype=self.dtype)
