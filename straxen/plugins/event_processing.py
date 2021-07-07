@@ -311,8 +311,7 @@ class EventBasics(strax.Plugin):
         self.set_event_properties(event, largest_s1s, largest_s2s, peaks)
 
         # Loop over S1s and S2s and over main / alt.
-        for i, largest_s_i in enumerate([largest_s1s, largest_s2s]):
-            s_i = i + 1
+        for s_i, largest_s_i in enumerate([largest_s1s, largest_s2s], 1):
             # Largest index 0 -> main sx, 1 -> alt sx
             for largest_index, main_or_alt in enumerate(['s', 'alt_s']):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
