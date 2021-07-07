@@ -301,7 +301,7 @@ def xenonnt_simulation(output_folder='./strax_data',
     for option in cmt_option_overwrite:
         if option not in cmt_options:
             raise ValueError(f'Overwrite option {option} is not using CMT by default '
-                              'you should just use set config')
+                             'you should just use set config')
         _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
         st.config[option] = (cmt_options[option][_name_index] + '_constant', cmt_option_overwrite[option])
 
