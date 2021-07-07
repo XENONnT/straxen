@@ -108,9 +108,6 @@ class Events(strax.OverlapWindowPlugin):
         self.events_seen += len(result)
 
         return result
-        # TODO: someday investigate if/why loopplugin doesn't give
-        # anything if events do not contain peaks..
-        # Likely this has been resolved in 6a2cc6c
 
 
 @export
@@ -183,17 +180,17 @@ class EventBasics(strax.Plugin):
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
             # name                dtype       comment
-            ('time',              np.int64,   'start time since unix epoch [ns]'),
-            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
-            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
-            ('area',              np.float32, 'area, uncorrected [PE]'),
-            ('n_channels',        np.int32,   'count of contributing PMTs'),
-            ('n_competing',       np.float32, 'number of competing PMTs'),
-            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
-            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
-            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
-            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
-            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
+            ('time', np.int64, 'start time since unix epoch [ns]'),
+            ('center_time', np.int64, 'weighted center time since unix epoch [ns]'),
+            ('endtime', np.int64, 'end time since unix epoch [ns]'),
+            ('area', np.float32, 'area, uncorrected [PE]'),
+            ('n_channels', np.int32, 'count of contributing PMTs'),
+            ('n_competing', np.float32, 'number of competing PMTs'),
+            ('max_pmt', np.int16, 'PMT number which contributes the most PE'),
+            ('max_pmt_area', np.float32, 'area in the largest-contributing PMT (PE)'),
+            ('range_50p_area', np.float32, 'width, 50% area [ns]'),
+            ('range_90p_area', np.float32, 'width, 90% area [ns]'),
+            ('rise_time', np.float32, 'time between 10% and 50% area quantiles [ns]'),
             ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
         )
 
@@ -204,18 +201,13 @@ class EventBasics(strax.Plugin):
         for s_i in [1, 2]:
             # Peak indices
             si_dtype += [
-                (f's{s_i}_index', np.int32,
-                 f'Main S{s_i} peak index in event'),
-                (f'alt_s{s_i}_index', np.int32,
-                 f'Alternate S{s_i} peak index in event')]
+                (f's{s_i}_index', np.int32, f'Main S{s_i} peak index in event'),
+                (f'alt_s{s_i}_index', np.int32, f'Alternate S{s_i} peak index in event')]
 
             # Peak properties
             for name, dt, comment in peak_properties:
-                si_dtype += [
-                    (f's{s_i}_{name}', dt,
-                     f'Main S{s_i} {comment}'),
-                    (f'alt_s{s_i}_{name}', dt,
-                     f'Alternate S{s_i} {comment}')]
+                si_dtype += [(f's{s_i}_{name}', dt, f'Main S{s_i} {comment}'),
+                             (f'alt_s{s_i}_{name}', dt, f'Alternate S{s_i} {comment}')]
 
             # Drifts and delays
             si_dtype += [
@@ -231,8 +223,7 @@ class EventBasics(strax.Plugin):
         set required class attributes
         """
         posrec_fields = self.deps['peak_positions'].dtype_for('peak_positions').names
-        posrec_names = [d.split('_')[-1] for d in posrec_fields
-                        if 'x_' in d]
+        posrec_names = [d.split('_')[-1] for d in posrec_fields if 'x_' in d]
 
         # Preserve order. "set" is not ordered and dtypes should always be ordered
         self.pos_rec_labels = list(set(posrec_names))
@@ -276,134 +267,140 @@ class EventBasics(strax.Plugin):
         result = np.zeros(len(events), dtype=self.dtype)
         self.set_nan_defaults(result)
 
-        fully_contained_in = strax.fully_contained_in(peaks, events)
-        self.fill_events(result, events, peaks, fully_contained_in)
+        split_peaks = strax.split_by_containment(peaks, events)
+        self.fill_events(result, events, split_peaks)
         return result
 
-    def fill_events(self, result, events, peaks, fully_contained_in):
-        for event_i, event in enumerate(events):
-            peak_mask = fully_contained_in == event_i
-            n_peaks = np.sum(peak_mask)
+    # If copy_largest_peaks_in_events is ever numbafied, also numbafy this function
+    def fill_events(self, result_buffer, events, split_peaks):
+        """Loop over the events and peaks within that event"""
+        for event_i in range(len(events)):
+            peaks_in_event_i = split_peaks[event_i]
+            n_peaks = len(peaks_in_event_i)
 
-            result[event_i]['time'] = event['time']
-            result[event_i]['endtime'] = event['endtime']
-            result[event_i]['n_peaks'] = n_peaks
+            result_buffer[event_i]['time'] = events[event_i]['time']
+            result_buffer[event_i]['endtime'] = events[event_i]['endtime']
+            result_buffer[event_i]['n_peaks'] = n_peaks
 
             if not n_peaks:
                 continue
 
-            result_i = self.get_results_for_event(peaks[peak_mask])
-            for field, value in result_i.items():
-                result[event_i][field] = value
+            self.fill_result_i(result_buffer[event_i], peaks_in_event_i)
 
-    # TODO numbafy
-    def get_results_for_event(self, peaks):
-        res = {}
-
-        if not len(peaks):
-            return res
-        main_s = dict()
-        secondary_s = dict()
-
+    def fill_result_i(self, event, peaks):
+        """For a single event with the result_buffer"""
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
-        for s_i in [2, 1]:
-            # TODO numbafy
-            res, main_s, secondary_s = self.get_result_for_si(
-                res, peaks, s_i, main_s, secondary_s)
+        largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2)
 
-        res = self.get_event_properties(res, main_s, secondary_s, peaks)
-        return res
+        if self.config['force_main_before_alt']:
+            s2_order = np.argsort(largest_s2s['time'])
+            largest_s2s = largest_s2s[s2_order]
+            s2_idx = s2_idx[s2_order]
 
-    # TODO numbafy
+        if not self.config['allow_posts2_s1s'] and len(largest_s2s):
+            s1_latest_time = largest_s2s[0]['time']
+        else:
+            s1_latest_time = np.inf
+
+        largest_s1s, s1_idx = self.get_largest_sx_peaks(
+            peaks,
+            s_i=1,
+            s1_before_time=s1_latest_time,
+            s1_min_coincidence=self.config['event_s1_min_coincidence'])
+
+        self.set_sx_index(event, s1_idx, s2_idx)
+        self.set_event_properties(event, largest_s1s, largest_s2s, peaks)
+
+        # Loop over S1s and S2s and over main / alt.
+        for i, largest_s_i in enumerate([largest_s1s, largest_s2s]):
+            s_i = i + 1
+            # Largest index 0 -> main sx, 1 -> alt sx
+            for largest_index, main_or_alt in enumerate(['s', 'alt_s']):
+                peak_properties_to_save = [name for name, _, _ in self.peak_properties]
+                if s_i == 2:
+                    peak_properties_to_save += ['x', 'y']
+                    peak_properties_to_save += self.posrec_save
+                field_names = [f'{main_or_alt}{s_i}_{name}' for name in peak_properties_to_save]
+                self.copy_largest_peaks_in_events(event,
+                                                  largest_s_i,
+                                                  largest_index,
+                                                  field_names,
+                                                  peak_properties_to_save)
+
     @staticmethod
-    def get_event_properties(result, main_s, secondary_s, peaks):
+    @numba.njit
+    def set_event_properties(result, largest_s1s, largest_s2s, peaks):
         """Get properties like drift time and area before main S2"""
         # Compute drift times only if we have a valid S1-S2 pair
-        if len(main_s) == 2:
-            result['drift_time'] = \
-                main_s[2]['center_time'] - main_s[1]['center_time']
-            if 1 in secondary_s:
-                result['alt_s1_interaction_drift_time'] = \
-                    main_s[2]['center_time'] - secondary_s[1]['center_time']
-            if 2 in secondary_s:
-                result['alt_s2_interaction_drift_time'] = \
-                    secondary_s[2]['center_time'] - main_s[1]['center_time']
+        if len(largest_s1s) > 0 and len(largest_s2s) > 0:
+            result['drift_time'] = largest_s2s[0]['center_time'] - largest_s1s[0]['center_time']
+            if len(largest_s1s) > 1:
+                result['alt_s1_interaction_drift_time'] = largest_s2s[0]['center_time'] - largest_s1s[1]['center_time']
+            if len(largest_s2s) > 1:
+                result['alt_s2_interaction_drift_time'] = largest_s2s[1]['center_time'] - largest_s1s[0]['center_time']
 
         # areas before main S2
-        if result[f's2_index'] != -1:
-            peaks_before_ms2 = peaks[peaks['time'] < main_s[2]['time']]
-            result['area_before_main_s2'] = sum(peaks_before_ms2['area'])
+        if len(largest_s2s):
+            peaks_before_ms2 = peaks[peaks['time'] < largest_s2s[0]['time']]
+            result['area_before_main_s2'] = np.sum(peaks_before_ms2['area'])
 
             s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2['type'] == 2]
             if len(s2peaks_before_ms2) == 0:
                 result['large_s2_before_main_s2'] = 0
             else:
-                result['large_s2_before_main_s2'] = max(s2peaks_before_ms2['area'])
+                result['large_s2_before_main_s2'] = np.max(s2peaks_before_ms2['area'])
         return result
 
-    # todo numbafy
-    def get_result_for_si(self, result, peaks, s_i, main_si, secondary_si):
-        """Get the extracted S1/S2 properties"""
-        # Which properties do we need?
-        to_store = [name for name, _, _ in self.peak_properties]
-        if s_i == 2:
-            to_store += ['x', 'y']
-
+    @staticmethod
+    # @numba.njit <- works but slows if fill_events is not numbafied
+    def get_largest_sx_peaks(peaks,
+                             s_i,
+                             s1_before_time=np.inf,
+                             s1_min_coincidence=0,
+                             number_of_peaks=2):
+        """Get the largest S1/S2. For S1s allow a min coincidence and max time"""
         # Find all peaks of this type (S1 or S2)
         s_mask = peaks['type'] == s_i
-        if not self.config['allow_posts2_s1s']:
-            # Only peaks *before* the main S2 are allowed to be
-            # the main or alternate S1
-            if s_i == 1 and result[f's2_index'] != -1:
-                s_mask &= peaks['time'] < main_si[2]['time']
-
         if s_i == 1:
-            # If we have an event-level S1 tight coincidence, let's apply that here too
-            s_mask &= peaks['tight_coincidence'] > self.config['event_s1_min_coincidence']
+            s_mask &= peaks['time'] < s1_before_time
+            s_mask &= peaks['tight_coincidence'] >= s1_min_coincidence
 
-        ss = peaks[s_mask]
-        s_indices = np.arange(len(peaks))[s_mask]
+        selected_peaks = peaks[s_mask]
+        s_index = np.arange(len(peaks))[s_mask]
+        largest_peaks = np.argsort(selected_peaks['area'])[-number_of_peaks:][::-1]
+        return selected_peaks[largest_peaks], s_index[largest_peaks]
 
-        # Decide which of these signals is the main and alternate
-        if len(ss) > 1:
-            # Start by choosing the largest two signals
-            _alt_i, _main_i = np.argsort(ss['area'])[-2:]
-            if (self.config['force_main_before_alt']
-                    and ss[_alt_i]['time'] < ss[_main_i]['time']):
-                # Promote alternate to main since it occurs earlier
-                _alt_i, _main_i = _main_i, _alt_i
-        elif len(ss) == 1:
-            _main_i, _alt_i = 0, None
-        else:
-            _alt_i, _main_i = None, None
+    # If only we could numbafy this... Unfortunatly we cannot.
+    # Perhaps we could one day consider doing something like strax.copy_to_buffer
+    @staticmethod
+    def copy_largest_peaks_in_events(result,
+                                     largest_s_i,
+                                     l_index,
+                                     result_fields,
+                                     peak_fields,
+                                     ):
+        """Fill the event result with the main/alt S1/S2"""
+        if len(largest_s_i) <= l_index:
+            return
 
-        # Store main signal properties
-        if _main_i is None:
-            result[f's{s_i}_index'] = -1
-        else:
-            main_si[s_i] = ss[_main_i]
-            result[f's{s_i}_index'] = s_indices[_main_i]
-            for name in to_store:
-                result[f's{s_i}_{name}'] = main_si[s_i][name]
-            if s_i == 2:
-                for name in self.posrec_save:
-                    result[f's{s_i}_{name}'] = main_si[s_i][name]
+        if not len(result_fields) == len(peak_fields):
+            raise ValueError("result_fields and peak_names should map 1 to 1")
 
-        # Store alternate signal properties
-        if _alt_i is None:
-            result[f'alt_s{s_i}_index'] = -1
-        else:
-            secondary_si[s_i] = ss[_alt_i]
-            result[f'alt_s{s_i}_index'] = s_indices[_alt_i]
-            for name in to_store:
-                result[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
-            if s_i == 2:
-                for name in self.posrec_save:
-                    result[f'alt_s{s_i}_{name}'] = secondary_si[s_i][name]
-            # Compute delay time properties
-            result[f'alt_s{s_i}_delay'] = (secondary_si[s_i]['center_time']
-                                              - main_si[s_i]['center_time'])
-        return result, main_si, secondary_si
+        for i, ev_field in enumerate(result_fields):
+            p_field = peak_fields[i]
+            result[ev_field] = largest_s_i[l_index][p_field]
+
+    @staticmethod
+    # @numba.njit <- works but slows if fill_events is not numbafied
+    def set_sx_index(res, s1_idx, s2_idx):
+        if len(s1_idx):
+            res['s1_index'] = s1_idx[0]
+            if len(s1_idx) > 1:
+                res['alt_s1_index'] = s1_idx[1]
+        if len(s2_idx):
+            res['s2_index'] = s2_idx[0]
+            if len(s2_idx) > 1:
+                res['alt_s2_index'] = s2_idx[1]
 
 
 @export
