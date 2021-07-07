@@ -138,7 +138,7 @@ class CorrectionsManagementServices():
                         values.append(df.loc[df.index == when, version].values[0])
             else:
                 df = self.interface.read(correction)
-                if correction in corrections_w_file or version in 'ONLINE':
+                if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
                     df = self.interface.interpolate(df, when, how='fill')
                 else:
                     df = self.interface.interpolate(df, when)
