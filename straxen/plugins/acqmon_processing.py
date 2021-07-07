@@ -67,7 +67,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     hev_*   <= DDC10 hardware high energy veto
     """
 
-    __version__ = '0.1.5'
+    __version__ = '0.1.6'
     depends_on = ('aqmon_hits')
     provides = ('veto_intervals')
     data_kind = ('veto_intervals')
