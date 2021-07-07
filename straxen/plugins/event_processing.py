@@ -274,7 +274,7 @@ class EventBasics(strax.Plugin):
     # If copy_largest_peaks_in_events is ever numbafied, also numbafy this function
     def fill_events(self, result_buffer, events, split_peaks):
         """Loop over the events and peaks within that event"""
-        for event_i in range(len(events)):
+        for event_i, _ in enumerate(events):
             peaks_in_event_i = split_peaks[event_i]
             n_peaks = len(peaks_in_event_i)
 
