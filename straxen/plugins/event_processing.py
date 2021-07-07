@@ -183,8 +183,8 @@ class EventBasics(strax.Plugin):
             ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
             ('endtime',           np.int64,   'end time since unix epoch [ns]'),
             ('area',              np.float32, 'area, uncorrected [PE]'),
-            ('n_channels',        np.int32,   'count of contributing PMTs'),
-            ('n_competing',       np.float32, 'number of competing PMTs'),
+            ('n_channels',        np.int16,   'count of contributing PMTs'),
+            ('n_competing',       np.int32,   'number of competing peaks'),
             ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
             ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
             ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
@@ -270,7 +270,7 @@ class EventBasics(strax.Plugin):
         self.fill_events(result, events, split_peaks)
         return result
 
-    # If copy_largest_peaks_in_events is ever numbafied, also numbafy this function
+    # If copy_largest_peaks_into_event is ever numbafied, also numbafy this function
     def fill_events(self, result_buffer, events, split_peaks):
         """Loop over the events and peaks within that event"""
         for event_i, _ in enumerate(events):
@@ -282,7 +282,7 @@ class EventBasics(strax.Plugin):
             result_buffer[event_i]['n_peaks'] = n_peaks
 
             if not n_peaks:
-                continue
+                raise ValueError(f'No peaks within event?\n{events[event_i]}')
 
             self.fill_result_i(result_buffer[event_i], peaks_in_event_i)
 
@@ -319,11 +319,11 @@ class EventBasics(strax.Plugin):
                     peak_properties_to_save += ['x', 'y']
                     peak_properties_to_save += self.posrec_save
                 field_names = [f'{main_or_alt}{s_i}_{name}' for name in peak_properties_to_save]
-                self.copy_largest_peaks_in_events(event,
-                                                  largest_s_i,
-                                                  largest_index,
-                                                  field_names,
-                                                  peak_properties_to_save)
+                self.copy_largest_peaks_into_event(event,
+                                                   largest_s_i,
+                                                   largest_index,
+                                                   field_names,
+                                                   peak_properties_to_save)
 
     @staticmethod
     @numba.njit
@@ -371,22 +371,27 @@ class EventBasics(strax.Plugin):
     # If only we could numbafy this... Unfortunatly we cannot.
     # Perhaps we could one day consider doing something like strax.copy_to_buffer
     @staticmethod
-    def copy_largest_peaks_in_events(result,
-                                     largest_s_i,
-                                     l_index,
-                                     result_fields,
-                                     peak_fields,
-                                     ):
-        """Fill the event result with the main/alt S1/S2"""
-        if len(largest_s_i) <= l_index:
+    def copy_largest_peaks_into_event(result,
+                                      largest_s_i,
+                                      main_or_alt_index,
+                                      result_fields,
+                                      peak_fields,
+                                      ):
+        """
+        For one event, write all the peak_fields (e.g. "area") of the peak
+        (largest_s_i) into their associated field in the event (e.g. s1_area),
+        main_or_alt_index differentiates between main (index 0) and alt (index 1)
+        """
+        if len(largest_s_i) <= main_or_alt_index:
+            # Maybe there is no such peak. E.g. when asking for an alt-S1
+            # (main_or_alt_index == 1) and the largest_s_1 only has the main S1
             return
-
-        if not len(result_fields) == len(peak_fields):
-            raise ValueError("result_fields and peak_names should map 1 to 1")
 
         for i, ev_field in enumerate(result_fields):
             p_field = peak_fields[i]
-            result[ev_field] = largest_s_i[l_index][p_field]
+            if p_field not in ev_field:
+                raise ValueError("Event fields must derive from the peak fields")
+            result[ev_field] = largest_s_i[main_or_alt_index][p_field]
 
     @staticmethod
     # @numba.njit <- works but slows if fill_events is not numbafied
