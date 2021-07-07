@@ -382,9 +382,10 @@ class EventBasics(strax.Plugin):
         (largest_s_i) into their associated field in the event (e.g. s1_area),
         main_or_alt_index differentiates between main (index 0) and alt (index 1)
         """
-        if len(largest_s_i) <= main_or_alt_index:
-            # Maybe there is no such peak. E.g. when asking for an alt-S1
-            # (main_or_alt_index == 1) and the largest_s_1 only has the main S1
+        index_not_in_list_of_largest_peaks = main_or_alt_index >= len(largest_s_i)
+        if index_not_in_list_of_largest_peaks:
+            # There is no such peak. E.g. main_or_alt_index == 1 but largest_s_i = ["Main S1"]
+            # Asking for index 1 doesn't work on a len 1 list of peaks.
             return
 
         for i, ev_field in enumerate(result_fields):
