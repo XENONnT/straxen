@@ -225,10 +225,11 @@ def xenonnt_simulation(output_folder='./strax_data',
                        fax_config='fax_config_nt_design.json',
                        cmt_option_overwrite=immutabledict(),
                        overwrite_from_fax_file=False,
-                       _allow_diverging_settings=False,
-                       _config_overlap={'drift_time_gate': 'electron_drift_time_gate',
-                                        'drift_velocity_liquid': 'electron_drift_velocity',
-                                        'electron_lifetime_liquid': 'elife_conf'},
+                       _cmt_run_id_proc_only=None,
+                       _forbid_creation_of=None,
+                       _config_overlap=immutabledict(drift_time_gate='electron_drift_time_gate',
+                                                     drift_velocity_liquid='electron_drift_velocity',
+                                                     electron_lifetime_liquid='elife_conf'),
                        **kwargs):
     """
     Context with CMT options updated with cmt_run_id.
@@ -241,8 +242,9 @@ def xenonnt_simulation(output_folder='./strax_data',
         must be valid CMT option keys.
     :param overwrite_from_fax_file: If true overwrites CMT options with
         constants from fax file.
-    :param _allow_diverging_settings: Disable overwrite to and from both
-        directions. Experts use only.
+    :param _cmt_run_id_proc_only: Run id just for processing if diverge from cmt_run_id.
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
+        being written (e.g. 'raw_records' for read only simulation context).
     :param _config_overlap: Dictionary of options to overwrite. Keys
         must be simulation config keys, values must be valid CMT option keys.
     :param kwargs: Additional kwargs taken by strax.Context.
@@ -258,44 +260,56 @@ def xenonnt_simulation(output_folder='./strax_data',
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
 
+    if _forbid_creation_of is not None:
+        st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
+
     st.apply_cmt_version(f'global_{cmt_version}')
     if not cmt_run_id:
         raise ValueError('You have to specify a run_id which should be used to initialize '
                          'the corrections.')
+    if _cmt_run_id_proc_only is None:
+        _cmt_run_id_proc_only = cmt_run_id
 
-    # Replace default cmt options with MC tag + cmt run id
+    # Setup processing
+    # Replace default cmt options with cmt_run_id tag + cmt run id
     cmt_options = straxen.get_corrections.get_cmt_options(st)
     for option in cmt_options:
-        cmt_options[option] = tuple(['cmt_run_id', cmt_run_id, *cmt_options[option]])
-
-        if option in cmt_option_overwrite.keys():
-            cmt_options[option] = (cmt_options[0] + '_constant', cmt_option_overwrite[option])
-
-    # Do nothing if user does not want to sync simulation and processing
-    if _allow_diverging_settings:
-        pass
+        st.config[option] = tuple(['cmt_run_id', _cmt_run_id_proc_only, *cmt_options[option]])
 
     # Take fax config and put into context option
-    elif overwrite_from_fax_file:
+    if overwrite_from_fax_file:
         fax_config = straxen.get_resource(fax_config, fmt='json')
 
         for fax_field, cmt_field in _config_overlap.items():
-            cmt_options[cmt_field] = tuple([cmt_options[cmt_field][2]+'_constant',
-                                            fax_config[fax_field]])
+            st.config[cmt_field] = tuple([cmt_options[cmt_field][0] + '_constant',
+                                          fax_config[fax_field]])
 
+    # Setup simulation
     # Pass the CMT options to simulation (override all other config input methods)
     else:
         fax_config_override_from_cmt = dict()
-        for fax_field, cmt_field in _config_overlap.items():
-            fax_config_override_from_cmt[fax_field] = cmt_options[cmt_field]
 
+        for fax_field, cmt_field in _config_overlap.items():
+            fax_config_override_from_cmt[fax_field] = tuple(['cmt_run_id', cmt_run_id, *cmt_options[cmt_field]])
         st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
 
-    st.set_config(cmt_options)
-    
+    # Fix gain model
+    st.set_config({'gain_model_mc': tuple(['cmt_run_id', cmt_run_id, *cmt_options['gain_model']])})
+
+    # User customized overwrite
+    cmt_options = straxen.get_corrections.get_cmt_options(st)  # This includes gain_model_mc
+    for option in cmt_option_overwrite:
+        if option not in cmt_options:
+            raise ValueError(f'Overwrite option {option} is not using CMT by default '
+                              'you should just use set config')
+        _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
+        st.config[option] = (cmt_options[option][_name_index] + '_constant', cmt_option_overwrite[option])
+
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
+
     return st
+
 
 ##
 # XENON1T
