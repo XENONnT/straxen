@@ -191,7 +191,7 @@ class Peaklets(strax.Plugin):
             r = r.copy()
 
         if self.config['saturation_correction_on']:
-            peak_saturation_correction(
+            peak_list=peak_saturation_correction(
                 r, peaklets, self.to_pe, n_top_pmts=self.config['n_top_pmts'],
                 store_top_waveform=self.config['store_top_waveform'],
                 reference_length=self.config['saturation_reference_length'],
@@ -553,7 +553,6 @@ FAKE_MERGED_S2_TYPE = -42
                       "longer than this [ns]"),
     strax.Option('store_top_waveform',default=True,
                  help='Bool for storing the top array waveform seperately'),
-                      )
     strax.Option('s2_merge_gap_thresholds', default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
                  help="Points to define maximum separation between peaklets to allow "
                       "merging [ns] depending on log10 area of the merged peak\n"
