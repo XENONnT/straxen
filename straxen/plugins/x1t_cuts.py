@@ -200,7 +200,7 @@ class S1MaxPMT(strax.LoopPlugin):
     depends_on = ('events', 'event_basics', 'peak_basics')
     dtype = [('cut_s1_max_pmt', np.bool_, 'S1 max PMT cut')] + strax.time_fields
     provides = 'cut_s1_max_pmt'
-    __version__ = 1.2
+    __version__ = 1.3
 
     def compute_loop(self, event, peaks):
         ret = dict(cut_s1_max_pmt=True)
