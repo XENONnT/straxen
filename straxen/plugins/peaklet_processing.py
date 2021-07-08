@@ -1,14 +1,14 @@
 import numba
 import numpy as np
-
 import strax
+from strax.processing.general import _touching_windows
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
-from strax.processing.general import _touching_windows
-
 from straxen.get_corrections import is_cmt_option
 
+
 export, __all__ = strax.exporter()
+FAKE_MERGED_S2_TYPE = -42
 
 
 @export
@@ -543,9 +543,6 @@ class PeakletClassificationHighEnergy(PeakletClassification):
         return super().compute(peaklets_he)
 
 
-FAKE_MERGED_S2_TYPE = -42
-
-
 @export
 @strax.takes_config(
     strax.Option('s2_merge_max_duration', default=50_000,
@@ -559,7 +556,7 @@ FAKE_MERGED_S2_TYPE = -42
                       "where the gap size of the first point is the maximum gap to allow merging"
                       "and the area of the last point is the maximum area to allow merging. "
                       "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
-                ))
+                 ))
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -568,7 +565,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.1.0'
+    __version__ = '0.2.0'
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
@@ -598,8 +595,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 gap_thresholds=gap_thresholds,
                 max_duration=self.config['s2_merge_max_duration'],
                 max_gap=max_gap,
-                max_area=max_area,)
-
+                max_area=max_area,
+            )
             merged_s2s = strax.merge_peaks(
                 peaklets,
                 start_merge_at, end_merge_at,
@@ -616,74 +613,74 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
             gap_thresholds, max_duration, max_gap, max_area):
-        """Finding the group of peaklets to merge. To do this start with the 
-        smallest gaps and keep merging until the new, merged S2 has such a 
-        large area or gap to adjacent peaks that merging is not required 
+        """
+        Finding the group of peaklets to merge. To do this start with the
+        smallest gaps and keep merging until the new, merged S2 has such a
+        large area or gap to adjacent peaks that merging is not required
         anymore.
-        returns: list of the first index of peaklet to be merged and
+        see https://github.com/XENONnT/straxen/pull/548 and https://github.com/XENONnT/straxen/pull/568
+
+        :returns: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged
         """
+
         peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
-        n_gaps = len(peaklet_gaps)
+        peaklet_start_index = np.arange(len(peaklet_starts))
+        peaklet_end_index = np.arange(len(peaklet_starts))
 
-        previous_valid_gap = np.arange(n_gaps) - 1
-        next_valid_gap = np.arange(n_gaps) + 1
-
-        # gaps_to_merge includes two imaginary gaps before and after all peaklets
-        gaps_to_merge = np.zeros(n_gaps + 2, np.bool_)
-
-        # Check gaps from small to large
         for gap_i in np.argsort(peaklet_gaps):
-            left_i = previous_valid_gap[gap_i] + 1
-            # the right is inclusive
-            right_i = next_valid_gap[gap_i]
+            start_idx = peaklet_start_index[gap_i]
+            inclusive_end_idx = peaklet_end_index[gap_i + 1]
+            sum_area = np.sum(areas[start_idx:inclusive_end_idx + 1])
+            this_gap = peaklet_gaps[gap_i]
 
-            sum_area = areas[left_i:right_i+1].sum()
+            if inclusive_end_idx < start_idx:
+                raise ValueError('Something went wrong, left is bigger then right?!')
 
-            if peaklet_gaps[gap_i] > max_gap:
-                # From now on gaps are too large to merge
+            if this_gap > max_gap:
                 break
-
             if sum_area > max_area:
+                # For very large S2s, we assume that natural breaks is taking care
+                continue
+            if (sum_area > 0) and (
+                    this_gap > merge_s2_threshold(np.log10(sum_area),
+                                                  gap_thresholds)):
                 # The merged peak would be too large
                 continue
 
-            if (peaklet_ends[right_i] - peaklet_starts[left_i]) > max_duration:
-                # The merged peak would be too long
+            peak_duration = (peaklet_ends[inclusive_end_idx] - peaklet_starts[start_idx])
+            if peak_duration >= max_duration:
                 continue
 
-            if peaklet_gaps[gap_i] > merge_s2_threshold(np.log10(sum_area), gap_thresholds):
-                # Check with varying threshold based on peak area after merging
-                continue
+            # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
+            # start, end and area:
+            peaklet_start_index[start_idx:inclusive_end_idx + 1] = peaklet_start_index[start_idx]
+            peaklet_end_index[start_idx:inclusive_end_idx + 1] = peaklet_end_index[inclusive_end_idx]
 
-            # Mark the current gap merged and update info of its previous and next gap
-            # There's no previous gap for gap[0], and no next gap for gap[n_gaps-1]
-            if gap_i != 0:
-                next_valid_gap[previous_valid_gap[gap_i]] = next_valid_gap[gap_i]
-            if gap_i != n_gaps - 1:
-                previous_valid_gap[next_valid_gap[gap_i]] = previous_valid_gap[gap_i]
+        start_merge_at = np.unique(peaklet_start_index)
+        end_merge_at = np.unique(peaklet_end_index)
+        if not len(start_merge_at) == len(end_merge_at):
+            raise ValueError('inconsistent start and end merge instructions')
 
-            gaps_to_merge[gap_i + 1] = True
+        merge_start, merge_stop_exclusive = _filter_s1_starts(
+            start_merge_at, types, end_merge_at)
 
-        i_gaps_to_merge = np.where(gaps_to_merge)[0]
-        # Finding the first gaps that the gaps right before them is still open
-        # -1 to get the peak indices left of the first gaps
-        start_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge - 1]] - 1
-        # Finding the last gaps that the gaps right after them is still open
-        # +1 to get the peak indices (exclusive) right of the last gaps
-        end_merge_at = i_gaps_to_merge[~gaps_to_merge[i_gaps_to_merge + 1]] + 1
+        return merge_start, merge_stop_exclusive
 
-        # Do not merge non S2 peaks if they are at the start
-        # Move start merge index up till there's only two peaks left
-        # and it still doesn't start with with S2
-        for i_merge, _start in enumerate(start_merge_at):
-            while types[start_merge_at[i_merge]] != 2:
-                if end_merge_at[i_merge] - start_merge_at[i_merge] <= 2:
-                    break
-                start_merge_at[i_merge] += 1
 
-        start_merge_with_s2 = types[start_merge_at] == 2
-        return start_merge_at[start_merge_with_s2], end_merge_at[start_merge_with_s2]
+@numba.njit(cache=True, nogil=True)
+def _filter_s1_starts(start_merge_at, types, end_merge_at):
+    for start_merge_idx, _ in enumerate(start_merge_at):
+        while types[start_merge_at[start_merge_idx]] != 2:
+            if end_merge_at[start_merge_idx] - start_merge_at[start_merge_idx] <= 1:
+                break
+            start_merge_at[start_merge_idx] += 1
+
+    start_merge_with_s2 = types[start_merge_at] == 2
+    merges_at_least_two_peaks = end_merge_at - start_merge_at >= 1
+
+    keep_merges = start_merge_with_s2 & merges_at_least_two_peaks
+    return start_merge_at[keep_merges], end_merge_at[keep_merges] + 1
 
 
 @numba.njit(cache=True, nogil=True)
@@ -697,7 +694,7 @@ def merge_s2_threshold(log_area, gap_thresholds):
         if log_area < a1:
             if i == 0:
                 return g1
-            a0, g0 = gap_thresholds[i-1]
+            a0, g0 = gap_thresholds[i - 1]
             return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
     return gap_thresholds[-1][1]
 

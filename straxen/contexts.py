@@ -104,7 +104,7 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
 
 
 def xenonnt_online(output_folder='./strax_data',
-                   use_rucio=True,
+                   use_rucio=False,
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,

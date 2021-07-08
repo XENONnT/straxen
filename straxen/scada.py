@@ -244,6 +244,10 @@ class SCADAInterface:
                    'corresponding times as nans instead.')
             warnings.warn(mes)
 
+        # Chop start/end time if precision is higher then seconds level.
+        start = (start//10**9)*10**9
+        end = (end//10**9)*10**9
+
         return int(start), int(end), now
 
     def _query_single_parameter(self,

@@ -1,5 +1,10 @@
-0.19.0 / 2021-06-23
+0.19.1 / 2021-06-24
 -------------------
+- Fix merged S2s upgrade #548 (#566, a2f5062, #568)
+- Disable rucio frontend as default temporarily (#567)
+
+0.19.0 / 2021-06-23 (bugged)
+----------------------------
 minor changes
 - S1/S2 event patternfit and S1 AFT test (#499)
 - Change tight_coincidence (#564)
@@ -20,6 +25,7 @@ patches and fixes:
 - Fix missing info in bootstrax docs, fix #546 (#558)
 - Add scada interface to docs (#560)
 - Tweaks for new release 0.19.0 (#562)
+
 
 0.18.6-0.18.8 / 2021-06-03
 -------------------
