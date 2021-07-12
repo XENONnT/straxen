@@ -1,7 +1,6 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-import numpy as np
 from copy import deepcopy
 
 common_opts = dict(
@@ -242,7 +241,7 @@ def xenonnt_simulation(output_folder='./strax_data',
         must be valid CMT option keys.
     :param overwrite_from_fax_file: If true overwrites CMT options with
         constants from fax file.
-    :param _cmt_run_id_proc_only: Run id just for processing if diverge from cmt_run_id.
+    :param _cmt_run_id_proc_only: Run id just for raw_records processing if diverge from cmt_run_id.
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
         being written (e.g. 'raw_records' for read only simulation context).
     :param _config_overlap: Dictionary of options to overwrite. Keys
