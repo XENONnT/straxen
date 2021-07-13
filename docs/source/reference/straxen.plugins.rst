@@ -36,6 +36,14 @@ straxen.plugins.event\_area\_per\_channel module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.event\_info module
+----------------------------------
+
+.. automodule:: straxen.plugins.event_info
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.event\_patternfit module
 ----------------------------------------
 
