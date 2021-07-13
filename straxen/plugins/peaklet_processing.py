@@ -283,7 +283,7 @@ class Peaklets(strax.Plugin):
         return outside_peaks
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def peak_saturation_correction(records, peaks, to_pe,
+def peak_saturation_correction(records, peaks, hits, to_pe,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
@@ -362,7 +362,7 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
         peaks[peak_i]['dt'] = dt
 
-    strax.sum_waveform(peaks, records, to_pe, peak_list)
+    strax.sum_waveform(peaks, hits, records, to_pe, peak_list)
     return peak_list
 
 
