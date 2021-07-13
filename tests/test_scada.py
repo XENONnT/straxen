@@ -9,9 +9,6 @@ def test_query_sc_values():
     return is correct.
     """
 
-    # TODO remove this
-    return
-
     if not straxen.utilix_is_configured('scada', 'scdata_url'):
         warnings.warn('Cannot test scada since we have no access to xenon secrets.')
         return
@@ -23,6 +20,8 @@ def test_query_sc_values():
     # Simple query test:
     # Query 5 s of data:
     start = 1609682275000000000
+    # Add micro-second to check if query does not fail if inquery precsion > SC precision
+    start += 10**6
     end = start + 5 * 10**9
     parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
 
