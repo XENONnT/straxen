@@ -17,7 +17,7 @@ following command up to ``event_info_double``.
 
 .. code-block:: bash
 
-    straxer 12100 event_info_double
+    straxer 012100 --target event_info_double
 
 For more information on the options, please refer to the help:
 

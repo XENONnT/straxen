@@ -2,7 +2,6 @@ import strax
 import straxen
 from straxen.analyses.holoviews_waveform_display import seconds_from, plot_record_polygons
 
-import holoviews as hv
 import panel as pn
 from bokeh.models import HoverTool
 
@@ -37,7 +36,8 @@ class nVETOEventDisplay:
             rendering can be either bokeh or matpltolib. Default is
             bokeh to support dynamic plots.
         """
-        hv.extension(plot_extension)
+        self.import_holoviews()
+        self.hv.extension(plot_extension)
         self.df_event_time = None
         self.df_event_properties = None
         self.hitlets = hitlets
@@ -62,6 +62,10 @@ class nVETOEventDisplay:
         if events is not None and hitlets is not None:
             self.hitlets_per_event = strax.split_by_containment(hitlets,
                                                                 events)
+
+    def import_holoviews(self):
+        import holoviews as hv
+        self.hv = hv
 
     def plot_event_display(self):
         """
@@ -100,7 +104,7 @@ class nVETOEventDisplay:
             m = (hit['time'] >= x_range[0]) & (hit['time'] < x_range[1])
 
             hitlets_in_time = hit[m]
-            new_points = hv.Points(hitlets_in_time)
+            new_points = self.hv.Points(hitlets_in_time)
 
             # Plot pmt pattern:
             pmts = self.plot_nveto(hitlets=None,
@@ -115,13 +119,15 @@ class nVETOEventDisplay:
         self.hitlet_points = self.hitlets_to_hv_points(self.hitlets_per_event[index],
                                                        t_ref=self.event_df.loc[index, 'time'])
 
-        dmap_hitlet_matrix = hv.DynamicMap(matrix_callback,
-                                           streams=[self.evt_sel_slid.param.value]).opts(framewise=True)
-        time_stream = hv.streams.RangeX(source=dmap_hitlet_matrix)
+        dmap_hitlet_matrix = self.hv.DynamicMap(
+            matrix_callback,
+            streams=[self.evt_sel_slid.param.value]).opts(framewise=True)
 
-        dmap_pmts = hv.DynamicMap(pattern_callback,
-                                  streams=[self.evt_sel_slid.param.value,
-                                           time_stream])
+        time_stream = self.hv.streams.RangeX(source=dmap_hitlet_matrix)
+
+        dmap_pmts = self.hv.DynamicMap(
+            pattern_callback,
+            streams=[self.evt_sel_slid.param.value, time_stream])
 
         slider_column = pn.Column(self.evt_sel_slid,
                                   self.evt_sel_slid.controls(['value']),
@@ -160,12 +166,11 @@ class nVETOEventDisplay:
                                                                     )
         return hitlet_matrix
 
-    @staticmethod
-    def _plot_base_matrix(hv_point_data):
+    def _plot_base_matrix(self, hv_point_data):
         """
         Base function to plot record or hitlet matrix.
         """
-        matrix_plot = hv.Segments(hv_point_data.data,
+        matrix_plot = self.hv.Segments(hv_point_data.data,
                                   kdims=['time', 'channel', 'endtime', 'channel']
                                   ).opts(tools=['hover'],
                                          aspect=4,
@@ -182,7 +187,7 @@ class nVETOEventDisplay:
         Plots the nveto pmt pattern map for the specified hitlets.
         Expects hitlets to be sorted in time.
 
-        :param hitelts: Hitlets to be plotted if called directly.
+        :param hitlets: Hitlets to be plotted if called directly.
         :param pmt_size: Base size of a PMT for 1 pe.
         :param pmt_distance: Scaling parameter for the z -> xy
             projection.
@@ -224,7 +229,7 @@ class nVETOEventDisplay:
                     pmt_distance):
         if isinstance(pmts, pd.DataFrame):
             pmts = pmts.to_records(index=False)
-
+        hv = self.hv
         # Get hitlet_points data and extract PMT data
         pmt_data = self._create_nveto_pmts(pmts,
                                            pmt_size,
@@ -320,6 +325,7 @@ class nVETOEventDisplay:
         different plots. Computes hitlet times as relative times with
         respect to the first hitlet if t_ref is not set.
         """
+        import holoviews as hv
         if not len(hitlets):
             raise ValueError('Expected at least a single hitlet.')
 
@@ -347,12 +353,14 @@ class nVETOEventDisplay:
 
         :param index: Which event to plot.
         """
+
         x = (0, np.real(np.exp(self.event_df.loc[index, 'angle'] * 1j)) * 400)
         y = (0, np.imag(np.exp(self.event_df.loc[index, 'angle'] * 1j)) * 400)
-        angle = hv.Curve((x, y)).opts(color='orange',
-                                      line_dash='dashed',
-                                      xlim=(-350, 350),
-                                      ylim=(-350, 350))
+        angle = self.hv.Curve((x, y)).opts(
+            color='orange',
+            line_dash='dashed',
+            xlim=(-350, 350),
+            ylim=(-350, 350))
         return angle
 
     def _make_sliders_and_tables(self, df):
@@ -438,6 +446,7 @@ def plot_tpc_circle(radius):
 
     :param radius: Radius in cm.
     """
+    import holoviews as hv
     x = radius * np.cos(np.arange(-np.pi, np.pi + 0.1, 0.01))
     y = radius * np.sin(np.arange(-np.pi, np.pi + 0.1, 0.01))
     return hv.Curve((x, y)).opts(color='k')
@@ -449,6 +458,7 @@ def plot_diffuser_balls_nv():
 
     :return: hv.Points with hover tool.
     """
+    import holoviews as hv
     cryostat_r = straxen.cryostat_outer_radius
     depth_stiffening_ring = 8
     r = cryostat_r + depth_stiffening_ring
@@ -467,6 +477,7 @@ def plot_nveto_reflector():
     model. The coordinates can be found in this note:
     id=xenon:xenonnt:mc:notes:nveto-geometry#lateral_reflectors
     """
+    import holoviews as hv
     xy_center_angle = np.array([(0, -1875.25, -90),
                                 (1442.28, -1442.28, -45),
                                 (1875.25, 0, 0),
