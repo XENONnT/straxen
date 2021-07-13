@@ -92,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.10'
+    __version__ = '0.4.0'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -153,7 +153,8 @@ class Peaklets(strax.Plugin):
         # Get hits outside peaklets, and store them separately.
         # fully_contained is OK provided gap_threshold > extension,
         # which is asserted inside strax.find_peaks.
-        lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
+        is_lone_hit = strax.fully_contained_in(hits, peaklets) == -1
+        lone_hits = hits[is_lone_hit]
         strax.integrate_lone_hits(
             lone_hits, records, peaklets,
             save_outside_hits=(self.config['peak_left_extension'],
@@ -161,14 +162,29 @@ class Peaklets(strax.Plugin):
             n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
-        strax.sum_waveform(peaklets, r, self.to_pe)
+        hits = hits[~is_lone_hit]
+        # Define regions outside of peaks such that _find_hit_integration_bounds
+        # is not extended beyond a peak.
+        outside_peaks = self.create_outside_peaks_region(peaklets, start, end)
+        strax.processing.peak_building._find_hit_integration_bounds(hits, 
+                                                                    outside_peaks, 
+                                                                    records, 
+                                                                    (self.config['peak_left_extension'],
+                                                                     self.config['peak_right_extension']),
+                                                                    len(self.to_pe))
+
+
+        hits = np.sort(hits, order='record_i')
+
+        strax.sum_waveform(peaklets, hits, r, self.to_pe)
+
         strax.compute_widths(peaklets)
 
         # Split peaks using low-split natural breaks;
         # see https://github.com/XENONnT/straxen/pull/45
         # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
-            peaklets, r, self.to_pe,
+            peaklets, hits, r, self.to_pe,
             algorithm='natural_breaks',
             threshold=self.natural_breaks_threshold,
             split_low=True,
@@ -187,7 +203,7 @@ class Peaklets(strax.Plugin):
 
         if self.config['saturation_correction_on']:
             peak_list = peak_saturation_correction(
-                r, peaklets, self.to_pe,
+                r, peaklets, hits, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
 
@@ -253,7 +269,18 @@ class Peaklets(strax.Plugin):
                 p['time'] = start
             if strax.endtime(p) > end:
                 p['length'] = (end - p['time']) // p['dt']
-
+                
+    @staticmethod
+    def create_outside_peaks_region(peaklets, start, end):
+        outside_peaks = np.zeros(len(peaklets) + 1, 
+                                 dtype=strax.time_fields)
+        outside_peaks[0]['time'] = start
+        outside_peaks[0]['endtime'] = peaklets[0]['time']
+        outside_peaks[1:-1]['time'] = strax.endtime(peaklets[:-1])
+        outside_peaks[1:-1]['endtime'] = peaklets['time'][1:]
+        outside_peaks[-1]['time'] = strax.endtime(peaklets[-1])
+        outside_peaks[-1]['endtime'] = end 
+        return outside_peaks
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def peak_saturation_correction(records, peaks, to_pe,
