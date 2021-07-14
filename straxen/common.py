@@ -224,7 +224,7 @@ def resource_from_url(html: str, fmt='text'):
         for cache_folder in cache_folders:
             if not osp.exists(cache_folder):
                 continue
-            if os.access(cache_folder, os.W_OK):
+            if not os.access(cache_folder, os.W_OK):
                 continue
             cf = osp.join(cache_folder, cache_fn)
             with open(cf, mode=m) as f:
