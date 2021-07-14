@@ -57,7 +57,6 @@ class RunDB(strax.StorageFrontend):
         :param new_data_path: Path where new files are to be written.
             Defaults to None: do not write new data
             New files will be registered in the runs db!
-            TODO: register under hostname alias (e.g. 'dali')
         :param reader_ini_name_is_mode: If True, will overwrite the
             'mode' field with 'reader.ini.name'.
         :param rucio_path: What is the base path where Rucio is mounted
@@ -122,7 +121,6 @@ class RunDB(strax.StorageFrontend):
                 self.available_query.append({'host': host_alias})
 
         if self.rucio_path is not None:
-            # TODO replace with rucio backend in the rucio module
             self.backends.append(strax.rucio(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
@@ -212,7 +210,6 @@ class RunDB(strax.StorageFrontend):
         datum = doc['data'][0]
 
         if datum['host'] == 'rucio-catalogue':
-            # TODO this is due to a bad query in _data_query. We aren't rucio.
             raise strax.DataNotAvailable
 
         if write and not self._can_overwrite(key):
