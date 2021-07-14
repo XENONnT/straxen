@@ -136,16 +136,12 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    # TODO remove the meta.lineage since this doc
-                    #  entry is deprecated.
-                    '$and': [{'$or': [
-                        {'meta.lineage': key.lineage},
+                    '$and': [
                         {'did':
                              {'$regex':
                                   f'/*{key.data_type}-{key.lineage_hash}'
                               },
                          },
-                    ]},
                         {'$or': self.available_query}]}}}
 
     def _find(self, key: strax.DataKey,
@@ -206,8 +202,7 @@ class RunDB(strax.StorageFrontend):
                         'host': self.hostname,
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
-                        # TODO: duplication with metadata stuff elsewhere?
-                        'meta': {'lineage': key.lineage}
+                        'did': key_to_rucio_did(key)
                     }}})
 
             return (strax.FileSytemBackend.__name__,
