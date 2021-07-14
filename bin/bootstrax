@@ -1088,7 +1088,6 @@ def upload_file_metadata(rd):
                       'data.$.meta.straxen_version': straxen.__version__,
                       'data.$.meta.size_mb': data_size_mb,
                       'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash,
                       'data.$.meta.compressor': compressor,
                       }
                  })

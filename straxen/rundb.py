@@ -203,6 +203,8 @@ class RunDB(strax.StorageFrontend):
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
                         'did': key_to_rucio_did(key),
+                        'lineage_hash': key.lineage_hash,
+
                     }}})
 
             return (strax.FileSytemBackend.__name__,
