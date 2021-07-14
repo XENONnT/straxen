@@ -178,7 +178,7 @@ def get_resource(x: str, fmt='text'):
         f'cannot download it from anywhere.')
 
 
-# Deprecated placeholder for resource management system in the future?
+# Legacy loader for public URL files
 def resource_from_url(html: str, fmt='text'):
     """
     Return contents of file or URL html
@@ -191,10 +191,6 @@ def resource_from_url(html: str, fmt='text'):
     your lamentations shall pass over the mountains, etc.
     :return: The file opened as specified per it's format
     """
-    warn("Loading files from a URL is deprecated, and will be replaced "
-         "by loading from the database. See:"
-         "https://github.com/XENONnT/straxen/pull/311",
-         DeprecationWarning)
 
     if '://' not in html:
         raise ValueError('Can only open urls!')
@@ -216,6 +212,7 @@ def resource_from_url(html: str, fmt='text'):
             break
     else:
         print(f'Did not find {cache_fn} in cache, downloading {html}')
+        # disable bandit
         result = urllib.request.urlopen(html).read()
         is_binary = fmt not in _text_formats
         if not is_binary:
@@ -227,14 +224,12 @@ def resource_from_url(html: str, fmt='text'):
         for cache_folder in cache_folders:
             if not osp.exists(cache_folder):
                 continue
+            if os.access(cache_folder, os.W_OK):
+                continue
             cf = osp.join(cache_folder, cache_fn)
-            try:
-                with open(cf, mode=m) as f:
-                    f.write(result)
-            except Exception:
-                pass
-            else:
-                available_cf = cf
+            with open(cf, mode=m) as f:
+                f.write(result)
+            available_cf = cf
         if available_cf is None:
             raise RuntimeError(
                 f"Could not store {html} in on-disk cache,"
