@@ -283,6 +283,9 @@ def new_context(cores=args.cores,
                            strax.DataDirectory(output_folder)]
         context.storage[0].readonly = True
         context.storage[0].local_only = True
+
+    # Temporary increase the input timeout for the DAQReader since chunks might be longer
+    context._plugin_class_registry['raw_records'].input_timeout = 300
     return context
 
 
