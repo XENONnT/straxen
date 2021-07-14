@@ -1,6 +1,5 @@
 import socket
 import re
-from tqdm import tqdm
 import json
 from bson import json_util
 import os
@@ -9,28 +8,8 @@ import hashlib
 import time
 from utilix import xent_collection
 import strax
-import warnings
-
-try:
-    from rucio.client.client import Client
-    from rucio.client.rseclient import RSEClient
-    from rucio.client.replicaclient import ReplicaClient
-    from rucio.client.downloadclient import DownloadClient
-    from rucio.client.didclient import DIDClient
-    from rucio.common.exception import DataIdentifierNotFound
-
-    rucio_client = Client()
-    rse_client = RSEClient()
-    replica_client = ReplicaClient()
-    did_client = DIDClient()
-    download_client = DownloadClient()
-    RUCIO_AVAILABLE = True
-except (ModuleNotFoundError, RuntimeError):
-    warnings.warn("No installation of rucio-clients found. Can't use rucio remote backend.")
-    RUCIO_AVAILABLE = False
 
 export, __all__ = strax.exporter()
-__all__ += ['RUCIO_AVAILABLE']
 
 
 class TooMuchDataError(Exception):
@@ -49,6 +28,11 @@ class RucioFrontend(strax.StorageFrontend):
     local_rses = {'UC_DALI_USERDISK': r'.rcc.'}
     local_did_cache = None
     local_rucio_path = None
+
+    # Some attributes to set if we have the remote backend
+    _did_client = None
+    _id_not_found_error = None
+    _rse_client = None
 
     def __init__(self,
                  include_remote=False,
@@ -93,6 +77,7 @@ class RucioFrontend(strax.StorageFrontend):
             self.local_rucio_path = rucio_prefix
 
         if include_remote:
+            self._set_remote_imports()
             self.backends.append(RucioRemoteBackend(staging_dir, download_heavy=download_heavy))
 
     def __repr__(self):
@@ -103,6 +88,18 @@ class RucioFrontend(strax.StorageFrontend):
             if hasattr(self, attr) and getattr(self, attr):
                 representation += f', {attr}: {getattr(self, attr)}'
         return representation
+
+    def _set_remote_imports(self):
+        try:
+            from rucio.client.client import Client
+            from rucio.client.rseclient import RSEClient
+            from rucio.client.didclient import DIDClient
+            from rucio.common.exception import DataIdentifierNotFound
+            self._did_client = DIDClient()
+            self._id_not_found_error = DataIdentifierNotFound
+            self._rse_client = Client()
+        except (ModuleNotFoundError, RuntimeError) as e:
+            raise ImportError('Cannot work with Rucio remote backend') from e
 
     def find_several(self, keys, **kwargs):
         if not len(keys):
@@ -130,9 +127,9 @@ class RucioFrontend(strax.StorageFrontend):
             try:
                 # check if the DID exists
                 scope, name = did.split(':')
-                did_client.get_did(scope, name)
+                self._did_client.get_did(scope, name)
                 return "RucioRemoteBackend", did
-            except DataIdentifierNotFound:
+            except self._id_not_found_error:
                 pass
 
         if fuzzy_for or fuzzy_for_options:
@@ -146,7 +143,7 @@ class RucioFrontend(strax.StorageFrontend):
 
     def get_rse_prefix(self, rse):
         try:
-            rse_info = rse_client.get_rse(rse)
+            rse_info = self._rse_client.get_rse(rse)
             prefix = rse_info['protocols'][0]['prefix']
         except NameError as e:
             if self.local_rse == 'UC_DALI_USERDISK':
@@ -270,6 +267,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
+        # Do it only when we actually load rucio
+        from rucio.client.downloadclient import DownloadClient
+        self.download_client = DownloadClient()
 
     def get_metadata(self, dset_did, rse='UC_OSG_USERDISK', **kwargs):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
@@ -339,7 +339,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 for did_dict in did_dict_list:
                     did_dict['rse'] = None
             try:
-                download_client.download_dids(did_dict_list)
+                self.download_client.download_dids(did_dict_list)
                 success = True
             except KeyboardInterrupt:
                 raise
@@ -406,5 +406,7 @@ def read_md(path: str) -> json:
 
 
 def list_datasets(scope):
+    from rucio.client.client import Client
+    rucio_client = Client()
     datasets = [d for d in rucio_client.list_dids(scope, {'type': 'dataset'}, type='dataset')]
     return datasets
