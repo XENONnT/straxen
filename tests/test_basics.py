@@ -9,6 +9,7 @@ import uuid
 
 test_run_id_1T = '180423_1021'
 
+
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -40,7 +41,6 @@ class TestBasics(unittest.TestCase):
 
     def test_processing(self):
         st = self.st
-        print("Test processing")
         df = st.get_df(self.run_id, 'event_info')
 
         assert len(df) > 0
@@ -50,7 +50,6 @@ class TestBasics(unittest.TestCase):
 
     def test_get_livetime_sec(self):
         st = self.st
-        print('Test common.get_livetime_sec')
         events = st.get_array(self.run_id, 'peaks')
         straxen.get_livetime_sec(st, test_run_id_1T, things=events)
 
