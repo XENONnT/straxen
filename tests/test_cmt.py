@@ -92,14 +92,14 @@ def test_mc_wrapper_elife(run_id='009000',
     # different run-number.
     mc_elife_diff = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', cmt_id, "elife", "ONLINE", True)
+        ('cmt_run_id', cmt_id, "elife", "ONLINE", True)
     )
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `elife` above
     mc_elife_same = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', run_id, "elife", "ONLINE", True)
+        ('cmt_run_id', run_id, "elife", "ONLINE", True)
     )
 
     assert elife != mc_elife_diff
@@ -138,13 +138,13 @@ def test_mc_wrapper_gains(run_id='009000',
     # different run-number.
     mc_gains_diff = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', cmt_id, 'to_pe_model', 'ONLINE', True))
+        ('cmt_run_id', cmt_id, 'to_pe_model', 'ONLINE', True))
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `gains` above
     mc_gains_same = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', run_id, 'to_pe_model', 'ONLINE', True))
+        ('cmt_run_id', run_id, 'to_pe_model', 'ONLINE', True))
 
     assert not np.all(gains == mc_gains_diff)
     assert np.all(gains == mc_gains_same)
