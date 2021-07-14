@@ -91,13 +91,12 @@ class RucioFrontend(strax.StorageFrontend):
 
     def _set_remote_imports(self):
         try:
-            from rucio.client.client import Client
             from rucio.client.rseclient import RSEClient
             from rucio.client.didclient import DIDClient
             from rucio.common.exception import DataIdentifierNotFound
             self._did_client = DIDClient()
             self._id_not_found_error = DataIdentifierNotFound
-            self._rse_client = Client()
+            self._rse_client = RSEClient()
         except (ModuleNotFoundError, RuntimeError) as e:
             raise ImportError('Cannot work with Rucio remote backend') from e
 
