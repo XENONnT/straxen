@@ -1069,7 +1069,6 @@ def upload_file_metadata(rd):
                     chunk_mb = [chunk['nbytes'] / (1e6) for chunk in md['chunks']]
                     data_size_mb = int(np.sum(chunk_mb))
                     avg_data_size_mb = int(np.average(chunk_mb))
-                    lineage_hash = md['lineage_hash']
                     compressor = md['compressor']
                 except Exception as e:
                     log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
