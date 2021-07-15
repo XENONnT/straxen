@@ -193,7 +193,7 @@ def plot_records_matrix(context, run_id,
         bbox = inset_locator.inset_axes(ax,
                                         width="20%", height="22%",
                                         loc=cbar_loc)
-        [bbox.spines[k].set_visible(False) for k in bbox.spines]
+        _ = [bbox.spines[k].set_visible(False) for k in bbox.spines]
         bbox.patch.set_facecolor((1, 1, 1, 0.9))
         bbox.set_xticks([])
         bbox.set_yticks([])
