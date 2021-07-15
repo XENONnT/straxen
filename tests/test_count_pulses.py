@@ -18,14 +18,13 @@ def test_count_pulses_2(records):
 
 
 def _check_pulse_count(records):
-    # TODO: numba starts complaining if n_channels == 1, maybe file bug?
+    # numba starts complaining if n_channels == 1, maybe file bug?
     n_ch = records['channel'].max() + 2 if len(records) else 0
     counts = straxen.plugins.pulse_processing.count_pulses(
         records, n_channels=n_ch)
 
     assert counts.dtype == straxen.pulse_count_dtype(n_ch)
 
-    # TODO temporary hack until we fix strax issue #239
     if not len(records):
         assert len(counts) == 0
         return
