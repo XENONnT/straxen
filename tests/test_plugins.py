@@ -2,7 +2,6 @@ import tempfile
 import strax
 import numpy as np
 from immutabledict import immutabledict
-from strax.testutils import recs_per_chunk
 import straxen
 from straxen.common import pax_file, aux_repo
 ##
@@ -56,6 +55,7 @@ test_run_id_1T = '180423_1021'
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
+    strax.Option('recs_per_chunk', default=10, track=False),
     strax.Option('n_chunks', default=2, track=False,
                  help='Number of chunks for the dummy raw records we are writing here'),
     strax.Option('channel_map', track=False, type=immutabledict,
@@ -97,7 +97,7 @@ class DummyRawRecords(strax.Plugin):
         t0 = chunk_i + self.config['secret_time_offset']
         if chunk_i < self.config['n_chunks'] - 1:
             # One filled chunk
-            r = np.zeros(recs_per_chunk, self.dtype['raw_records'])
+            r = np.zeros(self.config['recs_per_chunk'], self.dtype['raw_records'])
             r['time'] = t0
             r['length'] = r['dt'] = 1
             r['channel'] = np.arange(len(r))
