@@ -170,7 +170,9 @@ def xenonnt_online(output_folder='./strax_data',
             )]
         if output_folder:
             st.storage.append(
-                strax.DataDirectory(output_folder))
+                strax.DataDirectory(output_folder,
+                                    provide_run_metadata=True,
+                                   ))
 
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
         if _forbid_creation_of is not None:
