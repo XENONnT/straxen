@@ -305,14 +305,13 @@ def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
         except (FileExistsError, PermissionError):
             pass
     for arg in args:
-        if not type(arg) == str:
+        if not isinstance(arg, str):
             raise TypeError(f'One or more args of {args} are not strings')
     return base + '_'.join(args) + fmt
 
 
 class GainsNotFoundError(Exception):
     """Fatal error if a None value is returned by the corrections"""
-    pass
 
 
 def get_cmt_local_versions(global_version):

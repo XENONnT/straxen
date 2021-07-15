@@ -56,8 +56,6 @@ def mini_analysis(requires=tuple(),
                     holoviews.extension('bokeh')
                     _hv_bokeh_initialized = True
 
-            # TODO: This is a placeholder until the corrections system
-            # is more fully developed
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
                 kwargs['to_pe'] = straxen.get_correction_from_cmt(
                     run_id,
