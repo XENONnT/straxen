@@ -6,13 +6,12 @@ import datetime
 import logging
 import time
 import os
-import os.path as osp
-import platform
 import psutil
 import json
 import importlib
 import sys
 from pprint import pprint
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -196,7 +195,8 @@ def main(args):
 
     st = setup_context(args)
 
-    logging.debug(st.available_for_run(args.run_id))
+    # Reactivate after https://github.com/XENONnT/straxen/issues/586
+    # logging.debug(st.available_for_run(args.run_id))
 
     try:
         md = st.run_metadata(args.run_id)
