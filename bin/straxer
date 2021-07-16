@@ -11,6 +11,7 @@ import platform
 import psutil
 import sys
 import json
+import importlib
 
 
 def parse_args():
@@ -122,11 +123,9 @@ def main(args):
     print(f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}")
     import straxen
     print(f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}")
-    if not args.package == 'straxen':
-        # pylint: disable=exec-used
-        exec(f'import {args.package}')
-    module = getattr(locals()[args.package], 'contexts')
-    st = getattr(module, args.context)()
+    
+    context_module = importlib.import_module(f'{args.package}.contexts')
+    st = getattr(context_module, args.context)()
     if args.diagnose_sorting:
         st.set_config(dict(diagnose_sorting=True))
     if args.context_kwargs:
