@@ -1,4 +1,4 @@
-0.19.2 / 2021-07-16
+0.19.3 / 2021-07-16
 -------------------
 - Rewrite EventBasics, set event level S1 tight coincidence (#569)
 - New nt sim context & update get correction from CMT implementation (#555)
@@ -16,6 +16,10 @@ patches and fixes
 - Fixing veto intervals time (#587)
 - Patch scada interface (#588)
 - reduce codefactor (#590)
+
+0.19.2 / 2021-06-27
+-------------------
+- do not interpolate corrections if is an array (#570)
 
 0.19.1 / 2021-06-24
 -------------------
