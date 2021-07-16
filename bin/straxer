@@ -263,7 +263,7 @@ def main(args):
                  f"peak RAM usage was around {peak_ram:.1f} MB.")
 
 
-def register_to_context(st, module:str):
+def register_to_context(st, module: str):
     if not os.path.exists(module):
         raise FileNotFoundError(f'No such file {module}')
     assert module.endswith('.py'), "only py files please!"
@@ -294,4 +294,3 @@ if __name__ == '__main__':
         print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
     else:
         sys.exit(main(args))
-
