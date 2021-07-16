@@ -23,16 +23,26 @@ def parse_args():
         type=str,
         help="ID of the run to process; usually the run name.")
     parser.add_argument(
+        '--package',
+        default='straxen',
+        help="Where to load the context from (straxen/cutax/pema)")
+    parser.add_argument(
         '--context',
         default='xenonnt_online',
-        help="Name of straxen context to use")
+        help="Name of context to use")
     parser.add_argument(
         '--target',
         default='event_info',
-        help='Target final data type to produce')
+        nargs='*',
+        help='Target final data type to produce. Can be a list for multicore mode.')
     parser.add_argument(
-        '--config_from_json', default='',
-        help='Use a json-file to load the config from')
+        '--context_kwargs',
+        type=json.loads,
+        help='Use a json-file to load the context with')
+    parser.add_argument(
+        '--config_kwargs',
+        type=json.loads,
+        help='Use a json-file to set the context to')
     parser.add_argument(
         '--from_scratch',
         action='store_true',
@@ -68,7 +78,7 @@ def parse_args():
     parser.add_argument(
         '--profile_to',
         default='',
-        help="Filename to output profile information to. If ommitted,"
+        help="Filename to output profile information to. If omitted,"
              "no profiling will occur.")
     parser.add_argument(
         '--profile_ram',
@@ -112,13 +122,20 @@ def main(args):
     print(f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}")
     import straxen
     print(f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}")
-
-    st = getattr(straxen.contexts, args.context)()
+    if not args.package == 'straxen':
+        # pylint: disable=exec-used
+        exec(f'import {args.package}')
+    module = getattr(locals()[args.package], 'contexts')
+    st = getattr(module, args.context)()
     if args.diagnose_sorting:
         st.set_config(dict(diagnose_sorting=True))
-    if args.config_from_json != '':
-        conf = json_to_dict(args.config_from_json)
-        st.set_config(conf)
+    if args.context_kwargs:
+        logging.info(f'set context kwargs {args.context_kwargs}')
+        st = getattr(module, args.context)(**args.context_kwargs)
+
+    if args.config_kwargs:
+        logging.info(f'set context options to {args.config_kwargs}')
+        st.set_config(args.config_kwargs)
     st.context_config['allow_multiprocess'] = args.multiprocess
     st.context_config['allow_shm'] = args.shm
     st.context_config['allow_lazy'] = not (args.notlazy is True)
@@ -141,10 +158,14 @@ def main(args):
         for sf in st.storage:
             # Set all others to read only
             sf.readonly = True
-        # TODO
-        #  should we check that it doesn't exist already?
-        st.storage += [
-            strax.DataDirectory('./strax_data')]
+        for sf in st.storage:
+            if hasattr(sf, 'path'):
+                if sf.path == './strax_data':
+                    break
+        else:
+            st.storage += [
+                strax.DataDirectory('./strax_data')]
+
     if args.add_folder != '':
         for sf in st.storage:
             # Set all others to read only
@@ -155,6 +176,8 @@ def main(args):
     if st.is_stored(args.run_id, args.target):
         logging.info("This data is already available.")
         return 1
+
+    logging.debug(st.available_for_run(args.run_id))
 
     try:
         md = st.run_metadata(args.run_id)
@@ -178,7 +201,10 @@ def main(args):
         kwargs = dict(
             run_id=args.run_id,
             targets=args.target,
-            max_workers=int(args.workers))
+            max_workers=int(args.workers),
+            allow_multiple=len(strax.to_str_tuple(args.target)) > 1,
+            progress_bar=False,
+        )
 
         if args.profile_to:
             with strax.profile_threaded(args.profile_to):
@@ -239,3 +265,4 @@ if __name__ == '__main__':
         print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
     else:
         sys.exit(main(args))
+
