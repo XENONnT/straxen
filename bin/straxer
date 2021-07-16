@@ -113,6 +113,7 @@ def parse_args():
         help='Also add folder to st.storage')
     return parser.parse_args()
 
+
 def setup_context(args):
     # reimport to be safe
     import strax
@@ -120,6 +121,7 @@ def setup_context(args):
 
     context_module = importlib.import_module(f'{args.package}.contexts')
     st = getattr(context_module, args.context)()
+
     if args.context_kwargs:
         logging.info(f'set context kwargs {args.context_kwargs}')
         st = getattr(context_module, args.context)(**args.context_kwargs)
