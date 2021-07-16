@@ -64,7 +64,7 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
             if hasattr(mod, '__version__'):
                 message += f'\tv{mod.__version__}'
             if hasattr(mod, '__path__'):
-                message += '\t{mod.__path__[0]}'
+                message += f'\t{mod.__path__[0]}'
         except (ModuleNotFoundError, ImportError):
             print(f'{m} is not installed')
     if return_string:
