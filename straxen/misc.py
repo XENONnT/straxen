@@ -8,6 +8,8 @@ import warnings
 import datetime
 import pytz
 from os import environ as os_environ
+from importlib import import_module
+
 
 export, __all__ = strax.exporter()
 from configparser import NoSectionError
@@ -57,10 +59,12 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
     message += f"\npython\tv{py_version}"
     for m in strax.to_str_tuple(modules):
         try:
-            # pylint: disable=exec-used
-            exec(f'import {m}')
-            # pylint: disable=eval-used
-            message += f'\n{m}\tv{eval(m).__version__}\t{eval(m).__path__[0]}'
+            mod = import_module(m)
+            message += f'\n{m}'
+            if hasattr(mod, '__version__'):
+                message += f'\tv{mod.__version__}'
+            if hasattr(mod, '__path__'):
+                message += f'\t{mod.__path__[0]}'
         except (ModuleNotFoundError, ImportError):
             print(f'{m} is not installed')
     if return_string:
