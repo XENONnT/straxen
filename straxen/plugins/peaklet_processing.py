@@ -92,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.4.4'
+    __version__ = '0.4.0'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -173,7 +173,7 @@ class Peaklets(strax.Plugin):
                                                                      self.config['peak_right_extension']),
                                                                     len(self.to_pe))
 
-
+        hits = np.sort(hits, order=('record_i', 'time'))
         strax.sum_waveform(peaklets, hits, r, self.to_pe)
 
         strax.compute_widths(peaklets)
