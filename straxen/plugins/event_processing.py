@@ -133,7 +133,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.0.0'
+    __version__ = '1.0.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -334,8 +334,10 @@ class EventBasics(strax.Plugin):
             result['drift_time'] = largest_s2s[0]['center_time'] - largest_s1s[0]['center_time']
             if len(largest_s1s) > 1:
                 result['alt_s1_interaction_drift_time'] = largest_s2s[0]['center_time'] - largest_s1s[1]['center_time']
+                result['alt_s1_delay'] = largest_s1s[1]['center_time'] - largest_s1s[0]['center_time']
             if len(largest_s2s) > 1:
                 result['alt_s2_interaction_drift_time'] = largest_s2s[1]['center_time'] - largest_s1s[0]['center_time']
+                result['alt_s2_delay'] = largest_s2s[1]['center_time'] - largest_s2s[0]['center_time']
 
         # areas before main S2
         if len(largest_s2s):
