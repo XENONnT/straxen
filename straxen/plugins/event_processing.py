@@ -133,7 +133,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.0.1'
+    __version__ = '1.1.0'
 
     depends_on = ('events',
                   'peak_basics',
