@@ -166,15 +166,22 @@ class Peaklets(strax.Plugin):
         # Define regions outside of peaks such that _find_hit_integration_bounds
         # is not extended beyond a peak.
         outside_peaks = self.create_outside_peaks_region(peaklets, start, end)
-        strax.processing.peak_building._find_hit_integration_bounds(hits, 
-                                                                    outside_peaks, 
-                                                                    records, 
-                                                                    (self.config['peak_left_extension'],
-                                                                     self.config['peak_right_extension']),
-                                                                    len(self.to_pe))
+        strax.find_hit_integration_bounds(hits,
+                                          outside_peaks,
+                                          records,
+                                          (self.config['peak_left_extension'],
+                                           self.config['peak_right_extension']),
+                                           len(self.to_pe),
+                                          allow_bounds_beyond_records=True,
+                                          )
 
-        hits = np.sort(hits, order=('record_i', 'time'))
-        strax.sum_waveform(peaklets, hits, r, self.to_pe)
+        # Updated time and length of hits and sort again:
+        hits['time'] = hits['time'] - (hits['left_integration'] - hits['left']) * hits['dt']
+        hits['length'] = (hits['right_integration'] - hits['left_integration'])
+        hits = strax.sort_by_time(hits)
+        rlinks = strax.record_links(records)
+
+        strax.sum_waveform(peaklets, hits, r, rlinks, self.to_pe)
 
         strax.compute_widths(peaklets)
 
@@ -182,7 +189,7 @@ class Peaklets(strax.Plugin):
         # see https://github.com/XENONnT/straxen/pull/45
         # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
-            peaklets, hits, r, self.to_pe,
+            peaklets, hits, r, rlinks, self.to_pe,
             algorithm='natural_breaks',
             threshold=self.natural_breaks_threshold,
             split_low=True,
