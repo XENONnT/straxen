@@ -233,7 +233,6 @@ class Peaklets(strax.Plugin):
                     lone_hits=lone_hits)
 
     def natural_breaks_threshold(self, peaks):
-        # TODO avoid duplication with PeakBasics somehow?
         rise_time = -peaks['area_decile_from_midpoint'][:, 1]
 
         # This is ~1 for an clean S2, ~0 for a clean S1,

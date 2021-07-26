@@ -19,7 +19,9 @@
 
 # -- Project information -----------------------------------------------------
 import straxen
+import sys
 project = 'straxen'
+# pylint: disable=redefined-builtin
 copyright = '2018, straxen contributors and the XENON collaboration'
 author = 'straxen contributors and the XENON collaboration'
 
@@ -46,7 +48,6 @@ extensions = [
 ]
 
 # ADDED MANUALLY
-import sys
 from unittest.mock import MagicMock
 
 class Mock(MagicMock):

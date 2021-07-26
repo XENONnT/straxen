@@ -96,7 +96,7 @@ class InterpolatingMap:
         self.data = data
 
         # Decompress / dequantize the map
-        # TODO: support multiple map names
+        # We should support multiple map names!
         if 'compressed' in self.data:
             compressor, dtype, shape = self.data['compressed']
             self.data['map'] = np.frombuffer(

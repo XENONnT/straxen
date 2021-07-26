@@ -5,7 +5,7 @@ import straxen
 from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
 from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
-from straxen.get_corrections import get_correction_from_cmt
+from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
@@ -133,7 +133,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.0.0'
+    __version__ = '1.1.0'
 
     depends_on = ('events',
                   'peak_basics',
@@ -334,8 +334,10 @@ class EventBasics(strax.Plugin):
             result['drift_time'] = largest_s2s[0]['center_time'] - largest_s1s[0]['center_time']
             if len(largest_s1s) > 1:
                 result['alt_s1_interaction_drift_time'] = largest_s2s[0]['center_time'] - largest_s1s[1]['center_time']
+                result['alt_s1_delay'] = largest_s1s[1]['center_time'] - largest_s1s[0]['center_time']
             if len(largest_s2s) > 1:
                 result['alt_s2_interaction_drift_time'] = largest_s2s[1]['center_time'] - largest_s1s[0]['center_time']
+                result['alt_s2_delay'] = largest_s2s[1]['center_time'] - largest_s2s[0]['center_time']
 
         # areas before main S2
         if len(largest_s2s):
@@ -467,20 +469,21 @@ class EventPositions(strax.Plugin):
 
     def setup(self):
 
-        is_CMT = isinstance(self.config['fdc_map'], tuple)
         self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
-        if is_CMT:
-            config_name, cmt_version, is_nt = self.config['fdc_map']
-            map_algo = f'{config_name}_{self.config["default_reconstruction_algorithm"]}'
-            cmt_conf = map_algo, cmt_version, is_nt
-            self.map = InterpolatingMap(
-                get_resource(get_correction_from_cmt(self.run_id, cmt_conf), fmt='binary'))
-            self.map.scale_coordinates([1., 1., -self.electron_drift_velocity])
-
-        elif isinstance(self.config['fdc_map'], str):
+        
+        if isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
                 get_resource(self.config['fdc_map'], fmt='binary'))
+
+        elif is_cmt_option(self.config['fdc_map']):
+            self.map = InterpolatingMap(
+                get_cmt_resource(self.run_id,
+                                 tuple(['suffix',
+                                        self.config['default_reconstruction_algorithm'],
+                                        *self.config['fdc_map']]),
+                                 fmt='binary'))
+            self.map.scale_coordinates([1., 1., - self.electron_drift_velocity])
 
         else:
             raise NotImplementedError('FDC map format not understood.')
@@ -572,19 +575,24 @@ class CorrectedAreas(strax.Plugin):
              ] + strax.time_fields
 
     def setup(self):
-        is_CMT = isinstance(self.config['s1_xyz_correction_map'], tuple)
-        if is_CMT:
-            config_name, cmt_version, is_nt = self.config['s1_xyz_correction_map']
-            map_algo = f'{config_name}_{self.config["default_reconstruction_algorithm"]}'
-            cmt_conf = map_algo, cmt_version, is_nt
-            self.s1_map = InterpolatingMap(get_resource(get_correction_from_cmt(self.run_id, cmt_conf)))
-        else:
-            self.s1_map = InterpolatingMap(
-                get_resource(self.config['s1_xyz_correction_map']))
+        self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
+
+        if isinstance(self.config['s1_xyz_correction_map'], str):
+            self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
+        if isinstance(self.config['s2_xy_correction_map'], str):
+            self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
+
+        self.s1_map = InterpolatingMap(
+            get_cmt_resource(self.run_id,
+                             tuple(['suffix',
+                                    self.config['default_reconstruction_algorithm'],
+                                    *self.config['s1_xyz_correction_map']]),
+                             fmt='text'))
 
         self.s2_map = InterpolatingMap(
-                get_resource(get_correction_from_cmt(self.run_id, self.config['s2_xy_correction_map'])))
-        self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
+            get_cmt_resource(self.run_id,
+                             tuple([*self.config['s2_xy_correction_map']]),
+                             fmt='text'))
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.

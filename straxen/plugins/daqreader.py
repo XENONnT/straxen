@@ -101,7 +101,8 @@ class DAQReader(strax.Plugin):
     )
     compressor = 'lz4'
     __version__ = '0.0.0'
-
+    input_timeout = 300
+    
     def infer_dtype(self):
         return {
             d: strax.raw_record_dtype(
