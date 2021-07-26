@@ -219,8 +219,6 @@ def xenonnt_led(**kwargs):
     st.register([straxen.DAQReader, straxen.LEDCalibration])
     return st
 
-
-
 def xenonnt_simulation(
                 output_folder                = './strax_data',
                 cmt_run_id_sim               = None,
@@ -233,48 +231,46 @@ def xenonnt_simulation(
                 cmt_option_overwrite_proc    = immutabledict(),
                 _forbid_creation_of          = None,
                 _config_overlap              = immutabledict(
-                                drift_time_gate='electron_drift_time_gate',
-                                drift_velocity_liquid='electron_drift_velocity',
-                                electron_lifetime_liquid='elife_conf'),
+                            drift_time_gate='electron_drift_time_gate',
+                            drift_velocity_liquid='electron_drift_velocity',
+                            electron_lifetime_liquid='elife_conf'),
                **kwargs):
     """
-    
-    The most generic context that allows for setting full divergent 
+    The most generic context that allows for setting full divergent
     settings for simulation purposes
-    
-    It makes full divergent setup, allowing to set detector simulation 
-    part (i.e. for wfsim up to truth and  raw_records). Parameters _sim 
-    refer to detector simulation parameters. 
-    
-    Arguments having _proc in their name refer to detector parameters that 
-    are used for processing of simulations as done to the real datector 
-    data. This means starting from already existing raw_records and finishing 
+
+    It makes full divergent setup, allowing to set detector simulation
+    part (i.e. for wfsim up to truth and  raw_records). Parameters _sim
+    refer to detector simulation parameters.
+
+    Arguments having _proc in their name refer to detector parameters that
+    are used for processing of simulations as done to the real datector
+    data. This means starting from already existing raw_records and finishing
     with higher level data, such as peaks, events etc.
-    
+
     CMT options can also be overwritten via fax config file.
     :param output_folder: Output folder for strax data.
-    :param cmt_run_id_sim: Run id for detector parameters from CMT to be used in 
-        for creation of raw_records. 
-    :param cmt_run_id_proc: Run id for detector parameters from CMT to be used in 
+    :param cmt_run_id_sim: Run id for detector parameters from CMT to be used in
+        for creation of raw_records.
+    :param cmt_run_id_proc: Run id for detector parameters from CMT to be used in
         for processing from raw_records to higher level data.
     :param cmt_version: Global version for corrections to be loaded.
     :param fax_config: Fax config file to use.
-    :param overwrite_from_fax_file_sim: If true sets detector simulation 
+    :param overwrite_from_fax_file_sim: If true sets detector simulation
         parameters for truth/raw_records from from fax_config file istead of CMT
-    :param overwrite_from_fax_file_proc:  If true sets detector processing 
-        parameters after raw_records(peaklets/events/etc) from from fax_config 
+    :param overwrite_from_fax_file_proc:  If true sets detector processing
+        parameters after raw_records(peaklets/events/etc) from from fax_config
         file istead of CMT
-    :param cmt_option_overwrite_sim: Dictionary to overwrite CMT settings for 
-        the detector simulation part. 
-    :param cmt_option_overwrite_proc: Dictionary to overwrite CMT settings for 
-        the data processing part. 
+    :param cmt_option_overwrite_sim: Dictionary to overwrite CMT settings for
+        the detector simulation part.
+    :param cmt_option_overwrite_proc: Dictionary to overwrite CMT settings for
+        the data processing part.
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
         being written (e.g. 'raw_records' for read only simulation context).
     :param _config_overlap: Dictionary of options to overwrite. Keys
         must be simulation config keys, values must be valid CMT option keys.
     :param kwargs: Additional kwargs taken by strax.Context.
     :return: strax.Context instance
-    
     """
     import wfsim
     st = strax.Context(
@@ -286,10 +282,10 @@ def xenonnt_simulation(
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
     st.apply_cmt_version(f'global_{cmt_version}')
-    
+
     if _forbid_creation_of is not None:
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
-    
+
     # doing sanity checks for cmt run ids for simulation and processing
     if not (cmt_run_id_sim is None) and not (cmt_run_id_proc is None):
         if not (cmt_run_id_sim==cmt_run_id_proc):
@@ -302,31 +298,31 @@ def xenonnt_simulation(
         cmt_run_id_proc=cmt_run_id_sim
     else:
         raise RuntimeError("Trying to set both cmt_run_id_sim and cmt_run_id_proc to None")
-    
+
     # Replace default cmt options with cmt_run_id tag + cmt run id
-    cmt_options = straxen.get_corrections.get_cmt_options(st)    
-    
+    cmt_options = straxen.get_corrections.get_cmt_options(st)
+
     # First, fix gain model for simulation
-    st.set_config({'gain_model_mc': tuple(['cmt_run_id', 
-                                           cmt_run_id_sim, 
+    st.set_config({'gain_model_mc': tuple(['cmt_run_id',
+                                           cmt_run_id_sim,
                                            *cmt_options['gain_model']])})
     fax_config_override_from_cmt = dict()
     for fax_field, cmt_field in _config_overlap.items():
         fax_config_override_from_cmt[fax_field] = tuple(
-                                                    ['cmt_run_id', 
-                                                     cmt_run_id_sim, 
+                                                    ['cmt_run_id',
+                                                     cmt_run_id_sim,
                                                      *cmt_options[cmt_field]]
                                                     )
     st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
-    
+
     # and all other parameters for processing
     for option in cmt_options:
         st.config[option] = tuple(['cmt_run_id', cmt_run_id_proc, *cmt_options[option]])
-    
+
     # Done with "default" usage, now to overwrites from file
     #
     # Take fax config and put into context option
-    if (overwrite_from_fax_file_proc or 
+    if (overwrite_from_fax_file_proc or
                 overwrite_from_fax_file_sim):
         fax_config = straxen.get_resource(fax_config, fmt='json')
         for fax_field, cmt_field in _config_overlap.items():
@@ -335,9 +331,9 @@ def xenonnt_simulation(
                     cmt_options[cmt_field][0] + '_constant',fax_config[fax_field]])
             if overwrite_from_fax_file_sim:
                 st.config['fax_config_override_from_cmt'][fax_field] = tuple(
-                    [cmt_options[cmt_field][0] + '_constant',fax_config[fax_field]])   
-                
-    # And as the last step - manual overrrides, since they have the highest priority 
+                    [cmt_options[cmt_field][0] + '_constant',fax_config[fax_field]])
+
+    # And as the last step - manual overrrides, since they have the highest priority
     # User customized for simulation
     for option in cmt_option_overwrite_sim:
         if option not in cmt_options:
@@ -345,9 +341,10 @@ def xenonnt_simulation(
                              'you should just use set config')
         if not option in _config_overlap.values():
             raise ValueError(f'Overwrite option {option} does not have mapping from '
-                              'CMT to fax config! ')      
+                              'CMT to fax config! ')
         for fax_key,cmt_key in _config_overlap.items():
-            if cmt_key==option: continue
+            if cmt_key==option:
+                continue
         _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
         st.config['fax_config_override_from_cmt'][fax_key] = (
                                                     cmt_options[option][_name_index] + '_constant',
@@ -364,7 +361,7 @@ def xenonnt_simulation(
         del(_name_index)
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
-    
+
     return(st)
 
 
