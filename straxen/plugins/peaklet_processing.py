@@ -273,18 +273,27 @@ class Peaklets(strax.Plugin):
                 p['time'] = start
             if strax.endtime(p) > end:
                 p['length'] = (end - p['time']) // p['dt']
-                
+
     @staticmethod
     def create_outside_peaks_region(peaklets, start, end):
-        outside_peaks = np.zeros(len(peaklets) + 1, 
+        """
+        Creates time intervals which are outside peaks.
+
+        :param peaklets: Peaklets for which intervals should be computed.
+        :param start: Chunk start
+        :param end: Chunk end
+        :return: array of strax.time_fields dtype.
+        """
+        outside_peaks = np.zeros(len(peaklets) + 1,
                                  dtype=strax.time_fields)
         outside_peaks[0]['time'] = start
         outside_peaks[0]['endtime'] = peaklets[0]['time']
         outside_peaks[1:-1]['time'] = strax.endtime(peaklets[:-1])
         outside_peaks[1:-1]['endtime'] = peaklets['time'][1:]
         outside_peaks[-1]['time'] = strax.endtime(peaklets[-1])
-        outside_peaks[-1]['endtime'] = end 
+        outside_peaks[-1]['endtime'] = end
         return outside_peaks
+
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def peak_saturation_correction(records, rlinks, peaks, hits, to_pe,
