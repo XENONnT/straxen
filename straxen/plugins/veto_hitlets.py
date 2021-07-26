@@ -123,6 +123,8 @@ class nVETOHitlets(strax.Plugin):
         temp_hitlets = strax.split_peaks(temp_hitlets,
                                          records_nv,
                                          self.to_pe,
+                                         n_top_pmts = 0 , 
+                                         store_top_waveform = False,
                                          data_type='hitlets',
                                          algorithm='local_minimum',
                                          min_height=self.config['min_split_nv'],
