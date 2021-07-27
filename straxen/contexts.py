@@ -220,17 +220,17 @@ def xenonnt_led(**kwargs):
     return st
 
 def xenonnt_simulation(
-                output_folder                = './strax_data',
-                cmt_run_id_sim               = None,
-                cmt_run_id_proc              = None,
-                cmt_version                  = 'v3',
-                fax_config                   = 'fax_config_nt_design.json',
-                overwrite_from_fax_file_sim  = False,
-                overwrite_from_fax_file_proc = False,
-                cmt_option_overwrite_sim     = immutabledict(),
-                cmt_option_overwrite_proc    = immutabledict(),
-                _forbid_creation_of          = None,
-                _config_overlap              = immutabledict(
+                output_folder='./strax_data',
+                cmt_run_id_sim=None,
+                cmt_run_id_proc=None,
+                cmt_version='v3',
+                fax_config='fax_config_nt_design.json',
+                overwrite_from_fax_file_sim=False,
+                overwrite_from_fax_file_proc=False,
+                cmt_option_overwrite_sim=immutabledict(),
+                cmt_option_overwrite_proc=immutabledict(),
+                _forbid_creation_of=None,
+                _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
                             electron_lifetime_liquid='elife_conf'),
@@ -287,51 +287,45 @@ def xenonnt_simulation(
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
     # doing sanity checks for cmt run ids for simulation and processing
-    if not (cmt_run_id_sim is None) and not (cmt_run_id_proc is None):
-        if not (cmt_run_id_sim==cmt_run_id_proc):
-            print("INFO : divergent CMT runs for simulation and processing")
-            print("    cmt_run_id_sim".ljust(25), cmt_run_id_sim)
-            print("    cmt_run_id_proc".ljust(25), cmt_run_id_proc)
-    elif (cmt_run_id_sim is None) and not (cmt_run_id_proc is None):
-        cmt_run_id_sim=cmt_run_id_proc
-    elif not (cmt_run_id_sim is None) and (cmt_run_id_proc is None):
-        cmt_run_id_proc=cmt_run_id_sim
+    if (not cmt_run_id_sim ) and (not cmt_run_id_proc ):
+        raise RuntimeError("Setting both cmt_run_id_sim and cmt_run_id_proc to None")
+    if (cmt_run_id_sim and cmt_run_id_proc ) and (cmt_run_id_sim!=cmt_run_id_proc):
+        print("INFO : divergent CMT runs for simulation and processing")
+        print("    cmt_run_id_sim".ljust(25), cmt_run_id_sim)
+        print("    cmt_run_id_proc".ljust(25), cmt_run_id_proc)
     else:
-        raise RuntimeError("Trying to set both cmt_run_id_sim and cmt_run_id_proc to None")
+        cmt_id = cmt_run_id_sim  or cmt_run_id_proc
+        cmt_run_id_sim  = cmt_id
+        cmt_run_id_proc = cmt_id
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
     cmt_options = straxen.get_corrections.get_cmt_options(st)
 
     # First, fix gain model for simulation
-    st.set_config({'gain_model_mc': tuple(['cmt_run_id',
-                                           cmt_run_id_sim,
-                                           *cmt_options['gain_model']])})
+    st.set_config({'gain_model_mc': 
+                        ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
     fax_config_override_from_cmt = dict()
     for fax_field, cmt_field in _config_overlap.items():
-        fax_config_override_from_cmt[fax_field] = tuple(
-                                                    ['cmt_run_id',
-                                                     cmt_run_id_sim,
-                                                     *cmt_options[cmt_field]]
-                                                    )
+        fax_config_override_from_cmt[fax_field] = ('cmt_run_id', cmt_run_id_sim,
+                                                   *cmt_options[cmt_field])
     st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
 
     # and all other parameters for processing
     for option in cmt_options:
-        st.config[option] = tuple(['cmt_run_id', cmt_run_id_proc, *cmt_options[option]])
+        st.config[option] = ('cmt_run_id', cmt_run_id_proc, *cmt_options[option])
 
     # Done with "default" usage, now to overwrites from file
     #
     # Take fax config and put into context option
-    if (overwrite_from_fax_file_proc or
-                overwrite_from_fax_file_sim):
+    if overwrite_from_fax_file_proc or overwrite_from_fax_file_sim:
         fax_config = straxen.get_resource(fax_config, fmt='json')
         for fax_field, cmt_field in _config_overlap.items():
             if overwrite_from_fax_file_proc:
-                st.config[cmt_field] = tuple([
-                    cmt_options[cmt_field][0] + '_constant',fax_config[fax_field]])
+                st.config[cmt_field] = ( cmt_options[cmt_field][0] + '_constant',
+                                         fax_config[fax_field])
             if overwrite_from_fax_file_sim:
-                st.config['fax_config_override_from_cmt'][fax_field] = tuple(
-                    [cmt_options[cmt_field][0] + '_constant',fax_config[fax_field]])
+                st.config['fax_config_override_from_cmt'][fax_field] = (
+                         cmt_options[cmt_field][0] + '_constant',fax_config[fax_field])
 
     # And as the last step - manual overrrides, since they have the highest priority
     # User customized for simulation
@@ -347,9 +341,8 @@ def xenonnt_simulation(
                 continue
         _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
         st.config['fax_config_override_from_cmt'][fax_key] = (
-                                                    cmt_options[option][_name_index] + '_constant',
-                                                    cmt_option_overwrite_sim[option]
-                                                             )
+                                    cmt_options[option][_name_index] + '_constant',
+                                    cmt_option_overwrite_sim[option])
         del(fax_key,cmt_key,_name_index)
     # User customized for simulation
     for option in cmt_option_overwrite_proc:
@@ -357,12 +350,13 @@ def xenonnt_simulation(
             raise ValueError(f'Overwrite option {option} is not using CMT by default '
                              'you should just use set config')
         _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
-        st.config[option] = (cmt_options[option][_name_index] + '_constant', cmt_option_overwrite_proc[option])
+        st.config[option] = (cmt_options[option][_name_index] + '_constant', 
+                             cmt_option_overwrite_proc[option])
         del(_name_index)
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
 
-    return(st)
+    return st
 
 
 ##
