@@ -363,7 +363,6 @@ def xenonnt_simulation(
 
     return st
 
-
 ##
 # XENON1T
 ##
