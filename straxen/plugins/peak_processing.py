@@ -327,7 +327,8 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
 
 class PeakVetoTagging(strax.Plugin):
-    """Plugin which tags S1 peaks according to the muon and neutron-veto.
+    """
+    Plugin which tags S1 peaks according to  muon and neutron-veto.
 
         * untagged: 0
         * neutron-veto: 1
@@ -339,10 +340,10 @@ class PeakVetoTagging(strax.Plugin):
     provides = ('peak_veto_tags')
     save_when = strax.SaveWhen.NEVER
 
-    dtype = [('veto_tag',
-              np.int8,
-              'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3')] + \
-            strax.time_fields
+    dtype = strax.time_fields + \
+            [('veto_tag', np.int8,
+              'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3'),
+             ('time_to_closest_veto', np.int64)]
 
     def compute(self, peaks, veto_nv, veto_mv):
         touching_mv = strax.touching_windows(peaks, veto_mv)
@@ -354,9 +355,14 @@ class PeakVetoTagging(strax.Plugin):
 
         tags[peaks['type'] == 2] = 0
 
+        vetos = np.concatenate(veto_nv, veto_mv)
+        vetos = strax.sort_by_time(vetos)
+        dt = get_time_to_closest_veto(peaks, vetos)
+
         return {'time': peaks['time'],
                 'endtime': strax.endtime(peaks),
                 'veto_tag': tags,
+                'time_to_closest_veto': dt,
                 }
 
 
@@ -367,3 +373,33 @@ def tag_peaks(tags, touching_windows, tag_number):
         pre_tags[start:end] = tag_number
     tags += pre_tags
     return tags
+
+
+def get_time_to_closest_veto(peaks, veto_intervals):
+    """
+    Computes time difference between peak and closest veto interval.
+    """
+    vetos = np.zeros(len(veto_intervals)+2, np.int64)
+    vetos[1:-1] = veto_intervals['time']
+    vetos[-1] = 9223372036854775807  # 64 bit infinity
+    return _get_time_to_closest_veto(peaks, vetos)
+
+
+@numba.njit(cache=True, nogil=True)
+def _get_time_to_closest_veto(peaks, vetos):
+    res = np.zeros(len(peaks), dtype=np.in64)
+    veto_index = 0
+    for ind, p in enumerate(peaks):
+        for veto_index in range(veto_index, len(vetos)):
+            dt_current_veto = np.abs(vetos[veto_index] - p['time'])
+            dt_next_veto = np.abs(vetos[veto_index+1] - p['time'])
+
+            # Next veto is closer so we have to repeat
+            if dt_current_veto >= dt_next_veto:
+                veto_index += 1
+                continue
+
+            res[ind] = dt_current_veto
+
+    return res
+
