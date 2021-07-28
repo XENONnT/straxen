@@ -336,7 +336,7 @@ class PeakVetoTagging(strax.Plugin):
         * both vetos: 3
     """
     __version__ = '0.0.1'
-    depends_on = ('peak_basics', 'veto_nv', 'veto_mv')
+    depends_on = ('peak_basics', 'veto_regions_nv', 'veto_regions_mv')
     provides = ('peak_veto_tags')
     save_when = strax.SaveWhen.NEVER
 
@@ -345,9 +345,9 @@ class PeakVetoTagging(strax.Plugin):
               'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3'),
              ('time_to_closest_veto', np.int64)]
 
-    def compute(self, peaks, veto_nv, veto_mv):
-        touching_mv = strax.touching_windows(peaks, veto_mv)
-        touching_nv = strax.touching_windows(peaks, veto_nv)
+    def compute(self, peaks, veto_regions_nv, veto_regions_mv):
+        touching_mv = strax.touching_windows(peaks, veto_regions_mv)
+        touching_nv = strax.touching_windows(peaks, veto_regions_nv)
 
         tags = np.zeros(len(peaks))
         tags = tag_peaks(tags, touching_nv, 1)
@@ -355,8 +355,8 @@ class PeakVetoTagging(strax.Plugin):
 
         tags[peaks['type'] == 2] = 0
 
-        vetos = np.concatenate(veto_nv, veto_mv)
-        vetos = strax.sort_by_time(vetos)
+        vetos = np.concatenate([veto_regions_nv, veto_regions_mv])
+        vetos = np.sort(vetos, order='time')
         dt = get_time_to_closest_veto(peaks, vetos)
 
         return {'time': peaks['time'],
@@ -387,7 +387,7 @@ def get_time_to_closest_veto(peaks, veto_intervals):
 
 @numba.njit(cache=True, nogil=True)
 def _get_time_to_closest_veto(peaks, vetos):
-    res = np.zeros(len(peaks), dtype=np.in64)
+    res = np.zeros(len(peaks), dtype=np.int64)
     veto_index = 0
     for ind, p in enumerate(peaks):
         for veto_index in range(veto_index, len(vetos)):
@@ -398,8 +398,9 @@ def _get_time_to_closest_veto(peaks, vetos):
             if dt_current_veto >= dt_next_veto:
                 veto_index += 1
                 continue
-
+            
             res[ind] = dt_current_veto
+            break
 
     return res
 
