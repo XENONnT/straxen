@@ -248,11 +248,16 @@ def xenonnt_simulation(
     data. This means starting from already existing raw_records and finishing
     with higher level data, such as peaks, events etc.
 
+    If only one cmt_run_id is given, the second one will be set automatically,
+    resulting in CMT match between simulation and processing. However, detector
+    parameters can be still overwritten from fax file or manually using cmt
+    config overwrite options.
+
     CMT options can also be overwritten via fax config file.
     :param output_folder: Output folder for strax data.
-    :param cmt_run_id_sim: Run id for detector parameters from CMT to be used in
+    :param cmt_run_id_sim: Run id for detector parameters from CMT to be used
         for creation of raw_records.
-    :param cmt_run_id_proc: Run id for detector parameters from CMT to be used in
+    :param cmt_run_id_proc: Run id for detector parameters from CMT to be used
         for processing from raw_records to higher level data.
     :param cmt_version: Global version for corrections to be loaded.
     :param fax_config: Fax config file to use.
@@ -288,7 +293,8 @@ def xenonnt_simulation(
 
     # doing sanity checks for cmt run ids for simulation and processing
     if (not cmt_run_id_sim ) and (not cmt_run_id_proc ):
-        raise RuntimeError("Setting both cmt_run_id_sim and cmt_run_id_proc to None")
+        raise RuntimeError("cmt_run_id_sim and cmt_run_id_proc are None. "
+                           "You have to specify at least one CMT run id. ")
     if (cmt_run_id_sim and cmt_run_id_proc ) and (cmt_run_id_sim!=cmt_run_id_proc):
         print("INFO : divergent CMT runs for simulation and processing")
         print("    cmt_run_id_sim".ljust(25), cmt_run_id_sim)
