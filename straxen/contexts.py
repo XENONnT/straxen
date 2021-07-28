@@ -344,7 +344,7 @@ def xenonnt_simulation(
                               'CMT to fax config! ')
         for fax_key,cmt_key in _config_overlap.items():
             if cmt_key==option:
-                continue
+                break
         _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
         st.config['fax_config_override_from_cmt'][fax_key] = (
                                     cmt_options[option][_name_index] + '_constant',
