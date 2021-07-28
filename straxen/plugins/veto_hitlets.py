@@ -188,7 +188,7 @@ def remove_switched_off_channels(hits, to_pe):
         'entropy_template_mv',
         default='flat', track=True,
         child_option=True, parent_option_name='entropy_template_nv',
-        help='Template data is compared with in conditional entropy. Can be either "flat" or an '
+        help='Template data is compared with in conditional entropy. Can be either "flat" or a '
              'template array.'),
     strax.Option(
         'entropy_square_data_mv',
