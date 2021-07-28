@@ -348,7 +348,8 @@ def xenonnt_simulation(
                 st.config['fax_config_override_from_cmt'][fax_key] = (
                                             cmt_options[option][_name_index] + '_constant',
                                             cmt_option_overwrite_sim[option])
-        del(fax_key,cmt_key,_name_index)
+                del(_name_index)
+            del(fax_key, cmt_key)
     # User customized for simulation
     for option in cmt_option_overwrite_proc:
         if option not in cmt_options:
