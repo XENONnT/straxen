@@ -7,12 +7,10 @@ import sys
 import warnings
 import datetime
 import pytz
+from os import environ as os_environ
+from importlib import import_module
 
-try:
-    import ipywidgets as widgets
-    from ipywidgets import Layout
-except ModuleNotFoundError:
-    pass
+
 export, __all__ = strax.exporter()
 from configparser import NoSectionError
 
@@ -44,7 +42,7 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
 
 
 @export
-def print_versions(modules=('strax', 'straxen'), return_string=False):
+def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
     """
     Print versions of modules installed.
 
@@ -61,10 +59,12 @@ def print_versions(modules=('strax', 'straxen'), return_string=False):
     message += f"\npython\tv{py_version}"
     for m in strax.to_str_tuple(modules):
         try:
-            # pylint: disable=exec-used
-            exec(f'import {m}')
-            # pylint: disable=eval-used
-            message += f'\n{m}\tv{eval(m).__version__}\t{eval(m).__path__[0]}'
+            mod = import_module(m)
+            message += f'\n{m}'
+            if hasattr(mod, '__version__'):
+                message += f'\tv{mod.__version__}'
+            if hasattr(mod, '__path__'):
+                message += f'\t{mod.__path__[0]}'
         except (ModuleNotFoundError, ImportError):
             print(f'{m} is not installed')
     if return_string:
@@ -73,7 +73,7 @@ def print_versions(modules=('strax', 'straxen'), return_string=False):
 
 
 @export
-def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
+def utilix_is_configured(header='RunDB', section='xent_database') -> bool:
     """
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?
@@ -106,6 +106,7 @@ class TimeWidgets:
         utcend = datetime.datetime.utcnow()
         deltat = datetime.timedelta(minutes=60)
         utcstart = utcend - deltat
+        import ipywidgets as widgets
 
         self._start_widget = self._create_date_and_time_widget(utcstart, 'Start')
         self._end_widget = self._create_date_and_time_widget(utcend, 'End')
@@ -142,6 +143,8 @@ class TimeWidgets:
 
     @staticmethod
     def _create_date_and_time_widget(date_and_time, widget_describtion):
+        import ipywidgets as widgets
+        from ipywidgets import Layout
         date = datetime.date(date_and_time.year,
                              date_and_time.month,
                              date_and_time.day)
@@ -164,6 +167,7 @@ class TimeWidgets:
 
     @staticmethod
     def _create_time_zone_widget():
+        import ipywidgets as widgets
         _time_zone_widget = widgets.Dropdown(options=[('CET', 0), ('UTC', 1)],
                                              value=0,
                                              description='Time Zone:',
@@ -211,3 +215,9 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
+
+
+@export
+def _is_on_pytest():
+    """Check if we are on a pytest"""
+    return 'PYTEST_CURRENT_TEST' in os_environ

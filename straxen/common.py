@@ -178,7 +178,7 @@ def get_resource(x: str, fmt='text'):
         f'cannot download it from anywhere.')
 
 
-# Deprecated placeholder for resource management system in the future?
+# Legacy loader for public URL files
 def resource_from_url(html: str, fmt='text'):
     """
     Return contents of file or URL html
@@ -191,10 +191,6 @@ def resource_from_url(html: str, fmt='text'):
     your lamentations shall pass over the mountains, etc.
     :return: The file opened as specified per it's format
     """
-    warn("Loading files from a URL is deprecated, and will be replaced "
-         "by loading from the database. See:"
-         "https://github.com/XENONnT/straxen/pull/311",
-         DeprecationWarning)
 
     if '://' not in html:
         raise ValueError('Can only open urls!')
@@ -216,6 +212,7 @@ def resource_from_url(html: str, fmt='text'):
             break
     else:
         print(f'Did not find {cache_fn} in cache, downloading {html}')
+        # disable bandit
         result = urllib.request.urlopen(html).read()
         is_binary = fmt not in _text_formats
         if not is_binary:
@@ -227,14 +224,12 @@ def resource_from_url(html: str, fmt='text'):
         for cache_folder in cache_folders:
             if not osp.exists(cache_folder):
                 continue
+            if not os.access(cache_folder, os.W_OK):
+                continue
             cf = osp.join(cache_folder, cache_fn)
-            try:
-                with open(cf, mode=m) as f:
-                    f.write(result)
-            except Exception:
-                pass
-            else:
-                available_cf = cf
+            with open(cf, mode=m) as f:
+                f.write(result)
+            available_cf = cf
         if available_cf is None:
             raise RuntimeError(
                 f"Could not store {html} in on-disk cache,"
@@ -345,7 +340,7 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     if function_name not in _resource_cache:
         # only load the function once and put it in the resource cache
         function_file = f'{function_name}.py'
-        function_file = _load_function_file_from_home(function_file)
+        function_file = _overwrite_testing_function_file(function_file)
         function = get_resource(function_file, fmt='txt')
         # pylint: disable=exec-used
         exec(function)
@@ -355,13 +350,26 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     return data
 
 
-def _load_function_file_from_home(function_file):
-    """For testing purposes allow this function file to be loaded from HOME"""
+def _overwrite_testing_function_file(function_file):
+    """For testing purposes allow this function file to be loaded from HOME/testing_folder"""
+    if not straxen._is_on_pytest():
+        # If we are not on a pytest, never try using a local file.
+        return function_file
+
     home = os.environ.get('HOME')
-    if home is not None and os.path.exists(os.path.join(home, function_file)):
-        # For testing purposes allow loading from home
-        print(f'Using local function: {function_file}!')
-        function_file = os.path.join(home, function_file)
+    if home is None:
+        # Impossible to load from non-existent folder
+        return function_file
+
+    testing_file = os.path.join(home, function_file)
+
+    if os.path.exists(testing_file):
+        # For testing purposes allow loading from 'home/testing_folder'
+        warn(f'Using local function: {function_file} from {testing_file}! '
+             f'If you are not integrated testing on github you should '
+             f'absolutely remove this file. (See #559)')
+        function_file = testing_file
+
     return function_file
 
 

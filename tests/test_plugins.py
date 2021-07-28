@@ -2,7 +2,6 @@ import tempfile
 import strax
 import numpy as np
 from immutabledict import immutabledict
-from strax.testutils import run_id, recs_per_chunk
 import straxen
 from straxen.common import pax_file, aux_repo
 ##
@@ -51,10 +50,12 @@ testing_config_1T = dict(
 )
 
 test_run_id_nT = '008900'
+test_run_id_1T = '180423_1021'
 
 
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
+    strax.Option('recs_per_chunk', default=10, track=False),
     strax.Option('n_chunks', default=2, track=False,
                  help='Number of chunks for the dummy raw records we are writing here'),
     strax.Option('channel_map', track=False, type=immutabledict,
@@ -83,7 +84,8 @@ class DummyRawRecords(strax.Plugin):
                                  'nv': 'nveto',
                                  'aqmon': 'aqmon',
                                  'aux_mv': 'aux_mv',
-                                 's_mv': 'mv',}  # s_mv otherwise same as aux in endswith
+                                 's_mv': 'mv',
+                                 }  # s_mv otherwise same as aux in endswith
 
     def source_finished(self):
         return True
@@ -95,7 +97,7 @@ class DummyRawRecords(strax.Plugin):
         t0 = chunk_i + self.config['secret_time_offset']
         if chunk_i < self.config['n_chunks'] - 1:
             # One filled chunk
-            r = np.zeros(recs_per_chunk, self.dtype['raw_records'])
+            r = np.zeros(self.config['recs_per_chunk'], self.dtype['raw_records'])
             r['time'] = t0
             r['length'] = r['dt'] = 1
             r['channel'] = np.arange(len(r))
@@ -126,7 +128,7 @@ forbidden_plugins = tuple([p for p in
 
 def _run_plugins(st,
                  make_all=False,
-                 run_id=run_id,
+                 run_id=test_run_id_nT,
                  **proces_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
@@ -182,7 +184,12 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         st.set_config({'gain_model': fallback_gains})
 
     elif not nt:
-        st.set_config(testing_config_1T)
+        if straxen.utilix_is_configured():
+            # Set some placeholder gain as this takes too long for 1T to load from CMT
+            st.set_config({k: v for k, v in testing_config_1T.items() if
+                           k in ('hev_gain_model', 'gain_model')})
+        else:
+            st.set_config(testing_config_1T)
 
     if max_workers - 1:
         st.set_context_config({
@@ -195,7 +202,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         print(k, v)
 
 
-def _test_child_options(st):
+def _test_child_options(st, run_id):
     """
     Test which checks if child options are handled correctly.
     """
@@ -206,7 +213,7 @@ def _test_child_options(st):
         if data_type in already_seen or data_type in straxen.DAQReader.provides:
             continue
 
-        p = st.get_single_plugin('0', data_type)
+        p = st.get_single_plugin(run_id, data_type)
         plugins.append(p)
         already_seen += p.provides
 
@@ -250,10 +257,17 @@ def test_1T(ncores=1):
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
-    _run_plugins(st, make_all=True, max_wokers=ncores)
+
+    # Run the test
+    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_1T)
+
     # Test issue #233
     st.search_field('cs1')
-    _test_child_options(st)
+
+    # set all the configs to be non-CMT
+    st.set_config(testing_config_1T)
+    _test_child_options(st, test_run_id_1T)
+
     print(st.context_config)
 
 
@@ -269,7 +283,7 @@ def test_nT(ncores=1):
     # Test issue #233
     st.search_field('cs1')
     # Test of child plugins:
-    _test_child_options(st)
+    _test_child_options(st, test_run_id_nT)
     print(st.context_config)
 
 

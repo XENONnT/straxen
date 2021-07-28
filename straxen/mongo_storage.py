@@ -178,7 +178,7 @@ class GridFsInterface:
             return ""
         # Also, disable all the  Use of insecure MD2, MD4, MD5, or SHA1
         # hash function violations in this function.
-        # bandit: disable=B303
+        # disable bandit
         hash_md5 = hashlib.md5()
         with open(abs_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
