@@ -99,9 +99,8 @@ class nVETOHitlets(strax.Plugin):
         # Check config of `hit_min_amplitude_nv` and define hit thresholds
         # if cmt config
         if is_cmt_option(self.config['hit_min_amplitude_nv']):
-            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
-                                                                  self.config[
-                                                                      'hit_min_amplitude_nv'])
+            self.hit_thresholds = straxen.get_correction_from_cmt(
+                self.run_id, self.config['hit_min_amplitude_nv'])
         # if hitfinder_thresholds config
         elif isinstance(self.config['hit_min_amplitude_nv'], str):
             self.hit_thresholds = straxen.hit_min_amplitude(
@@ -216,8 +215,8 @@ class muVETOHitlets(nVETOHitlets):
         self.channel_range = self.config['channel_map']['mv']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
 
-        to_pe = straxen.get_correction_from_cmt(self.run_id,
-                                                self.config['gain_model_mv'])
+        to_pe = straxen.get_correction_from_cmt(
+            self.run_id, self.config['gain_model_mv'])
 
         # Create to_pe array of size max channel:
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
