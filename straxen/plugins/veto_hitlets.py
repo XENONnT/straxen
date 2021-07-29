@@ -120,9 +120,9 @@ class nVETOHitlets(strax.Plugin):
         del hits
 
         # Get hitlet data and split hitlets:
-        temp_hitlets = strax.get_hitlets_data(temp_hitlets, 
-                                              records_nv, 
-                                              to_pe=self.to_pe, 
+        temp_hitlets = strax.get_hitlets_data(temp_hitlets,
+                                              records_nv,
+                                              to_pe=self.to_pe,
                                               min_hitlet_sample=600)
 
         temp_hitlets = strax.split_peaks(temp_hitlets,
