@@ -338,7 +338,7 @@ class PeakVetoTagging(strax.Plugin):
     __version__ = '0.0.1'
     depends_on = ('peak_basics', 'veto_regions_nv', 'veto_regions_mv')
     provides = ('peak_veto_tags')
-    save_when = strax.SaveWhen.NEVER
+    save_when = strax.SaveWhen.TARGET
 
     dtype = strax.time_fields + \
             [('veto_tag', np.int8,

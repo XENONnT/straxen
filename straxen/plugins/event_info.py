@@ -68,6 +68,7 @@ class EventInfoVetos(strax.Plugin):
 
     depends_on = ('event_info', 'peak_veto_tags')
     provides = 'events_tagged'
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         dtype = []
