@@ -65,10 +65,11 @@ class EventInfoVetos(strax.Plugin):
     Plugin which combines event_info with the tagged peaks information
     from muon- and neutron-veto.
     """
-
+    __version__ = '0.0.0'
     depends_on = ('event_info', 'peak_veto_tags')
     provides = 'events_tagged'
     save_when = strax.SaveWhen.TARGET
+    
 
     def infer_dtype(self):
         dtype = []
@@ -77,23 +78,23 @@ class EventInfoVetos(strax.Plugin):
         for i in range(1,3):
             for type in ['', 'alt_']:
                 dtype += [((f"Veto tag for {type}S{i}: unatagged: 0, nveto: 1, mveto: 2, both: 3",
-                            f"{type}S{i}_veto_tag"), np.int8),
+                            f"{type}s{i}_veto_tag"), np.int8),
                           ((f"Time to closest veto interval for {type}S{i}",
-                            f"{type}S{i}_dt_veto"), np.int64),
+                            f"{type}s{i}_dt_veto"), np.int64),
                           ]
-        dtype += [('Number of tagged peaks inside event', 'n_tagged_peaks'), np.int16]
-
+        dtype += [(('Number of tagged peaks inside event', 'n_tagged_peaks'), np.int16)]
         return dtype
 
-    def compute(self, event_info, peak_veto_tags):
-        split_tags = strax.split_by_containment(peak_veto_tags, event_info)
-        result = np.zeros(len(event_info), self.dtype)
-        get_veto_tags(event_info, split_tags, result)
+    def compute(self, events, peaks):
+        split_tags = strax.split_by_containment(peaks, events)
+        result = np.zeros(len(events), self.dtype)
+        result['time'] = events['time']
+        result['endtime'] = events['endtime']
+        get_veto_tags(events, split_tags, result)
 
         return result
 
 
-@numba.njit(cache=True, nogil=True)
 def get_veto_tags(events, split_tags, result):
     """
     Loops over events and tag main/alt S1/2 according to peak tag.
@@ -102,12 +103,12 @@ def get_veto_tags(events, split_tags, result):
     :param split_tags: Tags split by events.
     """
     for tags, e, r in zip(split_tags, events, result):
-        r['n_tagged_peaks'] = len(tags)
+        r['n_tagged_peaks'] = np.sum(tags['veto_tag'] > 0)
         for i in range(1, 3):
             for type in ['', 'alt_']:
-                if e[f'{type}S{i}_index'] == -1:
+                if e[f'{type}s{i}_index'] == -1:
                     continue
 
-                index = e[f'{type}S{i}_index']
-                r[f'{type}S{i}_veto_tag'] = tags[index]['veto_tag']
-                r[f'{type}S{i}_dt_veto'] = tags[index]['time_to_closest_veto']
+                index = e[f'{type}s{i}_index']
+                r[f'{type}s{i}_veto_tag'] = tags[index]['veto_tag']
+                r[f'{type}s{i}_dt_veto'] = tags[index]['time_to_closest_veto']
