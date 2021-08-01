@@ -3,7 +3,7 @@ blosc==1.10.4                                   # Strax dependency
 boltons==21.0.0
 datashader==0.13.0
 
-dask~=2021.6; python_version>="3.7"
+dask~=2021.7; python_version>="3.7"
 dask<=2021.2.0; python_version=="3.6"
 
 dill==0.3.4                                     # Strax dependency
