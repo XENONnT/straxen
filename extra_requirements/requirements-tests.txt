@@ -7,11 +7,11 @@ dask~=2021.7; python_version>="3.7"
 dask<=2021.2.0; python_version=="3.6"
 
 dill==0.3.4                                     # Strax dependency
-coveralls==3.1.0
+coveralls==3.2.0
 commentjson==0.9.0
 coverage==5.5
 flake8==3.9.2
-holoviews==1.14.4
+holoviews==1.14.5
 importlib-metadata==4.6.0; python_version=="3.7"
 ipywidgets==7.6.3
 hypothesis==6.14.0
@@ -34,7 +34,7 @@ scipy==1.5.4; python_version=="3.6"             # Strax dependency
 tensorflow~=2.5.0; python_version=="3.6"
 tensorflow~=2.4; python_version>="3.7"
 
-tqdm==4.61.1
+tqdm==4.62.0
 xarray==0.16.2
-utilix==0.6.0
+utilix==0.6.1
 zstd==1.5.0.2                                   # Strax dependency
