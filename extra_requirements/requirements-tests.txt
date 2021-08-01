@@ -34,7 +34,7 @@ scipy==1.5.4; python_version=="3.6"             # Strax dependency
 tensorflow~=2.5.0; python_version=="3.6"
 tensorflow~=2.4; python_version>="3.7"
 
-tqdm==4.61.1
+tqdm==4.62.0
 xarray==0.16.2
 utilix==0.6.0
 zstd==1.5.0.2                                   # Strax dependency
