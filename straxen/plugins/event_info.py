@@ -101,7 +101,7 @@ def get_veto_tags(events, split_tags, result):
     :param events: Event_info data type to be tagged.
     :param split_tags: Tags split by events.
     """
-    for tags, e, r in zip(split_tags, events, result):
+    for tags_i, event_i, result_i in zip(split_tags, events, result):
         r['n_tagged_peaks'] = np.sum(tags['veto_tag'] > 0)
         for i in range(1, 3):
             for peak_type in ['', 'alt_']:
