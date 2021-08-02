@@ -328,7 +328,10 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
 class PeakVetoTagging(strax.Plugin):
     """
-    Plugin which tags S1 peaks according to  muon and neutron-veto.
+    Plugin which tags S1 peaks according to  muon and neutron-vetos.
+    Tagging S2s is does not make sense as they occur with a delay.
+    However, we compute for both S1/S2 the time delay to the closest veto
+    region.
 
         * untagged: 0
         * neutron-veto: 1
