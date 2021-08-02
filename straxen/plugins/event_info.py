@@ -69,18 +69,17 @@ class EventInfoVetos(strax.Plugin):
     depends_on = ('event_info', 'peak_veto_tags')
     provides = 'events_tagged'
     save_when = strax.SaveWhen.TARGET
-    
 
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
 
-        for i in range(1,3):
-            for type in ['', 'alt_']:
-                dtype += [((f"Veto tag for {type}S{i}: unatagged: 0, nveto: 1, mveto: 2, both: 3",
-                            f"{type}s{i}_veto_tag"), np.int8),
-                          ((f"Time to closest veto interval for {type}S{i}",
-                            f"{type}s{i}_dt_veto"), np.int64),
+        for i in range(1, 3):
+            for peak_type in ['', 'alt_']:
+                dtype += [((f"Veto tag for {peak_type}S{i}: unatagged: 0, nveto: 1, mveto: 2, both: 3",
+                            f"{peak_type}s{i}_veto_tag"), np.int8),
+                          ((f"Time to closest veto interval for {peak_type}S{i}",
+                            f"{peak_type}s{i}_dt_veto"), np.int64),
                           ]
         dtype += [(('Number of tagged peaks inside event', 'n_tagged_peaks'), np.int16)]
         return dtype
@@ -105,10 +104,10 @@ def get_veto_tags(events, split_tags, result):
     for tags, e, r in zip(split_tags, events, result):
         r['n_tagged_peaks'] = np.sum(tags['veto_tag'] > 0)
         for i in range(1, 3):
-            for type in ['', 'alt_']:
-                if e[f'{type}s{i}_index'] == -1:
+            for peak_type in ['', 'alt_']:
+                if e[f'{peak_type}s{i}_index'] == -1:
                     continue
 
-                index = e[f'{type}s{i}_index']
-                r[f'{type}s{i}_veto_tag'] = tags[index]['veto_tag']
-                r[f'{type}s{i}_dt_veto'] = tags[index]['time_to_closest_veto']
+                index = e[f'{peak_type}s{i}_index']
+                r[f'{peak_type}s{i}_veto_tag'] = tags[index]['veto_tag']
+                r[f'{peak_type}s{i}_dt_veto'] = tags[index]['time_to_closest_veto']
