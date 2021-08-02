@@ -103,7 +103,7 @@ def get_veto_tags(events, split_tags, result):
     """
     for tags_i, event_i, result_i in zip(split_tags, events, result):
         r['n_tagged_peaks'] = np.sum(tags['veto_tag'] > 0)
-        for i in range(1, 3):
+        for s_i in [1, 2]:
             for peak_type in ['', 'alt_']:
                 if e[f'{peak_type}s{i}_index'] == -1:
                     continue
