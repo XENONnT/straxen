@@ -339,6 +339,7 @@ class VetoPeakTags(IntEnum):
     BOTH = 3
 
 
+@export
 class PeakVetoTagging(strax.Plugin):
     """
     Plugin which tags S1 peaks according to  muon and neutron-vetos.
