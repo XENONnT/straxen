@@ -74,6 +74,8 @@ xnt_common_opts.update({
                                            straxen.PeakletClassificationHighEnergy,
                                            straxen.MergedS2sHighEnergy,
                                            straxen.EventInfo,
+                                           straxen.EventInfoVetos,
+                                           straxen.PeakVetoTagging,
                                           ],
     'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
                                                    straxen.nveto_recorder,
