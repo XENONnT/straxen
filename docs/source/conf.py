@@ -19,6 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 import straxen
+import sys
 project = 'straxen'
 # pylint: disable=redefined-builtin
 copyright = '2018, straxen contributors and the XENON collaboration'
