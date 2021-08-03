@@ -2,7 +2,6 @@ import strax
 from straxen import pre_apply_function
 
 import numpy as np
-import numba
 
 export, __all__ = strax.exporter()
 
@@ -61,6 +60,7 @@ class EventInfo1T(strax.MergeOnlyPlugin):
     __version__ = '0.0.0'
 
 
+@export
 class EventInfoVetos(strax.Plugin):
     """
     Plugin which combines event_info with the tagged peaks information
