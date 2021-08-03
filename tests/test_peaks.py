@@ -128,3 +128,34 @@ def test_tag_peaks(peaks, veto_intervals):
         if not len(split_peaks):
             continue
         assert np.all(split_peaks['tag'] == 1), f'Not all peaks were tagged properly {split_peaks}'
+
+
+@settings(deadline=None)
+@given(create_unique_intervals(10, time_range=(50, 80), allow_zero_length=False),
+       create_unique_intervals(5, time_range=(55, 75), allow_zero_length=False)
+       )
+def test_get_time_to_clostest_veto(peaks, veto_intervals):
+    time_differences = straxen.plugins.peak_processing.get_time_to_closest_veto(peaks,
+                                                                                veto_intervals
+                                                                                )
+
+    if not len(peaks):
+        assert not len(time_differences), 'Input is empty but output is not?'
+
+    for ind, p in enumerate(peaks):
+        if len(veto_intervals):
+            dt = np.concatenate([veto_intervals['time'] - p['time'],
+                                 strax.endtime(veto_intervals) - p['time']])
+            # If the distance to the curren/next veto interval is identical
+            # the function favors positive values. Hence sort and reverse
+            # order for the test.
+            dt = np.sort(dt)[::-1]
+            ind_argmin = np.argmin(np.abs(dt))
+            dt = dt[ind_argmin]
+        else:
+            # If there are not any veto intervalls function will compute clostest
+            # difference to +/- 64 bit infinity.
+            dt = np.abs(straxen.INFINITY_64BIT_SIGNED - p['time'])
+
+        mes = f'Wrong time difference to closest event. expected: "{dt}" got: "{time_differences[ind]}"'
+        assert dt == time_differences[ind], mes

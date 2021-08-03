@@ -405,11 +405,18 @@ def tag_peaks(tags, touching_windows, tag_number):
 
 def get_time_to_closest_veto(peaks, veto_intervals):
     """Computes time difference between peak and closest veto interval.
+
+    The time difference is always computed from peaks-time field to
+    the time or endtime of the veto_interval depending on which distance
+    is smaller.
     """
-    vetos = np.zeros(len(veto_intervals)+2, np.int64)
-    vetos[1:-1] = veto_intervals['time']
-    vetos[-1] = straxen.INFINITY_64BIT_SIGNED
-    vetos[0] = -straxen.INFINITY_64BIT_SIGNED
+    vetos = np.zeros(len(veto_intervals)+2, strax.time_fields)
+    vetos[1:-1]['time'] = veto_intervals['time']
+    vetos[1:-1]['endtime'] = strax.endtime(veto_intervals)
+    vetos[-1]['time'] = straxen.INFINITY_64BIT_SIGNED
+    vetos[-1]['endtime'] = straxen.INFINITY_64BIT_SIGNED
+    vetos[0]['time'] = -straxen.INFINITY_64BIT_SIGNED
+    vetos[0]['endtime'] = -straxen.INFINITY_64BIT_SIGNED
     return _get_time_to_closest_veto(peaks, vetos)
 
 
@@ -419,15 +426,35 @@ def _get_time_to_closest_veto(peaks, vetos):
     veto_index = 0
     for ind, p in enumerate(peaks):
         for veto_index in range(veto_index, len(vetos)):
-            dt_current_veto = np.abs(vetos[veto_index] - p['time'])
-            dt_next_veto = np.abs(vetos[veto_index+1] - p['time'])
+            if veto_index+1 == len(vetos):
+                # If we reach here all future peaks are closest to last veto:
+                res[ind] = np.abs(vetos[-1]['time'] - p['time'])
+                break
 
-            # Next veto is closer so we have to repeat
+            # Current interval can be before or after current peak, hence
+            # we have to check which distance is smaller.
+            dt_current_veto = min(np.abs(vetos[veto_index]['time'] - p['time']),
+                                  np.abs(vetos[veto_index]['endtime'] - p['time'])
+                                  )
+            # Next interval is always further in the future as the
+            # current one, hence we only have to compute distance with "time".
+            dt_next_veto = np.abs(vetos[veto_index+1]['time'] - p['time'])
+
+            # Next veto is closer so we have to repeat in case next + 1
+            # is even closer.
             if dt_current_veto >= dt_next_veto:
                 veto_index += 1
                 continue
 
-            res[ind] = dt_current_veto
+            # Now compute time difference for real:
+            dt_time = vetos[veto_index]['time'] - p['time']
+            dt_endtime = vetos[veto_index]['endtime'] - p['time']
+
+            if np.abs(dt_time) < np.abs(dt_endtime):
+                res[ind] = dt_time
+            else:
+                res[ind] = dt_endtime
             break
 
     return res
+
