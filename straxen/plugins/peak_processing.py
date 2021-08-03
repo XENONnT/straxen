@@ -3,6 +3,7 @@ import os
 import tempfile
 import numpy as np
 import numba
+from enum import IntEnum
 
 import strax
 import straxen
@@ -324,3 +325,97 @@ class PeakProximity(strax.OverlapWindowPlugin):
             n_tot[i] = n_left[i] + np.sum(areas[i + 1:right_i] > threshold)
 
         return n_left, n_tot
+
+
+@export
+class VetoPeakTags(IntEnum):
+    """Identifies by which detector peak was tagged.
+    """
+    # Peaks are not inside any veto interval
+    NO_VETO = 0
+    # Peaks are inside a veto interval issued by:
+    NEUTRON_VETO = 1
+    MUON_VETO = 2
+    BOTH = 3
+
+
+class PeakVetoTagging(strax.Plugin):
+    """
+    Plugin which tags S1 peaks according to  muon and neutron-vetos.
+    Tagging S2s is does not make sense as they occur with a delay.
+    However, we compute for both S1/S2 the time delay to the closest veto
+    region.
+
+        * untagged: 0
+        * neutron-veto: 1
+        * muon-veto: 2
+        * both vetos: 3
+    """
+    __version__ = '0.0.1'
+    depends_on = ('peak_basics', 'veto_regions_nv', 'veto_regions_mv')
+    provides = ('peak_veto_tags')
+    save_when = strax.SaveWhen.TARGET
+
+    dtype = strax.time_fields + \
+            [('veto_tag', np.int8,
+              'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3'),
+             ('time_to_closest_veto', np.int64)]
+
+    def compute(self, peaks, veto_regions_nv, veto_regions_mv):
+        touching_mv = strax.touching_windows(peaks, veto_regions_mv)
+        touching_nv = strax.touching_windows(peaks, veto_regions_nv)
+
+        tags = np.zeros(len(peaks))
+        tags = tag_peaks(tags, touching_nv, strax.VetoPeakTags.NEUTRON_VETO)
+        tags = tag_peaks(tags, touching_mv, strax.VetoPeakTags.MUON_VETO)
+
+        tags[peaks['type'] == 2] = 0
+
+        vetos = np.concatenate([veto_regions_nv, veto_regions_mv])
+        vetos = np.sort(vetos, order='time')
+        dt = get_time_to_closest_veto(peaks, vetos)
+
+        return {'time': peaks['time'],
+                'endtime': strax.endtime(peaks),
+                'veto_tag': tags,
+                'time_to_closest_veto': dt,
+                }
+
+
+@numba.njit(cache=True, nogil=True)
+def tag_peaks(tags, touching_windows, tag_number):
+    pre_tags = np.zeros(len(tags), dtype=np.int8)
+    for start, end in touching_windows:
+        pre_tags[start:end] = tag_number
+    tags += pre_tags
+    return tags
+
+
+def get_time_to_closest_veto(peaks, veto_intervals):
+    """
+    Computes time difference between peak and closest veto interval.
+    """
+    vetos = np.zeros(len(veto_intervals)+2, np.int64)
+    vetos[1:-1] = veto_intervals['time']
+    vetos[-1] = 9223372036854775807  # 64 bit infinity
+    return _get_time_to_closest_veto(peaks, vetos)
+
+
+@numba.njit(cache=True, nogil=True)
+def _get_time_to_closest_veto(peaks, vetos):
+    res = np.zeros(len(peaks), dtype=np.int64)
+    veto_index = 0
+    for ind, p in enumerate(peaks):
+        for veto_index in range(veto_index, len(vetos)):
+            dt_current_veto = np.abs(vetos[veto_index] - p['time'])
+            dt_next_veto = np.abs(vetos[veto_index+1] - p['time'])
+
+            # Next veto is closer so we have to repeat
+            if dt_current_veto >= dt_next_veto:
+                veto_index += 1
+                continue
+
+            res[ind] = dt_current_veto
+            break
+
+    return res
