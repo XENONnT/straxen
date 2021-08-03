@@ -82,7 +82,7 @@ class RucioFrontend(strax.StorageFrontend):
 
     def __repr__(self):
         # List the relevant attributes
-        attributes = ('include_remote', 'exclude', 'take_only', 'readonly')
+        attributes = ('include_remote', 'readonly', 'path', 'exclude', 'take_only')
         representation = f'{self.__class__.__module__}.{self.__class__.__name__}'
         for attr in attributes:
             if hasattr(self, attr) and getattr(self, attr):
