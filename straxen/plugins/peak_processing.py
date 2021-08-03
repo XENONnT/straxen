@@ -9,7 +9,7 @@ import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
-from .pulse_processing import  HE_PREAMBLE
+from .pulse_processing import HE_PREAMBLE
 
 
 @export
