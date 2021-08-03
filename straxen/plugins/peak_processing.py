@@ -408,8 +408,8 @@ def get_time_to_closest_veto(peaks, veto_intervals):
     """
     vetos = np.zeros(len(veto_intervals)+2, np.int64)
     vetos[1:-1] = veto_intervals['time']
-    vetos[-1] = strax.INFINITY_64BIT_SIGNED
-    vetos[0] = -strax.INFINITY_64BIT_SIGNED
+    vetos[-1] = straxen.INFINITY_64BIT_SIGNED
+    vetos[0] = -straxen.INFINITY_64BIT_SIGNED
     return _get_time_to_closest_veto(peaks, vetos)
 
 
