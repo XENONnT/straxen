@@ -74,7 +74,7 @@ class EventInfoVetos(strax.Plugin):
         dtype = []
         dtype += strax.time_fields
 
-        for i in range(1, 3):
+        for s_i in [1, 2]:
             for peak_type in ['', 'alt_']:
                 dtype += [((f"Veto tag for {peak_type}S{i}: unatagged: 0, nveto: 1, mveto: 2, both: 3",
                             f"{peak_type}s{i}_veto_tag"), np.int8),
@@ -101,9 +101,9 @@ def get_veto_tags(events, split_tags, result):
     :param events: Event_info data type to be tagged.
     :param split_tags: Tags split by events.
     """
-    for tags, e, r in zip(split_tags, events, result):
+    for tags_i, event_i, result_i in zip(split_tags, events, result):
         r['n_tagged_peaks'] = np.sum(tags['veto_tag'] > 0)
-        for i in range(1, 3):
+        for s_i in [1, 2]:
             for peak_type in ['', 'alt_']:
                 if e[f'{peak_type}s{i}_index'] == -1:
                     continue
