@@ -141,15 +141,14 @@ class RucioFrontend(strax.StorageFrontend):
         raise strax.DataNotAvailable
 
     def get_rse_prefix(self, rse):
-        try:
+        if self._rse_client is not None:
             rse_info = self._rse_client.get_rse(rse)
             prefix = rse_info['protocols'][0]['prefix']
-        except NameError as e:
-            if self.local_rse == 'UC_DALI_USERDISK':
-                # If we cannot load rucio, let's try the default
-                prefix = '/dali/lgrandi/rucio/'
-            else:
-                raise e
+        elif self.local_rse == 'UC_DALI_USERDISK':
+            # If rucio is not loaded but we are on dali, look here:
+            prefix = '/dali/lgrandi/rucio/'
+        else:
+            raise ValueError(f'We are not on dali and cannot load rucio')
         return prefix
 
     def did_is_local(self, did):
