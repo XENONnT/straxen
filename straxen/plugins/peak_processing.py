@@ -368,8 +368,8 @@ class PeakVetoTagging(strax.Plugin):
         touching_nv = strax.touching_windows(peaks, veto_regions_nv)
 
         tags = np.zeros(len(peaks))
-        tags = tag_peaks(tags, touching_nv, strax.VetoPeakTags.NEUTRON_VETO)
-        tags = tag_peaks(tags, touching_mv, strax.VetoPeakTags.MUON_VETO)
+        tags = tag_peaks(tags, touching_nv, straxen.VetoPeakTags.NEUTRON_VETO)
+        tags = tag_peaks(tags, touching_mv, straxen.VetoPeakTags.MUON_VETO)
 
         tags[peaks['type'] == 2] = 0
 
