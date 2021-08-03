@@ -27,7 +27,9 @@ class TestBasics(unittest.TestCase):
     def test_load_context_defaults(self):
         if not straxen.utilix_is_configured:
             return
-        st = straxen.contexts.xenonnt_online()
+        st = straxen.contexts.xenonnt_online(_minimum_run_number=10_000,
+                                             _maximum_run_number=10_010,
+                                             )
         st.select_runs()
 
     def test_find_several_local(self):
