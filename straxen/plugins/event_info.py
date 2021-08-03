@@ -76,10 +76,10 @@ class EventInfoVetos(strax.Plugin):
 
         for s_i in [1, 2]:
             for peak_type in ['', 'alt_']:
-                dtype += [((f"Veto tag for {peak_type}S{i}: unatagged: 0, nveto: 1, mveto: 2, both: 3",
-                            f"{peak_type}s{i}_veto_tag"), np.int8),
-                          ((f"Time to closest veto interval for {peak_type}S{i}",
-                            f"{peak_type}s{i}_dt_veto"), np.int64),
+                dtype += [((f"Veto tag for {peak_type}S{s_i}: unatagged: 0, nveto: 1, mveto: 2, both: 3",
+                            f"{peak_type}s{s_i}_veto_tag"), np.int8),
+                          ((f"Time to closest veto interval for {peak_type}s{s_i}",
+                            f"{peak_type}s{s_i}_dt_veto"), np.int64),
                           ]
         dtype += [(('Number of tagged peaks inside event', 'n_tagged_peaks'), np.int16)]
         return dtype
@@ -102,12 +102,12 @@ def get_veto_tags(events, split_tags, result):
     :param split_tags: Tags split by events.
     """
     for tags_i, event_i, result_i in zip(split_tags, events, result):
-        r['n_tagged_peaks'] = np.sum(tags['veto_tag'] > 0)
+        result_i['n_tagged_peaks'] = np.sum(tags_i['veto_tag'] > 0)
         for s_i in [1, 2]:
             for peak_type in ['', 'alt_']:
-                if e[f'{peak_type}s{i}_index'] == -1:
+                if event_i[f'{peak_type}s{s_i}_index'] == -1:
                     continue
 
-                index = e[f'{peak_type}s{i}_index']
-                r[f'{peak_type}s{i}_veto_tag'] = tags[index]['veto_tag']
-                r[f'{peak_type}s{i}_dt_veto'] = tags[index]['time_to_closest_veto']
+                index = event_i[f'{peak_type}s{s_i}_index']
+                result_i[f'{peak_type}s{s_i}_veto_tag'] = tags_i[index]['veto_tag']
+                result_i[f'{peak_type}s{s_i}_dt_veto'] = tags_i[index]['time_to_closest_veto']
