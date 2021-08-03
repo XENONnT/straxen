@@ -111,3 +111,5 @@ def get_veto_tags(events, split_tags, result):
                 index = event_i[f'{peak_type}s{s_i}_index']
                 result_i[f'{peak_type}s{s_i}_veto_tag'] = tags_i[index]['veto_tag']
                 result_i[f'{peak_type}s{s_i}_dt_veto'] = tags_i[index]['time_to_closest_veto']
+
+                
