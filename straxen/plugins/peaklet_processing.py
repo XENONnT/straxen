@@ -547,16 +547,24 @@ class PeakletClassificationHighEnergy(PeakletClassification):
                       "where the gap size of the first point is the maximum gap to allow merging"
                       "and the area of the last point is the maximum area to allow merging. "
                       "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
-                 ))
+                 ),
+    strax.Option('gain_model',
+                 help='PMT gain model. Specify as '
+                      '(str(model_config), str(version), nT-->boolean'),
+)
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
     form a single peak instead.
     """
-    depends_on = ('peaklets', 'peaklet_classification')
+    depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.2.0'
+    __version__ = '0.3.0'
+
+    def setup(self):
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                                     self.config['gain_model'])
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
@@ -565,7 +573,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return 5 * (int(self.config['s2_merge_gap_thresholds'][0][1])
                     + self.config['s2_merge_max_duration'])
 
-    def compute(self, peaklets):
+    def compute(self, peaklets, lone_hits):
         if len(peaklets) <= 1:
             return np.zeros(0, dtype=peaklets.dtype)
 
@@ -594,6 +602,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_buffer=int(self.config['s2_merge_max_duration']
                                // peaklets['dt'].min()))
             merged_s2s['type'] = 2
+
+            # Updated time and length of lone_hits and sort again:
+            lone_hits['time'] = (lone_hits['time']
+                                 - (lone_hits['left']-lone_hits['left_integration'])*lone_hits['dt']
+                                 )
+            lone_hits['length'] = (lone_hits['right_integration'] - lone_hits['left_integration'])
+            lone_hits = strax.sort_by_time(lone_hits)
+            strax.add_lone_hits(merged_s2s, lone_hits, self.to_pe)
+
             strax.compute_widths(merged_s2s)
 
         return merged_s2s
