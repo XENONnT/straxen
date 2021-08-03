@@ -457,4 +457,3 @@ def _get_time_to_closest_veto(peaks, vetos):
             break
 
     return res
-
