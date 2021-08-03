@@ -26,6 +26,8 @@ class TestBasics(unittest.TestCase):
 
     def test_load_context_defaults(self):
         st = straxen.contexts.xenonnt_online()
+        if straxen.utilix_is_configured:
+            st.select_runs()
 
     def test_find_several_local(self):
         rucio = straxen.RucioFrontend(
