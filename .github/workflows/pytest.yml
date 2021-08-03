@@ -15,14 +15,23 @@ on:
       - master
 
 jobs:
-  update:
-    name: Pytest
+    name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: True
       matrix:
-        # NB: For python 3.6 and 3.7 we are going to explicitly test without a database
         python-version: [3.7, 3.8, 3.9]
+        test: ['coveralls', 'pytest', 'pytest_no_database']
+        # Only run coverage / no_database on py3.8
+        exclude:
+          - python-version: 3.7
+            test: coveralls
+          - python-version: 3.9
+            test: coveralls
+          - python-version: 3.7
+            test: pytest_no_database
+          - python-version: 3.9
+            test: pytest_no_database
     steps:
       - name: Setup python
         uses: actions/setup-python@v2
@@ -35,8 +44,7 @@ jobs:
             pip install -r extra_requirements/requirements-tests.txt
             pip install git+https://github.com/AxFoundation/strax.git
       - name: patch utilix file
-        # Since we skip this step for python 3.6 and 3.7, we are testing without the database
-        if:  matrix.python-version == 3.8 || matrix.python-version == 3.9
+        if:  matrix.test != 'pytest_no_database'
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
           # Rundb
@@ -58,11 +66,21 @@ jobs:
         # The pre_apply_function (see #559)
         env:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
-        if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.python-version == 3.6 || matrix.python-version == 3.7
+        if: env.HAVE_ACCESS_TO_SECTETS == null
         run: |
           bash .github/scripts/create_pre_apply_function.sh $HOME
       - name: Test package
+        if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           python setup.py test -v
+      - name: Coveralls
+        if:  matrix.test == 'coveralls'
+        env:
+          NUMBA_DISABLE_JIT: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          coverage run --source=strax setup.py test -v
+          coveralls --service=github
       - name: goodbye
-        run: echo goodbye
+        run: echo "tests done, bye bye"
+
