@@ -25,17 +25,22 @@ class TestBasics(unittest.TestCase):
         pass
 
     def test_load_context_defaults(self):
+        if not straxen.utilix_is_configured:
+            return
         st = straxen.contexts.xenonnt_online()
-        if straxen.utilix_is_configured:
-            st.select_runs()
+        st.select_runs()
 
     def test_find_several_local(self):
+        if not straxen.utilix_is_configured:
+            return
         rucio = straxen.RucioFrontend(
             include_remote=False,
         )
         rucio.find_several(self.test_keys)
 
     def test_find_several_remote(self):
+        if not straxen.utilix_is_configured:
+            return
         try:
             rucio = straxen.RucioFrontend(
                 include_remote=True,
