@@ -3,6 +3,7 @@ import os
 import tempfile
 import numpy as np
 import numba
+from enum import IntEnum
 
 import strax
 import straxen
@@ -326,6 +327,18 @@ class PeakProximity(strax.OverlapWindowPlugin):
         return n_left, n_tot
 
 
+@export
+class VetoPeakTags(IntEnum):
+    """Identifies by which detector peak was tagged.
+    """
+    # Peaks are not inside any veto interval
+    NO_VETO = 0
+    # Peaks are inside a veto interval issued by:
+    NEUTRON_VETO = 1
+    MUON_VETO = 2
+    BOTH = 3
+
+
 class PeakVetoTagging(strax.Plugin):
     """
     Plugin which tags S1 peaks according to  muon and neutron-vetos.
@@ -353,8 +366,8 @@ class PeakVetoTagging(strax.Plugin):
         touching_nv = strax.touching_windows(peaks, veto_regions_nv)
 
         tags = np.zeros(len(peaks))
-        tags = tag_peaks(tags, touching_nv, 1)
-        tags = tag_peaks(tags, touching_mv, 2)
+        tags = tag_peaks(tags, touching_nv, strax.VetoPeakTags.NEUTRON_VETO)
+        tags = tag_peaks(tags, touching_mv, strax.VetoPeakTags.MUON_VETO)
 
         tags[peaks['type'] == 2] = 0
 
