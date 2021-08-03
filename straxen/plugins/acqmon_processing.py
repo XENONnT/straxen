@@ -145,8 +145,8 @@ class VetoProximity(strax.OverlapWindowPlugin):
         - hev_x:  high energy veto on/off signal
     """
 
-    __version__ = '0.1.1'
-    depends_on = ('events', 'aqmon_hits')
+    __version__ = '0.1.2'
+    depends_on = ('event_basics', 'aqmon_hits')
     provides = ('veto_proximity')
     data_kind = ('events')
     save_when = strax.SaveWhen.TARGET
