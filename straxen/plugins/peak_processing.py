@@ -394,7 +394,6 @@ class PeakVetoTagging(strax.Plugin):
         tags = tag_peaks(tags, touching_nv, straxen.VetoPeakTags.NEUTRON_VETO)
         tags = tag_peaks(tags, touching_mv, straxen.VetoPeakTags.MUON_VETO)
 
-        tags[peaks['type'] == 2] = 0
         dt = self.get_time_difference(peaks, veto_regions_nv, veto_regions_mv)
         return {'time': peaks['time'],
                 'endtime': strax.endtime(peaks),
