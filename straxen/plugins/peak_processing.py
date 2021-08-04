@@ -363,6 +363,29 @@ class PeakVetoTagging(strax.Plugin):
         ('time_to_closest_veto', np.int64)
     ]
 
+    def get_time_difference(self, peaks, veto_regions_nv, veto_regions_mv):
+        """
+        Computes time differences to closest nv/mv veto signal.
+
+        It might be that neutron-veto and muon-veto signals overlap
+        Hence we compute first the individual time differences to the
+        corresponding vetos and keep afterwards the smallest ones.
+        """
+        dt_nv = get_time_to_closest_veto(peaks, veto_regions_nv)
+        dt_mv = get_time_to_closest_veto(peaks, veto_regions_mv)
+
+        dts = np.transpose([dt_nv, dt_mv])
+        ind_axis1 = np.argmin(np.abs(dts), axis=1)
+        return self._get_smallest_value(dts, ind_axis1)
+
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def _get_smallest_value(time_differences, index):
+        res = np.zeros(len(time_differences), np.int64)
+        for res_ind, (ind, dt) in enumerate(zip(index, time_differences)):
+            res[res_ind] = dt[ind]
+        return res
+
     def compute(self, peaks, veto_regions_nv, veto_regions_mv):
         touching_mv = strax.touching_windows(peaks, veto_regions_mv)
         touching_nv = strax.touching_windows(peaks, veto_regions_nv)
@@ -372,11 +395,7 @@ class PeakVetoTagging(strax.Plugin):
         tags = tag_peaks(tags, touching_mv, straxen.VetoPeakTags.MUON_VETO)
 
         tags[peaks['type'] == 2] = 0
-
-        vetos = np.concatenate([veto_regions_nv, veto_regions_mv])
-        vetos = np.sort(vetos, order='time')
-        dt = get_time_to_closest_veto(peaks, vetos)
-
+        dt = self.get_time_difference(peaks, veto_regions_nv, veto_regions_mv)
         return {'time': peaks['time'],
                 'endtime': strax.endtime(peaks),
                 'veto_tag': tags,
