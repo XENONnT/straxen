@@ -11,7 +11,6 @@ import straxen
 import os
 from immutabledict import immutabledict
 
-
 export, __all__ = strax.exporter()
 
 corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
@@ -131,6 +130,11 @@ class CorrectionsManagementServices():
                 for it_correction in pmts: # loop over all PMTs
                     if correction in it_correction:
                         df = self.interface.read(it_correction)
+                        if df[version].isnull().values.any():
+                            raise ValueError(
+                                        f"For {it_correction} there are NaN values, then no data available "
+                                        f"for {run_id} in version {version}, please check e-logbook for more info "
+                                        )
                         if version in 'ONLINE':
                             df = self.interface.interpolate(df, when, how='fill')
                         else:
@@ -189,12 +193,11 @@ class CorrectionsManagementServices():
                 to_pe = self._get_correction(run_id, target_detector, version)
 
             # be cautious with very early runs, check that not all are None
-            if np.isnan(to_pe).all():
+            if np.isnan(to_pe).any():
                 raise ValueError(
                     f"to_pe(PMT gains) values are NaN, no data available "
                     f"for {run_id} in the gain model with version "
-                    f"{version}, please set constant values for "
-                    f"{run_id}")
+                    f"{version}, please check e-logbook for more info ")
 
         else:
             raise ValueError(f"{model_type} not implemented for to_pe values")
