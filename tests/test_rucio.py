@@ -7,7 +7,7 @@ import socket
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        if not straxen.utilix_is_configured:
+        if not straxen.utilix_is_configured():
             return
         if 'rcc' not in socket.getfqdn():
             # If we are not on RCC, for testing, add some dummy site
@@ -28,7 +28,7 @@ class TestBasics(unittest.TestCase):
         pass
 
     def test_load_context_defaults(self):
-        if not straxen.utilix_is_configured:
+        if not straxen.utilix_is_configured():
             return
         st = straxen.contexts.xenonnt_online(_minimum_run_number=10_000,
                                              _maximum_run_number=10_010,
@@ -36,7 +36,7 @@ class TestBasics(unittest.TestCase):
         st.select_runs()
 
     def test_find_local(self):
-        if not straxen.utilix_is_configured:
+        if not straxen.utilix_is_configured():
             return
         rucio = straxen.RucioFrontend(
             include_remote=False,
@@ -48,7 +48,7 @@ class TestBasics(unittest.TestCase):
 
 
     def test_find_several_local(self):
-        if not straxen.utilix_is_configured:
+        if not straxen.utilix_is_configured():
             return
         rucio = straxen.RucioFrontend(
             include_remote=False,
@@ -57,7 +57,7 @@ class TestBasics(unittest.TestCase):
         print(rucio)
 
     def test_find_several_remote(self):
-        if not straxen.utilix_is_configured:
+        if not straxen.utilix_is_configured():
             return
         try:
             rucio = straxen.RucioFrontend(
