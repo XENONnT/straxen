@@ -32,6 +32,8 @@ posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map']
 class CMTVersionError(Exception):
     pass
 
+class CMTnanValueError(Exception):
+    pass
 
 @export
 class CorrectionsManagementServices():
@@ -130,11 +132,10 @@ class CorrectionsManagementServices():
                 for it_correction in pmts: # loop over all PMTs
                     if correction in it_correction:
                         df = self.interface.read(it_correction)
-                        if df[version].isnull().values.any():
-                            raise ValueError(
-                                        f"For {it_correction} there are NaN values, then no data available "
-                                        f"for {run_id} in version {version}, please check e-logbook for more info "
-                                        )
+                        if self.check_for_nans(when, df, version):
+                            raise CMTnanValueError(f"For {it_correction} there are NaN values, this means no correction available "
+                                                    f"for {run_id} in version {version}, please check e-logbook for more info ")
+ 
                         if version in 'ONLINE':
                             df = self.interface.interpolate(df, when, how='fill')
                         else:
@@ -142,6 +143,10 @@ class CorrectionsManagementServices():
                         values.append(df.loc[df.index == when, version].values[0])
             else:
                 df = self.interface.read(correction)
+                if self.check_for_nans(when, df, version):
+                    raise CMTnanValueError(f"For {it_correction} there are NaN values, this means no correction available "
+                                            f"for {run_id} in version {version}, please check e-logbook for more info ")
+ 
                 if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
                     df = self.interface.interpolate(df, when, how='fill')
                 else:
@@ -243,6 +248,24 @@ class CorrectionsManagementServices():
             raise ValueError(f"You have the right option but could not find a file"
                              f"Please contact CMT manager and yell at him")
         return file_name
+
+    def check_for_nans(self, when, df, version):
+        """
+        Smart logic to check for nan values within a dataframe (corrections)
+        If user wants to process something with a nan value, then it means
+        the user should not use that version for that runID because the version is not valid
+        :param when: runID timestamp
+        :param df: dataframe (correction)
+        :param version: version
+        :param return: boolean
+        """
+        when_nan = df[version].index[df[version].apply(np.isnan)]
+        if len(when_nan) != 0:
+            if when > when_nan[0]:  # First nan value
+                return True
+        else:
+            return False
+
 
     # TODO change to st.estimate_start_time
     def get_start_time(self, run_id):
