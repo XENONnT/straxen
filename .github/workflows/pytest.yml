@@ -1,4 +1,15 @@
-# Test straxen on each PR
+# Test straxen on each PR.
+# We run three types of tests:
+#  - Pytest -> these are the "normal" tests and should be run for all
+#    python versions
+#  - Coveralls -> this is to see if we are coverering all our lines of
+#    code with our tests. The results get uploaded to
+#    coveralls.io/github/XENONnT/straxen
+#  - pytest_no_database -> we want to make sure we can run the tests even
+#    if we don't have access to our datebase since this will e.g. happen
+#    when someone is pushing a PR from their own fork as we don't
+#    propagate our secrets there.
+
 name: Test package
 
 # Trigger this code when a new release is published
@@ -16,14 +27,25 @@ on:
 
 jobs:
   update:
-    name: Pytest
+    name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: True
       matrix:
-        # NB: For python 3.6 and 3.7 we are going to explicitly test without a database
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9]
+        test: ['coveralls', 'pytest', 'pytest_no_database']
+        # Only run coverage / no_database on py3.8
+        exclude:
+          - python-version: 3.7
+            test: coveralls
+          - python-version: 3.9
+            test: coveralls
+          - python-version: 3.7
+            test: pytest_no_database
+          - python-version: 3.9
+            test: pytest_no_database
     steps:
+      # Setup and installation
       - name: Setup python
         uses: actions/setup-python@v2
         with:
@@ -34,12 +56,14 @@ jobs:
         run: |
             pip install -r extra_requirements/requirements-tests.txt
             pip install git+https://github.com/AxFoundation/strax.git
+
+      # Secrets and required files
       - name: patch utilix file
-        # Since we skip this step for python 3.6 and 3.7, we are testing without the database
-        if:  matrix.python-version == 3.8 || matrix.python-version == 3.9
+        # Patch this file if we want to have access to the database
+        if:  matrix.test != 'pytest_no_database'
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
-          # Rundb
+          # RunDB
           RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
           RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
           RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
@@ -54,10 +78,30 @@ jobs:
           SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
           SCADA_PWD: ${{ secrets.SCADA_PWD }}
       - name: Create pre-apply function file
+        # In case we do not have database. We need to make a local file for
+        # The pre_apply_function (see #559).
+        env:
+          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+        if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: |
           bash .github/scripts/create_pre_apply_function.sh $HOME
+
+      # Run tests
       - name: Test package
+        # This is running a normal test
+        if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           python setup.py test -v
+      - name: Coveralls
+        # Make the coverage report and upload
+        if:  matrix.test == 'coveralls'
+        env:
+          NUMBA_DISABLE_JIT: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          coverage run --source=straxen setup.py test -v
+          coveralls --service=github
+
+      # Done
       - name: goodbye
-        run: echo goodbye
+        run: echo "tests done, bye bye"

@@ -43,7 +43,6 @@ xnt_common_config = dict(
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
-    gcn_model=None,
     # Event level parameters
     s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
     fdc_map=('fdc_map', "ONLINE", True),
@@ -74,6 +73,7 @@ xnt_common_opts.update({
                                            straxen.PeakletsHighEnergy,
                                            straxen.PeakletClassificationHighEnergy,
                                            straxen.MergedS2sHighEnergy,
+                                           straxen.EventInfo,
                                           ],
     'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
                                                    straxen.nveto_recorder,
@@ -95,8 +95,15 @@ xnt_common_opts.update({
 ##
 
 
+def xenonnt(cmt_version='global_ONLINE', **kwargs):
+    """XENONnT context"""
+    st = straxen.contexts.xenonnt_online(**kwargs)
+    st.apply_cmt_version(cmt_version)
+    return st
+
+
 def xenonnt_online(output_folder='./strax_data',
-                   use_rucio=True,
+                   use_rucio=False,
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
@@ -163,7 +170,9 @@ def xenonnt_online(output_folder='./strax_data',
             )]
         if output_folder:
             st.storage.append(
-                strax.DataDirectory(output_folder))
+                strax.DataDirectory(output_folder,
+                                    provide_run_metadata=True,
+                                   ))
 
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
         if _forbid_creation_of is not None:
@@ -172,8 +181,9 @@ def xenonnt_online(output_folder='./strax_data',
     # if we said so, add the rucio frontend to storage
     if use_rucio:
         st.storage.append(straxen.rucio.RucioFrontend(
-            include_remote=True,
-            staging_dir=output_folder))
+            include_remote=straxen.RUCIO_AVAILABLE,
+            staging_dir=output_folder,
+        ))
 
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
@@ -193,6 +203,7 @@ def xenonnt_online(output_folder='./strax_data',
                                                    )})
     if _context_config_overwrite is not None:
         st.set_context_config(_context_config_overwrite)
+
     return st
 
 
@@ -208,18 +219,149 @@ def xenonnt_led(**kwargs):
     st.register([straxen.DAQReader, straxen.LEDCalibration])
     return st
 
+def xenonnt_simulation(
+                output_folder='./strax_data',
+                cmt_run_id_sim=None,
+                cmt_run_id_proc=None,
+                cmt_version='v3',
+                fax_config='fax_config_nt_design.json',
+                overwrite_from_fax_file_sim=False,
+                overwrite_from_fax_file_proc=False,
+                cmt_option_overwrite_sim=immutabledict(),
+                cmt_option_overwrite_proc=immutabledict(),
+                _forbid_creation_of=None,
+                _config_overlap=immutabledict(
+                            drift_time_gate='electron_drift_time_gate',
+                            drift_velocity_liquid='electron_drift_velocity',
+                            electron_lifetime_liquid='elife_conf'),
+               **kwargs):
+    """
+    The most generic context that allows for setting full divergent
+    settings for simulation purposes
 
-def xenonnt_simulation(output_folder='./strax_data'):
+    It makes full divergent setup, allowing to set detector simulation
+    part (i.e. for wfsim up to truth and  raw_records). Parameters _sim
+    refer to detector simulation parameters.
+
+    Arguments having _proc in their name refer to detector parameters that
+    are used for processing of simulations as done to the real datector
+    data. This means starting from already existing raw_records and finishing
+    with higher level data, such as peaks, events etc.
+
+    If only one cmt_run_id is given, the second one will be set automatically,
+    resulting in CMT match between simulation and processing. However, detector
+    parameters can be still overwritten from fax file or manually using cmt
+    config overwrite options.
+
+    CMT options can also be overwritten via fax config file.
+    :param output_folder: Output folder for strax data.
+    :param cmt_run_id_sim: Run id for detector parameters from CMT to be used
+        for creation of raw_records.
+    :param cmt_run_id_proc: Run id for detector parameters from CMT to be used
+        for processing from raw_records to higher level data.
+    :param cmt_version: Global version for corrections to be loaded.
+    :param fax_config: Fax config file to use.
+    :param overwrite_from_fax_file_sim: If true sets detector simulation
+        parameters for truth/raw_records from from fax_config file istead of CMT
+    :param overwrite_from_fax_file_proc:  If true sets detector processing
+        parameters after raw_records(peaklets/events/etc) from from fax_config
+        file istead of CMT
+    :param cmt_option_overwrite_sim: Dictionary to overwrite CMT settings for
+        the detector simulation part.
+    :param cmt_option_overwrite_proc: Dictionary to overwrite CMT settings for
+        the data processing part.
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
+        being written (e.g. 'raw_records' for read only simulation context).
+    :param _config_overlap: Dictionary of options to overwrite. Keys
+        must be simulation config keys, values must be valid CMT option keys.
+    :param kwargs: Additional kwargs taken by strax.Context.
+    :return: strax.Context instance
+    """
     import wfsim
     st = strax.Context(
         storage=strax.DataDirectory(output_folder),
         config=dict(detector='XENONnT',
-                    fax_config='fax_config_nt_design.json',
+                    fax_config=fax_config,
                     check_raw_record_overlaps=True,
-                    **straxen.contexts.xnt_simulation_config,
-                    ),
-        **straxen.contexts.xnt_common_opts)
+                    **straxen.contexts.xnt_common_config,),
+        **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
+    st.apply_cmt_version(f'global_{cmt_version}')
+
+    if _forbid_creation_of is not None:
+        st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
+
+    # doing sanity checks for cmt run ids for simulation and processing
+    if (not cmt_run_id_sim ) and (not cmt_run_id_proc ):
+        raise RuntimeError("cmt_run_id_sim and cmt_run_id_proc are None. "
+                           "You have to specify at least one CMT run id. ")
+    if (cmt_run_id_sim and cmt_run_id_proc ) and (cmt_run_id_sim!=cmt_run_id_proc):
+        print("INFO : divergent CMT runs for simulation and processing")
+        print("    cmt_run_id_sim".ljust(25), cmt_run_id_sim)
+        print("    cmt_run_id_proc".ljust(25), cmt_run_id_proc)
+    else:
+        cmt_id = cmt_run_id_sim  or cmt_run_id_proc
+        cmt_run_id_sim  = cmt_id
+        cmt_run_id_proc = cmt_id
+
+    # Replace default cmt options with cmt_run_id tag + cmt run id
+    cmt_options = straxen.get_corrections.get_cmt_options(st)
+
+    # First, fix gain model for simulation
+    st.set_config({'gain_model_mc': 
+                        ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
+    fax_config_override_from_cmt = dict()
+    for fax_field, cmt_field in _config_overlap.items():
+        fax_config_override_from_cmt[fax_field] = ('cmt_run_id', cmt_run_id_sim,
+                                                   *cmt_options[cmt_field])
+    st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
+
+    # and all other parameters for processing
+    for option in cmt_options:
+        st.config[option] = ('cmt_run_id', cmt_run_id_proc, *cmt_options[option])
+
+    # Done with "default" usage, now to overwrites from file
+    #
+    # Take fax config and put into context option
+    if overwrite_from_fax_file_proc or overwrite_from_fax_file_sim:
+        fax_config = straxen.get_resource(fax_config, fmt='json')
+        for fax_field, cmt_field in _config_overlap.items():
+            if overwrite_from_fax_file_proc:
+                st.config[cmt_field] = ( cmt_options[cmt_field][0] + '_constant',
+                                         fax_config[fax_field])
+            if overwrite_from_fax_file_sim:
+                st.config['fax_config_override_from_cmt'][fax_field] = (
+                         cmt_options[cmt_field][0] + '_constant',fax_config[fax_field])
+
+    # And as the last step - manual overrrides, since they have the highest priority
+    # User customized for simulation
+    for option in cmt_option_overwrite_sim:
+        if option not in cmt_options:
+            raise ValueError(f'Overwrite option {option} is not using CMT by default '
+                             'you should just use set config')
+        if not option in _config_overlap.values():
+            raise ValueError(f'Overwrite option {option} does not have mapping from '
+                              'CMT to fax config! ')
+        for fax_key,cmt_key in _config_overlap.items():
+            if cmt_key==option:
+                _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
+                st.config['fax_config_override_from_cmt'][fax_key] = (
+                                            cmt_options[option][_name_index] + '_constant',
+                                            cmt_option_overwrite_sim[option])
+                del(_name_index)
+            del(fax_key, cmt_key)
+    # User customized for simulation
+    for option in cmt_option_overwrite_proc:
+        if option not in cmt_options:
+            raise ValueError(f'Overwrite option {option} is not using CMT by default '
+                             'you should just use set config')
+        _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
+        st.config[option] = (cmt_options[option][_name_index] + '_constant', 
+                             cmt_option_overwrite_proc[option])
+        del(_name_index)
+    # Only for simulations
+    st.set_config({"event_info_function": "disabled"})
+
     return st
 
 ##
@@ -241,6 +383,7 @@ x1t_context_config.update(
     dict(register=common_opts['register'] +
                   [straxen.PeakPositions1T,
                    straxen.RecordsFromPax,
+                   straxen.EventInfo1T,
          ]))
 
 x1t_common_config = dict(
@@ -273,19 +416,18 @@ x1t_common_config = dict(
         ((2, 1), (4.5, 0.4))),
     peak_min_pmts=2,
     # MergedS2s
-    s2_merge_max_duration=15_000,
-    s2_merge_max_gap=3500,
+    s2_merge_gap_thresholds=((1.7, 5.0e3), (4.0, 500.), (5.0, 0.)),
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
     s1_max_rise_time=60,
     s1_max_rise_time_post100=150,
+    s1_min_coincidence=3,
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife_conf=('elife', 'v1', False),
-    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4, False),
-    event_info_function='disabled',
+    elife_conf=('elife_xenon1t', 'v1', False),
+    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
     max_drift_length=96.9,
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )

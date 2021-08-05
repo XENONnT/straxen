@@ -1,5 +1,7 @@
 """Return corrections from corrections DB
 """
+import warnings
+
 import pytz
 import numpy as np
 from functools import lru_cache
@@ -7,6 +9,8 @@ import strax
 import utilix
 import straxen
 import os
+from immutabledict import immutabledict
+
 
 export, __all__ = strax.exporter()
 
@@ -15,11 +19,20 @@ corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
                       's1_xyz_map_gcn', 'fdc_map_mlp', 'fdc_map_gcn',
                       'fdc_map_cnn']
 
-single_value_corrections = ['elife', 'baseline_samples_nv',
+single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
                             'electron_drift_velocity', 'electron_drift_time_gate']
 
 arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
                       'hit_thresholds_nv', 'hit_thresholds_mv']
+
+# needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
+# important for apply_cmt_version
+posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map']
+
+
+class CMTVersionError(Exception):
+    pass
+
 
 @export
 class CorrectionsManagementServices():
@@ -77,17 +90,17 @@ class CorrectionsManagementServices():
         """
 
         if not isinstance(config_model, (tuple, list)) or len(config_model) != 2:
-            raise ValueError(f'config_model {config_model} must be a tuple')
-        model_type, global_version = config_model
+            raise ValueError(f'config_model {config_model} must be a tuple of length 2')
+        model_type, version = config_model
 
         if 'to_pe_model' in model_type:
-            return self.get_pmt_gains(run_id, model_type, global_version)
+            return self.get_pmt_gains(run_id, model_type, version)
         elif model_type in single_value_corrections or model_type in arrays_corrections:
-            return self._get_correction(run_id, model_type, global_version)
+            return self._get_correction(run_id, model_type, version)
         elif model_type in corrections_w_file:
-            return self.get_config_from_cmt(run_id, model_type, global_version)
+            return self.get_config_from_cmt(run_id, model_type, version)
         else:
-            raise ValueError(f"{config_model} not found, currently these are "
+            raise ValueError(f"{model_type} not found, currently these are "
                              f"available {single_value_corrections}, {arrays_corrections} and "
                              f"{corrections_w_file} ")
 
@@ -95,48 +108,58 @@ class CorrectionsManagementServices():
     # entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
-    def _get_correction(self, run_id, correction, global_version):
+    def _get_correction(self, run_id, correction, version):
         """
         Smart logic to get correction from DB
         :param run_id: run id from runDB
         :param correction: correction's name, key word (str type)
-        :param global_version: global version (str type)
+        :param version: local version (str type)
         :return: correction value(s)
         """
         when = self.get_start_time(run_id)
-        df_global = self.interface.read('global' if self.is_nt else 'global_xenon1t')
 
         try:
             values = []
-            for it_correction, version in df_global.iloc[-1][global_version].items():
-                if correction in it_correction:
-                    df = self.interface.read(it_correction)
-                    if global_version in ('ONLINE', 'xenonnt_temporary_five_pmts'):
-                        # We don't want to have different versions based
-                        # on when something was processed therefore
-                        # don't interpolate but forward fill.
-                        df = self.interface.interpolate(df, when, how='fill')
-                    if correction in corrections_w_file or correction in arrays_corrections:
-                        # is this the best solution?
-                        df = self.interface.interpolate(df, when, how='fill')
-                    else:
-                        df = self.interface.interpolate(df, when)
-                    values.append(df.loc[df.index == when, version].values[0])
+
+            # hack to workaround to group all pmts
+            # because every pmt is its own dataframe...of course
+            if correction in {'pmt', 'n_veto', 'mu_veto'}:
+                # get lists of pmts 
+                df_global = self.interface.read('global_xenonnt' if self.is_nt else 'global_xenon1t')
+                gains = df_global['global_ONLINE'][0]  # global is where all pmts are grouped
+                pmts = list(gains.keys())
+                for it_correction in pmts: # loop over all PMTs
+                    if correction in it_correction:
+                        df = self.interface.read(it_correction)
+                        if version in 'ONLINE':
+                            df = self.interface.interpolate(df, when, how='fill')
+                        else:
+                            df = self.interface.interpolate(df, when)
+                        values.append(df.loc[df.index == when, version].values[0])
+            else:
+                df = self.interface.read(correction)
+                if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
+                    df = self.interface.interpolate(df, when, how='fill')
+                else:
+                    df = self.interface.interpolate(df, when)
+                values.append(df.loc[df.index == when, version].values[0])
             corrections = np.asarray(values)
         except KeyError:
-            raise ValueError(f"Global version {global_version} not found for correction {correction}")
-
+            if "global" in version:
+                raise ValueError(f"User is not allowed to pass {version} global version are not allowed")
+            raise ValueError(f"Version {version} not found for correction {correction}, please check")
+            
         else:
             return corrections
 
-    def get_pmt_gains(self, run_id, model_type, global_version,
+    def get_pmt_gains(self, run_id, model_type, version,
                       cacheable_versions=('ONLINE',),
                       gain_dtype=np.float32):
         """
         Smart logic to return pmt gains to PE values.
         :param run_id: run id from runDB
         :param model_type: to_pe_model (gain model)
-        :param global_version: global version
+        :param version: version
         :param cacheable_versions: versions that are allowed to be
         cached in ./resource_cache
         :param gain_dtype: dtype of the gains to be returned as array
@@ -154,23 +177,23 @@ class CorrectionsManagementServices():
                               'to_pe_model_mv': 'mu_veto'}
             target_detector = detector_names[model_type]
 
-            if global_version in cacheable_versions:
+            if version in cacheable_versions:
                 # Try to load from cache, if it does not exist it will be created below
-                cache_name = cacheable_naming(run_id, model_type, global_version)
+                cache_name = cacheable_naming(run_id, model_type, version)
                 try:
                     to_pe = straxen.get_resource(cache_name, fmt='npy')
                 except (ValueError, FileNotFoundError):
                     pass
 
             if to_pe is None:
-                to_pe = self._get_correction(run_id, target_detector, global_version)
+                to_pe = self._get_correction(run_id, target_detector, version)
 
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).all():
                 raise ValueError(
                     f"to_pe(PMT gains) values are NaN, no data available "
                     f"for {run_id} in the gain model with version "
-                    f"{global_version}, please set constant values for "
+                    f"{version}, please set constant values for "
                     f"{run_id}")
 
         else:
@@ -189,7 +212,7 @@ class CorrectionsManagementServices():
                 f'Cannot proceed with processing. Report to CMT-maintainers.')
 
         if (cache_name is not None
-                and global_version in cacheable_versions
+                and version in cacheable_versions
                 and not os.path.exists(cache_name)):
             # This is an array we can save since it's in the cacheable
             # versions but it has not been saved yet. Next time we need
@@ -197,21 +220,21 @@ class CorrectionsManagementServices():
             np.save(cache_name, to_pe, allow_pickle=False)
         return to_pe
 
-    def get_config_from_cmt(self, run_id, model_type, global_version='ONLINE'):
+    def get_config_from_cmt(self, run_id, model_type, version='ONLINE'):
         """
         Smart logic to return NN weights file name to be downloader by
         straxen.MongoDownloader()
         :param run_id: run id from runDB
         :param model_type: model type and neural network type; model_mlp,
         or model_gcn or model_cnn
-        :param global_version: global version
+        :param version: version
         :param return: NN weights file name
         """
         if model_type not in corrections_w_file:
             raise ValueError(f"{model_type} is not stored in CMT "
                              f"please check, these are available {corrections_w_file}")
 
-        file_name = self._get_correction(run_id, model_type, global_version)
+        file_name = self._get_correction(run_id, model_type, version)
 
         if not file_name:
             raise ValueError(f"You have the right option but could not find a file"
@@ -238,6 +261,41 @@ class CorrectionsManagementServices():
         time = rundoc['start']
         return time.replace(tzinfo=pytz.utc)
 
+    def get_local_versions(self, global_version):
+        """Returns a dict of local versions for a given global version. Use 'latest' to get newest version"""
+        # check that 'global' is in the passed string.
+
+        if global_version == 'latest':
+            # CMT appends columns to the global versions dataframe, so taking last one is the latests
+            global_version = self.global_versions[-1]
+
+        if 'global' not in global_version:
+            warnings.warn("'global' does not appear in the passed global version. Are you sure this right?")
+        # CMT generates a global version, global version is just a set of local versions
+        # With this we can do pretty easy bookkeping for offline contexts
+
+        cmt_global = self.interface.read('global_xenonnt')
+        if global_version not in cmt_global:
+            avail_global_versions_string = '\n'.join([f'\t\t{v}' for v in self.global_versions])
+            raise ValueError(f"Global version {global_version} not found! "
+                             f"Try one of these:\n{avail_global_versions_string}")
+        # get local versions from CMT global version
+        local_versions = cmt_global[global_version][0]
+
+        # to make returned dictionary more manageable, we prune all the per-PMT corrections
+        # first rename to more clear variable
+        local_versions['to_pe_model'] = local_versions['pmt_000_gain_xenonnt']
+        local_versions['to_pe_model_nv'] = local_versions['n_veto_000_gain_xenonnt']
+        local_versions['to_pe_model_mv'] = local_versions['mu_veto_000_gain_xenonnt']
+
+        # drop the per-PMT corrections
+        pruned_local_versions = {key: val for key, val in local_versions.items() if "_gain_xenonnt" not in key}
+        return pruned_local_versions
+
+    @property
+    def global_versions(self):
+        return self.interface.read('global_xenonnt').columns.tolist()
+
 
 def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
     """Convert args to consistent naming convention for array to be cached"""
@@ -247,11 +305,57 @@ def cacheable_naming(*args, fmt='.npy', base='./resource_cache/'):
         except (FileExistsError, PermissionError):
             pass
     for arg in args:
-        if not type(arg) == str:
+        if not isinstance(arg, str):
             raise TypeError(f'One or more args of {args} are not strings')
     return base + '_'.join(args) + fmt
 
 
 class GainsNotFoundError(Exception):
     """Fatal error if a None value is returned by the corrections"""
-    pass
+
+
+def get_cmt_local_versions(global_version):
+    cmt = CorrectionsManagementServices()
+    return cmt.get_local_versions(global_version)
+
+
+@strax.Context.add_method
+def apply_cmt_version(context: strax.Context, cmt_global_version: str):
+    """Sets all the relevant correction variables
+    :param cmt_global_version: A specific CMT global version, or 'latest' to get the newest one
+    :returns None
+    """
+    local_versions = get_cmt_local_versions(cmt_global_version)
+
+    # get the position algorithm we are using
+    # I feel like this should be easier...
+    posrec_option = 'default_reconstruction_algorithm'
+    if posrec_option in context.config:
+        posrec_algo = context.config[posrec_option]
+    else:
+        posrec_algo = context._plugin_class_registry['peak_positions'].takes_config[posrec_option].default
+
+    cmt_options = straxen.get_corrections.get_cmt_options(context)
+
+    # catch here global versions that are not compatible with this straxen version
+    # this happens if a new correction was added to CMT that was not used in a fixed version
+    # we want this error to occur in order to keep fixed global versions
+    cmt_config = dict()
+    failed_keys = []
+    for option, tup in cmt_options.items():
+        try:
+            # might need to modify correction name to include position reconstruction algo
+            correction_name = tup[0]
+            if correction_name in posrec_corrections_basenames:
+                correction_name += f"_{posrec_algo}"
+            new_tup = (tup[0], local_versions[correction_name], tup[2])
+        except KeyError:
+            failed_keys.append(option)
+            continue
+        cmt_config[option] = new_tup
+    if len(failed_keys):
+        failed_keys = ', '.join(failed_keys)
+        raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
+                              f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
+
+    context.set_config(cmt_config)

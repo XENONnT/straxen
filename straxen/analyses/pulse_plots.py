@@ -1,9 +1,7 @@
 import straxen
 import strax
-
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import os
 
 
@@ -76,6 +74,7 @@ def plot_pulses(context, raw_records, run_id, time_range,
 
     nfigs = 1
     if store_pdf:
+        from matplotlib.backends.backend_pdf import PdfPages
         fname = f'pulses_{run_id}_{time_range[0]}_{time_range[1]}.pdf'
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)

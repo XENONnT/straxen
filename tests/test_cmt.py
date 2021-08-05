@@ -29,7 +29,7 @@ def test_connect_to_db():
     corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
     client = corrections_collection.database.client
     cmt = strax.CorrectionsInterface(client, database_name='corrections')
-    df = cmt.read('global')
+    df = cmt.read('global_xenonnt')
     mes = 'Return empty dataframe when reading DB. Please check'
     assert not df.empty, mes
 
@@ -42,7 +42,7 @@ def test_1T_elife():
              'no have access to the database.')
         return
 
-    elife_conf = ('elife', 'ONLINE', False)
+    elife_conf = ('elife_xenon1t', 'ONLINE', False)
     elife_cmt = straxen.get_correction_from_cmt(test_run_id_1T, elife_conf)
     elife_file = elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
     x = straxen.get_resource(elife_file, fmt='npy')
@@ -92,14 +92,14 @@ def test_mc_wrapper_elife(run_id='009000',
     # different run-number.
     mc_elife_diff = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', cmt_id, "elife", "ONLINE", True)
+        ('cmt_run_id', cmt_id, "elife", "ONLINE", True)
     )
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `elife` above
     mc_elife_same = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', run_id, "elife", "ONLINE", True)
+        ('cmt_run_id', run_id, "elife", "ONLINE", True)
     )
 
     assert elife != mc_elife_diff
@@ -138,13 +138,13 @@ def test_mc_wrapper_gains(run_id='009000',
     # different run-number.
     mc_gains_diff = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', cmt_id, 'to_pe_model', 'ONLINE', True))
+        ('cmt_run_id', cmt_id, 'to_pe_model', 'ONLINE', True))
 
     # Repeat the query from above to verify, let's see if we are getting
     # the same results as for `gains` above
     mc_gains_same = straxen.get_correction_from_cmt(
         mc_id,
-        ('MC', run_id, 'to_pe_model', 'ONLINE', True))
+        ('cmt_run_id', run_id, 'to_pe_model', 'ONLINE', True))
 
     assert not np.all(gains == mc_gains_diff)
     assert np.all(gains == mc_gains_same)

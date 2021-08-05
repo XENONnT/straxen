@@ -198,9 +198,9 @@ class S1MaxPMT(strax.LoopPlugin):
     """Removes events where the largest hit in S1 is too large
     port from lax.sciencerun0.py"""
     depends_on = ('events', 'event_basics', 'peak_basics')
-    dtype = [('cut_s1_max_pmt', np.bool, 'S1 max PMT cut')] + strax.time_fields
+    dtype = [('cut_s1_max_pmt', np.bool_, 'S1 max PMT cut')] + strax.time_fields
     provides = 'cut_s1_max_pmt'
-    __version__ = 1.2
+    __version__ = 1.3
 
     def compute_loop(self, event, peaks):
         ret = dict(cut_s1_max_pmt=True)
