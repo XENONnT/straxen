@@ -58,7 +58,8 @@ class TestBasics(unittest.TestCase):
         )
         print(rucio)
         found = rucio.find_several(self.test_keys)
-        assert not found
+        # We shouldn't find any of these
+        assert found == [False for _ in self.test_keys]
 
     def test_find_several_remote(self):
         """
@@ -76,4 +77,5 @@ class TestBasics(unittest.TestCase):
             pass
         else:
             found = rucio.find_several(self.test_keys)
-            assert not found
+            # We shouldn't find any of these
+            assert found == [False for _ in self.test_keys]
