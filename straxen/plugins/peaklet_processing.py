@@ -602,14 +602,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_buffer=int(self.config['s2_merge_max_duration']
                                // peaklets['dt'].min()))
             merged_s2s['type'] = 2
-
+            
             # Updated time and length of lone_hits and sort again:
-            lone_hits['time'] = (lone_hits['time']
-                                 - (lone_hits['left']-lone_hits['left_integration'])*lone_hits['dt']
+            lh = np.copy(lone_hits)
+            del lone_hits
+            lh['time'] = (lh['time']
+                                 - (lh['left']-lh['left_integration'])*lh['dt']
                                  )
-            lone_hits['length'] = (lone_hits['right_integration'] - lone_hits['left_integration'])
-            lone_hits = strax.sort_by_time(lone_hits)
-            strax.add_lone_hits(merged_s2s, lone_hits, self.to_pe)
+            lh['length'] = (lh['right_integration'] - lh['left_integration'])
+            lh = strax.sort_by_time(lh)
+            strax.add_lone_hits(merged_s2s, lh, self.to_pe)
 
             strax.compute_widths(merged_s2s)
 
