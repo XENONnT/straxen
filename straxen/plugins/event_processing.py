@@ -57,6 +57,8 @@ class Events(strax.OverlapWindowPlugin):
     provides = 'events'
     data_kind = 'events'
     __version__ = '0.0.1'
+    save_when = strax.SaveWhen.NEVER
+
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
         ('time', np.int64, 'Event start time in ns since the unix epoch'),
@@ -133,7 +135,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.1.0'
+    __version__ = '1.1.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -152,7 +154,10 @@ class EventBasics(strax.Plugin):
         dtype += [('n_peaks', np.int32,
                    'Number of peaks in the event'),
                   ('drift_time', np.int32,
-                   'Drift time between main S1 and S2 in ns')]
+                   'Drift time between main S1 and S2 in ns'),
+                  ('event_number', np.int64,
+                   'Event number in this dataset'),
+                  ]
 
         dtype += self._get_si_dtypes(self.peak_properties)
 
@@ -267,6 +272,11 @@ class EventBasics(strax.Plugin):
         self.set_nan_defaults(result)
 
         split_peaks = strax.split_by_containment(peaks, events)
+
+        result['time'] = events['time']
+        result['endtime'] = events['endtime']
+        result['event_number'] = events['event_number']
+
         self.fill_events(result, events, split_peaks)
         return result
 
@@ -276,9 +286,6 @@ class EventBasics(strax.Plugin):
         for event_i, _ in enumerate(events):
             peaks_in_event_i = split_peaks[event_i]
             n_peaks = len(peaks_in_event_i)
-
-            result_buffer[event_i]['time'] = events[event_i]['time']
-            result_buffer[event_i]['endtime'] = events[event_i]['endtime']
             result_buffer[event_i]['n_peaks'] = n_peaks
 
             if not n_peaks:
