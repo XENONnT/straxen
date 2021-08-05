@@ -144,6 +144,10 @@ class RunDB(strax.StorageFrontend):
 
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
+        if key.run_id.startswith('_'):
+            # Superruns are currently not supprorted..
+            raise strax.DataNotAvailable
+        
         if fuzzy_for or fuzzy_for_options:
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
@@ -291,6 +295,10 @@ class RunDB(strax.StorageFrontend):
             yield doc
 
     def run_metadata(self, run_id, projection=None):
+        if run_id.startswith('_'):
+            # Superruns are currently not supprorted..
+            raise strax.DataNotAvailable
+        
         if self.runid_field == 'name':
             run_id = str(run_id)
         else:

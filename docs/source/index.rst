@@ -16,6 +16,7 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     tutorials/run_selection.ipynb
     tutorials/pulse_analysis.ipynb
     tutorials/Open_data.ipynb
+    tutorials/SuperrunsExample.ipynb
     tutorials/mini_analyses
 
 
