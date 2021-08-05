@@ -9,10 +9,9 @@ import datetime
 import pytz
 from os import environ as os_environ
 from importlib import import_module
-
+from configparser import NoSectionError
 
 export, __all__ = strax.exporter()
-from configparser import NoSectionError
 
 
 @export
