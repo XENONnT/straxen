@@ -7,6 +7,8 @@ import socket
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        if not straxen.utilix_is_configured:
+            return
         if 'rcc' not in socket.getfqdn():
             # If we are not on RCC, for testing, add some dummy site
             straxen.RucioFrontend.local_rses = {'UC_DALI_USERDISK': r'.rcc.',
