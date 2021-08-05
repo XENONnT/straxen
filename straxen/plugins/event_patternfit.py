@@ -1,8 +1,11 @@
 import strax
 import straxen
 import numpy as np
-from scipy.special import betainc, gammaln, loggamma
-import warnings
+import numba
+from numba.extending import get_cython_function_address
+import ctypes
+from scipy.special import loggamma
+
 export, __all__ = strax.exporter()
 
 
@@ -320,50 +323,73 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     res[is_zero*neg_mu] = 0.0
     return res
 
+
 # continuous and discrete binomial test
 # https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
-def bdtrc(k, n, p):
-    if (k < 0):
-        return (1.0)
-    if (k == n):
-        return (0.0)
+# Numba versions of scipy functions:
+# Based on http://numba.pydata.org/numba-doc/latest/extending/high-level.html
+double = ctypes.c_double
+addr = get_cython_function_address("scipy.special.cython_special", "gammaln")
+functype = ctypes.CFUNCTYPE(double, double)
+gammaln_float64 = functype(addr)
+
+@numba.njit
+def numba_gammaln(x):
+    return gammaln_float64(x)
+
+
+addr = get_cython_function_address("scipy.special.cython_special", "betainc")
+functype = ctypes.CFUNCTYPE(double, double, double, double)
+betainc_float64 = functype(addr)
+
+
+@numba.njit
+def numba_betainc(x1, x2, x3):
+    return betainc_float64(x1, x2, x3)
+
+
+@numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)])
+def binom_pmf(k, n, p):
+    scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
+    ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
+    return np.exp(ret_log)
+
+
+@numba.njit
+def binom_cdf(k, n, p):
+    if k < 0:
+        return np.nan
+    if k == n:
+        return 1.0
     dn = n - k
-    if (k == 0):
-        if (p < .01):
+    if k == 0:
+        dk = np.exp(dn * np.log(1.0 - p))
+    else:
+        dk = k + 1
+        dk = numba_betainc(dn, dk, 1.0 - p)
+    return dk
+
+
+@numba.njit
+def binom_sf(k, n, p):
+    if k < 0:
+        return 1.0
+    if k == n:
+        return 0.0
+    dn = n - k
+    if k == 0:
+        if p < .01:
             dk = -np.expm1(dn * np.log1p(-p))
         else:
             dk = 1.0 - np.exp(dn * np.log(1.0 - p))
     else:
         dk = k + 1
-        dk = betainc(dk, dn, p)
+        dk = numba_betainc(dk, dn, p)
     return dk
 
-def bdtr(k, n, p):
-    if (k < 0):
-        return np.nan
-    if (k == n):
-        return (1.0)
-    dn = n - k
-    if (k == 0):
-        dk = np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = betainc(dn, dk, 1.0 - p)
-    return dk
 
-# continuous binomial distribution
-def binom_pmf(k, n, p):
-    scale_log = gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
-    ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
-    return np.exp(ret_log)
-
-def binom_cdf(k, n, p):
-    return bdtr(k, n, p)
-
-def binom_sf(k, n, p):
-    return bdtrc(k, n, p)
-
+@numba.njit
 def binom_test(k, n, p):
     """
     The main purpose of this algorithm is to find the value j on the
@@ -377,7 +403,8 @@ def binom_test(k, n, p):
     # define number of interaction for finding the the value j
     # the exceptional case of n<=0, is avoid since n_iter is at least 2
     if n > 0:
-        n_iter = int(max(np.round(np.log10(n)) + 1, 2))
+        n_iter = int(np.round_(np.log10(n)) + 1)
+        n_iter = max(n_iter, 2)
     else:
         n_iter = 2
 
@@ -396,30 +423,32 @@ def binom_test(k, n, p):
         else:
             j_min, j_max = k, n
             do_test = True
+
         def _check_(d, y0, y1):
-            return (d>y1) and (d<=y0)
+            return (d > y1) and (d <= y0)
     else:
         if binom_pmf(0, n, p) > d:
             n_iter, j_min, j_max = 0, 0, 0
         else:
             j_min, j_max = 0, k
         do_test = True
+
         def _check_(d, y0, y1):
-            return (d>=y0) and (d<y1)
+            return (d >= y0) and (d < y1)
 
     # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
     # the returned binomial test is 0
-    if (d==0)|(not do_test):
+    if (d == 0) | (not do_test):
         pval = 0.0
     else:
         # Here we are actually looking for j
         for i in range(n_iter):
             n_pts = int(j_max - j_min)
-            if (i<2) and (n_pts < 50): 
+            if (i < 2) and (n_pts < 50):
                 n_pts = 50
-            j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
+            j_range = np.linspace(j_min, j_max, n_pts)
             y = binom_pmf(j_range, n, p)
-            for i in range(len(j_range) - 1):
+            for i in range(n_pts - 1):
                 if _check_(d, y[i], y[i + 1]):
                     j_min, j_max = j_range[i], j_range[i + 1]
                     break
@@ -432,7 +461,6 @@ def binom_test(k, n, p):
         else:
             pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
         pval = min(1.0, pval)
-        
     return pval
 
 
