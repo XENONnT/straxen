@@ -16,7 +16,7 @@ LEGENDS = ('Unknown', 'S1', 'S2')
 straxen._BOKEH_CONFIGURED_NOTEBOOK = False
 
 
-@straxen.mini_analysis(requires=('events', 'event_basics', 'peaks', 'peak_basics', 'peak_positions'),
+@straxen.mini_analysis(requires=('event_basics', 'peaks', 'peak_basics', 'peak_positions'),
                        warn_beyond_sec=0.05)
 def event_display_interactive(events,
                               peaks,
