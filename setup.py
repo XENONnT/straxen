@@ -30,6 +30,7 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + tests_requires,
+                 # Not testing py3.6 #616
                  python_requires=">=3.6",
                  extras_require={
                      'docs': doc_requirements,
