@@ -2,8 +2,7 @@ import strax
 import straxen
 import numpy as np
 import numba
-from numba.extending import get_cython_function_address
-import ctypes
+from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
 
 export, __all__ = strax.exporter()
@@ -310,51 +309,29 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     mean_pe_photon - mean of area responce for one photon
     """
     with np.errstate(divide='ignore', invalid='ignore'):
-        res = 2.*(mu - 
-                  (areas/mean_pe_photon)*np.log(mu) + 
-                  loggamma((areas/mean_pe_photon)+1) + 
+        fraction = areas/mean_pe_photon
+        res = 2.*(mu -
+                  (fraction)*np.log(mu) +
+                  loggamma((fraction)+1) +
                   np.log(mean_pe_photon)
                  )
-    is_zero = ~(areas>0)    # If area equals or smaller than 0 - assume 0
+    is_zero = areas <= 0    # If area equals or smaller than 0 - assume 0
     res[is_zero] = 2.*mu[is_zero]
     # if zero channel has negative expectation, assume LLH to be 0 there
     # this happens in the normalization factor calculation when mu is received from area
-    neg_mu = mu<0.0
-    res[is_zero*neg_mu] = 0.0
+    neg_mu = mu < 0.0
+    res[is_zero | neg_mu] = 0.0
     return res
 
 
 # continuous and discrete binomial test
 # https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
-# Numba versions of scipy functions:
-# Based on http://numba.pydata.org/numba-doc/latest/extending/high-level.html
-double = ctypes.c_double
-addr = get_cython_function_address("scipy.special.cython_special", "gammaln")
-functype = ctypes.CFUNCTYPE(double, double)
-gammaln_float64 = functype(addr)
-
-@numba.njit
-def numba_gammaln(x):
-    return gammaln_float64(x)
-
-
-addr = get_cython_function_address("scipy.special.cython_special", "betainc")
-functype = ctypes.CFUNCTYPE(double, double, double, double)
-betainc_float64 = functype(addr)
-
-
-@numba.njit
-def numba_betainc(x1, x2, x3):
-    return betainc_float64(x1, x2, x3)
-
-
 @numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)])
 def binom_pmf(k, n, p):
     scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
     return np.exp(ret_log)
-
 
 @numba.njit
 def binom_cdf(k, n, p):
