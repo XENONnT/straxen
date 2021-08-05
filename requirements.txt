@@ -10,5 +10,4 @@ immutabledict
 numba>=0.50.0
 requests
 commentjson
-matplotlib; python_version>="3.7"
-matplotlib<3.4; python_version=="3.6"
+matplotlib
