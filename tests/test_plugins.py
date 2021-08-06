@@ -144,6 +144,10 @@ def _run_plugins(st,
 
         # Create event info
         target = 'event_info'
+        # (If we do not split up the processing we always end up in a dead lock)
+        st.make(run_id=run_id,
+                targets='peaklets',
+                **proces_kwargs)
         st.make(run_id=run_id,
                 targets=target,
                 **proces_kwargs)
@@ -293,6 +297,6 @@ def test_nT_mutlticore():
 
 # Disable the test below as it saves some time in travis and gives limited new
 # information as most development is on nT-plugins.
-# def test_1T_mutlticore():
-#     print('1T multicore')
-#     test_1T(2)
+def test_1T_mutlticore():
+    print('1T multicore')
+    test_1T(2)

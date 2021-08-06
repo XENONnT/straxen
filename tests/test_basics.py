@@ -41,6 +41,7 @@ class TestBasics(unittest.TestCase):
 
     def test_processing(self):
         st = self.st
+        st.make(self.run_id, 'peaklets')
         df = st.get_df(self.run_id, 'event_info')
 
         assert len(df) > 0
@@ -50,6 +51,7 @@ class TestBasics(unittest.TestCase):
 
     def test_get_livetime_sec(self):
         st = self.st
+        st.make(self.run_id, 'peaklets')
         events = st.get_array(self.run_id, 'peaks')
         straxen.get_livetime_sec(st, test_run_id_1T, things=events)
 
