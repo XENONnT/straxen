@@ -93,6 +93,7 @@ jobs:
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           python setup.py test -v
+          pip install -r extra_requirements/requirements-tests.txt
           pytest tests/test_plugins.py
           pytest tests/test_basics.py
           pytest
