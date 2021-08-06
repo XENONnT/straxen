@@ -94,7 +94,6 @@ jobs:
         run: |
           python setup.py test -v
           pip install -r extra_requirements/requirements-tests.txt
-          pip install -r
           pytest tests/test_plugins.py
           pytest tests/test_basics.py
           pytest
