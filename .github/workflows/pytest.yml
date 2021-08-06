@@ -92,6 +92,11 @@ jobs:
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           python setup.py test -v
+          pytest tests/test_plugins.py
+          pytest tests/test_basics.py 
+          pytest
+          pytest tests/test_several.py
+          pytest
       - name: Coveralls
         # Make the coverage report and upload
         env:
