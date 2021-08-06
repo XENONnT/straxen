@@ -24,13 +24,14 @@ on:
   push:
     branches:
       - master
+      - replicate_odd_stuff
 
 jobs:
   update:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: True
+      fail-fast: False
       matrix:
         python-version: [3.7, 3.8, 3.9]
         test: ['coveralls', 'pytest', 'pytest_no_database']
@@ -93,7 +94,7 @@ jobs:
         run: |
           python setup.py test -v
           pytest tests/test_plugins.py
-          pytest tests/test_basics.py 
+          pytest tests/test_basics.py
           pytest
           pytest tests/test_several.py
           pytest
