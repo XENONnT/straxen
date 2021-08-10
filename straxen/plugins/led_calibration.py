@@ -3,6 +3,7 @@ Dear nT analyser,
 if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
 '''
 import datetime
+from immutabledict import immutabledict
 import strax
 import numba
 import numpy as np
@@ -173,7 +174,8 @@ class nVetoExtTimings(strax.Plugin):
         return dtype
 
     def setup(self):
-        self.channel_range = self.config['channel_map']['nveto']
+        self.nv_pmt_start = self.config['channel_map']['nveto'][0]
+        self.nv_pmt_stop = self.config['channel_map']['nveto'][1] + 1
 
     def compute(self, hitlets_nv, raw_records_nv):
 
@@ -191,22 +193,21 @@ class nVetoExtTimings(strax.Plugin):
         ext_timings_nv['time'] = hitlets_nv['time']
         ext_timings_nv['length'] = hitlets_nv['length']
         ext_timings_nv['dt'] = hitlets_nv['dt']
-        calc_delta_time(ext_timings_nv['delta_time'], pulses, hitlets_nv)
+        self.calc_delta_time(ext_timings_nv['delta_time'], pulses, hitlets_nv)
 
         return ext_timings_nv
 
 
-    @numba.njit
     def calc_delta_time(self, ext_timings_nv_delta_time, pulses, hitlets_nv):
         # numpy access with fancy index returns copy, not view
         # This for-loop is required to substitute in one by one
-        for ch in np.arange(self.channel_range[0], self.channel_range[1] + 1):
+        for ch in np.arange(self.nv_pmt_start, self.nv_pmt_stop, dtype=np.int):
             fancy_i_ch = hitlets_nv['channel']==ch
             fancy_i_ch = np.arange(len(fancy_i_ch))[fancy_i_ch]
-            pulses = pulses[pulses['channel']==ch]
+            _pulses = pulses[pulses['channel']==ch]
             _hitlets_nv = hitlets_nv[fancy_i_ch]
-            _rr_index = strax.fully_contained_in(_hitlets_nv, pulses)
-            _t_delta = _hitlets_nv['time'] - pulses[_rr_index]['time']
+            _rr_index = strax.fully_contained_in(_hitlets_nv, _pulses)
+            _t_delta = _hitlets_nv['time'] - _pulses[_rr_index]['time']
 
             for res_i, t_del in zip(fancy_i_ch, _t_delta):
                 ext_timings_nv_delta_time[res_i] = t_del
