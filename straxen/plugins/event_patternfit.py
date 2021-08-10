@@ -42,7 +42,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -374,9 +374,15 @@ def binom_test(k, n, p):
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
     """
+    _d0 = binom_pmf(0, n, p)
+    _dmu = binom_pmf(n*p, n, p)
+    _dn = binom_pmf(n, n, p)
     d = binom_pmf(k, n, p)
     rerr = 1 + 1e-7
     d = d * rerr
+    _d0 = _d0 * rerr
+    _dmu = _dmu * rerr 
+    _dn = _dn * rerr
     # define number of interaction for finding the the value j
     # the exceptional case of n<=0, is avoid since n_iter is at least 2
     if n > 0:
@@ -386,42 +392,32 @@ def binom_test(k, n, p):
         n_iter = 2
 
     if k < n * p:
-        # if binom_pmf(n, n, p) > d, with d<<1e-3, means that we have
-        # to look for j value above n. It is likely that the binomial
-        # test for such j is extremely low such that we can stop
-        # the algorithm and return 0
-        if binom_pmf(n, n, p) > d:
-            for n_ in np.arange(n, 2*n, 1):
-                if binom_pmf(n_, n, p) < d:
-                    j_min, j_max = k, n_
-                    do_test = True
-                    break
-                do_test = False
+        if (_d0 >= d) and (_d0 > _dmu):
+            n_iter, j_min, j_max = 0, 0, 0
+        elif _dn > d:
+            n_iter, j_min, j_max = 0, 0, 0
         else:
             j_min, j_max = k, n
-            do_test = True
-
         def _check_(d, y0, y1):
-            return (d > y1) and (d <= y0)
-    else:
-        if binom_pmf(0, n, p) > d:
+            return (d>y1) and (d<=y0)
+    elif k>n*p:
+        if _d0 >= d:
             n_iter, j_min, j_max = 0, 0, 0
         else:
             j_min, j_max = 0, k
-        do_test = True
-
         def _check_(d, y0, y1):
-            return (d >= y0) and (d < y1)
-
-    # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
-    # the returned binomial test is 0
-    if (d == 0) | (not do_test):
+            return (d>=y0) and (d<y1)
+    elif k==n*p:
+        n_iter, j_min, j_max = 0, k, k
+        def _check_(d, y0, y1):
+            return (d>=y0) and (d<y1)
+    
+    if (d==0):
         pval = 0.0
     else:
-        # Here we are actually looking for j
         for i in range(n_iter):
             n_pts = int(j_max - j_min)
-            if (i < 2) and (n_pts < 50):
+            if (i<2) and (n_pts < 50): 
                 n_pts = 50
             j_range = np.linspace(j_min, j_max, n_pts)
             y = binom_pmf(j_range, n, p)
@@ -429,17 +425,15 @@ def binom_test(k, n, p):
                 if _check_(d, y[i], y[i + 1]):
                     j_min, j_max = j_range[i], j_range[i + 1]
                     break
-        j = max(min((j_min + j_max) / 2, n), 0)
 
-        # One side or two side
-        # binomial test
+        j = max(min((j_min + j_max) / 2, n), 0)
+        
         if k * j == 0:
             pval = binom_sf(max(k, j), n, p)
         else:
             pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
         pval = min(1.0, pval)
     return pval
-
 
 def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
     '''
