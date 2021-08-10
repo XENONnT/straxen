@@ -48,6 +48,9 @@ from .veto_hitlets import *
 from . import veto_events
 from .veto_events import *
 
+from . import nveto_ext_timings
+from .nveto_ext_timings import *
+
 from . import veto_veto_regions
 from .veto_veto_regions import *
 
