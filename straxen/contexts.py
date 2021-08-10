@@ -216,7 +216,8 @@ def xenonnt_led(**kwargs):
         config=st.config,
         storage=st.storage,
         **st.context_config)
-    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.nVetoExtTimings])
+    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.nVetoExtTimings, straxen.nVETOHitlets])
+    st.set_config({"coincidence_level_recorder_nv": 1})
     return st
 
 def xenonnt_simulation(
