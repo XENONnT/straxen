@@ -48,7 +48,8 @@ class EventInfoDouble(strax.MergeOnlyPlugin):
     """
     __version__ = '0.1.0'
     depends_on = ['event_info', 'distinct_channels']
-
+    save_when = strax.SaveWhen.EXPLICIT
+    
     @staticmethod
     def rename_field(orig_name):
         special_cases = {'alt_cs1': 'cs1_b',
