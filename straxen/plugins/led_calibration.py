@@ -177,13 +177,11 @@ class nVetoExtTimings(strax.Plugin):
         self.nv_pmt_start = self.config['channel_map']['nveto'][0]
         self.nv_pmt_stop = self.config['channel_map']['nveto'][1] + 1
 
+
     def compute(self, hitlets_nv, raw_records_nv):
 
         rr_nv = raw_records_nv[raw_records_nv['record_i']==0]
-        pulse_dtype = []
-        pulse_dtype += strax.time_fields
-        pulse_dtype += [(('PMT channel', 'channel'), np.int16)]
-        pulses = np.zeros(len(rr_nv), dtype=pulse_dtype)
+        pulses = np.zeros(len(rr_nv), dtype=self.pulse_dtype())
         pulses['time'] = rr_nv['time']
         pulses['endtime'] = rr_nv['time'] + \
                                     rr_nv['pulse_length'] * rr_nv['dt']
@@ -196,6 +194,13 @@ class nVetoExtTimings(strax.Plugin):
         self.calc_delta_time(ext_timings_nv['delta_time'], pulses, hitlets_nv)
 
         return ext_timings_nv
+
+
+    def pulse_dtype(self):
+        pulse_dtype = []
+        pulse_dtype += strax.time_fields
+        pulse_dtype += [(('PMT channel', 'channel'), np.int16)]
+        return pulse_dtype
 
 
     def calc_delta_time(self, ext_timings_nv_delta_time, pulses, hitlets_nv):
