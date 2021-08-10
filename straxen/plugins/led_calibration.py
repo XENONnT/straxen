@@ -141,3 +141,72 @@ def get_area(records, led_window):
     Area['area']    = Area['area']/float(len(end_pos))
         
     return Area
+
+
+@export
+@strax.takes_config(
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."),
+)
+class nVetoExtTimings(strax.Plugin):
+    """
+    Plugin which computes the time differnce from external trigger timing to hitlets_nv.
+    The nearlest `time` of `raw_records_nv` before `hitlets_nv` time are used as the
+    external trigger timings.
+
+    Note:
+        Channel dependence for trigger timing has been ignored. It should be the same,
+        But unfortunetely not.
+    """
+    depends_on = ('raw_records_nv', 'hitlets_nv')
+    provides = 'ext_timings_nv'
+    data_kind = 'hitlets_nv'
+
+    compressor = 'zstd'
+    __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_dt_fields
+        dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),]
+        return dtype
+
+    def setup(self):
+        self.channel_range = self.config['channel_map']['nveto']
+
+    def compute(self, hitlets_nv, raw_records_nv):
+
+        rr_nv = raw_records_nv[raw_records_nv['record_i']==0]
+        pulse_dtype = []
+        pulse_dtype += strax.time_fields
+        pulse_dtype += [(('PMT channel', 'channel'), np.int16)]
+        pulses = np.zeros(len(rr_nv), dtype=pulse_dtype)
+        pulses['time'] = rr_nv['time']
+        pulses['endtime'] = rr_nv['time'] + \
+                                    rr_nv['pulse_length'] * rr_nv['dt']
+        pulses['channel'] = rr_nv['channel']
+
+        ext_timings_nv = np.zeros_like(hitlets_nv, dtype=self.infer_dtype())
+        ext_timings_nv['time'] = hitlets_nv['time']
+        ext_timings_nv['length'] = hitlets_nv['length']
+        ext_timings_nv['dt'] = hitlets_nv['dt']
+        calc_delta_time(ext_timings_nv['delta_time'], pulses, hitlets_nv)
+
+        return ext_timings_nv
+
+
+    @numba.njit
+    def calc_delta_time(self, ext_timings_nv_delta_time, pulses, hitlets_nv):
+        # numpy access with fancy index returns copy, not view
+        # This for-loop is required to substitute in one by one
+        for ch in np.arange(self.channel_range[0], self.channel_range[1] + 1):
+            fancy_i_ch = hitlets_nv['channel']==ch
+            fancy_i_ch = np.arange(len(fancy_i_ch))[fancy_i_ch]
+            pulses = pulses[pulses['channel']==ch]
+            _hitlets_nv = hitlets_nv[fancy_i_ch]
+            _rr_index = strax.fully_contained_in(_hitlets_nv, pulses)
+            _t_delta = _hitlets_nv['time'] - pulses[_rr_index]['time']
+
+            for res_i, t_del in zip(fancy_i_ch, _t_delta):
+                ext_timings_nv_delta_time[res_i] = t_del

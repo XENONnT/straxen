@@ -80,7 +80,6 @@ xnt_common_opts.update({
                                                    straxen.veto_pulse_processing,
                                                    straxen.veto_hitlets,
                                                    straxen.veto_events,
-                                                   straxen.nveto_ext_timings,
                                                    straxen.acqmon_processing,
                                                    straxen.pulse_processing,
                                                    straxen.peaklet_processing,
