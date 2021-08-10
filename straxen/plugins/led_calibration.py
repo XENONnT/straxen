@@ -209,7 +209,7 @@ class nVetoExtTimings(strax.Plugin):
     def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
         # numpy access with fancy index returns copy, not view
         # This for-loop is required to substitute in one by one
-        for ch in np.arange(nv_pmt_start, nv_pmt_stop, dtype=np.int):
+        for ch in range(nv_pmt_start, nv_pmt_stop):
             fancy_i_ch = hitlets_nv['channel']==ch
             fancy_i_ch = np.arange(len(fancy_i_ch))[fancy_i_ch]
             _pulses = pulses[pulses['channel']==ch]
