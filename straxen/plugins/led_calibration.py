@@ -166,7 +166,9 @@ class nVetoExtTimings(strax.Plugin):
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_dt_fields
-        dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),]
+        dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),
+                  (('Index to which pulse (not record) the hitlet belongs to', 'pulse_i'),
+                   np.int32),]
         return dtype
 
     def setup(self):
@@ -185,7 +187,7 @@ class nVetoExtTimings(strax.Plugin):
         ext_timings_nv['time'] = hitlets_nv['time']
         ext_timings_nv['length'] = hitlets_nv['length']
         ext_timings_nv['dt'] = hitlets_nv['dt']
-        self.calc_delta_time(ext_timings_nv['delta_time'], pulses, hitlets_nv,
+        self.calc_delta_time(ext_timings_nv, pulses, hitlets_nv,
                              self.nv_pmt_start, self.nv_pmt_stop)
 
         return ext_timings_nv
@@ -211,4 +213,5 @@ class nVetoExtTimings(strax.Plugin):
             _rr_index = strax.fully_contained_in(_hitlets_nv, _pulses)
             _t_delta = _hitlets_nv['time'] - _pulses[_rr_index]['time']
 
-            ext_timings_nv_delta_time[mask_hitlets_in_channel] = _t_delta
+            ext_timings_nv_delta_time[mask_hitlets_in_channel]['delta_time'] = _t_delta
+            ext_timings_nv_delta_time[mask_hitlets_in_channel]['pulse_i'] = _rr_index
