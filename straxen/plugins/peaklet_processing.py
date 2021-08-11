@@ -284,8 +284,12 @@ class Peaklets(strax.Plugin):
         :param end: Chunk end
         :return: array of strax.time_fields dtype.
         """
+        if not len(peaklets):
+            return np.zeros(0, dtype=strax.time_fields)
+        
         outside_peaks = np.zeros(len(peaklets) + 1,
                                  dtype=strax.time_fields)
+        
         outside_peaks[0]['time'] = start
         outside_peaks[0]['endtime'] = peaklets[0]['time']
         outside_peaks[1:-1]['time'] = strax.endtime(peaklets[:-1])
