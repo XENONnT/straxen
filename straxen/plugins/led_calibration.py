@@ -173,10 +173,9 @@ class nVetoExtTimings(strax.Plugin):
         self.nv_pmt_start = self.config['channel_map']['nveto'][0]
         self.nv_pmt_stop = self.config['channel_map']['nveto'][1] + 1
 
-
     def compute(self, hitlets_nv, raw_records_nv):
 
-        rr_nv = raw_records_nv[raw_records_nv['record_i']==0]
+        rr_nv = raw_records_nv[raw_records_nv['record_i'] == 0]
         pulses = np.zeros(len(rr_nv), dtype=self.pulse_dtype())
         pulses['time'] = rr_nv['time']
         pulses['endtime'] = rr_nv['time'] + rr_nv['pulse_length'] * rr_nv['dt']
@@ -191,13 +190,12 @@ class nVetoExtTimings(strax.Plugin):
 
         return ext_timings_nv
 
-
-    def pulse_dtype(self):
+    @staticmethod
+    def pulse_dtype():
         pulse_dtype = []
         pulse_dtype += strax.time_fields
         pulse_dtype += [(('PMT channel', 'channel'), np.int16)]
         return pulse_dtype
-
 
     @staticmethod
     @numba.jit
@@ -207,10 +205,10 @@ class nVetoExtTimings(strax.Plugin):
         This for-loop is required to substitute in one by one
         """
         for ch in range(nv_pmt_start, nv_pmt_stop):
-           mask_hitlets_in_channel = hitlets_nv['channel']==ch
-           _hitlets_nv = hitlets_nv[mask_hitlets_in_channel]
-            _pulses = pulses[pulses['channel']==ch]
+            mask_hitlets_in_channel = hitlets_nv['channel'] == ch
+            _hitlets_nv = hitlets_nv[mask_hitlets_in_channel]
+            _pulses = pulses[pulses['channel'] == ch]
             _rr_index = strax.fully_contained_in(_hitlets_nv, _pulses)
             _t_delta = _hitlets_nv['time'] - _pulses[_rr_index]['time']
 
-            ext_timings_nv_delta_time[mask_hitlets_in_channel] = t_del
+            ext_timings_nv_delta_time[mask_hitlets_in_channel] = _t_delta
