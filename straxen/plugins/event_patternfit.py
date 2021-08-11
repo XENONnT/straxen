@@ -374,14 +374,34 @@ def binom_test(k, n, p):
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
     """
+    # define the S1 interval for finding the maximum
+    mu, sigma = n*p, np.sqrt(n*p*(1-p))
+    if mu-2*sigma < 0:
+        _s1_min = 0
+    else:
+        _s1_min = mu-2*sigma
+    if mu+2*sigma > n:
+        _s1_max = n
+    else:
+        _s1_max = mu+2*sigma
+    _s1 = np.arange(_s1_min, _s1_max, 0.01)
+    # compute the binomial probability for each S1 and define the Binom range for later
+    _ds1 = binom_pmf(_s1, n, p)
+    _s1argmax = np.argmax(_ds1)
+    if _s1argmax - 2 > 0:
+        minimum = _s1[_s1argmax - 2]
+    else:
+        minimum = _s1[0]
+    maximum = _s1[_s1argmax + 2]
+    # comments TODO
     _d0 = binom_pmf(0, n, p)
-    _dmu = binom_pmf(n*p, n, p)
+    _dmax = binom_pmf(_s1[_s1argmax], n, p)
     _dn = binom_pmf(n, n, p)
     d = binom_pmf(k, n, p)
     rerr = 1 + 1e-7
     d = d * rerr
     _d0 = _d0 * rerr
-    _dmu = _dmu * rerr 
+    _dmax = _dmax * rerr 
     _dn = _dn * rerr
     # define number of interaction for finding the the value j
     # the exceptional case of n<=0, is avoid since n_iter is at least 2
@@ -390,30 +410,34 @@ def binom_test(k, n, p):
         n_iter = max(n_iter, 2)
     else:
         n_iter = 2
-
-    if k < n * p:
-        if (_d0 >= d) and (_d0 > _dmu):
+    # comments TODO
+    if k < minimum:
+        if (_d0 >= d) and (_d0 > _dmax):
             n_iter, j_min, j_max = -1, 0, 0
         elif _dn > d:
             n_iter, j_min, j_max = -2, 0, 0
         else:
-            j_min, j_max = k, n
+            j_min, j_max = _s1[_s1argmax], n
         def _check_(d, y0, y1):
             return (d>y1) and (d<=y0)
-    elif k>n*p:
+    # comments TODO
+    elif k>maximum:
         if _d0 >= d:
             n_iter, j_min, j_max = -1, 0, 0
         else:
-            j_min, j_max = 0, k
+            j_min, j_max = 0, _s1[_s1argmax]
         def _check_(d, y0, y1):
             return (d>=y0) and (d<y1)
-    elif k==n*p:
+    # comments TODO
+    else:
         n_iter, j_min, j_max = 0, k, k
         def _check_(d, y0, y1):
             return (d>=y0) and (d<y1)
     
+    # comments TODO
     if (d==0):
         pval = 0.0
+    # comments TODO
     else:
         for i in range(n_iter):
             n_pts = int(j_max - j_min)
