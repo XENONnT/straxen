@@ -217,5 +217,4 @@ class nVetoExtTimings(strax.Plugin):
             _rr_index = strax.fully_contained_in(_hitlets_nv, _pulses)
             _t_delta = _hitlets_nv['time'] - _pulses[_rr_index]['time']
 
-            for res_i, t_del in zip(fancy_i_ch, _t_delta):
-                ext_timings_nv_delta_time[res_i] = t_del
+            ext_timings_nv_delta_time[mask_hitlets_in_channel] = t_del
