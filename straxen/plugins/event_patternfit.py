@@ -421,9 +421,9 @@ def binom_test(k, n, p):
                 n_pts = 50
             j_range = np.linspace(j_min, j_max, n_pts)
             y = binom_pmf(j_range, n, p)
-            for i in range(n_pts - 1):
-                if _check_(d, y[i], y[i + 1]):
-                    j_min, j_max = j_range[i], j_range[i + 1]
+            for ii in range(n_pts - 1):
+                if _check_(d, y[ii], y[ii + 1]):
+                    j_min, j_max = j_range[ii], j_range[ii + 1]
                     break
 
         j = max(min((j_min + j_max) / 2, n), 0)
@@ -432,7 +432,7 @@ def binom_test(k, n, p):
         # or two-side test
         if (k * j == 0)and(n_iter==-1):
             pval = binom_sf(max(k, j), n, p)
-        if (k * j == 0)and(n_iter==-2):
+        elif (k * j == 0)and(n_iter==-2):
             pval = binom_cdf(max(k, j), n, p)
         else:
             pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
