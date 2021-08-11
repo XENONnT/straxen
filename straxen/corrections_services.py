@@ -259,13 +259,7 @@ class CorrectionsManagementServices():
         :param version: version
         :param return: boolean
         """
-        when_nan = df[version].index[df[version].apply(np.isnan)]
-        if len(when_nan) != 0:
-            if when > when_nan[0]:  # First nan value
-                return True
-        else:
-            return False
-
+        return df.loc[:when,version].isnull().any()
 
     # TODO change to st.estimate_start_time
     def get_start_time(self, run_id):
