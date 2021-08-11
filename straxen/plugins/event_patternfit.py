@@ -393,16 +393,16 @@ def binom_test(k, n, p):
 
     if k < n * p:
         if (_d0 >= d) and (_d0 > _dmu):
-            n_iter, j_min, j_max = 0, 0, 0
+            n_iter, j_min, j_max = -1, 0, 0
         elif _dn > d:
-            n_iter, j_min, j_max = 0, 0, 0
+            n_iter, j_min, j_max = -2, 0, 0
         else:
             j_min, j_max = k, n
         def _check_(d, y0, y1):
             return (d>y1) and (d<=y0)
     elif k>n*p:
         if _d0 >= d:
-            n_iter, j_min, j_max = 0, 0, 0
+            n_iter, j_min, j_max = -1, 0, 0
         else:
             j_min, j_max = 0, k
         def _check_(d, y0, y1):
@@ -428,8 +428,12 @@ def binom_test(k, n, p):
 
         j = max(min((j_min + j_max) / 2, n), 0)
         
-        if k * j == 0:
+        # here we use n_iter also for decide to do one-side (left/right) test 
+        # or two-side test
+        if (k * j == 0)and(n_iter==-1):
             pval = binom_sf(max(k, j), n, p)
+        if (k * j == 0)and(n_iter==-2):
+            pval = binom_cdf(max(k, j), n, p)
         else:
             pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
         pval = min(1.0, pval)
