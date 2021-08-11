@@ -186,7 +186,7 @@ class nVetoExtTimings(strax.Plugin):
         pulses['endtime'] = rr_nv['time'] + rr_nv['pulse_length'] * rr_nv['dt']
         pulses['channel'] = rr_nv['channel']
 
-        ext_timings_nv = np.zeros_like(hitlets_nv, dtype=self.infer_dtype())
+        ext_timings_nv = np.zeros_like(hitlets_nv, dtype=self.dtype)
         ext_timings_nv['time'] = hitlets_nv['time']
         ext_timings_nv['length'] = hitlets_nv['length']
         ext_timings_nv['dt'] = hitlets_nv['dt']
