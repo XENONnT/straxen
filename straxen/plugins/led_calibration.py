@@ -152,13 +152,9 @@ def get_area(records, led_window):
 )
 class nVetoExtTimings(strax.Plugin):
     """
-    Plugin which computes the time differnce from external trigger timing to hitlets_nv.
-    The nearlest `time` of `raw_records_nv` before `hitlets_nv` time are used as the
-    external trigger timings.
-
-    Note:
-        Channel dependence for trigger timing has been ignored. It should be the same,
-        But unfortunetely not.
+    Plugin which computes the time difference `delta_time` from pulse timing 
+    of `hitlets_nv` to start time of `raw_records` which belong the `hitlets_nv`.
+    They are used as the external trigger timings.
     """
     depends_on = ('raw_records_nv', 'hitlets_nv')
     provides = 'ext_timings_nv'
