@@ -206,12 +206,19 @@ class nVetoExtTimings(strax.Plugin):
         numpy access with fancy index returns copy, not view
         This for-loop is required to substitute in one by one
         """
+        hitlet_index = np.arange(len(hitlets_nv))
         for ch in range(nv_pmt_start, nv_pmt_stop):
             mask_hitlets_in_channel = hitlets_nv['channel'] == ch
-            _hitlets_nv = hitlets_nv[mask_hitlets_in_channel]
-            _pulses = pulses[pulses['channel'] == ch]
-            _rr_index = strax.fully_contained_in(_hitlets_nv, _pulses)
-            _t_delta = _hitlets_nv['time'] - _pulses[_rr_index]['time']
-
-            ext_timings_nv_delta_time[mask_hitlets_in_channel]['delta_time'][:] = _t_delta[:]
-            ext_timings_nv_delta_time[mask_hitlets_in_channel]['pulse_i'][:] = _rr_index[:]
+            hitlet_in_channel_index = hitlet_index[mask_hitlets_in_channel]
+            
+            hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
+            pulses_in_channel = pulses[pulses['channel'] == ch]
+            pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
+            
+            for h_i, p_i in zip(hitlet_in_channel_index, pulse_index):
+                if p_i == -1:
+                    continue
+                res = ext_timings_nv_delta_time[h_i]
+                
+                res['delta_time'] = hitlets_nv[h_i]['time'] - pulses_in_channel[p_i]['time']
+                res['pulse_i'] = p_i

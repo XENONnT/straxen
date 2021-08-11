@@ -2,10 +2,11 @@ import strax
 from strax.testutils import several_fake_records
 import straxen
 import numpy as np
-from hypothesis import given
+from hypothesis import given, settings
 
 
 @given(several_fake_records)
+@settings(deadline=None)
 def test_ext_timings_nv(records):
     """
     Little test for nVetoExtTimings.
