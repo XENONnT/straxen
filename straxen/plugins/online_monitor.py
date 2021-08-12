@@ -175,3 +175,47 @@ class OnlinePeakMonitor(strax.Plugin):
             range=self.config['area_vs_width_bounds'],
             bins=self.config['area_vs_width_nbins'])
         return hist.T
+    
+@export
+@strax.takes_config(
+    strax.Option(
+        'n_nveto_pmts', 
+        type=int,
+        default=120,
+        help='Number of nVeto PMTs'),
+)
+class nVetoPeakMonitor(strax.Plugin):
+    depends_on = 'hitlets_nv', 'events_nv'
+    provides = 'nVeto_peak_monitor'
+    data_kind = 'nVeto_peak_monitor'
+    __version__ = '0.0.1'
+    rechunk_on_save = False
+
+    def infer_dtype(self):
+        n_nveto_pmts = self.config['n_nveto_pmts']
+        dtype = [
+            (('Start time of the chunk', 'time'),
+             np.int64),
+            (('End time of the chunk', 'endtime'),
+             np.int64),
+            (('Hitlets per channel', 'hitlets_per_channel'),
+             (np.int64, n_nveto_pmts)),
+            (('Events of nVeto per chunk', 'events_nv_per_chunk'),
+             (np.int64)),
+        ]
+        return dtype
+
+    def compute(self, hitlets_nv, events_nv, start, end):
+        # General setup
+        res = np.zeros(1, dtype=self.dtype)
+        res['time'] = start
+        res['endtime'] = end
+        n_pmt = self.config['n_nveto_pmts']
+
+        hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
+                                                 bins=n_pmt,
+                                                 range=[2000, 2000+n_pmt])
+        # Count number of lone-hits per PMT
+        res['hitlets_per_channel'] = hitlets_channel_count
+        res['events_nv_per_chunk'] = len(events_nv)
+        return res
