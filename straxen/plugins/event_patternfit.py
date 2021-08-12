@@ -347,7 +347,6 @@ def binom_cdf(k, n, p):
         dk = numba_betainc(dn, dk, 1.0 - p)
     return dk
 
-
 @numba.njit
 def binom_sf(k, n, p):
     if k < 0:
@@ -365,6 +364,31 @@ def binom_sf(k, n, p):
         dk = numba_betainc(dk, dn, p)
     return dk
 
+@numba.njit
+def _find_interval(n, p):
+    mu = n*p
+    sigma = np.sqrt(n*p*(1-p))
+    if mu-2*sigma < 0:
+        s1_min_range = 0
+    else:
+        s1_min_range = mu-2*sigma
+    if mu+2*sigma > n:
+        s1_max_range = n
+    else:
+        s1_max_range = mu+2*sigma
+    return s1_min_range, s1_max_range
+
+@numba.njit
+def _get_min_and_max(s1_min, s1_max, n, p, shift):
+    s1 = np.arange(s1_min, s1_max, 0.01)
+    ds1 = binom_pmf(s1, n, p)
+    s1argmax = np.argmax(ds1)
+    if np.argmax(ds1) - shift > 0:
+        minimum = s1[s1argmax - shift]
+    else:
+        minimum = s1[0]
+    maximum = s1[s1argmax + shift]
+    return minimum, maximum, s1[s1argmax]
 
 @numba.njit
 def binom_test(k, n, p):
@@ -375,27 +399,14 @@ def binom_test(k, n, p):
     k or j are zero, only the non-zero tail is integrated.
     """
     # define the S1 interval for finding the maximum
-    mu, sigma = n*p, np.sqrt(n*p*(1-p))
-    if mu-2*sigma < 0:
-        _s1_min = 0
-    else:
-        _s1_min = mu-2*sigma
-    if mu+2*sigma > n:
-        _s1_max = n
-    else:
-        _s1_max = mu+2*sigma
-    _s1 = np.arange(_s1_min, _s1_max, 0.01)
+    _s1_min_range, _s1_max_range = _find_interval(n, p)
+
     # compute the binomial probability for each S1 and define the Binom range for later
-    _ds1 = binom_pmf(_s1, n, p)
-    _s1argmax = np.argmax(_ds1)
-    if _s1argmax - 2 > 0:
-        minimum = _s1[_s1argmax - 2]
-    else:
-        minimum = _s1[0]
-    maximum = _s1[_s1argmax + 2]
+    minimum, maximum, s1max = _get_min_and_max(_s1_min_range, _s1_max_range, n, p, shift=2)
+   
     # comments TODO
     _d0 = binom_pmf(0, n, p)
-    _dmax = binom_pmf(_s1[_s1argmax], n, p)
+    _dmax = binom_pmf(s1max, n, p)
     _dn = binom_pmf(n, n, p)
     d = binom_pmf(k, n, p)
     rerr = 1 + 1e-7
@@ -417,7 +428,7 @@ def binom_test(k, n, p):
         elif _dn > d:
             n_iter, j_min, j_max = -2, 0, 0
         else:
-            j_min, j_max = _s1[_s1argmax], n
+            j_min, j_max = s1max, n
         def _check_(d, y0, y1):
             return (d>y1) and (d<=y0)
     # comments TODO
@@ -425,7 +436,7 @@ def binom_test(k, n, p):
         if _d0 >= d:
             n_iter, j_min, j_max = -1, 0, 0
         else:
-            j_min, j_max = 0, _s1[_s1argmax]
+            j_min, j_max = 0, s1max
         def _check_(d, y0, y1):
             return (d>=y0) and (d<y1)
     # comments TODO
