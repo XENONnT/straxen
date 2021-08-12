@@ -167,7 +167,7 @@ class nVetoExtTimings(strax.Plugin):
         dtype = []
         dtype += strax.time_dt_fields
         dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),
-                  (('Index to which pulse (not record) the hitlet belongs to', 'pulse_i'),
+                  (('Index to which pulse (not record) the hitlet belongs to.', 'pulse_i'),
                    np.int32),]
         return dtype
 
@@ -207,18 +207,21 @@ class nVetoExtTimings(strax.Plugin):
         This for-loop is required to substitute in one by one
         """
         hitlet_index = np.arange(len(hitlets_nv))
+        pulse_index = np.arange(len(pulses))
         for ch in range(nv_pmt_start, nv_pmt_stop):
             mask_hitlets_in_channel = hitlets_nv['channel'] == ch
             hitlet_in_channel_index = hitlet_index[mask_hitlets_in_channel]
             
-            hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
-            pulses_in_channel = pulses[pulses['channel'] == ch]
-            pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
+            mask_pulse_in_channel = pulses['channel'] == ch
+            pulse_in_channel_index = pulse_index[mask_pulse_in_channel]
             
-            for h_i, p_i in zip(hitlet_in_channel_index, pulse_index):
+            hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
+            pulses_in_channel = pulses[pulse_in_channel_index]
+            hit_in_pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
+            for h_i, p_i in zip(hitlet_in_channel_index, hit_in_pulse_index):
                 if p_i == -1:
                     continue
                 res = ext_timings_nv_delta_time[h_i]
                 
                 res['delta_time'] = hitlets_nv[h_i]['time'] - pulses_in_channel[p_i]['time']
-                res['pulse_i'] = p_i
+                res['pulse_i'] = pulse_in_channel_index[p_i]

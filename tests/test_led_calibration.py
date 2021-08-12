@@ -11,13 +11,16 @@ def test_ext_timings_nv(records):
     """
     Little test for nVetoExtTimings.
     """
+    # several fake records do not have any pulse length
+    # and channel start at 0, convert to nv:
     records['pulse_length'] = records['length']
-
+    records['channel'] += 2000
+    
     st = straxen.contexts.xenonnt_led()
     plugin = st.get_single_plugin('1', 'ext_timings_nv')
-    hits = strax.find_hits(records)
+    hits = strax.find_hits(records, min_amplitude=1)
     result = plugin.compute(hits, records)
-
+     
     assert len(result) == len(hits)
     assert np.all(result['time'] == hits['time'])
     assert np.all(result['pulse_i'] == hits['record_i'])
