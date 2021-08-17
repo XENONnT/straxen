@@ -537,6 +537,18 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
 
 @export
+class MergedS2sClassification(straxen.PeakletClassification):
+    """Classify merged_s2s as unknown, S1, or S2."""
+    provides = 'merged_s2s_classification'
+    depends_on = ('merged_s2s',)
+    __version__ = '0.0.1'
+    child_plugin = True
+
+    def compute(self, merged_s2s):
+        return super().compute(merged_s2s)
+
+
+@export
 @strax.takes_config(
     strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
@@ -715,7 +727,7 @@ class Peaks(strax.Plugin):
     (replacing all peaklets that were later re-merged as S2s). As this
     step is computationally trivial, never save this plugin.
     """
-    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
+    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s', 'merged_s2s_classification')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
