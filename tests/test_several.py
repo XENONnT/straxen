@@ -65,7 +65,6 @@ def test_several():
             st.make(test_run_id_1T, 'records')
 
             print("Get peaks")
-            st.make(test_run_id_1T, 'peaklets')
             p = st.get_array(test_run_id_1T, 'peaks')
 
             # Do checks on there number of peaks
@@ -247,7 +246,6 @@ def test_nt_minianalyses():
 
             rr = st.get_array(test_run_id_nT, 'raw_records')
             st.make(test_run_id_nT, 'records')
-            st.make(test_run_id_nT, 'peaklets')
             st.make(test_run_id_nT, 'peak_basics')
 
             st.daq_plot(test_run_id_nT,
