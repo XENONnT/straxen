@@ -73,7 +73,6 @@ def plot_pmts(
     plt.subplots_adjust(wspace=0)
     plt.colorbar(ax=axes, extend=extend, label=label)
 
-
 @export
 def plot_on_single_pmt_array(
         c,
@@ -145,7 +144,7 @@ def plot_on_single_pmt_array(
         for p in pos:
             if p['i'] in dead_pmts:
                 plt.text(p['x'], p['y'], str(p['i']),
-                         horizontalalignment='center',                 
+                         horizontalalignment='center',
                          verticalalignment='center',
                          fontsize=dead_pmt_label_size,
                          color=dead_pmt_label_color)
@@ -154,7 +153,7 @@ def plot_on_single_pmt_array(
                                          facecolor=dead_pmt_color,
                                          zorder=-5,
                                          linewidth=1))
-
+              
     if pmt_label_size:
         for p in pos:
             plt.text(p['x'], p['y'], str(p['i']),
