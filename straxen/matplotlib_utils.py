@@ -16,6 +16,7 @@ def plot_pmts(
         xenon1t=False,
         show_tpc=True,
         extend='neither', vmin=None, vmax=None,
+        show_axis_labels=False,
         **kwargs):
     """Plot the PMT arrays side-by-side, coloring the PMTS with c.
 
@@ -36,7 +37,10 @@ def plot_pmts(
         # Single-valued array passed
         vmax += 1
     if figsize is None:
-        figsize = (11, 4) if xenon1t else (13, 5.5)
+        if xenon1t: figsize = (11, 4)
+        elif xenon1t and show_axis_labels: figsize = (11.25, 4.25)
+        elif show_axis_labels: figsize = (13.25, 5.75)
+        else: figsize = (13, 5.5)
 
     f, axes = plt.subplots(1, 2, figsize=figsize)
     for array_i, array_name in enumerate(['top', 'bottom']):
@@ -51,10 +55,14 @@ def plot_pmts(
             show_tpc=show_tpc,
             vmin=vmin, vmax=vmax,
             **kwargs)
+        if (array_i == 0) and show_axis_labels:
+            ax.set_xlabel('x [cm]')
+            ax.xaxis.set_label_coords(1.035, -0.075)
+            ax.set_ylabel('y [cm]')
 
     axes[1].yaxis.tick_right()
     axes[1].yaxis.set_label_position('right')
-
+    
     plt.tight_layout()
     plt.subplots_adjust(wspace=0)
     plt.colorbar(ax=axes, extend=extend, label=label)
@@ -71,7 +79,8 @@ def plot_on_single_pmt_array(
         pmt_label_color='white',
         show_tpc=True,
         log_scale=False, vmin=None, vmax=None,
-        dead_pmts=None, dead_pmt_color='gray',
+        dead_pmts=None, dead_pmt_color='gray', 
+        dead_pmt_label_size=8, dead_pmt_label_color='black',
         **kwargs):
     """Plot one of the PMT arrays and color it by c.
 
@@ -128,12 +137,18 @@ def plot_on_single_pmt_array(
     else:
         ax.set_axis_off()
     if dead_pmts is not None:
-        _dead_mask = [pi in dead_pmts for pi in pos['i']]
-        result = plt.scatter(
-            pos[_dead_mask]['x'],
-            pos[_dead_mask]['y'],
-            c=dead_pmt_color,
-            **kwargs)
+        for p in pos:
+            if p['i'] in dead_pmts:
+                plt.text(p['x'], p['y'], str(p['i']),
+                         horizontalalignment='center',                 
+                         verticalalignment='center',
+                         fontsize=dead_pmt_label_size,
+                         color=dead_pmt_label_color)
+                ax.add_artist(plt.Circle((p['x'], p['y']), 3.75,
+                                         edgecolor='w',
+                                         facecolor=dead_pmt_color,
+                                         zorder=-5,
+                                         linewidth=1))
 
     if pmt_label_size:
         for p in pos:
