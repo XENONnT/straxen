@@ -26,6 +26,7 @@ def plot_pmts(
     :param extend: same as plt.colorbar(extend=...)
     :param vmin: Minimum of color scale
     :param vmax: maximum of color scale
+    :show_axis_labels: if True it will show x and y labels
 
     Other arguments are passed to plot_on_single_pmt_array.
     """
@@ -37,10 +38,15 @@ def plot_pmts(
         # Single-valued array passed
         vmax += 1
     if figsize is None:
-        if xenon1t: figsize = (11, 4)
-        elif xenon1t and show_axis_labels: figsize = (11.25, 4.25)
-        elif show_axis_labels: figsize = (13.25, 5.75)
-        else: figsize = (13, 5.5)
+        if xenon1t: 
+            if show_axis_labels: 
+                figsize = (11.25, 4.25)
+            else: 
+                figsize = (11, 4)
+        elif show_axis_labels: 
+            figsize = (13.25, 5.75)
+        else: 
+            figsize = (13, 5.5)
 
     f, axes = plt.subplots(1, 2, figsize=figsize)
     for array_i, array_name in enumerate(['top', 'bottom']):
@@ -66,7 +72,6 @@ def plot_pmts(
     plt.tight_layout()
     plt.subplots_adjust(wspace=0)
     plt.colorbar(ax=axes, extend=extend, label=label)
-
 
 
 @export
