@@ -83,7 +83,7 @@ def plot_on_single_pmt_array(
         pmt_label_color='white',
         show_tpc=True,
         log_scale=False, vmin=None, vmax=None,
-        dead_pmts=None, dead_pmt_color='gray', 
+        dead_pmts=None, dead_pmt_color='gray',
         dead_pmt_label_size=8, dead_pmt_label_color='black',
         **kwargs):
     """Plot one of the PMT arrays and color it by c.
