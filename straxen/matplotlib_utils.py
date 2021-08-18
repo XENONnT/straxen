@@ -16,7 +16,6 @@ def plot_pmts(
         xenon1t=False,
         show_tpc=True,
         extend='neither', vmin=None, vmax=None,
-        show_axis_labels=False,
         **kwargs):
     """Plot the PMT arrays side-by-side, coloring the PMTS with c.
 
@@ -38,15 +37,7 @@ def plot_pmts(
         # Single-valued array passed
         vmax += 1
     if figsize is None:
-        if xenon1t: 
-            if show_axis_labels: 
-                figsize = (11.25, 4.25)
-            else: 
-                figsize = (11, 4)
-        elif show_axis_labels: 
-            figsize = (13.25, 5.75)
-        else: 
-            figsize = (13, 5.5)
+        figsize = (11.25, 4.25) if xenon1t else (13.25, 5.75)
 
     f, axes = plt.subplots(1, 2, figsize=figsize)
     for array_i, array_name in enumerate(['top', 'bottom']):
@@ -61,11 +52,11 @@ def plot_pmts(
             show_tpc=show_tpc,
             vmin=vmin, vmax=vmax,
             **kwargs)
-        if (array_i == 0) and show_axis_labels:
-            ax.set_xlabel('x [cm]')
-            ax.xaxis.set_label_coords(1.035, -0.075)
-            ax.set_ylabel('y [cm]')
-
+    
+    axes[0].set_xlabel('x [cm]')
+    axes[0].xaxis.set_label_coords(1.035, -0.075)
+    axes[0].set_ylabel('y [cm]')
+    
     axes[1].yaxis.tick_right()
     axes[1].yaxis.set_label_position('right')
     
