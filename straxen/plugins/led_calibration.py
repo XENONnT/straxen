@@ -223,5 +223,6 @@ class nVetoExtTimings(strax.Plugin):
                     continue
                 res = ext_timings_nv_delta_time[h_i]
                 
-                res['delta_time'] = hitlets_nv[h_i]['time'] - pulses_in_channel[p_i]['time']
+                res['delta_time'] = hitlets_nv[h_i]['time'] + hitlets_nv[h_i]['time_amplitude'] \
+                                    - pulses_in_channel[p_i]['time']
                 res['pulse_i'] = pulse_in_channel_index[p_i]
