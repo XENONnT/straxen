@@ -360,7 +360,8 @@ class PeakVetoTagging(strax.Plugin):
     dtype = strax.time_fields + [
         ('veto_tag', np.int8,
          'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3'),
-        ('time_to_closest_veto', np.int64)
+        ('time_to_closest_veto', np.int64, 'Time to closest veto interval boundary in ns (can be '
+                                           'negative if closest boundary comes before peak.). ')
     ]
 
     def get_time_difference(self, peaks, veto_regions_nv, veto_regions_mv):

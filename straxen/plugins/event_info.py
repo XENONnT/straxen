@@ -81,7 +81,7 @@ class EventInfoVetos(strax.Plugin):
                           ((f"Time to closest veto interval for {peak_type}s{s_i}",
                             f"{peak_type}s{s_i}_dt_veto"), np.int64),
                           ]
-        dtype += [(('Number of tagged peaks inside event', 'n_tagged_peaks'), np.int16)]
+        dtype += [(('Number of peaks tagged by NV/MV inside event', 'n_tagged_peaks'), np.int16)]
         return dtype
 
     def compute(self, events, peaks):
