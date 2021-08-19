@@ -57,4 +57,3 @@ class EventInfo1T(strax.MergeOnlyPlugin):
     provides = 'event_info'
     save_when = strax.SaveWhen.ALWAYS
     __version__ = '0.0.1'
-
