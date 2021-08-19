@@ -176,7 +176,8 @@ class Peaklets(strax.Plugin):
                                           )
 
         # Updated time and length of hits and sort again:
-        hits['time'] = hits['time'] - (hits['left'] - hits['left_integration']) * hits['dt']
+        hits_time_shift = (hits['left'] - hits['left_integration']) * hits['dt']
+        hits['time'] = hits['time'] - hits_time_shift
         hits['length'] = (hits['right_integration'] - hits['left_integration'])
         hits = strax.sort_by_time(hits)
         rlinks = strax.record_links(records)
@@ -222,7 +223,9 @@ class Peaklets(strax.Plugin):
         #     possibly due to its currently primitive scheduling.
         hit_max_times = np.sort(
             hits['time']
-            + hits['dt'] * hit_max_sample(records, hits))
+            + hits['dt'] * hit_max_sample(records, hits)
+            + hits_time_shift  # add time shift again to get correct maximum
+        )
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
