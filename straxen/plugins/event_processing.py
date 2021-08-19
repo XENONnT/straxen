@@ -589,6 +589,7 @@ def get_veto_tags(events, split_tags, result):
                 result_i[f'{peak_type}s{s_i}_dt_veto'] = tags_i[index]['time_to_closest_veto']
 
 
+@export
 @strax.takes_config(
     strax.Option(
         's1_xyz_correction_map',
@@ -685,6 +686,7 @@ class CorrectedAreas(strax.Plugin):
                      / self.s2_map(alt_s2_positions)))
 
 
+@export
 @strax.takes_config(
     strax.Option(
         'g1',
