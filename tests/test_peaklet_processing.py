@@ -1,13 +1,15 @@
 import numpy as np
 from hypothesis import given, settings
-import hypothesis.strategies as st
+import hypothesis.strategies as strat
 
 import strax
 import straxen
 
 
 @settings(deadline=None)
-@given(st.lists(st.integers(min_value=0, max_value=10), min_size=8, max_size=8, unique=True),)
+@given(strat.lists(strat.integers(min_value=0, max_value=10),
+                   min_size=8, max_size=8, unique=True),
+       )
 def test_create_outside_peaks_region(time):
     time = np.sort(time)
     time_intervals = np.zeros(len(time)//2, strax.time_dt_fields)
