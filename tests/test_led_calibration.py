@@ -19,8 +19,10 @@ def test_ext_timings_nv(records):
     st = straxen.contexts.xenonnt_led()
     plugin = st.get_single_plugin('1', 'ext_timings_nv')
     hits = strax.find_hits(records, min_amplitude=1)
+
+    hitlets = np.zeros(len(hits), strax.hitlet_dtype())
+    strax.copy_to_buffer(hits, hitlets, '_refresh_hit_to_hitlets')
     result = plugin.compute(hits, records)
-     
     assert len(result) == len(hits)
     assert np.all(result['time'] == hits['time'])
     assert np.all(result['pulse_i'] == hits['record_i'])
