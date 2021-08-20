@@ -537,7 +537,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
 
 @export
-class MergedS2sClassification(straxen.PeakletClassification):
+class MergedS2sClassification(PeakletClassification):
     """Classify merged_s2s as unknown, S1, or S2."""
     provides = 'merged_s2s_classification'
     depends_on = ('merged_s2s',)

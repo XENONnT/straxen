@@ -15,6 +15,7 @@ common_opts = dict(
         straxen.Peaklets,
         straxen.PeakletClassification,
         straxen.MergedS2s,
+        straxen.MergedS2sClassification,
         straxen.Peaks,
         straxen.PeakBasics,
         straxen.PeakProximity],
