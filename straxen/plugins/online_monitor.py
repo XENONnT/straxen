@@ -211,7 +211,9 @@ class nVetoPeakMonitor(strax.Plugin):
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
         res['endtime'] = end
-        n_pmt = self.config['n_nveto_pmts']
+        min_pmt, max_pmt = self.config['channel_map']['nveto']
+        n_pmt = (max_pmt - min_pmt) + 1
+
 
         hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
                                                  bins=n_pmt,
