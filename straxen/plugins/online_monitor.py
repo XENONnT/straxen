@@ -216,8 +216,9 @@ class nVetoPeakMonitor(strax.Plugin):
 
 
         hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
-                                                 bins=n_pmt,
-                                                 range=[2000, 2000+n_pmt])
+                                                bins=n_pmt,
+                                                range=[min_pmt, max_pmt + 1],
+                                                )
         # Count number of lone-hits per PMT
         res['hitlets_per_channel'] = hitlets_channel_count
         res['events_nv_per_chunk'] = len(events_nv)
