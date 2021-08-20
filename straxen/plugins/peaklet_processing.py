@@ -166,14 +166,13 @@ class Peaklets(strax.Plugin):
         # Define regions outside of peaks such that _find_hit_integration_bounds
         # is not extended beyond a peak.
         outside_peaks = self.create_outside_peaks_region(peaklets, start, end)
-        strax.find_hit_integration_bounds(hits,
-                                          outside_peaks,
-                                          records,
-                                          (self.config['peak_left_extension'],
-                                           self.config['peak_right_extension']),
-                                           len(self.to_pe),
-                                          allow_bounds_beyond_records=True,
-                                          )
+        strax.find_hit_integration_bounds(
+            hits, outside_peaks, records,
+            save_outside_hits=(self.config['peak_left_extension'],
+                               self.config['peak_right_extension']),
+            n_channels=len(self.to_pe),
+            allow_bounds_beyond_records=True,
+        )
 
         # Transform hits to hitlets for naming conventions. A hit refers
         # to the central part above threshold a hitlet to the entire signal
