@@ -175,7 +175,8 @@ class OnlinePeakMonitor(strax.Plugin):
             range=self.config['area_vs_width_bounds'],
             bins=self.config['area_vs_width_nbins'])
         return hist.T
-    
+
+  
 @export
 @strax.takes_config(
     strax.Option(
