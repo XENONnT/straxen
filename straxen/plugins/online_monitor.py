@@ -1,5 +1,6 @@
 import strax
 import numpy as np
+from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
 
@@ -176,33 +177,47 @@ class OnlinePeakMonitor(strax.Plugin):
             bins=self.config['area_vs_width_nbins'])
         return hist.T
 
-  
+
 @export
 @strax.takes_config(
-    strax.Option('channel_map', track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number."))
+    strax.Option(
+        'channel_map', 
+        track=False, 
+        type=immutabledict,
+        help="immutabledict mapping subdetector to (min, max) \
+              channel number.")
 )
+class OnlineMonitorNV(strax.Plugin):
+    """
+    Plugin to write data of nVeto detector to the online-monitor. 
+    Data that is written by this plugin should be small (~MB/chunk) 
+    to not overload the runs-database.
+    
+    This plugin takes 'hitlets_nv' and 'events_nv'. Although they are
+    not strictly related, they are aggregated into a single data_type
+    in order to minimize the number of documents in the online monitor.
+    
+    Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
+    """
 
-class nVetoPeakMonitor(strax.Plugin):
     depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
     __version__ = '0.0.2'
-
     rechunk_on_save = False
 
     def infer_dtype(self):
-        n_nveto_pmts = self.config['n_nveto_pmts']
+        min_pmt, max_pmt = self.config['channel_map']['nveto']
+        n_pmt = (max_pmt - min_pmt) + 1
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
             (('End time of the chunk', 'endtime'),
              np.int64),
-            (('Hitlets per channel', 'hitlets_per_channel'),
-             (np.int64, n_nveto_pmts)),
-            (('Events of nVeto per chunk', 'events_nv_per_chunk'),
-             (np.int64)),
+            (('hitlets_nv per channel', 'hitlets_nv_per_channel'),
+             (np.int64, n_pmt)),
+            (('events_nv per chunk', 'events_nv_per_chunk'),
+             np.int64)
         ]
         return dtype
 
@@ -214,12 +229,12 @@ class nVetoPeakMonitor(strax.Plugin):
         min_pmt, max_pmt = self.config['channel_map']['nveto']
         n_pmt = (max_pmt - min_pmt) + 1
 
-
+        # Count number of hitlets_nv per PMT
         hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
-                                                bins=n_pmt,
-                                                range=[min_pmt, max_pmt + 1],
-                                                )
-        # Count number of lone-hits per PMT
-        res['hitlets_per_channel'] = hitlets_channel_count
+                                                 bins=n_pmt,
+                                                 range=[min_pmt, max_pmt + 1])        
+        res['hitlets_nv_per_channel'] = hitlets_channel_count
+        
+        # Count number of events_nv per chunk
         res['events_nv_per_chunk'] = len(events_nv)
         return res
