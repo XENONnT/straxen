@@ -185,10 +185,11 @@ class OnlinePeakMonitor(strax.Plugin):
         help='Number of nVeto PMTs'),
 )
 class nVetoPeakMonitor(strax.Plugin):
-    depends_on = 'hitlets_nv', 'events_nv'
-    provides = 'nVeto_peak_monitor'
-    data_kind = 'nVeto_peak_monitor'
-    __version__ = '0.0.1'
+    depends_on = ('hitlets_nv', 'events_nv')
+    provides = 'online_monitor_nv'
+    data_kind = 'online_monitor_nv'
+    __version__ = '0.0.2'
+
     rechunk_on_save = False
 
     def infer_dtype(self):
