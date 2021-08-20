@@ -22,7 +22,7 @@ def test_ext_timings_nv(records):
 
     hitlets = np.zeros(len(hits), strax.hitlet_dtype())
     strax.copy_to_buffer(hits, hitlets, '_refresh_hit_to_hitlets')
-    result = plugin.compute(hits, records)
+    result = plugin.compute(hitlets, records)
     assert len(result) == len(hits)
     assert np.all(result['time'] == hits['time'])
     assert np.all(result['pulse_i'] == hits['record_i'])
