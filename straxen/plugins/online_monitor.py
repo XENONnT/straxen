@@ -179,12 +179,11 @@ class OnlinePeakMonitor(strax.Plugin):
   
 @export
 @strax.takes_config(
-    strax.Option(
-        'n_nveto_pmts', 
-        type=int,
-        default=120,
-        help='Number of nVeto PMTs'),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."))
 )
+
 class nVetoPeakMonitor(strax.Plugin):
     depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
