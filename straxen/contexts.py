@@ -2,6 +2,7 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
+from warnings import warn
 
 common_opts = dict(
     register_all=[
@@ -225,6 +226,7 @@ def xenonnt_led(**kwargs):
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
 
+
 def xenonnt_simulation(
                 output_folder='./strax_data',
                 cmt_run_id_sim=None,
@@ -240,7 +242,7 @@ def xenonnt_simulation(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
                             electron_lifetime_liquid='elife_conf'),
-               **kwargs):
+                **kwargs):
     """
     The most generic context that allows for setting full divergent
     settings for simulation purposes
@@ -292,7 +294,10 @@ def xenonnt_simulation(
                     **straxen.contexts.xnt_common_config,),
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
-    st.apply_cmt_version(f'global_{cmt_version}')
+    if straxen.utilix_is_configured():
+        st.apply_cmt_version(f'global_{cmt_version}')
+    else:
+        warn(f'Bad context as we cannot set CMT since we have no database access')
 
     if _forbid_creation_of is not None:
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
