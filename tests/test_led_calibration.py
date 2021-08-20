@@ -11,6 +11,8 @@ def test_ext_timings_nv(records):
     """
     Little test for nVetoExtTimings.
     """
+    if not straxen.utilix_is_configured():
+        return
     # several fake records do not have any pulse length
     # and channel start at 0, convert to nv:
     records['pulse_length'] = records['length']
