@@ -537,18 +537,6 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
 
 @export
-class MergedS2sClassification(straxen.PeakletClassification):
-    """Classify merged_s2s as unknown, S1, or S2."""
-    provides = 'merged_s2s_classification'
-    depends_on = ('merged_s2s',)
-    __version__ = '0.0.1'
-    child_plugin = True
-
-    def compute(self, merged_s2s):
-        return super().compute(merged_s2s)
-
-
-@export
 @strax.takes_config(
     strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
@@ -558,8 +546,27 @@ class MergedS2sClassification(straxen.PeakletClassification):
                       "merging [ns] depending on log10 area of the merged peak\n"
                       "where the gap size of the first point is the maximum gap to allow merging"
                       "and the area of the last point is the maximum area to allow merging. "
-                      "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
-                 ))
+                      "The format is ((log10(area), max_gap), (..., ...), (..., ...))"),
+    strax.Option('peak_split_gof_threshold',
+                 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
+                 # xenon:xenonnt:analysis:strax_clustering_classification
+                 # #natural_breaks_splitting
+                 # for more information
+                 default=(
+                     None,  # Reserved
+                     ((0.5, 1.0), (6.0, 0.4)),
+                     ((2.5, 1.0), (5.625, 0.4))),
+                 help='Natural breaks goodness of fit/split threshold to split '
+                      'a peak. Specify as tuples of (log10(area), threshold).'),
+    strax.Option('peak_split_filter_wing_width', default=70,
+                 help='Wing width of moving average filter for '
+                      'low-split natural breaks'),
+    strax.Option('peak_split_min_area', default=40.,
+                 help='Minimum area to evaluate natural breaks criterion. '
+                      'Smaller peaks are not split.'),
+    strax.Option('peak_split_iterations', default=20,
+                 help='Maximum number of recursive peak splits to do.'),
+    )
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
@@ -607,6 +614,19 @@ class MergedS2s(strax.OverlapWindowPlugin):
                                // peaklets['dt'].min()))
             merged_s2s['type'] = 2
             strax.compute_widths(merged_s2s)
+
+            merged_s2s, split_merged_s2s = strax.split_peaks(
+                merged_s2s, peaklets, None,
+                data_type='merged_s2s',
+                algorithm='natural_breaks',
+                threshold=self.natural_breaks_threshold,
+                split_low=True,
+                filter_wing_width=self.config['peak_split_filter_wing_width'],
+                min_area=self.config['peak_split_min_area'],
+                do_iterations=self.config['peak_split_iterations'])
+            
+            split_merged_s2s = self.resolve_merge_split_conflict(peaklets, split_merged_s2s)
+            merged_s2s = strax.sort_by_time(np.concatenate([merged_s2s, split_merged_s2s]))
 
         return merged_s2s
 
@@ -669,6 +689,58 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         return merge_start, merge_stop_exclusive
 
+    def natural_breaks_threshold(self, peaks):
+        rise_time = -peaks['area_decile_from_midpoint'][:, 1]
+
+        # This is ~1 for an clean S2, ~0 for a clean S1,
+        # and transitions gradually in between.
+        f_s2 = 8 * np.log10(rise_time.clip(1, 1e5) / 100)
+        f_s2 = 1 / (1 + np.exp(-f_s2))
+
+        log_area = np.log10(peaks['area'].clip(1, 1e7))
+        thresholds = self.config['peak_split_gof_threshold']
+        return (
+            f_s2 * np.interp(
+                log_area,
+                *np.transpose(thresholds[2]))
+            + (1 - f_s2) * np.interp(
+                log_area,
+                *np.transpose(thresholds[1])))
+
+    def resolve_merge_split_conflict(self, orig, merge):
+        if len(merge) <= 1:
+            return merge
+
+        skip_windows = strax.touching_windows(orig, merge)
+        contesting = (skip_windows[1:, 0] - skip_windows[:-1, 1]) < 0
+
+        start_merge_at = skip_windows[:, 0]
+        end_merge_at = skip_windows[:, 1]
+
+        for merge_i in np.where(contesting)[0]:
+            orig_i = start_merge_at[merge_i+1]
+            assert orig_i + 1 == end_merge_at[merge_i]
+
+            split_i = np.argmax(orig['dt'][orig_i] * np.arange(orig['length'][orig_i]) \
+                                + orig['time'][orig_i] - merge['time'][merge_i+1] > 0)
+            if orig['data'][orig_i, :split_i].sum() > orig['data'][orig_i, split_i:].sum() or \
+                end_merge_at[merge_i] <= start_merge_at[merge_i]:
+                start_merge_at[merge_i+1] = orig_i + 1
+            else:
+                end_merge_at[merge_i] = orig_i
+
+        valid_merge = end_merge_at > start_merge_at
+        max_goodness_of_split = merge['max_goodness_of_split'][valid_merge].copy()
+
+        merge = strax.merge_peaks(
+            orig,
+            start_merge_at[valid_merge], end_merge_at[valid_merge],
+            max_buffer=int(self.config['s2_merge_max_duration']
+                           // orig['dt'].min()))
+        merge['max_goodness_of_split'] = max_goodness_of_split
+
+        return merge
+
 
 @numba.njit(cache=True, nogil=True)
 def _filter_s1_starts(start_merge_at, types, end_merge_at):
@@ -727,7 +799,7 @@ class Peaks(strax.Plugin):
     (replacing all peaklets that were later re-merged as S2s). As this
     step is computationally trivial, never save this plugin.
     """
-    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s', 'merged_s2s_classification')
+    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
