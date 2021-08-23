@@ -543,7 +543,6 @@ class MergedS2sClassification(PeakletClassification):
     depends_on = ('merged_s2s',)
     __version__ = '0.0.1'
     child_plugin = True
-    save_when = strax.SaveWhen.EXPLICIT
 
     def compute(self, merged_s2s):
         return super().compute(merged_s2s)
