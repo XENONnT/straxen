@@ -246,7 +246,7 @@ class nVETOEventPositions(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
 
     def infer_dtype(self):
         return veto_event_positions_dtype()
