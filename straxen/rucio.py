@@ -326,7 +326,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
         return strax.load_file(chunk_path, dtype=dtype, compressor=compressor)
 
-    def _saver(self, dirname, metadata):
+    def _saver(self, dirname, metadata, **kwargs):
         raise NotImplementedError("Cannot save directly into rucio (yet), upload with admix instead")
 
     def _download(self, did_dict_list):
@@ -357,7 +357,7 @@ class RucioSaver(strax.Saver):
     TODO Saves data to rucio if you are the production user
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         raise NotImplementedError
 
 
