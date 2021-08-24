@@ -1,5 +1,8 @@
 import strax
 from straxen import pre_apply_function
+
+import numpy as np
+
 export, __all__ = strax.exporter()
 
 
