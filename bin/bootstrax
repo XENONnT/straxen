@@ -275,7 +275,9 @@ def new_context(cores=args.cores,
         allow_lazy=False,
         use_rucio=False,
         max_messages=max_messages,
-        timeout=timeout)
+        timeout=timeout,
+        _rucio_path=None,
+    )
     if not args.production:
         # Keep the rundb but set it to readonly and local only, delete
         # all other storage frontends except fo the test folder.

@@ -235,7 +235,7 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys]}}
+            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys if not key.run_id.startswith('_')]}}
         dq = self._data_query(keys[0])
 
         # dict.copy is sometimes not sufficient for nested dictionary
