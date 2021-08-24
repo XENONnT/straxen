@@ -6,7 +6,6 @@ from warnings import warn
 
 common_opts = dict(
     register_all=[
-        straxen.event_processing,
         straxen.double_scatter,
     ],
     # Register all peak/pulse processing by hand as 1T does not need to have
@@ -18,7 +17,13 @@ common_opts = dict(
         straxen.MergedS2s,
         straxen.Peaks,
         straxen.PeakBasics,
-        straxen.PeakProximity],
+        straxen.PeakProximity,
+        straxen.Events,
+        straxen.EventBasics,
+        straxen.EventPositions,
+        straxen.CorrectedAreas,
+        straxen.EnergyEstimates,
+    ],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number',
@@ -74,6 +79,7 @@ xnt_common_opts.update({
                                            straxen.PeakletsHighEnergy,
                                            straxen.PeakletClassificationHighEnergy,
                                            straxen.MergedS2sHighEnergy,
+                                           straxen.PeakVetoTagging,
                                            straxen.EventInfo,
                                           ],
     'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
@@ -87,6 +93,7 @@ xnt_common_opts.update({
                                                    straxen.online_monitor,
                                                    straxen.event_area_per_channel,
                                                    straxen.event_patternfit,
+                                                   straxen.event_processing,
                                                    ],
     'use_per_run_defaults': False,
 })
