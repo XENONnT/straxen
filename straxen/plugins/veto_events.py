@@ -277,8 +277,8 @@ class nVETOEventPositions(strax.Plugin):
         event_angles['n_prompt_hitlets'] = n_prompt
 
         # Compute azimuthal angle and xyz positions:
-        angle = compute_average_angle(hits_in_events,
-                                      self.pmt_properties)
+        angle = get_average_angle(hits_in_events,
+                                  self.pmt_properties)
         event_angles['angle'] = angle
         compute_positions(event_angles, events_nv, hits_in_events, self.pmt_properties)
         strax.copy_to_buffer(events_nv, event_angles, f'_copy_events{self.ends_with}')
@@ -346,9 +346,9 @@ def compute_positions(event_angles: np.ndarray,
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_average_angle(hitlets_in_event: numba.typed.typedlist.List,
-                          pmt_properties: np.ndarray,
-                          start_channel: int = 2000,) -> np.ndarray:
+def get_average_angle(hitlets_in_event: numba.typed.typedlist.List,
+                      pmt_properties: np.ndarray,
+                      start_channel: int = 2000, ) -> np.ndarray:
     """
     Computes azimuthal angle as an area weighted mean over all hitlets.
 
