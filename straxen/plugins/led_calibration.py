@@ -3,6 +3,7 @@ Dear nT analyser,
 if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
 '''
 import datetime
+from immutabledict import immutabledict
 import strax
 import numba
 import numpy as np
@@ -141,3 +142,87 @@ def get_area(records, led_window):
     Area['area']    = Area['area']/float(len(end_pos))
         
     return Area
+
+
+@export
+@strax.takes_config(
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."),
+)
+class nVetoExtTimings(strax.Plugin):
+    """
+    Plugin which computes the time difference `delta_time` from pulse timing 
+    of `hitlets_nv` to start time of `raw_records` which belong the `hitlets_nv`.
+    They are used as the external trigger timings.
+    """
+    depends_on = ('raw_records_nv', 'hitlets_nv')
+    provides = 'ext_timings_nv'
+    data_kind = 'hitlets_nv'
+
+    compressor = 'zstd'
+    __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_dt_fields
+        dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),
+                  (('Index to which pulse (not record) the hitlet belongs to.', 'pulse_i'),
+                   np.int32),]
+        return dtype
+
+    def setup(self):
+        self.nv_pmt_start = self.config['channel_map']['nveto'][0]
+        self.nv_pmt_stop = self.config['channel_map']['nveto'][1] + 1
+
+    def compute(self, hitlets_nv, raw_records_nv):
+
+        rr_nv = raw_records_nv[raw_records_nv['record_i'] == 0]
+        pulses = np.zeros(len(rr_nv), dtype=self.pulse_dtype())
+        pulses['time'] = rr_nv['time']
+        pulses['endtime'] = rr_nv['time'] + rr_nv['pulse_length'] * rr_nv['dt']
+        pulses['channel'] = rr_nv['channel']
+
+        ext_timings_nv = np.zeros_like(hitlets_nv, dtype=self.dtype)
+        ext_timings_nv['time'] = hitlets_nv['time']
+        ext_timings_nv['length'] = hitlets_nv['length']
+        ext_timings_nv['dt'] = hitlets_nv['dt']
+        self.calc_delta_time(ext_timings_nv, pulses, hitlets_nv,
+                             self.nv_pmt_start, self.nv_pmt_stop)
+
+        return ext_timings_nv
+
+    @staticmethod
+    def pulse_dtype():
+        pulse_dtype = []
+        pulse_dtype += strax.time_fields
+        pulse_dtype += [(('PMT channel', 'channel'), np.int16)]
+        return pulse_dtype
+
+    @staticmethod
+    @numba.jit
+    def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
+        """
+        numpy access with fancy index returns copy, not view
+        This for-loop is required to substitute in one by one
+        """
+        hitlet_index = np.arange(len(hitlets_nv))
+        pulse_index = np.arange(len(pulses))
+        for ch in range(nv_pmt_start, nv_pmt_stop):
+            mask_hitlets_in_channel = hitlets_nv['channel'] == ch
+            hitlet_in_channel_index = hitlet_index[mask_hitlets_in_channel]
+            
+            mask_pulse_in_channel = pulses['channel'] == ch
+            pulse_in_channel_index = pulse_index[mask_pulse_in_channel]
+            
+            hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
+            pulses_in_channel = pulses[pulse_in_channel_index]
+            hit_in_pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
+            for h_i, p_i in zip(hitlet_in_channel_index, hit_in_pulse_index):
+                if p_i == -1:
+                    continue
+                res = ext_timings_nv_delta_time[h_i]
+                
+                res['delta_time'] = hitlets_nv[h_i]['time'] + hitlets_nv[h_i]['time_amplitude'] \
+                                    - pulses_in_channel[p_i]['time']
+                res['pulse_i'] = pulse_in_channel_index[p_i]

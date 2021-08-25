@@ -170,7 +170,7 @@ def _test_ambiguity(hitlets_ids_in_event):
                                  time_range=(0, 15),
                                  channel_range=(2000, 2010),
                                  length_range=(1, 4), ),
-       hnp.arrays(np.float32, elements=hst.floats(0, 10, width=32), shape=7),
+       hnp.arrays(np.float32, elements=hst.floats(-1, 10, width=32), shape=7),
        )
 def test_nveto_event_plugin(hitlets, area):
     hitlets['area'] = area
@@ -229,9 +229,9 @@ def test_nveto_event_plugin(hitlets, area):
                                                   npmt_pos,
                                                   start_channel=2000)
 
-    angle = straxen.plugins.veto_events.compute_average_angle(split_hitlets,
-                                                              npmt_pos,
-                                                              start_channel=2000)
+    angle = straxen.plugins.veto_events.get_average_angle(split_hitlets,
+                                                          npmt_pos,
+                                                          start_channel=2000)
     # Compute truth angles:
     truth_angle = np.angle(events_angle['pos_x']+events_angle['pos_y']*1j)
     # Replace not defined angles, into zeros to match np.angles return

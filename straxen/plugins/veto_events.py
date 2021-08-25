@@ -10,6 +10,7 @@ from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
 
+
 @strax.takes_config(
     strax.Option('event_left_extension_nv', default=0,
                  help="Extends events this many ns to the left"),
@@ -128,6 +129,7 @@ def compute_nveto_event_properties(events: np.ndarray,
             ch = hit['channel'] - start_channel
             e['area_per_channel'][ch] += hit['area']
 
+
 @export
 def find_veto_events(hitlets: np.ndarray,
                      coincidence_level: int,
@@ -223,7 +225,8 @@ def _make_event(hitlets: np.ndarray,
 
 @strax.takes_config(
     strax.Option('position_max_time_nv', default=20,
-                 help="Time [ns] within an evnet use to compute the azimuthal angle of the event."),
+                 help="Time [ns] within an event use to compute the azimuthal angle of the "
+                      "event."),
     strax.Option('nveto_pmt_position_map',
                  help="nVeto PMT position mapfile",
                  default='nveto_pmt_position.csv'),
@@ -243,7 +246,7 @@ class nVETOEventPositions(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
 
     def infer_dtype(self):
         return veto_event_positions_dtype()
@@ -274,8 +277,8 @@ class nVETOEventPositions(strax.Plugin):
         event_angles['n_prompt_hitlets'] = n_prompt
 
         # Compute azimuthal angle and xyz positions:
-        angle = compute_average_angle(hits_in_events,
-                                      self.pmt_properties)
+        angle = get_average_angle(hits_in_events,
+                                  self.pmt_properties)
         event_angles['angle'] = angle
         compute_positions(event_angles, events_nv, hits_in_events, self.pmt_properties)
         strax.copy_to_buffer(events_nv, event_angles, f'_copy_events{self.ends_with}')
@@ -303,9 +306,22 @@ def veto_event_positions_dtype() -> list:
 @numba.njit(cache=True, nogil=True)
 def compute_positions(event_angles: np.ndarray,
                       events: np.ndarray,
-                      contained_hitlets: np.ndarray,
+                      contained_hitlets: numba.typed.typedlist.List,
                       pmt_pos: np.ndarray,
                       start_channel: int = 2000):
+    """
+    Function which computes some artificial event position for a given
+    neutron/muon-veto event. The position is computed based on a simple
+    area weighted mean. Please note that the event position can be
+    reconstructed in unphysical regions like being within the TPC.
+
+    :param event_angles: Result array of the veto_event_position dtype.
+        The result is updated inplace.
+    :param events: Events for which the position should be computed.
+    :param contained_hitlets: Hitlets contained in each event.
+    :param pmt_pos: Position of the veto PMTs
+    :param start_channel: Starting channel of the detector.
+    """
     for e_angles, e, hitlets in zip(event_angles, events, contained_hitlets):
         if e['area']:
             ch = hitlets['channel'] - start_channel
@@ -313,20 +329,26 @@ def compute_positions(event_angles: np.ndarray,
             pos_y = pmt_pos['y'][ch]
             pos_z = pmt_pos['z'][ch]
 
-            e_angles['pos_x'] = np.sum(pos_x * hitlets['area']) / e['area']
-            e_angles['pos_y'] = np.sum(pos_y * hitlets['area']) / e['area']
-            e_angles['pos_z'] = np.sum(pos_z * hitlets['area']) / e['area']
-            if len(hitlets) and np.sum(hitlets['area']) > 0:
-                w = hitlets['area'] / e['area']  # normalized weights
-                e_angles['pos_x_spread'] = np.sqrt(np.sum(w * np.power(pos_x - e_angles['pos_x'], 2)) / np.sum(w))
-                e_angles['pos_y_spread'] = np.sqrt(np.sum(w * np.power(pos_y - e_angles['pos_y'], 2)) / np.sum(w))
-                e_angles['pos_z_spread'] = np.sqrt(np.sum(w * np.power(pos_z - e_angles['pos_z'], 2)) / np.sum(w))
+            e_angles['pos_x'] = np.sum(pos_x * hitlets['area'])/e['area']
+            e_angles['pos_y'] = np.sum(pos_y * hitlets['area'])/e['area']
+            e_angles['pos_z'] = np.sum(pos_z * hitlets['area'])/e['area']
+            w = hitlets['area'] / e['area']  # normalized weights
+            if len(hitlets) and np.sum(w) > 0:
+                e_angles['pos_x_spread'] = np.sqrt(
+                    np.sum(w * (pos_x - e_angles['pos_x'])**2)/np.sum(w)
+                )
+                e_angles['pos_y_spread'] = np.sqrt(
+                    np.sum(w * (pos_y - e_angles['pos_y'])**2)/np.sum(w)
+                )
+                e_angles['pos_z_spread'] = np.sqrt(
+                    np.sum(w * (pos_z - e_angles['pos_z'])**2)/np.sum(w)
+                )
 
 
 @numba.njit(cache=True, nogil=True)
-def compute_average_angle(hitlets_in_event: np.ndarray,
-                          pmt_properties: np.ndarray,
-                          start_channel: int = 2000,) -> np.ndarray:
+def get_average_angle(hitlets_in_event: numba.typed.typedlist.List,
+                      pmt_properties: np.ndarray,
+                      start_channel: int = 2000, ) -> np.ndarray:
     """
     Computes azimuthal angle as an area weighted mean over all hitlets.
 
