@@ -134,13 +134,10 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    '$and': [
-                        {'did':
-                             {'$regex':
-                                  f'/*{key.data_type}-{key.lineage_hash}'
-                              },
-                         },
-                        {'$or': self.available_query}]}}}
+                    '$and': [{'type': key.data_type,  'lineage_hash': key.lineage_hash},
+                             {'$or': self.available_query}]
+                }
+            }}
 
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
