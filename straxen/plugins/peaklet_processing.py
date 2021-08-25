@@ -662,9 +662,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Updated time and length of lone_hits and sort again:
             lh = np.copy(lone_hits)
             del lone_hits
-            lh['time'] = (lh['time']
-                                 - (lh['left']-lh['left_integration'])*lh['dt']
-                                 )
+            lh_time_shift = (lh['left'] - lh['left_integration']) *lh['dt']
+            lh['time'] = lh['time'] - lh_time_shift
             lh['length'] = (lh['right_integration'] - lh['left_integration'])
             lh = strax.sort_by_time(lh)
             strax.add_lone_hits(merged_s2s, lh, self.to_pe)
