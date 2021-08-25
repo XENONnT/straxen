@@ -92,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.10'
+    __version__ = '0.4.1'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -153,7 +153,8 @@ class Peaklets(strax.Plugin):
         # Get hits outside peaklets, and store them separately.
         # fully_contained is OK provided gap_threshold > extension,
         # which is asserted inside strax.find_peaks.
-        lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
+        is_lone_hit = strax.fully_contained_in(hits, peaklets) == -1
+        lone_hits = hits[is_lone_hit]
         strax.integrate_lone_hits(
             lone_hits, records, peaklets,
             save_outside_hits=(self.config['peak_left_extension'],
@@ -161,14 +162,40 @@ class Peaklets(strax.Plugin):
             n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
-        strax.sum_waveform(peaklets, r, self.to_pe)
+        hits = hits[~is_lone_hit]
+        # Define regions outside of peaks such that _find_hit_integration_bounds
+        # is not extended beyond a peak.
+        outside_peaks = self.create_outside_peaks_region(peaklets, start, end)
+        strax.find_hit_integration_bounds(
+            hits, outside_peaks, records,
+            save_outside_hits=(self.config['peak_left_extension'],
+                               self.config['peak_right_extension']),
+            n_channels=len(self.to_pe),
+            allow_bounds_beyond_records=True,
+        )
+
+        # Transform hits to hitlets for naming conventions. A hit refers
+        # to the central part above threshold a hitlet to the entire signal
+        # including the left and right extension.
+        # (We are not going to use the actual hitlet data_type here.)
+        hitlets = hits
+        del hits
+
+        hitlet_time_shift = (hitlets['left'] - hitlets['left_integration']) * hitlets['dt']
+        hitlets['time'] = hitlets['time'] - hitlet_time_shift
+        hitlets['length'] = (hitlets['right_integration'] - hitlets['left_integration'])
+        hitlets = strax.sort_by_time(hitlets)
+        rlinks = strax.record_links(records)
+
+        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe)
+
         strax.compute_widths(peaklets)
 
         # Split peaks using low-split natural breaks;
         # see https://github.com/XENONnT/straxen/pull/45
         # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
-            peaklets, r, self.to_pe,
+            peaklets, hitlets, r, rlinks, self.to_pe,
             algorithm='natural_breaks',
             threshold=self.natural_breaks_threshold,
             split_low=True,
@@ -187,7 +214,7 @@ class Peaklets(strax.Plugin):
 
         if self.config['saturation_correction_on']:
             peak_list = peak_saturation_correction(
-                r, peaklets, self.to_pe,
+                r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
 
@@ -200,8 +227,10 @@ class Peaklets(strax.Plugin):
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
         hit_max_times = np.sort(
-            hits['time']
-            + hits['dt'] * hit_max_sample(records, hits))
+            hitlets['time']
+            + hitlets['dt'] * hit_max_sample(records, hitlets)
+            + hitlet_time_shift  # add time shift again to get correct maximum
+        )
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
@@ -213,12 +242,12 @@ class Peaklets(strax.Plugin):
 
         if self.config['diagnose_sorting'] and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
-            assert np.diff(hits['time']).min(initial=1) >= 0, "Hits not sorted"
+            assert np.diff(hitlets['time']).min(initial=1) >= 0, "Hits/Hitlets not sorted"
             assert np.all(peaklets['time'][1:]
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
 
         # Update nhits of peaklets:
-        counts = strax.touching_windows(hits, peaklets)
+        counts = strax.touching_windows(hitlets, peaklets)
         counts = np.diff(counts, axis=1).flatten()
         counts += 1
         peaklets['n_hits'] = counts
@@ -253,16 +282,43 @@ class Peaklets(strax.Plugin):
             if strax.endtime(p) > end:
                 p['length'] = (end - p['time']) // p['dt']
 
+    @staticmethod
+    def create_outside_peaks_region(peaklets, start, end):
+        """
+        Creates time intervals which are outside peaks.
+
+        :param peaklets: Peaklets for which intervals should be computed.
+        :param start: Chunk start
+        :param end: Chunk end
+        :return: array of strax.time_fields dtype.
+        """
+        if not len(peaklets):
+            return np.zeros(0, dtype=strax.time_fields)
+        
+        outside_peaks = np.zeros(len(peaklets) + 1,
+                                 dtype=strax.time_fields)
+        
+        outside_peaks[0]['time'] = start
+        outside_peaks[0]['endtime'] = peaklets[0]['time']
+        outside_peaks[1:-1]['time'] = strax.endtime(peaklets[:-1])
+        outside_peaks[1:-1]['endtime'] = peaklets['time'][1:]
+        outside_peaks[-1]['time'] = strax.endtime(peaklets[-1])
+        outside_peaks[-1]['endtime'] = end
+        return outside_peaks
+
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def peak_saturation_correction(records, peaks, to_pe,
+def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
                                ):
     """Correct the area and per pmt area of peaks from saturation
     :param records: Records
+    :param rlinks: strax.record_links of corresponding records.
     :param peaks: Peaklets / Peaks
+    :param hitlets: Hitlets found in records to build peaks.
+        (Hitlets are hits including the left/right extension)
     :param to_pe: adc to PE conversion (length should equal number of PMTs)
     :param reference_length: Maximum number of reference sample used
     to correct saturated samples
@@ -334,7 +390,7 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
         peaks[peak_i]['dt'] = dt
 
-    strax.sum_waveform(peaks, records, to_pe, peak_list)
+    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, peak_list)
     return peak_list
 
 

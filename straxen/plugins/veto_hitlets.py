@@ -126,7 +126,9 @@ class nVETOHitlets(strax.Plugin):
                                               min_hitlet_sample=600)
 
         temp_hitlets = strax.split_peaks(temp_hitlets,
+                                         None,  # Only needed for peak splitting
                                          records_nv,
+                                         None,  # Only needed for peak splitting
                                          self.to_pe,
                                          data_type='hitlets',
                                          algorithm='local_minimum',
