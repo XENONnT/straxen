@@ -91,7 +91,7 @@ jobs:
         # This is running a normal test
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
-          python setup.py test -v
+          pytest -v
       - name: Coveralls
         # Make the coverage report and upload
         env:
@@ -103,7 +103,7 @@ jobs:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
         run: |
-          coverage run --source=straxen setup.py test -v
+          coverage run --source=straxen pytest -v
           coveralls --service=github
 
       # Done
