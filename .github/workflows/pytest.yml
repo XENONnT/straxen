@@ -92,10 +92,10 @@ jobs:
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           pytest -v
-      - name: test
+      - name: Remove strax from reqs.
+        if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
         run: |
-          cat requirements.txt | grep -v 'strax' &> requirements.txt
-          cat requirements.txt
+          bash .github/scripts/filter_strax_from_requirements.sh
       - name: Coveralls
         # Make the coverage report and upload
         env:
