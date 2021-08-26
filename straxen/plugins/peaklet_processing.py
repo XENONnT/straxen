@@ -607,6 +607,9 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     strax.Option('gain_model',
                  help='PMT gain model. Specify as '
                       '(str(model_config), str(version), nT-->boolean'),
+    strax.Option('merge_without_s1', default=True,
+                 help="If true, S1s will be igored during the merging. "
+                      "It's now possible for a S1 to be inside a S2 post merging"),
 )
 class MergedS2s(strax.OverlapWindowPlugin):
     """
@@ -616,7 +619,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.3.0'
+    __version__ = '0.3.1'
 
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
@@ -630,6 +633,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     + self.config['s2_merge_max_duration'])
 
     def compute(self, peaklets, lone_hits):
+        if self.config['merge_without_s1']:
+            peaklets = peaklets[peaklets['type'] != 1]
+
         if len(peaklets) <= 1:
             return np.zeros(0, dtype=peaklets.dtype)
 
@@ -785,7 +791,11 @@ class MergedS2sHighEnergy(MergedS2s):
 @export
 @strax.takes_config(
     strax.Option('diagnose_sorting', track=False, default=False,
-                 help="Enable runtime checks for sorting and disjointness"))
+                 help="Enable runtime checks for sorting and disjointness"),
+    strax.Option('merge_without_s1', default=True,
+                 help="If true, S1s will be igored during the merging. "
+                      "It's now possible for a S1 to be inside a S2 post merging"),
+)
 class Peaks(strax.Plugin):
     """
     Merge peaklets and merged S2s such that we obtain our peaks
@@ -798,7 +808,7 @@ class Peaks(strax.Plugin):
     parallel = True
     save_when = strax.SaveWhen.NEVER
 
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     def infer_dtype(self):
         return self.deps['peaklets'].dtype_for('peaklets')
@@ -806,13 +816,24 @@ class Peaks(strax.Plugin):
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s['type'] != FAKE_MERGED_S2_TYPE]
-
-        peaks = strax.replace_merged(peaklets, merged_s2s)
+        
+        if self.config['merge_without_s1']:
+            is_s1 = peaklets['type'] == 1
+            peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
+            peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1],
+                                                       peaks]))
+        else:
+            peaks = strax.replace_merged(peaklets, merged_s2s)
 
         if self.config['diagnose_sorting']:
             assert np.all(np.diff(peaks['time']) >= 0), "Peaks not sorted"
-            assert np.all(peaks['time'][1:]
-                          >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
+            if self.config['merge_without_s1']:
+                to_check = peaks['type'] != 1
+            else:
+                to_check = peaks['type'] != FAKE_MERGED_S2_TYPE
+
+            assert np.all(peaks['time'][to_check][1:]
+                            >= strax.endtime(peaks)[to_check][:-1]), "Peaks not disjoint"
         return peaks
 
 
