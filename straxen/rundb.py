@@ -134,7 +134,7 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    '$and': [{'type': key.data_type,  'lineage_hash': key.lineage_hash},
+                    '$and': [{'type': key.data_type,  'meta.lineage_hash': key.lineage_hash},
                              {'$or': self.available_query}]
                 }
             }}
@@ -201,8 +201,9 @@ class RunDB(strax.StorageFrontend):
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
                         'did': key_to_rucio_did(key),
-                        'lineage_hash': key.lineage_hash,
-
+                        'meta': {'lineage_hash': 
+                                 key.lineage_hash,}
+                        ,
                     }}})
 
             return (strax.FileSytemBackend.__name__,
