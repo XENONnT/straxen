@@ -52,6 +52,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v2
+      - name: Remove strax from reqs.
+        if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
+        env:
+          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+        run: |
+          bash .github/scripts/filter_strax_from_requirements.sh
       - name: Install requirements for tests and latest strax
         run: |
             pip install -r extra_requirements/requirements-tests.txt
@@ -92,10 +98,6 @@ jobs:
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           pytest -v
-      - name: Remove strax from reqs.
-        if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
-        run: |
-          bash .github/scripts/filter_strax_from_requirements.sh
       - name: Coveralls
         # Make the coverage report and upload
         env:
