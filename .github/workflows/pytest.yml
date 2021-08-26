@@ -30,7 +30,7 @@ jobs:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: True
+      fail-fast: False
       matrix:
         python-version: [3.7, 3.8, 3.9]
         test: ['coveralls', 'pytest', 'pytest_no_database']
@@ -52,6 +52,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v2
+      - name: Remove strax from reqs.
+        if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
+        env:
+          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+        run: |
+          bash .github/scripts/filter_strax_from_requirements.sh
       - name: Install requirements for tests and latest strax
         run: |
             pip install -r extra_requirements/requirements-tests.txt
@@ -91,7 +97,7 @@ jobs:
         # This is running a normal test
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
-          python setup.py test -v
+          pytest -v
       - name: Coveralls
         # Make the coverage report and upload
         env:
@@ -105,7 +111,6 @@ jobs:
         run: |
           coverage run --source=straxen setup.py test -v
           coveralls --service=github
-
       # Done
       - name: goodbye
         run: echo "tests done, bye bye"
