@@ -30,7 +30,7 @@ jobs:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: True
+      fail-fast: False
       matrix:
         python-version: [3.7, 3.8, 3.9]
         test: ['coveralls', 'pytest', 'pytest_no_database']
@@ -92,6 +92,10 @@ jobs:
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         run: |
           pytest -v
+      - name: test
+        run: | 
+          cat requirements.txt | grep -v 'strax' &> requirements.txt
+          cat requirements.txt
       - name: Coveralls
         # Make the coverage report and upload
         env:
@@ -102,9 +106,7 @@ jobs:
           # database.
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
-        # Filter strax from requirements for tests
         run: |
-          cat requirements.txt | grep -v 'strax' &> requirements.txt
           coverage run --source=straxen setup.py test -v
           coveralls --service=github
 
