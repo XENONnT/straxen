@@ -26,3 +26,20 @@ def test_create_outside_peaks_region(time):
     for tw in touching:
         print(tw)
         assert np.diff(tw) == 0, 'Intervals overlap although they should not!'
+
+
+def test_n_hits():
+    records = np.zeros(2, dtype=strax.record_dtype())
+    records['length'] = 5
+    records['pulse_length'] = 5
+    records['dt'] = 1
+    records['channel'] = [0, 1]  
+    records['data'][0, :5] = [0, 1, 1, 0, 1]
+    records['data'][1, :5] = [0, 1, 0, 0, 0]
+    
+    st = straxen.contexts.xenonnt_online()
+    st.set_config({'hit_min_amplitude': 1})
+    p = st.get_single_plugin('0', 'peaklets')
+    res = p.compute(records, 0, 999)
+    peaklets = res['peaklets']
+    assert peaklets['n_hits'] == 3, f"Peaklet has the wrong number of hits!"
