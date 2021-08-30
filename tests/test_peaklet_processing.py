@@ -29,6 +29,8 @@ def test_create_outside_peaks_region(time):
 
 
 def test_n_hits():
+    if not straxen.utilix_is_configured():
+        return
     records = np.zeros(2, dtype=strax.record_dtype())
     records['length'] = 5
     records['pulse_length'] = 5
