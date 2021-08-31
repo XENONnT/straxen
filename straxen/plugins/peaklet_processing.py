@@ -249,7 +249,6 @@ class Peaklets(strax.Plugin):
         # Update nhits of peaklets:
         counts = strax.touching_windows(hitlets, peaklets)
         counts = np.diff(counts, axis=1).flatten()
-        counts += 1
         peaklets['n_hits'] = counts
 
         return dict(peaklets=peaklets,
