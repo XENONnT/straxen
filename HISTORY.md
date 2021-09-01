@@ -1,3 +1,38 @@
+1.0.0 / 2021-09-01
+-------------------
+major / minor:
+    
+- merge s2 without s1 (#645)
+- First nVeto monitor plugin (#634)
+- Peak event veto tagging (#618)
+- Fix peaklet area bias (#601)
+- Add lone hit information to merged S2s. (#623)
+    
+
+patches and fixes:
+    
+- Fix n_hits of peaks (#646) 
+- Update requirements for strax (#644)
+- Modifications of nT simulation context (#602)
+- Straxer for other packages (#595)
+- [Bug fix] alt_s{i}_delay computation (#598)
+- Bump version refactor code for cleanliness. (#597)
+- Increase buffer size (#604)
+- Stop testing py3.6 (#621)
+- Remove online event monitor (#620)
+- Add matplotlib to test requirements (#626)
+- Fix rundb select runs with superruns (#627)
+- Change EventInfo to save when explicit (#628)
+- Update test data (#631)
+- Allow database to not be initialized (#636)
+- new plot_pmts (#637)
+- Speed up event pattern fit (#625)
+- kwargs for saver (#639)
+- Add a plugin for external trigger run on nVeto calibration (#630)
+- Fix veto event positions (#641)
+- Use rucio from straxen & nest RucioRemote imports (#592)
+
+
 0.19.3 / 2021-07-16
 -------------------
 - Rewrite EventBasics, set event level S1 tight coincidence (#569)
