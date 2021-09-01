@@ -10,7 +10,7 @@ coverage==5.5
 flake8==3.9.2
 holoviews==1.14.5
 ipywidgets==7.6.3
-hypothesis==6.14.5
+hypothesis==6.17.4
 jupyter-client==6.1.12                          # for ipywidgets
 matplotlib==3.4.2
 multihist==0.6.4
