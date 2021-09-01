@@ -2,7 +2,9 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
+import socket
 from warnings import warn
+
 
 common_opts = dict(
     register_all=[
@@ -111,7 +113,8 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
 
 
 def xenonnt_online(output_folder='./strax_data',
-                   use_rucio=False,
+                   use_rucio=None,
+                   use_rucio_remote=False,
                    we_are_the_daq=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
@@ -129,7 +132,9 @@ def xenonnt_online(output_folder='./strax_data',
 
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
-    :param use_rucio: bool, whether or not to use the rucio frontend
+    :param use_rucio: bool, whether or not to use the rucio frontend (by
+        default, we add the frontend when running on an rcc machine)
+    :param use_rucio_remote: bool, if download data from rucio directly
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param _minimum_run_number: int, lowest number to consider
     :param _maximum_run_number: Highest number to consider. When None
@@ -186,10 +191,11 @@ def xenonnt_online(output_folder='./strax_data',
         if _forbid_creation_of is not None:
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
-    # if we said so, add the rucio frontend to storage
-    if use_rucio:
+    # Add the rucio frontend to storage when asked to or if we did not
+    # specify anything and are on rcc
+    if use_rucio or (use_rucio is None and 'rcc' in socket.getfqdn()):
         st.storage.append(straxen.rucio.RucioFrontend(
-            include_remote=straxen.RUCIO_AVAILABLE,
+            include_remote=use_rucio_remote,
             staging_dir=output_folder,
         ))
 

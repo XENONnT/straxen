@@ -18,4 +18,3 @@ For installation instructions and usage information, please see the [straxen doc
 
 [![Update context collection](https://github.com/XENONnT/straxen/workflows/Update%20context%20collection/badge.svg)](https://github.com/XENONnT/straxen/actions/workflows/contexts.yml)
 [![Python style](https://github.com/XENONnT/straxen/actions/workflows/code_style.yml/badge.svg)](https://github.com/XENONnT/straxen/actions/workflows/code_style.yml)
-[![Coveralls](https://github.com/XENONnT/straxen/actions/workflows/coveralls.yml/badge.svg?branch=master)](https://github.com/XENONnT/straxen/actions/workflows/coveralls.yml)

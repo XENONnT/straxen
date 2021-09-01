@@ -5,7 +5,7 @@ import socket
 from tqdm import tqdm
 from copy import deepcopy
 import strax
-from .rucio import key_to_rucio_did
+from .rucio import key_to_rucio_did, RucioLocalBackend
 import warnings
 
 try:
@@ -123,7 +123,7 @@ class RunDB(strax.StorageFrontend):
 
         if self.rucio_path is not None:
             # TODO replace with rucio backend in the rucio module
-            self.backends.append(strax.rucio(self.rucio_path))
+            self.backends.append(RucioLocalBackend(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK',
@@ -183,9 +183,8 @@ class RunDB(strax.StorageFrontend):
                 datum = doc['data'][0]
                 error_message = f'Expected {rucio_key} got data on {datum["location"]}'
                 assert datum.get('did', '') == rucio_key, error_message
-                backend_name, backend_key = (
-                    datum['protocol'],
-                    f'{key.run_id}-{key.data_type}-{key.lineage_hash}')
+                backend_name = 'RucioLocalBackend'
+                backend_key = key_to_rucio_did(key)
                 return backend_name, backend_key
 
         dq = self._data_query(key)
