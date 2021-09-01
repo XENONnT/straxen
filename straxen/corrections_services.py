@@ -63,7 +63,7 @@ class CorrectionsManagementServices():
 
         # Do not delete the client!
         self.client = corrections_collection.database.client
-
+ 
         # Setup the interface
         self.interface = strax.CorrectionsInterface(
             self.client,
@@ -74,14 +74,13 @@ class CorrectionsManagementServices():
             self.collection = self.client['xenonnt']['runs']
         else:
             self.collection = self.client['run']['runs_new']
-
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}'
                    f'-Corrections_Management_Services')
-
+    
     def get_corrections_config(self, run_id, config_model=None):
         """
         Get context configuration for a given correction
@@ -89,7 +88,6 @@ class CorrectionsManagementServices():
         :param config_model: configuration model (tuple type)
         :return: correction value(s)
         """
-
         if not isinstance(config_model, (tuple, list)) or len(config_model) != 2:
             raise ValueError(f'config_model {config_model} must be a tuple of length 2')
         model_type, version = config_model
@@ -131,10 +129,10 @@ class CorrectionsManagementServices():
                 pmts = list(gains.keys())
                 for it_correction in pmts: # loop over all PMTs
                     if correction in it_correction:
-                        df = self.interface.read(it_correction)
+                        df = self.interface.read_by_index(it_correction, when)
                         if self.check_for_nans(when, df, version):
                             raise CMTnanValueError(f"For {it_correction} there are NaN values, this means no correction available "
-                                                    f"for {run_id} in version {version}, please check e-logbook for more info ")
+                                                   f"for {run_id} in version {version}, please check e-logbook for more info ")
  
                         if version in 'ONLINE':
                             df = self.interface.interpolate(df, when, how='fill')
@@ -142,10 +140,10 @@ class CorrectionsManagementServices():
                             df = self.interface.interpolate(df, when)
                         values.append(df.loc[df.index == when, version].values[0])
             else:
-                df = self.interface.read(correction)
+                df = self.interface.read_by_index(correction, when)
                 if self.check_for_nans(when, df, version):
                     raise CMTnanValueError(f"For {it_correction} there are NaN values, this means no correction available "
-                                            f"for {run_id} in version {version}, please check e-logbook for more info ")
+                                           f"for {run_id} in version {version}, please check e-logbook for more info ")
  
                 if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
                     df = self.interface.interpolate(df, when, how='fill')
@@ -203,7 +201,7 @@ class CorrectionsManagementServices():
                     f"to_pe(PMT gains) values are NaN, no data available "
                     f"for {run_id} in the gain model with version "
                     f"{version}, please check e-logbook for more info ")
-
+            
         else:
             raise ValueError(f"{model_type} not implemented for to_pe values")
 
