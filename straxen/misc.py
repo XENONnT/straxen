@@ -80,7 +80,15 @@ def print_versions(modules=('strax', 'straxen', 'cutax'),
                 except InvalidGitRepositoryError:
                     message += f'\tnot git'
                 else:
-                    message += f'\tgit: {repo.active_branch}:{repo.head.object.hexsha}'
+                    try:
+                        branch = repo.active_branch
+                    except TypeError:
+                        branch = 'unknown'
+                    try:
+                        commit_hash = repo.head.object.hexsha
+                    except TypeError:
+                        commit_hash = 'unknown'
+                    message += f'\tgit: {branch}:{commit_hash}'
     if return_string:
         return message
     print(message)
