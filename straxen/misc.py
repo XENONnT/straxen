@@ -9,6 +9,7 @@ import datetime
 import pytz
 from os import environ as os_environ
 from importlib import import_module
+from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
 
 export, __all__ = strax.exporter()
@@ -41,7 +42,9 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
 
 
 @export
-def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
+def print_versions(modules=('strax', 'straxen', 'cutax'),
+                   return_string=False,
+                   include_git_details=False):
     """
     Print versions of modules installed.
 
@@ -50,6 +53,8 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
         'cutax', 'pema'))
     :param return_string: optional. Instead of printing the message,
         return a string
+    :param include_git_details: Include the current branch and latest
+        commit hash
     :return: optional, the message that would have been printed
     """
     message = (f'Working on {socket.getfqdn()} with the following '
@@ -59,13 +64,23 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
     for m in strax.to_str_tuple(modules):
         try:
             mod = import_module(m)
-            message += f'\n{m}'
-            if hasattr(mod, '__version__'):
-                message += f'\tv{mod.__version__}'
-            if hasattr(mod, '__path__'):
-                message += f'\t{mod.__path__[0]}'
         except (ModuleNotFoundError, ImportError):
             print(f'{m} is not installed')
+            continue
+
+        message += f'\n{m}'
+        if hasattr(mod, '__version__'):
+            message += f'\tv{mod.__version__}'
+        if hasattr(mod, '__path__'):
+            module_path = mod.__path__[0]
+            message += f'\t{module_path}'
+            if include_git_details:
+                try:
+                    repo = Repo(module_path, search_parent_directories=True)
+                except InvalidGitRepositoryError:
+                    message += f'\tnot git'
+                else:
+                    message += f'\tgit: {repo.active_branch}:{repo.head.object.hexsha}'
     if return_string:
         return message
     print(message)
