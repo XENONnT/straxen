@@ -174,7 +174,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     # Ignore strax-internal warnings
     st.set_context_config({'free_options': tuple(st.config.keys())})
     st.register(DummyRawRecords)
-    if nt and not straxen.utilix_is_configured():
+    if nt and not straxen.utilix_is_configured(warning_message=False):
         st.set_config(testing_config_nT)
         del st._plugin_class_registry['peak_positions_mlp']
         del st._plugin_class_registry['peak_positions_cnn']
@@ -184,7 +184,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         st.set_config({'gain_model': fallback_gains})
 
     elif not nt:
-        if straxen.utilix_is_configured():
+        if straxen.utilix_is_configured(warning_message=False):
             # Set some placeholder gain as this takes too long for 1T to load from CMT
             st.set_config({k: v for k, v in testing_config_1T.items() if
                            k in ('hev_gain_model', 'gain_model')})
@@ -274,7 +274,8 @@ def test_1T(ncores=1):
 def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
-    st = straxen.contexts.xenonnt_online(_database_init=straxen.utilix_is_configured(),
+    init_database = straxen.utilix_is_configured(warning_message=False)
+    st = straxen.contexts.xenonnt_online(_database_init=init_database,
                                          use_rucio=False)
     offline_gain_model = ("to_pe_placeholder", True)
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)

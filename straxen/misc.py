@@ -72,16 +72,32 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
 
 
 @export
-def utilix_is_configured(header='RunDB', section='xent_database') -> bool:
+def utilix_is_configured(header: str = 'RunDB',
+                         section: str = 'xent_database',
+                         warning_message: ty.Union[None, bool, str] = None,
+                         ) -> bool:
     """
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?
+
+    :param header: Which header to check in the utilix config file
+    :param section: Which entry in the header to check to exist
+    :param warning_message: If utilix is not configured, warn the user.
+        if None -> generic warning
+        if str -> use the string to warn
+        if False -> don't warn
     """
     try:
-        return (hasattr(straxen.uconfig, 'get') and
-                straxen.uconfig.get(header, section) is not None)
+        is_configured = (hasattr(straxen.uconfig, 'get') and
+                         straxen.uconfig.get(header, section) is not None)
     except NoSectionError:
-        return False
+        is_configured = False
+
+    if not is_configured and bool(warning_message):
+        if warning_message is None:
+            warning_message = 'Utilix is not configured, cannot proceed'
+        warnings.warn(warning_message)
+    return is_configured
 
 
 @export
