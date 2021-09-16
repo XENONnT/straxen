@@ -292,7 +292,7 @@ class RunDB(strax.StorageFrontend):
             filter=query,
             projection=projection)
         for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
-                        total=cursor.count_documents()):
+                        total=cursor.count()):
             del doc['_id']
             if self.reader_ini_name_is_mode:
                 doc['mode'] = \
