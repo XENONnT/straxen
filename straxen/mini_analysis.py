@@ -94,7 +94,7 @@ def mini_analysis(requires=tuple(),
                 for dkind, dtypes in deps_by_kind.items():
                     if dkind in kwargs:
                         # Already have data, just apply cuts
-                        kwargs[dkind] = context.apply_selection(
+                        kwargs[dkind] = strax.apply_selection(
                             kwargs[dkind],
                             selection_str=kwargs['selection_str'],
                             time_range=kwargs['time_range'],
