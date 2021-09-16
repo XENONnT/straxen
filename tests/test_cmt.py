@@ -9,12 +9,13 @@ from .test_basics import test_run_id_1T
 from .test_plugins import test_run_id_nT
 from straxen.common import aux_repo
 
+
 def test_connect_to_db():
     """
     Test connection to db
     """
     if not straxen.utilix_is_configured():
-        warn('Cannot do test becaus  '
+        warn('Cannot do test because  '
              'no have access to the database.')
         return
 
@@ -33,12 +34,13 @@ def test_connect_to_db():
     mes = 'Return empty dataframe when reading DB. Please check'
     assert not df.empty, mes
 
+
 def test_1T_elife():
     """
     Test elife from CMT DB against historical data(aux file)
     """
     if not straxen.utilix_is_configured():
-        warn('Cannot do test becaus  '
+        warn('Cannot do test because  '
              'no have access to the database.')
         return
 
@@ -51,19 +53,21 @@ def test_1T_elife():
     mes = 'Elife values do not match. Please check'
     assert elife_cmt == elife, mes
 
+
 def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
     """
     Test CMT conf options
     If wrong conf is passed it would raise an error accordingly
     """
     if not straxen.utilix_is_configured():
-        warn('Cannot do test becaus  '
+        warn('Cannot do test because  '
              'no have access to the database.')
         return
 
     conf = option, version, is_nT
     correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
     assert isinstance(correction, (float, int, str, np.ndarray))
+
 
 def test_mc_wrapper_elife(run_id='009000',
                           cmt_id='016000',

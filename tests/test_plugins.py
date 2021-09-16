@@ -259,7 +259,7 @@ def test_1T(ncores=1):
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
 
     # Run the test
-    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_1T)
+    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T)
 
     # Test issue #233
     st.search_field('cs1')
@@ -279,7 +279,7 @@ def test_nT(ncores=1):
     offline_gain_model = ("to_pe_placeholder", True)
     _update_context(st, ncores, fallback_gains=offline_gain_model, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
-    _run_plugins(st, make_all=True, max_wokers=ncores, run_id=test_run_id_nT)
+    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_nT)
     # Test issue #233
     st.search_field('cs1')
     # Test of child plugins:
