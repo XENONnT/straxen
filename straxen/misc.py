@@ -44,7 +44,7 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
 @export
 def print_versions(modules=('strax', 'straxen', 'cutax'),
                    return_string=False,
-                   include_git_details=False):
+                   include_git=True):
     """
     Print versions of modules installed.
 
@@ -74,11 +74,12 @@ def print_versions(modules=('strax', 'straxen', 'cutax'),
         if hasattr(mod, '__path__'):
             module_path = mod.__path__[0]
             message += f'\t{module_path}'
-            if include_git_details:
+            if include_git:
                 try:
                     repo = Repo(module_path, search_parent_directories=True)
                 except InvalidGitRepositoryError:
-                    message += f'\tnot git'
+                    # not a git repo
+                    pass
                 else:
                     try:
                         branch = repo.active_branch
@@ -88,7 +89,7 @@ def print_versions(modules=('strax', 'straxen', 'cutax'),
                         commit_hash = repo.head.object.hexsha
                     except TypeError:
                         commit_hash = 'unknown'
-                    message += f'\tgit: {branch}:{commit_hash}'
+                    message += f'\tgit branch:{branch} | {commit_hash[:7]}'
     if return_string:
         return message
     print(message)
