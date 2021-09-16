@@ -48,6 +48,6 @@ def test_print_versions(modules=('numpy', 'straxen', 'non_existing_module')):
         for include_git in [True, False]:
             res = print_versions(modules,
                                  return_string=return_string,
-                                 include_git_details=include_git)
+                                 include_git=include_git)
             if return_string:
                 assert res is not None
