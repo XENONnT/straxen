@@ -203,3 +203,102 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
         for xy in ('x', 'y'):
             result[xy] = peaks[f'{xy}_{algorithm}']
         return result
+
+    
+@export
+@strax.takes_config(
+    strax.Option('recon_alg_included', help='The list of all reconstruction algorithm considered.',
+                 default=('_mlp','_gcn','_cnn'),
+                )
+)
+class S2ReconPosDiff(strax.Plugin):
+    '''
+    Plugin that provides position reconstruction difference for S2s in events, see note: 
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
+    '''
+    
+    __version__ = '0.0.1'
+    parallel = True
+    depends_on = 'event_basics'
+    provides = 's2_recon_pos_diff'
+    
+    def infer_dtype(self):
+        dtype =[
+        ('s2_recon_avg_x' ,np.float32,
+         'Mean value of x for main S2'),
+        ('alt_s2_recon_avg_x' ,np.float32,
+         'Mean value of x for alternatice S2'),
+        ('s2_recon_avg_y' ,np.float32,
+         'Mean value of y for main S2'),
+        ('alt_s2_recon_avg_y' ,np.float32,
+         'Mean value of y for alternatice S2'),
+        ('s2_recon_pos_diff' ,np.float32,
+         'Reconstructed position difference for main S2'),
+        ('alt_s2_recon_pos_diff' ,np.float32,
+         'Reconstructed position difference for alternative S2'),
+
+    ]
+        dtype += strax.time_fields
+        return dtype
+    
+    
+
+    @staticmethod
+    @numba.njit
+    def compute(self,events):
+        
+        result = np.zeros(len(events), dtype=self.dtype)
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
+        # Computing position difference
+        self.compute_pos_diff(events, result)
+        return result
+    
+    @staticmethod
+    @numba.njit
+    def cal_avg_and_std(self, values, axis=1):
+        average = np.average(values,axis=axis)
+        variance = np.var(values, axis=axis)
+        return (average, np.sqrt(variance))
+
+    @staticmethod
+    @numba.njit
+    def eval_recon(self, data, name,cur_s2_bool):
+        alg_list=self.config['recon_alg_included']
+        name_x_list=[]
+        name_y_list=[]
+        for alg in alg_list:
+            name_x_list.append(name+'_x'+alg)
+            name_y_list.append(name+'_y'+alg)
+        x_avg,x_std= self.cal_avg_and_std(np.array(data[name_x_list][cur_s2_bool].tolist())) #lazy fix for data types 
+        y_avg,y_std= self.cal_avg_and_std(np.array(data[name_y_list][cur_s2_bool].tolist()))
+        r_std=np.sqrt(x_std**2+y_std**2)
+        res = x_avg, y_avg, r_std
+        return res
+
+    @staticmethod
+    @numba.njit
+    def compute_pos_diff(self, events, result):
+        
+        for t_ in ['s2', 'alt_s2']:
+            # Selecting S2s for pos diff
+            # - must exist (index != -1)
+            # - must have positive AFT
+            # - must contain all alg info
+            cur_s2_bool = (events[t_+'_index']!=-1)
+            cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
+            for name in self.config['recon_alg_included']:
+                cur_s2_bool &= ~np.isnan(events[t_+'_x'+name])
+                cur_s2_bool &= ~np.isnan(events[t_+'_y'+name])
+            
+            # default value is nan, it will be ovewrite if the event satisfy the requirments
+            result[t_+'_recon_pos_diff'][:] = np.nan
+            result[t_+'_recon_avg_x'][:] = np.nan
+            result[t_+'_recon_avg_y'][:] = np.nan
+            
+            if np.sum(cur_s2_bool):               
+                # Calculating average x,y, and position difference
+                x_avg, y_avg, r_std = self.eval_recon(events, t_,cur_s2_bool)
+                result[t_+'_recon_pos_diff'][cur_s2_bool] = r_std
+                result[t_+'_recon_avg_x'][cur_s2_bool] = x_avg
+                result[t_+'_recon_avg_y'][cur_s2_bool] = y_avg
