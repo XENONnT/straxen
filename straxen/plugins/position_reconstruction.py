@@ -302,3 +302,4 @@ class S2ReconPosDiff(strax.Plugin):
                 result[t_+'_recon_pos_diff'][cur_s2_bool] = r_std
                 result[t_+'_recon_avg_x'][cur_s2_bool] = x_avg
                 result[t_+'_recon_avg_y'][cur_s2_bool] = y_avg
+                
