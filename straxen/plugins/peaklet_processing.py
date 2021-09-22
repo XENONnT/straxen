@@ -805,7 +805,7 @@ class Peaks(strax.Plugin):
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
-    save_when = strax.SaveWhen.NEVER
+    save_when = strax.SaveWhen.EXPLICIT
 
     __version__ = '0.1.2'
 
