@@ -1,8 +1,10 @@
 import strax
 import straxen
 import numpy as np
-from scipy.special import betainc, gammaln, loggamma
-import warnings
+import numba
+from straxen.numbafied_scipy import numba_gammaln, numba_betainc
+from scipy.special import loggamma
+
 export, __all__ = strax.exporter()
 
 
@@ -38,9 +40,9 @@ class EventPatternFit(strax.Plugin):
     Plugin that provides patter information for events
     '''
     
-    depends_on = ('event_area_per_channel', 'event_info')
-    provides = 'event_patternfit'
-    __version__ = '0.0.6'
+    depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
+    provides = 'event_pattern_fit'
+    __version__ = '0.0.8'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -136,7 +138,7 @@ class EventPatternFit(strax.Plugin):
         mask_s1 &= ~np.isnan(events['s1_area'])
         mask_s1 &= ~np.isnan(events['s1_area_fraction_top'])
         
-        # default value is nan, it will be ovewrite if the event satisfy the requirments
+        # default value is nan, it will be overwrite if the event satisfy the requirements
         result['s1_area_fraction_top_continuous_probability'][:] = np.nan
         result['s1_area_fraction_top_discrete_probability'][:] = np.nan
         result['s1_photon_fraction_top_continuous_probability'][:] = np.nan
@@ -307,131 +309,170 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     mean_pe_photon - mean of area responce for one photon
     """
     with np.errstate(divide='ignore', invalid='ignore'):
-        res = 2.*(mu - 
-                  (areas/mean_pe_photon)*np.log(mu) + 
-                  loggamma((areas/mean_pe_photon)+1) + 
+        fraction = areas/mean_pe_photon
+        res = 2.*(mu -
+                  (fraction)*np.log(mu) +
+                  loggamma((fraction)+1) +
                   np.log(mean_pe_photon)
                  )
-    is_zero = ~(areas>0)    # If area equals or smaller than 0 - assume 0
+    is_zero = areas <= 0    # If area equals or smaller than 0 - assume 0
     res[is_zero] = 2.*mu[is_zero]
     # if zero channel has negative expectation, assume LLH to be 0 there
     # this happens in the normalization factor calculation when mu is received from area
-    neg_mu = mu<0.0
-    res[is_zero*neg_mu] = 0.0
+    neg_mu = mu < 0.0
+    res[is_zero | neg_mu] = 0.0
     return res
+
 
 # continuous and discrete binomial test
 # https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
-def bdtrc(k, n, p):
-    if (k < 0):
-        return (1.0)
-    if (k == n):
-        return (0.0)
+@numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)])
+def binom_pmf(k, n, p):
+    scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
+    ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
+    return np.exp(ret_log)
+
+@numba.njit
+def binom_cdf(k, n, p):
+    if k < 0:
+        return np.nan
+    if k == n:
+        return 1.0
     dn = n - k
-    if (k == 0):
-        if (p < .01):
+    if k == 0:
+        dk = np.exp(dn * np.log(1.0 - p))
+    else:
+        dk = k + 1
+        dk = numba_betainc(dn, dk, 1.0 - p)
+    return dk
+
+@numba.njit
+def binom_sf(k, n, p):
+    if k < 0:
+        return 1.0
+    if k == n:
+        return 0.0
+    dn = n - k
+    if k == 0:
+        if p < .01:
             dk = -np.expm1(dn * np.log1p(-p))
         else:
             dk = 1.0 - np.exp(dn * np.log(1.0 - p))
     else:
         dk = k + 1
-        dk = betainc(dk, dn, p)
+        dk = numba_betainc(dk, dn, p)
     return dk
 
-def bdtr(k, n, p):
-    if (k < 0):
-        return np.nan
-    if (k == n):
-        return (1.0)
-    dn = n - k
-    if (k == 0):
-        dk = np.exp(dn * np.log(1.0 - p))
+@numba.njit
+def _find_interval(n, p):
+    mu = n*p
+    sigma = np.sqrt(n*p*(1-p))
+    if mu-2*sigma < 0:
+        s1_min_range = 0
     else:
-        dk = k + 1
-        dk = betainc(dn, dk, 1.0 - p)
-    return dk
+        s1_min_range = mu-2*sigma
+    if mu+2*sigma > n:
+        s1_max_range = n
+    else:
+        s1_max_range = mu+2*sigma
+    return s1_min_range, s1_max_range
 
-# continuous binomial distribution
-def binom_pmf(k, n, p):
-    scale_log = gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
-    ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
-    return np.exp(ret_log)
+@numba.njit
+def _get_min_and_max(s1_min, s1_max, n, p, shift):
+    s1 = np.arange(s1_min, s1_max, 0.01)
+    ds1 = binom_pmf(s1, n, p)
+    s1argmax = np.argmax(ds1)
+    if np.argmax(ds1) - shift > 0:
+        minimum = s1[s1argmax - shift]
+    else:
+        minimum = s1[0]
+    maximum = s1[s1argmax + shift]
+    return minimum, maximum, s1[s1argmax]
 
-def binom_cdf(k, n, p):
-    return bdtr(k, n, p)
-
-def binom_sf(k, n, p):
-    return bdtrc(k, n, p)
-
+@numba.njit
 def binom_test(k, n, p):
-    '''
+    """
     The main purpose of this algorithm is to find the value j on the
     other side of the mean that has the same probability as k, and
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
-    '''
+    """
+    # define the S1 interval for finding the maximum
+    _s1_min_range, _s1_max_range = _find_interval(n, p)
+
+    # compute the binomial probability for each S1 and define the Binom range for later
+    minimum, maximum, s1max = _get_min_and_max(_s1_min_range, _s1_max_range, n, p, shift=2)
+   
+    # comments TODO
+    _d0 = binom_pmf(0, n, p)
+    _dmax = binom_pmf(s1max, n, p)
+    _dn = binom_pmf(n, n, p)
     d = binom_pmf(k, n, p)
     rerr = 1 + 1e-7
     d = d * rerr
-    # define number of intereation for finding the the value j
-    # the exeptional case of n<=0, is avoid since n_iter is at least 2
-    n_iter = int(max(np.round(np.log10(n)) + 1, 2))
-
-    if k < n * p:
-        # if binom_pmf(n, n, p) > d, with d<<1e-3, means that we have
-        # to look for j value above n. It is likely that the binomial
-        # test for such j is extremely low such that we can stop
-        # the algorithm and return 0
-        if binom_pmf(n, n, p) > d:
-            for n_ in np.arange(n, 2*n, 1):
-                if binom_pmf(n_, n, p) < d:
-                    j_min, j_max = k, n_
-                    do_test = True
-                    break
-                do_test = False
+    _d0 = _d0 * rerr
+    _dmax = _dmax * rerr 
+    _dn = _dn * rerr
+    # define number of interaction for finding the the value j
+    # the exceptional case of n<=0, is avoid since n_iter is at least 2
+    if n > 0:
+        n_iter = int(np.round_(np.log10(n)) + 1)
+        n_iter = max(n_iter, 2)
+    else:
+        n_iter = 2
+    # comments TODO
+    if k < minimum:
+        if (_d0 >= d) and (_d0 > _dmax):
+            n_iter, j_min, j_max = -1, 0, 0
+        elif _dn > d:
+            n_iter, j_min, j_max = -2, 0, 0
         else:
-            j_min, j_max = k, n
-            do_test = True
+            j_min, j_max = s1max, n
         def _check_(d, y0, y1):
             return (d>y1) and (d<=y0)
-    else:
-        if binom_pmf(0, n, p) > d:
-            n_iter, j_min, j_max = 0, 0, 0
+    # comments TODO
+    elif k>maximum:
+        if _d0 >= d:
+            n_iter, j_min, j_max = -1, 0, 0
         else:
-            j_min, j_max = 0, k
-        do_test = True
+            j_min, j_max = 0, s1max
         def _check_(d, y0, y1):
             return (d>=y0) and (d<y1)
-
-    # if B(k;n,p) is already 0 or I can't find the j in the other side of the mean
-    # the returned binomial test is 0
-    if (d==0)|(not do_test):
-        pval = 0.0
+    # comments TODO
     else:
-        # Here we are actually looking for j
+        n_iter, j_min, j_max = 0, k, k
+        def _check_(d, y0, y1):
+            return (d>=y0) and (d<y1)
+    
+    # comments TODO
+    if (d==0):
+        pval = 0.0
+    # comments TODO
+    else:
         for i in range(n_iter):
             n_pts = int(j_max - j_min)
             if (i<2) and (n_pts < 50): 
                 n_pts = 50
-            j_range = np.linspace(j_min, j_max, n_pts, endpoint=True)
+            j_range = np.linspace(j_min, j_max, n_pts)
             y = binom_pmf(j_range, n, p)
-            for i in range(len(j_range) - 1):
-                if _check_(d, y[i], y[i + 1]):
-                    j_min, j_max = j_range[i], j_range[i + 1]
+            for ii in range(n_pts - 1):
+                if _check_(d, y[ii], y[ii + 1]):
+                    j_min, j_max = j_range[ii], j_range[ii + 1]
                     break
-        j = max(min((j_min + j_max) / 2, n), 0)
 
-        # One side or two side
-        # binomial test
-        if k * j == 0:
+        j = max(min((j_min + j_max) / 2, n), 0)
+        
+        # here we use n_iter also for decide to do one-side (left/right) test 
+        # or two-side test
+        if (k * j == 0)and(n_iter==-1):
             pval = binom_sf(max(k, j), n, p)
+        elif (k * j == 0)and(n_iter==-2):
+            pval = binom_cdf(max(k, j), n, p)
         else:
             pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
         pval = min(1.0, pval)
-        
     return pval
-
 
 def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
     '''
@@ -445,15 +486,15 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
     # k: size_top, n: size_tot, p: aft_prob
     do_test = True
     if area_tot < area_top:
-        warnings.warn(f'n {area_tot} must be >= k {area_top}')
+        # warnings.warn(f'n {area_tot} must be >= k {area_top}')
         binomial_test = np.nan
         do_test = False
     if (aft_prob > 1.0) or (aft_prob < 0.0):
-        warnings.warn(f'p {aft_prob} must be in range [0, 1]')
+        # warnings.warn(f'p {aft_prob} must be in range [0, 1]')
         binomial_test = np.nan
         do_test = False
     if area_top < 0:
-        warnings.warn(f'k {area_top} must be >= 0')
+        # warnings.warn(f'k {area_top} must be >= 0')
         binomial_test = np.nan
         do_test = False
         
@@ -461,6 +502,6 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
         if mode == 'discrete':
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
         else:
-            binomial_test =  binom_test(area_top, area_tot, aft_prob)
+            binomial_test = binom_test(area_top, area_tot, aft_prob)
         
     return binomial_test

@@ -5,7 +5,8 @@ import socket
 from tqdm import tqdm
 from copy import deepcopy
 import strax
-from pprint import pprint
+from .rucio import key_to_rucio_did, RucioLocalBackend
+import warnings
 
 try:
     import utilix
@@ -121,7 +122,8 @@ class RunDB(strax.StorageFrontend):
                 self.available_query.append({'host': host_alias})
 
         if self.rucio_path is not None:
-            self.backends.append(strax.rucio(self.rucio_path))
+            # TODO replace with rucio backend in the rucio module
+            self.backends.append(RucioLocalBackend(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK',
@@ -148,8 +150,12 @@ class RunDB(strax.StorageFrontend):
 
     def _find(self, key: strax.DataKey,
               write, allow_incomplete, fuzzy_for, fuzzy_for_options):
+        if key.run_id.startswith('_'):
+            # Superruns are currently not supprorted..
+            raise strax.DataNotAvailable
+        
         if fuzzy_for or fuzzy_for_options:
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+            warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
         # Check if the run exists
         if self.runid_field == 'name':
@@ -159,7 +165,7 @@ class RunDB(strax.StorageFrontend):
 
         # Check that we are in rucio backend
         if self.rucio_path is not None:
-            rucio_key = self.key_to_rucio_did(key)
+            rucio_key = key_to_rucio_did(key)
             rucio_available_query = self.available_query[-1]
             dq = {
                 'data': {
@@ -177,9 +183,8 @@ class RunDB(strax.StorageFrontend):
                 datum = doc['data'][0]
                 error_message = f'Expected {rucio_key} got data on {datum["location"]}'
                 assert datum.get('did', '') == rucio_key, error_message
-                backend_name, backend_key = (
-                    datum['protocol'],
-                    f'{key.run_id}-{key.data_type}-{key.lineage_hash}')
+                backend_name = 'RucioLocalBackend'
+                backend_key = key_to_rucio_did(key)
                 return backend_name, backend_key
 
         dq = self._data_query(key)
@@ -223,7 +228,7 @@ class RunDB(strax.StorageFrontend):
 
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
         if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
+            warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
         if not len(keys):
             return []
         if not len(set([k.lineage_hash for k in keys])) == 1:
@@ -235,7 +240,7 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys]}}
+            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys if not key.run_id.startswith('_')]}}
         dq = self._data_query(keys[0])
 
         # dict.copy is sometimes not sufficient for nested dictionary
@@ -264,10 +269,9 @@ class RunDB(strax.StorageFrontend):
 
     def _list_available(self, key: strax.DataKey,
                         allow_incomplete, fuzzy_for, fuzzy_for_options):
-        if fuzzy_for or fuzzy_for_options:
-            raise NotImplementedError("Can't do fuzzy with RunDB yet.")
-        if allow_incomplete:
-            raise NotImplementedError("Can't allow_incomplete with RunDB yet")
+        if fuzzy_for or fuzzy_for_options or allow_incomplete:
+            # The RunDB frontend can do neither fuzzy nor incomplete
+            warnings.warn('RunDB cannot do fuzzy or incomplete')
 
         q = self._data_query(key)
         q.update(self.number_query())
@@ -296,6 +300,10 @@ class RunDB(strax.StorageFrontend):
             yield doc
 
     def run_metadata(self, run_id, projection=None):
+        if run_id.startswith('_'):
+            # Superruns are currently not supported..
+            raise strax.DataNotAvailable
+        
         if self.runid_field == 'name':
             run_id = str(run_id)
         else:
@@ -323,8 +331,3 @@ class RunDB(strax.StorageFrontend):
         if q_number:
             return {'number': q_number}
         return {}
-
-    @staticmethod
-    def key_to_rucio_did(key: strax.DataKey):
-        """Convert a strax.datakey to a rucio did field in rundoc"""
-        return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'

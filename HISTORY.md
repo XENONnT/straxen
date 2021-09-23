@@ -1,3 +1,90 @@
+1.0.0 / 2021-09-01
+-------------------
+major / minor:
+    
+- merge s2 without s1 (#645)
+- First nVeto monitor plugin (#634)
+- Peak event veto tagging (#618)
+- Fix peaklet area bias (#601)
+- Add lone hit information to merged S2s. (#623)
+    
+
+patches and fixes:
+    
+- Fix n_hits of peaks (#646) 
+- Update requirements for strax (#644)
+- Modifications of nT simulation context (#602)
+- Straxer for other packages (#595)
+- [Bug fix] alt_s{i}_delay computation (#598)
+- Bump version refactor code for cleanliness. (#597)
+- Increase buffer size (#604)
+- Stop testing py3.6 (#621)
+- Remove online event monitor (#620)
+- Add matplotlib to test requirements (#626)
+- Fix rundb select runs with superruns (#627)
+- Change EventInfo to save when explicit (#628)
+- Update test data (#631)
+- Allow database to not be initialized (#636)
+- new plot_pmts (#637)
+- Speed up event pattern fit (#625)
+- kwargs for saver (#639)
+- Add a plugin for external trigger run on nVeto calibration (#630)
+- Fix veto event positions (#641)
+- Use rucio from straxen & nest RucioRemote imports (#592)
+
+
+0.19.3 / 2021-07-16
+-------------------
+- Rewrite EventBasics, set event level S1 tight coincidence (#569)
+- New nt sim context & update get correction from CMT implementation (#555)
+- Superruns (documentation) (#554, #594)
+
+bootstrax / live processing
+- Allow sub-mbs datarates and old runs (#572)
+- increase input_timeout buffer daq reader (#593)
+- Error logging bootstrax (#584)
+- remove the id from the traceback (#585)
+
+patches and fixes
+- Reactivate scada tests (#583)
+- Don't add test that you don't run - WFSim (#574)
+- Fixing veto intervals time (#587)
+- Patch scada interface (#588)
+- reduce codefactor (#590)
+
+0.19.2 / 2021-06-27
+-------------------
+- do not interpolate corrections if is an array (#570)
+
+0.19.1 / 2021-06-24
+-------------------
+- Fix merged S2s upgrade #548 (#566, a2f5062, #568)
+- Disable rucio frontend as default temporarily (#567)
+
+0.19.0 / 2021-06-23 (bugged)
+----------------------------
+minor changes
+- S1/S2 event patternfit and S1 AFT test (#499)
+- Change tight_coincidence (#564)
+- Fixing saturation correction bugs (#541)
+- Rewrite merge s2 (#548)
+- Compute width again after saturation correction (#542, #552)
+- Add rucio frontend (#472, #553)
+- Redo hit_thresholds (#543)
+- Standardize CMT options as (correction, version, nT=boolean) (#457, #532)
+
+patches and fixes:
+- z coordinate update (#535)
+- Fix example command (#547)
+- Don't import holoviews and ipywidgets (#551)
+- pre_apply_function from $HOME only in pytest (#559)
+- Rundb should not crash on fuzzy (#561)
+- Remove travis for testing from straxen (#557)
+- Fix missing info in bootstrax docs, fix #546 (#558)
+- Add scada interface to docs (#560)
+- Tweaks for new release 0.19.0 (#562)
+
+
 0.18.6-0.18.8 / 2021-06-03
 -------------------
 - Patches installation for pypi (#529, e880420, fce6d87)

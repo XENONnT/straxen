@@ -39,10 +39,10 @@ def test_secret():
 # If one of the test below fail, perhaps these values need to be updated.
 # They were added on 27/11/2020 and may be outdated by now
 EXPECTED_OUTCOMES_TEST_SEVERAL = {
-    'n_peaks': 138,
-    'n_s1': 4,
+    'n_peaks': 128,
+    'n_s1': 8,
     'run_live_time': 0.17933107,
-    'n_events': 2
+    'n_events': 2,
 }
 
 
@@ -231,7 +231,7 @@ def test_nt_minianalyses():
             print("Temporary directory is ", temp_dir)
             os.chdir(temp_dir)
             from .test_plugins import DummyRawRecords, testing_config_nT, test_run_id_nT
-            st = straxen.contexts.xenonnt_online()
+            st = straxen.contexts.xenonnt_online(use_rucio=False)
             rundb = st.storage[0]
             rundb.readonly = True
             st.storage = [rundb, strax.DataDirectory(temp_dir)]

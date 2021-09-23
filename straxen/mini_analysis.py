@@ -56,8 +56,6 @@ def mini_analysis(requires=tuple(),
                     holoviews.extension('bokeh')
                     _hv_bokeh_initialized = True
 
-            # TODO: This is a placeholder until the corrections system
-            # is more fully developed
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
                 kwargs['to_pe'] = straxen.get_correction_from_cmt(
                     run_id,
@@ -96,7 +94,7 @@ def mini_analysis(requires=tuple(),
                 for dkind, dtypes in deps_by_kind.items():
                     if dkind in kwargs:
                         # Already have data, just apply cuts
-                        kwargs[dkind] = context.apply_selection(
+                        kwargs[dkind] = strax.apply_selection(
                             kwargs[dkind],
                             selection_str=kwargs['selection_str'],
                             time_range=kwargs['time_range'],

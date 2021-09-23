@@ -1,12 +1,14 @@
 import numba
 import numpy as np
-
 import strax
+from strax.processing.general import _touching_windows
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
-from strax.processing.general import _touching_windows
+from straxen.get_corrections import is_cmt_option
+
 
 export, __all__ = strax.exporter()
+FAKE_MERGED_S2_TYPE = -42
 
 
 @export
@@ -90,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.3.8'
+    __version__ = '0.4.1'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -108,13 +110,22 @@ class Peaklets(strax.Plugin):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
                                        self.config['gain_model'])
 
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude']
+
     def compute(self, records, start, end):
         r = records
 
-        hits = strax.find_hits(
-            r,
-            min_amplitude=straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude']))
+        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -142,7 +153,8 @@ class Peaklets(strax.Plugin):
         # Get hits outside peaklets, and store them separately.
         # fully_contained is OK provided gap_threshold > extension,
         # which is asserted inside strax.find_peaks.
-        lone_hits = hits[strax.fully_contained_in(hits, peaklets) == -1]
+        is_lone_hit = strax.fully_contained_in(hits, peaklets) == -1
+        lone_hits = hits[is_lone_hit]
         strax.integrate_lone_hits(
             lone_hits, records, peaklets,
             save_outside_hits=(self.config['peak_left_extension'],
@@ -150,14 +162,40 @@ class Peaklets(strax.Plugin):
             n_channels=len(self.to_pe))
 
         # Compute basic peak properties -- needed before natural breaks
-        strax.sum_waveform(peaklets, r, self.to_pe)
+        hits = hits[~is_lone_hit]
+        # Define regions outside of peaks such that _find_hit_integration_bounds
+        # is not extended beyond a peak.
+        outside_peaks = self.create_outside_peaks_region(peaklets, start, end)
+        strax.find_hit_integration_bounds(
+            hits, outside_peaks, records,
+            save_outside_hits=(self.config['peak_left_extension'],
+                               self.config['peak_right_extension']),
+            n_channels=len(self.to_pe),
+            allow_bounds_beyond_records=True,
+        )
+
+        # Transform hits to hitlets for naming conventions. A hit refers
+        # to the central part above threshold a hitlet to the entire signal
+        # including the left and right extension.
+        # (We are not going to use the actual hitlet data_type here.)
+        hitlets = hits
+        del hits
+
+        hitlet_time_shift = (hitlets['left'] - hitlets['left_integration']) * hitlets['dt']
+        hitlets['time'] = hitlets['time'] - hitlet_time_shift
+        hitlets['length'] = (hitlets['right_integration'] - hitlets['left_integration'])
+        hitlets = strax.sort_by_time(hitlets)
+        rlinks = strax.record_links(records)
+
+        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe)
+
         strax.compute_widths(peaklets)
 
         # Split peaks using low-split natural breaks;
         # see https://github.com/XENONnT/straxen/pull/45
         # and https://github.com/AxFoundation/strax/pull/225
         peaklets = strax.split_peaks(
-            peaklets, r, self.to_pe,
+            peaklets, hitlets, r, rlinks, self.to_pe,
             algorithm='natural_breaks',
             threshold=self.natural_breaks_threshold,
             split_low=True,
@@ -175,10 +213,13 @@ class Peaklets(strax.Plugin):
             r = r.copy()
 
         if self.config['saturation_correction_on']:
-            peak_saturation_correction(
-                r, peaklets, self.to_pe,
+            peak_list = peak_saturation_correction(
+                r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'])
+
+            # Compute the width again for corrected peaks
+            strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -186,8 +227,10 @@ class Peaklets(strax.Plugin):
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
         hit_max_times = np.sort(
-            hits['time']
-            + hits['dt'] * hit_max_sample(records, hits))
+            hitlets['time']
+            + hitlets['dt'] * hit_max_sample(records, hitlets)
+            + hitlet_time_shift  # add time shift again to get correct maximum
+        )
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
@@ -199,21 +242,19 @@ class Peaklets(strax.Plugin):
 
         if self.config['diagnose_sorting'] and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
-            assert np.diff(hits['time']).min(initial=1) >= 0, "Hits not sorted"
+            assert np.diff(hitlets['time']).min(initial=1) >= 0, "Hits/Hitlets not sorted"
             assert np.all(peaklets['time'][1:]
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
-        
+
         # Update nhits of peaklets:
-        counts = strax.touching_windows(hits, peaklets)
+        counts = strax.touching_windows(hitlets, peaklets)
         counts = np.diff(counts, axis=1).flatten()
-        counts += 1
         peaklets['n_hits'] = counts
-        
+
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits)
 
     def natural_breaks_threshold(self, peaks):
-        # TODO avoid duplication with PeakBasics somehow?
         rise_time = -peaks['area_decile_from_midpoint'][:, 1]
 
         # This is ~1 for an clean S2, ~0 for a clean S1,
@@ -240,16 +281,43 @@ class Peaklets(strax.Plugin):
             if strax.endtime(p) > end:
                 p['length'] = (end - p['time']) // p['dt']
 
+    @staticmethod
+    def create_outside_peaks_region(peaklets, start, end):
+        """
+        Creates time intervals which are outside peaks.
+
+        :param peaklets: Peaklets for which intervals should be computed.
+        :param start: Chunk start
+        :param end: Chunk end
+        :return: array of strax.time_fields dtype.
+        """
+        if not len(peaklets):
+            return np.zeros(0, dtype=strax.time_fields)
+        
+        outside_peaks = np.zeros(len(peaklets) + 1,
+                                 dtype=strax.time_fields)
+        
+        outside_peaks[0]['time'] = start
+        outside_peaks[0]['endtime'] = peaklets[0]['time']
+        outside_peaks[1:-1]['time'] = strax.endtime(peaklets[:-1])
+        outside_peaks[1:-1]['endtime'] = peaklets['time'][1:]
+        outside_peaks[-1]['time'] = strax.endtime(peaklets[-1])
+        outside_peaks[-1]['endtime'] = end
+        return outside_peaks
+
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def peak_saturation_correction(records, peaks, to_pe,
+def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
                                ):
     """Correct the area and per pmt area of peaks from saturation
     :param records: Records
+    :param rlinks: strax.record_links of corresponding records.
     :param peaks: Peaklets / Peaks
+    :param hitlets: Hitlets found in records to build peaks.
+        (Hitlets are hits including the left/right extension)
     :param to_pe: adc to PE conversion (length should equal number of PMTs)
     :param reference_length: Maximum number of reference sample used
     to correct saturated samples
@@ -321,7 +389,8 @@ def peak_saturation_correction(records, peaks, to_pe,
         peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
         peaks[peak_i]['dt'] = dt
 
-    strax.sum_waveform(peaks, records, to_pe, peak_list)
+    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, peak_list)
+    return peak_list
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
@@ -442,6 +511,18 @@ class PeakletsHighEnergy(Peaklets):
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.config['le_to_he_amplification']
 
+        # Check config of `hit_min_amplitude_he` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_he']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
+
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)
         return result['peaklets']
@@ -453,7 +534,7 @@ class PeakletsHighEnergy(Peaklets):
                  help="Maximum S1 rise time for < 100 PE [ns]"),
     strax.Option('s1_max_rise_time_post100', default=200,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=3,
+    strax.Option('s1_min_coincidence', default=2,
                  help="Minimum tight coincidence necessary to make an S1"),
     strax.Option('s2_min_pmts', default=4,
                  help="Minimum number of PMTs contributing to an S2"))
@@ -508,64 +589,90 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
     def compute(self, peaklets_he):
         return super().compute(peaklets_he)
-    
-
-FAKE_MERGED_S2_TYPE = -42
 
 
 @export
 @strax.takes_config(
-    strax.Option('s2_merge_max_area', default=5000.,
-                 help="Merge peaklet cluster only if area < this [PE]"),
-    strax.Option('s2_merge_max_gap', default=10_000,
-                 help="Maximum separation between peaklets to allow merging [ns]"),
     strax.Option('s2_merge_max_duration', default=50_000,
                  help="Do not merge peaklets at all if the result would be a peak "
-                      "longer than this [ns]"))
+                      "longer than this [ns]"),
+    strax.Option('s2_merge_gap_thresholds', default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
+                 help="Points to define maximum separation between peaklets to allow "
+                      "merging [ns] depending on log10 area of the merged peak\n"
+                      "where the gap size of the first point is the maximum gap to allow merging"
+                      "and the area of the last point is the maximum area to allow merging. "
+                      "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+                 ),
+    strax.Option('gain_model',
+                 help='PMT gain model. Specify as '
+                      '(str(model_config), str(version), nT-->boolean'),
+    strax.Option('merge_without_s1', default=True,
+                 help="If true, S1s will be igored during the merging. "
+                      "It's now possible for a S1 to be inside a S2 post merging"),
+)
 class MergedS2s(strax.OverlapWindowPlugin):
     """
     Merge together peaklets if peak finding favours that they would
     form a single peak instead.
     """
-    depends_on = ('peaklets', 'peaklet_classification')
+    depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
+    __version__ = '0.3.1'
+
+    def setup(self):
+        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                                     self.config['gain_model'])
 
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
-        return 5 * (self.config['s2_merge_max_gap']
+        return 5 * (int(self.config['s2_merge_gap_thresholds'][0][1])
                     + self.config['s2_merge_max_duration'])
 
-    def compute(self, peaklets):
-        if not len(peaklets):
-            return peaklets[:0]
+    def compute(self, peaklets, lone_hits):
+        if self.config['merge_without_s1']:
+            peaklets = peaklets[peaklets['type'] != 1]
 
-        if self.config['s2_merge_max_gap'] < 0:
+        if len(peaklets) <= 1:
+            return np.zeros(0, dtype=peaklets.dtype)
+
+        gap_thresholds = self.config['s2_merge_gap_thresholds']
+        max_gap = gap_thresholds[0][1]
+        max_area = 10 ** gap_thresholds[-1][0]
+
+        if max_gap < 0:
             # Do not merge at all
-            merged_s2s = np.zeros(0, dtype=peaklets.dtype)
+            return np.zeros(0, dtype=peaklets.dtype)
         else:
-            # Find all groups of peaklets separated by < the gap
-            cluster_starts, cluster_stops = strax.find_peak_groups(
-                peaklets,
-                self.config['s2_merge_max_gap'])
-
+            # Max gap and area should be set by the gap thresholds
+            # to avoid contradictions
             start_merge_at, end_merge_at = self.get_merge_instructions(
                 peaklets['time'], strax.endtime(peaklets),
                 areas=peaklets['area'],
                 types=peaklets['type'],
-                cluster_starts=cluster_starts,
-                cluster_stops=cluster_stops,
+                gap_thresholds=gap_thresholds,
                 max_duration=self.config['s2_merge_max_duration'],
-                max_area=self.config['s2_merge_max_area'])
-
+                max_gap=max_gap,
+                max_area=max_area,
+            )
             merged_s2s = strax.merge_peaks(
                 peaklets,
                 start_merge_at, end_merge_at,
                 max_buffer=int(self.config['s2_merge_max_duration']
                                // peaklets['dt'].min()))
             merged_s2s['type'] = 2
+            
+            # Updated time and length of lone_hits and sort again:
+            lh = np.copy(lone_hits)
+            del lone_hits
+            lh_time_shift = (lh['left'] - lh['left_integration']) *lh['dt']
+            lh['time'] = lh['time'] - lh_time_shift
+            lh['length'] = (lh['right_integration'] - lh['left_integration'])
+            lh = strax.sort_by_time(lh)
+            strax.add_lone_hits(merged_s2s, lh, self.to_pe)
+
             strax.compute_widths(merged_s2s)
 
         return merged_s2s
@@ -574,47 +681,93 @@ class MergedS2s(strax.OverlapWindowPlugin):
     @numba.njit(cache=True, nogil=True)
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
-            cluster_starts, cluster_stops,
-            max_duration, max_area):
-        start_merge_at = np.zeros(len(cluster_starts), dtype=np.int32)
-        end_merge_at = np.zeros(len(cluster_starts), dtype=np.int32)
-        n_to_merge = 0
-        left_i = 0
+            gap_thresholds, max_duration, max_gap, max_area):
+        """
+        Finding the group of peaklets to merge. To do this start with the
+        smallest gaps and keep merging until the new, merged S2 has such a
+        large area or gap to adjacent peaks that merging is not required
+        anymore.
+        see https://github.com/XENONnT/straxen/pull/548 and https://github.com/XENONnT/straxen/pull/568
 
-        for cluster_i, cluster_start in enumerate(cluster_starts):
-            cluster_stop = cluster_stops[cluster_i]
+        :returns: list of the first index of peaklet to be merged and
+        list of the exclusive last index of peaklet to be merged
+        """
 
-            if cluster_stop - cluster_start > max_duration:
+        peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
+        peaklet_start_index = np.arange(len(peaklet_starts))
+        peaklet_end_index = np.arange(len(peaklet_starts))
+
+        for gap_i in np.argsort(peaklet_gaps):
+            start_idx = peaklet_start_index[gap_i]
+            inclusive_end_idx = peaklet_end_index[gap_i + 1]
+            sum_area = np.sum(areas[start_idx:inclusive_end_idx + 1])
+            this_gap = peaklet_gaps[gap_i]
+
+            if inclusive_end_idx < start_idx:
+                raise ValueError('Something went wrong, left is bigger then right?!')
+
+            if this_gap > max_gap:
+                break
+            if sum_area > max_area:
+                # For very large S2s, we assume that natural breaks is taking care
+                continue
+            if (sum_area > 0) and (
+                    this_gap > merge_s2_threshold(np.log10(sum_area),
+                                                  gap_thresholds)):
+                # The merged peak would be too large
                 continue
 
-            # Recover left and right indices of the clusters.
-            # stops are inclusive for a few lines... sorry...
-            while peaklet_starts[left_i] < cluster_start:
-                left_i += 1
-            right_i = left_i
-            while peaklet_ends[right_i] < cluster_stop:
-                right_i += 1
-
-            if left_i == right_i:
-                # One peak, nothing to merge
+            peak_duration = (peaklet_ends[inclusive_end_idx] - peaklet_starts[start_idx])
+            if peak_duration >= max_duration:
                 continue
 
-            if types[left_i] != 2:
-                # Doesn't start with S2: do not merge
-                continue
+            # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
+            # start, end and area:
+            peaklet_start_index[start_idx:inclusive_end_idx + 1] = peaklet_start_index[start_idx]
+            peaklet_end_index[start_idx:inclusive_end_idx + 1] = peaklet_end_index[inclusive_end_idx]
 
-            right_i += 1   # From here on, right_i is exclusive
+        start_merge_at = np.unique(peaklet_start_index)
+        end_merge_at = np.unique(peaklet_end_index)
+        if not len(start_merge_at) == len(end_merge_at):
+            raise ValueError('inconsistent start and end merge instructions')
 
-            if areas[left_i:right_i].sum() > max_area:
-                continue
+        merge_start, merge_stop_exclusive = _filter_s1_starts(
+            start_merge_at, types, end_merge_at)
 
-            start_merge_at[n_to_merge] = left_i
-            end_merge_at[n_to_merge] = right_i
-            n_to_merge += 1
+        return merge_start, merge_stop_exclusive
 
-        return start_merge_at[:n_to_merge], end_merge_at[:n_to_merge]
 
-    
+@numba.njit(cache=True, nogil=True)
+def _filter_s1_starts(start_merge_at, types, end_merge_at):
+    for start_merge_idx, _ in enumerate(start_merge_at):
+        while types[start_merge_at[start_merge_idx]] != 2:
+            if end_merge_at[start_merge_idx] - start_merge_at[start_merge_idx] <= 1:
+                break
+            start_merge_at[start_merge_idx] += 1
+
+    start_merge_with_s2 = types[start_merge_at] == 2
+    merges_at_least_two_peaks = end_merge_at - start_merge_at >= 1
+
+    keep_merges = start_merge_with_s2 & merges_at_least_two_peaks
+    return start_merge_at[keep_merges], end_merge_at[keep_merges] + 1
+
+
+@numba.njit(cache=True, nogil=True)
+def merge_s2_threshold(log_area, gap_thresholds):
+    """Return gap threshold for log_area of the merged S2
+    with linear interpolation given the points in gap_thresholds
+    :param log_area: Log 10 area of the merged S2
+    :param gap_thresholds: tuple (n, 2) of fix points for interpolation
+    """
+    for i, (a1, g1) in enumerate(gap_thresholds):
+        if log_area < a1:
+            if i == 0:
+                return g1
+            a0, g0 = gap_thresholds[i - 1]
+            return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
+    return gap_thresholds[-1][1]
+
+
 @export
 class MergedS2sHighEnergy(MergedS2s):
     __doc__ = HE_PREAMBLE + MergedS2s.__doc__
@@ -628,13 +781,20 @@ class MergedS2sHighEnergy(MergedS2s):
         return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))
 
     def compute(self, peaklets_he):
-        return super().compute(peaklets_he)
+        # There are not any lone hits for the high energy channel, 
+        #  so create a dummy for the compute method.
+        lone_hits = np.zeros(0, dtype=strax.hit_dtype)
+        return super().compute(peaklets_he, lone_hits)
 
 
 @export
 @strax.takes_config(
     strax.Option('diagnose_sorting', track=False, default=False,
-                 help="Enable runtime checks for sorting and disjointness"))
+                 help="Enable runtime checks for sorting and disjointness"),
+    strax.Option('merge_without_s1', default=True,
+                 help="If true, S1s will be igored during the merging. "
+                      "It's now possible for a S1 to be inside a S2 post merging"),
+)
 class Peaks(strax.Plugin):
     """
     Merge peaklets and merged S2s such that we obtain our peaks
@@ -647,7 +807,7 @@ class Peaks(strax.Plugin):
     parallel = True
     save_when = strax.SaveWhen.NEVER
 
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     def infer_dtype(self):
         return self.deps['peaklets'].dtype_for('peaklets')
@@ -655,13 +815,24 @@ class Peaks(strax.Plugin):
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s['type'] != FAKE_MERGED_S2_TYPE]
-
-        peaks = strax.replace_merged(peaklets, merged_s2s)
+        
+        if self.config['merge_without_s1']:
+            is_s1 = peaklets['type'] == 1
+            peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
+            peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1],
+                                                       peaks]))
+        else:
+            peaks = strax.replace_merged(peaklets, merged_s2s)
 
         if self.config['diagnose_sorting']:
             assert np.all(np.diff(peaks['time']) >= 0), "Peaks not sorted"
-            assert np.all(peaks['time'][1:]
-                          >= strax.endtime(peaks)[:-1]), "Peaks not disjoint"
+            if self.config['merge_without_s1']:
+                to_check = peaks['type'] != 1
+            else:
+                to_check = peaks['type'] != FAKE_MERGED_S2_TYPE
+
+            assert np.all(peaks['time'][to_check][1:]
+                            >= strax.endtime(peaks)[to_check][:-1]), "Peaks not disjoint"
         return peaks
 
 
@@ -701,7 +872,7 @@ def get_tight_coin(hit_max_times, peak_max_times, left, right):
 
             # if the hit is in the window, its a tight coin
             d = hit_max_times[left_hit_i] - p_t
-            if (-left < d) & (d < right):
+            if (-left <= d) & (d <= right):
                 n_coin[p_i] += 1
 
             # stop the loop when we know we're outside the range

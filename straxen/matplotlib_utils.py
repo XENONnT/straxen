@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 import strax
 import straxen
+
 export, __all__ = strax.exporter()
 
 
@@ -18,14 +19,13 @@ def plot_pmts(
         extend='neither', vmin=None, vmax=None,
         **kwargs):
     """Plot the PMT arrays side-by-side, coloring the PMTS with c.
-
     :param c: Array of colors to use. Must have len() n_tpc_pmts
     :param label: Label for the color bar
     :param figsize: Figure size to use.
     :param extend: same as plt.colorbar(extend=...)
     :param vmin: Minimum of color scale
     :param vmax: maximum of color scale
-
+    :param show_axis_labels: if True it will show x and y labels
     Other arguments are passed to plot_on_single_pmt_array.
     """
     if vmin is None:
@@ -36,15 +36,16 @@ def plot_pmts(
         # Single-valued array passed
         vmax += 1
     if figsize is None:
-        figsize = (11, 4) if xenon1t else (13, 5.5)
+        figsize = (11.25, 4.25) if xenon1t else (13.25, 5.75)
 
     f, axes = plt.subplots(1, 2, figsize=figsize)
+    plot_result = None
     for array_i, array_name in enumerate(['top', 'bottom']):
         ax = axes[array_i]
         plt.sca(ax)
         plt.title(array_name.capitalize())
 
-        plot_on_single_pmt_array(
+        plot_result = plot_on_single_pmt_array(
             c,
             xenon1t=xenon1t,
             array_name=array_name,
@@ -52,13 +53,16 @@ def plot_pmts(
             vmin=vmin, vmax=vmax,
             **kwargs)
 
+    axes[0].set_xlabel('x [cm]')
+    axes[0].xaxis.set_label_coords(1.035, -0.075)
+    axes[0].set_ylabel('y [cm]')
+
     axes[1].yaxis.tick_right()
     axes[1].yaxis.set_label_position('right')
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0)
-    plt.colorbar(ax=axes, extend=extend, label=label)
-
+    plt.colorbar(mappable=plot_result, ax=axes, extend=extend, label=label)
 
 
 @export
@@ -74,7 +78,6 @@ def plot_on_single_pmt_array(
         dead_pmts=None, dead_pmt_color='gray',
         **kwargs):
     """Plot one of the PMT arrays and color it by c.
-
     :param c: Array of colors to use. Must be len() of the number of TPC PMTs
     :param label: Label for the color bar
     :param pmt_label_size: Fontsize for the PMT number labels.
@@ -84,7 +87,6 @@ def plot_on_single_pmt_array(
     :param extend: same as plt.colorbar(extend=...)
     :param vmin: Minimum of color scale
     :param vmax: maximum of color scale
-
     Other arguments are passed to plt.scatter.
     """
     if vmin is None:
@@ -129,7 +131,7 @@ def plot_on_single_pmt_array(
         ax.set_axis_off()
     if dead_pmts is not None:
         _dead_mask = [pi in dead_pmts for pi in pos['i']]
-        result = plt.scatter(
+        plt.scatter(
             pos[_dead_mask]['x'],
             pos[_dead_mask]['y'],
             c=dead_pmt_color,

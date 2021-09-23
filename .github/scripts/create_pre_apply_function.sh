@@ -3,6 +3,7 @@
 # where one is testing)
 
 echo "write to $1/pre_apply_function.py"
+mkdir "$1"
 
 # Create dummy file for testing with pre_apply_function
 cat > "$1/pre_apply_function.py" <<EOF

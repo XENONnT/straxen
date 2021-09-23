@@ -7,14 +7,13 @@ import sys
 import warnings
 import datetime
 import pytz
-
-try:
-    import ipywidgets as widgets
-    from ipywidgets import Layout
-except ModuleNotFoundError:
-    pass
-export, __all__ = strax.exporter()
+from os import environ as os_environ
+from importlib import import_module
+from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
+import typing as ty
+
+export, __all__ = strax.exporter()
 
 
 @export
@@ -44,7 +43,9 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
 
 
 @export
-def print_versions(modules=('strax', 'straxen'), return_string=False):
+def print_versions(modules=('strax', 'straxen', 'cutax'),
+                   return_string=False,
+                   include_git=True):
     """
     Print versions of modules installed.
 
@@ -53,6 +54,8 @@ def print_versions(modules=('strax', 'straxen'), return_string=False):
         'cutax', 'pema'))
     :param return_string: optional. Instead of printing the message,
         return a string
+    :param include_git_details: Include the current branch and latest
+        commit hash
     :return: optional, the message that would have been printed
     """
     message = (f'Working on {socket.getfqdn()} with the following '
@@ -61,28 +64,65 @@ def print_versions(modules=('strax', 'straxen'), return_string=False):
     message += f"\npython\tv{py_version}"
     for m in strax.to_str_tuple(modules):
         try:
-            # pylint: disable=exec-used
-            exec(f'import {m}')
-            # pylint: disable=eval-used
-            message += f'\n{m}\tv{eval(m).__version__}\t{eval(m).__path__[0]}'
+            mod = import_module(m)
         except (ModuleNotFoundError, ImportError):
             print(f'{m} is not installed')
+            continue
+
+        message += f'\n{m}'
+        if hasattr(mod, '__version__'):
+            message += f'\tv{mod.__version__}'
+        if hasattr(mod, '__path__'):
+            module_path = mod.__path__[0]
+            message += f'\t{module_path}'
+            if include_git:
+                try:
+                    repo = Repo(module_path, search_parent_directories=True)
+                except InvalidGitRepositoryError:
+                    # not a git repo
+                    pass
+                else:
+                    try:
+                        branch = repo.active_branch
+                    except TypeError:
+                        branch = 'unknown'
+                    try:
+                        commit_hash = repo.head.object.hexsha
+                    except TypeError:
+                        commit_hash = 'unknown'
+                    message += f'\tgit branch:{branch} | {commit_hash[:7]}'
     if return_string:
         return message
     print(message)
 
 
 @export
-def utilix_is_configured(header='RunDB', section='pymongo_database') -> bool:
+def utilix_is_configured(header: str = 'RunDB',
+                         section: str = 'xent_database',
+                         warning_message: ty.Union[None, bool, str] = None,
+                         ) -> bool:
     """
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?
+
+    :param header: Which header to check in the utilix config file
+    :param section: Which entry in the header to check to exist
+    :param warning_message: If utilix is not configured, warn the user.
+        if None -> generic warning
+        if str -> use the string to warn
+        if False -> don't warn
     """
     try:
-        return (hasattr(straxen.uconfig, 'get') and
-                straxen.uconfig.get(header, section) is not None)
+        is_configured = (hasattr(straxen.uconfig, 'get') and
+                         straxen.uconfig.get(header, section) is not None)
     except NoSectionError:
-        return False
+        is_configured = False
+
+    if not is_configured and bool(warning_message):
+        if warning_message is None:
+            warning_message = 'Utilix is not configured, cannot proceed'
+        warnings.warn(warning_message)
+    return is_configured
 
 
 @export
@@ -106,6 +146,7 @@ class TimeWidgets:
         utcend = datetime.datetime.utcnow()
         deltat = datetime.timedelta(minutes=60)
         utcstart = utcend - deltat
+        import ipywidgets as widgets
 
         self._start_widget = self._create_date_and_time_widget(utcstart, 'Start')
         self._end_widget = self._create_date_and_time_widget(utcend, 'End')
@@ -142,6 +183,8 @@ class TimeWidgets:
 
     @staticmethod
     def _create_date_and_time_widget(date_and_time, widget_describtion):
+        import ipywidgets as widgets
+        from ipywidgets import Layout
         date = datetime.date(date_and_time.year,
                              date_and_time.month,
                              date_and_time.day)
@@ -164,6 +207,7 @@ class TimeWidgets:
 
     @staticmethod
     def _create_time_zone_widget():
+        import ipywidgets as widgets
         _time_zone_widget = widgets.Dropdown(options=[('CET', 0), ('UTC', 1)],
                                              value=0,
                                              description='Time Zone:',
@@ -211,3 +255,9 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
+
+
+@export
+def _is_on_pytest():
+    """Check if we are on a pytest"""
+    return 'PYTEST_CURRENT_TEST' in os_environ
