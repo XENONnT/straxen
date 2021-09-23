@@ -3,81 +3,103 @@ import straxen
 
 import numpy as np
 
+from straxen.get_corrections import is_cmt_option
+
 import numba
 export, __all__ = strax.exporter()
+
 
 # define new data type for afterpulse data
 dtype_ap = [(('Channel/PMT number', 'channel'),
               '<i2'),
-              # = PMT number
             (('Time resolution in ns', 'dt'),
               '<i2'),
-              # sample width = 10ns
             (('Start time of the interval (ns since unix epoch)', 'time'),
               '<i8'),
-              # start time of hit
             (('Length of the interval in samples', 'length'),
               '<i4'),
-              # length of hit
             (('Integral in ADC x samples', 'area'),
               '<i4'),
-              # area of hit
             (('Pulse area in PE', 'area_pe'),
               '<f4'),
-              # area converted to PE
             (('Sample index in which hit starts', 'left'),
               '<i2'),
-              # start sample of hit
             (('Sample index in which hit area succeeds 10% of total area', 'sample_10pc_area'),
               '<i2'),
-              # 10% area quantile sample of hit
             (('Sample index in which hit area succeeds 50% of total area', 'sample_50pc_area'),
               '<i2'),
-              # 50% area quantile sample of hit
-            (('Sample index in which hit height suceeds 50% of max. height', 'sample_50pc_height'),
-              '<i2'),
-              # sample where hit height first exceeds 10% of maxium height
             (('Sample index of hit maximum', 'max'),
               '<i2'),
-              # sample of hit maximum
             (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
               '<i2'),
-              # first sample after last sample of hit
             (('Height of hit in ADC counts', 'height'),
               '<i4'),
-              # height of hit in ADC counts
             (('Height of hit in PE', 'height_pe'),
               '<f4'),
-              # height of hit converted to PE equivalent
             (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
               '<i2'),
-              # time delay of hit w.r.t to corresponding LED hit in the same WF in samples
             (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
               '<i4'),
-              # record index in which hit was found
-            ]
+            (('Index of sample in record where integration starts',
+              'left_integration'),
+              np.int16),
+            (('Index of first sample beyond integration region',
+              'right_integration'),
+              np.int16),
+            (('ADC threshold applied in order to find hits',
+              'threshold'),
+              np.float32),
+           ]
 
 
 @export
 @strax.takes_config(
-            strax.Option('gain_model',
-                         help='PMT gain model. Specify as (model_type, model_config)'),
-            strax.Option('n_tpc_pmts',
-                         type=int,
-                         help="Number of PMTs in TPC"),
-            strax.Option('LED_window_left',
-                         default=50,
-                         help='Left boundary of sample range for LED pulse integration'),
-            strax.Option('LED_window_right',
-                         default=100,
-                         help='Right boundary of sample range for LED pulse integration'),
-            strax.Option('baseline_samples',
-                         default=40,
-                         help='Number of samples to use at start of WF to determine the baseline'),
+                    strax.Option('gain_model',
+                                 help='PMT gain model. Specify as (model_type, model_config)',
+                                ),
+                    strax.Option('n_tpc_pmts',
+                                 type=int,
+                                 help="Number of PMTs in TPC",
+                                ),
+                    strax.Option('LED_window_left',
+                                 default=50,
+                                 help='Left boundary of sample range for LED pulse integration',
+                                ),
+                    strax.Option('LED_window_right',
+                                 default=100,
+                                 help='Right boundary of sample range for LED pulse integration',
+                                ),
+                    strax.Option('baseline_samples',
+                                 default=40,
+                                 help='Number of samples to use at start of WF to determine the baseline',
+                                ),
+                    strax.Option('hit_min_amplitude',
+                                 track=True,
+                                 default=('hit_thresholds_tpc', 'ONLINE', True),
+                                 help='Minimum hit amplitude in ADC counts above baseline. '
+                                      'Specify as a tuple of length n_tpc_pmts, or a number,'
+                                      'or a string like "pmt_commissioning_initial" which means calling'
+                                      'hitfinder_thresholds.py'
+                                      'or a tuple like (correction=str, version=str, nT=boolean),'
+                                      'which means we are using cmt.',
+                                ),
+                    strax.Option('hit_min_height_over_noise',
+                                 default=4,
+                                 help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
+                                      'Actual threshold used is max(hit_min_amplitude, hit_min_height_over_noise * baseline_rms).',
+                                ),
+                    strax.Option('hit_left_extension',
+                                 default=2,
+                                 help='Extend hits by this many samples left',
+                                ),
+                    strax.Option('hit_right_extension',
+                                 default=20,
+                                 help='Extend hits by this many samples right',
+                                ),
                    )
-class LEDAfterpulses(strax.Plugin):
+class LEDAfterpulseProcessing(strax.Plugin):
     
-    __version__ = '0.2.0'
+    __version__ = '0.4.0'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -90,6 +112,21 @@ class LEDAfterpulses(strax.Plugin):
     def setup(self):
         
         self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
+        
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude']
+            
+        print("I'm here :)")
+        print(self.dtype)
 
         
     def compute(self, raw_records):
@@ -106,195 +143,204 @@ class LEDAfterpulses(strax.Plugin):
         strax.baseline(r,
                        baseline_samples=self.config['baseline_samples'],
                        flip=True)
+ 
+        # find all hits
+        hits = strax.find_hits(r,
+                               min_amplitude = self.hit_thresholds,
+                               min_height_over_noise = self.config['hit_min_height_over_noise'],
+                              )
         
-        # find all hits in all WFs
-        hits = find_hits_ap(r,
-                            LED_window_left=self.config['LED_window_left'],
-                            LED_window_right=self.config['LED_window_right'],
-                           )
+        # sort hits first by record_i, then by time
+        hits_sorted = np.sort(hits, order=('record_i', 'time'))
         
-        # copy hits to result and convert hit area to PE
-        result = np.zeros(len(hits), dtype=self.dtype)
-        for name in hits.dtype.names:
-            result[name] = hits[name]        
-        result['area_pe'] = result['area'] * self.to_pe[result['channel']]
-        result['height_pe'] = result['height'] * self.to_pe[result['channel']]
-        
-        return result
-
-
-# new data type for hits in AP data
-hit_ap_dtype = [(('Channel/PMT number', 'channel'), '<i2'),
-             (('Time resolution in ns', 'dt'), '<i2'),
-             (('Start time of the interval (ns since unix epoch)', 'time'), '<i8'),
-             (('Length of the interval in samples', 'length'), '<i4'),
-             (('Integral of hit in ADC counts x samples', 'area'), '<i4'),
-             (('Index of sample in record in which hit starts', 'left'), '<i2'),
-             (('Index of sample in record in which the hit area suceeds 10% of its total area', 'sample_10pc_area'), '<i2'),
-             (('Index of sample in record in which the hit area suceeds 50% of its total area', 'sample_50pc_area'), '<i2'),
-             (('Index of sample in record in which the hit height suceeds 50% of maximum height', 'sample_50pc_height'), '<i2'),
-             (('Index of sample in record of hit maximum', 'max'), '<i2'),
-             (('Index of first sample in record just beyond hit (exclusive bound)', 'right'), '<i2'),
-             (('Height of hit in ADC counts', 'height'), '<i4'),
-             (('Time delay w.r.t. LED hit', 'tdelay'), '<i2'),
-             (('Internal (temporary) index of fragment in which hit was found', 'record_i'), '<i4')
-            ]
-            
+        # find LED hits and afterpulses within the same WF
+        hits_ap = find_ap(hits_sorted,
+                          r,
+                          LED_window_left=self.config['LED_window_left'],
+                          LED_window_right=self.config['LED_window_right'],
+                          hit_left_extension=self.config['hit_left_extension'],
+                          hit_right_extension=self.config['hit_right_extension'],
+                         )
     
-# strax hitfinder modified for AP data
-#   - all samples above threshold in LED window are combined into one LED hit
-#   - added timing parameters for hits
-#   - gives delay time of all hits in WF w.r.t. LED hit
+        hits_ap['area_pe'] = hits_ap['area'] * self.to_pe[hits_ap['channel']]
+        hits_ap['height_pe'] = hits_ap['height'] * self.to_pe[hits_ap['channel']]
+        
+        return hits_ap
+
 
 @export
-@strax.growing_result(hit_ap_dtype, chunk_size=int(1e2))
-@numba.jit(nopython=True, nogil=True, cache=True)
-def find_hits_ap(records, LED_window_left, LED_window_right, _result_buffer=None):
-
-    buffer = _result_buffer
-    if not len(records):
-        return
-    samples_per_record = len(records[0]['data'])
-    offset = 0
-
-    for record_i, r in enumerate(records):
-        in_interval = False
-        hit_start = -1
-        area = height = t_LED = 0
-        
-        LED_hit = False
-        
-        # get hit finding threshold: 3 times the baseline rms (standard dev)
-        threshold = r['baseline_rms'] * 3
-
-        # start hitfinder at beginning of LED window
-        for i in range(LED_window_left, samples_per_record):
+def find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension):
+    buffer = np.zeros(len(hits), dtype=dtype_ap)
+    res = _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=buffer)
+    return res
             
-            x = r['data'][i]
-            above_threshold = x > threshold
+
+@numba.jit(nopython=True, nogil=True, cache=True)
+def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=None):
+    # hits need to be sorted by record_i, then time!
+    
+    offset = 0
+    
+    is_LED = False
+    t_LED = None
+    
+    prev_record_i = hits[0]['record_i']
+    record_data = records[prev_record_i]['data']
+    record_len = records[prev_record_i]['length']
+    baseline_fpart = records[prev_record_i]['baseline'] % 1
+    
+    for h_i, h in enumerate(hits):
         
-            if (i>=LED_window_left) & (i<=LED_window_right):
-                # start of LED integration
-                if above_threshold:
-                    if area == 0:
-                        # start of LED hit (first sample above threshold in LED window)
-                        hit_start = i
-                    area += x
-                    height = max(height, x)
-                    if height == x:
-                        hit_max = i
-                    
-                    # end of LED hit (last sample above threshold in LED window)
-                    hit_end = i
-                        
-                    if i == LED_window_right:
-                        # end of LED window
-                        in_interval = True
-                        LED_hit = True
-                    else:
-                        continue
-                else:
-                    if (i == LED_window_right):
-                        # end of LED window
-                        if area == 0: #no LED pulse found, go to next record
-                            break
-                        in_interval = True
-                        LED_hit = True
-                    continue
+        if h['record_i'] > prev_record_i:
+            # start of a new record
+            is_LED = False
+            # only increment buffer if the old one is not empty! this happens when no (LED) hit is found in the previous record
+            if not buffer[offset]['time'] == 0:
+                offset += 1
+            prev_record_i = h['record_i']
+            record_data = records[prev_record_i]['data']
+            baseline_fpart = records[prev_record_i]['baseline'] % 1
+        
+        res = buffer[offset]
 
-            # continue after LED window (same as strax hitfinder)        
-            if not in_interval and above_threshold:
-                # Start of a hit
-                in_interval = True
-                hit_start = i
+            
+        if h['left'] < LED_window_left:
+            # if hit is before LED window: discard
+            continue
+            
+        if (h['left'] >= LED_window_left) & (h['left'] < LED_window_right):
+            # hit is in LED window
+            if not is_LED:
+                # this is the first hit in the LED window
+                res['time'] = h['time']
+                res['dt'] = h['dt']
+                res['channel'] = h['channel']
+                res['left'] = h['left']
+                res['right'] = h['right']
+                res['record_i'] = h['record_i']
+                res['threshold'] = h['threshold']
+                res['height'] = h['height']
                 
+                res['left_integration'] =  h['left'] - hit_left_extension
+                res['right_integration'] = h['right'] + hit_right_extension
+
+                res['length'] = res['right_integration'] - res['left_integration']
                 
-            if in_interval:
-                if not above_threshold:
-                    # Hit ends at the start of this sample
-                    hit_end = i
-                    in_interval = False
-                    
-                else:
-                    area += x
-                    height = max(height, x)
-                    if height == x:
-                        # the sample at which hit is at maximum
-                        hit_max = i
+                # need to add baseline_fpart to area
+                hit_data = record_data[res['left_integration']:res['right_integration']]
+                res['area'] = hit_data.sum() + res['length'] * baseline_fpart
+                
+                res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
+                res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
+                
+                res['max'] = res['left_integration'] + hit_data.argmax()
+                
+                # set the LED time in the current WF
+                t_LED = res['sample_10pc_area']
+                
+                is_LED = True
+                
+                continue
+            
+            # more hits in LED window: extend the first (merging all hits in the LED window)
+            res['right'] = h['right']
+            res['right_integration'] = h['right'] + hit_right_extension
 
-                    if i == samples_per_record - 1:
-                        # Hit ends at the *end* of this sample
-                        # (because the record ends)
-                        hit_end = i + 1
-                        in_interval = False
+            res['length'] = res['right_integration'] - res['left_integration']
+            res['height'] = max(res['height'], h['height'])
+            
+            hit_data = record_data[res['left_integration']:res['right_integration']]
+            res['area'] = hit_data.sum() + res['length'] * baseline_fpart
 
-                if not in_interval:
-                    # Hit is done, add it to the result
-                    if hit_end == hit_start:
-                        raise ValueError(
-                            "Caught attempt to save zero-length hit!")
-                    
-                    if hit_end == hit_start + 1:
-                        # ignore hits with only 1 sample above threshold
-                        continue
-                    
-                    res = buffer[offset]
-                    res['left'] = hit_start
-                    res['right'] = hit_end
-                    res['time'] = r['time'] + hit_start * r['dt']
-                    # Note right bound is exclusive, no + 1 here:
-                    res['length'] = hit_end - hit_start
-                    res['dt'] = r['dt']
-                    res['channel'] = r['channel']
-                    res['record_i'] = record_i
-                    res['max'] = hit_max
+            res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
+            res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
 
-                    # Store areas and height. 
-                    baseline_fpart = r['baseline'] % 1
-                    area += res['length'] * baseline_fpart
-                    res['area'] = area
-                    res['height'] = height + baseline_fpart
-                    
+            res['max'] = res['left_integration'] + hit_data.argmax()
 
-                    ### Additional hit timing parameters
+            t_LED = res['sample_10pc_area']
+            
+            continue
+            
+        # Here begins a new hit after the LED window
+        
+        if (h['left'] >= LED_window_right) and not is_LED:
+            # no LED hit found: ignore and go to next hit (until new record begins)
+            continue
+        
+        ## if a hit is completely inside the previous hit's right_extension, then skip it (because it's already included in the previous hit)
+        if h['right'] <= res['right_integration']:
+            continue
+            
+        ## if a hit only partly overlaps with the previous hit's right_extension, merge them (extend previous hit by this one)
+        if h['left'] <= res['right_integration']:
+            
+            res['right'] = h['right']
+            res['right_integration'] = h['right'] + hit_right_extension
+            if res['right_integration'] > record_len:
+                res['right_integration'] = record_len
+            res['length'] = res['right_integration'] - res['left_integration']
+            res['height'] = max(res['height'], h['height'])
+            
+            hit_data = record_data[res['left_integration']:res['right_integration']]
+            res['area'] = hit_data.sum() + res['length'] * baseline_fpart
+            
+            res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
+            res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
 
-                    # Get area quantiles (first sample where integrated area of hit is > x % total area)
-                    data = r['data'][hit_start:hit_end]
-                    area_sum = 0
-                    q10 = False
-                    for data_i, d in enumerate(data):
-                        area_sum += d
-                        if area_sum > 0.1 * area:
-                            if not q10:
-                                q10 = True
-                                res['sample_10pc_area'] = hit_start + data_i
-                            if area_sum > 0.5 * area:
-                                res['sample_50pc_area'] = hit_start + data_i
-                                break
-                    
-                    # Get sample index where 50% of height is exceeded
-                    for data_i, d in enumerate(data):
-                        if d < 0.5*(height + baseline_fpart):
-                            continue
-                        else:
-                            res['sample_50pc_height'] = hit_start + data_i
-                            break
+            res['max'] = res['left_integration'] + hit_data.argmax()
+            
+            res['tdelay'] = res['sample_10pc_area'] - t_LED
+            
+            continue
+                   
+        # an actual new hit increases the buffer index
+        offset += 1 
+        res = buffer[offset]
+        
+        res['time'] = h['time']
+        res['dt'] = h['dt']
+        res['channel'] = h['channel']
+        res['left'] = h['left']
+        res['right'] = h['right']
+        res['record_i'] = h['record_i']
+        res['threshold'] = h['threshold']
+        res['height'] = h['height']
 
-                    # Get time of LED hit
-                    if LED_hit:
-                        t_LED = res['sample_10pc_area']
-                        LED_hit = False
+        res['left_integration'] =  h['left'] - hit_left_extension
+        res['right_integration'] = h['right'] + hit_right_extension
+        if res['right_integration'] > record_len:
+            res['right_integration'] = record_len
+        res['length'] = res['right_integration'] - res['left_integration']
 
-                    # store time difference (in samples) between hit and LED hit in same WF
-                    res['tdelay'] = res['sample_10pc_area'] - t_LED
+        hit_data = record_data[res['left_integration']:res['right_integration']]
+        res['area'] = hit_data.sum() + res['length'] * baseline_fpart
 
-                    # reset for next hit
-                    area = height = 0
+        res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
+        res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
 
-                    # Yield buffer to caller if needed
-                    offset += 1
-                    if offset == len(buffer):
-                        yield offset
-                        offset = 0
-                        
-    yield offset
+        res['max'] = res['left_integration'] + hit_data.argmax()
+        
+        res['tdelay'] = res['sample_10pc_area'] - t_LED
+    
+    return buffer[:offset]
+
+
+@export
+@numba.jit(nopython=True, nogil=True, cache=True)
+def get_sample_area_quantile(data, quantile, baseline_fpart):
+    '''
+    returns first sample index in hit where integrated area of hit is above total area
+    '''
+    
+    area = 0
+    area_tot = data.sum() + len(data) * baseline_fpart
+
+    for d_i, d in enumerate(data):
+        area += d + baseline_fpart
+        if area > (quantile * area_tot):
+            return d_i
+        if (d_i == len(data)-1):
+            # if no quantile was found, something went wrong
+            # (negative area due to wrong baseline, caused by real events that by coincidence fall in the first samples of the trigger window)
+            #print('no quantile found: set to 0')
+            return 0
