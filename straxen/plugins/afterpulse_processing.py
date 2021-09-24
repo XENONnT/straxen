@@ -125,9 +125,6 @@ class LEDAfterpulseProcessing(strax.Plugin):
         else: # int or array
             self.hit_thresholds = self.config['hit_min_amplitude']
             
-        print("I'm here :)")
-        print(self.dtype)
-
         
     def compute(self, raw_records):
         
