@@ -205,6 +205,7 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
         return result
 
     
+    
 @export
 @strax.takes_config(
     strax.Option('recon_alg_included', help='The list of all reconstruction algorithm considered.',
@@ -217,7 +218,7 @@ class S2ReconPosDiff(strax.Plugin):
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
     '''
     
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     parallel = True
     depends_on = 'event_basics'
     provides = 's2_recon_pos_diff'
@@ -241,10 +242,6 @@ class S2ReconPosDiff(strax.Plugin):
         dtype += strax.time_fields
         return dtype
     
-    
-
-    @staticmethod
-    @numba.njit
     def compute(self,events):
         
         result = np.zeros(len(events), dtype=self.dtype)
@@ -252,17 +249,13 @@ class S2ReconPosDiff(strax.Plugin):
         result['endtime'] = strax.endtime(events)
         # Computing position difference
         self.compute_pos_diff(events, result)
-        return result
-    
-    @staticmethod
-    @numba.njit
+        return result  
+
     def cal_avg_and_std(self, values, axis=1):
         average = np.average(values,axis=axis)
         variance = np.var(values, axis=axis)
         return (average, np.sqrt(variance))
 
-    @staticmethod
-    @numba.njit
     def eval_recon(self, data, name,cur_s2_bool):
         alg_list=self.config['recon_alg_included']
         name_x_list=[]
@@ -276,8 +269,6 @@ class S2ReconPosDiff(strax.Plugin):
         res = x_avg, y_avg, r_std
         return res
 
-    @staticmethod
-    @numba.njit
     def compute_pos_diff(self, events, result):
         
         for t_ in ['s2', 'alt_s2']:
@@ -302,4 +293,5 @@ class S2ReconPosDiff(strax.Plugin):
                 result[t_+'_recon_pos_diff'][cur_s2_bool] = r_std
                 result[t_+'_recon_avg_x'][cur_s2_bool] = x_avg
                 result[t_+'_recon_avg_y'][cur_s2_bool] = y_avg
+                
                 
