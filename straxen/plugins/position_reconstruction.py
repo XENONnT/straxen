@@ -4,6 +4,7 @@ import os
 import tempfile
 import tarfile
 import numpy as np
+import numba
 import strax
 import straxen
 from warnings import warn
@@ -294,4 +295,4 @@ class S2ReconPosDiff(strax.Plugin):
                 result[t_+'_recon_avg_x'][cur_s2_bool] = x_avg
                 result[t_+'_recon_avg_y'][cur_s2_bool] = y_avg
                 
-                
+
