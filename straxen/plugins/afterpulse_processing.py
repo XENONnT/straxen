@@ -168,6 +168,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
 @export
 def find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension):
     buffer = np.zeros(len(hits), dtype=dtype_ap)
+    if not len(hits):
+        return buffer
     res = _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=buffer)
     return res
             
