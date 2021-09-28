@@ -206,11 +206,10 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
         return result
 
     
-    
 @export
 @strax.takes_config(
-    strax.Option('recon_alg_included', help='The list of all reconstruction algorithm considered.',
-                 default=('_mlp','_gcn','_cnn'),
+    strax.Option('recon_alg_included', help = 'The list of all reconstruction algorithm considered.',
+                 default = ('_mlp', '_gcn', '_cnn'),
                 )
 )
 class S2ReconPosDiff(strax.Plugin):
@@ -219,80 +218,82 @@ class S2ReconPosDiff(strax.Plugin):
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
     '''
     
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     parallel = True
     depends_on = 'event_basics'
     provides = 's2_recon_pos_diff'
+    save_when = strax.SaveWhen.EXPLICIT
     
     def infer_dtype(self):
-        dtype =[
-        ('s2_recon_avg_x' ,np.float32,
+        dtype = [
+        ('s2_recon_avg_x', np.float32,
          'Mean value of x for main S2'),
-        ('alt_s2_recon_avg_x' ,np.float32,
+        ('alt_s2_recon_avg_x', np.float32,
          'Mean value of x for alternatice S2'),
-        ('s2_recon_avg_y' ,np.float32,
+        ('s2_recon_avg_y', np.float32,
          'Mean value of y for main S2'),
-        ('alt_s2_recon_avg_y' ,np.float32,
+        ('alt_s2_recon_avg_y', np.float32,
          'Mean value of y for alternatice S2'),
-        ('s2_recon_pos_diff' ,np.float32,
+        ('s2_recon_pos_diff', np.float32,
          'Reconstructed position difference for main S2'),
-        ('alt_s2_recon_pos_diff' ,np.float32,
+        ('alt_s2_recon_pos_diff', np.float32,
          'Reconstructed position difference for alternative S2'),
-
     ]
         dtype += strax.time_fields
         return dtype
-    
-    def compute(self,events):
+
+    def compute(self, events):
         
-        result = np.zeros(len(events), dtype=self.dtype)
+        result = np.zeros(len(events), dtype = self.dtype)
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
         # Computing position difference
         self.compute_pos_diff(events, result)
         return result  
 
-    def cal_avg_and_std(self, values, axis=1):
-        average = np.average(values,axis=axis)
-        variance = np.var(values, axis=axis)
+    def cal_avg_and_std(self, values, axis = 1):
+        
+        average = np.mean(values, axis = axis)
+        variance = np.var(values, axis = axis)
         return (average, np.sqrt(variance))
 
-    def eval_recon(self, data, name,cur_s2_bool):
-        alg_list=self.config['recon_alg_included']
-        name_x_list=[]
-        name_y_list=[]
-        for alg in alg_list:
-            name_x_list.append(name+'_x'+alg)
-            name_y_list.append(name+'_y'+alg)
-        x_avg,x_std= self.cal_avg_and_std(np.array(data[name_x_list][cur_s2_bool].tolist())) #lazy fix for data types 
-        y_avg,y_std= self.cal_avg_and_std(np.array(data[name_y_list][cur_s2_bool].tolist()))
-        r_std=np.sqrt(x_std**2+y_std**2)
+    def eval_recon(self, data, name_x_list, name_y_list, cur_s2_bool):
+    
+        x_avg, x_std = self.cal_avg_and_std(np.array(data[name_x_list][cur_s2_bool].tolist())) #lazy fix to delete field name in array 
+        y_avg, y_std = self.cal_avg_and_std(np.array(data[name_y_list][cur_s2_bool].tolist()))
+        r_std = np.sqrt( x_std**2 + y_std**2 )
         res = x_avg, y_avg, r_std
         return res
 
     def compute_pos_diff(self, events, result):
         
-        for t_ in ['s2', 'alt_s2']:
+        alg_list = self.config['recon_alg_included']
+        for peak_type in ['s2', 'alt_s2']:
             # Selecting S2s for pos diff
             # - must exist (index != -1)
             # - must have positive AFT
             # - must contain all alg info
-            cur_s2_bool = (events[t_+'_index']!=-1)
-            cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
+            cur_s2_bool = (events[peak_type + '_index'] !=- 1)
+            cur_s2_bool &= (events[peak_type + '_area_fraction_top'] > 0)
             for name in self.config['recon_alg_included']:
-                cur_s2_bool &= ~np.isnan(events[t_+'_x'+name])
-                cur_s2_bool &= ~np.isnan(events[t_+'_y'+name])
+                cur_s2_bool &= ~np.isnan(events[peak_type+'_x'+name])
+                cur_s2_bool &= ~np.isnan(events[peak_type+'_y'+name])
             
             # default value is nan, it will be ovewrite if the event satisfy the requirments
-            result[t_+'_recon_pos_diff'][:] = np.nan
-            result[t_+'_recon_avg_x'][:] = np.nan
-            result[t_+'_recon_avg_y'][:] = np.nan
+            result[peak_type + '_recon_pos_diff'][:] = np.nan
+            result[peak_type + '_recon_avg_x'][:] = np.nan
+            result[peak_type + '_recon_avg_y'][:] = np.nan
             
-            if np.sum(cur_s2_bool):               
-                # Calculating average x,y, and position difference
-                x_avg, y_avg, r_std = self.eval_recon(events, t_,cur_s2_bool)
-                result[t_+'_recon_pos_diff'][cur_s2_bool] = r_std
-                result[t_+'_recon_avg_x'][cur_s2_bool] = x_avg
-                result[t_+'_recon_avg_y'][cur_s2_bool] = y_avg
-                
+            if np.any(cur_s2_bool):
+                name_x_list = []
+                name_y_list = []
+                for alg in alg_list:
+                    name_x_list.append(peak_type + '_x' + alg)
+                    name_y_list.append(peak_type + '_y' + alg)
 
+                # Calculating average x,y, and position difference
+                x_avg, y_avg, r_std = self.eval_recon(events, name_x_list, name_y_list, cur_s2_bool)
+                result[peak_type + '_recon_pos_diff'][cur_s2_bool] = r_std
+                result[peak_type + '_recon_avg_x'][cur_s2_bool] = x_avg
+                result[peak_type + '_recon_avg_y'][cur_s2_bool] = y_avg
+                
