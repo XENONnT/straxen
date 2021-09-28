@@ -301,7 +301,7 @@ class RunDB(strax.StorageFrontend):
 
     def run_metadata(self, run_id, projection=None):
         if run_id.startswith('_'):
-            # Superruns are currently not supprorted..
+            # Superruns are currently not supported..
             raise strax.DataNotAvailable
         
         if self.runid_field == 'name':

@@ -9,19 +9,19 @@ from .test_basics import test_run_id_1T
 from .test_plugins import test_run_id_nT
 from straxen.common import aux_repo
 
+
 def test_connect_to_db():
     """
     Test connection to db
     """
-    if not straxen.utilix_is_configured():
-        warn('Cannot do test becaus  '
-             'no have access to the database.')
+    if not straxen.utilix_is_configured(
+            warning_message='No db access, cannot test'):
         return
 
     username=None
     password=None
     mongo_url=None
-    is_nt=True
+
     mongo_kwargs = {'url': mongo_url,
                         'user': username,
                         'password': password,
@@ -33,23 +33,23 @@ def test_connect_to_db():
     mes = 'Return empty dataframe when reading DB. Please check'
     assert not df.empty, mes
 
+
 def test_1T_elife():
     """
     Test elife from CMT DB against historical data(aux file)
     """
     if not straxen.utilix_is_configured():
-        warn('Cannot do test becaus  '
-             'no have access to the database.')
         return
 
     elife_conf = ('elife_xenon1t', 'ONLINE', False)
     elife_cmt = straxen.get_correction_from_cmt(test_run_id_1T, elife_conf)
-    elife_file = elife_conf=aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
+    elife_file = aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
     x = straxen.get_resource(elife_file, fmt='npy')
     run_index = np.where(x['run_id'] == int(test_run_id_1T))[0]
     elife = x[run_index[0]]['e_life']
     mes = 'Elife values do not match. Please check'
     assert elife_cmt == elife, mes
+
 
 def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
     """
@@ -57,13 +57,12 @@ def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
     If wrong conf is passed it would raise an error accordingly
     """
     if not straxen.utilix_is_configured():
-        warn('Cannot do test becaus  '
-             'no have access to the database.')
         return
 
     conf = option, version, is_nT
     correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
     assert isinstance(correction, (float, int, str, np.ndarray))
+
 
 def test_mc_wrapper_elife(run_id='009000',
                           cmt_id='016000',

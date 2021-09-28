@@ -20,8 +20,6 @@ def test_select_runs(check_n_runs=2):
     """
 
     if not straxen.utilix_is_configured():
-        warn('Makes no sense to test the select runs because we do not '
-             'have access to the database.')
         return
     assert check_n_runs >= 1
     st = straxen.contexts.xenonnt_online(use_rucio=False)
@@ -40,8 +38,8 @@ def test_select_runs(check_n_runs=2):
 
 def test_downloader():
     """Test if we can download a small file from the downloader"""
-    if not straxen.utilix_is_configured():
-        warn('Cannot download because utilix is not configured')
+    if not straxen.utilix_is_configured(
+            warning_message='Cannot download because utilix is not configured'):
         return
 
     downloader = straxen.MongoDownloader()
@@ -70,7 +68,6 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
         run
     """
     if not straxen.utilix_is_configured():
-        warn('Cannot test online monitor because utilix is not configured')
         return
     st = straxen.contexts.xenonnt_online(use_rucio=False)
     om = _patch_om_init(target)
