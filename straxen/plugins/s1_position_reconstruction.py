@@ -9,6 +9,7 @@ import straxen
 from warnings import warn
 export, __all__ = strax.exporter()
 
+# Current defaul algorithm: data-driven CNN. 
 DEFAULT_S1POSREC_ALGO_OPTION = tuple([strax.Option("default_s1reconstruction_algorithm",
                  help="default S1 reconstruction algorithm that provides (x,y,z)",
                  default="cnn_s1",
@@ -97,6 +98,7 @@ class S1EventPositionBase(strax.Plugin):
         # Getting actual position reconstruction
         _in = events['s1_area_per_channel']
         with np.errstate(divide='ignore', invalid='ignore'):
+        # Normalise patters by dividing by largest PMT output between the two arrays. 
             _in = _in / _in.max(axis=1,keepdims=True)
         _out = self.model.predict(_in)
 
