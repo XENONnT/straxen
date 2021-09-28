@@ -27,7 +27,7 @@ DEFAULT_S1POSREC_ALGO_OPTION = tuple([strax.Option("default_s1reconstruction_alg
 
 class S1EventPositionBase(strax.Plugin):
     """
-    Base class for the alternative S1 three-dimensional position reconstruction.
+    Base class for S1 three-dimensional position reconstruction.
     This class should only be used when subclassed for the different algorithms. 
     """
 
@@ -149,8 +149,7 @@ class S1EventPositionCNN(S1EventPositionBase):
 )
 class S1EventPosition(strax.MergeOnlyPlugin):
     """
-    Merge the reconstructed S1 algorithms of the different algorithms 
-    into a single one that can be used in Event Basics.
+    Merge the reconstructed S1 algorithms of the different algorithms.
     
     Select one of the plugins to provide the 'x','y' and 'z' to be used 
     further down the chain. Since we already have the information
