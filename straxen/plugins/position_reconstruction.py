@@ -253,8 +253,8 @@ class S2ReconPosDiff(strax.Plugin):
     def cal_avg_and_std(self, values, axis = 1):
         
         average = np.mean(values, axis = axis)
-        variance = np.var(values, axis = axis)
-        return (average, np.sqrt(variance))
+        std = np.std(values, axis = axis)
+        return average, std
 
     def eval_recon(self, data, name_x_list, name_y_list, cur_s2_bool):
     
