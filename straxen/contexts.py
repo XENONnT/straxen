@@ -76,6 +76,7 @@ xnt_common_opts.update({
                                            straxen.PeakPositionsMLP,
                                            straxen.PeakPositionsGCN,
                                            straxen.PeakPositionsNT,
+                                           straxen.S2ReconPosDiff,
                                            straxen.PeakBasicsHighEnergy,
                                            straxen.PeaksHighEnergy,
                                            straxen.PeakletsHighEnergy,
