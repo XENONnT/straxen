@@ -4,7 +4,6 @@ import os
 import tempfile
 import tarfile
 import numpy as np
-import numba
 import strax
 import straxen
 from warnings import warn
