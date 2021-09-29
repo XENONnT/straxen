@@ -291,7 +291,7 @@ class S2ReconPosDiff(strax.Plugin):
                     name_y_list.append(peak_type + '_y' + alg)
 
                 # Calculating average x,y, and position difference
-                x_avg, y_avg, r_std = self.eval_recon(events, name_x_list, name_y_list, cur_s2_bool)
+                x_avg, y_avg, r_std = self.eval_recon(events[cur_s2_bool], name_x_list, name_y_list)
                 result[peak_type + '_recon_pos_diff'][cur_s2_bool] = r_std
                 result[peak_type + '_recon_avg_x'][cur_s2_bool] = x_avg
                 result[peak_type + '_recon_avg_y'][cur_s2_bool] = y_avg
