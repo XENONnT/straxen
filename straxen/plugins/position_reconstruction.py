@@ -257,8 +257,9 @@ class S2ReconPosDiff(strax.Plugin):
         return average, std
 
     def eval_recon(self, data, name_x_list, name_y_list):
-       """A short description of the function might be usefull"""
-        x_avg, x_std = self.cal_avg_and_std(np.array(data[name_x_list].tolist())) #lazy fix to delete field name in array 
+       """This function reads the name list based on s2/alt_s2 and all recon algorithm registered """
+       """Each row consists the reconstructed x/y and their average and standard deviation is calculated"""
+        x_avg, x_std = self.cal_avg_and_std(np.array(data[name_x_list].tolist())) #lazy fix to delete field name in array, otherwise np.mean will complain 
         y_avg, y_std = self.cal_avg_and_std(np.array(data[name_y_list].tolist()))
         r_std = np.sqrt( x_std**2 + y_std**2 )
         res = x_avg, y_avg, r_std
