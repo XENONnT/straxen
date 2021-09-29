@@ -14,6 +14,7 @@ DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorit
                  default="mlp",
                  )])
 
+
 @export
 @strax.takes_config(
     strax.Option('min_reconstruction_area',
@@ -22,7 +23,6 @@ DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorit
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
-
 class PeakPositionsBaseNT(strax.Plugin):
     """
     Base class for reconstructions.
@@ -119,6 +119,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         # Use CMT
         model_file = straxen.get_correction_from_cmt(self.run_id, model_from_config)
         return model_file
+
 
 @export
 @strax.takes_config(
@@ -251,17 +252,18 @@ class S2ReconPosDiff(strax.Plugin):
         return result  
 
     def cal_avg_and_std(self, values, axis = 1):
-        
         average = np.mean(values, axis = axis)
         std = np.std(values, axis = axis)
         return average, std
 
     def eval_recon(self, data, name_x_list, name_y_list):
-       """This function reads the name list based on s2/alt_s2 and all recon algorithm registered """
-       """Each row consists the reconstructed x/y and their average and standard deviation is calculated"""
-        x_avg, x_std = self.cal_avg_and_std(np.array(data[name_x_list].tolist())) #lazy fix to delete field name in array, otherwise np.mean will complain 
+        """
+        This function reads the name list based on s2/alt_s2 and all recon algorithm registered
+        Each row consists the reconstructed x/y and their average and standard deviation is calculated
+        """
+        x_avg, x_std = self.cal_avg_and_std(np.array(data[name_x_list].tolist())) #lazy fix to delete field name in array, otherwise np.mean will complain
         y_avg, y_std = self.cal_avg_and_std(np.array(data[name_y_list].tolist()))
-        r_std = np.sqrt( x_std**2 + y_std**2 )
+        r_std = np.sqrt(x_std**2 + y_std**2)
         res = x_avg, y_avg, r_std
         return res
 
