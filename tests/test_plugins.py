@@ -179,6 +179,7 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
         del st._plugin_class_registry['peak_positions_mlp']
         del st._plugin_class_registry['peak_positions_cnn']
         del st._plugin_class_registry['peak_positions_gcn']
+        del st._plugin_class_registry['s2_recon_pos_diff']
         st.register(straxen.PeakPositions1T)
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
         st.set_config({'gain_model': fallback_gains})
