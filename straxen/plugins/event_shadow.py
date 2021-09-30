@@ -1,29 +1,28 @@
 import numpy as np
 import pandas as pd
-
 import strax
 import straxen
-
-
-straxen.print_versions(('strax', 'straxen', 'cutax'))
-import warnings
-export, __all__ = strax.exporter()
-
 import warnings
 export, __all__ = strax.exporter()
 
 @export
-class Shadow(strax.Plugin):
-    """Compute several new parameters to describe the noise level.
-        We can use these to reduce AC BG. """
-
+@strax.takes_config(
+    strax.Option('pre_s2_area_threshold', default=1000,
+                 help='Only take S2s large than this into account when calculating EventShadow.'),
+    strax.Option('time_window_backward', default=int(3e9),
+                 help='Search for S2s causing shadow in this time window'))
+class EventShadow(strax.Plugin):
+    """
+    This plugin can find and calculate the previous S2 shadow at event level,
+    with time window backward and previous S2 area as options.
+    It also gives the area and position infomation of these previous S2s.
+    """
     depends_on = ('event_basics','peak_basics','peak_positions')
     parallel = False
     provides = 'event_shadow'
-    __version__ = '0.0.5'
+    __version__ = '0.0.6'
 
     def infer_dtype(self):
-
         dtype = [
                 ('pre_s2_area', np.float32,'previous s2 area [PE]'),
                  ('shadow_dt', np.int64,'time diffrence to the previous s2 [ns]'),
@@ -34,31 +33,31 @@ class Shadow(strax.Plugin):
                 ]
         dtype += strax.time_fields
         return dtype
-
+    
     def compute(self, events, peaks):
         #set a time window to look for peaks
         roi_dt = np.dtype([(('back in time', 'time'), int),
                                          (('till it begin','endtime'), int)])
         roi = np.zeros(len(events), dtype=roi_dt)   
-        n_seconds = int(3e9)
+        n_seconds = self.config['time_window_backward']
         roi['time'] = events['time'] - n_seconds
         roi['endtime'] = events['time']
-        split_try = strax.split_touching_windows(peaks, roi, window=0)
-        
+        split_try = strax.split_touching_windows(peaks, roi)
         #define the variables we want to calculate
-        
         pre_s2_area = np.zeros(len(events))
         shadow_dt = np.zeros(len(events))     
         pre_s2_x = np.zeros(len(events))
         pre_s2_y = np.zeros(len(events))
         shadow = np.zeros(len(events)) 
-        shadow_distance = np.zeros(len(events))
+        shadow_distance = np.zeros(len(events))   
         
         #loop over interested peaks for each event
+        
+        #this part should be speed up
         for event_i, event_a in enumerate(events):
             for peak_i, peak_a in enumerate(split_try[event_i]):
                 new_shadow = 0
-                if  (peak_a['area']>1000)&(peak_a['type']==2):
+                if  (peak_a['area']>self.config['pre_s2_area_threshold'])&(peak_a['type']==2):
                     new_shadow = peak_a['area']/(event_a['time']-peak_a['center_time'])
 
                 if new_shadow > shadow[event_i]:
@@ -78,3 +77,4 @@ class Shadow(strax.Plugin):
                     pre_s2_x = pre_s2_x,
                     pre_s2_y = pre_s2_y,
                     shadow_distance = shadow_distance)
+    
