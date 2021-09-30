@@ -78,7 +78,7 @@ class S1EventPositionBase(strax.Plugin):
                 tar = tarfile.open(self.model_file, mode="r:gz")
                 tar.extractall(path=tmpdirname)
                 self.model = tf.keras.models.load_model(tmpdirname)
-            except:
+            except Exception as e:
                 self.model = tf.keras.models.load_model(self.model_file)
 
 
@@ -181,4 +181,3 @@ class S1EventPosition(strax.MergeOnlyPlugin):
         for xyz in ('x', 'y', 'z'):
             result[xyz] = events[f'{xyz}_{algorithm}']
         return result
-
