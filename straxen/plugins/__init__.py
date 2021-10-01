@@ -56,3 +56,6 @@ from .acqmon_processing import *
 
 from . import online_monitor
 from .online_monitor import *
+
+from . import local_minimum_info
+from .local_minimum_info import *
