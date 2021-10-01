@@ -107,6 +107,10 @@ class LocalMinimumInfo(strax.LoopPlugin):
 def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     """
     Full gap at percent valley. The width of the valley at "pv" of the valley height
+    Only do this for peaks which have number of maxes-number of mins = 1, since otherwise
+    this local minimum finding doesn't make sense. Furthermore, it gets rid of those peaks
+    which start at some high value likely because they are the tails of another peak
+    or something.
     :param smoothp: The smoothed peak
     :param max_loc: Location of every local maximum of the peak
     :param min_loc: Location of every local minimum of the peak
@@ -114,11 +118,6 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     :param dt: The time of one sample in ns
     :return: The gap in ns, the depth in PE
     """
-    # Only do this for peaks which have number of maxes-number of mins = 1, since otherwise
-    # this local minimum finding doesn't make sense. Furthermore, it gets rid of those peaks
-    # which start at some high value likely because they are the tails of another peak
-    # or something.
-
     n_gap = len(min_loc)
     p_length = len(smoothp)
     if (len(max_loc) - n_gap) == 1 and len(min_loc):
@@ -154,7 +153,6 @@ def bounds_above_percentage_height(p, percent):
     :param p: The peak
     :param percent: The percentage of the maximum height to cut the peak,
     this is to reject the tails and noise before and after the bulk of the peak
-
     :return: The left and right (exclusive) index of samples above the percent
     """
     percent_height = np.max(p) * percent
