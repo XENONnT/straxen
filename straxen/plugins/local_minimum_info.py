@@ -29,6 +29,7 @@ class LocalMinimumInfo(strax.LoopPlugin):
     and looks to compute some figures of merit such as the max goodness of split,
     width of the valley, and height of the valley.
     """
+
     depends_on = ('event_basics', 'peaks')
     provides = 'local_min_info_2'
     parallel = 'process'
@@ -65,22 +66,26 @@ class LocalMinimumInfo(strax.LoopPlugin):
         if event['s2_area'] > 0:
             p = peaks[event['s2_index']]
 
-            smoothing_number = int(p['width'][9] / (self.config['divide_90p_width'] * p['dt'])) + 1
+            smoothing_number = p['width'][9] / p['dt']
+            smoothing_number = np.ceil(smoothing_number / self.config['divide_90p_width'])
             smoothed_peak = power_smooth(p['data'][:p['length']],
-                                         smoothing_number,
+                                         int(smoothing_number),
                                          self.config['smoothing_power'])
 
-            # Set data below precentage threshold on both side to zeros
-            left, right = bounds_above_percentage_height(smoothed_peak, self.config['percentage_threshold'])
+            # Set data below percentage threshold on both side to zeros
+            left, right = bounds_above_percentage_height(smoothed_peak,
+                                                         self.config['percentage_threshold'])
 
             # Maximum GOS calculation for data above percentage
-            max_gos = np.max(natural_breaks_gof(p['data'][slice(left, right)],
+            max_gos = np.max(natural_breaks_gof(p['data'][left: right],
                                                 p['dt']))
 
             # Local minimum based information
             maxes, mins = identify_local_extrema(smoothed_peak)
-            maxes = maxes[(maxes >= left) & (maxes < right)]
-            mins = mins[(mins >= left) & (mins < right)]
+
+            maxes = maxes[np.logical_and(maxes >= left, maxes < right)]
+            mins = mins[np.logical_and(mins >= left, mins < right)]
+
             num_loc_maxes = len(maxes)
 
             valley_gap, valley = full_gap_percent_valley(smoothed_peak,
@@ -91,12 +96,12 @@ class LocalMinimumInfo(strax.LoopPlugin):
 
             valley_height_ratio = valley / np.max(smoothed_peak)
 
-        return dict(time=event['time'],
-                    endtime=event['endtime'],
-                    s2_max_gos=max_gos,
-                    s2_num_loc_max=num_loc_maxes,
-                    s2_valley_gap=valley_gap,
-                    s2_valley_height_ratio=valley_height_ratio)
+        return {'time': event['time'],
+                'endtime': event['endtime'],
+                's2_max_gos': max_gos,
+                's2_num_loc_max': num_loc_maxes,
+                's2_valley_gap': valley_gap,
+                's2_valley_height_ratio': valley_height_ratio}
 
 
 def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
@@ -114,20 +119,23 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     # which start at some high value likely because they are the tails of another peak
     # or something.
 
-    if (len(max_loc) - len(min_loc) == 1) & (len(min_loc) > 0):
-        gaps = np.zeros(len(min_loc))
+    n_gap = len(min_loc)
+    p_length = len(smoothp)
+    if (len(max_loc) - n_gap) == 1 and len(min_loc):
+        gaps = np.zeros(n_gap)
         gap_heights = np.zeros(len(min_loc))
-        for j in range(len(min_loc)):
-            gh = np.min(smoothp[[max_loc[j], max_loc[j + 1]]] - smoothp[min_loc[j]])
+        for j in range(n_gap):
+            gh = np.min(smoothp[max_loc[j:j + 2]])
+            gh -= smoothp[min_loc[j]]
 
             height_pv = (smoothp[min_loc[j]] + gh * pv)
 
             above_hpv = smoothp > height_pv
-            above_hpv[:max_loc[j]] = True
+            above_hpv |= np.arange(p_length) < max_loc[j]
             left_crossing = np.argmin(above_hpv)
 
             above_hpv = smoothp > height_pv
-            above_hpv[:min_loc[j]] = False
+            above_hpv &= np.arange(p_length) >= min_loc[j]
             right_crossing = np.argmax(above_hpv)
 
             gaps[j] = right_crossing - left_crossing
@@ -142,14 +150,17 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
 
 def bounds_above_percentage_height(p, percent):
     """
+    Finding the index bounds of the peak above given percentage
     :param p: The peak
     :param percent: The percentage of the maximum height to cut the peak,
     this is to reject the tails and noise before and after the bulk of the peak
-    """
-    above_pecent_height = np.where(p >= np.max(p) * percent)[0]
-    assert len(above_pecent_height) >= 1, 'At least one sample is above %f fraction of the peak'
 
-    return above_pecent_height[0], above_pecent_height[-1] + 1
+    :return: The left and right (exclusive) index of samples above the percent
+    """
+    percent_height = np.max(p) * percent
+    above_percent_height = np.where(p >= percent_height)[0]
+
+    return above_percent_height[0], above_percent_height[-1] + 1
 
 
 def identify_local_extrema(smoothp):
@@ -158,7 +169,8 @@ def identify_local_extrema(smoothp):
     :param smoothp: smoothed peak
     :return: The locations of the minima, the locations of the maxima
     """
-    larger_than_next = (smoothp > np.pad(smoothp[:-1], (1, 0))).astype('int')
+    larger_than_next = (smoothp > np.pad(smoothp[:-1], (1, 0)))
+    larger_than_next = larger_than_next.astype('int')
 
     max_loc = np.where(np.diff(larger_than_next) < 0)[0]
     min_loc = np.where(np.diff(larger_than_next) > 0)[0]
@@ -171,8 +183,10 @@ def power_smooth(origindata, cover_num, power):
     A smoothing filter to get rid of the noise in peaks so that we don't find too many local extrema
     that are just noisy
     :param origindata: Original peak
-    :param cover_num: The cover number for smoothing, high cover numbers mean you smooth over a larger region
-    :param power: The power of the smoothing, essentially tunes how much your smoothing filter looks like a square
+    :param cover_num: The cover number for smoothing
+    high cover numbers mean you smooth over a larger region
+    :param power: The power of the smoothing
+    essentially tunes how much your smoothing filter looks like a square
     :return: The smoothed waveform
     """
     x_zeroed = np.arange(-cover_num, cover_num + 1)
