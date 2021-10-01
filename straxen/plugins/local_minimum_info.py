@@ -21,34 +21,41 @@ export, __all__ = strax.exporter()
                       "of the peak in order to find the local extrema."),
     strax.Option('percent_valley_height', default=0.9,
                  help="The percentage of the valley height of the deepest"
-                      "valley for which to calculate the valley width")
-
+                      "valley for which to calculate the valley width"),
 )
 class LocalMinimumInfo(strax.LoopPlugin):
+    """
+    Looks for the main S2 peak in an event, finds the local minimum (if there is one),
+    and looks to compute some figures of merit such as the max goodness of split,
+    width of the valley, and height of the valley.
+    """
     depends_on = ('event_basics', 'peaks')
     provides = 'local_min_info_2'
     parallel = 'process'
     compressor = 'zstd'
 
     __version__ = '0.1.0'
-    dtype = strax.time_fields + [(('Maximum Goodness of Split', 's2_max_gos'), np.float32),
-                                 (('Number of local maxima of the smoothed peak', 's2_num_loc_max'), np.int16),
+    dtype = strax.time_fields + [(('Maximum Goodness of Split',
+                                   's2_max_gos'), np.float32),
+                                 (('Number of local maxima of the smoothed peak',
+                                   's2_num_loc_max'), np.int16),
                                  (('Full gap at p% of the valley height of the deepest valley [ns],'
                                    'by default p = 90', 's2_valley_gap'), np.float32),
-                                 (('Valley depth over max height of the deepest valley', 's2_valley_height_ratio'),
-                                  np.float32)]
+                                 (('Valley depth over max height of the deepest valley',
+                                   's2_valley_height_ratio'), np.float32)]
 
     def compute_loop(self, event, peaks):
         """
-        This finds the maxima and minima for the main S2 peak and calculates its info such as the number of
-        local maxima, the depth of the deepest local minimum over the maximum height of
-        the peak(valley_height_ratio), and the width of the local minimum valley at 90% of the valley height.
+        This finds the maxima and minima for the main S2 peak and calculates its info such as
+        the number of local maxima, the depth of the deepest local minimum over the maximum height
+        of the peak (s2_valley_height_ratio), and the width of the local minimum valley at
+        90% of the valley height.
         :param event: The event
-        :param peaks: The peaks belonging to the event, only the main S2 peak is considered, if there is none, this
-        plugin returns none
+        :param peaks: The peaks belonging to the event, only the main S2 peak is considered,
+        if there is none, this plugin returns none
+        :return: Returns a dictionary containing all of the fields above for each main S2 peak
+        as well as the timing information.
 
-        :return: Returns a dictionary containing all of the fields above for each main S2 peak as well as the timing
-        information.
         """
         max_gos = np.nan
         num_loc_maxes = 0
@@ -102,10 +109,10 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     :param dt: The time of one sample in ns
     :return: The gap in ns, the depth in PE
     """
-
-    # Only do this for peaks which have number of maxes-number of mins = 1, since otherwise this local
-    # minimum finding doesn't make sense. Furthermore, it gets rid of those peaks which start at some high value
-    # likely because they are the tails of another peak or something.
+    # Only do this for peaks which have number of maxes-number of mins = 1, since otherwise
+    # this local minimum finding doesn't make sense. Furthermore, it gets rid of those peaks
+    # which start at some high value likely because they are the tails of another peak
+    # or something.
 
     if (len(max_loc) - len(min_loc) == 1) & (len(min_loc) > 0):
         gaps = np.zeros(len(min_loc))
@@ -136,10 +143,9 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
 def bounds_above_percentage_height(p, percent):
     """
     :param p: The peak
-    :param percent: The percentage of the maximum height to cut the peak, this is to reject the tails and noise
-     before and after the bulk of the peak
+    :param percent: The percentage of the maximum height to cut the peak,
+    this is to reject the tails and noise before and after the bulk of the peak
     """
-
     above_pecent_height = np.where(p >= np.max(p) * percent)[0]
     assert len(above_pecent_height) >= 1, 'At least one sample is above %f fraction of the peak'
 
