@@ -167,6 +167,30 @@ def get_cmt_options(context):
                 cmt_options[option_key] = option.default
 
     return cmt_options
+@export
+class CorrectionsMixin:
+    '''
+    Mixin class to add auto lookup of config values from CMT
+    Allows attribute-like access to corrections and other config values
+    e.g. self.hit_min_amplitude instead of
+    ```
+    if is_cmt_option(self.config['hit_min_amplitude']):
+        self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+            self.config['hit_min_amplitude'])
+    else: # int or array
+        self.hit_thresholds = self.config['hit_min_amplitude']
+    ```
+
+    '''
+
+    def __getattr__(self, name):
+        if name in self.config:
+            value = self.config[name]
+            if is_cmt_option(value):
+                return get_correction_from_cmt(self.run_id, value)
+            else:
+                return value
+        raise AttributeError(f"{self.__class__.__name__} object has no attribute or config {name}.")
 
 
 FIXED_TO_PE = {
@@ -178,3 +202,4 @@ FIXED_TO_PE = {
     'adc_mv': np.ones(straxen.n_mveto_pmts),
     'adc_nv': np.ones(straxen.n_nveto_pmts)
 }
+
