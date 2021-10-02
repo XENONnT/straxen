@@ -56,13 +56,10 @@ def mini_analysis(requires=tuple(),
                     holoviews.extension('bokeh')
                     _hv_bokeh_initialized = True
 
-            # TODO: This is a placeholder until the corrections system
-            # is more fully developed
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
-                kwargs['to_pe'] = straxen.get_to_pe(
+                kwargs['to_pe'] = straxen.get_correction_from_cmt(
                     run_id,
-                    context.config['gain_model'],
-                    context.config['n_tpc_pmts'])
+                    context.config['gain_model'])
 
             # Prepare selection arguments
             kwargs['time_range'] = context.to_absolute_time_range(
@@ -73,7 +70,7 @@ def mini_analysis(requires=tuple(),
             kwargs.setdefault('time_selection', default_time_selection)
             kwargs.setdefault('selection_str', None)
 
-            kwargs['t_reference'] = context.estimate_run_start(
+            kwargs['t_reference'], _ = context.estimate_run_start_and_end(
                 run_id, requires)
 
             if warn_beyond_sec is not None and not kwargs.get('ignore_time_warning'):
@@ -97,7 +94,7 @@ def mini_analysis(requires=tuple(),
                 for dkind, dtypes in deps_by_kind.items():
                     if dkind in kwargs:
                         # Already have data, just apply cuts
-                        kwargs[dkind] = context.apply_selection(
+                        kwargs[dkind] = strax.apply_selection(
                             kwargs[dkind],
                             selection_str=kwargs['selection_str'],
                             time_range=kwargs['time_range'],
@@ -112,7 +109,9 @@ def mini_analysis(requires=tuple(),
                             # Arguments for new context, if needed
                             config=kwargs.get('config'),
                             register=kwargs.get('register'),
-                            storage=kwargs.get('storage', tuple()))
+                            storage=kwargs.get('storage', tuple()),
+                            progress_bar=False,
+                        )
 
                 # If user did not give time kwargs, but the function expects
                 # a time_range, try to add one based on the time range of the data

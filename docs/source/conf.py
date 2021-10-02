@@ -18,15 +18,17 @@
 
 
 # -- Project information -----------------------------------------------------
-
+import straxen
+import sys
 project = 'straxen'
+# pylint: disable=redefined-builtin
 copyright = '2018, straxen contributors and the XENON collaboration'
 author = 'straxen contributors and the XENON collaboration'
 
 # The short X.Y version
-version = '0.0.1'
+version = straxen.__version__
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = straxen.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -46,7 +48,6 @@ extensions = [
 ]
 
 # ADDED MANUALLY
-import sys
 from unittest.mock import MagicMock
 
 class Mock(MagicMock):
@@ -193,4 +194,5 @@ def setup(app):
     import sys
     sys.path.append(os.path.dirname(os.path.realpath(__file__)))
     import build_datastructure_doc
-    build_datastructure_doc.build_datastructure_doc()
+    build_datastructure_doc.build_datastructure_doc(True)
+    build_datastructure_doc.build_datastructure_doc(False)

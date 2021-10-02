@@ -1,9 +1,41 @@
+from immutabledict import immutabledict
 import numba
 import numpy as np
 
 import strax
 import straxen
+
+from straxen.get_corrections import is_cmt_option
+
 export, __all__ = strax.exporter()
+__all__ += ['NO_PULSE_COUNTS']
+
+# These are also needed in peaklets, since hitfinding is repeated
+HITFINDER_OPTIONS = tuple([
+    strax.Option(
+    'hit_min_amplitude', track=True,
+    default=('hit_thresholds_tpc', 'ONLINE', True),
+    help='Minimum hit amplitude in ADC counts above baseline. '
+            'Specify as a tuple of length n_tpc_pmts, or a number,'
+            'or a string like "pmt_commissioning_initial" which means calling'
+            'hitfinder_thresholds.py'
+            'or a tuple like (correction=str, version=str, nT=boolean),'
+            'which means we are using cmt.'
+    )])
+
+HITFINDER_OPTIONS_he = tuple([
+    strax.Option(
+    'hit_min_amplitude_he',
+    default=('hit_thresholds_he', 'ONLINE', True), track=True,
+    help='Minimum hit amplitude in ADC counts above baseline. '
+            'Specify as a tuple of length n_tpc_pmts, or a number,'
+            'or a string like "pmt_commissioning_initial" which means calling'
+            'hitfinder_thresholds.py'
+            'or a tuple like (correction=str, version=str, nT=boolean),'
+            'which means we are using cmt.'
+    )])
+
+HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
 
 
 @export
@@ -39,6 +71,11 @@ export, __all__ = strax.exporter()
         'tail_veto_pass_extend',
         default=3,
         help="Extend pass veto by this many samples (tail_veto_resolution!)"),
+    strax.Option(
+        'max_veto_value',
+        default=None,
+        help="Optionally pass a HE peak that exceeds this absolute area. "
+             "(if performing a hard veto, can keep a few statistics.)"),
 
     # PMT pulse processing options
     strax.Option(
@@ -51,12 +88,6 @@ export, __all__ = strax.exporter()
         help='Save (left, right) samples besides hits; cut the rest'),
 
     strax.Option(
-        'hit_min_amplitude',
-        default=15,
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number.'),
-
-    strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
 
@@ -65,29 +96,45 @@ export, __all__ = strax.exporter()
         default=True, track=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
+    strax.Option(
+        'allow_sloppy_chunking',
+        default=False, track=False,
+        help=('Use a default baseline for incorrectly chunked fragments. '
+              'This is a kludge for improperly converted XENON1T data.')),
 
-)
+    *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
     1. Split raw_records into:
-     - tpc_records
+     - (tpc) records
      - aqmon_records
+     - pulse_counts
 
     For TPC records, apply basic processing:
-    1. Flip, baseline, and integrate the waveform
-    2. Apply software HE veto after high-energy peaks.
-    3. Find hits, apply linear filter, and zero outside hits.
+        1. Flip, baseline, and integrate the waveform
+        2. Apply software HE veto after high-energy peaks.
+        3. Find hits, apply linear filter, and zero outside hits.
+    
+    pulse_counts holds some average information for the individual PMT
+    channels for each chunk of raw_records. This includes e.g.
+    number of recorded pulses, lone_pulses (pulses which do not
+    overlap with any other pulse), or mean values of baseline and
+    baseline rms channel.
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.3'
 
     parallel = 'process'
-    rechunk_on_save = False
-    compressor = 'lz4'
+    rechunk_on_save = immutabledict(
+        records=False,
+        veto_regions=True,
+        pulse_counts=True)
+    compressor = 'zstd'
 
     depends_on = 'raw_records'
 
     provides = ('records', 'veto_regions', 'pulse_counts')
     data_kind = {k: k for k in provides}
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records
@@ -105,15 +152,25 @@ class PulseProcessing(strax.Plugin):
 
     def setup(self):
         self.hev_enabled = (
-            (self.config['hev_gain_model'][0] != 'disabled')
-            and self.config['tail_veto_threshold'])
+                (self.config['hev_gain_model'][0] != 'disabled')
+                and self.config['tail_veto_threshold'])
         if self.hev_enabled:
-            self.to_pe = straxen.get_to_pe(
-                self.run_id,
-                self.config['hev_gain_model'],
-                n_tpc_pmts=self.config['n_tpc_pmts'])
+            self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                           self.config['hev_gain_model'])
 
-    def compute(self, raw_records):
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude']
+        
+    def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
             check_overlaps(raw_records, n_channels=3000)
 
@@ -133,20 +190,25 @@ class PulseProcessing(strax.Plugin):
 
         strax.baseline(r,
                        baseline_samples=self.config['baseline_samples'],
+                       allow_sloppy_chunking=self.config['allow_sloppy_chunking'],
                        flip=True)
 
         strax.integrate(r)
 
         pulse_counts = count_pulses(r, self.config['n_tpc_pmts'])
+        pulse_counts['time'] = start
+        pulse_counts['endtime'] = end
 
         if len(r) and self.hev_enabled:
+
             r, r_vetoed, veto_regions = software_he_veto(
-                r, self.to_pe,
+                r, self.to_pe, end,
                 area_threshold=self.config['tail_veto_threshold'],
                 veto_length=self.config['tail_veto_duration'],
                 veto_res=self.config['tail_veto_resolution'],
+                pass_veto_extend=self.config['tail_veto_pass_extend'],
                 pass_veto_fraction=self.config['tail_veto_pass_fraction'],
-                pass_veto_extend=self.config['tail_veto_pass_extend'])
+                max_veto_value=self.config['max_veto_value'])
 
             # In the future, we'll probably want to sum the waveforms
             # inside the vetoed regions, so we can still save the "peaks".
@@ -158,9 +220,7 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(
-                r,
-                min_amplitude=self.config['hit_min_amplitude'])
+            hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
@@ -179,18 +239,67 @@ class PulseProcessing(strax.Plugin):
                     pulse_counts=pulse_counts,
                     veto_regions=veto_regions)
 
+    
+@export
+@strax.takes_config(
+    strax.Option('n_he_pmts', track=False, default=752,
+                 help="Maximum channel of the he channels"),
+    strax.Option('record_length', default=110, track=False, type=int,
+                 help="Number of samples per raw_record"),
+    *HITFINDER_OPTIONS_he)
+class PulseProcessingHighEnergy(PulseProcessing):
+    __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
+    __version__ = '0.0.1'
+    provides = ('records_he', 'pulse_counts_he')
+    data_kind = {k: k for k in provides}
+    rechunk_on_save = immutabledict(
+        records_he=False,
+        pulse_counts_he=True)
+    depends_on = 'raw_records_he'
+    compressor = 'zstd'
+    child_plugin = True
+    save_when = strax.SaveWhen.TARGET
+
+    def infer_dtype(self):
+        dtype = dict()
+        dtype['records_he'] = strax.record_dtype(self.config["record_length"])
+        dtype['pulse_counts_he'] = pulse_count_dtype(self.config['n_he_pmts'])
+        return dtype
+
+    def setup(self):
+        self.hev_enabled = False
+        self.config['n_tpc_pmts'] = self.config['n_he_pmts']
+        
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_he']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
+
+    def compute(self, raw_records_he, start, end):
+        result = super().compute(raw_records_he, start, end)
+        return dict(records_he=result['records'],
+                    pulse_counts_he=result['pulse_counts'])
 
 ##
 # Software HE Veto
 ##
 
+
 @export
-def software_he_veto(records, to_pe,
+def software_he_veto(records, to_pe, chunk_end,
                      area_threshold=int(1e5),
                      veto_length=int(3e6),
                      veto_res=int(1e3),
                      pass_veto_fraction=0.01,
-                     pass_veto_extend=3):
+                     pass_veto_extend=3,
+                     max_veto_value=None):
     """Veto veto_length (time in ns) after peaks larger than
     area_threshold (in PE).
 
@@ -203,6 +312,7 @@ def software_he_veto(records, to_pe,
 
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.
+    :param chunk_end: Endtime of chunk to set as maximum ceiling for the veto period
     :param area_threshold: Minimum peak area to trigger the veto.
     Note we use a much rougher clustering than in later processing.
     :param veto_length: Time in ns to veto after the peak
@@ -213,6 +323,8 @@ def software_he_veto(records, to_pe,
     trigger veto passing of further peaks
     :param pass_veto_extend: samples to extend (left and right) the pass veto
     regions.
+    :param max_veto_value: if not None, pass peaks that exceed this area
+    no matter what.
     """
     veto_res = int(veto_res)
     if veto_res > np.iinfo(np.int16).max:
@@ -236,11 +348,10 @@ def software_he_veto(records, to_pe,
     #  - Have a fixed maximum length (else we can't use the strax hitfinder on them)
     #  - Never extend beyond the current chunk
     #  - Do not overlap
-    # TODO: pass the chunk endtime! For now we just use the last record endtime
     veto_start = peaks['time']
     veto_end = np.clip(peaks['time'] + veto_length,
                        None,
-                       strax.endtime(records[-1]))
+                       chunk_end)
     veto_end[:-1] = np.clip(veto_end[:-1], None, veto_start[1:])
 
     # 2b. Convert these into strax record-like objects
@@ -268,9 +379,11 @@ def software_he_veto(records, to_pe,
     # For this we compute a rough sum waveform (at low resolution,
     # without looping over the pulse data)
     rough_sum(regions, records, to_pe, veto_n, veto_res)
-    regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
-
-    pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
+    if max_veto_value is not None:
+        pass_veto = strax.find_hits(regions, min_amplitude=max_veto_value)
+    else:
+        regions['data'] /= np.max(regions['data'], axis=1)[:, np.newaxis]
+        pass_veto = strax.find_hits(regions, min_amplitude=pass_veto_fraction)
 
     # 4. Extend these by a few samples and inverse to find veto regions
     regions['data'] = 1
@@ -286,8 +399,7 @@ def software_he_veto(records, to_pe,
 
     # 5. Apply the veto and return results
     veto_mask = strax.fully_contained_in(records, veto) == -1
-    return tuple(list(_mask_and_not(records, veto_mask)) + [veto])
-
+    return tuple(list(mask_and_not(records, veto_mask)) + [veto])
 
 @numba.njit(cache=True, nogil=True)
 def rough_sum(regions, records, to_pe, n, dt):
@@ -328,14 +440,13 @@ def rough_sum(regions, records, to_pe, n, dt):
 ##
 # Pulse counting
 ##
-
 @export
 def pulse_count_dtype(n_channels):
     # NB: don't use the dt/length interval dtype, integer types are too small
     # to contain these huge chunk-wide intervals
     return [
-        (('Lowest start time observed in the chunk', 'time'), np.int64),
-        (('Highest endt ime observed in the chunk', 'endtime'), np.int64),
+        (('Start time of the chunk', 'time'), np.int64),
+        (('End time of the chunk', 'endtime'), np.int64),
         (('Number of pulses', 'pulse_count'),
          (np.int64, n_channels)),
         (('Number of lone pulses', 'lone_pulse_count'),
@@ -344,6 +455,10 @@ def pulse_count_dtype(n_channels):
          (np.int64, n_channels)),
         (('Integral of lone pulses in ADC_count x samples', 'lone_pulse_area'),
          (np.int64, n_channels)),
+        (('Average baseline', 'baseline_mean'),
+         (np.int16, n_channels)),
+        (('Average baseline rms', 'baseline_rms_mean'),
+         (np.float32, n_channels)),
     ]
 
 
@@ -356,6 +471,7 @@ def count_pulses(records, n_channels):
     return np.zeros(0, dtype=pulse_count_dtype(n_channels))
 
 
+NO_PULSE_COUNTS = -9999  # Special value required by average_baseline in case counts = 0
 @numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
@@ -369,20 +485,23 @@ def _count_pulses(records, n_channels, result):
     # Array of booleans to track whether we are currently in a lone pulse
     # in each channel
     in_lone_pulse = np.zeros(n_channels, dtype=np.bool_)
-
+    baseline_buffer = np.zeros(n_channels, dtype=np.float64)
+    baseline_rms_buffer = np.zeros(n_channels, dtype=np.float64)
     for r_i, r in enumerate(records):
         if r_i != len(records) - 1:
             next_start = records[r_i + 1]['time']
 
         ch = r['channel']
         if ch >= n_channels:
-            print(ch)
+            print('Channel:', ch)
             raise RuntimeError("Out of bounds channel in get_counts!")
 
         area[ch] += r['area']  # <-- Summing total area in channel
 
         if r['record_i'] == 0:
             count[ch] += 1
+            baseline_buffer[ch] += r['baseline']
+            baseline_rms_buffer[ch] += r['baseline_rms'] 
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] * r['dt'] < next_start):
@@ -405,16 +524,18 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
-    res['time'] = records[0]['time']
-    res['endtime'] = last_end_seen
+    means = (baseline_buffer/count)
+    means[np.isnan(means)] = NO_PULSE_COUNTS
+    res['baseline_mean'][:] = means[:]
+    res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
 
 
 ##
 # Misc
 ##
-
+@export
 @numba.njit(cache=True, nogil=True)
-def _mask_and_not(x, mask):
+def mask_and_not(x, mask):
     return x[mask], x[~mask]
 
 
@@ -422,7 +543,7 @@ def _mask_and_not(x, mask):
 @numba.njit(cache=True, nogil=True)
 def channel_split(rr, first_other_ch):
     """Return """
-    return _mask_and_not(rr, rr['channel'] < first_other_ch)
+    return mask_and_not(rr, rr['channel'] < first_other_ch)
 
 
 @export

@@ -1,23 +1,34 @@
 import json
 import os
-from packaging.version import parse as parse_version
 import tempfile
-
 import numpy as np
 import numba
+from enum import IntEnum
 
 import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
+from .pulse_processing import HE_PREAMBLE
 
 
 @export
 @strax.takes_config(
-    strax.Option('n_top_pmts', default=127,
-                 help="Number of top PMTs"))
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
+                 help="Number of top PMTs"),
+    strax.Option('check_peak_sum_area_rtol', default=None, track=False,
+                 help="Check if the sum area and the sum of area per "
+                      "channel are the same. If None, don't do the "
+                      "check. To perform the check, set to the desired "
+                      " rtol value used e.g. '1e-4' (see np.isclose)."),
+)
 class PeakBasics(strax.Plugin):
-    __version__ = "0.0.5"
+    """
+    Compute the basic peak-properties, thereby dropping structured
+    arrays.
+    NB: This plugin can therefore be loaded as a pandas DataFrame.
+    """
+    __version__ = "0.0.9"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -35,12 +46,13 @@ class PeakBasics(strax.Plugin):
         (('PMT number which contributes the most PE',
             'max_pmt'), np.int16),
         (('Area of signal in the largest-contributing PMT (PE)',
-            'max_pmt_area'), np.int32),
+            'max_pmt_area'), np.float32),
         (('Width (in ns) of the central 50% area of the peak',
             'range_50p_area'), np.float32),
         (('Width (in ns) of the central 90% area of the peak',
             'range_90p_area'), np.float32),
-        (('Fraction of area seen by the top array',
+        (('Fraction of area seen by the top array '
+          '(NaN for peaks with non-positive area)',
             'area_fraction_top'), np.float32),
         (('Length of the peak waveform in samples',
           'length'), np.int32),
@@ -67,14 +79,21 @@ class PeakBasics(strax.Plugin):
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
 
-        r['center_time'] = p['time'] + self.compute_center_times(peaks)
-
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
-        # Negative-area peaks get 0 AFT - TODO why not NaN?
+        # Recalculate to prevent numerical inaccuracy #442
+        area_total = p['area_per_channel'].sum(axis=1)
+        # Negative-area peaks get NaN AFT
         m = p['area'] > 0
-        r['area_fraction_top'][m] = area_top[m]/p['area'][m]
-        r['rise_time'] = -p['area_decile_from_midpoint'][:,1]
+        r['area_fraction_top'][m] = area_top[m]/area_total[m]
+        r['area_fraction_top'][~m] = float('nan')
+        r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
+
+        if self.config['check_peak_sum_area_rtol'] is not None:
+            self.check_area(area_total, p, self.config['check_peak_sum_area_rtol'])
+        # Negative or zero-area peaks have centertime at startime
+        r['center_time'] = p['time']
+        r['center_time'][m] += self.compute_center_times(peaks[m])
         return r
 
     @staticmethod
@@ -88,6 +107,54 @@ class PeakBasics(strax.Plugin):
             result[p_i] = t / p['area']
         return result
 
+    @staticmethod
+    def check_area(area_per_channel_sum, peaks, rtol) -> None:
+        """
+        Check if the area of the sum-wf is the same as the total area
+            (if the area of the peak is positively defined).
+
+        :param area_per_channel_sum: the summation of the
+            peaks['area_per_channel'] which will be checked against the
+             values of peaks['area'].
+        :param peaks: array of peaks.
+        :param rtol: relative tolerance for difference between
+            area_per_channel_sum and peaks['area']. See np.isclose.
+        :raises: ValueError if the peak area and the area-per-channel
+            sum are not sufficiently close
+        """
+        positive_area = peaks['area'] > 0
+        if not np.sum(positive_area):
+            return
+
+        is_close = np.isclose(area_per_channel_sum[positive_area],
+                              peaks[positive_area]['area'],
+                              rtol=rtol,
+                             )
+
+        if not is_close.all():
+            for peak in peaks[positive_area][~is_close]:
+                print('bad area')
+                strax.print_record(peak)
+
+            p_i = np.where(~is_close)[0][0]
+            peak = peaks[positive_area][p_i]
+            area_fraction_off = 1 - area_per_channel_sum[positive_area][p_i] / peak['area']
+            message = (f'Area not calculated correctly, it\'s '
+                       f'{100*area_fraction_off} % off, time: {peak["time"]}')
+            raise ValueError(message)
+
+
+@export
+class PeakBasicsHighEnergy(PeakBasics):
+    __doc__ = HE_PREAMBLE + PeakBasics.__doc__
+    __version__ = '0.0.2'
+    depends_on = 'peaks_he'
+    provides = 'peak_basics_he'
+    child_ends_with = '_he'
+
+    def compute(self, peaks_he):
+        return super().compute(peaks_he)
+
 
 @export
 @strax.takes_config(
@@ -96,7 +163,7 @@ class PeakBasics(strax.Plugin):
         help='Path to JSON of neural net architecture',
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr0.json')),
-            (first_sr1_run, straxen.aux_repo + 'master/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json')]),   # noqa
+            (first_sr1_run, straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json')]),   # noqa
     strax.Option(
         'nn_weights',
         help='Path to HDF5 of neural net weights',
@@ -106,18 +173,19 @@ class PeakBasics(strax.Plugin):
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
                  default=10),
-    strax.Option('n_top_pmts', default=127,
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs")
 )
-class PeakPositions(strax.Plugin):
+class PeakPositions1T(strax.Plugin):
+    """Compute the S2 (x,y)-position based on a neural net."""
     dtype = [('x', np.float32,
               'Reconstructed S2 X position (cm), uncorrected'),
              ('y', np.float32,
               'Reconstructed S2 Y position (cm), uncorrected')
              ] + strax.time_fields
     depends_on = ('peaks',)
+    provides = "peak_positions"
 
-    # TODO
     # Parallelization doesn't seem to make it go faster
     # Is there much pure-python stuff in tensorflow?
     # Process-level paralellization might work, but you'd have to do setup
@@ -125,16 +193,11 @@ class PeakPositions(strax.Plugin):
     # except for huge chunks
     parallel = False
 
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     def setup(self):
         import tensorflow as tf
-        self.has_tf2 = parse_version(tf.__version__) > parse_version('2.0.a')
-        if self.has_tf2:
-            keras = tf.keras
-        else:
-            import keras
-
+        keras = tf.keras
         nn_conf = get_resource(self.config['nn_architecture'], fmt='json')
         # badPMTList was inserted by a very clever person into the keras json
         # file. Let's delete it to prevent future keras versions from crashing.
@@ -149,7 +212,7 @@ class PeakPositions(strax.Plugin):
                                  bad_pmts)
 
         # Keras needs a file to load its weights. We can't put the load
-        # inside the context, then it would break on windows
+        # inside the context, then it would break on Windows,
         # because there temporary files cannot be opened again.
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(get_resource(self.config['nn_weights'],
@@ -159,47 +222,33 @@ class PeakPositions(strax.Plugin):
         os.remove(fname)
         self.nn = nn
 
-        if not self.has_tf2:
-            # Workaround for using keras/tensorflow in a threaded environment.
-            # See: https://github.com/keras-team/keras/issues/
-            # 5640#issuecomment-345613052
-            self.nn._make_predict_function()
-            self.graph = tf.get_default_graph()
-
     def compute(self, peaks):
+        result = np.ones(len(peaks), dtype=self.dtype)
+        result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
+        result['x'] *= float('nan')
+        result['y'] *= float('nan')
+
         # Keep large peaks only
         peak_mask = peaks['area'] > self.config['min_reconstruction_area']
-        x = peaks['area_per_channel'][peak_mask, :]
-
-        if len(x) == 0:
+        if not np.sum(peak_mask):
             # Nothing to do, and .predict crashes on empty arrays
-            return dict(x=np.zeros(0, dtype=np.float32),
-                        y=np.zeros(0, dtype=np.float32))
+            return result
 
-        # Keep good top PMTS
-        x = x[:, :self.config['n_top_pmts']][:, self.pmt_mask]
-
-        # Normalize
+        # Input: normalized hitpatterns in good top PMTs
+        _in = peaks['area_per_channel'][peak_mask, :]
+        _in = _in[:, :self.config['n_top_pmts']][:, self.pmt_mask]
         with np.errstate(divide='ignore', invalid='ignore'):
-            x /= x.sum(axis=1).reshape(-1, 1)
+            _in /= _in.sum(axis=1).reshape(-1, 1)
 
-        result = np.ones((len(peaks), 2), dtype=np.float32) * float('nan')
+        # Output: positions in mm (unfortunately), so convert to cm
+        _out = self.nn.predict(_in) / 10
 
-        if self.has_tf2:
-            y = self.nn.predict(x)
-        else:
-            with self.graph.as_default():
-                y = self.nn.predict(x)
-
-        result[peak_mask, :] = y
-
-        # Convert from mm to cm... why why why
-        result /= 10
-
-        return dict(x=result[:, 0],
-                    y=result[:, 1],
-                    time=peaks['time'],
-                    endtime=strax.endtime(peaks))
+        # Set output in valid rows. Do NOT try result[peak_mask]['x']
+        # unless you want all NaN positions (boolean masks make a copy unless
+        # they are used as the last index)
+        result['x'][peak_mask] = _out[:, 0]
+        result['y'][peak_mask] = _out[:, 1]
+        return result
 
 
 @export
@@ -214,6 +263,10 @@ class PeakPositions(strax.Plugin):
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
+    """
+    Look for peaks around a peak to determine how many peaks are in
+    proximity (in time) of a peak.
+    """
     depends_on = ('peak_basics',)
     dtype = [
         ('n_competing', np.int32,
@@ -272,3 +325,154 @@ class PeakProximity(strax.OverlapWindowPlugin):
             n_tot[i] = n_left[i] + np.sum(areas[i + 1:right_i] > threshold)
 
         return n_left, n_tot
+
+
+@export
+class VetoPeakTags(IntEnum):
+    """Identifies by which detector peak was tagged.
+    """
+    # Peaks are not inside any veto interval
+    NO_VETO = 0
+    # Peaks are inside a veto interval issued by:
+    NEUTRON_VETO = 1
+    MUON_VETO = 2
+    BOTH = 3
+
+
+@export
+class PeakVetoTagging(strax.Plugin):
+    """
+    Plugin which tags S1 peaks according to  muon and neutron-vetos.
+    Tagging S2s is does not make sense as they occur with a delay.
+    However, we compute for both S1/S2 the time delay to the closest veto
+    region.
+
+        * untagged: 0
+        * neutron-veto: 1
+        * muon-veto: 2
+        * both vetos: 3
+    """
+    __version__ = '0.0.1'
+    depends_on = ('peak_basics', 'veto_regions_nv', 'veto_regions_mv')
+    provides = ('peak_veto_tags')
+    save_when = strax.SaveWhen.TARGET
+
+    dtype = strax.time_fields + [
+        ('veto_tag', np.int8,
+         'Veto tag for S1 peaks. unatagged: 0, nveto: 1, mveto: 2, both: 3'),
+        ('time_to_closest_veto', np.int64, 'Time to closest veto interval boundary in ns (can be '
+                                           'negative if closest boundary comes before peak.). ')
+    ]
+
+    def get_time_difference(self, peaks, veto_regions_nv, veto_regions_mv):
+        """
+        Computes time differences to closest nv/mv veto signal.
+
+        It might be that neutron-veto and muon-veto signals overlap
+        Hence we compute first the individual time differences to the
+        corresponding vetos and keep afterwards the smallest ones.
+        """
+        dt_nv = get_time_to_closest_veto(peaks, veto_regions_nv)
+        dt_mv = get_time_to_closest_veto(peaks, veto_regions_mv)
+
+        dts = np.transpose([dt_nv, dt_mv])
+        ind_axis1 = np.argmin(np.abs(dts), axis=1)
+        return self._get_smallest_value(dts, ind_axis1)
+
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def _get_smallest_value(time_differences, index):
+        res = np.zeros(len(time_differences), np.int64)
+        for res_ind, (ind, dt) in enumerate(zip(index, time_differences)):
+            res[res_ind] = dt[ind]
+        return res
+
+    def compute(self, peaks, veto_regions_nv, veto_regions_mv):
+        touching_mv = strax.touching_windows(peaks, veto_regions_mv)
+        touching_nv = strax.touching_windows(peaks, veto_regions_nv)
+
+        tags = np.zeros(len(peaks))
+        tags = tag_peaks(tags, touching_nv, straxen.VetoPeakTags.NEUTRON_VETO)
+        tags = tag_peaks(tags, touching_mv, straxen.VetoPeakTags.MUON_VETO)
+
+        dt = self.get_time_difference(peaks, veto_regions_nv, veto_regions_mv)
+        return {'time': peaks['time'],
+                'endtime': strax.endtime(peaks),
+                'veto_tag': tags,
+                'time_to_closest_veto': dt,
+                }
+
+
+@numba.njit(cache=True, nogil=True)
+def tag_peaks(tags, touching_windows, tag_number):
+    """Tags every peak which are within the corresponding touching window
+    with the defined tag number.
+
+    :param tags: numpy.array in which the tags should be stored. Should
+        be of length peaks.
+    :param touching_windows: Start/End index of tags to be set to tag
+        value.
+    :param tag_number: integer representing the tag.
+    :return: Updated tags.
+    """
+    pre_tags = np.zeros(len(tags), dtype=np.int8)
+    for start, end in touching_windows:
+        pre_tags[start:end] = tag_number
+    tags += pre_tags
+    return tags
+
+
+def get_time_to_closest_veto(peaks, veto_intervals):
+    """Computes time difference between peak and closest veto interval.
+
+    The time difference is always computed from peaks-time field to
+    the time or endtime of the veto_interval depending on which distance
+    is smaller.
+    """
+    vetos = np.zeros(len(veto_intervals)+2, strax.time_fields)
+    vetos[1:-1]['time'] = veto_intervals['time']
+    vetos[1:-1]['endtime'] = strax.endtime(veto_intervals)
+    vetos[-1]['time'] = straxen.INFINITY_64BIT_SIGNED
+    vetos[-1]['endtime'] = straxen.INFINITY_64BIT_SIGNED
+    vetos[0]['time'] = -straxen.INFINITY_64BIT_SIGNED
+    vetos[0]['endtime'] = -straxen.INFINITY_64BIT_SIGNED
+    return _get_time_to_closest_veto(peaks, vetos)
+
+
+@numba.njit(cache=True, nogil=True)
+def _get_time_to_closest_veto(peaks, vetos):
+    res = np.zeros(len(peaks), dtype=np.int64)
+    veto_index = 0
+    for ind, p in enumerate(peaks):
+        for veto_index in range(veto_index, len(vetos)):
+            if veto_index+1 == len(vetos):
+                # If we reach here all future peaks are closest to last veto:
+                res[ind] = np.abs(vetos[-1]['time'] - p['time'])
+                break
+
+            # Current interval can be before or after current peak, hence
+            # we have to check which distance is smaller.
+            dt_current_veto = min(np.abs(vetos[veto_index]['time'] - p['time']),
+                                  np.abs(vetos[veto_index]['endtime'] - p['time'])
+                                  )
+            # Next interval is always further in the future as the
+            # current one, hence we only have to compute distance with "time".
+            dt_next_veto = np.abs(vetos[veto_index+1]['time'] - p['time'])
+
+            # Next veto is closer so we have to repeat in case next + 1
+            # is even closer.
+            if dt_current_veto >= dt_next_veto:
+                veto_index += 1
+                continue
+
+            # Now compute time difference for real:
+            dt_time = vetos[veto_index]['time'] - p['time']
+            dt_endtime = vetos[veto_index]['endtime'] - p['time']
+
+            if np.abs(dt_time) < np.abs(dt_endtime):
+                res[ind] = dt_time
+            else:
+                res[ind] = dt_endtime
+            break
+
+    return res
