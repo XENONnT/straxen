@@ -42,39 +42,34 @@ class EventShadow(strax.Plugin):
         n_seconds = self.config['time_window_backward']
         roi['time'] = events['time'] - n_seconds
         roi['endtime'] = events['time']
-        split_try = strax.split_touching_windows(peaks, roi)
+        #set interested S2
+        mask_s2 = peaks['type']==2
+        mask_pre_s2 = (peaks['area'] > self.config['pre_s2_area_threshold'])    
+        split_test = strax.split_touching_windows(peaks[mask_s2&mask_pre_s2], roi)
+    
         #define the variables we want to calculate
-        pre_s2_area = np.zeros(len(events))
-        shadow_dt = np.zeros(len(events))     
-        pre_s2_x = np.zeros(len(events))
-        pre_s2_y = np.zeros(len(events))
-        shadow = np.zeros(len(events)) 
-        shadow_distance = np.zeros(len(events))   
+        res = np.zeros(len(events), self.dtype)  
         
         #loop over interested peaks for each event
         
-        #this part should be speed up
-        for event_i, event_a in enumerate(events):
-            for peak_i, peak_a in enumerate(split_try[event_i]):
-                new_shadow = 0
-                if  (peak_a['area']>self.config['pre_s2_area_threshold'])&(peak_a['type']==2):
-                    new_shadow = peak_a['area']/(event_a['time']-peak_a['center_time'])
+        compute_shadow(events, split_peaks, res)
+         
+        res['shadow_distance'] = ((pre_s2_x - events['s2_x'])**2+(pre_s2_y - events['s2_y'])**2)**0.5
+        res['time'] = events['time']
+        res['endtime'] = strax.endtime(events)
 
-                if new_shadow > shadow[event_i]:
-                    pre_s2_area[event_i] = peak_a['area']
-                    shadow_dt[event_i] = event_a['time']-peak_a['center_time']
-                    pre_s2_x[event_i] = peak_a['x']
-                    pre_s2_y[event_i] = peak_a['y']
-                    shadow[event_i] = new_shadow
-                    
-        shadow_distance = ((pre_s2_x - events['s2_x'])**2+(pre_s2_y - events['s2_y'])**2)**0.5
-
-        return dict(time=events['time'],
-            endtime=strax.endtime(events),
-                    shadow = shadow,
-                    pre_s2_area = pre_s2_area,
-                    shadow_dt = shadow_dt,
-                    pre_s2_x = pre_s2_x,
-                    pre_s2_y = pre_s2_y,
-                    shadow_distance = shadow_distance)
+        return res
     
+
+@numba.njit(cache=True)
+def compute_shadow(events, split_peaks, res):
+    for event_i, event_a in enumerate(events):
+        for peak_i, peak_a in enumerate(split_peaks[event_i]):
+            new_shadow = 0
+            new_shadow = peak_a['area']/(event_a['time']-peak_a['center_time'])
+            if new_shadow > res['shadow'][event_i]:
+                res['pre_s2_area'][event_i] = peak_a['area']
+                res['shadow_dt'][event_i] = event_a['time']-peak_a['center_time']
+                res['pre_s2_x'][event_i] = peak_a['x']
+                res['pre_s2_y'][event_i] = peak_a['y']
+                res['shadow'][event_i] = new_shadow     
