@@ -1,8 +1,6 @@
 import numpy as np
-import pandas as pd
 import strax
-import straxen
-import warnings
+import numba
 export, __all__ = strax.exporter()
 
 @export
@@ -44,17 +42,14 @@ class EventShadow(strax.Plugin):
         roi['endtime'] = events['time']
         #set interested S2
         mask_s2 = peaks['type']==2
-        mask_pre_s2 = (peaks['area'] > self.config['pre_s2_area_threshold'])    
-        split_test = strax.split_touching_windows(peaks[mask_s2&mask_pre_s2], roi)
+        mask_pre_s2 = peaks['area'] > self.config['pre_s2_area_threshold']   
+        split_peaks = strax.split_touching_windows(peaks[mask_s2 & mask_pre_s2], roi)
     
         #define the variables we want to calculate
-        res = np.zeros(len(events), self.dtype)  
-        
-        #loop over interested peaks for each event
-        
+        res = np.zeros(len(events), self.dtype)       
+        #calculate all the variables
         compute_shadow(events, split_peaks, res)
-         
-        res['shadow_distance'] = ((pre_s2_x - events['s2_x'])**2+(pre_s2_y - events['s2_y'])**2)**0.5
+        res['shadow_distance'] = ((res['pre_s2_x'] - events['s2_x'])**2+(res['pre_s2_y'] - events['s2_y'])**2)**0.5
         res['time'] = events['time']
         res['endtime'] = strax.endtime(events)
 
@@ -64,8 +59,8 @@ class EventShadow(strax.Plugin):
 @numba.njit(cache=True)
 def compute_shadow(events, split_peaks, res):
     for event_i, event_a in enumerate(events):
+        new_shadow = 0
         for peak_i, peak_a in enumerate(split_peaks[event_i]):
-            new_shadow = 0
             new_shadow = peak_a['area']/(event_a['time']-peak_a['center_time'])
             if new_shadow > res['shadow'][event_i]:
                 res['pre_s2_area'][event_i] = peak_a['area']
