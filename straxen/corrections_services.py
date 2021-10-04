@@ -14,10 +14,10 @@ from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
 
-corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
-                      's2_xy_map', 's1_xyz_map_mlp', 's1_xyz_map_cnn',
-                      's1_xyz_map_gcn', 'fdc_map_mlp', 'fdc_map_gcn',
-                      'fdc_map_cnn']
+corrections_w_file = ['mlp_model', 'cnn_model', 'gcn_model',
+                      's2_xy_map_mlp', 's2_xy_map_cnn', 's2_xy_map_gcn',
+                      's1_xyz_map_mlp', 's1_xyz_map_cnn', 's1_xyz_map_gcn',
+                      'fdc_map_mlp', 'fdc_map_cnn', 'fdc_map_gcn']
 
 single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
                             'electron_drift_velocity', 'electron_drift_time_gate']
@@ -27,7 +27,7 @@ arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
 
 # needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
 # important for apply_cmt_version
-posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map']
+posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_map']
 
 
 class CMTVersionError(Exception):

@@ -599,7 +599,7 @@ def get_veto_tags(events, split_tags, result):
             (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
     strax.Option(
         's2_xy_correction_map_top',
-        help="S2top (x, y) correction map. Correct S2 position dependence "
+        help="S2 (x, y) correction map for the top PMT array. Correct S2 position dependence "
              "manly due to bending of anode/gate-grid, PMT quantum efficiency "
              "and extraction field distribution, as well as other geometric factors.",
         default_by_run=[
@@ -607,28 +607,28 @@ def get_veto_tags(events, split_tags, result):
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
     strax.Option(
         's2_xy_correction_map_bottom',
-        help="S2bottom (x, y) correction map. Correct S2 position dependence "
+        help="S2 (x, y) correction map for the bottom PMT array. Correct S2 position dependence "
              "manly due to bending of anode/gate-grid, PMT quantum efficiency "
              "and extraction field distribution, as well as other geometric factors.",
         default_by_run=[
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
     strax.Option(
-        's2_xy_correction_map_total',
-        help="S2total (x, y) correction map. Correct S2 position dependence "
+        's2_xy_correction_map',
+        help="S2 (x, y) correction map. Correct S2 position dependence "
              "manly due to bending of anode/gate-grid, PMT quantum efficiency "
              "and extraction field distribution, as well as other geometric factors.",
         default_by_run=[
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
-   strax.Option(
+    strax.Option(
         'elife_conf',
         default=("elife", "ONLINE", True),
         help='Electron lifetime '
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife" or "elife_constant" '
              'and model_config can be a version.'
-   ),
+    ),
     *DEFAULT_POSREC_ALGO_OPTION
 )
 class CorrectedAreas(strax.Plugin):
@@ -654,8 +654,14 @@ class CorrectedAreas(strax.Plugin):
     depends_on = ['event_basics', 'event_positions']
     dtype = [('cs1', np.float32, 'Corrected S1 area [PE]'),
              ('cs2', np.float32, 'Corrected S2 area [PE]'),
+             ('cs2_top', np.float32, 'Corrected S2 area in the top PMT array [PE]'),
+             ('cs2_bottom', np.float32, 'Corrected S2 area in the bottom PMT array [PE]'),
              ('alt_cs1', np.float32, 'Corrected area of the alternate S1 [PE]'),
-             ('alt_cs2', np.float32, 'Corrected area of the alternate S2 [PE]')
+             ('alt_cs2', np.float32, 'Corrected area of the alternate S2 [PE]'),
+             ('alt_cs2_top', np.float32, 'Corrected area of the alternate S2 in the top PMT array [PE]'),
+             ('alt_cs2_bottom', np.float32, 'Corrected area of the alternate S2 in the bottom PMT array [PE]'),
+             ('cs2_area_fraction_top', np.float, 'Main cS2 fraction of area seen by the top PMT array'),
+             ('alt_cs2_area_fraction_top', np.float, 'Alternate cS2 fraction of area seen by the top PMT array'),
              ] + strax.time_fields
 
     def setup(self):
@@ -663,12 +669,12 @@ class CorrectedAreas(strax.Plugin):
 
         if isinstance(self.config['s1_xyz_correction_map'], str):
             self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
+        if isinstance(self.config['s2_xy_correction_map_total'], str):
+            self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
         if isinstance(self.config['s2_xy_correction_map_top'], str):
             self.config['s2_xy_correction_map_top'] = [self.config['s2_xy_correction_map_top']]
         if isinstance(self.config['s2_xy_correction_map_bottom'], str):
             self.config['s2_xy_correction_map_bottom'] = [self.config['s2_xy_correction_map_bottom']]
-        if isinstance(self.config['s2_xy_correction_map_total'], str):
-            self.config['s2_xy_correction_map_total'] = [self.config['s2_xy_correction_map_total']]
 
         self.s1_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
@@ -676,18 +682,23 @@ class CorrectedAreas(strax.Plugin):
                                     self.config['default_reconstruction_algorithm'],
                                     *self.config['s1_xyz_correction_map']]),
                              fmt='text'))
-
-        self.s2top_map = InterpolatingMap(
+        self.s2_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
-                             tuple([*self.config['s2_xy_correction_map_top']]),
+                             tuple(['suffix',
+                                    self.config['default_reconstruction_algorithm'],
+                                    *self.config['s2_xy_correction_map']]),
                              fmt='text'))
-        self.s2bot_map = InterpolatingMap(
+        self.s2_map_top = InterpolatingMap(
             get_cmt_resource(self.run_id,
-                             tuple([*self.config['s2_xy_correction_map_bottom']]),
+                             tuple(['suffix',
+                                    self.config['default_reconstruction_algorithm'],
+                                    *self.config['s2_xy_correction_map_top']]),
                              fmt='text'))
-        self.s2tot_map = InterpolatingMap(
+        self.s2_map_bottom = InterpolatingMap(
             get_cmt_resource(self.run_id,
-                             tuple([*self.config['s2_xy_correction_map_total']]),
+                             tuple(['suffix',
+                                    self.config['default_reconstruction_algorithm'],
+                                    *self.config['s2_xy_correction_map_bottom']]),
                              fmt='text'))
 
     def compute(self, events):
@@ -706,21 +717,19 @@ class CorrectedAreas(strax.Plugin):
         # S2(x,y) corrections use the observed S2 positions
         s2_positions = np.vstack([events['s2_x'], events['s2_y']]).T
         alt_s2_positions = np.vstack([events['alt_s2_x'], events['alt_s2_y']]).T
-        
-        cs2top=(events['s2_area'] * events['s2_area_fraction_top'] * lifetime_corr
-             / self.s2top_map(s2_positions)),
-        alt_cs2top=(events['alt_s2_area']* events['alt_s2_area_fraction_top'] * alt_lifetime_corr
-                 / self.s2top_map(alt_s2_positions)),
 
-        cs2bot=(events['s2_area'] * (1-events['s2_area_fraction_top']) * lifetime_corr
-             / self.s2bot_map(s2_positions)),
-        alt_cs2bot=(events['alt_s2_area'] * (1-events['s2_area_fraction_top']) * alt_lifetime_corr
-                 / self.s2bot_map(alt_s2_positions)),
+        cs2 = events['s2_area'] * lifetime_corr / self.s2_map(s2_positions)
+        alt_cs2 = events['alt_s2_area'] * alt_lifetime_corr / self.s2_map(alt_s2_positions)
 
-        cs2tot=(events['s2_area'] * lifetime_corr
-             / self.s2tot_map(s2_positions)),
-        alt_cs2tot=(events['alt_s2_area'] * alt_lifetime_corr
-                 / self.s2tot_map(alt_s2_positions)),
+        cs2_bottom = (events['s2_area'] * (1 - events['s2_area_fraction_top']) * lifetime_corr
+                      / self.s2_map_bottom(s2_positions))
+        alt_cs2_bottom = (events['alt_s2_area'] * (1 - events['s2_area_fraction_top']) * alt_lifetime_corr
+                          / self.s2_map_bottom(alt_s2_positions))
+
+        cs2_top = (events['s2_area'] * events['s2_area_fraction_top'] * lifetime_corr
+                   / self.s2_map_top(s2_positions))
+        alt_cs2_top = (events['alt_s2_area'] * events['alt_s2_area_fraction_top'] * alt_lifetime_corr
+                       / self.s2_map_top(alt_s2_positions))
 
         return dict(
             time=events['time'],
@@ -729,17 +738,17 @@ class CorrectedAreas(strax.Plugin):
             cs1=events['s1_area'] / self.s1_map(event_positions),
             alt_cs1=events['alt_s1_area'] / self.s1_map(event_positions),
 
-            cs2top = cs2top,
-            alt_cs2top = alt_cs2top,
-            
-            cs2bot = cs2bot,
-            alt_cs2bot = alt_cs2bot,
-            
-            cs2tot = cs2tot,
-            alt_cs2tot = alt_cs2tot,
-            
-            cs2_area_fraction_top = cs2top/cs2tot,
-            alt_cs2_area_fraction_top = alt_cs2top/alt_cs2tot
+            cs2=cs2,
+            alt_cs2tot=alt_cs2,
+
+            cs2_bottom=cs2_bottom,
+            alt_cs2_bottom=alt_cs2_bottom,
+
+            cs2_top=cs2_top,
+            alt_cs2top=cs2_bottom,
+
+            cs2_area_fraction_top=cs2_top / cs2,
+            alt_cs2_area_fraction_top=alt_cs2_top / alt_cs2,
         )
 
 
