@@ -598,8 +598,24 @@ def get_veto_tags(events, split_tags, result):
             (0, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json')),  # noqa
             (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
     strax.Option(
-        's2_xy_correction_map',
-        help="S2 (x, y) correction map. Correct S2 position dependence "
+        's2_xy_correction_map_top',
+        help="S2top (x, y) correction map. Correct S2 position dependence "
+             "manly due to bending of anode/gate-grid, PMT quantum efficiency "
+             "and extraction field distribution, as well as other geometric factors.",
+        default_by_run=[
+            (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
+            (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
+    strax.Option(
+        's2_xy_correction_map_bottom',
+        help="S2bottom (x, y) correction map. Correct S2 position dependence "
+             "manly due to bending of anode/gate-grid, PMT quantum efficiency "
+             "and extraction field distribution, as well as other geometric factors.",
+        default_by_run=[
+            (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
+            (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
+    strax.Option(
+        's2_xy_correction_map_total',
+        help="S2total (x, y) correction map. Correct S2 position dependence "
              "manly due to bending of anode/gate-grid, PMT quantum efficiency "
              "and extraction field distribution, as well as other geometric factors.",
         default_by_run=[
@@ -626,8 +642,14 @@ class CorrectedAreas(strax.Plugin):
     Note:
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
+        
+        There are now 3 components of cS2s: cS2top, cS2bot and cS2tot, 
+        all computed with respect to corresponding S2 components. Therefore
+        cS2tot and cS2top+cS2bot are slightly different. 
+        
+    Also the cS2aft is calculated by cS2top/cS2tot for now. 
     """
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     depends_on = ['event_basics', 'event_positions']
     dtype = [('cs1', np.float32, 'Corrected S1 area [PE]'),
@@ -641,8 +663,12 @@ class CorrectedAreas(strax.Plugin):
 
         if isinstance(self.config['s1_xyz_correction_map'], str):
             self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
-        if isinstance(self.config['s2_xy_correction_map'], str):
-            self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
+        if isinstance(self.config['s2_xy_correction_map_top'], str):
+            self.config['s2_xy_correction_map_top'] = [self.config['s2_xy_correction_map_top']]
+        if isinstance(self.config['s2_xy_correction_map_bottom'], str):
+            self.config['s2_xy_correction_map_bottom'] = [self.config['s2_xy_correction_map_bottom']]
+        if isinstance(self.config['s2_xy_correction_map_total'], str):
+            self.config['s2_xy_correction_map_total'] = [self.config['s2_xy_correction_map_total']]
 
         self.s1_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
@@ -651,9 +677,17 @@ class CorrectedAreas(strax.Plugin):
                                     *self.config['s1_xyz_correction_map']]),
                              fmt='text'))
 
-        self.s2_map = InterpolatingMap(
+        self.s2top_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
-                             tuple([*self.config['s2_xy_correction_map']]),
+                             tuple([*self.config['s2_xy_correction_map_top']]),
+                             fmt='text'))
+        self.s2bot_map = InterpolatingMap(
+            get_cmt_resource(self.run_id,
+                             tuple([*self.config['s2_xy_correction_map_bottom']]),
+                             fmt='text'))
+        self.s2tot_map = InterpolatingMap(
+            get_cmt_resource(self.run_id,
+                             tuple([*self.config['s2_xy_correction_map_total']]),
                              fmt='text'))
 
     def compute(self, events):
@@ -672,6 +706,21 @@ class CorrectedAreas(strax.Plugin):
         # S2(x,y) corrections use the observed S2 positions
         s2_positions = np.vstack([events['s2_x'], events['s2_y']]).T
         alt_s2_positions = np.vstack([events['alt_s2_x'], events['alt_s2_y']]).T
+        
+        cs2top=(events['s2_area'] * events['s2_area_fraction_top'] * lifetime_corr
+             / self.s2top_map(s2_positions)),
+        alt_cs2top=(events['alt_s2_area']* events['alt_s2_area_fraction_top'] * alt_lifetime_corr
+                 / self.s2top_map(alt_s2_positions)),
+
+        cs2bot=(events['s2_area'] * (1-events['s2_area_fraction_top']) * lifetime_corr
+             / self.s2bot_map(s2_positions)),
+        alt_cs2bot=(events['alt_s2_area'] * (1-events['s2_area_fraction_top']) * alt_lifetime_corr
+                 / self.s2bot_map(alt_s2_positions)),
+
+        cs2tot=(events['s2_area'] * lifetime_corr
+             / self.s2tot_map(s2_positions)),
+        alt_cs2tot=(events['alt_s2_area'] * alt_lifetime_corr
+                 / self.s2tot_map(alt_s2_positions)),
 
         return dict(
             time=events['time'],
@@ -680,10 +729,18 @@ class CorrectedAreas(strax.Plugin):
             cs1=events['s1_area'] / self.s1_map(event_positions),
             alt_cs1=events['alt_s1_area'] / self.s1_map(event_positions),
 
-            cs2=(events['s2_area'] * lifetime_corr
-                 / self.s2_map(s2_positions)),
-            alt_cs2=(events['alt_s2_area'] * alt_lifetime_corr
-                     / self.s2_map(alt_s2_positions)))
+            cs2top = cs2top,
+            alt_cs2top = alt_cs2top,
+            
+            cs2bot = cs2bot,
+            alt_cs2bot = alt_cs2bot,
+            
+            cs2tot = cs2tot,
+            alt_cs2tot = alt_cs2tot,
+            
+            cs2_area_fraction_top = cs2top/cs2tot,
+            alt_cs2_area_fraction_top = alt_cs2top/alt_cs2tot
+        )
 
 
 @export
