@@ -76,6 +76,7 @@ xnt_common_opts.update({
                                            straxen.PeakPositionsMLP,
                                            straxen.PeakPositionsGCN,
                                            straxen.PeakPositionsNT,
+                                           straxen.S2ReconPosDiff,
                                            straxen.PeakBasicsHighEnergy,
                                            straxen.PeaksHighEnergy,
                                            straxen.PeakletsHighEnergy,
@@ -308,10 +309,10 @@ def xenonnt_simulation(
                     **straxen.contexts.xnt_common_config,),
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
-    if straxen.utilix_is_configured():
+    if straxen.utilix_is_configured(
+            warning_message='Bad context as we cannot set CMT since we '
+                            'have no database access'''):
         st.apply_cmt_version(f'global_{cmt_version}')
-    else:
-        warn(f'Bad context as we cannot set CMT since we have no database access')
 
     if _forbid_creation_of is not None:
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)

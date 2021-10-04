@@ -291,8 +291,9 @@ class RunDB(strax.StorageFrontend):
         cursor = self.collection.find(
             filter=query,
             projection=projection)
-        for doc in tqdm(cursor, desc='Fetching run info from MongoDB',
-                        total=cursor.count()):
+        for doc in strax.utils.tqdm(
+                cursor, desc='Fetching run info from MongoDB',
+                total=cursor.count()):
             del doc['_id']
             if self.reader_ini_name_is_mode:
                 doc['mode'] = \
@@ -301,7 +302,7 @@ class RunDB(strax.StorageFrontend):
 
     def run_metadata(self, run_id, projection=None):
         if run_id.startswith('_'):
-            # Superruns are currently not supprorted..
+            # Superruns are currently not supported..
             raise strax.DataNotAvailable
         
         if self.runid_field == 'name':
