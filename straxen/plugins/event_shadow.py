@@ -15,10 +15,11 @@ class EventShadow(strax.Plugin):
     with time window backward and previous S2 area as options.
     It also gives the area and position infomation of these previous S2s.
     """
-    depends_on = ('event_basics','peak_basics','peak_positions')
-    parallel = False
-    provides = 'event_shadow'
     __version__ = '0.0.6'
+    depends_on = ('event_basics','peak_basics','peak_positions')
+    provides = 'event_shadow'
+    save_when = strax.SaveWhen.EXPLICIT
+    
 
     def infer_dtype(self):
         dtype = [
@@ -33,26 +34,21 @@ class EventShadow(strax.Plugin):
         return dtype
     
     def compute(self, events, peaks):
-        #set a time window to look for peaks
         roi_dt = np.dtype([(('back in time', 'time'), int),
                                          (('till it begin','endtime'), int)])
         roi = np.zeros(len(events), dtype=roi_dt)   
         n_seconds = self.config['time_window_backward']
         roi['time'] = events['time'] - n_seconds
         roi['endtime'] = events['time']
-        #set interested S2
-        mask_s2 = peaks['type']==2
-        mask_pre_s2 = peaks['area'] > self.config['pre_s2_area_threshold']   
-        split_peaks = strax.split_touching_windows(peaks[mask_s2 & mask_pre_s2], roi)
-    
-        #define the variables we want to calculate
+        mask_s2 = peaks['type'] == 2
+        mask_s2  &= peaks['area'] > self.config['pre_s2_area_threshold']   
+        split_peaks = strax.split_touching_windows(peaks[mask_s2], roi)
         res = np.zeros(len(events), self.dtype)       
-        #calculate all the variables
         compute_shadow(events, split_peaks, res)
         res['shadow_distance'] = ((res['pre_s2_x'] - events['s2_x'])**2+(res['pre_s2_y'] - events['s2_y'])**2)**0.5
         res['time'] = events['time']
         res['endtime'] = strax.endtime(events)
-
+        
         return res
     
 
