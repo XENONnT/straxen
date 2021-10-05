@@ -61,10 +61,10 @@ def compute_shadow(events, split_peaks, res):
     for event_i, event_a in enumerate(events):
         new_shadow = 0
         for peak_i, peak_a in enumerate(split_peaks[event_i]):
-            new_shadow = peak_a['area']/(event_a['time']-peak_a['center_time'])
+            new_shadow = peak_a['area']/(event_a['s2_center_time']-peak_a['center_time'])
             if new_shadow > res['shadow'][event_i]:
                 res['pre_s2_area'][event_i] = peak_a['area']
-                res['shadow_dt'][event_i] = event_a['time']-peak_a['center_time']
+                res['shadow_dt'][event_i] = event_a['s2_center_time']-peak_a['center_time']
                 res['pre_s2_x'][event_i] = peak_a['x']
                 res['pre_s2_y'][event_i] = peak_a['y']
                 res['shadow'][event_i] = new_shadow     
