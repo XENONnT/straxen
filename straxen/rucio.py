@@ -152,7 +152,7 @@ class RucioFrontend(strax.StorageFrontend):
         elif self.local_rse == 'SDSC_USERDISK':
             prefix = '/expanse/lustre/projects/chi135/shockley/rucio'
         else:
-            raise ValueError(f'We are not on dali not expanse and thus cannot load rucio')
+            raise ValueError(f'We are not on dali nor expanse and thus cannot load rucio')
         return prefix
 
     def did_is_local(self, did):
