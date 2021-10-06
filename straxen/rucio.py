@@ -248,6 +248,17 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     # datatypes we don't want to download since they're too heavy
     heavy_types = ['raw_records', 'raw_records_nv', 'raw_records_he']
 
+    preferred_rses = {'midway': ['UC_DALI_USERDISK', 'UC_OSG_USERDISK', 'SDSC_USERDISK'],
+                      'expanse': ['SDSC_USERDISK', 'UC_OSG_USERDISK', 'UC_DALI_USERDISK'],
+                      'in2p3': ['CCIN2P3_USERDISK', 'NIKHEF2_USERDISK', 'CNAF_USERDISK'],
+                      'nikhef': ['NIKHEF2_USERDISK', 'SURFSARA_USERDISK', 'CNAF_USERDISK'],
+                      'surf': ['SURFSARA_USERDISK', 'NIKHEF2_USERDISK', 'CNAF_USERDISK'],
+                      'osg_northamerica': ['UC_OSG_USERDISK', 'SDSC_USERDISK', 'UC_DALI_USERDISK'],
+                      'osg_europe': ['NIKHEF2_USERDISK', 'CNAF_USERDISK', 'SURFSARA_USERDISK'],
+                      }
+
+    dset_cache = {}
+
     def __init__(self, staging_dir, download_heavy=False, **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be a writable location.
@@ -271,9 +282,11 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         self.download_heavy = download_heavy
         # Do it only when we actually load rucio
         from rucio.client.downloadclient import DownloadClient
+        from rucio.client.client import Client
         self.download_client = DownloadClient()
+        self.rucio_client = Client()
 
-    def get_metadata(self, dset_did, rse='UC_OSG_USERDISK', **kwargs):
+    def get_metadata(self, dset_did, **kwargs):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
 
         # define where the metadata will go (or where it already might be)
@@ -283,13 +296,20 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
         # download if it doesn't exist
         if not os.path.exists(metadata_path):
+            if dset_did in self.dset_cache:
+                rses = self.dset_cache[dset_did]
+            else:
+                rses = self.get_rses(dset_did)
+                self.dset_cache[dset_did] = rses
+
+            rse = self.find_best_rse(rses)
             metadata_did = f'{dset_did}-metadata.json'
             did_dict = dict(did=metadata_did,
                             base_dir=base_dir,
                             no_subdir=True,
                             rse=rse
                             )
-            print(f"Downloading {metadata_did}")
+            print(f"Downloading {metadata_did} from {rse}")
             self._download([did_dict])
 
         # check again
@@ -299,7 +319,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         with open(metadata_path, mode='r') as f:
             return json.loads(f.read())
 
-    def _read_chunk(self, dset_did, chunk_info, dtype, compressor, rse="UC_OSG_USERDISK"):
+    def _read_chunk(self, dset_did, chunk_info, dtype, compressor):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
         chunk_file = chunk_info['filename']
         chunk_path = os.path.join(base_dir, chunk_file)
@@ -314,7 +334,14 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 raise DownloadError(error_msg)
             scope, name = dset_did.split(':')
             chunk_did = f"{scope}:{chunk_file}"
-            print(f"Downloading {chunk_did}")
+            if dset_did in self.dset_cache:
+                rses = self.dset_cache[dset_did]
+            else:
+                rses = self.get_rses(dset_did)
+                self.dset_cache[dset_did] = rses
+
+            rse = self.find_best_rse(rses)
+            print(f"Downloading {chunk_did} from {rse}")
             did_dict = dict(did=chunk_did,
                             base_dir=base_dir,
                             no_subdir=True,
@@ -352,6 +379,76 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             _try += 1
         if not success:
             raise DownloadError(f"Error downloading from rucio.")
+
+    def get_rses(self, did):
+        # TODO use admix for this at some point
+        scope, name = did.split(':')
+        rules = self.rucio_client.list_did_rules(scope, name)
+        # get rules that pass some filter(s)
+        rses = []
+        for rule in rules:
+            if rule['state'] == 'OK':
+                rses.append(rule['rse_expression'])
+        if not len(rses):
+            raise RuntimeError(f"DID {did} not found on any RSEs")
+        return rses
+
+    def find_best_rse(self, rse_list):
+        """This checks if we are running on one of 3 places:
+        1. Running on Midway. If so, download in this order: UC_DALI_USERDISK, UC_OSG_USERDISK, SDSC_USERDISK, the rest.
+        2. Running on Expanse (via OSG): Download in this order: SDSC_USERDISK, UC_OSG_USERDISK, UC_DALI_USERDISK, the rest.
+        3. Running on OSG generally: Use the GLIDEIN_Country variable to determine the order.
+
+        If none of these are satisfied, return None, which then lets rucio deal with it.
+        """
+        hostname = socket.getfqdn()
+
+        if '.rcc' in hostname:
+            # we are on Midway
+            for pref_rse in self.preferred_rses['midway']:
+                if pref_rse in rse_list:
+                    return pref_rse
+
+        if '.sdsc' in hostname:
+            # we are on Expanse
+            for pref_rse in self.preferred_rses['expanse']:
+                if pref_rse in rse_list:
+                    return pref_rse
+
+        if '.surf' in hostname:
+            for pref_rse in self.preferred_rses['surf']:
+                if pref_rse in rse_list:
+                    return pref_rse
+
+        if '.in2p3' in hostname:
+            for pref_rse in self.preferred_rses['in2p3']:
+                if pref_rse in rse_list:
+                    return pref_rse
+
+        if '.nikhef' in hostname:
+            for pref_rse in self.preferred_rses['nikhef']:
+                if pref_rse in rse_list:
+                    return pref_rse
+
+        glidein_country = os.environ.get('GLIDEIN_Country')
+        if glidein_country:
+            # we are on OSG
+            if glidein_country in ["US", "CA"]:
+                for pref_rse in self.preferred_rses['osg_northamerica']:
+                    if pref_rse in rse_list:
+                        return pref_rse
+
+            if glidein_country in ['EUROPE', 'NL', 'IT', 'FR', 'IL']:
+                for pref_rse in self.preferred_rses['osg_europe']:
+                    if pref_rse in rse_list:
+                        return pref_rse
+
+        # finally, default to UC_OSG or SDSC
+        for pref_rse in ['UC_OSG_USERDISK', 'SDSC_USERDISK']:
+            if pref_rse in rse_list:
+                return pref_rse
+
+        # if get here, return None and let rucio figure it out
 
 
 class RucioSaver(strax.Saver):
