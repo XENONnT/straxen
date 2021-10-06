@@ -165,7 +165,7 @@ class RucioFrontend(strax.StorageFrontend):
         """
         try:
             md = self._get_backend("RucioLocalBackend").get_metadata(did)
-        except (strax.DataNotAvailable, strax.DataCorrupted):
+        except (strax.DataNotAvailable, strax.DataCorrupted, KeyError):
             return False
 
         return self._all_chunk_stored(md, did)
