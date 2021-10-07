@@ -341,7 +341,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 self.dset_cache[dset_did] = rses
 
             rse = self.find_best_rse(rses)
-            print(f"Downloading {chunk_did} from {rse}")
+            self.log.info(f"Downloading {chunk_did} from {rse}")
             did_dict = dict(did=chunk_did,
                             base_dir=base_dir,
                             no_subdir=True,
