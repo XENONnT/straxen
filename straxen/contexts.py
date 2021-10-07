@@ -29,7 +29,7 @@ common_opts = dict(
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number',
-        'start', 'end', 'livetime', 'mode'))
+        'start', 'end', 'livetime', 'mode', 'source'))
 
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
