@@ -108,6 +108,10 @@ class RucioFrontend(strax.StorageFrontend):
 
         ret = []
         for key in keys:
+            if not self._support_superruns(key.run_id):
+                ret.append(False)
+                continue
+                
             did = key_to_rucio_did(key)
             if self.did_is_local(did):
                 ret.append(('RucioLocalBackend', did))
