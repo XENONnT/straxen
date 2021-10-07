@@ -8,6 +8,7 @@ import hashlib
 import time
 from utilix import xent_collection
 import strax
+import admix
 
 export, __all__ = strax.exporter()
 
@@ -251,15 +252,6 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     # datatypes we don't want to download since they're too heavy
     heavy_types = ['raw_records', 'raw_records_nv', 'raw_records_he']
 
-    preferred_rses = {'midway': ['UC_DALI_USERDISK', 'UC_OSG_USERDISK', 'SDSC_USERDISK'],
-                      'expanse': ['SDSC_USERDISK', 'UC_OSG_USERDISK', 'UC_DALI_USERDISK'],
-                      'in2p3': ['CCIN2P3_USERDISK', 'NIKHEF2_USERDISK', 'CNAF_USERDISK'],
-                      'nikhef': ['NIKHEF2_USERDISK', 'SURFSARA_USERDISK', 'CNAF_USERDISK'],
-                      'surf': ['SURFSARA_USERDISK', 'NIKHEF2_USERDISK', 'CNAF_USERDISK'],
-                      'osg_northamerica': ['UC_OSG_USERDISK', 'SDSC_USERDISK', 'UC_DALI_USERDISK'],
-                      'osg_europe': ['NIKHEF2_USERDISK', 'CNAF_USERDISK', 'SURFSARA_USERDISK'],
-                      }
-
     dset_cache = {}
 
     def __init__(self, staging_dir, download_heavy=False, **kwargs):
@@ -283,38 +275,22 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
-        # Do it only when we actually load rucio
-        from rucio.client.downloadclient import DownloadClient
-        from rucio.client.client import Client
-        self.download_client = DownloadClient()
-        self.rucio_client = Client()
 
     def get_metadata(self, dset_did, **kwargs):
-        base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
 
-        # define where the metadata will go (or where it already might be)
-        number, dtype, hsh = parse_did(dset_did)
-        metadata_file = f"{dtype}-{hsh}-metadata.json"
-        metadata_path = os.path.join(base_dir, metadata_file)
+        if dset_did in self.dset_cache:
+            rse = self.dset_cache[dset_did]
+        else:
+            rses = admix.rucio.get_rses(dset_did)
+            rse = admix.downloader.determine_rse(rses)
+            self.dset_cache[dset_did] = rse
 
-        # download if it doesn't exist
-        if not os.path.exists(metadata_path):
-            if dset_did in self.dset_cache:
-                rses = self.dset_cache[dset_did]
-            else:
-                rses = self.get_rses(dset_did)
-                self.dset_cache[dset_did] = rses
+        metadata_did = f'{dset_did}-metadata.json'
+        downloaded = admix.download(metadata_did, rse=rse, location=self.staging_dir)
 
-            rse = self.find_best_rse(rses)
-            metadata_did = f'{dset_did}-metadata.json'
-            did_dict = dict(did=metadata_did,
-                            base_dir=base_dir,
-                            no_subdir=True,
-                            rse=rse
-                            )
-            print(f"Downloading {metadata_did} from {rse}")
-            self._download([did_dict])
+        assert len(downloaded) == 1, f"{metadata_did} should be a single file. We found {len(downloaded)}."
 
+        metadata_path = downloaded[0]
         # check again
         if not os.path.exists(metadata_path):
             raise FileNotFoundError(f"No metadata found at {metadata_path}")
@@ -325,7 +301,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     def _read_chunk(self, dset_did, chunk_info, dtype, compressor):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
         chunk_file = chunk_info['filename']
-        chunk_path = os.path.join(base_dir, chunk_file)
+        chunk_path = os.path.abspath(os.path.join(base_dir, chunk_file))
         if not os.path.exists(chunk_path):
             number, datatype, hsh = parse_did(dset_did)
             if datatype in self.heavy_types and not self.download_heavy:
@@ -338,19 +314,15 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             scope, name = dset_did.split(':')
             chunk_did = f"{scope}:{chunk_file}"
             if dset_did in self.dset_cache:
-                rses = self.dset_cache[dset_did]
+                rse = self.dset_cache[dset_did]
             else:
-                rses = self.get_rses(dset_did)
-                self.dset_cache[dset_did] = rses
+                rses = admix.rucio.get_rses(dset_did)
+                rse = admix.downloader.determine_rse(rses)
+                self.dset_cache[dset_did] = rse
 
-            rse = self.find_best_rse(rses)
-            self.log.info(f"Downloading {chunk_did} from {rse}")
-            did_dict = dict(did=chunk_did,
-                            base_dir=base_dir,
-                            no_subdir=True,
-                            rse=rse,
-                            )
-            self._download([did_dict])
+            downloaded = admix.download(chunk_did, rse=rse, location=self.staging_dir)
+            assert len(downloaded) == 1, f"{chunk_did} should be a single file. We found {len(downloaded)}."
+            assert chunk_path == downloaded[0]
 
         # check again
         if not os.path.exists(chunk_path):
