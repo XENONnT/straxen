@@ -5,13 +5,15 @@ from bson import json_util
 import os
 import glob
 import hashlib
-import time
 from utilix import xent_collection
 import strax
-import admix
+import warnings
+try:
+    import admix
+except (ImportError, RuntimeError):
+    print("Problem importing admix. You will not be able to use rucio tools.")
 
 export, __all__ = strax.exporter()
-
 
 class TooMuchDataError(Exception):
     pass
