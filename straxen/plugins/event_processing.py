@@ -653,12 +653,8 @@ class CorrectedAreas(strax.Plugin):
 
         if isinstance(self.config['s1_xyz_correction_map'], str):
             self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
-        if isinstance(self.config['s2_xy_correction_map_total'], str):
+        if isinstance(self.config['s2_xy_correction_map'], str):
             self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
-        if isinstance(self.config['s2_xy_correction_map_top'], str):
-            self.config['s2_xy_correction_map_top'] = [self.config['s2_xy_correction_map_top']]
-        if isinstance(self.config['s2_xy_correction_map_bottom'], str):
-            self.config['s2_xy_correction_map_bottom'] = [self.config['s2_xy_correction_map_bottom']]
 
         self.s1_map = InterpolatingMap(
             get_cmt_resource(self.run_id,

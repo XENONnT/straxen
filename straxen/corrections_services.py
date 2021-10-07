@@ -27,7 +27,7 @@ arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
 
 # needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
 # important for apply_cmt_version
-posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_map']
+posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_xy_map']
 
 
 class CMTVersionError(Exception):
