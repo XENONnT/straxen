@@ -662,12 +662,6 @@ class CorrectedAreas(strax.Plugin):
                                     self.config['default_reconstruction_algorithm'],
                                     *self.config['s1_xyz_correction_map']]),
                              fmt='text'))
-        self.s2_map = InterpolatingMap(
-            get_cmt_resource(self.run_id,
-                             tuple(['suffix',
-                                    self.config['default_reconstruction_algorithm'],
-                                    *self.config['s2_xy_correction_map']]),
-                             fmt='text'), map_name="s2_total")
         self.s2_map_top = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
@@ -698,18 +692,19 @@ class CorrectedAreas(strax.Plugin):
         s2_positions = np.vstack([events['s2_x'], events['s2_y']]).T
         alt_s2_positions = np.vstack([events['alt_s2_x'], events['alt_s2_y']]).T
 
-        cs2 = events['s2_area'] * lifetime_corr / self.s2_map(s2_positions)
-        alt_cs2 = events['alt_s2_area'] * alt_lifetime_corr / self.s2_map(alt_s2_positions)
+        # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
+        cs2_top = (events['s2_area'] * events['s2_area_fraction_top'] * lifetime_corr
+                   / self.s2_map_top(s2_positions))
+        alt_cs2_top = (events['alt_s2_area'] * events['alt_s2_area_fraction_top'] * alt_lifetime_corr
+                       / self.s2_map_top(alt_s2_positions))
 
         cs2_bottom = (events['s2_area'] * (1 - events['s2_area_fraction_top']) * lifetime_corr
                       / self.s2_map_bottom(s2_positions))
         alt_cs2_bottom = (events['alt_s2_area'] * (1 - events['s2_area_fraction_top']) * alt_lifetime_corr
                           / self.s2_map_bottom(alt_s2_positions))
 
-        cs2_top = (events['s2_area'] * events['s2_area_fraction_top'] * lifetime_corr
-                   / self.s2_map_top(s2_positions))
-        alt_cs2_top = (events['alt_s2_area'] * events['alt_s2_area_fraction_top'] * alt_lifetime_corr
-                       / self.s2_map_top(alt_s2_positions))
+        cs2 = cs2_top + cs2_bottom
+        alt_cs2 = alt_cs2_top + alt_cs2_bottom
 
         return dict(
             time=events['time'],
@@ -718,14 +713,14 @@ class CorrectedAreas(strax.Plugin):
             cs1=events['s1_area'] / self.s1_map(event_positions),
             alt_cs1=events['alt_s1_area'] / self.s1_map(event_positions),
 
-            cs2=cs2,
-            alt_cs2tot=alt_cs2,
+            cs2_top=cs2_top,
+            alt_cs2_top=alt_cs2_top,
 
             cs2_bottom=cs2_bottom,
             alt_cs2_bottom=alt_cs2_bottom,
 
-            cs2_top=cs2_top,
-            alt_cs2top=cs2_bottom,
+            cs2=cs2,
+            alt_cs2=alt_cs2,
 
             cs2_area_fraction_top=cs2_top / cs2,
             alt_cs2_area_fraction_top=alt_cs2_top / alt_cs2,

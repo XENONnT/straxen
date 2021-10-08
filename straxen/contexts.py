@@ -53,8 +53,6 @@ xnt_common_config = dict(
     # Clustering/classification parameters
     # Event level parameters
     s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
-    s2_xy_correction_map_bottom=('s2_xy_map_bottom', "ONLINE", True),
-    s2_xy_correction_map_top=('s2_xy_map_top', "ONLINE", True),
     fdc_map=('fdc_map', "ONLINE", True),
     s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
     g1=0.1426,
