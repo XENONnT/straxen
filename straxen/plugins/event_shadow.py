@@ -51,9 +51,13 @@ class EventShadow(strax.Plugin):
         
         return res
     
+def compute_shadow(events, split_peaks, res):
+    if len(res):
+        return _compute_shadow(events, split_peaks, res)
+
 
 @numba.njit(cache=True)
-def compute_shadow(events, split_peaks, res):
+def _compute_shadow(events, split_peaks, res):
     for event_i, event_a in enumerate(events):
         new_shadow = 0
         for peak_i, peak_a in enumerate(split_peaks[event_i]):
