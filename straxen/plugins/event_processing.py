@@ -663,26 +663,12 @@ class CorrectedAreas(strax.Plugin):
                                     *self.config['s1_xyz_correction_map']]),
                              fmt='text'))
 
-        # s2 maps
-        if self.config['s2_xy_correction_map'][1] == "ONLINE":
-            s2_top_name = "map"
-            s2_bottom_name = "map"
-        else:
-            s2_top_name = "s2_top"
-            s2_bottom_name = "s2_bottom"
-
-        self.s2_map_top = InterpolatingMap(
+        self.s2_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
                                     self.config['default_reconstruction_algorithm'],
                                     *self.config['s2_xy_correction_map']]),
-                             fmt='text'), map_name=s2_top_name)
-        self.s2_map_bottom = InterpolatingMap(
-            get_cmt_resource(self.run_id,
-                             tuple(['suffix',
-                                    self.config['default_reconstruction_algorithm'],
-                                    *self.config['s2_xy_correction_map']]),
-                             fmt='text'), map_name=s2_bottom_name)
+                             fmt='json'))
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.
@@ -702,15 +688,23 @@ class CorrectedAreas(strax.Plugin):
         alt_s2_positions = np.vstack([events['alt_s2_x'], events['alt_s2_y']]).T
 
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
+        # figure out the map name
+        if len(self.s2_map.map_names) > 1:
+            s2_top_map_name = "s2_top"
+            s2_bottom_map_name = "s2_bottom"
+        else:
+            s2_top_map_name = "map"
+            s2_bottom_map_name = "map"
+
         cs2_top = (events['s2_area'] * events['s2_area_fraction_top'] * lifetime_corr
-                   / self.s2_map_top(s2_positions))
+                   / self.s2_map(s2_positions, map_name=s2_top_map_name))
         alt_cs2_top = (events['alt_s2_area'] * events['alt_s2_area_fraction_top'] * alt_lifetime_corr
-                       / self.s2_map_top(alt_s2_positions))
+                       / self.s2_map(alt_s2_positions, map_name=s2_top_map_name))
 
         cs2_bottom = (events['s2_area'] * (1 - events['s2_area_fraction_top']) * lifetime_corr
-                      / self.s2_map_bottom(s2_positions))
+                      / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
         alt_cs2_bottom = (events['alt_s2_area'] * (1 - events['s2_area_fraction_top']) * alt_lifetime_corr
-                          / self.s2_map_bottom(alt_s2_positions))
+                          / self.s2_map(alt_s2_positions, map_name=s2_bottom_map_name))
 
         cs2 = cs2_top + cs2_bottom
         alt_cs2 = alt_cs2_top + alt_cs2_bottom
