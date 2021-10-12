@@ -15,7 +15,7 @@ from immutabledict import immutabledict
 export, __all__ = strax.exporter()
 
 corrections_w_file = ['mlp_model', 'cnn_model', 'gcn_model',
-                      's2_xy_map_mlp', 's2_xy_map_cnn', 's2_xy_map_gcn',
+                      's2_xy_map_mlp', 's2_xy_map_cnn', 's2_xy_map_gcn', 's2_xy_map',
                       's1_xyz_map_mlp', 's1_xyz_map_cnn', 's1_xyz_map_gcn',
                       'fdc_map_mlp', 'fdc_map_cnn', 'fdc_map_gcn']
 
