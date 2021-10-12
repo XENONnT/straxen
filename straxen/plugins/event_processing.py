@@ -627,11 +627,9 @@ class CorrectedAreas(strax.Plugin):
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
         
-        There are now 3 components of cS2s: cS2top, cS2bot and cS2tot, 
-        all computed with respect to corresponding S2 components. Therefore
-        cS2tot and cS2top+cS2bot are slightly different. 
-        
-    Also the cS2aft is calculated by cS2top/cS2tot for now. 
+        There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
+        cs2_top and cs2_bottom are corrected by the corresponding maps,
+        and cs2 is the sum of the two.
     """
     __version__ = '0.1.2'
 
