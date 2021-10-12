@@ -135,7 +135,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.1.1'
+    __version__ = '1.2.0'
 
     depends_on = ('events',
                   'peak_basics',
@@ -195,7 +195,10 @@ class EventBasics(strax.Plugin):
             ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
             ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
             ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
-            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
+            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'),
+            ('tight_coincidence', np.int16, 'Hits within tight range of mean'),
+            ('n_saturated_channels',      np.int16, 'Total number of saturated channels'),
+            ('tight_coincidence_channel', np.int16, 'PMT channel within tight range of mean'),
         )
 
     @staticmethod
