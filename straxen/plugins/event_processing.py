@@ -696,7 +696,7 @@ class CorrectedAreas(strax.Plugin):
         for prefix in ["", "alt_"]:
             # For electron lifetime corrections to the S2s,
             # use lifetimes computed using the main S1.
-            el_string = prefix + "s2_interaction_" if prefix is "alt_" else prefix
+            el_string = prefix + "s2_interaction_" if prefix == "alt_" else prefix
             lifetime_corr = np.exp(events[f'{el_string}drift_time'] / self.elife)
 
             # S2(x,y) corrections use the observed S2 positions
