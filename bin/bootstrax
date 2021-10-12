@@ -228,6 +228,13 @@ except ModuleNotFoundError:
     log = logging.getLogger()
 
 log.info(f'---\n bootstrax version {__version__}\n---')
+log.info(
+    straxen.print_versions(
+        modules='strax straxen utilix daqnt numpy tensorflow numba'.split(),
+        include_git=True,
+        return_string=True,
+    ))
+
 
 # Set the output folder
 output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder

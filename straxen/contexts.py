@@ -29,7 +29,7 @@ common_opts = dict(
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number',
-        'start', 'end', 'livetime', 'mode'))
+        'start', 'end', 'livetime', 'mode', 'source'))
 
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
@@ -76,6 +76,7 @@ xnt_common_opts.update({
                                            straxen.PeakPositionsMLP,
                                            straxen.PeakPositionsGCN,
                                            straxen.PeakPositionsNT,
+                                           straxen.S2ReconPosDiff,
                                            straxen.PeakBasicsHighEnergy,
                                            straxen.PeaksHighEnergy,
                                            straxen.PeakletsHighEnergy,
@@ -96,10 +97,10 @@ xnt_common_opts.update({
                                                    straxen.event_area_per_channel,
                                                    straxen.event_patternfit,
                                                    straxen.event_processing,
+                                                   straxen.event_shadow,
                                                    ],
     'use_per_run_defaults': False,
 })
-
 ##
 # XENONnT
 ##
@@ -308,10 +309,10 @@ def xenonnt_simulation(
                     **straxen.contexts.xnt_common_config,),
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(wfsim.RawRecordsFromFaxNT)
-    if straxen.utilix_is_configured():
+    if straxen.utilix_is_configured(
+            warning_message='Bad context as we cannot set CMT since we '
+                            'have no database access'''):
         st.apply_cmt_version(f'global_{cmt_version}')
-    else:
-        warn(f'Bad context as we cannot set CMT since we have no database access')
 
     if _forbid_creation_of is not None:
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
