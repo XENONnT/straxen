@@ -707,6 +707,7 @@ class CorrectedAreas(strax.Plugin):
             result[f"{prefix}cs2_bottom"] = (events[f'{prefix}s2_area'] * (1 - events[f'{prefix}s2_area_fraction_top'])
                                              * lifetime_corr / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
             result[f"{prefix}cs2"] = result[f"{prefix}cs2_top"] + result[f"{prefix}cs2_bottom"]
+            result[f"{prefix}cs2_area_fraction_top"] = result[f"{prefix}cs2_top"] / result[f"{prefix}cs2"]
 
         return result
 
