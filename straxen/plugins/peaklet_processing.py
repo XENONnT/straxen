@@ -240,7 +240,7 @@ class Peaklets(strax.Plugin):
             peaklet_max_times,
             self.config['tight_coincidence_window_left'],
             self.config['tight_coincidence_window_right'])
-        
+
         peaklets['tight_coincidence'] = tight_coincidence
         peaklets['tight_coincidence_channel'] = tight_coincidence_channel
 
