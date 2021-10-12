@@ -234,11 +234,15 @@ class Peaklets(strax.Plugin):
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
-        peaklets['tight_coincidence'] = get_tight_coin(
+        tight_coincidence, tight_coincidence_channel = get_tight_coin(
             hit_max_times,
+            hitlets['channel'],
             peaklet_max_times,
             self.config['tight_coincidence_window_left'],
             self.config['tight_coincidence_window_right'])
+        
+        peaklets['tight_coincidence'] = tight_coincidence
+        peaklets['tight_coincidence_channel'] = tight_coincidence_channel
 
         if self.config['diagnose_sorting'] and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
