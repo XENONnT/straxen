@@ -885,7 +885,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
 
     # loop over peaks
     for p_i, p_t in enumerate(peak_max_times):
-
+        channels_seen[:] = 0
         # loop over hits starting from the last one we left at
         for left_hit_i in range(left_hit_i, len(hit_max_times)):
 
@@ -898,8 +898,11 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
             # stop the loop when we know we're outside the range
             if d > right:
                 n_coin_channel[p_i] = np.sum(channels_seen)
-                channels_seen[:] = 0
                 break
+        
+        # Add channel information in case there are no hits beyond 
+        # the last peak:
+        n_coin_channel[p_i] = np.sum(channels_seen)
 
     return n_coin_hit, n_coin_channel
 
