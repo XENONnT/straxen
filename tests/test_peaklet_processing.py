@@ -66,7 +66,8 @@ def test_tight_coincidence(hits, channel):
     peaks_max_time = peaks['time'] + peaks['length']//2
     hits_max_time = hits['time'] + hits['length']//2
 
-    left = right = 5
+    left = 5
+    right = 5
     tight_coin, tight_coin_channel = get_tight_coin(hits_max_time,
                                                     hits['channel'],
                                                     peaks_max_time,
