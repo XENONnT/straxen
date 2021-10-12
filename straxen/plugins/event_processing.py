@@ -685,8 +685,8 @@ class CorrectedAreas(strax.Plugin):
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
         # figure out the map name
         if len(self.s2_map.map_names) > 1:
-            s2_top_map_name = "s2_top"
-            s2_bottom_map_name = "s2_bottom"
+            s2_top_map_name = "map_top"
+            s2_bottom_map_name = "map_bottom"
         else:
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
