@@ -662,18 +662,27 @@ class CorrectedAreas(strax.Plugin):
                                     self.config['default_reconstruction_algorithm'],
                                     *self.config['s1_xyz_correction_map']]),
                              fmt='text'))
+
+        # s2 maps
+        if self.config['s2_xy_correction_map'][1] == "ONLINE":
+            s2_top_name = "map"
+            s2_bottom_name = "map"
+        else:
+            s2_top_name = "s2_top"
+            s2_bottom_name = "s2_bottom"
+
         self.s2_map_top = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
                                     self.config['default_reconstruction_algorithm'],
                                     *self.config['s2_xy_correction_map']]),
-                             fmt='text'), map_name="s2_top")
+                             fmt='text'), map_name=s2_top_name)
         self.s2_map_bottom = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
                                     self.config['default_reconstruction_algorithm'],
                                     *self.config['s2_xy_correction_map']]),
-                             fmt='text'), map_name="s2_bottom")
+                             fmt='text'), map_name=s2_bottom_name)
 
     def compute(self, events):
         # S1 corrections depend on the actual corrected event position.
