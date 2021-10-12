@@ -853,16 +853,31 @@ class PeaksHighEnergy(Peaks):
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def get_tight_coin(hit_max_times, peak_max_times, left, right):
-    """Calculates the tight coincidence
+def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
+                   n_channel=straxen.n_tpc_pmts):
+    """Calculates the tight coincidence based on hits and PMT channels.
 
     Defined by number of hits within a specified time range of the
     the peak's maximum amplitude.
     Imitates tight_coincidence variable in pax:
     github.com/XENON1T/pax/blob/master/pax/plugins/peak_processing/BasicProperties.py
+
+    :param hit_max_times: Time of the hit amplitude in ns.
+    :param hit_channel: PMT channels of the hits
+    :param peak_max_times: Time of the peaks maximum in ns.
+    :param left: Left boundary in which we search for the tight
+        coincidence in ns.
+    :param right: Right boundary in which we search for the tight
+        coincidence in ns.
+    :param n_channel: Number of PMT channels of the detector
+
+    :returns: n_coin_hit, n_coin_channel of length peaks containing the
+        tight coincidence.
     """
     left_hit_i = 0
-    n_coin = np.zeros(len(peak_max_times), dtype=np.int16)
+    n_coin_hit = np.zeros(len(peak_max_times), dtype=np.int16)
+    n_coin_channel = np.zeros(len(peak_max_times), dtype=np.int16)
+    channels_seen = np.zeros(n_channel, dtype=np.bool_)
 
     # loop over peaks
     for p_i, p_t in enumerate(peak_max_times):
@@ -873,13 +888,16 @@ def get_tight_coin(hit_max_times, peak_max_times, left, right):
             # if the hit is in the window, its a tight coin
             d = hit_max_times[left_hit_i] - p_t
             if (-left <= d) & (d <= right):
-                n_coin[p_i] += 1
+                n_coin_hit[p_i] += 1
+                channels_seen[hit_channel[left_hit_i]] = 1
 
             # stop the loop when we know we're outside the range
             if d > right:
+                n_coin_channel[p_i] = np.sum(channels_seen)
+                channels_seen[:] = 0
                 break
 
-    return n_coin
+    return n_coin_hit, n_coin_channel
 
 
 @numba.njit(cache=True, nogil=True)
