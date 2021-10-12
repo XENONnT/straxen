@@ -92,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.4.1'
+    __version__ = '0.5.0'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -618,7 +618,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.3.1'
+    __version__ = '0.4.0'
 
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
