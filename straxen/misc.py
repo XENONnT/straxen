@@ -244,6 +244,26 @@ class TimeWidgets:
         return time, time_ns
 
 
+@strax.Context.add_method
+def extract_latest_comment(self):
+    """
+    Extract the latest comment in the runs-database. This just adds info to st.runs
+
+    Example:
+        st.extract_latest_comment()
+        st.select_runs(available=('raw_records'))
+    """
+    if self.runs is None or 'comments' not in self.runs.keys():
+        self.context_config['store_run_fields'] = tuple(
+            list(self.context_config['store_run_fields']) + ['comments']
+        )
+        self.scan_runs(store_fields=('comments',))
+        latest_comments = [(c[-1]['comment'] if hasattr(c, '__len__') else '') for c in
+                           self.runs['comments']]
+        self.runs['comments'] = latest_comments
+    return self.runs
+
+
 @export
 def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
