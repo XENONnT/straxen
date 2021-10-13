@@ -261,6 +261,7 @@ def extract_latest_comment(self):
 
 
 def _parse_to_last_comment(comments):
+    """Unpack to get the last comment (hence the -1) or give '' when there is none"""
     return [(c[-1]['comment'] if hasattr(c, '__len__') else '') for c in comments]
 
 
