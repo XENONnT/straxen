@@ -9,48 +9,6 @@ import numba
 export, __all__ = strax.exporter()
 
 
-# define new data type for afterpulse data
-dtype_ap = [(('Channel/PMT number', 'channel'),
-              '<i2'),
-            (('Time resolution in ns', 'dt'),
-              '<i2'),
-            (('Start time of the interval (ns since unix epoch)', 'time'),
-              '<i8'),
-            (('Length of the interval in samples', 'length'),
-              '<i4'),
-            (('Integral in ADC x samples', 'area'),
-              '<i4'),
-            (('Pulse area in PE', 'area_pe'),
-              '<f4'),
-            (('Sample index in which hit starts', 'left'),
-              '<i2'),
-            (('Sample index in which hit area succeeds 10% of total area', 'sample_10pc_area'),
-              '<i2'),
-            (('Sample index in which hit area succeeds 50% of total area', 'sample_50pc_area'),
-              '<i2'),
-            (('Sample index of hit maximum', 'max'),
-              '<i2'),
-            (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
-              '<i2'),
-            (('Height of hit in ADC counts', 'height'),
-              '<i4'),
-            (('Height of hit in PE', 'height_pe'),
-              '<f4'),
-            (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
-              '<i2'),
-            (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
-              '<i4'),
-            (('Index of sample in record where integration starts',
-              'left_integration'),
-              np.int16),
-            (('Index of first sample beyond integration region',
-              'right_integration'),
-              np.int16),
-            (('ADC threshold applied in order to find hits',
-              'threshold'),
-              np.float32),
-           ]
-
 
 @export
 @strax.takes_config(
@@ -106,9 +64,13 @@ class LEDAfterpulseProcessing(strax.Plugin):
     compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = True
-    
-    dtype = dtype_ap
-    
+
+
+    def infer_dtype(self):
+        dtype = dtype_afterpulses()
+        return dtype
+
+
     def setup(self):
         
         self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
@@ -167,7 +129,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
 @export
 def find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension):
-    buffer = np.zeros(len(hits), dtype=dtype_ap)
+    buffer = np.zeros(len(hits), dtype=dtype_afterpulses())
     if not len(hits):
         return buffer
     res = _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=buffer)
@@ -343,3 +305,49 @@ def get_sample_area_quantile(data, quantile, baseline_fpart):
             # (negative area due to wrong baseline, caused by real events that by coincidence fall in the first samples of the trigger window)
             #print('no quantile found: set to 0')
             return 0
+
+
+@export
+def dtype_afterpulses():
+    # define new data type for afterpulse data
+    dtype_ap = [(('Channel/PMT number', 'channel'),
+                  '<i2'),
+                (('Time resolution in ns', 'dt'),
+                  '<i2'),
+                (('Start time of the interval (ns since unix epoch)', 'time'),
+                  '<i8'),
+                (('Length of the interval in samples', 'length'),
+                  '<i4'),
+                (('Integral in ADC x samples', 'area'),
+                  '<i4'),
+                (('Pulse area in PE', 'area_pe'),
+                  '<f4'),
+                (('Sample index in which hit starts', 'left'),
+                  '<i2'),
+                (('Sample index in which hit area succeeds 10% of total area', 'sample_10pc_area'),
+                  '<i2'),
+                (('Sample index in which hit area succeeds 50% of total area', 'sample_50pc_area'),
+                  '<i2'),
+                (('Sample index of hit maximum', 'max'),
+                  '<i2'),
+                (('Index of first sample in record just beyond hit (exclusive bound)', 'right'),
+                  '<i2'),
+                (('Height of hit in ADC counts', 'height'),
+                  '<i4'),
+                (('Height of hit in PE', 'height_pe'),
+                  '<f4'),
+                (('Delay of hit w.r.t. LED hit in same WF, in samples', 'tdelay'),
+                  '<i2'),
+                (('Internal (temporary) index of fragment in which hit was found', 'record_i'),
+                  '<i4'),
+                (('Index of sample in record where integration starts',
+                  'left_integration'),
+                  np.int16),
+                (('Index of first sample beyond integration region',
+                  'right_integration'),
+                  np.int16),
+                (('ADC threshold applied in order to find hits',
+                  'threshold'),
+                  np.float32),
+               ]
+    return dtype_ap
