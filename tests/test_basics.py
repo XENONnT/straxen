@@ -63,7 +63,7 @@ class TestBasics(unittest.TestCase):
 
     def test_extract_latest_comment(self,
                                     context='xenonnt_online',
-                                    test_for_target='raw_records'
+                                    test_for_target='raw_records',
                                     ):
         if context == 'xenonnt_online' and not straxen.utilix_is_configured():
             return

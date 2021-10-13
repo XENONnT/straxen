@@ -254,14 +254,14 @@ def extract_latest_comment(self):
         st.select_runs(available=('raw_records'))
     """
     if self.runs is None or 'comments' not in self.runs.keys():
-        self.context_config['store_run_fields'] = tuple(
-            list(self.context_config['store_run_fields']) + ['comments']
-        )
         self.scan_runs(store_fields=('comments',))
-        latest_comments = [(c[-1]['comment'] if hasattr(c, '__len__') else '') for c in
-                           self.runs['comments']]
+        latest_comments = _parse_to_last_comment(self.runs['comments'])
         self.runs['comments'] = latest_comments
     return self.runs
+
+
+def _parse_to_last_comment(comments):
+    return [(c[-1]['comment'] if hasattr(c, '__len__') else '') for c in comments]
 
 
 @export
