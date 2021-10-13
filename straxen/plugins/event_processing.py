@@ -642,8 +642,11 @@ class CorrectedAreas(strax.Plugin):
              ('alt_cs2', np.float32, 'Corrected area of the alternate S2 [PE]'),
              ('alt_cs2_top', np.float32, 'Corrected area of the alternate S2 in the top PMT array [PE]'),
              ('alt_cs2_bottom', np.float32, 'Corrected area of the alternate S2 in the bottom PMT array [PE]'),
-             ('cs2_area_fraction_top', np.float, 'Main cS2 fraction of area seen by the top PMT array'),
-             ('alt_cs2_area_fraction_top', np.float, 'Alternate cS2 fraction of area seen by the top PMT array'),
+             ('cs2_area_fraction_top', np.float32, 'Main cS2 fraction of area seen by the top PMT array'),
+             ('alt_cs2_area_fraction_top', np.float32, 'Alternate cS2 fraction of area seen by the top PMT array'),
+             ('elife_correction', np.float32, 'Main cS2 correction factor due to electron lifetime'),
+             ('alt_elife_correction', np.float32, 'Alt cS2 correction factor due to electron lifetime'),
+
              ] + strax.time_fields
 
     def setup(self):
@@ -695,15 +698,18 @@ class CorrectedAreas(strax.Plugin):
             # For electron lifetime corrections to the S2s,
             # use lifetimes computed using the main S1.
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
-            lifetime_corr = np.exp(events[f'{el_string}drift_time'] / self.elife)
+            result[f"{peak_type}elife_correction"] = np.exp(events[f'{el_string}drift_time'] / self.elife)
 
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
 
             result[f"{peak_type}cs2_top"] = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top']
-                                          * lifetime_corr / self.s2_map(s2_positions, map_name=s2_top_map_name))
-            result[f"{peak_type}cs2_bottom"] = (events[f'{peak_type}s2_area'] * (1 - events[f'{peak_type}s2_area_fraction_top'])
-                                             * lifetime_corr / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+                                             * result[f"{peak_type}elife_correction"]
+                                             / self.s2_map(s2_positions, map_name=s2_top_map_name))
+            result[f"{peak_type}cs2_bottom"] = (events[f'{peak_type}s2_area']
+                                                * (1 - events[f'{peak_type}s2_area_fraction_top'])
+                                                * result[f"{peak_type}elife_correction"]
+                                                / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
             result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_top"] + result[f"{peak_type}cs2_bottom"]
             result[f"{peak_type}cs2_area_fraction_top"] = result[f"{peak_type}cs2_top"] / result[f"{peak_type}cs2"]
 
