@@ -8,11 +8,12 @@ import tempfile
 import pymongo
 from warnings import warn
 import datetime
+from pprint import pprint as print
 
 
 class TestRunDBFrontend(unittest.TestCase):
     """
-    Test the saving behavior of the context with the strax.MongoFrontend
+    Test the saving behavior of the context with the straxen.RunDB
 
     Requires write access to some pymongo server, the URI of witch is to be set
     as an environment variable under:
@@ -40,15 +41,18 @@ class TestRunDBFrontend(unittest.TestCase):
         client = pymongo.MongoClient(uri)
         self.database = client[db_name]
         collection = self.database[self.collection_name]
+        self.path = os.path.join(tempfile.gettempdir(), 'strax_data')
         assert self.collection_name not in self.database.list_collection_names()
 
-        self.rundb_sf = straxen.RunDB()
+        self.rundb_sf = straxen.RunDB(readonly=False, runid_field='number', new_data_path=self.path,
+                                      minimum_run_number=-1, )
         self.rundb_sf.client = client
         self.rundb_sf.collection = collection
 
         self.st = strax.Context(register=[Records, Peaks],
                                 storage=[self.rundb_sf],
-                                use_per_run_defaults=True,
+                                use_per_run_defaults=False,
+                                config=dict(bonus_area=0),
                                 )
         for run_id in self.test_run_ids:
             collection.insert_one(_rundoc_format(run_id))
@@ -58,6 +62,9 @@ class TestRunDBFrontend(unittest.TestCase):
         if not self.run_test:
             return
         self.database[self.collection_name].drop()
+        if os.path.exists(self.path):
+            print(f'rm {self.path}')
+            shutil.rmtree(self.path)
 
     @property
     def is_all_targets_stored(self) -> bool:
@@ -70,10 +77,18 @@ class TestRunDBFrontend(unittest.TestCase):
     # def is_stored_in_mongo(self) -> bool:
     #     return self.st._is_stored_in_sf(self.test_run_ids, self.mongo_target, self.rundb_sf)
 
+    def test_finding_runs(self):
+        rdb = self.rundb_sf
+        col = self.database[self.collection_name]
+        assert col.find_one() is not None
+        query = rdb.number_query()
+        assert col.find_one(query) is not None
+        runs = self.st.select_runs()
+        assert len(runs) == len(self.test_run_ids)
+
     def test_write_and_load(self):
         if not self.run_test:
             return
-
         assert not self.is_all_targets_stored
 
         # Make ALL the data
@@ -81,74 +96,29 @@ class TestRunDBFrontend(unittest.TestCase):
         for t in self.all_targets:
             self.st.make(self.test_run_ids, t)
 
+        for r in self.test_run_ids:
+            print(self.st.available_for_run(r))
         assert self.is_all_targets_stored
 
         # Double check that we can load data from mongo even if we cannot make it
         self.st.context_config['forbid_creation_of'] = self.all_targets
-        peaks = self.st.get_array(self.test_run_ids, self.mongo_target)
+        peaks = self.st.get_array(self.test_run_ids, self.all_targets[-1])
         assert len(peaks)
-
         runs = self.st.select_runs(available=self.all_targets)
         assert len(runs) == len(self.test_run_ids)
-    #
-    # def test_write_and_change_lineage(self):
-    #     """
-    #     Lineage changes should result in data not being available
-    #     and therefore the data should not be returned.
-    #     """
-    #     if not self.run_test:
-    #         return
-    #     self._make_mongo_target()
-    #     assert self.is_stored_in_mongo
-    #
-    #     # Check that lineage changes result in non-loadable data
-    #     self.st.context_config['forbid_creation_of'] = self.all_targets
-    #     self.st._plugin_class_registry['peaks'].__version__ = 'some other version'
-    #     assert not self.is_stored_in_mongo
-    #     with self.assertRaises(strax.DataNotAvailable):
-    #         self.st.get_array(self.test_run_ids, self.mongo_target)
-    #
-    # def test_clean_cache(self):
-    #     """
-    #     We keep a small cache in the backend of the last loaded data for
-    #     offloading the database, test that it works
-    #     """
-    #     if not self.run_test:
-    #         return
-    #     self._make_mongo_target()
-    #     assert self.is_stored_in_mongo
-    #     mongo_backend = self.rundb_sf.backends[0]
-    #     assert len(mongo_backend.chunks_registry) == 0, "nothing should be cached"
-    #     # Now loading data should mean we start caching something
-    #     self.st.get_array(self.test_run_ids, self.mongo_target)
-    #     len_before = len(mongo_backend.chunks_registry)
-    #     assert len_before
-    #     mongo_backend._clean_first_key_from_registry()
-    #     assert len(mongo_backend.chunks_registry) < len_before
-    #
-    # def test_interrupt_iterator(self):
-    #     """
-    #     When we interrupt during the writing of data, make sure
-    #     we are not able to data that is only half computed
-    #     """
-    #     if not self.run_test:
-    #         return
-    #     assert not self.is_stored_in_mongo
-    #     self.st.config['n_chunks'] = 2  # Make sure that after one iteration we haven't finished
-    #     for chunk in self.st.get_iter(self.test_run_ids, self.mongo_target):
-    #         print(chunk)
-    #         break
-    #     assert not self.is_stored_in_mongo
-    #
-    # def _make_mongo_target(self):
-    #     assert not self.is_stored_in_mongo
-    #     self.st.make(self.test_run_ids, self.mongo_target)
-    #     assert self.is_stored_in_mongo
+
+        # Insert a new run number and check that it's not marked as available
+        self.database[self.collection_name].insert_one(_rundoc_format(3))
+        self.st.runs = None # Reset
+        all_runs = self.st.select_runs()
+        available_runs = self.st.select_runs(available=self.all_targets)
+        assert len(available_runs) == len(self.test_run_ids)
+        assert len(all_runs) == len(self.test_run_ids) + 1
 
 
 def _rundoc_format(run_id):
-    start=datetime.datetime.fromtimestamp() + datetime.timedelta(days=int(run_id))
-    end=start+ datetime.timedelta(days=1)
+    start = datetime.datetime.fromtimestamp(0) + datetime.timedelta(days=int(run_id))
+    end = start + datetime.timedelta(days=1)
     doc = {
         'comments': [{'comment': 'some testdoc',
                       'date': start,
