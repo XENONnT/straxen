@@ -125,7 +125,7 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         elif self.include_remote:
-            rules = len(admix.rucio.list_rules(did, state="OK"))
+            rules = admix.rucio.list_rules(did, state="OK")
             if len(rules):
                 return "RucioRemoteBackend", did
 
