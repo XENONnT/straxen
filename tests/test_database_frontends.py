@@ -29,7 +29,7 @@ class TestRunDBFrontend(unittest.TestCase):
             self.run_test = False
             warn('Cannot connect to test-database')
             return
-
+        self.run_test = True
         self.test_run_ids = ['0', '1']
         self.all_targets = ('peaks', 'records')
 
@@ -40,10 +40,18 @@ class TestRunDBFrontend(unittest.TestCase):
         self.database = client[db_name]
         collection = self.database[self.collection_name]
         self.path = os.path.join(tempfile.gettempdir(), 'strax_data')
+        self.database[self.collection_name].drop()
         assert self.collection_name not in self.database.list_collection_names()
 
-        self.rundb_sf = straxen.RunDB(readonly=False, runid_field='number', new_data_path=self.path,
-                                      minimum_run_number=-1, )
+        self.rundb_sf = straxen.RunDB(readonly=False,
+                                      runid_field='number',
+                                      new_data_path=self.path,
+                                      minimum_run_number=-1,
+                                      mongo_url='localhost:27017',
+                                      mongo_user='test',
+                                      mongo_password='test',
+                                      mongo_database='test',
+                                      )
         self.rundb_sf.client = client
         self.rundb_sf.collection = collection
 
@@ -110,6 +118,17 @@ class TestRunDBFrontend(unittest.TestCase):
         available_runs = self.st.select_runs(available=self.all_targets)
         assert len(available_runs) == len(self.test_run_ids)
         assert len(all_runs) == len(self.test_run_ids) + 1
+
+    def test_lineage_changes(self):
+        st = strax.Context(register=[Records, Peaks],
+                           storage=[self.rundb_sf],
+                           use_per_run_defaults=True,
+                           )
+        lineages = [st.key_for(r, 'peaks').lineage_hash for r in self.test_run_ids]
+        assert len(set(lineages)) > 1
+        with self.assertRaises(ValueError):
+            # Lineage changing per run is not allowed!
+            st.select_runs(available='peaks')
 
 
 def _rundoc_format(run_id):
