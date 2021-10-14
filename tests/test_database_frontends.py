@@ -22,7 +22,6 @@ class TestRunDBFrontend(unittest.TestCase):
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
     """
-    run_test = True
 
     def setUp(self):
         # Just to make sure we are running some mongo server, see test-class docstring
@@ -106,7 +105,7 @@ class TestRunDBFrontend(unittest.TestCase):
 
         # Insert a new run number and check that it's not marked as available
         self.database[self.collection_name].insert_one(_rundoc_format(3))
-        self.st.runs = None # Reset
+        self.st.runs = None  # Reset
         all_runs = self.st.select_runs()
         available_runs = self.st.select_runs(available=self.all_targets)
         assert len(available_runs) == len(self.test_run_ids)
