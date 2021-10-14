@@ -8,7 +8,6 @@ import tempfile
 import pymongo
 from warnings import warn
 import datetime
-from pprint import pprint as print
 
 
 class TestRunDBFrontend(unittest.TestCase):
@@ -72,10 +71,6 @@ class TestRunDBFrontend(unittest.TestCase):
         return all([all(
             [self.st.is_stored(r, t) for t in self.all_targets])
             for r in self.test_run_ids])
-
-    # @property
-    # def is_stored_in_mongo(self) -> bool:
-    #     return self.st._is_stored_in_sf(self.test_run_ids, self.mongo_target, self.rundb_sf)
 
     def test_finding_runs(self):
         rdb = self.rundb_sf
