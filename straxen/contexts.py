@@ -97,10 +97,10 @@ xnt_common_opts.update({
                                                    straxen.event_area_per_channel,
                                                    straxen.event_patternfit,
                                                    straxen.event_processing,
+                                                   straxen.event_shadow,
                                                    ],
     'use_per_run_defaults': False,
 })
-
 ##
 # XENONnT
 ##
