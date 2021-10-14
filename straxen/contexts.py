@@ -2,10 +2,8 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
-import socket
-from warnings import warn
 from .rucio import HAVE_ADMIX
-
+import os
 
 common_opts = dict(
     register_all=[
@@ -190,11 +188,12 @@ def xenonnt_online(output_folder='./strax_data',
 
     # Add the rucio frontend if we are able to
     if HAVE_ADMIX:
-        rucio_frontend = straxen.rucio.RucioFrontend(include_remote=True,
-                                                     staging_dir=output_folder,
-                                                     download_heavy=download_heavy
-                                                    )
-        st.storage.insert(0, rucio_frontend)
+        rucio_frontend = straxen.rucio.RucioFrontend(
+            include_remote=True,
+            staging_dir=os.path.join(output_folder, 'rucio'),
+            download_heavy=download_heavy,
+        )
+        st.storage += [rucio_frontend]
 
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
