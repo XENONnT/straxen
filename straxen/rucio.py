@@ -236,7 +236,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     def __init__(self, staging_dir, download_heavy=False, **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be a writable location.
-        :param *args: Passed to strax.FileSystemBackend
+        :param download_heavy: Whether or not to allow downloads of the heaviest data (raw_records*, less aqmon and MV)
         :param **kwargs: Passed to strax.FileSystemBackend
         """
 
