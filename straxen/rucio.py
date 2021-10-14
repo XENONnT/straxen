@@ -254,7 +254,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
 
-    def get_metadata(self, dset_did, **kwargs):
+    def _get_metadata(self, dset_did, **kwargs):
         if dset_did in self.dset_cache:
             rse = self.dset_cache[dset_did]
         else:
