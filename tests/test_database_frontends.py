@@ -73,6 +73,8 @@ class TestRunDBFrontend(unittest.TestCase):
             for r in self.test_run_ids])
 
     def test_finding_runs(self):
+        if not self.run_test:
+            return
         rdb = self.rundb_sf
         col = self.database[self.collection_name]
         assert col.find_one() is not None
