@@ -1,17 +1,20 @@
 import socket
 import re
 import json
+
+import numpy as np
 from bson import json_util
 import os
 import glob
 import hashlib
 from utilix import xent_collection
 import strax
-import warnings
 try:
     import admix
-except (ImportError, RuntimeError):
-    print("Problem importing admix. You will not be able to use rucio tools.")
+    HAVE_ADMIX = True
+except ImportError:
+    HAVE_ADMIX = False
+
 
 export, __all__ = strax.exporter()
 
@@ -82,6 +85,9 @@ class RucioFrontend(strax.StorageFrontend):
             self.local_rucio_path = rucio_prefix
 
         if include_remote:
+            if not HAVE_ADMIX:
+                self.log.warning("You passed use_remote=True to rucio fronted, "
+                                 "but you don't have access to admix/rucio! Using local backed only.")
             self._set_remote_imports()
             self.backends.append(RucioRemoteBackend(staging_dir, download_heavy=download_heavy))
 
@@ -106,20 +112,9 @@ class RucioFrontend(strax.StorageFrontend):
             raise ImportError('Cannot work with Rucio remote backend') from e
 
     def find_several(self, keys, **kwargs):
-        if not len(keys):
-            return []
-
-        ret = []
-        for key in keys:
-            if not self._support_superruns(key.run_id):
-                ret.append(False)
-                continue
-            did = key_to_rucio_did(key)
-            if self.did_is_local(did):
-                ret.append(('RucioLocalBackend', did))
-            else:
-                ret.append(False)
-        return ret
+        # for performance, dont do find_several with this plugin
+        # we basically do the same query we would do in the RunDB plugin
+        return np.zeros_like(keys, dtype=bool).tolist()
 
     def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
         did = key_to_rucio_did(key)
@@ -130,14 +125,9 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         elif self.include_remote:
-            # only do this part if we include the remote backend
-            try:
-                # check if the DID exists
-                scope, name = did.split(':')
-                self._did_client.get_did(scope, name)
+            rules = len(admix.rucio.list_rules(did, state="OK"))
+            if len(rules):
                 return "RucioRemoteBackend", did
-            except self._id_not_found_error:
-                pass
 
         if fuzzy_for or fuzzy_for_options:
             matches_to = self._match_fuzzy(key,
