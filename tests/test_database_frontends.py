@@ -29,11 +29,6 @@ class TestRunDBFrontend(unittest.TestCase):
             self.run_test = False
             warn('Cannot connect to test-database')
             return
-        if not straxen.utilix_is_configured():
-            # Bit of an ugly hack but there is no way to get around this
-            # function even though we don't need it
-            import utilix
-            utilix.rundb.xent_collection = lambda x:  ''
 
         self.run_test = True
         self.test_run_ids = ['0', '1']
@@ -46,8 +41,12 @@ class TestRunDBFrontend(unittest.TestCase):
         self.database = client[db_name]
         collection = self.database[self.collection_name]
         self.path = os.path.join(tempfile.gettempdir(), 'strax_data')
-        self.database[self.collection_name].drop()
         assert self.collection_name not in self.database.list_collection_names()
+
+        if not straxen.utilix_is_configured():
+            # Bit of an ugly hack but there is no way to get around this
+            # function even though we don't need it
+            straxen.rundb.utilix.rundb.xent_collection = lambda *args, **kwargs: collection
 
         self.rundb_sf = straxen.RunDB(readonly=False,
                                       runid_field='number',
