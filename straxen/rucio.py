@@ -1,14 +1,15 @@
-import socket
-import re
-import json
-
-import numpy as np
-from bson import json_util
-import os
 import glob
 import hashlib
-from utilix import xent_collection
+import json
+import os
+import re
+import socket
+
+import numpy as np
 import strax
+from bson import json_util
+from utilix import xent_collection
+
 try:
     import admix
     HAVE_ADMIX = True
@@ -17,6 +18,7 @@ except ImportError:
 
 
 export, __all__ = strax.exporter()
+
 
 class TooMuchDataError(Exception):
     pass
@@ -35,12 +37,10 @@ class RucioFrontend(strax.StorageFrontend):
                   'SDSC_USERDISK': r'.sdsc.'
                   }
     local_did_cache = None
-    local_rucio_path = None
-
-    # Some attributes to set if we have the remote backend
-    _did_client = None
-    _id_not_found_error = None
-    _rse_client = None
+    path = None
+    local_prefixes = {'UC_DALI_USERDISK': '/dali/lgrandi/rucio/',
+                      'SDSC_USERDISK': '/expanse/lustre/projects/chi135/shockley/rucio',
+                      }
 
     def __init__(self,
                  include_remote=False,
@@ -82,14 +82,15 @@ class RucioFrontend(strax.StorageFrontend):
             # rucio backend to read from that path
             rucio_prefix = self.get_rse_prefix(local_rse)
             self.backends.append(RucioLocalBackend(rucio_prefix))
-            self.local_rucio_path = rucio_prefix
+            self.path = rucio_prefix
 
         if include_remote:
             if not HAVE_ADMIX:
                 self.log.warning("You passed use_remote=True to rucio fronted, "
                                  "but you don't have access to admix/rucio! Using local backed only.")
-            self._set_remote_imports()
-            self.backends.append(RucioRemoteBackend(staging_dir, download_heavy=download_heavy))
+            else:
+                self.backends.append(RucioRemoteBackend(staging_dir,
+                                                        download_heavy=download_heavy))
 
     def __repr__(self):
         # List the relevant attributes
@@ -99,17 +100,6 @@ class RucioFrontend(strax.StorageFrontend):
             if hasattr(self, attr) and getattr(self, attr):
                 representation += f', {attr}: {getattr(self, attr)}'
         return representation
-
-    def _set_remote_imports(self):
-        try:
-            from rucio.client.rseclient import RSEClient
-            from rucio.client.didclient import DIDClient
-            from rucio.common.exception import DataIdentifierNotFound
-            self._did_client = DIDClient()
-            self._id_not_found_error = DataIdentifierNotFound
-            self._rse_client = RSEClient()
-        except (ModuleNotFoundError, RuntimeError) as e:
-            raise ImportError('Cannot work with Rucio remote backend') from e
 
     def find_several(self, keys, **kwargs):
         # for performance, dont do find_several with this plugin
@@ -125,7 +115,7 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         elif self.include_remote:
-            rules = len(admix.rucio.list_rules(did, state="OK"))
+            rules = admix.rucio.list_rules(did, state="OK")
             if len(rules):
                 return "RucioRemoteBackend", did
 
@@ -139,14 +129,10 @@ class RucioFrontend(strax.StorageFrontend):
         raise strax.DataNotAvailable
 
     def get_rse_prefix(self, rse):
-        if self._rse_client is not None:
-            rse_info = self._rse_client.get_rse(rse)
-            prefix = rse_info['protocols'][0]['prefix']
-        elif self.local_rse == 'UC_DALI_USERDISK':
-            # If rucio is not loaded but we are on dali, look here:
-            prefix = '/dali/lgrandi/rucio/'
-        elif self.local_rse == 'SDSC_USERDISK':
-            prefix = '/expanse/lustre/projects/chi135/shockley/rucio'
+        if HAVE_ADMIX:
+            prefix = admix.rucio.get_rse_prefix(rse)
+        elif self.local_rse in self.local_prefixes:
+            prefix = self.local_prefixes[self.local_rse]
         else:
             raise ValueError(f'We are not on dali nor expanse and thus cannot load rucio')
         return prefix
@@ -175,7 +161,7 @@ class RucioFrontend(strax.StorageFrontend):
         for chunk in md.get('chunks', []):
             if chunk.get('filename'):
                 _did = f"{scope}:{chunk['filename']}"
-                ch_path = rucio_path(self.local_rucio_path, _did)
+                ch_path = rucio_path(self.path, _did)
                 if not os.path.exists(ch_path):
                     return False
         return True
@@ -268,7 +254,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
 
-    def get_metadata(self, dset_did, **kwargs):
+    def _get_metadata(self, dset_did, **kwargs):
         if dset_did in self.dset_cache:
             rse = self.dset_cache[dset_did]
         else:
@@ -333,8 +319,11 @@ class RucioSaver(strax.Saver):
 
 
 def rucio_path(root_dir, did):
-    """Convert target to path according to rucio convention.
-    See the __hash method here: https://github.com/rucio/rucio/blob/1.20.15/lib/rucio/rse/protocols/protocol.py"""
+    """
+    Convert target to path according to rucio convention.
+    See the __hash method here:
+    https://github.com/rucio/rucio/blob/1.20.15/lib/rucio/rse/protocols/protocol.py
+    """
     scope, filename = did.split(':')
     # disable bandit
     rucio_md5 = hashlib.md5(did.encode('utf-8')).hexdigest() # nosec
@@ -365,19 +354,8 @@ def key_to_rucio_did(key: strax.DataKey) -> str:
     return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'
 
 
-def key_to_rucio_meta(key: strax.DataKey) -> str:
-    return f'{str(key.data_type)}-{key.lineage_hash}-metadata.json'
-
-
 def read_md(path: str) -> json:
     with open(path, mode='r') as f:
         md = json.loads(f.read(),
                         object_hook=json_util.object_hook)
     return md
-
-
-def list_datasets(scope):
-    from rucio.client.client import Client
-    rucio_client = Client()
-    datasets = [d for d in rucio_client.list_dids(scope, {'type': 'dataset'}, type='dataset')]
-    return datasets
