@@ -29,6 +29,12 @@ class TestRunDBFrontend(unittest.TestCase):
             self.run_test = False
             warn('Cannot connect to test-database')
             return
+        if not straxen.utilix_is_configured():
+            # Bit of an ugly hack but there is no way to get around this
+            # function even though we don't need it
+            import utilix
+            utilix.rundb.xent_collection = lambda x:  ''
+
         self.run_test = True
         self.test_run_ids = ['0', '1']
         self.all_targets = ('peaks', 'records')
@@ -47,10 +53,6 @@ class TestRunDBFrontend(unittest.TestCase):
                                       runid_field='number',
                                       new_data_path=self.path,
                                       minimum_run_number=-1,
-                                      mongo_url='localhost:27017',
-                                      mongo_user='test',
-                                      mongo_password='test',
-                                      mongo_database='test',
                                       )
         self.rundb_sf.client = client
         self.rundb_sf.collection = collection
