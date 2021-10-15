@@ -24,12 +24,6 @@ def test_xennonnt():
         st.search_field('time')
 
 
-def test_xennonnt_latest(cmt_version='latest'):
-    if straxen.utilix_is_configured():
-        st = xenonnt(cmt_version, _database_init=False, use_rucio=False)
-        st.search_field('time')
-
-
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False, use_rucio=False)
     st.search_field('time')
