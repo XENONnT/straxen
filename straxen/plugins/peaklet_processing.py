@@ -92,7 +92,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.4.1'
+    __version__ = '0.5.0'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -234,11 +234,15 @@ class Peaklets(strax.Plugin):
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
-        peaklets['tight_coincidence'] = get_tight_coin(
+        tight_coincidence, tight_coincidence_channel = get_tight_coin(
             hit_max_times,
+            hitlets['channel'],
             peaklet_max_times,
             self.config['tight_coincidence_window_left'],
             self.config['tight_coincidence_window_right'])
+
+        peaklets['tight_coincidence'] = tight_coincidence
+        peaklets['tight_coincidence_channel'] = tight_coincidence_channel
 
         if self.config['diagnose_sorting'] and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
@@ -618,7 +622,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.3.1'
+    __version__ = '0.4.0'
 
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
@@ -805,7 +809,7 @@ class Peaks(strax.Plugin):
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
-    save_when = strax.SaveWhen.NEVER
+    save_when = strax.SaveWhen.EXPLICIT
 
     __version__ = '0.1.2'
 
@@ -853,33 +857,54 @@ class PeaksHighEnergy(Peaks):
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def get_tight_coin(hit_max_times, peak_max_times, left, right):
-    """Calculates the tight coincidence
+def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
+                   n_channel=straxen.n_tpc_pmts):
+    """Calculates the tight coincidence based on hits and PMT channels.
 
     Defined by number of hits within a specified time range of the
     the peak's maximum amplitude.
     Imitates tight_coincidence variable in pax:
     github.com/XENON1T/pax/blob/master/pax/plugins/peak_processing/BasicProperties.py
+
+    :param hit_max_times: Time of the hit amplitude in ns.
+    :param hit_channel: PMT channels of the hits
+    :param peak_max_times: Time of the peaks maximum in ns.
+    :param left: Left boundary in which we search for the tight
+        coincidence in ns.
+    :param right: Right boundary in which we search for the tight
+        coincidence in ns.
+    :param n_channel: Number of PMT channels of the detector
+
+    :returns: n_coin_hit, n_coin_channel of length peaks containing the
+        tight coincidence.
     """
     left_hit_i = 0
-    n_coin = np.zeros(len(peak_max_times), dtype=np.int16)
+    n_coin_hit = np.zeros(len(peak_max_times), dtype=np.int16)
+    n_coin_channel = np.zeros(len(peak_max_times), dtype=np.int16)
+    channels_seen = np.zeros(n_channel, dtype=np.bool_)
 
     # loop over peaks
     for p_i, p_t in enumerate(peak_max_times):
-
+        channels_seen[:] = 0
         # loop over hits starting from the last one we left at
         for left_hit_i in range(left_hit_i, len(hit_max_times)):
 
             # if the hit is in the window, its a tight coin
             d = hit_max_times[left_hit_i] - p_t
             if (-left <= d) & (d <= right):
-                n_coin[p_i] += 1
+                n_coin_hit[p_i] += 1
+                channels_seen[hit_channel[left_hit_i]] = 1
 
             # stop the loop when we know we're outside the range
             if d > right:
+                n_coin_channel[p_i] = np.sum(channels_seen)
                 break
+        
+        # Add channel information in case there are no hits beyond 
+        # the last peak:
+        n_coin_channel[p_i] = np.sum(channels_seen)
 
-    return n_coin
+    return n_coin_hit, n_coin_channel
 
 
 @numba.njit(cache=True, nogil=True)
