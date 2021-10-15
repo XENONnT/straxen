@@ -9,8 +9,11 @@ def test_query_sc_values():
     return is correct.
     """
 
-    if not straxen.utilix_is_configured('scada', 'scdata_url'):
-        warnings.warn('Cannot test scada since we have no access to xenon secrets.')
+    if not straxen.utilix_is_configured(
+            'scada',
+            'scdata_url',
+            warning_message='Cannot test scada since we have no access to '
+                            'xenon secrets.'):
         return
 
     print('Testing SCADAInterface')

@@ -25,7 +25,9 @@ class RucioFrontend(strax.StorageFrontend):
     """
     Uses the rucio client for the data find.
     """
-    local_rses = {'UC_DALI_USERDISK': r'.rcc.'}
+    local_rses = {'UC_DALI_USERDISK': r'.rcc.',
+                  'SDSC_USERDISK': r'.sdsc.'
+                  }
     local_did_cache = None
     local_rucio_path = None
 
@@ -106,6 +108,9 @@ class RucioFrontend(strax.StorageFrontend):
 
         ret = []
         for key in keys:
+            if not self._support_superruns(key.run_id):
+                ret.append(False)
+                continue
             did = key_to_rucio_did(key)
             if self.did_is_local(did):
                 ret.append(('RucioLocalBackend', did))
@@ -147,8 +152,10 @@ class RucioFrontend(strax.StorageFrontend):
         elif self.local_rse == 'UC_DALI_USERDISK':
             # If rucio is not loaded but we are on dali, look here:
             prefix = '/dali/lgrandi/rucio/'
+        elif self.local_rse == 'SDSC_USERDISK':
+            prefix = '/expanse/lustre/projects/chi135/shockley/rucio'
         else:
-            raise ValueError(f'We are not on dali and cannot load rucio')
+            raise ValueError(f'We are not on dali nor expanse and thus cannot load rucio')
         return prefix
 
     def did_is_local(self, did):

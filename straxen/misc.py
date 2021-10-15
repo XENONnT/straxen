@@ -9,7 +9,9 @@ import datetime
 import pytz
 from os import environ as os_environ
 from importlib import import_module
+from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
+import typing as ty
 
 export, __all__ = strax.exporter()
 
@@ -41,7 +43,9 @@ def dataframe_to_wiki(df, float_digits=5, title='Awesome table',
 
 
 @export
-def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
+def print_versions(modules=('strax', 'straxen', 'cutax'),
+                   return_string=False,
+                   include_git=True):
     """
     Print versions of modules installed.
 
@@ -50,6 +54,8 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
         'cutax', 'pema'))
     :param return_string: optional. Instead of printing the message,
         return a string
+    :param include_git_details: Include the current branch and latest
+        commit hash
     :return: optional, the message that would have been printed
     """
     message = (f'Working on {socket.getfqdn()} with the following '
@@ -59,29 +65,64 @@ def print_versions(modules=('strax', 'straxen', 'cutax'), return_string=False):
     for m in strax.to_str_tuple(modules):
         try:
             mod = import_module(m)
-            message += f'\n{m}'
-            if hasattr(mod, '__version__'):
-                message += f'\tv{mod.__version__}'
-            if hasattr(mod, '__path__'):
-                message += f'\t{mod.__path__[0]}'
         except (ModuleNotFoundError, ImportError):
             print(f'{m} is not installed')
+            continue
+
+        message += f'\n{m}'
+        if hasattr(mod, '__version__'):
+            message += f'\tv{mod.__version__}'
+        if hasattr(mod, '__path__'):
+            module_path = mod.__path__[0]
+            message += f'\t{module_path}'
+            if include_git:
+                try:
+                    repo = Repo(module_path, search_parent_directories=True)
+                except InvalidGitRepositoryError:
+                    # not a git repo
+                    pass
+                else:
+                    try:
+                        branch = repo.active_branch
+                    except TypeError:
+                        branch = 'unknown'
+                    try:
+                        commit_hash = repo.head.object.hexsha
+                    except TypeError:
+                        commit_hash = 'unknown'
+                    message += f'\tgit branch:{branch} | {commit_hash[:7]}'
     if return_string:
         return message
     print(message)
 
 
 @export
-def utilix_is_configured(header='RunDB', section='xent_database') -> bool:
+def utilix_is_configured(header: str = 'RunDB',
+                         section: str = 'xent_database',
+                         warning_message: ty.Union[None, bool, str] = None,
+                         ) -> bool:
     """
     Check if we have the right connection to
     :return: bool, can we connect to the Mongo database?
+
+    :param header: Which header to check in the utilix config file
+    :param section: Which entry in the header to check to exist
+    :param warning_message: If utilix is not configured, warn the user.
+        if None -> generic warning
+        if str -> use the string to warn
+        if False -> don't warn
     """
     try:
-        return (hasattr(straxen.uconfig, 'get') and
-                straxen.uconfig.get(header, section) is not None)
+        is_configured = (hasattr(straxen.uconfig, 'get') and
+                         straxen.uconfig.get(header, section) is not None)
     except NoSectionError:
-        return False
+        is_configured = False
+
+    if not is_configured and bool(warning_message):
+        if warning_message is None:
+            warning_message = 'Utilix is not configured, cannot proceed'
+        warnings.warn(warning_message)
+    return is_configured
 
 
 @export
@@ -201,6 +242,27 @@ class TimeWidgets:
         time_ns = int(date_and_time[2])
 
         return time, time_ns
+
+
+@strax.Context.add_method
+def extract_latest_comment(self):
+    """
+    Extract the latest comment in the runs-database. This just adds info to st.runs
+
+    Example:
+        st.extract_latest_comment()
+        st.select_runs(available=('raw_records'))
+    """
+    if self.runs is None or 'comments' not in self.runs.keys():
+        self.scan_runs(store_fields=('comments',))
+        latest_comments = _parse_to_last_comment(self.runs['comments'])
+        self.runs['comments'] = latest_comments
+    return self.runs
+
+
+def _parse_to_last_comment(comments):
+    """Unpack to get the last comment (hence the -1) or give '' when there is none"""
+    return [(c[-1]['comment'] if hasattr(c, '__len__') else '') for c in comments]
 
 
 @export
