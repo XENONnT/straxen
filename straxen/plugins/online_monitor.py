@@ -185,7 +185,11 @@ class OnlinePeakMonitor(strax.Plugin):
         track=False, 
         type=immutabledict,
         help="immutabledict mapping subdetector to (min, max) \
-              channel number.")
+              channel number."), 
+    strax.Option(
+        'events_nv_area_bounds',
+        type=tuple, default=(-0.5, 130.5),
+        help='Boundaries area histogram of events_nv_area_per_chunk [PE]')
 )
 class OnlineMonitorNV(strax.Plugin):
     """
@@ -203,7 +207,7 @@ class OnlineMonitorNV(strax.Plugin):
     depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     rechunk_on_save = False
 
     def infer_dtype(self):
@@ -237,4 +241,10 @@ class OnlineMonitorNV(strax.Plugin):
         
         # Count number of events_nv per chunk
         res['events_nv_per_chunk'] = len(events_nv)
+        
+        # Get histogram of events_nv_area per chunk
+        min_bin, max_bin = self.config['events_nv_area_bounds']
+        res['events_nv_area_per_chunk'], _ = np.histogram(events_nv['area'], 
+                                                          bins=np.arange(min_bin, max_bin, 1),
+                                                          weights=np.ones(len(events_nv)))
         return res
