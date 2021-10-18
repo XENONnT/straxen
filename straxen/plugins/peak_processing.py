@@ -28,7 +28,7 @@ class PeakBasics(strax.Plugin):
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.0.9"
+    __version__ = "0.1.0"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -47,6 +47,8 @@ class PeakBasics(strax.Plugin):
             'max_pmt'), np.int16),
         (('Area of signal in the largest-contributing PMT (PE)',
             'max_pmt_area'), np.float32),
+        (('Total number of saturated channels',
+          'n_saturated_channels'), np.int16),
         (('Width (in ns) of the central 50% area of the peak',
             'range_50p_area'), np.float32),
         (('Width (in ns) of the central 90% area of the peak',
@@ -62,6 +64,8 @@ class PeakBasics(strax.Plugin):
           'rise_time'), np.float32),
         (('Hits within tight range of mean',
           'tight_coincidence'), np.int16),
+        (('PMT channel within tight range of mean',
+          'tight_coincidence_channel'), np.int16),
         (('Classification of the peak(let)',
           'type'), np.int8)
     ]
@@ -78,6 +82,8 @@ class PeakBasics(strax.Plugin):
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
+        r['tight_coincidence_channel'] = p['tight_coincidence_channel']
+        r['n_saturated_channels'] = p['n_saturated_channels']
 
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
