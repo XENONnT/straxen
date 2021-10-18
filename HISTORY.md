@@ -25,6 +25,7 @@ patches and fixes:
 - Skips superruns in rucio frontend (#689)
 - Warn about non-loadable loggers (#693)
 - Add RunDb read/write-test (#695)
+- Fix bug in rucio frontend (#699)
 
 
 
