@@ -1,3 +1,8 @@
+1.1.1 / 2021-10-19
+-------------------
+ - Fix to test for RunDB frontend when no test DB is sourced (6da2233)
+
+
 1.1.0 / 2021-10-18
 -------------------
 major / minor:
