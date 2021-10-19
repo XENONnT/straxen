@@ -121,7 +121,7 @@ class TestRunDBFrontend(unittest.TestCase):
         assert len(all_runs) == len(self.test_run_ids) + 1
 
     def test_lineage_changes(self):
-         if not self.run_test:
+        if not self.run_test:
             return
         st = strax.Context(register=[Records, Peaks],
                            storage=[self.rundb_sf],
