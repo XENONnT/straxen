@@ -12,6 +12,7 @@ from utilix import xent_collection
 
 try:
     import admix
+    from rucio.common.exception import DataIdentifierNotFound
     HAVE_ADMIX = True
 except ImportError:
     HAVE_ADMIX = False
@@ -115,9 +116,12 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         elif self.include_remote:
-            rules = admix.rucio.list_rules(did, state="OK")
-            if len(rules):
-                return "RucioRemoteBackend", did
+            try:
+                rules = admix.rucio.list_rules(did, state="OK")
+                if len(rules):
+                    return "RucioRemoteBackend", did
+            except DataIdentifierNotFound:
+                pass
 
         if fuzzy_for or fuzzy_for_options:
             matches_to = self._match_fuzzy(key,
