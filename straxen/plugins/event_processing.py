@@ -135,7 +135,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.2.0'
+    __version__ = '1.2.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -269,6 +269,11 @@ class EventBasics(strax.Plugin):
             if np.issubdtype(buffer.dtype[field], np.integer):
                 buffer[field][:] = -1
             else:
+                buffer[field][:] = np.nan
+
+        # set nan for drift time related quantities
+        for field in buffer.dtype.names:
+            if "drift_time" in field:
                 buffer[field][:] = np.nan
 
     def compute(self, events, peaks):
