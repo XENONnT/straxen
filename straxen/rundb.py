@@ -267,20 +267,6 @@ class RunDB(strax.StorageFrontend):
         return [results_dict.get(k.run_id, False)
                 for k in keys]
 
-    def _list_available(self, key: strax.DataKey,
-                        allow_incomplete, fuzzy_for, fuzzy_for_options):
-        if fuzzy_for or fuzzy_for_options or allow_incomplete:
-            # The RunDB frontend can do neither fuzzy nor incomplete
-            warnings.warn('RunDB cannot do fuzzy or incomplete')
-
-        q = self._data_query(key)
-        q.update(self.number_query())
-
-        cursor = self.collection.find(
-            q,
-            projection=[self.runid_field])
-        return [x[self.runid_field] for x in cursor]
-
     def _scan_runs(self, store_fields):
         query = self.number_query()
         projection = strax.to_str_tuple(list(store_fields))
