@@ -57,7 +57,7 @@ export, __all__ = strax.exporter()
                    )
 class LEDAfterpulseProcessing(strax.Plugin):
     
-    __version__ = '0.4.0'
+    __version__ = '0.4.1'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -105,11 +105,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
                                min_height_over_noise = self.config['hit_min_height_over_noise'],
                               )
         
-        # sort hits first by record_i, then by time
-        hits_sorted = np.sort(hits, order=('record_i', 'time'))
-        
-        # find LED hits and afterpulses within the same WF
-        hits_ap = find_ap(hits_sorted,
+        # sort hits by record_i and time, then find LED hit and afterpulse hits within the same record
+        hits_ap = find_ap(hits,
                           records,
                           LED_window_left=self.config['LED_window_left'],
                           LED_window_right=self.config['LED_window_right'],
@@ -125,15 +122,21 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
 @export
 def find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension):
+    
     buffer = np.zeros(len(hits), dtype=dtype_afterpulses())
+    
     if not len(hits):
         return buffer
-    res = _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=buffer)
+
+    # sort hits first by record_i, then by time
+    hits_sorted = np.sort(hits, order=('record_i', 'time'))
+    res = _find_ap(hits_sorted, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=buffer)
     return res
             
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension, buffer=None):
+
     # hits need to be sorted by record_i, then time!
     
     offset = 0
