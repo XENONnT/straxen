@@ -94,17 +94,13 @@ class LEDAfterpulseProcessing(strax.Plugin):
         records = strax.raw_to_records(raw_records)
         del raw_records
         
-        # channel split: only need the TPC PMT channels
-        r = records[records['channel'] < self.config['n_tpc_pmts']]
-        del records
-        
         # calculate baseline and baseline rms
-        strax.baseline(r,
+        strax.baseline(records,
                        baseline_samples=self.config['baseline_samples'],
                        flip=True)
  
         # find all hits
-        hits = strax.find_hits(r,
+        hits = strax.find_hits(records,
                                min_amplitude = self.hit_thresholds,
                                min_height_over_noise = self.config['hit_min_height_over_noise'],
                               )
@@ -114,7 +110,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
         
         # find LED hits and afterpulses within the same WF
         hits_ap = find_ap(hits_sorted,
-                          r,
+                          records,
                           LED_window_left=self.config['LED_window_left'],
                           LED_window_right=self.config['LED_window_right'],
                           hit_left_extension=self.config['hit_left_extension'],
