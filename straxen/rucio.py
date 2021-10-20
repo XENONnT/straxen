@@ -112,12 +112,17 @@ class RucioFrontend(strax.StorageFrontend):
         if self.did_is_local(did):
             return "RucioLocalBackend", did
         elif self.include_remote:
-            try:
-                rules = admix.rucio.list_rules(did, state="OK")
-                if len(rules):
-                    return "RucioRemoteBackend", did
-            except DataIdentifierNotFound:
-                pass
+            # Check that the remote may actually provide this data.
+            remote_backend = self._get_backend("RucioRemoteBackend")
+            remote_download_allowed = (remote_backend.download_heavy or 
+                                       key.data_type not in remote_backend.heavy_types)
+            if remote_download_allowed:
+                try:
+                    rules = admix.rucio.list_rules(did, state="OK")
+                    if len(rules):
+                        return "RucioRemoteBackend", did
+                except DataIdentifierNotFound:
+                    pass
 
         if fuzzy_for or fuzzy_for_options:
             matches_to = self._match_fuzzy(key,
@@ -196,7 +201,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
         super().__init__(*args, **kwargs)
         self.rucio_dir = rucio_dir
 
-    def get_metadata(self, did: str, **kwargs):
+    def _get_metadata(self, did: str, **kwargs):
         scope, name = did.split(':')
         number, dtype, hsh = parse_did(did)
         metadata_json = f'{dtype}-{hsh}-metadata.json'
