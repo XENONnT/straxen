@@ -9,7 +9,6 @@ import numba
 export, __all__ = strax.exporter()
 
 
-
 @export
 @strax.takes_config(
                     strax.Option('gain_model',
@@ -46,18 +45,14 @@ export, __all__ = strax.exporter()
                                  help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
                                       'Actual threshold used is max(hit_min_amplitude, hit_min_height_over_noise * baseline_rms).',
                                 ),
-                    strax.Option('hit_left_extension',
-                                 default=2,
-                                 help='Extend hits by this many samples left',
-                                ),
-                    strax.Option('hit_right_extension',
-                                 default=20,
-                                 help='Extend hits by this many samples right',
+                    strax.Option('save_outside_hits',
+                                 default = (3, 20),
+                                 help='Save (left, right) samples besides hits; cut the rest',
                                 ),
                    )
 class LEDAfterpulseProcessing(strax.Plugin):
     
-    __version__ = '0.4.1'
+    __version__ = '0.5.0'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -74,6 +69,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
     def setup(self):
         
         self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
+
+        self.hit_left_extension, self.hit_right_extension = self.config['save_outside_hits']
         
         # Check config of `hit_min_amplitude` and define hit thresholds
         # if cmt config
@@ -110,8 +107,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
                           records,
                           LED_window_left=self.config['LED_window_left'],
                           LED_window_right=self.config['LED_window_right'],
-                          hit_left_extension=self.config['hit_left_extension'],
-                          hit_right_extension=self.config['hit_right_extension'],
+                          hit_left_extension=self.hit_left_extension,
+                          hit_right_extension=self.hit_right_extension,
                          )
     
         hits_ap['area_pe'] = hits_ap['area'] * self.to_pe[hits_ap['channel']]
@@ -168,61 +165,26 @@ def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extensio
             # if hit is before LED window: discard
             continue
             
-        if (h['left'] >= LED_window_left) & (h['left'] < LED_window_right):
+        if h['left'] < LED_window_right:
             # hit is in LED window
             if not is_LED:
                 # this is the first hit in the LED window
-                res['time'] = h['time']
-                res['dt'] = h['dt']
-                res['channel'] = h['channel']
-                res['left'] = h['left']
-                res['right'] = h['right']
-                res['record_i'] = h['record_i']
-                res['threshold'] = h['threshold']
-                res['height'] = h['height']
-                
-                res['left_integration'] =  h['left'] - hit_left_extension
-                res['right_integration'] = h['right'] + hit_right_extension
+                fill_hitpars(res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart)
 
-                res['length'] = res['right_integration'] - res['left_integration']
-                
-                # need to add baseline_fpart to area
-                hit_data = record_data[res['left_integration']:res['right_integration']]
-                res['area'] = hit_data.sum() + res['length'] * baseline_fpart
-                
-                res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
-                res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
-                
-                res['max'] = res['left_integration'] + hit_data.argmax()
-                
                 # set the LED time in the current WF
-                t_LED = res['sample_10pc_area']
-                
+                t_LED = res['sample_10pc_area']                
                 is_LED = True
                 
                 continue
             
             # more hits in LED window: extend the first (merging all hits in the LED window)
-            res['right'] = h['right']
-            res['right_integration'] = h['right'] + hit_right_extension
-
-            res['length'] = res['right_integration'] - res['left_integration']
-            res['height'] = max(res['height'], h['height'])
+            fill_hitpars(res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart, extend=True)
             
-            hit_data = record_data[res['left_integration']:res['right_integration']]
-            res['area'] = hit_data.sum() + res['length'] * baseline_fpart
-
-            res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
-            res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
-
-            res['max'] = res['left_integration'] + hit_data.argmax()
-
             t_LED = res['sample_10pc_area']
             
             continue
             
         # Here begins a new hit after the LED window
-        
         if (h['left'] >= LED_window_right) and not is_LED:
             # no LED hit found: ignore and go to next hit (until new record begins)
             continue
@@ -233,22 +195,9 @@ def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extensio
             
         ## if a hit only partly overlaps with the previous hit's right_extension, merge them (extend previous hit by this one)
         if h['left'] <= res['right_integration']:
-            
-            res['right'] = h['right']
-            res['right_integration'] = h['right'] + hit_right_extension
-            if res['right_integration'] > record_len:
-                res['right_integration'] = record_len
-            res['length'] = res['right_integration'] - res['left_integration']
-            res['height'] = max(res['height'], h['height'])
-            
-            hit_data = record_data[res['left_integration']:res['right_integration']]
-            res['area'] = hit_data.sum() + res['length'] * baseline_fpart
-            
-            res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
-            res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
 
-            res['max'] = res['left_integration'] + hit_data.argmax()
-            
+            fill_hitpars(res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart, extend=True)
+ 
             res['tdelay'] = res['sample_10pc_area'] - t_LED
             
             continue
@@ -256,30 +205,9 @@ def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extensio
         # an actual new hit increases the buffer index
         offset += 1 
         res = buffer[offset]
-        
-        res['time'] = h['time']
-        res['dt'] = h['dt']
-        res['channel'] = h['channel']
-        res['left'] = h['left']
-        res['right'] = h['right']
-        res['record_i'] = h['record_i']
-        res['threshold'] = h['threshold']
-        res['height'] = h['height']
 
-        res['left_integration'] =  h['left'] - hit_left_extension
-        res['right_integration'] = h['right'] + hit_right_extension
-        if res['right_integration'] > record_len:
-            res['right_integration'] = record_len
-        res['length'] = res['right_integration'] - res['left_integration']
+        fill_hitpars(res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart)
 
-        hit_data = record_data[res['left_integration']:res['right_integration']]
-        res['area'] = hit_data.sum() + res['length'] * baseline_fpart
-
-        res['sample_10pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
-        res['sample_50pc_area'] = res['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
-
-        res['max'] = res['left_integration'] + hit_data.argmax()
-        
         res['tdelay'] = res['sample_10pc_area'] - t_LED
     
     return buffer[:offset]
@@ -304,6 +232,36 @@ def get_sample_area_quantile(data, quantile, baseline_fpart):
             # (negative area due to wrong baseline, caused by real events that by coincidence fall in the first samples of the trigger window)
             #print('no quantile found: set to 0')
             return 0
+
+
+@numba.jit(nopython=True, nogil=True, cache=True)
+def fill_hitpars(result, hit, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart, extend=False):
+
+    if not extend: # fill first time only
+        result['time'] = hit['time'] - hit_left_extension*hit['dt']
+        result['dt'] = hit['dt']
+        result['channel'] = hit['channel']
+        result['left'] = hit['left']
+        result['record_i'] = hit['record_i']
+        result['threshold'] = hit['threshold']
+        result['left_integration'] =  hit['left'] - hit_left_extension
+        result['height'] = hit['height']
+
+    # fill always (if hits are merged, only these will be updated)
+    result['right'] = hit['right']
+    result['right_integration'] = hit['right'] + hit_right_extension
+    if result['right_integration'] > record_len:
+        result['right_integration'] = record_len # cap right_integration at end of record
+    result['length'] = result['right_integration'] - result['left_integration']
+
+    hit_data = record_data[result['left_integration']:result['right_integration']]
+    result['area'] = hit_data.sum() + result['length'] * baseline_fpart
+    result['sample_10pc_area'] = result['left_integration'] + get_sample_area_quantile(hit_data, 0.1, baseline_fpart)
+    result['sample_50pc_area'] = result['left_integration'] + get_sample_area_quantile(hit_data, 0.5, baseline_fpart)
+    result['max'] = result['left_integration'] + hit_data.argmax()
+
+    if extend: # only when merging hits
+        result['height'] = max(result['height'], hit['height'])
 
 
 @export
