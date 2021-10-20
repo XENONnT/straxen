@@ -153,7 +153,7 @@ class EventBasics(strax.Plugin):
         dtype += strax.time_fields
         dtype += [('n_peaks', np.int32,
                    'Number of peaks in the event'),
-                  ('drift_time', np.int32,
+                  ('drift_time', np.float32,
                    'Drift time between main S1 and S2 in ns'),
                   ('event_number', np.int64,
                    'Event number in this dataset'),
@@ -219,7 +219,7 @@ class EventBasics(strax.Plugin):
 
             # Drifts and delays
             si_dtype += [
-                (f'alt_s{s_i}_interaction_drift_time', np.int32,
+                (f'alt_s{s_i}_interaction_drift_time', np.float32,
                  f'Drift time using alternate S{s_i} [ns]'),
                 (f'alt_s{s_i}_delay', np.int32,
                  f'Time between main and alternate S{s_i} [ns]')]
@@ -269,11 +269,6 @@ class EventBasics(strax.Plugin):
             if np.issubdtype(buffer.dtype[field], np.integer):
                 buffer[field][:] = -1
             else:
-                buffer[field][:] = np.nan
-
-        # set nan for drift time related quantities
-        for field in buffer.dtype.names:
-            if "drift_time" in field:
                 buffer[field][:] = np.nan
 
     def compute(self, events, peaks):
