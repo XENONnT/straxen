@@ -135,7 +135,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.2.0'
+    __version__ = '1.2.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -153,7 +153,7 @@ class EventBasics(strax.Plugin):
         dtype += strax.time_fields
         dtype += [('n_peaks', np.int32,
                    'Number of peaks in the event'),
-                  ('drift_time', np.int32,
+                  ('drift_time', np.float32,
                    'Drift time between main S1 and S2 in ns'),
                   ('event_number', np.int64,
                    'Event number in this dataset'),
@@ -219,7 +219,7 @@ class EventBasics(strax.Plugin):
 
             # Drifts and delays
             si_dtype += [
-                (f'alt_s{s_i}_interaction_drift_time', np.int32,
+                (f'alt_s{s_i}_interaction_drift_time', np.float32,
                  f'Drift time using alternate S{s_i} [ns]'),
                 (f'alt_s{s_i}_delay', np.int32,
                  f'Time between main and alternate S{s_i} [ns]')]
