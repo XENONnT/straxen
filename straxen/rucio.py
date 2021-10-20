@@ -4,7 +4,7 @@ import json
 import os
 import re
 import socket
-
+from warnings import warn
 import numpy as np
 import strax
 from bson import json_util
@@ -22,10 +22,6 @@ export, __all__ = strax.exporter()
 
 
 class TooMuchDataError(Exception):
-    pass
-
-
-class DownloadError(Exception):
     pass
 
 
@@ -289,7 +285,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                              "doing, pass download_heavy=True to the Rucio "
                              "frontend. If not, check your context and/or ask "
                              "someone if this raw data is needed locally.")
-                raise DownloadError(error_msg)
+                warn(error_msg)
+                raise strax.DataNotAvailable
             scope, name = dset_did.split(':')
             chunk_did = f"{scope}:{chunk_file}"
             if dset_did in self.dset_cache:
