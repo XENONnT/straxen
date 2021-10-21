@@ -119,6 +119,7 @@ def xenonnt_online(output_folder='./strax_data',
                    _maximum_run_number=None,
                    _database_init=True,
                    _forbid_creation_of=None,
+                   _include_rucio_remote=False,
                    _rucio_path='/dali/lgrandi/rucio/',
                    _raw_path='/dali/lgrandi/xenonnt/raw',
                    _processed_path='/dali/lgrandi/xenonnt/processed',
@@ -139,6 +140,7 @@ def xenonnt_online(output_folder='./strax_data',
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
         being written (raw_records* is always forbidden).
+    :param _include_rucio_remote: allow remote downloads in the context
     :param _rucio_path: str, path of rucio
     :param _raw_path: str, common path of the raw-data
     :param _processed_path: str. common path of output data
@@ -189,7 +191,7 @@ def xenonnt_online(output_folder='./strax_data',
     # Add the rucio frontend if we are able to
     if HAVE_ADMIX:
         rucio_frontend = straxen.rucio.RucioFrontend(
-            include_remote=True,
+            include_remote=_include_rucio_remote,
             staging_dir=os.path.join(output_folder, 'rucio'),
             download_heavy=download_heavy,
         )
