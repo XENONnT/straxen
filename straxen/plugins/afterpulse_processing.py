@@ -265,7 +265,8 @@ def fill_hitpars(result, hit, hit_left_extension, hit_right_extension, record_da
         hit_data, 0.1, baseline_fpart)
     result['sample_50pc_area'] = result['left_integration'] + get_sample_area_quantile(
         hit_data, 0.5, baseline_fpart)
-    result['max'] = result['left_integration'] + hit_data.argmax()
+    if len(hit_data):
+        result['max'] = result['left_integration'] + hit_data.argmax()
 
     if extend:  # only when merging hits
         result['height'] = max(result['height'], hit['height'])
