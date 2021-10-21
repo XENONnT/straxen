@@ -157,7 +157,7 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulseProcessing])
 
     st.storage = [
         straxen.RunDB(
