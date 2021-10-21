@@ -230,7 +230,7 @@ def test_nt_minianalyses():
         try:
             print("Temporary directory is ", temp_dir)
             os.chdir(temp_dir)
-            from .test_plugins import DummyRawRecords, testing_config_nT
+            from .test_plugins import DummyRawRecords
             from straxen.test_utils import nt_test_run_id
             st = straxen.contexts.xenonnt_online(use_rucio=False)
             rundb = st.storage[0]
@@ -238,7 +238,7 @@ def test_nt_minianalyses():
             st.storage = [rundb, strax.DataDirectory(temp_dir)]
 
             # We want to test the FDC map that only works with CMT
-            test_conf = testing_config_nT.copy()
+            test_conf = straxen.test_utils._testing_config_nT.copy()
             del test_conf['fdc_map']
 
             st.set_config(test_conf)

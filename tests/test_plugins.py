@@ -98,7 +98,8 @@ forbidden_plugins = tuple([p for p in
 def _run_plugins(st,
                  make_all=False,
                  run_id=nt_test_run_id,
-                 **proces_kwargs):
+                 from_scratch=False,
+                 **process_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
     we can really push some (empty) data from it and don't have any nasty
@@ -106,16 +107,16 @@ def _run_plugins(st,
     """
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        st.storage = [strax.DataDirectory(temp_dir)]
-
-        # As we use a temporary directory we should have a clean start
-        assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
+        if from_scratch:
+            st.storage = [strax.DataDirectory(temp_dir)]
+            # As we use a temporary directory we should have a clean start
+            assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
 
         # Create event info
         target = 'event_info'
         st.make(run_id=run_id,
                 targets=target,
-                **proces_kwargs)
+                **process_kwargs)
 
         # The stuff should be there
         assert st.is_stored(run_id, target), f'Could not make {target}'
@@ -220,7 +221,7 @@ def test_1T(ncores=1):
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
 
     # Run the test
-    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T)
+    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T, from_scratch=True)
 
     # Test issue #233
     st.search_field('cs1')
