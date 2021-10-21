@@ -6,7 +6,7 @@ import utilix
 import numpy as np
 from warnings import warn
 from .test_basics import test_run_id_1T
-from .test_plugins import test_run_id_nT
+from straxen.test_utils import nt_test_run_id as test_run_id_nT
 from straxen.common import aux_repo
 
 

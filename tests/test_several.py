@@ -6,7 +6,7 @@ import tempfile
 import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
-from straxen.test_utils import nt_test_context
+from straxen.test_utils import nt_test_context, nt_test_run_id
 
 
 def test_pmt_pos_1t():
@@ -58,7 +58,7 @@ def test_several():
             os.chdir(temp_dir)
 
             print("Downloading test data (if needed)")
-            st = straxen.test_utils.nt_test_context()
+            st = nt_test_context()
             st.make(nt_test_run_id, 'records')
             # Ignore strax-internal warnings
             st.set_context_config({'free_options': tuple(st.config.keys())})
