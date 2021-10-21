@@ -9,6 +9,15 @@ from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 from .test_plugins import DummyRawRecords
 
+# If one of the test below fail, perhaps these values need to be updated.
+# They were added on 27/11/2020 and may be outdated by now
+EXPECTED_OUTCOMES_TEST_SEVERAL = {
+    'n_peaks': 40,
+    'n_s1': 8,
+    'run_live_time': 4.7516763,
+    'n_events': 2,
+}
+
 
 def test_pmt_pos_1t():
     """
@@ -35,16 +44,6 @@ def test_secret():
         # Good we got some message we cannot load something that does
         # not exist,
         pass
-
-
-# If one of the test below fail, perhaps these values need to be updated.
-# They were added on 27/11/2020 and may be outdated by now
-EXPECTED_OUTCOMES_TEST_SEVERAL = {
-    'n_peaks': 40,
-    'n_s1': 8,
-    'run_live_time': 0.17933107,
-    'n_events': 2,
-}
 
 
 def test_several():
@@ -78,12 +77,15 @@ def test_several():
             events = st.get_array(nt_test_run_id, 'event_info')
             print('plot wf')
             peak_i = 0
-            st.plot_waveform(nt_test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            st.plot_waveform(nt_test_run_id,
+                             time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
             plt_clf()
 
             print('plot hit pattern')
             peak_i = 1
-            st.plot_hit_pattern(nt_test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])), xenon1t=False)
+            st.plot_hit_pattern(nt_test_run_id,
+                                time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])),
+                                xenon1t=False)
             plt_clf()
 
             print('plot (raw)records matrix')
@@ -94,7 +96,7 @@ def test_several():
                                                                strax.endtime(p[peak_i])))
 
             st.raw_records_matrix(nt_test_run_id, time_range=(p[peak_i]['time'],
-                                                           strax.endtime(p[peak_i])))
+                                                              strax.endtime(p[peak_i])))
             st.plot_waveform(nt_test_run_id,
                              time_range=(p[peak_i]['time'],
                                          strax.endtime(p[peak_i])),
@@ -114,7 +116,7 @@ def test_several():
             plt_clf()
 
             st.event_display_interactive(nt_test_run_id, time_range=(events[0]['time'],
-                                                                  events[0]['endtime']),
+                                                                     events[0]['endtime']),
                                          xenon1t=False)
             plt_clf()
 
@@ -140,15 +142,15 @@ def test_several():
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
             st.hvdisp_plot_pmt_pattern(nt_test_run_id,
-                                time_range=(p[peak_i]['time'],
-                                            strax.endtime(p[peak_i])))
+                                       time_range=(p[peak_i]['time'],
+                                                   strax.endtime(p[peak_i])))
             st.hvdisp_plot_peak_waveforms(nt_test_run_id,
-                                time_range=(p[peak_i]['time'],
-                                            strax.endtime(p[peak_i])))
-
+                                          time_range=(p[peak_i]['time'],
+                                                      strax.endtime(p[peak_i])))
 
             print('Plot single pulse:')
-            st.plot_pulses_tpc(nt_test_run_id, max_plots=2,  plot_hits=True, ignore_time_warning=True)
+            st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
+                               ignore_time_warning=True)
 
             print("Check live-time")
             live_time = straxen.get_livetime_sec(st, nt_test_run_id, things=p)
@@ -170,7 +172,7 @@ def test_several():
             print("Abuse the peaks to show that _average_scada works")
             p = p[:10]
             p_t, p_a = straxen.scada._average_scada(
-                p['time']/1e9,
+                p['time'] / 1e9,
                 p['time'],
                 1)
             assert len(p_a) == len(p), 'Scada deleted some of my 10 peaks!'
@@ -195,13 +197,13 @@ def test_several():
             from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
             ds = DataSelectionHist('ds')
             fig = ds.histogram2d(p,
-                               p['area'],
-                               p['area'],
-                               bins=50,
-                               hist_range=((0, 200), (0, 2000)),
-                               log_color_scale=True,
-                               clim=(10, None),
-                               undeflow_color='white')
+                                 p['area'],
+                                 p['area'],
+                                 bins=50,
+                                 hist_range=((0, 200), (0, 2000)),
+                                 log_color_scale=True,
+                                 clim=(10, None),
+                                 undeflow_color='white')
 
             import bokeh.plotting as bklt
             bklt.save(fig, 'test_data_selector.html')

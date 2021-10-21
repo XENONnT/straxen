@@ -14,7 +14,7 @@ from straxen.plugins.peaklet_processing import get_tight_coin
        )
 def test_create_outside_peaks_region(time):
     time = np.sort(time)
-    time_intervals = np.zeros(len(time)//2, strax.time_dt_fields)
+    time_intervals = np.zeros(len(time) // 2, strax.time_dt_fields)
     time_intervals['time'] = time[::2]
     time_intervals['length'] = time[1::2] - time[::2]
     time_intervals['dt'] = 1
@@ -37,10 +37,10 @@ def test_n_hits():
     records['length'] = 5
     records['pulse_length'] = 5
     records['dt'] = 1
-    records['channel'] = [0, 1]  
+    records['channel'] = [0, 1]
     records['data'][0, :5] = [0, 1, 1, 0, 1]
     records['data'][1, :5] = [0, 1, 0, 0, 0]
-    
+
     st = straxen.contexts.xenonnt_online()
     st.set_config({'hit_min_amplitude': 1})
     p = st.get_single_plugin('0', 'peaklets')
@@ -54,7 +54,7 @@ def test_n_hits():
 @settings(deadline=None)
 def test_tight_coincidence(hits, channel):
     hits['area'] = 1
-    hits['channel'] = channel[:len(hits)]   # In case there are less channel then hits (unlikely)
+    hits['channel'] = channel[:len(hits)]  # In case there are less channel then hits (unlikely)
     gap_threshold = 10
     peaks = strax.find_peaks(hits,
                              adc_to_pe=np.ones(10),
@@ -63,8 +63,8 @@ def test_tight_coincidence(hits, channel):
                              min_channels=1,
                              min_area=0)
 
-    peaks_max_time = peaks['time'] + peaks['length']//2
-    hits_max_time = hits['time'] + hits['length']//2
+    peaks_max_time = peaks['time'] + peaks['length'] // 2
+    hits_max_time = hits['time'] + hits['length'] // 2
 
     left = 5
     right = 5
@@ -80,4 +80,5 @@ def test_tight_coincidence(hits, channel):
         n_hits = np.sum(m_hits_in_peak)
         n_channel = len(np.unique(hits[m_hits_in_peak]['channel']))
         assert n_hits == tight_coin[ind], 'Wrong number of tight hits'
-        assert n_channel == tight_coin_channel[ind], f'Wrong number of tight channel got {tight_coin_channel[ind]}, but expectd {n_channel}'
+        assert n_channel == tight_coin_channel[
+            ind], f'Wrong number of tight channel got {tight_coin_channel[ind]}, but expectd {n_channel}'

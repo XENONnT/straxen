@@ -6,7 +6,6 @@ import unittest
 import shutil
 import uuid
 
-
 test_run_id_1T = '180423_1021'
 
 

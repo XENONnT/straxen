@@ -12,11 +12,12 @@ import os
 dummy_map = np.zeros(120, dtype=[('x', np.int32),
                                  ('y', np.int32),
                                  ('z', np.int32),
-                                 ('channel', np.int32),])
+                                 ('channel', np.int32), ])
 dummy_map['x'] = np.arange(0, 120)
 dummy_map['y'] = np.arange(0, 120)
 dummy_map['z'] = np.arange(0, 120)
 dummy_map['channel'] = np.arange(2000, 2120, 1, dtype=np.int32)
+
 
 def test_hitlets_to_hv_points():
     hit = np.zeros(1, dtype=strax.hit_dtype)
@@ -29,7 +30,8 @@ def test_hitlets_to_hv_points():
     nvd = nVETOEventDisplay(pmt_map=dummy_map)
     points = nvd.hitlets_to_hv_points(hit, t_ref=0)
 
-    m = [hit[key] == points.data[key] for key in hit.dtype.names if key in points.data.columns.values]
+    m = [hit[key] == points.data[key] for key in hit.dtype.names if
+         key in points.data.columns.values]
     assert np.all(m), 'Data has not been converted corretly into hv.Points.'
 
 

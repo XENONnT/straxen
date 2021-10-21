@@ -23,7 +23,7 @@ class TestBasics(unittest.TestCase):
         cls.test_keys = [
             strax.DataKey(run_id=run_id,
                           data_type='dtype',
-                          lineage={'dtype': ['Plugin', '0.0.0.', {}],}
+                          lineage={'dtype': ['Plugin', '0.0.0.', {}], }
                           )
             for run_id in ('-1', '-2')
         ]

@@ -18,14 +18,14 @@ def test_connect_to_db():
             warning_message='No db access, cannot test'):
         return
 
-    username=None
-    password=None
-    mongo_url=None
+    username = None
+    password = None
+    mongo_url = None
 
     mongo_kwargs = {'url': mongo_url,
-                        'user': username,
-                        'password': password,
-                        'database': 'corrections'}
+                    'user': username,
+                    'password': password,
+                    'database': 'corrections'}
     corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
     client = corrections_collection.database.client
     cmt = strax.CorrectionsInterface(client, database_name='corrections')
@@ -77,7 +77,7 @@ def test_mc_wrapper_elife(run_id='009000',
         and the test does not work).
     :return: None
     """
-    return # temp
+    return  # temp
     if not straxen.utilix_is_configured():
         return
     assert np.abs(int(run_id) - int(cmt_id)) > 500, 'runs must be far apart'

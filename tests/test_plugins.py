@@ -6,7 +6,6 @@ import straxen
 from straxen.common import pax_file, aux_repo
 from straxen.test_utils import nt_test_run_id
 
-
 ##
 # Tools
 ##
@@ -125,13 +124,13 @@ def _run_plugins(st,
             return
 
         end_targets = set(st._get_end_targets(st._plugin_class_registry))
-        for p in end_targets-set(forbidden_plugins):
+        for p in end_targets - set(forbidden_plugins):
             if 'raw' in p:
                 continue
             st.make(run_id, p)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
-        for p in all_datatypes-set(forbidden_plugins):
+        for p in all_datatypes - set(forbidden_plugins):
             should_be_stored = (st._plugin_class_registry[p].save_when ==
                                 strax.SaveWhen.ALWAYS)
             if should_be_stored:
