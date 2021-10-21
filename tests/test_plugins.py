@@ -16,6 +16,9 @@ nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
                       'y': list(range(120)),
                       'z': list(range(120))}
 
+test_run_id_1T = '180423_1021'
+
+
 # Some configs are better obtained from the strax_auxiliary_files repo.
 # Let's use small files, we don't want to spend a lot of time downloading
 # some file.
@@ -51,9 +54,6 @@ testing_config_1T = dict(
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
 )
-
-nt_test_run_id = '008900'
-test_run_id_1T = '180423_1021'
 
 
 @strax.takes_config(
@@ -176,7 +176,8 @@ def _update_context(st, max_workers, fallback_gains=None, nt=True):
     st.set_context_config({'forbid_creation_of': forbidden_plugins})
     # Ignore strax-internal warnings
     st.set_context_config({'free_options': tuple(st.config.keys())})
-    st.register(DummyRawRecords)
+    if not nt:
+        st.register(DummyRawRecords)
     if nt and not straxen.utilix_is_configured(warning_message=False):
         st.set_config(testing_config_nT)
         del st._plugin_class_registry['peak_positions_mlp']

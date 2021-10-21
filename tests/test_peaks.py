@@ -10,6 +10,7 @@ from hypothesis import strategies, given, settings
 TEST_DATA_LENGTH = 3
 R_TOL_DEFAULT = 1e-5
 
+
 def _not_close_to_0_or_1(x, rtol=R_TOL_DEFAULT):
     return not (np.isclose(x, 1, rtol=rtol) or np.isclose(x, 0, rtol=rtol))
 
