@@ -235,6 +235,9 @@ def get_sample_area_quantile(data, quantile, baseline_fpart):
             # print('no quantile found: set to 0')
             return 0
 
+    # What happened here?!
+    return 0
+
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def fill_hitpars(result, hit, hit_left_extension, hit_right_extension, record_data, record_len,
