@@ -3,10 +3,10 @@ import straxen
 import pandas
 import os
 import tempfile
-from .test_basics import test_run_id_1T
 import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
+from straxen.test_utils import nt_test_context
 
 
 def test_pmt_pos_1t():
@@ -58,14 +58,14 @@ def test_several():
             os.chdir(temp_dir)
 
             print("Downloading test data (if needed)")
-            st = straxen.contexts.demo()
-            st.make(test_run_id_1T, 'records')
+            st = straxen.test_utils.nt_test_context()
+            st.make(nt_test_run_id, 'records')
             # Ignore strax-internal warnings
             st.set_context_config({'free_options': tuple(st.config.keys())})
-            st.make(test_run_id_1T, 'records')
+            st.make(nt_test_run_id, 'records')
 
             print("Get peaks")
-            p = st.get_array(test_run_id_1T, 'peaks')
+            p = st.get_array(nt_test_run_id, 'peaks')
 
             # Do checks on there number of peaks
             assertion_statement = ("Got /more peaks than expected, perhaps "
@@ -74,88 +74,88 @@ def test_several():
             assert np.abs(len(p) -
                           EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
 
-            events = st.get_array(test_run_id_1T, 'event_info')
+            events = st.get_array(nt_test_run_id, 'event_info')
             print('plot wf')
             peak_i = 0
-            st.plot_waveform(test_run_id_1T, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
+            st.plot_waveform(nt_test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
             plt_clf()
 
             print('plot hit pattern')
             peak_i = 1
-            st.plot_hit_pattern(test_run_id_1T, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])), xenon1t=True)
+            st.plot_hit_pattern(nt_test_run_id, time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])), xenon1t=False)
             plt_clf()
 
             print('plot (raw)records matrix')
             peak_i = 2
-            assert st.is_stored(test_run_id_1T, 'records'), "no records"
-            assert st.is_stored(test_run_id_1T, 'raw_records'), "no raw records"
-            st.plot_records_matrix(test_run_id_1T, time_range=(p[peak_i]['time'],
+            assert st.is_stored(nt_test_run_id, 'records'), "no records"
+            assert st.is_stored(nt_test_run_id, 'raw_records'), "no raw records"
+            st.plot_records_matrix(nt_test_run_id, time_range=(p[peak_i]['time'],
                                                                strax.endtime(p[peak_i])))
 
-            st.raw_records_matrix(test_run_id_1T, time_range=(p[peak_i]['time'],
+            st.raw_records_matrix(nt_test_run_id, time_range=(p[peak_i]['time'],
                                                            strax.endtime(p[peak_i])))
-            st.plot_waveform(test_run_id_1T,
+            st.plot_waveform(nt_test_run_id,
                              time_range=(p[peak_i]['time'],
                                          strax.endtime(p[peak_i])),
                              deep=True)
             plt_clf()
 
             straxen.analyses.event_display.plot_single_event(st,
-                                                             test_run_id_1T,
+                                                             nt_test_run_id,
                                                              events,
-                                                             xenon1t=True,
+                                                             xenon1t=False,
                                                              event_number=0,
                                                              records_matrix='raw')
-            st.event_display_simple(test_run_id_1T,
+            st.event_display_simple(nt_test_run_id,
                                     time_range=(events[0]['time'],
                                                 events[0]['endtime']),
-                                    xenon1t=True)
+                                    xenon1t=False)
             plt_clf()
 
-            st.event_display_interactive(test_run_id_1T, time_range=(events[0]['time'],
+            st.event_display_interactive(nt_test_run_id, time_range=(events[0]['time'],
                                                                   events[0]['endtime']),
-                                         xenon1t=True)
+                                         xenon1t=False)
             plt_clf()
 
             print('plot aft')
-            st.plot_peaks_aft_histogram(test_run_id_1T)
+            st.plot_peaks_aft_histogram(nt_test_run_id)
             plt_clf()
 
             print('plot event scatter')
-            st.event_scatter(test_run_id_1T)
+            st.event_scatter(nt_test_run_id)
             plt_clf()
 
             print('plot event scatter')
-            st.plot_energy_spectrum(test_run_id_1T)
+            st.plot_energy_spectrum(nt_test_run_id)
             plt_clf()
 
             print('plot peak clsassification')
-            st.plot_peak_classification(test_run_id_1T)
+            st.plot_peak_classification(nt_test_run_id)
             plt_clf()
 
             print("plot holoviews")
             peak_i = 3
-            st.waveform_display(test_run_id_1T,
+            st.waveform_display(nt_test_run_id,
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
-            st.hvdisp_plot_pmt_pattern(test_run_id_1T,
+            st.hvdisp_plot_pmt_pattern(nt_test_run_id,
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
-            st.hvdisp_plot_peak_waveforms(test_run_id_1T,
+            st.hvdisp_plot_peak_waveforms(nt_test_run_id,
                                 time_range=(p[peak_i]['time'],
                                             strax.endtime(p[peak_i])))
 
 
             print('Plot single pulse:')
-            st.plot_pulses_tpc(test_run_id_1T, max_plots=2,  plot_hits=True, ignore_time_warning=True)
+            st.plot_pulses_tpc(nt_test_run_id, max_plots=2,  plot_hits=True, ignore_time_warning=True)
 
             print("Check live-time")
-            live_time = straxen.get_livetime_sec(st, test_run_id_1T, things=p)
+            live_time = straxen.get_livetime_sec(st, nt_test_run_id, things=p)
             assertion_statement = "Live-time calculation is wrong"
             assert live_time == EXPECTED_OUTCOMES_TEST_SEVERAL['run_live_time'], assertion_statement
 
             print('Check the peak_basics')
-            df = st.get_df(test_run_id_1T, 'peak_basics')
+            df = st.get_df(nt_test_run_id, 'peak_basics')
             assertion_statement = ("Got less/more S1s than expected, perhaps "
                                    "the test is outdated or classification "
                                    "has really changed.")
@@ -175,17 +175,17 @@ def test_several():
             assert len(p_a) == len(p), 'Scada deleted some of my 10 peaks!'
 
             print('Check the number of events')
-            events = st.get_array(test_run_id_1T, 'event_info_double')
+            events = st.get_array(nt_test_run_id, 'event_info_double')
             assertion_statement = ("Got less/ore events than expected, "
                                    "perhaps the test is outdated or something "
                                    "changed in the processing.")
             assert len(events) == EXPECTED_OUTCOMES_TEST_SEVERAL['n_events'], assertion_statement
 
             print("Plot bokkeh:")
-            fig = st.event_display_interactive(test_run_id_1T,
+            fig = st.event_display_interactive(nt_test_run_id,
                                                time_range=(events[0]['time'],
                                                            events[0]['endtime']),
-                                               xenon1t=True,
+                                               xenon1t=False,
                                                plot_record_matrix=True,
                                                )
             fig.save('test_display.html')

@@ -27,7 +27,7 @@ from . import analyses
 from . import contexts
 
 from . import test_utils
-from test_utils import *
+from .test_utils import *
 
 try:
     from . import holoviews_utils
