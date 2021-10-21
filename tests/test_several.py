@@ -106,9 +106,8 @@ def test_several():
             straxen.analyses.event_display.plot_single_event(
                 st,
                 nt_test_run_id,
-                events,
+                events[:1],
                 xenon1t=False,
-                event_number=events['event_number'][0],
                 records_matrix='raw')
 
             st.event_display_simple(nt_test_run_id,
