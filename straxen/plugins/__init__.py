@@ -28,6 +28,9 @@ from .event_patternfit import *
 from . import event_processing
 from .event_processing import *
 
+from . import afterpulse_processing
+from .afterpulse_processing import *
+
 from . import double_scatter
 from .double_scatter import *
 
