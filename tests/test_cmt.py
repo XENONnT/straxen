@@ -77,7 +77,6 @@ def test_mc_wrapper_elife(run_id='009000',
         and the test does not work).
     :return: None
     """
-    return  # temp
     if not straxen.utilix_is_configured():
         return
     assert np.abs(int(run_id) - int(cmt_id)) > 500, 'runs must be far apart'
