@@ -53,17 +53,17 @@ def _is_on_pytest():
 def nt_test_context(target_context='xenonnt_online',
                     **kwargs):
     st = getattr(straxen.contexts, target_context)(**kwargs)
-    st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"
+    st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
     st.storage = [strax.DataDirectory('./strax_test_data')]
-    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/8b304bde43260eb47b4d666c244a386ac5a25b51/strax_files/012882-raw_records-z7q2d2ye2t.tar')
+    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/e7511801c663165957e071afab94b7aabca7ccb1/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     if not straxen.utilix_is_configured(warning_message=False):
         st.set_config(_testing_config_nT)
-        del st._plugin_class_registry['peak_positions_mlp']
-        del st._plugin_class_registry['peak_positions_cnn']
-        del st._plugin_class_registry['peak_positions_gcn']
-        del st._plugin_class_registry['s2_recon_pos_diff']
+        del st._plugin_class_registry['peak_positions_mlp']  # noqa
+        del st._plugin_class_registry['peak_positions_cnn']  # noqa
+        del st._plugin_class_registry['peak_positions_gcn']  # noqa
+        del st._plugin_class_registry['s2_recon_pos_diff']  # noqa
         st.register(straxen.PeakPositions1T)
         st.set_config({'gain_model': ("to_pe_placeholder", True)})
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")

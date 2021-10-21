@@ -126,6 +126,8 @@ def _run_plugins(st,
 
         end_targets = set(st._get_end_targets(st._plugin_class_registry))
         for p in end_targets-set(forbidden_plugins):
+            if 'raw' in p:
+                continue
             st.make(run_id, p)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
