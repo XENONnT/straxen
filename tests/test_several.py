@@ -7,6 +7,7 @@ import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
+from .test_plugins import DummyRawRecords
 
 
 def test_pmt_pos_1t():
@@ -39,7 +40,7 @@ def test_secret():
 # If one of the test below fail, perhaps these values need to be updated.
 # They were added on 27/11/2020 and may be outdated by now
 EXPECTED_OUTCOMES_TEST_SEVERAL = {
-    'n_peaks': 128,
+    'n_peaks': 40,
     'n_s1': 8,
     'run_live_time': 0.17933107,
     'n_events': 2,
@@ -68,7 +69,7 @@ def test_several():
             p = st.get_array(nt_test_run_id, 'peaks')
 
             # Do checks on there number of peaks
-            assertion_statement = ("Got /more peaks than expected, perhaps "
+            assertion_statement = ("Got less/more peaks than expected, perhaps "
                                    "the test is outdated or clustering has "
                                    "really changed")
             assert np.abs(len(p) -
@@ -222,7 +223,7 @@ def test_print_version():
     straxen.print_versions(['strax', 'something_that_does_not_exist'])
 
 
-def test_nt_minianalyses():
+def test_nd_daq_plot():
     """Number of tests to be run on nT like configs"""
     if not straxen.utilix_is_configured():
         return
@@ -230,8 +231,6 @@ def test_nt_minianalyses():
         try:
             print("Temporary directory is ", temp_dir)
             os.chdir(temp_dir)
-            from .test_plugins import DummyRawRecords
-            from straxen.test_utils import nt_test_run_id
             st = straxen.contexts.xenonnt_online(use_rucio=False)
             rundb = st.storage[0]
             rundb.readonly = True
@@ -263,19 +262,23 @@ def test_nt_minianalyses():
                                    group_by='ADC ID',
                                    )
             plt_clf()
-
-            st.make(nt_test_run_id, 'event_info')
-            st.load_corrected_positions(nt_test_run_id,
-                                        time_range=(rr['time'][0],
-                                                    strax.endtime(rr)[-1]),
-
-                                        )
-            # This would be nice to add but with empty events it does not work
-            st.event_display(nt_test_run_id,
-                             time_range=(rr['time'][0],
-                                         strax.endtime(rr)[-1]),
-                             )
         # On windows, you cannot delete the current process'git p
         # working directory, so we have to chdir out first.
         finally:
             os.chdir('..')
+
+
+def test_nd_daq_plot():
+    """Number of tests to be run on nT like configs"""
+    if not straxen.utilix_is_configured():
+        return
+    st = straxen.test_utils.nt_test_context(use_rucio=False)
+    ev = st.get_array(nt_test_run_id, 'event_info')
+    st.load_corrected_positions(nt_test_run_id,
+                                time_within=ev[0],
+                                )
+    # This would be nice to add but with empty events it does not work
+    if len(ev):
+        st.event_display(nt_test_run_id,
+                         time_within=ev[0],
+                         )
