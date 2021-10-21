@@ -230,7 +230,8 @@ def test_nt_minianalyses():
         try:
             print("Temporary directory is ", temp_dir)
             os.chdir(temp_dir)
-            from .test_plugins import DummyRawRecords, testing_config_nT, test_run_id_nT
+            from .test_plugins import DummyRawRecords, testing_config_nT
+            from straxen.test_utils import nt_test_run_id
             st = straxen.contexts.xenonnt_online(use_rucio=False)
             rundb = st.storage[0]
             rundb.readonly = True
@@ -244,17 +245,17 @@ def test_nt_minianalyses():
             st.set_context_config(dict(forbid_creation_of=()))
             st.register(DummyRawRecords)
 
-            rr = st.get_array(test_run_id_nT, 'raw_records')
-            st.make(test_run_id_nT, 'records')
-            st.make(test_run_id_nT, 'peak_basics')
+            rr = st.get_array(nt_test_run_id, 'raw_records')
+            st.make(nt_test_run_id, 'records')
+            st.make(nt_test_run_id, 'peak_basics')
 
-            st.daq_plot(test_run_id_nT,
+            st.daq_plot(nt_test_run_id,
                         time_range=(rr['time'][0], strax.endtime(rr)[-1]),
                         vmin=0.1,
                         vmax=1,
                         )
 
-            st.plot_records_matrix(test_run_id_nT,
+            st.plot_records_matrix(nt_test_run_id,
                                    time_range=(rr['time'][0],
                                                strax.endtime(rr)[-1]),
                                    vmin=0.1,
@@ -263,17 +264,17 @@ def test_nt_minianalyses():
                                    )
             plt_clf()
 
-            st.make(test_run_id_nT, 'event_info')
-            st.load_corrected_positions(test_run_id_nT,
+            st.make(nt_test_run_id, 'event_info')
+            st.load_corrected_positions(nt_test_run_id,
                                         time_range=(rr['time'][0],
                                                     strax.endtime(rr)[-1]),
 
                                         )
             # This would be nice to add but with empty events it does not work
-            # st.event_display(test_run_id_nT,
-            #                  time_range=(rr['time'][0],
-            #                              strax.endtime(rr)[-1]),
-            #                  )
+            st.event_display(nt_test_run_id,
+                             time_range=(rr['time'][0],
+                                         strax.endtime(rr)[-1]),
+                             )
         # On windows, you cannot delete the current process'git p
         # working directory, so we have to chdir out first.
         finally:
