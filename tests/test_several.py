@@ -13,9 +13,9 @@ from .test_plugins import DummyRawRecords
 # They were added on 27/11/2020 and may be outdated by now
 EXPECTED_OUTCOMES_TEST_SEVERAL = {
     'n_peaks': 40,
-    'n_s1': 8,
+    'n_s1': 19,
     'run_live_time': 4.7516763,
-    'n_events': 2,
+    'n_events': 20,
 }
 
 
@@ -103,12 +103,14 @@ def test_several():
                              deep=True)
             plt_clf()
 
-            straxen.analyses.event_display.plot_single_event(st,
-                                                             nt_test_run_id,
-                                                             events,
-                                                             xenon1t=False,
-                                                             event_number=0,
-                                                             records_matrix='raw')
+            straxen.analyses.event_display.plot_single_event(
+                st,
+                nt_test_run_id,
+                events,
+                xenon1t=False,
+                event_number=events['event_number'][0],
+                records_matrix='raw')
+
             st.event_display_simple(nt_test_run_id,
                                     time_range=(events[0]['time'],
                                                 events[0]['endtime']),

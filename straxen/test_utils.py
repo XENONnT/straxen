@@ -73,9 +73,10 @@ def nt_test_context(target_context='xenonnt_online',
 
 # Let's make a dummy map for NVeto
 _nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
-                      'x': list(range(120)),
-                      'y': list(range(120)),
-                      'z': list(range(120))}
+                       'x': list(range(120)),
+                       'y': list(range(120)),
+                       'z': list(range(120)),
+                       }
 
 # Some configs are better obtained from the strax_auxiliary_files repo.
 # Let's use small files, we don't want to spend a lot of time downloading

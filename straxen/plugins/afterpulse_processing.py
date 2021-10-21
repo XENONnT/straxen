@@ -50,7 +50,7 @@ export, __all__ = strax.exporter()
                  ),
 )
 class LEDAfterpulseProcessing(strax.Plugin):
-    __version__ = '0.5.0'
+    __version__ = '0.5.1'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -131,7 +131,6 @@ def find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension
 def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension,
              hit_right_extension, buffer=None):
     # hits need to be sorted by record_i, then time!
-
     offset = 0
 
     is_LED = False
