@@ -18,7 +18,7 @@ def download_test_data(test_data='https://raw.githubusercontent.com/XENONnT/stra
     tf = tarfile.open(fileobj=f)
     tf.extractall()
 
-
+@export
 def _overwrite_testing_function_file(function_file):
     """For testing purposes allow this function file to be loaded from HOME/testing_folder"""
     if not _is_on_pytest():
