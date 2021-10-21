@@ -7,7 +7,6 @@ import sys
 import warnings
 import datetime
 import pytz
-from os import environ as os_environ
 from importlib import import_module
 from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
@@ -276,9 +275,3 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
-
-
-@export
-def _is_on_pytest():
-    """Check if we are on a pytest"""
-    return 'PYTEST_CURRENT_TEST' in os_environ
