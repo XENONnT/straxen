@@ -1,6 +1,7 @@
 import numba
 import numpy as np
 import strax
+from immutabledict import immutabledict
 from strax.processing.general import _touching_windows
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
@@ -63,6 +64,9 @@ FAKE_MERGED_S2_TYPE = -42
                       "to correct saturated samples"),
     strax.Option('peaklet_max_duration', default=int(10e6),
                  help="Maximum duration [ns] of a peaklet"),
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."),
     *HITFINDER_OPTIONS,
 )
 class Peaklets(strax.Plugin):
@@ -121,6 +125,8 @@ class Peaklets(strax.Plugin):
                 self.config['hit_min_amplitude'])
         else: # int or array
             self.hit_thresholds = self.config['hit_min_amplitude']
+            
+        self.channel_range = self.config['channel_map']['tpc']
 
     def compute(self, records, start, end):
         r = records
@@ -239,7 +245,8 @@ class Peaklets(strax.Plugin):
             hitlets['channel'],
             peaklet_max_times,
             self.config['tight_coincidence_window_left'],
-            self.config['tight_coincidence_window_right'])
+            self.config['tight_coincidence_window_right'],
+            self.channel_range)
 
         peaklets['tight_coincidence'] = tight_coincidence
         peaklets['tight_coincidence_channel'] = tight_coincidence_channel
@@ -526,6 +533,8 @@ class PeakletsHighEnergy(Peaklets):
                 self.config['hit_min_amplitude_he'])
         else: # int or array
             self.hit_thresholds = self.config['hit_min_amplitude_he']
+            
+        self.channel_range = self.config['channel_map']['he']
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)
@@ -858,7 +867,7 @@ class PeaksHighEnergy(Peaks):
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
-                   n_channel=straxen.n_tpc_pmts):
+                   channels=(0, 493)):
     """Calculates the tight coincidence based on hits and PMT channels.
 
     Defined by number of hits within a specified time range of the
@@ -873,7 +882,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
         coincidence in ns.
     :param right: Right boundary in which we search for the tight
         coincidence in ns.
-    :param n_channel: Number of PMT channels of the detector
+    :param channel_range: (min/max) channel for the corresponding detector.
 
     :returns: n_coin_hit, n_coin_channel of length peaks containing the
         tight coincidence.
@@ -881,7 +890,8 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
     left_hit_i = 0
     n_coin_hit = np.zeros(len(peak_max_times), dtype=np.int16)
     n_coin_channel = np.zeros(len(peak_max_times), dtype=np.int16)
-    channels_seen = np.zeros(n_channel, dtype=np.bool_)
+    start_ch, end_ch = channels
+    channels_seen = np.zeros(end_ch-start_ch+1, dtype=np.bool_)
 
     # loop over peaks
     for p_i, p_t in enumerate(peak_max_times):
@@ -893,7 +903,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
             d = hit_max_times[left_hit_i] - p_t
             if (-left <= d) & (d <= right):
                 n_coin_hit[p_i] += 1
-                channels_seen[hit_channel[left_hit_i]] = 1
+                channels_seen[hit_channel[left_hit_i]-start_ch] = 1
 
             # stop the loop when we know we're outside the range
             if d > right:

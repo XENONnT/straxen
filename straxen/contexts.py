@@ -2,9 +2,8 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
-import socket
-from warnings import warn
-
+from .rucio import HAVE_ADMIX
+import os
 
 common_opts = dict(
     register_all=[
@@ -114,15 +113,14 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
 
 
 def xenonnt_online(output_folder='./strax_data',
-                   use_rucio=None,
-                   use_rucio_remote=False,
                    we_are_the_daq=False,
+                   download_heavy=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
                    _database_init=True,
                    _forbid_creation_of=None,
-                   _rucio_path='/dali/lgrandi/rucio/',
                    _include_rucio_remote=False,
+                   _rucio_path='/dali/lgrandi/rucio/',
                    _raw_path='/dali/lgrandi/xenonnt/raw',
                    _processed_path='/dali/lgrandi/xenonnt/processed',
                    _add_online_monitor_frontend=False,
@@ -133,10 +131,8 @@ def xenonnt_online(output_folder='./strax_data',
 
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
-    :param use_rucio: bool, whether or not to use the rucio frontend (by
-        default, we add the frontend when running on an rcc machine)
-    :param use_rucio_remote: bool, if download data from rucio directly
     :param we_are_the_daq: bool, if we have admin access to upload data
+    :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less the aqmon)
     :param _minimum_run_number: int, lowest number to consider
     :param _maximum_run_number: Highest number to consider. When None
         (the default) consider all runs that are higher than the
@@ -161,7 +157,7 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulseProcessing])
 
     st.storage = [
         straxen.RunDB(
@@ -192,13 +188,14 @@ def xenonnt_online(output_folder='./strax_data',
         if _forbid_creation_of is not None:
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
-    # Add the rucio frontend to storage when asked to or if we did not
-    # specify anything and are on rcc
-    if use_rucio or (use_rucio is None and 'rcc' in socket.getfqdn()):
-        st.storage.append(straxen.rucio.RucioFrontend(
-            include_remote=use_rucio_remote,
-            staging_dir=output_folder,
-        ))
+    # Add the rucio frontend if we are able to
+    if HAVE_ADMIX:
+        rucio_frontend = straxen.rucio.RucioFrontend(
+            include_remote=_include_rucio_remote,
+            staging_dir=os.path.join(output_folder, 'rucio'),
+            download_heavy=download_heavy,
+        )
+        st.storage += [rucio_frontend]
 
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
