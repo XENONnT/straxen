@@ -11,7 +11,7 @@ from .test_plugins import DummyRawRecords
 
 # If one of the test below fail, perhaps these values need to be updated.
 # They were added on 27/11/2020 and may be outdated by now
-EXPECTED_OUTCOMES_TEST_SEVERAL = {
+_expected_test_results = {
     'n_peaks': 40,
     'n_s1': 19,
     'run_live_time': 4.7516763,
@@ -72,7 +72,7 @@ def test_several():
                                    "the test is outdated or clustering has "
                                    "really changed")
             assert np.abs(len(p) -
-                          EXPECTED_OUTCOMES_TEST_SEVERAL['n_peaks']) < 5, assertion_statement
+                          _expected_test_results['n_peaks']) < 5, assertion_statement
 
             events = st.get_array(nt_test_run_id, 'event_info')
             print('plot wf')
@@ -161,7 +161,7 @@ def test_several():
             print("Check live-time")
             live_time = straxen.get_livetime_sec(st, nt_test_run_id, things=p)
             assertion_statement = "Live-time calculation is wrong"
-            assert live_time == EXPECTED_OUTCOMES_TEST_SEVERAL['run_live_time'], assertion_statement
+            assert live_time == _expected_test_results['run_live_time'], assertion_statement
 
             print('Check the peak_basics')
             df = st.get_df(nt_test_run_id, 'peak_basics')
@@ -169,7 +169,7 @@ def test_several():
                                    "the test is outdated or classification "
                                    "has really changed.")
             assert np.abs(np.sum(df['type'] == 1) -
-                          EXPECTED_OUTCOMES_TEST_SEVERAL['n_s1']) < 2, assertion_statement
+                          _expected_test_results['n_s1']) < 2, assertion_statement
             df = df[:10]
 
             print("Check that we can write nice wiki dfs")
@@ -188,7 +188,8 @@ def test_several():
             assertion_statement = ("Got less/ore events than expected, "
                                    "perhaps the test is outdated or something "
                                    "changed in the processing.")
-            assert len(events) == EXPECTED_OUTCOMES_TEST_SEVERAL['n_events'], assertion_statement
+            if straxen.utilix_is_configured(warning_message=None):
+                assert len(events) == _expected_test_results['n_events'], assertion_statement
 
             print("Plot bokkeh:")
             fig = st.event_display_interactive(nt_test_run_id,
