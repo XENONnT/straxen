@@ -109,7 +109,9 @@ def test_several():
                 nt_test_run_id,
                 events[:1],
                 xenon1t=False,
-                records_matrix='raw')
+                records_matrix='raw',
+                plot_all_positions=plot_all_positions,
+            )
 
             st.event_display_simple(nt_test_run_id,
                                     time_range=(events[0]['time'],

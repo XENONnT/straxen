@@ -114,7 +114,11 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
 
         if dt >= samples_per_record * r['dt']:
             # Downsample to single sample -> store area
-            y[(r['time'] - t0) // dt, r['channel']] += r['area']
+            idx = (r['time'] - t0) // dt
+            # TODO off by one?
+            if len(y) == idx:
+                raise IndexError()
+            y[idx, r['channel']] += r['area']
             continue
 
         # Assume out-of-bounds data has been zeroed, so we do not
