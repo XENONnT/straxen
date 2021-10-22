@@ -19,7 +19,6 @@ def daq_plot(context,
     Plot with peak, records and records sorted by "link" or "ADC ID"
     (other items are also possible as long as it is in the channel map).
     """
-
     f, axes = plt.subplots(3, 1,
                            figsize=figsize,
                            gridspec_kw={'height_ratios': [1, 1, lower_panel_height]})
