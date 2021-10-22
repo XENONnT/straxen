@@ -8,9 +8,21 @@ import tempfile
 import pymongo
 import datetime
 
-# not so elegant hack for preventing running the test when we have no test database available
-# stackoverflow.com/questions/27533123/how-can-i-decorate-a-python-unittest-method-to-skip-if-a-property-ive-previousl # noqa
-_run_test = True
+
+def skipIfNotTrue(flag, reason):
+    """
+    Wrapper for accessing test cases based on class state
+    Thanks to:
+    stackoverflow.com/questions/27533123/how-can-i-decorate-a-python-unittest-method-to-skip-if-a-property-ive-previousl  # noqa
+    """
+    def deco(f):
+        def wrapper(self, *args, **kwargs):
+            if not getattr(self, flag):
+                self.skipTest(reason=reason)
+            else:
+                f(self, *args, **kwargs)
+        return wrapper
+    return deco
 
 
 class TestRunDBFrontend(unittest.TestCase):
@@ -25,14 +37,13 @@ class TestRunDBFrontend(unittest.TestCase):
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
     """
+    run_test = True
 
     def setUp(self):
         # Just to make sure we are running some mongo server, see test-class docstring
         if 'TEST_MONGO_URI' not in os.environ:
-            _run_test = False
+            self. _run_test = False
             return
-
-        self.run_test = True
         self.test_run_ids = ['0', '1']
         self.all_targets = ('peaks', 'records')
 
@@ -67,7 +78,7 @@ class TestRunDBFrontend(unittest.TestCase):
             collection.insert_one(_rundoc_format(run_id))
         assert not self.is_all_targets_stored
 
-    @unittest.skipIf(not _run_test, "No test DB provided")
+    @skipIfNotTrue('_run_test', "No test DB provided")
     def tearDown(self):
         self.database[self.collection_name].drop()
         if os.path.exists(self.path):
@@ -81,7 +92,7 @@ class TestRunDBFrontend(unittest.TestCase):
             [self.st.is_stored(r, t) for t in self.all_targets])
             for r in self.test_run_ids])
 
-    @unittest.skipIf(not _run_test, "No test DB provided")
+    @skipIfNotTrue('_run_test', "No test DB provided")
     def test_finding_runs(self):
         rdb = self.rundb_sf
         col = self.database[self.collection_name]
@@ -91,7 +102,7 @@ class TestRunDBFrontend(unittest.TestCase):
         runs = self.st.select_runs()
         assert len(runs) == len(self.test_run_ids)
 
-    @unittest.skipIf(not _run_test, "No test DB provided")
+    @skipIfNotTrue('_run_test', "No test DB provided")
     def test_write_and_load(self):
         assert not self.is_all_targets_stored
 
@@ -119,7 +130,7 @@ class TestRunDBFrontend(unittest.TestCase):
         assert len(available_runs) == len(self.test_run_ids)
         assert len(all_runs) == len(self.test_run_ids) + 1
 
-    @unittest.skipIf(not _run_test, "No test DB provided")
+    @skipIfNotTrue('_run_test', "No test DB provided")
     def test_lineage_changes(self):
         st = strax.Context(register=[Records, Peaks],
                            storage=[self.rundb_sf],
