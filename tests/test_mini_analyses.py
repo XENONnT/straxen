@@ -139,7 +139,6 @@ class TestMiniAnalyses(unittest.TestCase):
         straxen.dataframe_to_wiki(df)
 
     def test_interactive_display(self):
-
         fig = self.st.event_display_interactive(nt_test_run_id,
                                                 time_within=self.first_event,
                                                 xenon1t=False,
