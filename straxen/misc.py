@@ -117,7 +117,8 @@ def utilix_is_configured(header: str = 'RunDB',
     except NoSectionError:
         is_configured = False
 
-    if not is_configured and bool(warning_message):
+    should_report = bool(warning_message) or warning_message is None
+    if not is_configured and should_report:
         if warning_message is None:
             warning_message = 'Utilix is not configured, cannot proceed'
         warnings.warn(warning_message)

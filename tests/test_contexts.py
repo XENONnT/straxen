@@ -6,7 +6,7 @@ from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
 import straxen
 import tempfile
 import os
-
+import unittest
 
 ##
 # XENONnT
@@ -29,10 +29,8 @@ def test_xenonnt_led():
     st.search_field('time')
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_nt_is_nt_online():
-    if not straxen.utilix_is_configured():
-        # Cannot contact CMT without the database
-        return
     # Test that nT and nT online are the same
     st_online = xenonnt_online(_database_init=False, use_rucio=False)
 

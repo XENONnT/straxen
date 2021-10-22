@@ -1,20 +1,14 @@
 import numpy as np
 import straxen
+import unittest
 
-
+@unittest.skipIf(not straxen.utilix_is_configured('scada','scdata_url',),
+                 "Cannot test scada since we have no access to xenon secrets.')")
 def test_query_sc_values():
     """
     Unity test for the SCADAInterface. Query a fixed range and check if 
     return is correct.
     """
-
-    if not straxen.utilix_is_configured(
-            'scada',
-            'scdata_url',
-            warning_message='Cannot test scada since we have no access to '
-                            'xenon secrets.'):
-        return
-
     print('Testing SCADAInterface')
     sc = straxen.SCADAInterface(use_progress_bar=False)
 
@@ -87,11 +81,8 @@ def test_query_sc_values():
 
     assert np.all(df['SomeParameter'] // 1 == -96), 'Not all values are correct for query type lab.'
 
-# TODO
-# print("Abuse the peaks to show that _average_scada works")
-# p = p[:10]
-# p_t, p_a = straxen.scada._average_scada(
-#     p['time'] / 1e9,
-#     p['time'],
-#     1)
-# assert len(p_a) == len(p), 'Scada deleted some of my 10 peaks!'
+
+def test_average_scada():
+    t = np.arange(0, 100, 10)
+    t_t, t_a = straxen.scada._average_scada(t / 1e9, t, 1)
+    assert len(t_a) == len(t), 'Scada deleted some of my 10 datapoints!'

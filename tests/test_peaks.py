@@ -17,7 +17,6 @@ def _not_close_to_0_or_1(x, rtol=R_TOL_DEFAULT):
 
 class TestComputePeakBasics(unittest.TestCase):
     """Tests for peak basics plugin"""
-
     def setUp(self, context=straxen.contexts.demo):
         self.st = context()
         self.n_top = self.st.config.get('n_top_pmts', 2)

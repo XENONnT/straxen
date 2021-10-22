@@ -60,13 +60,14 @@ class TestBasics(unittest.TestCase):
         n = self.st.count_rr(self.run_id)
         assert n > 100
 
-    def test_extract_latest_comment(self,
-                                    context='xenonnt_online',
-                                    test_for_target='raw_records',
-                                    ):
+    @staticmethod
+    def _extract_latest_comment(context,
+                                test_for_target='raw_records',
+                                **context_kwargs,
+                                ):
         if context == 'xenonnt_online' and not straxen.utilix_is_configured():
             return
-        st = getattr(straxen.contexts, context)()
+        st = getattr(straxen.contexts, context)(**context_kwargs)
         assert hasattr(st, 'extract_latest_comment'), "extract_latest_comment not added to context?"
         st.extract_latest_comment()
         assert st.runs is not None, "No registry build?"
@@ -76,9 +77,16 @@ class TestBasics(unittest.TestCase):
             assert len(st.runs)
         assert f'{test_for_target}_available' in st.runs.keys()
 
-    def test_extract_latest_comment_lone_hits(self):
-        """Run the test for some target that is not in the default availability check"""
-        self.test_extract_latest_comment(test_for_target='lone_hits')
+    def test_extract_latest_comment_nt(self, **opt):
+        """Run the test for nt (but only 2000 runs"""
+        self._extract_latest_comment(context='xenonnt_online',
+                                     _minimum_run_number=10_000,
+                                     _maximum_run_number=12_000,
+                                     **opt)
 
     def test_extract_latest_comment_demo(self):
-        self.test_extract_latest_comment(context='demo')
+        self._extract_latest_comment(context='demo')
+
+    def test_extract_latest_comment_lone_hits(self):
+        """Run the test for some target that is not in the default availability check"""
+        self.test_extract_latest_comment_nt(test_for_target='lone_hits')

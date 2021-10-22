@@ -6,7 +6,6 @@ import unittest
 
 
 class TestMergeIntervals(unittest.TestCase):
-
     def setUp(self):
         self.intervals = np.zeros(4, dtype=strax.time_fields)
         self.intervals['time'] = [2, 3, 7, 20]
@@ -34,7 +33,6 @@ class TestMergeIntervals(unittest.TestCase):
 
 
 class TestCoincidence(unittest.TestCase):
-
     def setUp(self):
         self.intervals = np.zeros(8, dtype=strax.time_fields)
         self.intervals['time'] = [3, 6, 9, 12, 15, 18, 21, 38]
