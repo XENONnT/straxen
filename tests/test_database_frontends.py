@@ -9,7 +9,7 @@ import pymongo
 import datetime
 
 
-def skipIfNotTrue(flag, reason):
+def skip_if_attr_not_true(flag, reason):
     """
     Wrapper for accessing test cases based on class state
     Thanks to:
@@ -78,7 +78,7 @@ class TestRunDBFrontend(unittest.TestCase):
             collection.insert_one(_rundoc_format(run_id))
         assert not self.is_all_targets_stored
 
-    @skipIfNotTrue('_run_test', "No test DB provided")
+    @skip_if_attr_not_true('_run_test', "No test DB provided")
     def tearDown(self):
         self.database[self.collection_name].drop()
         if os.path.exists(self.path):
@@ -92,7 +92,7 @@ class TestRunDBFrontend(unittest.TestCase):
             [self.st.is_stored(r, t) for t in self.all_targets])
             for r in self.test_run_ids])
 
-    @skipIfNotTrue('_run_test', "No test DB provided")
+    @skip_if_attr_not_true('_run_test', "No test DB provided")
     def test_finding_runs(self):
         rdb = self.rundb_sf
         col = self.database[self.collection_name]
@@ -102,7 +102,7 @@ class TestRunDBFrontend(unittest.TestCase):
         runs = self.st.select_runs()
         assert len(runs) == len(self.test_run_ids)
 
-    @skipIfNotTrue('_run_test', "No test DB provided")
+    @skip_if_attr_not_true('_run_test', "No test DB provided")
     def test_write_and_load(self):
         assert not self.is_all_targets_stored
 
@@ -130,7 +130,7 @@ class TestRunDBFrontend(unittest.TestCase):
         assert len(available_runs) == len(self.test_run_ids)
         assert len(all_runs) == len(self.test_run_ids) + 1
 
-    @skipIfNotTrue('_run_test', "No test DB provided")
+    @skip_if_attr_not_true('_run_test', "No test DB provided")
     def test_lineage_changes(self):
         st = strax.Context(register=[Records, Peaks],
                            storage=[self.rundb_sf],
