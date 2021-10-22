@@ -168,8 +168,8 @@ class TestMongoDownloader(unittest.TestCase):
         client = pymongo.MongoClient(uri)
         database = client[db_name]
         collection = database[collection_name]
-        self.downloader = straxen.GridFsInterface(collection=collection, readonly=True)
-        self.uploader = straxen.MongoUploader(collection=collection, readonly=False)
+        self.downloader = straxen.GridFsInterface(collection=collection, readonly=True, file_database=None)
+        self.uploader = straxen.MongoUploader(collection=collection, readonly=False, file_database=None)
         self.collection = collection
 
     @skip_if_attr_not_true('_run_test', "No test DB provided")
@@ -191,6 +191,7 @@ class TestMongoDownloader(unittest.TestCase):
         assert file_content == read_file
         os.remove(file_name)
         assert not os.path.exists(file_name)
+
 
 def _rundoc_format(run_id):
     start = datetime.datetime.fromtimestamp(0) + datetime.timedelta(days=int(run_id))

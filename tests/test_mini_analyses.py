@@ -196,15 +196,23 @@ class TestMiniAnalyses(unittest.TestCase):
                                     group_by='ADC ID',
                                     )
 
-    def records_matrix_downsample(self):
+    def test_records_matrix_downsample(self):
         self.st.records_matrix(nt_test_run_id,
-                               time_within=self.first_peak,
-                               max_samples=3
-                                    )
+                               time_within=self.first_event,
+                               max_samples=20
+                               )
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_load_corrected_positions(self):
         self.st.load_corrected_positions(nt_test_run_id, time_within=self.first_peak)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_nv_event_display(self):
+        self.st.make(nt_test_run_id, 'events_nv')
+        self.st.make(nt_test_run_id, 'event_positions_nv')
+        with self.assertRaises(ValueError):
+            self.st.plot_nveto_event_display(nt_test_run_id, time_within=self.first_peak)
+
 
 
 def test_plots():

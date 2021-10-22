@@ -97,7 +97,7 @@ def raw_records_matrix(context, run_id, raw_records, time_range,
 
 @numba.njit
 def _records_to_matrix(records, t0, window, n_channels, dt=10):
-    n_samples = window // dt + 1
+    n_samples = (window // dt) + 1
     # Use 32-bit integers, so downsampling saturated samples doesn't
     # cause wraparounds
     # TODO: amplitude bit shift!
@@ -115,7 +115,8 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
         if dt >= samples_per_record * r['dt']:
             # Downsample to single sample -> store area
             idx = (r['time'] - t0) // dt
-            if len(y) >= idx:
+            if idx >= len(y):
+                print(len(y), idx)
                 raise IndexError('Despite n_samples = window // dt + 1, our '
                                  'idx is too high?!')
             y[idx, r['channel']] += r['area']
