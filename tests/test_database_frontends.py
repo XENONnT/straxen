@@ -168,10 +168,16 @@ class TestMongoDownloader(unittest.TestCase):
         client = pymongo.MongoClient(uri)
         database = client[db_name]
         collection = database[collection_name]
-        # Insert one dummy document
-        collection.insert_one({'foo', 'bar'})
-        self.downloader = straxen.GridFsInterface(collection=collection, readonly=True, file_database=None)
-        self.uploader = straxen.MongoUploader(collection=collection, readonly=False, file_database=None)
+        self.downloader = straxen.GridFsInterface(collection=collection,
+                                                  readonly=True,
+                                                  file_database=None,
+                                                  _test_on_init=False,
+                                                  )
+        self.uploader = straxen.MongoUploader(collection=collection,
+                                              readonly=False,
+                                              file_database=None,
+                                              _test_on_init=False,
+                                              )
         self.collection = collection
 
     @skip_if_attr_not_true('_run_test', "No test DB provided")
