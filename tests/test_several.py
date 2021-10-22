@@ -229,49 +229,36 @@ def test_print_version():
     straxen.print_versions(['strax', 'something_that_does_not_exist'])
 
 
-def test_nd_daq_plot():
-    """Number of tests to be run on nT like configs"""
-    if not straxen.utilix_is_configured():
-        return
-    with tempfile.TemporaryDirectory() as temp_dir:
-        try:
-            print("Temporary directory is ", temp_dir)
-            os.chdir(temp_dir)
-            st = straxen.contexts.xenonnt_online(use_rucio=False)
-            rundb = st.storage[0]
-            rundb.readonly = True
-            st.storage = [rundb, strax.DataDirectory(temp_dir)]
-
-            # We want to test the FDC map that only works with CMT
-            test_conf = straxen.test_utils._testing_config_nT.copy()
-            del test_conf['fdc_map']
-
-            st.set_config(test_conf)
-            st.set_context_config(dict(forbid_creation_of=()))
-            st.register(DummyRawRecords)
-
-            rr = st.get_array(nt_test_run_id, 'raw_records')
-            st.make(nt_test_run_id, 'records')
-            st.make(nt_test_run_id, 'peak_basics')
-
-            st.daq_plot(nt_test_run_id,
-                        time_range=(rr['time'][0], strax.endtime(rr)[-1]),
-                        vmin=0.1,
-                        vmax=1,
-                        )
-
-            st.plot_records_matrix(nt_test_run_id,
-                                   time_range=(rr['time'][0],
-                                               strax.endtime(rr)[-1]),
-                                   vmin=0.1,
-                                   vmax=1,
-                                   group_by='ADC ID',
-                                   )
-            plt_clf()
-        # On windows, you cannot delete the current process'git p
-        # working directory, so we have to chdir out first.
-        finally:
-            os.chdir('..')
+# def test_nd_daq_plot():
+#     """Number of tests to be run on nT like configs"""
+#     if not straxen.utilix_is_configured():
+#         return
+#     with tempfile.TemporaryDirectory() as temp_dir:
+#         try:
+#             print("Temporary directory is ", temp_dir)
+#             os.chdir(temp_dir)
+#             st = straxen.contexts.xenonnt_online(use_rucio=False)
+#             rundb = st.storage[0]
+#             rundb.readonly = True
+#             st.storage = [rundb, strax.DataDirectory(temp_dir)]
+#
+#             # We want to test the FDC map that only works with CMT
+#             test_conf = straxen.test_utils._testing_config_nT.copy()
+#             del test_conf['fdc_map']
+#
+#             st.set_config(test_conf)
+#             st.set_context_config(dict(forbid_creation_of=()))
+#             st.register(DummyRawRecords)
+#
+#             rr = st.get_array(nt_test_run_id, 'raw_records')
+#             st.make(nt_test_run_id, 'records')
+#             st.make(nt_test_run_id, 'peak_basics')
+#
+#             plt_clf()
+#         # On windows, you cannot delete the current process'git p
+#         # working directory, so we have to chdir out first.
+#         finally:
+#             os.chdir('..')
 
 
 def test_nd_daq_plot():
@@ -288,3 +275,19 @@ def test_nd_daq_plot():
         st.event_display(nt_test_run_id,
                          time_within=ev[0],
                          )
+    rr = st.get_array(nt_test_run_id, 'raw_records')
+    st.make(nt_test_run_id, 'records')
+    st.make(nt_test_run_id, 'peak_basics')
+    st.daq_plot(nt_test_run_id,
+                time_range=(rr['time'][0], strax.endtime(rr)[-1]),
+                vmin=0.1,
+                vmax=1,
+                )
+
+    st.plot_records_matrix(nt_test_run_id,
+                           time_range=(rr['time'][0],
+                                       strax.endtime(rr)[-1]),
+                           vmin=0.1,
+                           vmax=1,
+                           group_by='ADC ID',
+                           )
