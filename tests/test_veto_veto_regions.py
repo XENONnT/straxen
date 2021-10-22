@@ -61,14 +61,12 @@ class TestCreateVetoIntervals(unittest.TestCase):
                                                                         left_extension=0,
                                                                         right_extension=0)
         print(events[field], thresholds, vetos)
-        assert len(
-            vetos) == 0, f'Vetos for {threshold_type} threshold should be empty since it is below threshold!'
+        assert len(vetos) == 0, f'Vetos for {threshold_type} threshold should be empty since it is below threshold!'  # noqa
 
         events[field] = threshold
         vetos = straxen.plugins.veto_veto_regions.create_veto_intervals(events,
                                                                         **thresholds,
                                                                         left_extension=0,
                                                                         right_extension=0)
-        assert len(
-            vetos) == 1, f'{threshold_type} threshold did not work, have a wrong number of vetos!'
+        assert len(vetos) == 1, f'{threshold_type} threshold did not work, have a wrong number of vetos!'  # noqa
         events[field] = 1
