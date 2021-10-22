@@ -7,16 +7,9 @@ import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
-from .test_plugins import DummyRawRecords
+import unittest
 
 # If one of the test below fail, perhaps these values need to be updated.
-# They were added on 27/11/2020 and may be outdated by now
-_expected_test_results = {
-    'n_peaks': 40,
-    'n_s1': 19,
-    'run_live_time': 4.7516763,
-    'n_events': 20,
-}
 
 
 def test_pmt_pos_1t():
@@ -33,193 +26,135 @@ def test_pmt_pos_nt():
     pandas.DataFrame(straxen.pmt_positions(False))
 
 
-def test_secret():
+class TestMiniAnalyses(unittest.TestCase):
     """
-    Check something in the sectets. This should not work because we
-    don't have any.
-    """
-    try:
-        straxen.get_secret('somethingnonexistent')
-    except ValueError:
-        # Good we got some message we cannot load something that does
-        # not exist,
-        pass
 
+    """
+    # They were added on 27/11/2020 and may be outdated by now
+    _expected_test_results = {
+        'peak_basics': 40,
+        'n_s1': 19,
+        'run_live_time': 4.7516763,
+        'event_basics': 20,
+    }
 
-def test_several():
-    """
-    Test several other functions in straxen. Is kind of messy but saves
-    time as we won't load data many times
-    :return:
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
+    def setUp(self):
+        self.st = nt_test_context()
+        self.first_peak =  self.st.get_array(nt_test_run_id, 'peak_basics')[0]
+        self.first_event = self.st.get_array(nt_test_run_id, 'event_basics')[0]
+
+    def tearDown(self):
+        plt_clf()
+
+    def test_target_peaks(self, target='peak_basics', tol=2):
+        assert target in self._expected_test_results, f'No expectation for {target}?!'
+        data = self.st.get_array(nt_test_run_id, target)
+        message = (f'Got more/less data for {target}. If you changed something '
+                   f'on {target}, please update the numbers in '
+                   f'tests/test_mini_analyses.TestMiniAnalyses._expected_test_results')
+        if not straxen.utilix_is_configured(warning_message=None):
+            # If we do things with dummy maps, things might be slightly different
+           tol += 10
+        assert np.abs(len(data) - self._expected_test_results[target]) < tol, message
+
+    def test_target_events(self):
+        self.test_target_peaks(target='event_basics')
+
+    def test_plot_waveform(self, deep=False):
+        self.st.plot_waveform(nt_test_run_id, time_within=self.first_peak, deep=deep)
+
+    def test_plot_waveform_deep(self):
+        self.test_plot_waveform(deep=True)
+
+    def test_plot_hit_pattern(self):
+        self.st.plot_hit_pattern(nt_test_run_id, time_within=self.first_peak, xenon1t=False)
+
+    def test_plot_records_matrix(self):
+        self.st_attr_for_one_peak('plot_records_matrix')
+
+    def test_raw_records_matrix(self):
+        self.st_attr_for_one_peak('raw_records_matrix')
+
+    def test_event_display_simple(self):
+        plot_all_positions = straxen.utilix_is_configured()
+        self.st.event_display_simple(nt_test_run_id,
+                                time_within=self.first_event,
+                                xenon1t=False,
+                                plot_all_positions=plot_all_positions,
+                                )
+
+    def test_event_display_interactive(self):
+        self.st.event_display_interactive(nt_test_run_id,
+                                time_within=self.first_event,
+                                xenon1t=False,
+                                )
+
+    def test_plot_peaks_aft_histogram(self):
+        self.st.plot_peaks_aft_histogram(nt_test_run_id)
+
+    def test_event_scatter(self):
+        self.st.event_scatter(nt_test_run_id)
+
+    def test_energy_spectrum(self):
+        self.st.plot_energy_spectrum(nt_test_run_id)
+
+    def test_peak_classification(self):
+        self.st.plot_peak_classification(nt_test_run_id)
+
+    def st_attr_for_one_peak(self, function_name):
+        f = getattr(self.st, function_name)
+        f(nt_test_run_id, time_within=self.first_peak)
+
+    def test_waveform_display(self):
+        self.st_attr_for_one_peak('waveform_display')
+
+    def test_hvdisp_plot_pmt_pattern(self):
+        self.st_attr_for_one_peak('hvdisp_plot_pmt_pattern')
+
+    def test_hvdisp_plot_peak_waveforms(self):
+        self.st_attr_for_one_peak('hvdisp_plot_peak_waveforms')
+
+    def test_plot_pulses_tpc(self):
+        self.st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
+                           ignore_time_warning=True)
+
+    def test_calc_livetime(self):
         try:
-            print("Temporary directory is ", temp_dir)
-            os.chdir(temp_dir)
+            live_time = straxen.get_livetime_sec(self.st, nt_test_run_id)
+        except strax.RunMetadataNotAvailable:
+            things = self.st.get_array(nt_test_run_id, 'peaks')
+            live_time = straxen.get_livetime_sec(self.st, nt_test_run_id, things=things)
+        assertion_statement = "Live-time calculation is wrong"
+        assert live_time == self._expected_test_results['run_live_time'], assertion_statement
 
-            print("Downloading test data (if needed)")
-            st = nt_test_context()
-            st.make(nt_test_run_id, 'records')
-            # Ignore strax-internal warnings
-            st.set_context_config({'free_options': tuple(st.config.keys())})
-            st.make(nt_test_run_id, 'records')
+    def test_df_wiki(self):
+        df = self.st.get_df(nt_test_run_id, 'peak_basics')
+        straxen.dataframe_to_wiki(df)
 
-            print("Get peaks")
-            p = st.get_array(nt_test_run_id, 'peaks')
+    def test_interactive_display(self):
 
-            # Do checks on there number of peaks
-            assertion_statement = ("Got less/more peaks than expected, perhaps "
-                                   "the test is outdated or clustering has "
-                                   "really changed")
-            assert np.abs(len(p) -
-                          _expected_test_results['n_peaks']) < 5, assertion_statement
+        fig = self.st.event_display_interactive(nt_test_run_id,
+                                           time_within=self.first_event,
+                                           xenon1t=False,
+                                           plot_record_matrix=True,
+                                           )
+        fig.save('test_display.html')
 
-            events = st.get_array(nt_test_run_id, 'event_info')
-            print('plot wf')
-            peak_i = 0
-            st.plot_waveform(nt_test_run_id,
-                             time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])))
-            plt_clf()
+    def test_selector(self):
+        from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
+        p = self.st.get_array(nt_test_run_id, 'peaks_basics')
+        ds = DataSelectionHist('ds')
+        fig = ds.histogram2d(p,
+                             p['area'],
+                             p['area'],
+                             bins=50,
+                             hist_range=((0, 200), (0, 2000)),
+                             log_color_scale=True,
+                             clim=(10, None),
+                             undeflow_color='white')
 
-            print('plot hit pattern')
-            peak_i = 1
-            st.plot_hit_pattern(nt_test_run_id,
-                                time_range=(p[peak_i]['time'], strax.endtime(p[peak_i])),
-                                xenon1t=False)
-            plt_clf()
-
-            print('plot (raw)records matrix')
-            peak_i = 2
-            assert st.is_stored(nt_test_run_id, 'records'), "no records"
-            assert st.is_stored(nt_test_run_id, 'raw_records'), "no raw records"
-            st.plot_records_matrix(nt_test_run_id, time_range=(p[peak_i]['time'],
-                                                               strax.endtime(p[peak_i])))
-
-            st.raw_records_matrix(nt_test_run_id, time_range=(p[peak_i]['time'],
-                                                              strax.endtime(p[peak_i])))
-            st.plot_waveform(nt_test_run_id,
-                             time_range=(p[peak_i]['time'],
-                                         strax.endtime(p[peak_i])),
-                             deep=True)
-            plt_clf()
-            plot_all_positions = 'peak_positions_mlp' in st._plugin_class_registry
-
-            straxen.analyses.event_display.plot_single_event(
-                st,
-                nt_test_run_id,
-                events[:1],
-                xenon1t=False,
-                records_matrix='raw',
-                plot_all_positions=plot_all_positions,
-            )
-
-            st.event_display_simple(nt_test_run_id,
-                                    time_range=(events[0]['time'],
-                                                events[0]['endtime']),
-                                    xenon1t=False,
-                                    plot_all_positions=plot_all_positions
-                                    )
-            plt_clf()
-
-            st.event_display_interactive(nt_test_run_id, time_range=(events[0]['time'],
-                                                                     events[0]['endtime']),
-                                         xenon1t=False)
-            plt_clf()
-
-            print('plot aft')
-            st.plot_peaks_aft_histogram(nt_test_run_id)
-            plt_clf()
-
-            print('plot event scatter')
-            st.event_scatter(nt_test_run_id)
-            plt_clf()
-
-            print('plot event scatter')
-            st.plot_energy_spectrum(nt_test_run_id)
-            plt_clf()
-
-            print('plot peak clsassification')
-            st.plot_peak_classification(nt_test_run_id)
-            plt_clf()
-
-            print("plot holoviews")
-            peak_i = 3
-            st.waveform_display(nt_test_run_id,
-                                time_range=(p[peak_i]['time'],
-                                            strax.endtime(p[peak_i])))
-            st.hvdisp_plot_pmt_pattern(nt_test_run_id,
-                                       time_range=(p[peak_i]['time'],
-                                                   strax.endtime(p[peak_i])))
-            st.hvdisp_plot_peak_waveforms(nt_test_run_id,
-                                          time_range=(p[peak_i]['time'],
-                                                      strax.endtime(p[peak_i])))
-
-            print('Plot single pulse:')
-            st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
-                               ignore_time_warning=True)
-
-            print("Check live-time")
-            live_time = straxen.get_livetime_sec(st, nt_test_run_id, things=p)
-            assertion_statement = "Live-time calculation is wrong"
-            assert live_time == _expected_test_results['run_live_time'], assertion_statement
-
-            print('Check the peak_basics')
-            df = st.get_df(nt_test_run_id, 'peak_basics')
-            assertion_statement = ("Got less/more S1s than expected, perhaps "
-                                   "the test is outdated or classification "
-                                   "has really changed.")
-            assert np.abs(np.sum(df['type'] == 1) -
-                          _expected_test_results['n_s1']) < 2, assertion_statement
-            df = df[:10]
-
-            print("Check that we can write nice wiki dfs")
-            straxen.dataframe_to_wiki(df)
-
-            print("Abuse the peaks to show that _average_scada works")
-            p = p[:10]
-            p_t, p_a = straxen.scada._average_scada(
-                p['time'] / 1e9,
-                p['time'],
-                1)
-            assert len(p_a) == len(p), 'Scada deleted some of my 10 peaks!'
-
-            print('Check the number of events')
-            events = st.get_array(nt_test_run_id, 'event_info_double')
-            assertion_statement = ("Got less/ore events than expected, "
-                                   "perhaps the test is outdated or something "
-                                   "changed in the processing.")
-            if straxen.utilix_is_configured(warning_message=None):
-                assert len(events) == _expected_test_results['n_events'], assertion_statement
-
-            print("Plot bokkeh:")
-            fig = st.event_display_interactive(nt_test_run_id,
-                                               time_range=(events[0]['time'],
-                                                           events[0]['endtime']),
-                                               xenon1t=False,
-                                               plot_record_matrix=True,
-                                               )
-            fig.save('test_display.html')
-
-            # Test data selector:
-            from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
-            ds = DataSelectionHist('ds')
-            fig = ds.histogram2d(p,
-                                 p['area'],
-                                 p['area'],
-                                 bins=50,
-                                 hist_range=((0, 200), (0, 2000)),
-                                 log_color_scale=True,
-                                 clim=(10, None),
-                                 undeflow_color='white')
-
-            import bokeh.plotting as bklt
-            bklt.save(fig, 'test_data_selector.html')
-
-        # On windows, you cannot delete the current process'
-        # working directory, so we have to chdir out first.
-        finally:
-            os.chdir('..')
-
+        import bokeh.plotting as bklt
+        bklt.save(fig, 'test_data_selector.html')
 
 def test_plots():
     """Make some plots"""
