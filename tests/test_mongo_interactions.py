@@ -62,7 +62,7 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
         run
     """
     st = straxen.contexts.xenonnt_online(use_rucio=False)
-    straxen.online_monitor.get_mongo_uri()
+    straxen.get_mongo_uri()
     om = _patch_om_init(target)
     st.storage = [om]
     max_run = None
