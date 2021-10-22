@@ -53,7 +53,7 @@ def print_versions(modules=('strax', 'straxen', 'cutax'),
         'cutax', 'pema'))
     :param return_string: optional. Instead of printing the message,
         return a string
-    :param include_git_details: Include the current branch and latest
+    :param include_git: Include the current branch and latest
         commit hash
     :return: optional, the message that would have been printed
     """

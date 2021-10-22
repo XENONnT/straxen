@@ -7,6 +7,7 @@ from warnings import warn
 from os import environ as os_environ
 from straxen import aux_repo, pax_file
 export, __all__ = strax.exporter()
+from pandas import DataFrame
 
 nt_test_run_id = '012882'
 
@@ -76,11 +77,13 @@ def nt_test_context(target_context='xenonnt_online',
 
 
 # Let's make a dummy map for NVeto
-_nveto_pmt_dummy_df = {'channel': list(range(2000, 2120)),
-                       'x': list(range(120)),
-                       'y': list(range(120)),
-                       'z': list(range(120)),
-                       }
+_nveto_pmt_dummy_df = DataFrame(
+    {'channel': list(range(2000, 2120)),
+     'x': list(range(120)),
+     'y': list(range(120)),
+     'z': list(range(120)),
+     }
+)
 
 # Some configs are better obtained from the strax_auxiliary_files repo.
 # Let's use small files, we don't want to spend a lot of time downloading

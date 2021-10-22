@@ -1,14 +1,13 @@
 import strax
 import straxen
 from straxen.holoviews_utils import nVETOEventDisplay
-from pandas import DataFrame
 import holoviews as hv
 import panel as pn
 import numpy as np
 from tempfile import TemporaryDirectory
 import os
 
-_dummy_map = DataFrame(straxen.test_utils._nveto_pmt_dummy_df)
+_dummy_map = straxen.test_utils._nveto_pmt_dummy_df.to_records()
 
 
 def test_hitlets_to_hv_points():

@@ -86,3 +86,12 @@ def test_query_sc_values():
                              query_type_lab=True, )
 
     assert np.all(df['SomeParameter'] // 1 == -96), 'Not all values are correct for query type lab.'
+
+# TODO
+# print("Abuse the peaks to show that _average_scada works")
+# p = p[:10]
+# p_t, p_a = straxen.scada._average_scada(
+#     p['time'] / 1e9,
+#     p['time'],
+#     1)
+# assert len(p_a) == len(p), 'Scada deleted some of my 10 peaks!'
