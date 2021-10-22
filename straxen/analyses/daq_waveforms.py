@@ -121,12 +121,12 @@ def _group_channels_by_index(cable_map: pandas.DataFrame,
     return np.array(labels), idx
 
 
-def group_by_daq(context, run_id, group_by: str):
+def group_by_daq(run_id, group_by: str):
     """From the channel map, get the mapping of channel number -> group by"""
     cable_map = _get_cable_map()
     if group_by == 'link':
         labels, idx = _group_channels_by_index(cable_map, group_by='ADC ID')
-        daq_config = _get_daq_config(context, run_id)
+        daq_config = _get_daq_config(run_id)
         labels = [_board_to_host_link(daq_config, l) for l in labels]
         labels = np.array(labels)
         order = np.argsort(labels)

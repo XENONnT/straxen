@@ -9,6 +9,7 @@ from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 
+
 # If one of the test below fail, perhaps these values need to be updated.
 
 
@@ -38,13 +39,13 @@ class TestMiniAnalyses(unittest.TestCase):
         'event_basics': 20,
     }
 
-    def setUp(self) -> None:
-        self.st = nt_test_context()
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.st = nt_test_context()
         # For al the WF plotting, we might need records, let's make those
-        self.st.make(nt_test_run_id, 'records')
-        if not hasattr(self, 'first_event') or not hasattr(self, 'event_basics'):
-            self.first_peak = self.st.get_array(nt_test_run_id, 'peak_basics')[0]
-            self.first_event = self.st.get_array(nt_test_run_id, 'event_basics')[0]
+        cls.st.make(nt_test_run_id, 'records')
+        cls.first_peak = cls.st.get_array(nt_test_run_id, 'peak_basics')[0]
+        cls.first_event = cls.st.get_array(nt_test_run_id, 'event_basics')[0]
 
     def tearDown(self):
         plt_clf()
@@ -57,7 +58,7 @@ class TestMiniAnalyses(unittest.TestCase):
                    f'tests/test_mini_analyses.TestMiniAnalyses._expected_test_results')
         if not straxen.utilix_is_configured(warning_message=None):
             # If we do things with dummy maps, things might be slightly different
-           tol += 10
+            tol += 10
         assert np.abs(len(data) - self._expected_test_results[target]) < tol, message
 
     def test_target_events(self):
@@ -81,16 +82,16 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_event_display_simple(self):
         plot_all_positions = straxen.utilix_is_configured()
         self.st.event_display_simple(nt_test_run_id,
-                                time_within=self.first_event,
-                                xenon1t=False,
-                                plot_all_positions=plot_all_positions,
-                                )
+                                     time_within=self.first_event,
+                                     xenon1t=False,
+                                     plot_all_positions=plot_all_positions,
+                                     )
 
     def test_event_display_interactive(self):
         self.st.event_display_interactive(nt_test_run_id,
-                                time_within=self.first_event,
-                                xenon1t=False,
-                                )
+                                          time_within=self.first_event,
+                                          xenon1t=False,
+                                          )
 
     def test_plot_peaks_aft_histogram(self):
         self.st.plot_peaks_aft_histogram(nt_test_run_id)
@@ -119,7 +120,10 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def test_plot_pulses_tpc(self):
         self.st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
-                           ignore_time_warning=True)
+                                ignore_time_warning=True)
+
+    def test_event_display(self):
+        self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
     def test_calc_livetime(self):
         try:
@@ -137,11 +141,15 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_interactive_display(self):
 
         fig = self.st.event_display_interactive(nt_test_run_id,
-                                           time_within=self.first_event,
-                                           xenon1t=False,
-                                           plot_record_matrix=True,
-                                           )
-        fig.save('test_display.html')
+                                                time_within=self.first_event,
+                                                xenon1t=False,
+                                                plot_record_matrix=True,
+                                                )
+        save_as = 'test_display.html'
+        fig.save(save_as)
+        assert os.path.exists(save_as)
+        os.remove(save_as)
+        assert not os.path.exists(save_as), f'Should have removed {save_as}'
 
     def test_selector(self):
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
@@ -157,78 +165,30 @@ class TestMiniAnalyses(unittest.TestCase):
                              undeflow_color='white')
 
         import bokeh.plotting as bklt
-        bklt.save(fig, 'test_data_selector.html')
+        save_as = 'test_data_selector.html'
+        bklt.save(fig, save_as)
+        assert os.path.exists(save_as)
+        os.remove(save_as)
+        assert not os.path.exists(save_as), f'Should have removed {save_as}'
+
+    def test_nt_daq_plot(self):
+        self.st.daq_plot(nt_test_run_id,
+                         time_within=self.first_peak,
+                         vmin=0.1,
+                         vmax=1,
+                         )
+
+    def test_nt_daq_plot_grouped(self):
+        self.st.plot_records_matrix(nt_test_run_id,
+                                    time_within=self.first_peak,
+                                    vmin=0.1,
+                                    vmax=1,
+                                    group_by='ADC ID',
+                                    )
+
 
 def test_plots():
     """Make some plots"""
     c = np.ones(straxen.n_tpc_pmts)
     straxen.plot_pmts(c)
     straxen.plot_pmts(c, log_scale=True)
-
-
-def test_print_version():
-    straxen.print_versions(['strax', 'something_that_does_not_exist'])
-
-
-# def test_nd_daq_plot():
-#     """Number of tests to be run on nT like configs"""
-#     if not straxen.utilix_is_configured():
-#         return
-#     with tempfile.TemporaryDirectory() as temp_dir:
-#         try:
-#             print("Temporary directory is ", temp_dir)
-#             os.chdir(temp_dir)
-#             st = straxen.contexts.xenonnt_online(use_rucio=False)
-#             rundb = st.storage[0]
-#             rundb.readonly = True
-#             st.storage = [rundb, strax.DataDirectory(temp_dir)]
-#
-#             # We want to test the FDC map that only works with CMT
-#             test_conf = straxen.test_utils._testing_config_nT.copy()
-#             del test_conf['fdc_map']
-#
-#             st.set_config(test_conf)
-#             st.set_context_config(dict(forbid_creation_of=()))
-#             st.register(DummyRawRecords)
-#
-#             rr = st.get_array(nt_test_run_id, 'raw_records')
-#             st.make(nt_test_run_id, 'records')
-#             st.make(nt_test_run_id, 'peak_basics')
-#
-#             plt_clf()
-#         # On windows, you cannot delete the current process'git p
-#         # working directory, so we have to chdir out first.
-#         finally:
-#             os.chdir('..')
-
-
-def test_nd_daq_plot():
-    """Number of tests to be run on nT like configs"""
-    if not straxen.utilix_is_configured():
-        return
-    st = straxen.test_utils.nt_test_context(use_rucio=False)
-    ev = st.get_array(nt_test_run_id, 'event_info')
-    st.load_corrected_positions(nt_test_run_id,
-                                time_within=ev[0],
-                                )
-    # This would be nice to add but with empty events it does not work
-    if len(ev):
-        st.event_display(nt_test_run_id,
-                         time_within=ev[0],
-                         )
-    rr = st.get_array(nt_test_run_id, 'raw_records')
-    st.make(nt_test_run_id, 'records')
-    st.make(nt_test_run_id, 'peak_basics')
-    st.daq_plot(nt_test_run_id,
-                time_range=(rr['time'][0], strax.endtime(rr)[-1]),
-                vmin=0.1,
-                vmax=1,
-                )
-
-    st.plot_records_matrix(nt_test_run_id,
-                           time_range=(rr['time'][0],
-                                       strax.endtime(rr)[-1]),
-                           vmin=0.1,
-                           vmax=1,
-                           group_by='ADC ID',
-                           )

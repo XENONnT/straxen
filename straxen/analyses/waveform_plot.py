@@ -150,7 +150,7 @@ def plot_records_matrix(context, run_id,
                     ignore_max_sample_warning=ignore_max_sample_warning,
                     **kwargs)
     if group_by is not None:
-        ylabs, wvm_mask = group_by_daq(context, run_id, group_by)
+        ylabs, wvm_mask = group_by_daq(run_id, group_by)
         wvm = wvm[:, wvm_mask]
         plt.ylabel(group_by)
     else:
