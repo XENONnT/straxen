@@ -168,7 +168,7 @@ class TestMongoDownloader(unittest.TestCase):
         client = pymongo.MongoClient(uri)
         database = client[db_name]
         collection = database[collection_name]
-        self.downloader = straxen.GridFsInterface(collection=collection,
+        self.downloader = straxen.MongoDownloader(collection=collection,
                                                   readonly=True,
                                                   file_database=None,
                                                   _test_on_init=False,
