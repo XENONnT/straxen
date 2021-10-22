@@ -40,7 +40,9 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def setUp(self):
         self.st = nt_test_context()
-        self.first_peak =  self.st.get_array(nt_test_run_id, 'peak_basics')[0]
+        # For al the WF plotting, we might need records, let's make those
+        self.st.make(nt_test_run_id, 'records')
+        self.first_peak = self.st.get_array(nt_test_run_id, 'peak_basics')[0]
         self.first_event = self.st.get_array(nt_test_run_id, 'event_basics')[0]
 
     def tearDown(self):
