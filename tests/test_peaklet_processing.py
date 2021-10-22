@@ -80,5 +80,4 @@ def test_tight_coincidence(hits, channel):
         n_hits = np.sum(m_hits_in_peak)
         n_channel = len(np.unique(hits[m_hits_in_peak]['channel']))
         assert n_hits == tight_coin[ind], 'Wrong number of tight hits'
-        assert n_channel == tight_coin_channel[
-            ind], f'Wrong number of tight channel got {tight_coin_channel[ind]}, but expectd {n_channel}'
+        assert n_channel == tight_coin_channel[ind], f'Wrong number of tight channel got {tight_coin_channel[ind]}, but expectd {n_channel}'  # noqa
