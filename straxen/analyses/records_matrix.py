@@ -116,9 +116,8 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
             # Downsample to single sample -> store area
             idx = (r['time'] - t0) // dt
             if len(y) >= idx:
-                raise IndexError(f'Despite n_samples = window // dt + 1, our '
-                                 f'idx is too high?!'
-                                 f' Requesting {idx} out of {len(y)}')
+                raise IndexError('Despite n_samples = window // dt + 1, our '
+                                 'idx is too high?!')
             y[idx, r['channel']] += r['area']
             continue
 
