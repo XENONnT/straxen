@@ -68,6 +68,10 @@ def nt_test_context(target_context='xenonnt_online',
         st.register(straxen.PeakPositions1T)
         st.set_config({'gain_model': ("to_pe_placeholder", True)})
         print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
+
+        # TODO
+        #  The test data for this plugin doesn't work
+        del st._plugin_class_registry['event_pattern_fit']
     return st
 
 

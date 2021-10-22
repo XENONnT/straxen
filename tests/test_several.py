@@ -102,6 +102,7 @@ def test_several():
                                          strax.endtime(p[peak_i])),
                              deep=True)
             plt_clf()
+            plot_all_positions = 'peak_positions_mlp' in st._plugin_class_registry
 
             straxen.analyses.event_display.plot_single_event(
                 st,
@@ -113,7 +114,9 @@ def test_several():
             st.event_display_simple(nt_test_run_id,
                                     time_range=(events[0]['time'],
                                                 events[0]['endtime']),
-                                    xenon1t=False)
+                                    xenon1t=False,
+                                    plot_all_positions=plot_all_positions
+                                    )
             plt_clf()
 
             st.event_display_interactive(nt_test_run_id, time_range=(events[0]['time'],
