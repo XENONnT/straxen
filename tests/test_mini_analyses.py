@@ -38,12 +38,13 @@ class TestMiniAnalyses(unittest.TestCase):
         'event_basics': 20,
     }
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.st = nt_test_context()
         # For al the WF plotting, we might need records, let's make those
         self.st.make(nt_test_run_id, 'records')
-        self.first_peak = self.st.get_array(nt_test_run_id, 'peak_basics')[0]
-        self.first_event = self.st.get_array(nt_test_run_id, 'event_basics')[0]
+        if not hasattr(self, 'first_event') or not hasattr(self, 'first_event') :
+            self.first_peak = self.st.get_array(nt_test_run_id, 'peak_basics')[0]
+            self.first_event = self.st.get_array(nt_test_run_id, 'event_basics')[0]
 
     def tearDown(self):
         plt_clf()
@@ -144,7 +145,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def test_selector(self):
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
-        p = self.st.get_array(nt_test_run_id, 'peaks_basics')
+        p = self.st.get_array(nt_test_run_id, 'peak_basics')
         ds = DataSelectionHist('ds')
         fig = ds.histogram2d(p,
                              p['area'],
