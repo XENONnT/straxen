@@ -182,13 +182,13 @@ class TestMongoDownloader(unittest.TestCase):
 
     @skip_if_attr_not_true('_run_test', "No test DB provided")
     def tearDown(self):
-        self.database[self.collection_name].drop()
+        self.collection.drop()
 
     @skip_if_attr_not_true('_run_test', "No test DB provided")
     def test_upload(self):
         file_name = 'test.txt'
         file_content = 'This is a test'
-        with open(file_name, 'w ') as f:
+        with open(file_name, 'w') as f:
             f.write(file_content)
         assert os.path.exists(file_name)
         self.uploader.upload_from_dict({file_name: os.path.abspath(file_name)})
