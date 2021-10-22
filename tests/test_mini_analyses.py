@@ -42,7 +42,7 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st = nt_test_context()
         # For al the WF plotting, we might need records, let's make those
         self.st.make(nt_test_run_id, 'records')
-        if not hasattr(self, 'first_event') or not hasattr(self, 'first_event') :
+        if not hasattr(self, 'first_event') or not hasattr(self, 'event_basics'):
             self.first_peak = self.st.get_array(nt_test_run_id, 'peak_basics')[0]
             self.first_event = self.st.get_array(nt_test_run_id, 'event_basics')[0]
 
