@@ -65,9 +65,9 @@ def _get_daq_config(
     Either use the context of the runs collection.
     """
     if run_collection is None:
-        if not straxen.utilix_is_configured(warn=None)
+        if not straxen.utilix_is_configured(warn=None):
             raise NotImplementedError('Only works with the runs-database')
-        run_collection=utilix.rundb.xent_collection()
+        run_collection = utilix.rundb.xent_collection()
     daq_doc = run_collection.find_one({"number": int(run_id)},
                                       projection={config_name: 1})
     if daq_doc is None or config_name not in daq_doc:
