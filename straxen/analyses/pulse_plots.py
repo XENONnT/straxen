@@ -79,6 +79,8 @@ def plot_pulses(context, raw_records, run_id, time_range,
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)
 
+    hits = None  # needed for delete if false
+
     for inds in _yield_pulse_indices(raw_records):
         # Grouped our pulse so now plot:
         rr_pulse = raw_records[inds]
@@ -121,7 +123,6 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          ls='dotted', color='orange'
                          )
 
-        hits = None  # needed for delet if false
         if plot_hits:
             min_amplitude = thr
             

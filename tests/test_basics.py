@@ -49,7 +49,7 @@ class TestBasics(unittest.TestCase):
 
     def test_get_livetime_sec(self):
         st = self.st
-        events = st.get_array(self.run_id, 'peaks')
+        events = st.get_array(self.run_id, 'events')
         straxen.get_livetime_sec(st, test_run_id_1T, things=events)
 
     def test_mini_analysis(self):

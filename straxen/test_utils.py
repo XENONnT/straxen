@@ -62,17 +62,13 @@ def nt_test_context(target_context='xenonnt_online',
 
     if not straxen.utilix_is_configured(warning_message=False):
         st.set_config(_testing_config_nT)
-        del st._plugin_class_registry['peak_positions_mlp']  # noqa
-        del st._plugin_class_registry['peak_positions_cnn']  # noqa
-        del st._plugin_class_registry['peak_positions_gcn']  # noqa
-        del st._plugin_class_registry['s2_recon_pos_diff']  # noqa
+        to_remove = 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
+        # TODO The test data for this plugin doesn't work
+        to_remove += ['event_pattern_fit']
+        for plugin in to_remove:
+            del st._plugin_class_registry[plugin]
         st.register(straxen.PeakPositions1T)
         st.set_config({'gain_model': ("to_pe_placeholder", True)})
-        print(f"Using {st._plugin_class_registry['peak_positions']} for posrec tests")
-
-        # TODO
-        #  The test data for this plugin doesn't work
-        del st._plugin_class_registry['event_pattern_fit']
     return st
 
 
