@@ -28,7 +28,7 @@ class TestBasics(unittest.TestCase):
             for run_id in ('-1', '-2')
         ]
 
-    @unittest.skipIf(straxen.utilix_is_configured(), "No db access, cannot test!")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_load_context_defaults(self):
         """Don't fail immediately if we start a context due to Rucio"""
         st = straxen.contexts.xenonnt_online(_minimum_run_number=10_000,
@@ -36,7 +36,7 @@ class TestBasics(unittest.TestCase):
                                              )
         st.select_runs()
 
-    @unittest.skipIf(straxen.utilix_is_configured(), "No db access, cannot test!")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_find_local(self):
         """Make sure that we don't find the non existing data"""
         rucio = straxen.RucioFrontend(include_remote=False,)
@@ -45,7 +45,7 @@ class TestBasics(unittest.TestCase):
                           self.test_keys[0]
                           )
 
-    @unittest.skipIf(straxen.utilix_is_configured(), "No db access, cannot test!")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_find_several_local(self):
         """Let's try finding some keys (won't be available)"""
         rucio = straxen.RucioFrontend(include_remote=False,)
@@ -54,7 +54,7 @@ class TestBasics(unittest.TestCase):
         # We shouldn't find any of these
         assert found == [False for _ in self.test_keys]
 
-    @unittest.skipIf(straxen.utilix_is_configured(), "No db access, cannot test!")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_find_several_remote(self):
         """
         Let's try running a find_several with the include remote.

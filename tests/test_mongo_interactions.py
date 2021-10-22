@@ -4,15 +4,12 @@ NB! this only works if one has access to the database. This does not
 work e.g. on travis jobs and therefore the tests failing locally will
 not show up in Pull Requests.
 """
-
 import straxen
 import os
-from warnings import warn
-from straxen.test_utils import nt_test_run_id
 import unittest
 
 
-@unittest.skipIf(straxen.utilix_is_configured(), "No db access, cannot test!")
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_select_runs(check_n_runs=2):
     """
     Test (if we have a connection) if we can perform strax.select_runs
@@ -35,7 +32,7 @@ def test_select_runs(check_n_runs=2):
     st.select_runs()
 
 
-@unittest.skipIf(straxen.utilix_is_configured(), "Cannot download because utilix is not configured")
+@unittest.skipIf(not straxen.utilix_is_configured(), "Cannot download because utilix is not configured")
 def test_downloader():
     """Test if we can download a small file from the downloader"""
     downloader = straxen.MongoDownloader()
@@ -55,7 +52,7 @@ def _patch_om_init(take_only):
     return straxen.OnlineMonitor(uri=uri, take_only=take_only)
 
 
-@unittest.skipIf(straxen.utilix_is_configured(), "No db access, cannot test!")
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_online_monitor(target='online_peak_monitor', max_tries=3):
     """
     See if we can get some data from the online monitor before max_tries
