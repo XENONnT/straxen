@@ -37,7 +37,7 @@ class TestRunDBFrontend(unittest.TestCase):
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
     """
-    run_test = True
+    _run_test = True
 
     def setUp(self):
         # Just to make sure we are running some mongo server, see test-class docstring

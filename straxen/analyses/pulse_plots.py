@@ -12,7 +12,8 @@ def plot_pulses_tpc(context, raw_records, run_id, time_range,
     plot_pulses(context, raw_records, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path)
-    
+
+
 @straxen.mini_analysis(requires=('raw_records_mv',), warn_beyond_sec=5)
 def plot_pulses_mv(context, raw_records_mv, run_id, time_range,
                     plot_hits=False, plot_median=False,

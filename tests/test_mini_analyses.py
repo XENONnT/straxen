@@ -121,14 +121,16 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_plot_pulses_tpc(self):
         self.st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
                                 ignore_time_warning=True)
+
     def test_plot_pulses_mv(self):
         self.st.plot_pulses_mv(nt_test_run_id, max_plots=2, plot_hits=True,
-                                ignore_time_warning=True)
+                               ignore_time_warning=True)
 
     def test_plot_pulses_nv(self):
         self.st.plot_pulses_nv(nt_test_run_id, max_plots=2, plot_hits=True,
-                                ignore_time_warning=True)
+                               ignore_time_warning=True)
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_event_display(self):
         self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
@@ -200,7 +202,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_load_corrected_positions(self):
-        self.st.load_corrected_positions(nt_test_run_id)
+        self.st.load_corrected_positions(nt_test_run_id, time_within=self.first_peak)
 
 
 def test_plots():
