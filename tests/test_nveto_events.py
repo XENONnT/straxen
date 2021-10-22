@@ -190,8 +190,7 @@ def test_nveto_event_plugin(hitlets, area):
 
         assert e['time'] == np.min(hits['time']), f'Event start is wrong (hit_ids: hit_ids)'
         assert e['endtime'] == np.max(strax.endtime(hits)), f'Event end is wrong (hit_ids: hit_ids)'
-        assert np.isclose(e['area'], np.sum(
-            hits['area'])), f'Event area is wrong for {e["area"]}, {hits["area"]}'
+        assert np.isclose(e['area'], np.sum(hits['area'])), f'Event area is wrong for {e["area"]}, {hits["area"]}'
         mes = f'Event n_contributing_pmt is wrong for {e["n_contributing_pmt"]}, {hits["channel"]}'
         assert e['n_contributing_pmt'] == len(np.unique(hits['channel'])), mes
         assert e['n_hits'] == len(hits), f'Event n_hits is wrong for {e["n_hits"]}, {hits}'
