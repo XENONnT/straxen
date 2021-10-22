@@ -143,6 +143,55 @@ class TestRunDBFrontend(unittest.TestCase):
             st.select_runs(available='peaks')
 
 
+class TestMongoDownloader(unittest.TestCase):
+    """
+    Test the saving behavior of the context with the mogno downloader
+
+    Requires write access to some pymongo server, the URI of witch is to be set
+    as an environment variable under:
+
+        TEST_MONGO_URI
+
+    At the moment this is just an empty database but you can also use some free
+    ATLAS mongo server.
+    """
+    _run_test = True
+
+    def setUp(self):
+        # Just to make sure we are running some mongo server, see test-class docstring
+        if 'TEST_MONGO_URI' not in os.environ:
+            self. _run_test = False
+            return
+        uri = os.environ.get('TEST_MONGO_URI')
+        db_name = 'test_rundb'
+        collection_name = 'fs.files'
+        client = pymongo.MongoClient(uri)
+        database = client[db_name]
+        collection = database[collection_name]
+        self.downloader = straxen.GridFsInterface(collection=collection, readonly=True)
+        self.uploader = straxen.MongoUploader(collection=collection, readonly=False)
+        self.collection = collection
+
+    @skip_if_attr_not_true('_run_test', "No test DB provided")
+    def tearDown(self):
+        self.database[self.collection_name].drop()
+
+    @skip_if_attr_not_true('_run_test', "No test DB provided")
+    def test_upload(self):
+        file_name = 'test.txt'
+        file_content = 'This is a test'
+        with open(file_name, 'w ') as f:
+            f.write(file_content)
+        assert os.path.exists(file_name)
+        self.uploader.upload_from_dict({file_name: os.path.abspath(file_name)})
+        assert self.downloader.config_exists(file_name)
+        download_path = self.downloader.download_single(file_name)
+        assert os.path.exists(download_path)
+        read_file = straxen.get_resource(download_path)
+        assert file_content == read_file
+        os.remove(file_name)
+        assert not os.path.exists(file_name)
+
 def _rundoc_format(run_id):
     start = datetime.datetime.fromtimestamp(0) + datetime.timedelta(days=int(run_id))
     end = start + datetime.timedelta(days=1)

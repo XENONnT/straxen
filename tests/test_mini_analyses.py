@@ -179,6 +179,7 @@ class TestMiniAnalyses(unittest.TestCase):
         os.remove(save_as)
         assert not os.path.exists(save_as), f'Should have removed {save_as}'
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_daq_plot(self):
         self.st.daq_plot(nt_test_run_id,
                          time_within=self.first_peak,
@@ -186,6 +187,7 @@ class TestMiniAnalyses(unittest.TestCase):
                          vmax=1,
                          )
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_daq_plot_grouped(self):
         self.st.plot_records_matrix(nt_test_run_id,
                                     time_within=self.first_peak,
