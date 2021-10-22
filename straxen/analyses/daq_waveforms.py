@@ -1,8 +1,7 @@
-import numba
 import pandas
-import straxen
 import numpy as np
-import strax
+import straxen
+import utilix
 import pymongo
 import typing
 import matplotlib.pyplot as plt
@@ -58,7 +57,6 @@ def daq_plot(context,
 
 
 def _get_daq_config(
-        context: strax.Context,
         run_id: str,
         config_name: str = 'daq_config',
         run_collection: typing.Optional[pymongo.collection.Collection] = None) -> dict:
@@ -66,10 +64,10 @@ def _get_daq_config(
     Query the runs database for the config of the daq during this run.
     Either use the context of the runs collection.
     """
-    if not context.storage[0].__class__.__name__ == 'RunDB' and run_collection is None:
-        raise NotImplementedError('Only works with the runs-database')
     if run_collection is None:
-        run_collection = context.storage[0].collection
+        if not straxen.utilix_is_configured(warn=None)
+            raise NotImplementedError('Only works with the runs-database')
+        run_collection=utilix.rundb.xent_collection()
     daq_doc = run_collection.find_one({"number": int(run_id)},
                                       projection={config_name: 1})
     if daq_doc is None or config_name not in daq_doc:

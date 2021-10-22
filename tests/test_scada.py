@@ -1,6 +1,5 @@
 import numpy as np
 import straxen
-import warnings
 
 
 def test_query_sc_values():

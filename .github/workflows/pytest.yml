@@ -100,7 +100,7 @@ jobs:
         env:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
         run: |
-          pytest -v
+          pytest -v --durations 0
       - name: Coveralls
         # Make the coverage report and upload
         env:

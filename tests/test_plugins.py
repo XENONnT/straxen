@@ -3,7 +3,6 @@ import strax
 import numpy as np
 from immutabledict import immutabledict
 import straxen
-from straxen.common import pax_file, aux_repo
 from straxen.test_utils import nt_test_run_id
 
 ##
@@ -255,9 +254,3 @@ def test_nT(ncores=1):
 def test_nT_mutlticore():
     print('nT multicore')
     test_nT(2)
-
-# Disable the test below as it saves some time in travis and gives limited new
-# information as most development is on nT-plugins.
-# def test_1T_mutlticore():
-#     print('1T multicore')
-#     test_1T(2)
