@@ -17,8 +17,8 @@ def test_query_sc_values():
     # Query 5 s of data:
     start = 1609682275000000000
     # Add micro-second to check if query does not fail if inquery precsion > SC precision
-    start += 10 ** 6
-    end = start + 5 * 10 ** 9
+    start += 10**6
+    end = start + 5*10**9
     parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
 
     df = sc.get_scada_values(parameters,
@@ -38,7 +38,7 @@ def test_query_sc_values():
                              end=end,
                              fill_gaps='forwardfill',
                              every_nth_value=1,
-                             query_type_lab=False, )
+                             query_type_lab=False,)
     assert np.all(np.isclose(df[:4], 2.079859)), 'First four values deviate from queried values.'
     assert np.all(np.isclose(df[4:], 2.117820)), 'Last two values deviate from queried values.'
 
@@ -57,7 +57,7 @@ def test_query_sc_values():
                              fill_gaps='forwardfill',
                              down_sampling=True,
                              every_nth_value=2,
-                             query_type_lab=False, )
+                             query_type_lab=False,)
 
     assert np.all(df_all[::2] == df), 'Downsampling did not return the correct values.'
 
@@ -66,18 +66,17 @@ def test_query_sc_values():
                              end=end,
                              fill_gaps='forwardfill',
                              every_nth_value=2,
-                             query_type_lab=False, )
+                             query_type_lab=False,)
 
     # Compare average for each second value:
     for ind, i in enumerate([0, 2, 4]):
-        assert np.isclose(np.mean(df_all[i:i + 2]),
-                          df['SomeParameter'][ind]), 'Averaging is incorrect.'
+        assert np.isclose(np.mean(df_all[i:i + 2]), df['SomeParameter'][ind]), 'Averaging is incorrect.'
 
     # Testing lab query type:
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
-                             query_type_lab=True, )
+                             query_type_lab=True,)
 
     assert np.all(df['SomeParameter'] // 1 == -96), 'Not all values are correct for query type lab.'
 

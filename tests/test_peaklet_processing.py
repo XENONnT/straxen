@@ -14,7 +14,7 @@ from straxen.plugins.peaklet_processing import get_tight_coin
        )
 def test_create_outside_peaks_region(time):
     time = np.sort(time)
-    time_intervals = np.zeros(len(time) // 2, strax.time_dt_fields)
+    time_intervals = np.zeros(len(time)//2, strax.time_dt_fields)
     time_intervals['time'] = time[::2]
     time_intervals['length'] = time[1::2] - time[::2]
     time_intervals['dt'] = 1
@@ -63,8 +63,8 @@ def test_tight_coincidence(hits, channel):
                              min_channels=1,
                              min_area=0)
 
-    peaks_max_time = peaks['time'] + peaks['length'] // 2
-    hits_max_time = hits['time'] + hits['length'] // 2
+    peaks_max_time = peaks['time'] + peaks['length']//2
+    hits_max_time = hits['time'] + hits['length']//2
 
     left = 5
     right = 5

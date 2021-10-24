@@ -233,7 +233,7 @@ def test_nveto_event_plugin(hitlets, area):
                                                           npmt_pos,
                                                           start_channel=2000)
     # Compute truth angles:
-    truth_angle = np.angle(events_angle['pos_x'] + events_angle['pos_y'] * 1j)
+    truth_angle = np.angle(events_angle['pos_x']+events_angle['pos_y']*1j)
     # Replace not defined angles, into zeros to match np.angles return
     # and to simplify comparison
     m = (events_angle['pos_x'] == 0) & (events_angle['pos_y'] == 0)
@@ -241,16 +241,16 @@ def test_nveto_event_plugin(hitlets, area):
 
     # Fixing +2pi issue and np.angle [-180, 180] and [0, 360) convention
     # issue.
-    angle = angle % (2 * np.pi)
-    truth_angle = truth_angle % (2 * np.pi)
+    angle = angle % (2*np.pi)
+    truth_angle = truth_angle % (2*np.pi)
 
     # Sometimes it may happen due to numerical precision that one angle is slightly
     # larger than 2 pi while the other is slightly smaller. In that case we have to
     # fix it:
-    if np.isclose(angle, 2 * np.pi):
-        angle -= 2 * np.pi
-    if np.isclose(truth_angle, 2 * np.pi):
-        truth_angle -= 2 * np.pi
+    if np.isclose(angle, 2*np.pi):
+        angle -= 2*np.pi
+    if np.isclose(truth_angle, 2*np.pi):
+        truth_angle -= 2*np.pi
 
     # Compare angle, also indirectly tests average x/y/z
     mes = f'Event angle did not match expected {truth_angle}, got {angle}.'

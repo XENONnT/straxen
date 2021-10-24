@@ -2,20 +2,20 @@ from straxen.misc import TimeWidgets, print_versions
 import straxen
 import unittest
 
+
 def test_widgets():
     tw = TimeWidgets()
     wig = tw.create_widgets()
     start, end = tw.get_start_end()
 
-    assert isinstance(start, int) and isinstance(end,
-                                                 int), "Should have returned unix time in ns as integer!"
+    assert isinstance(start, int) and isinstance(end, int), "Should have returned unix time in ns as integer!"
     assert end > start, "By default end should be larger than start"
 
     # Now manually change time zone and compare:
     wig.children[0].children[0].value = 1
     start_utc, end_utc = tw.get_start_end()
 
-    h_in_ns_unix = 60 * 60 * 10 ** 9
+    h_in_ns_unix = 60*60*10**9
     unix_conversion_worked = start_utc - start == h_in_ns_unix or start_utc - start == 2 * h_in_ns_unix
     assert unix_conversion_worked
     unix_conversion_worked = start_utc - end == h_in_ns_unix or start_utc - end == 2 * h_in_ns_unix
@@ -38,7 +38,7 @@ def test_change_in_fields():
     # Modify Minutes:
     time = wig.children[1].children[1].value
     minutes = int(time[-2:])
-    minutes *= 60 * 10 ** 9
+    minutes *= 60*10**9
     wig.children[1].children[1].value = time[:-2] + '00'  # .value is a string "HH:MM"
 
     start00, _ = tw.get_start_end()
@@ -55,16 +55,12 @@ def test_print_versions(modules=('numpy', 'straxen', 'non_existing_module')):
                 assert res is not None
 
 
-def test_get_hit_amplitude():
-    straxen.hit_min_amplitude('pmt_commissioning_initial')
-    straxen.hit_min_amplitude('pmt_commissioning_initial_he')
-
-
 class HitAmplitude(unittest.TestCase):
     def test_non_existing(self):
         with self.assertRaises(ValueError):
             straxen.hit_min_amplitude('non existing key')
 
+    @staticmethod
     def test_get_hit_amplitude(self):
         straxen.hit_min_amplitude('pmt_commissioning_initial')
         straxen.hit_min_amplitude('pmt_commissioning_initial_he')
