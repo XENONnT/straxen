@@ -1,11 +1,9 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import warnings
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
-from datetime import datetime
 from .records_matrix import DEFAULT_MAX_SAMPLES
 from .daq_waveforms import group_by_daq
 

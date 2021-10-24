@@ -132,3 +132,11 @@ class TestCoincidence(unittest.TestCase):
         endtime_is_correct = np.all(coincidence['endtime'] == endtime_truth)
         print(coincidence['endtime'], endtime_truth)
         assert endtime_is_correct, 'Coincidence does not have the correct endtime'
+
+
+def test_nv_for_dummy_rr():
+    """Basic test to run the nv rr for dummy raw-records"""
+    st = straxen.test_utils.nt_test_context()
+    st.context_config['forbid_creation_of'] = (,)
+    st.register(straxen.test_utils.DummyRawRecords)
+    st.make(straxen.test_utils.nt_test_run_id, 'hitlets_nv')

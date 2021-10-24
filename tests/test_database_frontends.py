@@ -186,12 +186,16 @@ class TestMongoDownloader(unittest.TestCase):
 
     @skip_if_attr_not_true('_run_test', "No test DB provided")
     def test_upload(self):
+        with self.assertRaises(ConnectionError):
+            # Should be empty!
+            self.downloader.test_find()
         file_name = 'test.txt'
         file_content = 'This is a test'
         with open(file_name, 'w') as f:
             f.write(file_content)
         assert os.path.exists(file_name)
         self.uploader.upload_from_dict({file_name: os.path.abspath(file_name)})
+        self.uploader.compute_md5(file_name)
         assert self.downloader.config_exists(file_name)
         download_path = self.downloader.download_single(file_name)
         assert os.path.exists(download_path)
@@ -199,6 +203,7 @@ class TestMongoDownloader(unittest.TestCase):
         assert file_content == read_file
         os.remove(file_name)
         assert not os.path.exists(file_name)
+        self.downloader.test_find()
 
 
 def _rundoc_format(run_id):

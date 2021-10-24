@@ -87,6 +87,14 @@ class TestMiniAnalyses(unittest.TestCase):
                                      plot_all_positions=plot_all_positions,
                                      )
 
+    def test_single_event_plot(self):
+        plot_all_positions = straxen.utilix_is_configured()
+        self.st.plot_single_event(nt_test_run_id,
+                                  time_within=self.first_event,
+                                  xenon1t=False,
+                                  plot_all_positions=plot_all_positions,
+                                  )
+
     def test_event_display_interactive(self):
         self.st.event_display_interactive(nt_test_run_id,
                                           time_within=self.first_event,

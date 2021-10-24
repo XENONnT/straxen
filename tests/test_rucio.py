@@ -69,3 +69,10 @@ class TestBasics(unittest.TestCase):
             found = rucio.find_several(self.test_keys)
             # We shouldn't find any of these
             assert found == [False for _ in self.test_keys]
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_find_local(self):
+        """Make sure that we don't find the non existing data"""
+        run_db = straxen.RunDB(rucio_path='./rucio_test')
+        with self.assertRaises(strax.DataNotAvailable):
+            run_db.find(self.test_keys[0])
