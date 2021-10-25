@@ -642,13 +642,21 @@ class CorrectedAreas(strax.Plugin):
 
     for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
         dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
-                  (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),
-                  (f'{peak_type}cs2_top', np.float32,
-                   f'Corrected area of {peak_name} S2 in the top PMT array [PE]'),
-                  (f'{peak_type}cs2_bottom', np.float32, 
-                   f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
+                  (f'{peak_type}cs2_top_wo_elifecorr', np.float32,
+                   f'Corrected area of {peak_name} S2 in the top PMT array before elife correction '
+                   f'(s2 xy correction only) [PE]'),
+                  (f'{peak_type}cs2_bottom_wo_elifecorr', np.float32,
+                   f'Corrected area of {peak_name} S2 in the bottom PMT array before elife correction '
+                   f'(s2 xy correction only) [PE]'),
+                  (f'{peak_type}cs2_wo_elifecorr', np.float32,
+                   f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
                   (f'{peak_type}cs2_area_fraction_top', np.float32,
                    f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
+                  (f'{peak_type}cs2_top', np.float32,
+                   f'Corrected area of {peak_name} S2 in the top PMT array [PE]'),
+                  (f'{peak_type}cs2_bottom', np.float32,
+                   f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
+                  (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),
                   (f'{peak_type}elife_correction', np.float32,
                    f'Correction factor due to electron lifetime for {peak_name} S2')]
 
@@ -698,23 +706,34 @@ class CorrectedAreas(strax.Plugin):
             s2_bottom_map_name = "map"
 
         for peak_type in ["", "alt_"]:
-            # For electron lifetime corrections to the S2s,
-            # use lifetimes computed using the main S1.
-            el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
-            result[f"{peak_type}elife_correction"] = np.exp(events[f'{el_string}drift_time'] / self.elife)
-
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
 
-            result[f"{peak_type}cs2_top"] = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top']
-                                             * result[f"{peak_type}elife_correction"]
-                                             / self.s2_map(s2_positions, map_name=s2_top_map_name))
-            result[f"{peak_type}cs2_bottom"] = (events[f'{peak_type}s2_area']
-                                                * (1 - events[f'{peak_type}s2_area_fraction_top'])
-                                                * result[f"{peak_type}elife_correction"]
-                                                / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+            # corrected s2 with s2 xy map only, i.e. no elife correction
+            # this is for s2-only events which don't have drift time info
+            result[f"{peak_type}cs2_top_wo_elifecorr"] = (events[f'{peak_type}s2_area']
+                                                          * events[f'{peak_type}s2_area_fraction_top']
+                                                          / self.s2_map(s2_positions, map_name=s2_top_map_name))
+            result[f"{peak_type}cs2_bottom_wo_elifecorr"] = (events[f'{peak_type}s2_area']
+                                                             * (1 - events[f'{peak_type}s2_area_fraction_top'])
+                                                             / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+            result[f"{peak_type}cs2_wo_elifecorr"] = result[f"{peak_type}cs2_top_wo_elifecorr"] \
+                                                     + result[f"{peak_type}cs2_bottom_wo_elifecorr"]
+
+            # cs2aft doesn't need elife correction as it cancels
+            result[f"{peak_type}cs2_area_fraction_top"] = result[f"{peak_type}cs2_top_wo_elifecorr"] \
+                                                          / result[f"{peak_type}cs2_wo_elifecorr"]
+
+            # For electron lifetime corrections to the S2s,
+            # use drift time computed using the main S1.
+            el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
+            result[f"{peak_type}elife_correction"] = np.exp(events[f'{el_string}drift_time'] / self.elife)
+
+            result[f"{peak_type}cs2_top"] = result[f"{peak_type}cs2_top_wo_elifecorr"] \
+                                            * result[f"{peak_type}elife_correction"]
+            result[f"{peak_type}cs2_bottom"] = result[f"{peak_type}cs2_bottom_wo_elifecorr"] \
+                                               * result[f"{peak_type}elife_correction"]
             result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_top"] + result[f"{peak_type}cs2_bottom"]
-            result[f"{peak_type}cs2_area_fraction_top"] = result[f"{peak_type}cs2_top"] / result[f"{peak_type}cs2"]
 
         return result
 
