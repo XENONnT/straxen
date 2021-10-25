@@ -61,6 +61,6 @@ class HitAmplitude(unittest.TestCase):
             straxen.hit_min_amplitude('non existing key')
 
     @staticmethod
-    def test_get_hit_amplitude(self):
+    def test_get_hit_amplitude():
         straxen.hit_min_amplitude('pmt_commissioning_initial')
         straxen.hit_min_amplitude('pmt_commissioning_initial_he')

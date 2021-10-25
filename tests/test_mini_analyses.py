@@ -1,16 +1,11 @@
-"""Test several functions distibuted over common.py, misc.py, scada.py"""
 import straxen
 import pandas
 import os
-import tempfile
 import numpy as np
 import strax
 from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
-
-
-# If one of the test below fail, perhaps these values need to be updated.
 
 
 def test_pmt_pos_1t():
@@ -31,7 +26,7 @@ class TestMiniAnalyses(unittest.TestCase):
     """
 
     """
-    # They were added on 27/11/2020 and may be outdated by now
+    # They were added on 25/10/2021 and may be outdated by now
     _expected_test_results = {
         'peak_basics': 40,
         'n_s1': 19,
@@ -89,11 +84,14 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def test_single_event_plot(self):
         plot_all_positions = straxen.utilix_is_configured()
-        self.st.plot_single_event(nt_test_run_id,
-                                  time_within=self.first_event,
-                                  xenon1t=False,
-                                  plot_all_positions=plot_all_positions,
-                                  )
+        straxen.analyses.event_display.plot_single_event(
+            self.st,
+            nt_test_run_id,
+            events=self.st.get_array(nt_test_run_id, 'events'),
+            event_number=self.first_event['event_number'],
+            xenon1t=False,
+            plot_all_positions=plot_all_positions,
+        )
 
     def test_event_display_interactive(self):
         self.st.event_display_interactive(nt_test_run_id,
@@ -220,7 +218,6 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.make(nt_test_run_id, 'event_positions_nv')
         with self.assertRaises(ValueError):
             self.st.plot_nveto_event_display(nt_test_run_id, time_within=self.first_peak)
-
 
 
 def test_plots():
