@@ -638,7 +638,8 @@ class CorrectedAreas(strax.Plugin):
     __version__ = '0.1.3'
 
     depends_on = ['event_basics', 'event_positions']
-    dtype = strax.time_fields
+    dtype = []
+    dtype += strax.time_fields
 
     for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
         dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
