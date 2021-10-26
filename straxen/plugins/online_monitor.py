@@ -184,8 +184,8 @@ class OnlinePeakMonitor(strax.Plugin):
         'channel_map', 
         track=False, 
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) \
-                channel number."),
+        help="immutabledict mapping subdetector to (min, max)\
+        channel number."),
     strax.Option(
         'events_nv_area_bounds',
         type=tuple, default=(-0.5, 130.5),
@@ -240,15 +240,6 @@ class OnlineMonitorNV(strax.Plugin):
              np.int64)
         ]        
         return dtype
-
-    def count_rate_coinc(self, data, start, end):
-        times = (data['time'] + data['endtime'])/2.
-        dt = (end-start)/self.config['events_nv_evolution_nbins']
-        rate,bins = np.histogram(times, bins=self.config['events_nv_evolution_nbins'])
-        rate = rate/(dt*1e-9)
-        std = np.sqrt(rate)/(dt*1e-9)
-        bins = (bins[1:]+bins[:-1])/2.
-        return rate,bins,std
     
     def compute(self, hitlets_nv, events_nv, start, end):
         # General setup
@@ -333,7 +324,6 @@ class OnlineMonitorMV(strax.Plugin):
         n_pmt = (max_pmt - min_pmt) + 1
         min_bin, max_bin = self.config['events_mv_area_bounds']
         n_bins = len(np.arange(min_bin, max_bin, self.config['events_mv_area_resolution']))-1
-        time_bins = self.config['events_mv_evolution_nbins']
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
@@ -353,15 +343,6 @@ class OnlineMonitorMV(strax.Plugin):
              np.int64)
         ]        
         return dtype
-
-    def count_rate_coinc(self, data, start, end):
-        times = (data['time'] + data['endtime'])/2.
-        dt = (end-start)/self.config['events_mv_evolution_nbins']
-        rate,bins = np.histogram(times, bins=self.config['events_mv_evolution_nbins'])
-        rate = rate/(dt*1e-9)
-        std = np.sqrt(rate)/(dt*1e-9)
-        bins = (bins[1:]+bins[:-1])/2.
-        return rate,bins,std
     
     def compute(self, hitlets_mv, events_mv, start, end):
         # General setup
