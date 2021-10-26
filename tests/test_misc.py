@@ -1,4 +1,6 @@
 from straxen.misc import TimeWidgets, print_versions
+import straxen
+import unittest
 
 
 def test_widgets():
@@ -51,3 +53,14 @@ def test_print_versions(modules=('numpy', 'straxen', 'non_existing_module')):
                                  include_git=include_git)
             if return_string:
                 assert res is not None
+
+
+class HitAmplitude(unittest.TestCase):
+    def test_non_existing(self):
+        with self.assertRaises(ValueError):
+            straxen.hit_min_amplitude('non existing key')
+
+    @staticmethod
+    def test_get_hit_amplitude():
+        straxen.hit_min_amplitude('pmt_commissioning_initial')
+        straxen.hit_min_amplitude('pmt_commissioning_initial_he')

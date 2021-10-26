@@ -6,27 +6,17 @@ import utilix
 import numpy as np
 from warnings import warn
 from .test_basics import test_run_id_1T
-from .test_plugins import test_run_id_nT
+from straxen.test_utils import nt_test_run_id as test_run_id_nT
 from straxen.common import aux_repo
+import unittest
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_connect_to_db():
     """
     Test connection to db
     """
-    if not straxen.utilix_is_configured(
-            warning_message='No db access, cannot test'):
-        return
-
-    username=None
-    password=None
-    mongo_url=None
-
-    mongo_kwargs = {'url': mongo_url,
-                        'user': username,
-                        'password': password,
-                        'database': 'corrections'}
-    corrections_collection = utilix.rundb.xent_collection(**mongo_kwargs)
+    corrections_collection = utilix.rundb.xent_collection(database='corrections')
     client = corrections_collection.database.client
     cmt = strax.CorrectionsInterface(client, database_name='corrections')
     df = cmt.read('global_xenonnt')
@@ -34,13 +24,11 @@ def test_connect_to_db():
     assert not df.empty, mes
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_1T_elife():
     """
     Test elife from CMT DB against historical data(aux file)
     """
-    if not straxen.utilix_is_configured():
-        return
-
     elife_conf = ('elife_xenon1t', 'ONLINE', False)
     elife_cmt = straxen.get_correction_from_cmt(test_run_id_1T, elife_conf)
     elife_file = aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy'
@@ -51,19 +39,18 @@ def test_1T_elife():
     assert elife_cmt == elife, mes
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_cmt_conf_option(option='mlp_model', version='ONLINE', is_nT=True):
     """
     Test CMT conf options
     If wrong conf is passed it would raise an error accordingly
     """
-    if not straxen.utilix_is_configured():
-        return
-
     conf = option, version, is_nT
     correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
     assert isinstance(correction, (float, int, str, np.ndarray))
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_mc_wrapper_elife(run_id='009000',
                           cmt_id='016000',
                           mc_id='mc_0',
@@ -77,8 +64,6 @@ def test_mc_wrapper_elife(run_id='009000',
         and the test does not work).
     :return: None
     """
-    if not straxen.utilix_is_configured():
-        return
     assert np.abs(int(run_id) - int(cmt_id)) > 500, 'runs must be far apart'
 
     # First for the run-id let's get the value
@@ -105,6 +90,7 @@ def test_mc_wrapper_elife(run_id='009000',
     assert elife == mc_elife_same
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_mc_wrapper_gains(run_id='009000',
                           cmt_id='016000',
                           mc_id='mc_0',
@@ -122,9 +108,8 @@ def test_mc_wrapper_gains(run_id='009000',
         the testing time due to faster CMT queries is reduced).
     :return: None
     """
-    if not straxen.utilix_is_configured() or not execute:
+    if not execute:
         return
-
     assert np.abs(int(run_id) - int(cmt_id)) > 500, 'runs must be far apart'
 
     # First for the run-id let's get the value
@@ -155,16 +140,4 @@ def test_is_cmt_option():
     The example dummy_option works at least before Jun 13 2021
     """
     dummy_option = ('hit_thresholds_tpc', 'ONLINE', True)
-    assert is_cmt_option(dummy_option), 'Structure of CMT options changed!'
-
-
-def is_cmt_option(config):
-    """
-    Check if the input configuration is cmt style.
-    """
-    is_cmt = (isinstance(config, tuple)
-              and len(config) == 3
-              and isinstance(config[0], str)
-              and isinstance(config[1], (str, int, float))
-              and isinstance(config[2], bool))
-    return is_cmt
+    assert straxen.is_cmt_option(dummy_option), 'Structure of CMT options changed!'
