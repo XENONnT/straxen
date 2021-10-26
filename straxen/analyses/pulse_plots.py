@@ -12,7 +12,8 @@ def plot_pulses_tpc(context, raw_records, run_id, time_range,
     plot_pulses(context, raw_records, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path)
-    
+
+
 @straxen.mini_analysis(requires=('raw_records_mv',), warn_beyond_sec=5)
 def plot_pulses_mv(context, raw_records_mv, run_id, time_range,
                     plot_hits=False, plot_median=False,
@@ -79,6 +80,8 @@ def plot_pulses(context, raw_records, run_id, time_range,
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)
 
+    hits = None  # needed for delete if false
+
     for inds in _yield_pulse_indices(raw_records):
         # Grouped our pulse so now plot:
         rr_pulse = raw_records[inds]
@@ -121,7 +124,6 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          ls='dotted', color='orange'
                          )
 
-        hits = None  # needed for delet if false
         if plot_hits:
             min_amplitude = thr
             

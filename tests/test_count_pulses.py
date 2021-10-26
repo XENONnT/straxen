@@ -43,7 +43,7 @@ def _check_pulse_count(records):
         # Not sure how to check lone pulses other than duplicating logic
         # already in count_pulses, so just do a basic check:
         assert count['lone_pulse_area'][ch] <= count['pulse_area'][ch]
-        
+
         # Check baseline values:
         # nan does not exist for integer:
         mean = straxen.NO_PULSE_COUNTS if np.isnan(np.mean(rc0['baseline'])) else int(np.mean(rc0['baseline']))
