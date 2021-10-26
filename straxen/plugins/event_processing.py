@@ -654,9 +654,7 @@ class CorrectedAreas(strax.Plugin):
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),
-                      (f'{peak_type}elife_correction', np.float32,
-                       f'Correction factor due to electron lifetime for {peak_name} S2')]
+                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),]
 
         return dtype
 
