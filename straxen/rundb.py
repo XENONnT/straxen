@@ -122,7 +122,6 @@ class RunDB(strax.StorageFrontend):
                 self.available_query.append({'host': host_alias})
 
         if self.rucio_path is not None:
-            # TODO replace with rucio backend in the rucio module
             self.backends.append(RucioLocalBackend(self.rucio_path))
             # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',

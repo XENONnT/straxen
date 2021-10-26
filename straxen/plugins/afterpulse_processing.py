@@ -50,7 +50,7 @@ export, __all__ = strax.exporter()
                  ),
 )
 class LEDAfterpulseProcessing(strax.Plugin):
-    __version__ = '0.5.0'
+    __version__ = '0.5.1'
     depends_on = 'raw_records'
     data_kind = 'afterpulses'
     provides = 'afterpulses'
@@ -131,7 +131,6 @@ def find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension
 def _find_ap(hits, records, LED_window_left, LED_window_right, hit_left_extension,
              hit_right_extension, buffer=None):
     # hits need to be sorted by record_i, then time!
-
     offset = 0
 
     is_LED = False
@@ -236,6 +235,9 @@ def get_sample_area_quantile(data, quantile, baseline_fpart):
             # print('no quantile found: set to 0')
             return 0
 
+    # What happened here?!
+    return 0
+
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def fill_hitpars(result, hit, hit_left_extension, hit_right_extension, record_data, record_len,
@@ -263,7 +265,8 @@ def fill_hitpars(result, hit, hit_left_extension, hit_right_extension, record_da
         hit_data, 0.1, baseline_fpart)
     result['sample_50pc_area'] = result['left_integration'] + get_sample_area_quantile(
         hit_data, 0.5, baseline_fpart)
-    result['max'] = result['left_integration'] + hit_data.argmax()
+    if len(hit_data):
+        result['max'] = result['left_integration'] + hit_data.argmax()
 
     if extend:  # only when merging hits
         result['height'] = max(result['height'], hit['height'])

@@ -6,7 +6,6 @@ import unittest
 
 
 class TestRemoveSwtichedOffChannels(unittest.TestCase):
-
     def setUp(self):
         self.channel_range = (10, 19)
         self.to_pe = np.zeros(20)

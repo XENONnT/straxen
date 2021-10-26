@@ -4,13 +4,12 @@ NB! this only works if one has access to the database. This does not
 work e.g. on travis jobs and therefore the tests failing locally will
 not show up in Pull Requests.
 """
-
 import straxen
 import os
-from warnings import warn
-from .test_plugins import test_run_id_nT
+import unittest
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_select_runs(check_n_runs=2):
     """
     Test (if we have a connection) if we can perform strax.select_runs
@@ -18,9 +17,6 @@ def test_select_runs(check_n_runs=2):
 
     :param check_n_runs: int, the number of runs we want to check
     """
-
-    if not straxen.utilix_is_configured():
-        return
     assert check_n_runs >= 1
     st = straxen.contexts.xenonnt_online(use_rucio=False)
     run_col = st.storage[0].collection
@@ -36,12 +32,9 @@ def test_select_runs(check_n_runs=2):
     st.select_runs()
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "Cannot download because utilix is not configured")
 def test_downloader():
     """Test if we can download a small file from the downloader"""
-    if not straxen.utilix_is_configured(
-            warning_message='Cannot download because utilix is not configured'):
-        return
-
     downloader = straxen.MongoDownloader()
     path = downloader.download_single('to_pe_nt.npy')
     assert os.path.exists(path)
@@ -59,6 +52,7 @@ def _patch_om_init(take_only):
     return straxen.OnlineMonitor(uri=uri, take_only=take_only)
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_online_monitor(target='online_peak_monitor', max_tries=3):
     """
     See if we can get some data from the online monitor before max_tries
@@ -67,9 +61,8 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
     :param max_tries: number of queries max allowed to get a non-failing
         run
     """
-    if not straxen.utilix_is_configured():
-        return
     st = straxen.contexts.xenonnt_online(use_rucio=False)
+    straxen.get_mongo_uri()
     om = _patch_om_init(target)
     st.storage = [om]
     max_run = None
