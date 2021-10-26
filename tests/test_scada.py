@@ -1,21 +1,14 @@
 import numpy as np
 import straxen
-import warnings
+import unittest
 
-
+@unittest.skipIf(not straxen.utilix_is_configured('scada','scdata_url',),
+                 "Cannot test scada since we have no access to xenon secrets.')")
 def test_query_sc_values():
     """
     Unity test for the SCADAInterface. Query a fixed range and check if 
     return is correct.
     """
-
-    if not straxen.utilix_is_configured(
-            'scada',
-            'scdata_url',
-            warning_message='Cannot test scada since we have no access to '
-                            'xenon secrets.'):
-        return
-
     print('Testing SCADAInterface')
     sc = straxen.SCADAInterface(use_progress_bar=False)
 
@@ -25,14 +18,14 @@ def test_query_sc_values():
     start = 1609682275000000000
     # Add micro-second to check if query does not fail if inquery precsion > SC precision
     start += 10**6
-    end = start + 5 * 10**9
+    end = start + 5*10**9
     parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
 
     df = sc.get_scada_values(parameters,
                              start=start,
                              end=end,
                              every_nth_value=1,
-                             query_type_lab=False,)
+                             query_type_lab=False, )
 
     assert df['SomeParameter'][0] // 1 == 1253, 'First values returned is not corrrect.'
     assert np.all(np.isnan(df['SomeParameter'][1:])), 'Subsequent values are not correct.'
@@ -56,7 +49,7 @@ def test_query_sc_values():
                                  end=end,
                                  fill_gaps='forwardfill',
                                  every_nth_value=1,
-                                 query_type_lab=False,)
+                                 query_type_lab=False, )
 
     df = sc.get_scada_values(parameters,
                              start=start,
@@ -86,3 +79,9 @@ def test_query_sc_values():
                              query_type_lab=True,)
 
     assert np.all(df['SomeParameter'] // 1 == -96), 'Not all values are correct for query type lab.'
+
+
+def test_average_scada():
+    t = np.arange(0, 100, 10)
+    t_t, t_a = straxen.scada._average_scada(t / 1e9, t, 1)
+    assert len(t_a) == len(t), 'Scada deleted some of my 10 datapoints!'

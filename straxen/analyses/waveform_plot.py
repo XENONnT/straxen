@@ -1,11 +1,9 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import warnings
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
-from datetime import datetime
 from .records_matrix import DEFAULT_MAX_SAMPLES
 from .daq_waveforms import group_by_daq
 
@@ -150,7 +148,7 @@ def plot_records_matrix(context, run_id,
                     ignore_max_sample_warning=ignore_max_sample_warning,
                     **kwargs)
     if group_by is not None:
-        ylabs, wvm_mask = group_by_daq(context, run_id, group_by)
+        ylabs, wvm_mask = group_by_daq(run_id, group_by)
         wvm = wvm[:, wvm_mask]
         plt.ylabel(group_by)
     else:
