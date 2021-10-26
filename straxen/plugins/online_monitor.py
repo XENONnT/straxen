@@ -232,6 +232,8 @@ class OnlineMonitorNV(strax.Plugin):
              (np.int64, n_pmt)),
             (('events_nv_area per chunk', 'events_nv_area_per_chunk'),
              np.int64, n_bins),
+            (('events_nv per chunk', 'events_nv_per_chunk'),
+             np.int64),
             (('events_nv 4-coincidence per chunk', 'events_nv_4coinc_per_chunk'),
              np.int64),
             (('events_nv 10-coincidence per chunk', 'events_nv_10coinc_per_chunk'),
@@ -239,15 +241,6 @@ class OnlineMonitorNV(strax.Plugin):
         ]        
         return dtype
 
-    def count_rate_coinc(self, data, start, end):
-        times = (data['time'] + data['endtime'])/2.
-        dt = (end-start)/self.config['events_nv_evolution_nbins']
-        rate,bins = np.histogram(times, bins=self.config['events_nv_evolution_nbins'])
-        rate = rate/(dt*1e-9)
-        std = np.sqrt(rate)/(dt*1e-9)
-        bins = (bins[1:]+bins[:-1])/2.
-        return rate,bins,std
-    
     def compute(self, hitlets_nv, events_nv, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
@@ -264,6 +257,8 @@ class OnlineMonitorNV(strax.Plugin):
         res['hitlets_nv_per_channel'] = hitlets_channel_count
         
         # Count number of events_nv with coincidence cut
+        # # without coincidence cut
+        res['events_nv_per_chunk'] = len(events_nv)
         # # with 4-coinc cut
         sel = events_nv['n_contributing_pmt'] >= 4
         data = events_nv[sel]
@@ -349,16 +344,7 @@ class OnlineMonitorMV(strax.Plugin):
              np.int64)
         ]        
         return dtype
-
-    def count_rate_coinc(self, data, start, end):
-        times = (data['time'] + data['endtime'])/2.
-        dt = (end-start)/self.config['events_mv_evolution_nbins']
-        rate,bins = np.histogram(times, bins=self.config['events_mv_evolution_nbins'])
-        rate = rate/(dt*1e-9)
-        std = np.sqrt(rate)/(dt*1e-9)
-        bins = (bins[1:]+bins[:-1])/2.
-        return rate,bins,std
-    
+   
     def compute(self, hitlets_mv, events_mv, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
@@ -375,6 +361,8 @@ class OnlineMonitorMV(strax.Plugin):
         res['hitlets_mv_per_channel'] = hitlets_channel_count
         
         # Count number of events_nv with coincidence cut
+        # # without coincidence cut
+        res['events_mv_per_chunk'] = len(events_mv)
         # # with 5-coinc cut
         sel = events_mv['n_contributing_pmt'] >= 5
         data = events_mv[sel]
