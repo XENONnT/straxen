@@ -185,11 +185,19 @@ class OnlinePeakMonitor(strax.Plugin):
         track=False, 
         type=immutabledict,
         help="immutabledict mapping subdetector to (min, max) \
-              channel number."), 
+                channel number."),
     strax.Option(
         'events_nv_area_bounds',
         type=tuple, default=(-0.5, 130.5),
-        help='Boundaries area histogram of events_nv_area_per_chunk [PE]')
+        help='number of bins to plot events_nv_area_per_chunk'),
+    strax.Option(
+        'events_nv_area_resolution',
+        type=float, default=1.,
+        help='resolution to plot events_nv_area_per_chunk histogram'),
+    strax.Option(
+        'events_nv_evolution_nbins',
+        type=int, default=10,
+        help='Resolution of evolution of the events_mv')
 )
 class OnlineMonitorNV(strax.Plugin):
     """
@@ -213,6 +221,8 @@ class OnlineMonitorNV(strax.Plugin):
     def infer_dtype(self):
         min_pmt, max_pmt = self.config['channel_map']['nveto']
         n_pmt = (max_pmt - min_pmt) + 1
+        min_bin, max_bin = self.config['events_nv_area_bounds']
+        n_bins = len(np.arange(min_bin, max_bin, self.config['events_nv_area_resolution']))-1
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
@@ -223,10 +233,23 @@ class OnlineMonitorNV(strax.Plugin):
             (('events_nv per chunk', 'events_nv_per_chunk'),
              np.int64),
             (('events_nv_area per chunk', 'events_nv_area_per_chunk'),
-             np.int64, 130)
-        ]
+             np.int64, n_bins),
+            (('events_nv 4-coincidence per chunk', 'events_nv_4coinc_per_chunk'),
+             np.int64),
+            (('events_nv 10-coincidence per chunk', 'events_nv_10coinc_per_chunk'),
+             np.int64)
+        ]        
         return dtype
 
+    def count_rate_coinc(self, data, start, end):
+        times = (data['time'] + data['endtime'])/2.
+        dt = (end-start)/self.config['events_nv_evolution_nbins']
+        rate,bins = np.histogram(times, bins=self.config['events_nv_evolution_nbins'])
+        rate = rate/(dt*1e-9)
+        std = np.sqrt(rate)/(dt*1e-9)
+        bins = (bins[1:]+bins[:-1])/2.
+        return rate,bins,std
+    
     def compute(self, hitlets_nv, events_nv, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
@@ -234,6 +257,7 @@ class OnlineMonitorNV(strax.Plugin):
         res['endtime'] = end
         min_pmt, max_pmt = self.config['channel_map']['nveto']
         n_pmt = (max_pmt - min_pmt) + 1
+        min_bin, max_bin = self.config['events_nv_area_bounds']
 
         # Count number of hitlets_nv per PMT
         hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
@@ -241,12 +265,137 @@ class OnlineMonitorNV(strax.Plugin):
                                                  range=[min_pmt, max_pmt + 1])        
         res['hitlets_nv_per_channel'] = hitlets_channel_count
         
-        # Count number of events_nv per chunk
+        # Count number of events_nv with coincidence cut
+        # # without coincidence cut
         res['events_nv_per_chunk'] = len(events_nv)
+        # # with 4-coinc cut
+        sel = events_nv['n_contributing_pmt'] >= 4
+        data = events_nv[sel]
+        res['events_nv_4coinc_per_chunk'] = len(data)
+        # # with 10-coinc cut
+        sel = events_nv['n_contributing_pmt'] >= 10
+        data = events_nv[sel]
+        res['events_nv_10coinc_per_chunk'] = len(data)
         
         # Get histogram of events_nv_area per chunk
-        min_bin, max_bin = self.config['events_nv_area_bounds']
         res['events_nv_area_per_chunk'], _ = np.histogram(events_nv['area'], 
-                                                          bins=np.arange(min_bin, max_bin, 1),
+                                                          bins=np.arange(min_bin, max_bin, self.config['events_nv_area_resolution']),
                                                           weights=np.ones(len(events_nv)))
+        return res
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'channel_map', 
+        track=False, 
+        type=immutabledict,
+        help="immutabledict mapping subdetector to (min, max) \
+                channel number."),
+    strax.Option(
+        'events_mv_area_bounds',
+        type=tuple, default=(-0.5, 130.5),
+        help='number of bins to plot events_mv_area_per_chunk'),
+    strax.Option(
+        'events_mv_area_resolution',
+        type=tuple, default=1.,
+        help='resolution to plot events_mv_area_per_chunk'),
+    strax.Option(
+        'events_mv_evolution_nbins',
+        type=int, default=40,
+        help='Resolution of evolution of the events_mv'),
+    strax.Option(
+        'adc_to_pe_mv',
+        type=int, default=170.0,
+        help='conversion factor from ADC to PE for muon Veto'),
+)
+class OnlineMonitorMV(strax.Plugin):
+    """
+    Plugin to write data of nVeto detector to the online-monitor. 
+    Data that is written by this plugin should be small (~MB/chunk) 
+    to not overload the runs-database.
+    
+    This plugin takes 'hitlets_mv' and 'events_mv'. Although they are
+    not strictly related, they are aggregated into a single data_type
+    in order to minimize the number of documents in the online monitor.
+    
+    Produces 'online_monitor_mv' with info on the hitlets_mv and events_mv
+    """
+
+    depends_on = ('hitlets_mv', 'events_mv')
+    provides = 'online_monitor_mv'
+    data_kind = 'online_monitor_mv'
+    __version__ = '0.0.1'
+    rechunk_on_save = False
+
+    def infer_dtype(self):
+        min_pmt, max_pmt = self.config['channel_map']['mv']
+        n_pmt = (max_pmt - min_pmt) + 1
+        min_bin, max_bin = self.config['events_mv_area_bounds']
+        n_bins = len(np.arange(min_bin, max_bin, self.config['events_mv_area_resolution']))-1
+        time_bins = self.config['events_mv_evolution_nbins']
+        dtype = [
+            (('Start time of the chunk', 'time'),
+             np.int64),
+            (('End time of the chunk', 'endtime'),
+             np.int64),
+            (('hitlets_mv per channel', 'hitlets_mv_per_channel'),
+             (np.int64, n_pmt)),
+            (('events_mv per chunk', 'events_mv_per_chunk'),
+             np.int64),
+            (('events_mv_area per chunk', 'events_mv_area_per_chunk'),
+             np.int64, n_bins),           
+            (('events_mv 5-coincidence per chunk', 'events_mv_5coinc_per_chunk'),
+             np.int64),
+            (('events_mv 8-coincidence per chunk', 'events_mv_8coinc_per_chunk'),
+             np.int64),
+            (('events_mv 10-coincidence per chunk', 'events_mv_10coinc_per_chunk'),
+             np.int64)
+        ]        
+        return dtype
+
+    def count_rate_coinc(self, data, start, end):
+        times = (data['time'] + data['endtime'])/2.
+        dt = (end-start)/self.config['events_mv_evolution_nbins']
+        rate,bins = np.histogram(times, bins=self.config['events_mv_evolution_nbins'])
+        rate = rate/(dt*1e-9)
+        std = np.sqrt(rate)/(dt*1e-9)
+        bins = (bins[1:]+bins[:-1])/2.
+        return rate,bins,std
+    
+    def compute(self, hitlets_mv, events_mv, start, end):
+        # General setup
+        res = np.zeros(1, dtype=self.dtype)
+        res['time'] = start
+        res['endtime'] = end
+        min_pmt, max_pmt = self.config['channel_map']['mv']
+        n_pmt = (max_pmt - min_pmt) + 1
+        min_bin, max_bin = self.config['events_mv_area_bounds']
+
+        # Count number of hitlets_mv per PMT
+        hitlets_channel_count, _ = np.histogram(hitlets_mv['channel'],
+                                                 bins=n_pmt,
+                                                 range=[min_pmt, max_pmt + 1])        
+        res['hitlets_mv_per_channel'] = hitlets_channel_count
+        
+        # Count number of events_nv with coincidence cut
+        # # without coincidence cut
+        res['events_mv_per_chunk'] = len(events_mv)
+        # # with 5-coinc cut
+        sel = events_mv['n_contributing_pmt'] >= 5
+        data = events_mv[sel]
+        res['events_mv_5coinc_per_chunk'] = len(data)
+        # # with 8-coinc cut
+        sel = events_mv['n_contributing_pmt'] >= 8
+        data = events_mv[sel]
+        res['events_mv_8coinc_per_chunk'] = len(data)
+        # # with 10-coinc cut
+        sel = events_mv['n_contributing_pmt'] >= 10
+        data = events_mv[sel]
+        res['events_mv_10coinc_per_chunk'] = len(data)
+        
+        # Get histogram of events_mv_area per chunk
+        res['events_mv_area_per_chunk'], _ = np.histogram(events_mv['area']/self.config['adc_to_pe_mv'],
+                                                          np.arange(min_bin, max_bin, self.config['events_mv_area_resolution']),
+                                                          weights=np.ones(len(events_mv)))
         return res
