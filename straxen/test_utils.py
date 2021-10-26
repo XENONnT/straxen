@@ -51,7 +51,7 @@ _testing_config_nT = dict(
     nveto_pmt_position_map=_nveto_pmt_dummy,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    s1_aft_map= aux_repo + '023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
+    s1_aft_map=aux_repo + '023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
     s2_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s2_map_UNITY_xy_XENONnT.json',  # noqa
     s1_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s1_lce_UNITY_xyz_XENONnT.json',  # noqa
     electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
@@ -114,8 +114,6 @@ def nt_test_context(target_context='xenonnt_online',
     if not straxen.utilix_is_configured(warning_message=False):
         st.set_config(_testing_config_nT)
         to_remove = 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
-        # TODO The test data for this plugin doesn't work
-        to_remove += ['event_pattern_fit']
         for plugin in to_remove:
             del st._plugin_class_registry[plugin]
         st.register(straxen.PeakPositions1T)
