@@ -638,28 +638,27 @@ class CorrectedAreas(strax.Plugin):
     __version__ = '0.1.3'
 
     depends_on = ['event_basics', 'event_positions']
-    dtype = []
-    dtype += strax.time_fields
 
-    for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
-        dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
-                  (f'{peak_type}cs2_top_wo_elifecorr', np.float32,
-                   f'Corrected area of {peak_name} S2 in the top PMT array before elife correction '
-                   f'(s2 xy correction only) [PE]'),
-                  (f'{peak_type}cs2_bottom_wo_elifecorr', np.float32,
-                   f'Corrected area of {peak_name} S2 in the bottom PMT array before elife correction '
-                   f'(s2 xy correction only) [PE]'),
-                  (f'{peak_type}cs2_wo_elifecorr', np.float32,
-                   f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
-                  (f'{peak_type}cs2_area_fraction_top', np.float32,
-                   f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
-                  (f'{peak_type}cs2_top', np.float32,
-                   f'Corrected area of {peak_name} S2 in the top PMT array [PE]'),
-                  (f'{peak_type}cs2_bottom', np.float32,
-                   f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                  (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),
-                  (f'{peak_type}elife_correction', np.float32,
-                   f'Correction factor due to electron lifetime for {peak_name} S2')]
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_fields
+
+        for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
+            dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
+                      (f'{peak_type}cs2_bottom_wo_elifecorr', np.float32,
+                       f'Corrected area of {peak_name} S2 in the bottom PMT array before elife correction '
+                       f'(s2 xy correction only) [PE]'),
+                      (f'{peak_type}cs2_wo_elifecorr', np.float32,
+                       f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
+                      (f'{peak_type}cs2_area_fraction_top', np.float32,
+                       f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
+                      (f'{peak_type}cs2_bottom', np.float32,
+                       f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
+                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),
+                      (f'{peak_type}elife_correction', np.float32,
+                       f'Correction factor due to electron lifetime for {peak_name} S2')]
+
+        return dtype
 
     def setup(self):
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
