@@ -709,13 +709,13 @@ class CorrectedAreas(strax.Plugin):
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top']
-                                    / self.s2_map(s2_positions, map_name=s2_top_map_name))
-            result[f"{peak_type}cs2_bottom_wo_elifecorr"] = (events[f'{peak_type}s2_area']
-                                                             * (1 - events[f'{peak_type}s2_area_fraction_top'])
-                                                             / self.s2_map(s2_positions, map_name=s2_bottom_map_name))
-            result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr
-                                                      + result[f"{peak_type}cs2_bottom_wo_elifecorr"])
+            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / 
+                                    self.s2_map(s2_positions, map_name=s2_top_map_name))
+            result[f"{peak_type}cs2_bottom_wo_elifecorr"] = (events[f'{peak_type}s2_area'] *
+                                                             (1 - events[f'{peak_type}s2_area_fraction_top']) /
+                                                             self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+            result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr +
+                                                      result[f"{peak_type}cs2_bottom_wo_elifecorr"])
 
             # cs2aft doesn't need elife correction as it cancels
             result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
