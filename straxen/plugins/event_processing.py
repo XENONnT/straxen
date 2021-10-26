@@ -661,23 +661,18 @@ class CorrectedAreas(strax.Plugin):
     def setup(self):
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
 
-        if isinstance(self.config['s1_xyz_correction_map'], str):
-            self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
-        if isinstance(self.config['s2_xy_correction_map'], str):
-            self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
-
         self.s1_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
                                     self.config['default_reconstruction_algorithm'],
-                                    *self.config['s1_xyz_correction_map']]),
+                                    *strax.to_str_tuple(self.config['s1_xyz_correction_map'])]),
                              fmt='text'))
 
         self.s2_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
                                     self.config['default_reconstruction_algorithm'],
-                                    *self.config['s2_xy_correction_map']]),
+                                    *strax.to_str_tuple(self.config['s2_xy_correction_map'])]),
                              fmt='json'))
 
     def compute(self, events):
