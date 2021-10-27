@@ -542,10 +542,6 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    #strax.Option('s1_max_rise_time', default=110,
-    #             help="Maximum S1 rise time for < 100 PE [ns]"),
-    # We are going to use another function for the classification < 100 PE, so the s1_max_rise_time is abandoned.
-    
     strax.Option('s1_rise_time_parameters',default=(50,80,12),
                 help="A, B, T in the empirical boundary in the risetime-area plot"),
     strax.Option('s1_aft_risetime_parameters',default=(-1,2.6),
