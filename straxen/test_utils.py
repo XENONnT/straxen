@@ -111,17 +111,15 @@ def nt_test_context(target_context='xenonnt_online',
     download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/1d3706d4b47cbd23b5cae66d5e258bb84487ad01/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
-    to_remove = []
-    to_remove += 'peak_veto_tags events_tagged'.split()  # inconsistent time ranges
     if not straxen.utilix_is_configured(warning_message=False):
         st.set_config(_testing_config_nT)
-        to_remove += 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
+        to_remove = 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
         # TODO The test data for this plugin doesn't work
         to_remove += ['event_pattern_fit']
-        st.set_config({'gain_model': ("to_pe_placeholder", True)})
+        for plugin in to_remove:
+            del st._plugin_class_registry[plugin]
         st.register(straxen.PeakPositions1T)
-    for plugin in to_remove:
-        del st._plugin_class_registry[plugin]
+        st.set_config({'gain_model': ("to_pe_placeholder", True)})
     return st
 
 
