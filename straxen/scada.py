@@ -323,10 +323,28 @@ class SCADAInterface:
             offset = 0
         ntries = 0
         max_tries = 40000  # This corresponds to ~23 years
+
+        # The SCADA API cannot handle query ranges lasting longer than
+        # one year. So in case the user specifies a longer time range
+        # we have to chunk the time requests in steps of years.
+        one_year_in_ns = int(24*3600*360*10**9)
+        ends = np.arange(start, end, one_year_in_ns)
+        if len(ends):
+            ends += one_year_in_ns
+            ends = np.clip(ends, a_max=end, a_min=0)
+        else:
+            ends = np.array([end])
+        end_index = 0
+
         while ntries < max_tries:
+            # Although we step the query already in years we also have to
+            # do the query in a whole loop as we can only query 35000
+            # data points at any given time, however it is not possible
+            # to know the sampling rate of the queried parameter apriori.
+            end = ends[end_index]
             temp_df = self._query(query,
                                   self.SCData_URL,
-                                  start=(start // 10**9) + offset,
+                                  start=(start // 10**9),
                                   end=(end // 10**9),
                                   query_type_lab=query_type_lab,
                                   seconds_interval=every_nth_value,
@@ -337,9 +355,14 @@ class SCADAInterface:
                 break
             times = (temp_df['timestampseconds'].values * 10**9).astype('<M8[ns]')
             df.loc[times, parameter_key] = temp_df.loc[:, 'value'].values
-
             endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
-            offset += len(temp_df)
+            start = endtime  # Next query should start at the last time seen.
+
+            if start >= end:
+                # Updated end in case query range is longer than one year.
+                end_index += 1
+                end = ends[end_index]
+
             ntries += 1
             if not (len(temp_df) == 35000 and endtime != end // 10**9):
                 # Max query are 35000 values, if end is reached the
