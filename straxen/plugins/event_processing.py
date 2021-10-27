@@ -645,9 +645,6 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
-                      (f'{peak_type}cs2_bottom_wo_elifecorr', np.float32,
-                       f'Corrected area of {peak_name} S2 in the bottom PMT array before elife correction '
-                       f'(s2 xy correction only) [PE]'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
                       (f'{peak_type}cs2_area_fraction_top', np.float32,
@@ -706,11 +703,10 @@ class CorrectedAreas(strax.Plugin):
             # this is for s2-only events which don't have drift time info
             cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / 
                                     self.s2_map(s2_positions, map_name=s2_top_map_name))
-            result[f"{peak_type}cs2_bottom_wo_elifecorr"] = (events[f'{peak_type}s2_area'] *
-                                                             (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                                             self.s2_map(s2_positions, map_name=s2_bottom_map_name))
-            result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr +
-                                                      result[f"{peak_type}cs2_bottom_wo_elifecorr"])
+            cs2_bottom_wo_elifecorr = (events[f'{peak_type}s2_area'] *
+                                       (1 - events[f'{peak_type}s2_area_fraction_top']) /
+                                       self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+            result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
             # cs2aft doesn't need elife correction as it cancels
             result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
