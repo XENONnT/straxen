@@ -717,7 +717,7 @@ class CorrectedAreas(strax.Plugin):
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
 
             cs2_top = cs2_top_wo_elifecorr * elife_correction
-            result[f"{peak_type}cs2_bottom"] = result[f"{peak_type}cs2_bottom_wo_elifecorr"] * elife_correction
+            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
             result[f"{peak_type}cs2"] = cs2_top + result[f"{peak_type}cs2_bottom"]
 
         return result
