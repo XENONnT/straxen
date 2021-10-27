@@ -1,8 +1,7 @@
-import numba
 import pandas
-import straxen
 import numpy as np
-import strax
+import straxen
+import utilix
 import pymongo
 import typing
 import matplotlib.pyplot as plt
@@ -20,7 +19,6 @@ def daq_plot(context,
     Plot with peak, records and records sorted by "link" or "ADC ID"
     (other items are also possible as long as it is in the channel map).
     """
-
     f, axes = plt.subplots(3, 1,
                            figsize=figsize,
                            gridspec_kw={'height_ratios': [1, 1, lower_panel_height]})
@@ -58,7 +56,6 @@ def daq_plot(context,
 
 
 def _get_daq_config(
-        context: strax.Context,
         run_id: str,
         config_name: str = 'daq_config',
         run_collection: typing.Optional[pymongo.collection.Collection] = None) -> dict:
@@ -66,10 +63,10 @@ def _get_daq_config(
     Query the runs database for the config of the daq during this run.
     Either use the context of the runs collection.
     """
-    if not context.storage[0].__class__.__name__ == 'RunDB' and run_collection is None:
-        raise NotImplementedError('Only works with the runs-database')
     if run_collection is None:
-        run_collection = context.storage[0].collection
+        if not straxen.utilix_is_configured():
+            raise NotImplementedError('Only works with the runs-database')
+        run_collection = utilix.rundb.xent_collection()
     daq_doc = run_collection.find_one({"number": int(run_id)},
                                       projection={config_name: 1})
     if daq_doc is None or config_name not in daq_doc:
@@ -123,12 +120,12 @@ def _group_channels_by_index(cable_map: pandas.DataFrame,
     return np.array(labels), idx
 
 
-def group_by_daq(context, run_id, group_by: str):
+def group_by_daq(run_id, group_by: str):
     """From the channel map, get the mapping of channel number -> group by"""
     cable_map = _get_cable_map()
     if group_by == 'link':
         labels, idx = _group_channels_by_index(cable_map, group_by='ADC ID')
-        daq_config = _get_daq_config(context, run_id)
+        daq_config = _get_daq_config(run_id)
         labels = [_board_to_host_link(daq_config, l) for l in labels]
         labels = np.array(labels)
         order = np.argsort(labels)
