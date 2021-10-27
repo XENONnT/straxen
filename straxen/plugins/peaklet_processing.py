@@ -540,18 +540,6 @@ class PeakletsHighEnergy(Peaklets):
         result = super().compute(records_he, start, end)
         return result['peaklets']
 
-
-@export
-@strax.takes_config(
-    strax.Option('s1_max_rise_time', default=110,
-                 help="Maximum S1 rise time for < 100 PE [ns]"),
-    strax.Option('s1_max_rise_time_post100', default=200,
-                 help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=2,
-                 help="Minimum tight coincidence necessary to make an S1"),
-    strax.Option('s2_min_pmts', default=4,
-                 help="Minimum number of PMTs contributing to an S2"))
-
 @export
 @strax.takes_config(
     #strax.Option('s1_max_rise_time', default=110,
