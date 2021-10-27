@@ -108,7 +108,7 @@ def nt_test_context(target_context='xenonnt_online',
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
     st.storage = [strax.DataDirectory('./strax_test_data')]
-    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/1d3706d4b47cbd23b5cae66d5e258bb84487ad01/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
+    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/7e6ee63433c2cad8d62406fad34a5df3ef6cd865/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     if not straxen.utilix_is_configured(warning_message=False):
