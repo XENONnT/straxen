@@ -321,27 +321,25 @@ class SCADAInterface:
             offset = 1
         else:
             offset = 0
-        
-        
+
         one_year_in_ns = int(24*3600*360*10**9)
-        starts = np.arange(start, end, one_year_in_ns)
+        starts = np.arange(start+offset, end, one_year_in_ns)
         if len(starts):
             ends = starts + one_year_in_ns
             ends = np.clip(ends, a_max=end, a_min=0)
         else:
             ends = np.array([end])
             starts = np.array([start])
-        end_index = 0
 
         for start, end in zip(starts, ends):
             self._query_data_per_year(parameter_key,
-                                      query, 
-                                      start, 
-                                      end, 
-                                      query_type_lab, 
+                                      query,
+                                      start,
+                                      end,
+                                      query_type_lab,
                                       every_nth_value,
-                                      df
-                                     )
+                                      df,
+                                      )
 
         # Let user decided whether to ffill, interpolate or keep gaps:
         if fill_gaps == 'interpolation':
@@ -368,26 +366,26 @@ class SCADAInterface:
                 df[parameter_key] = nv
 
         return df
-    
+
     def _query_data_per_year(self, 
                              parameter_name,
-                            query, 
-                            start, 
-                            end, 
-                            query_type_lab, 
-                            seconds_interval,
-                            result_dataframe
-                           ):
+                             query,
+                             start,
+                             end,
+                             query_type_lab,
+                             seconds_interval,
+                             result_dataframe,
+                             ):
         """
         The SCADA API cannot handle query ranges lasting longer than
         one year. So in case the user specifies a longer time range
         we have to chunk the time requests in steps of years.
-        
+
         Updates the resulting datafram in place.
         """
         ntries = 0
         # This corresponds to a bit more than one year assuming 1 value per second:
-        max_tries = 1000  
+        max_tries = 1000
         while ntries < max_tries:
             # Although we step the query already in years we also have to
             # do the query in a whole loop as we can only query 35000
@@ -399,12 +397,12 @@ class SCADAInterface:
                                   end=(end // 10**9),
                                   query_type_lab=query_type_lab,
                                   seconds_interval=seconds_interval,
-                                  raise_error_message=False  # No valid value in query range...
+                                  raise_error_message=False,  # No valid value in query range...
                                   )  # +1 since it is end before exclusive
             if temp_df.empty:
                 # In case WebInterface does not return any data, e.g. if query range too small
                 break
-                
+
             times = (temp_df['timestampseconds'].values * 10**9).astype('<M8[ns]')
             result_dataframe.loc[times, parameter_name] = temp_df.loc[:, 'value'].values
             endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
@@ -416,9 +414,9 @@ class SCADAInterface:
                 # length of the dataframe is either smaller or the last
                 # time value is equivalent to queried range.
                 break
-                
+
         return result_dataframe
-    
+
     def _query(self,
                query,
                api,
