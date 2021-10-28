@@ -309,6 +309,10 @@ def xenonnt_simulation(
                     **straxen.contexts.xnt_common_config,),
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(getattr(wfsim, wfsim_registry))
+
+    # Make sure that the non-simulated raw-record types are not requested
+    st = deregister_if_not_simulated(st)
+
     if straxen.utilix_is_configured(
             warning_message='Bad context as we cannot set CMT since we '
                             'have no database access'''):
