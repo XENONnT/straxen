@@ -136,7 +136,8 @@ class TestCoincidence(unittest.TestCase):
 
 def test_nv_for_dummy_rr():
     """Basic test to run the nv rr for dummy raw-records"""
-    st = straxen.test_utils.nt_test_context()
+    st = straxen.test_utils.nt_test_context(deregister=())
     st.context_config['forbid_creation_of'] = tuple()
     st.register(straxen.test_utils.DummyRawRecords)
     st.make(straxen.test_utils.nt_test_run_id, 'hitlets_nv')
+    st.make(straxen.test_utils.nt_test_run_id, 'events_tagged')
