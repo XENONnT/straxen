@@ -253,8 +253,7 @@ class OnlineMonitorNV(strax.Plugin):
         # Get histogram of events_nv_area per chunk
         events_area, bins_ = np.histogram(events_nv['area']/self.config[f'adc_to_pe{self.ends_with}'],
                                           bins=self.config['events_area_nbins'],
-                                          range=self.config['events_area_bounds'],
-                                          weights=np.ones(len(events_nv)))
+                                          range=self.config['events_area_bounds'])
         res[f'events{self.ends_with}_area_per_chunk'] = events_area
         return res
 
