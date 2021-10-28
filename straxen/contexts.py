@@ -203,7 +203,7 @@ def xenonnt_online(output_folder='./strax_data',
                        'online_peak_monitor',
                        'event_basics',
                        'online_monitor_nv',
-                      'online_monitor_mv',
+                       'online_monitor_mv',
                       ))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
