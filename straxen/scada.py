@@ -331,11 +331,11 @@ class SCADAInterface:
             ends = np.array([end])
             starts = np.array([start])
 
-        for start, end in zip(starts, ends):
+        for start_query, end_query in zip(starts, ends):
             self._query_data_per_year(parameter_key,
                                       query,
-                                      start,
-                                      end,
+                                      start_query,
+                                      end_query,
                                       query_type_lab,
                                       every_nth_value,
                                       df,
@@ -381,7 +381,7 @@ class SCADAInterface:
         one year. So in case the user specifies a longer time range
         we have to chunk the time requests in steps of years.
 
-        Updates the resulting datafram in place.
+        Updates the resulting dataframe in place.
         """
         ntries = 0
         # This corresponds to a bit more than one year assuming 1 value per second:
