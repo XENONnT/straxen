@@ -184,20 +184,21 @@ class OnlinePeakMonitor(strax.Plugin):
         'channel_map', 
         track=False, 
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max)\
-        channel number."),
+        help='immutabledict mapping subdetector to (min, max) '
+            'channel number.'), 
     strax.Option(
-        'events_nv_area_bounds',
+        'events_area_bounds',
         type=tuple, default=(-0.5, 130.5),
-        help='number of bins to plot events_nv_area_per_chunk'),
+        help='Boundaries area histogram of events_nv_area_per_chunk [PE]'),
     strax.Option(
-        'events_nv_area_resolution',
-        type=float, default=1.,
-        help='resolution to plot events_nv_area_per_chunk histogram'),
+        'events_area_nbins',
+        type=int, default=131,
+        help='Number of bins of histogram of events_nv_area_per_chunk, '
+            'defined value 1 PE/bin'),
     strax.Option(
-        'events_nv_evolution_nbins',
-        type=int, default=10,
-        help='Resolution of evolution of the events_mv')
+        'adc_to_pe_nv',
+        type=int, default=1.0,
+        help='conversion factor from ADC to PE for neutron Veto')
 )
 class OnlineMonitorNV(strax.Plugin):
     """
@@ -211,172 +212,103 @@ class OnlineMonitorNV(strax.Plugin):
     
     Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
-
     depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
-    __version__ = '0.0.3'
     rechunk_on_save = False
 
+    # Needed in case we make again an muVETO child.
+    ends_with = '_nv'
+
+    __version__ = '0.0.4'
+
     def infer_dtype(self):
-        min_pmt, max_pmt = self.config['channel_map']['nveto']
-        n_pmt = (max_pmt - min_pmt) + 1
-        min_bin, max_bin = self.config['events_nv_area_bounds']
-        n_bins = len(np.arange(min_bin, max_bin, self.config['events_nv_area_resolution']))-1
-        dtype = [
-            (('Start time of the chunk', 'time'),
-             np.int64),
-            (('End time of the chunk', 'endtime'),
-             np.int64),
-            (('hitlets_nv per channel', 'hitlets_nv_per_channel'),
-             (np.int64, n_pmt)),
-            (('events_nv per chunk', 'events_nv_per_chunk'),
-             np.int64),
-            (('events_nv_area per chunk', 'events_nv_area_per_chunk'),
-             np.int64, n_bins),
-            (('events_nv 4-coincidence per chunk', 'events_nv_4coinc_per_chunk'),
-             np.int64),
-            (('events_nv 10-coincidence per chunk', 'events_nv_10coinc_per_chunk'),
-             np.int64)
-        ]        
-        return dtype
-    
+        self.channel_range = self.config['channel_map']['nveto']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+        return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
+
     def compute(self, hitlets_nv, events_nv, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
         res['endtime'] = end
-        min_pmt, max_pmt = self.config['channel_map']['nveto']
-        n_pmt = (max_pmt - min_pmt) + 1
-        min_bin, max_bin = self.config['events_nv_area_bounds']
 
         # Count number of hitlets_nv per PMT
         hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
-                                                 bins=n_pmt,
-                                                 range=[min_pmt, max_pmt + 1])        
-        res['hitlets_nv_per_channel'] = hitlets_channel_count
-        
+                                                 bins=self.n_channel,
+                                                 range=[self.channel_range[0], self.channel_range[1] + 1])        
+        res[f'hitlets{self.ends_with}_per_channel'] = hitlets_channel_count
+
         # Count number of events_nv with coincidence cut
-        # # without coincidence cut
-        res['events_nv_per_chunk'] = len(events_nv)
-        # # with 4-coinc cut
+        res[f'events{self.ends_with}_per_chunk'] = len(events_nv)
         sel = events_nv['n_contributing_pmt'] >= 4
-        data = events_nv[sel]
-        res['events_nv_4coinc_per_chunk'] = len(data)
-        # # with 10-coinc cut
+        res[f'events{self.ends_with}_4coinc_per_chunk'] = np.sum(sel)
+        sel = events_nv['n_contributing_pmt'] >= 5
+        res[f'events{self.ends_with}_5coinc_per_chunk'] = np.sum(sel)
+        sel = events_nv['n_contributing_pmt'] >= 8
+        res[f'events{self.ends_with}_8coinc_per_chunk'] = np.sum(sel)
         sel = events_nv['n_contributing_pmt'] >= 10
-        data = events_nv[sel]
-        res['events_nv_10coinc_per_chunk'] = len(data)
-        
+        res[f'events{self.ends_with}_10coinc_per_chunk'] = np.sum(sel)
+
         # Get histogram of events_nv_area per chunk
-        res['events_nv_area_per_chunk'], _ = np.histogram(events_nv['area'], 
-                                                          bins=np.arange(min_bin, max_bin, self.config['events_nv_area_resolution']),
-                                                          weights=np.ones(len(events_nv)))
+        events_area, bins_ = np.histogram(events_nv['area']/self.config[f'adc_to_pe{self.ends_with}'],
+                                          bins=self.config['events_area_nbins'],
+                                          range=self.config['events_area_bounds'],
+                                          weights=np.ones(len(events_nv)))
+        res[f'events{self.ends_with}_area_per_chunk'] = events_area
         return res
+
+
+def veto_monitor_dtype(veto_name: str = '_nv',
+                       n_pmts: int = 120,
+                       n_bins: int = 131) -> list:
+    dtype = []
+    dtype += strax.time_fields  # because mutable
+    dtype += [((f'hitlets{veto_name} per channel', f'hitlets{veto_name}_per_channel'), (np.int64, n_pmts)),
+              ((f'events{veto_name}_area per chunk', f'events{veto_name}_area_per_chunk'), np.int64, n_bins),
+              ((f'events{veto_name} per chunk', f'events{veto_name}_per_chunk'), np.int64),
+              ((f'events{veto_name} 4-coincidence per chunk', f'events{veto_name}_4coinc_per_chunk'), np.int64),
+              ((f'events{veto_name} 5-coincidence per chunk', f'events{veto_name}_5coinc_per_chunk'), np.int64),
+              ((f'events{veto_name} 8-coincidence per chunk', f'events{veto_name}_8coinc_per_chunk'), np.int64),
+              ((f'events{veto_name} 10-coincidence per chunk', f'events{veto_name}_10coinc_per_chunk'), np.int64)
+             ]
+    return dtype
 
 
 @export
 @strax.takes_config(
     strax.Option(
-        'channel_map', 
-        track=False, 
-        type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) \
-                channel number."),
-    strax.Option(
-        'events_mv_area_bounds',
-        type=tuple, default=(-0.5, 130.5),
-        help='number of bins to plot events_mv_area_per_chunk'),
-    strax.Option(
-        'events_mv_area_resolution',
-        type=tuple, default=1.,
-        help='resolution to plot events_mv_area_per_chunk'),
-    strax.Option(
-        'events_mv_evolution_nbins',
-        type=int, default=40,
-        help='Resolution of evolution of the events_mv'),
-    strax.Option(
         'adc_to_pe_mv',
         type=int, default=170.0,
-        help='conversion factor from ADC to PE for muon Veto'),
+        help='conversion factor from ADC to PE for muon Veto')
 )
-class OnlineMonitorMV(strax.Plugin):
+class OnlineMonitorMV(OnlineMonitorNV):
     """
     Plugin to write data of nVeto detector to the online-monitor. 
     Data that is written by this plugin should be small (~MB/chunk) 
     to not overload the runs-database.
-    
+
     This plugin takes 'hitlets_mv' and 'events_mv'. Although they are
     not strictly related, they are aggregated into a single data_type
     in order to minimize the number of documents in the online monitor.
-    
+
     Produces 'online_monitor_mv' with info on the hitlets_mv and events_mv
     """
-
     depends_on = ('hitlets_mv', 'events_mv')
     provides = 'online_monitor_mv'
     data_kind = 'online_monitor_mv'
-    __version__ = '0.0.1'
     rechunk_on_save = False
 
-    def infer_dtype(self):
-        min_pmt, max_pmt = self.config['channel_map']['mv']
-        n_pmt = (max_pmt - min_pmt) + 1
-        min_bin, max_bin = self.config['events_mv_area_bounds']
-        n_bins = len(np.arange(min_bin, max_bin, self.config['events_mv_area_resolution']))-1
-        dtype = [
-            (('Start time of the chunk', 'time'),
-             np.int64),
-            (('End time of the chunk', 'endtime'),
-             np.int64),
-            (('hitlets_mv per channel', 'hitlets_mv_per_channel'),
-             (np.int64, n_pmt)),
-            (('events_mv per chunk', 'events_mv_per_chunk'),
-             np.int64),
-            (('events_mv_area per chunk', 'events_mv_area_per_chunk'),
-             np.int64, n_bins),           
-            (('events_mv 5-coincidence per chunk', 'events_mv_5coinc_per_chunk'),
-             np.int64),
-            (('events_mv 8-coincidence per chunk', 'events_mv_8coinc_per_chunk'),
-             np.int64),
-            (('events_mv 10-coincidence per chunk', 'events_mv_10coinc_per_chunk'),
-             np.int64)
-        ]        
-        return dtype
-    
-    def compute(self, hitlets_mv, events_mv, start, end):
-        # General setup
-        res = np.zeros(1, dtype=self.dtype)
-        res['time'] = start
-        res['endtime'] = end
-        min_pmt, max_pmt = self.config['channel_map']['mv']
-        n_pmt = (max_pmt - min_pmt) + 1
-        min_bin, max_bin = self.config['events_mv_area_bounds']
+    # Needed in case we make again an muVETO child.
+    ends_with = '_mv'
+    child_plugin = True
 
-        # Count number of hitlets_mv per PMT
-        hitlets_channel_count, _ = np.histogram(hitlets_mv['channel'],
-                                                 bins=n_pmt,
-                                                 range=[min_pmt, max_pmt + 1])        
-        res['hitlets_mv_per_channel'] = hitlets_channel_count
-        
-        # Count number of events_nv with coincidence cut
-        # # without coincidence cut
-        res['events_mv_per_chunk'] = len(events_mv)
-        # # with 5-coinc cut
-        sel = events_mv['n_contributing_pmt'] >= 5
-        data = events_mv[sel]
-        res['events_mv_5coinc_per_chunk'] = len(data)
-        # # with 8-coinc cut
-        sel = events_mv['n_contributing_pmt'] >= 8
-        data = events_mv[sel]
-        res['events_mv_8coinc_per_chunk'] = len(data)
-        # # with 10-coinc cut
-        sel = events_mv['n_contributing_pmt'] >= 10
-        data = events_mv[sel]
-        res['events_mv_10coinc_per_chunk'] = len(data)
-        
-        # Get histogram of events_mv_area per chunk
-        res['events_mv_area_per_chunk'], _ = np.histogram(events_mv['area']/self.config['adc_to_pe_mv'],
-                                                          np.arange(min_bin, max_bin, self.config['events_mv_area_resolution']),
-                                                          weights=np.ones(len(events_mv)))
-        return res
+    __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        self.channel_range = self.config['channel_map']['mv']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+        return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
+
+    def compute(self, hitlets_mv, events_mv, start, end):
+        return super().compute(hitlets_mv, events_mv, start, end)
