@@ -311,7 +311,7 @@ def xenonnt_simulation(
     st.register(getattr(wfsim, wfsim_registry))
 
     # Make sure that the non-simulated raw-record types are not requested
-    st = deregister_if_not_simulated(st)
+    st.deregister_plugins_with_missing_dependencies()
 
     if straxen.utilix_is_configured(
             warning_message='Bad context as we cannot set CMT since we '
@@ -558,4 +558,5 @@ def xenon1t_simulation(output_folder='./strax_data'):
             **x1t_common_config),
         **x1t_context_config)
     st.register(wfsim.RawRecordsFromFax1T)
+    st.deregister_plugins_with_missing_dependencies()
     return st
