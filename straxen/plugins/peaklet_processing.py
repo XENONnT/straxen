@@ -587,7 +587,7 @@ class PeakletClassification(strax.Plugin):
         is_s1 = (((rise_time <= (A*np.exp(-peaks['area']/T)+B)))
             | ((rise_time <= self.config['s1_max_rise_time_post100']) & (peaks['area'] > 100)))
         
-        is_s1 &= ((peaks['area'] < 100) & (rise_time < (10**(k * area_fraction_top + b)) 
+        is_s1 &= ((peaks['area'] < 100) & (rise_time < (10**(k * area_fraction_top + b))) 
                  | ((rise_time < B) & (area_fraction_top > self.config['s1_flatten_threshold_aft'])))
         
         is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
