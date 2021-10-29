@@ -58,6 +58,7 @@ jobs:
           bash .github/scripts/filter_strax_from_requirements.sh
       - name: Install requirements for tests and latest strax
         run: |
+            pip install wheel
             pip install -r extra_requirements/requirements-tests.txt
             pip install git+https://github.com/AxFoundation/strax.git
       - name: Start MongoDB
