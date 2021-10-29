@@ -550,6 +550,18 @@ def deregister_if_not_simulated(context, check_for_endswith=('_nv', '_mv')):
             remove_from_registry(context, endswith)
     return context
 
+def remove_from_registry(context, endswith):
+    """Remove plugins if their name ends with a given string"""
+    for p in list(context._plugin_class_registry.keys()):
+        if p.endswith(endswith):
+            del context._plugin_class_registry[p]
+        elif ('events_tagged' in context._plugin_class_registry[p].provides or
+              'peak_veto_tags' in context._plugin_class_registry[p].provides):
+            # These plugins are known to mix nv/mv/tpc
+            del context._plugin_class_registry[p]
+    
+    return context
+
 
 ##
 # Old XENON1T Stuff
