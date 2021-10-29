@@ -247,7 +247,7 @@ def xenonnt_simulation(
                 wfsim_registry='RawRecordsFromFaxNT',
                 cmt_run_id_sim=None,
                 cmt_run_id_proc=None,
-                cmt_version='v5',
+                cmt_version='global_v5',
                 fax_config='fax_config_nt_design.json',
                 overwrite_from_fax_file_sim=False,
                 overwrite_from_fax_file_proc=False,
@@ -318,7 +318,7 @@ def xenonnt_simulation(
     if straxen.utilix_is_configured(
             warning_message='Bad context as we cannot set CMT since we '
                             'have no database access'''):
-        st.apply_cmt_version(f'global_{cmt_version}')
+        st.apply_cmt_version(cmt_version)
 
     if _forbid_creation_of is not None:
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
