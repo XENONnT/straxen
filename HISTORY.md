@@ -1,3 +1,24 @@
+1.1.2 / 2021-10-27
+-------------------
+minor / patches:
+- Plugin for afterpulse processing (#549)
+- Veto online monitor (#707)
+- Refactor straxen tests (#703)
+- WFSim registry as argument for simulations context (#713)
+- Update S1 AFT map in event pattern fit (#697)
+
+fixes/tests:
+- Set default drift time as nan (#700)
+- Revert auto inclusion of rucio remote #688 (#701)
+- fix bug in CMT (#710)
+- Fix one year querries (#711
+- Test new numba (#702)
+- Unify CMT call in contexts (#717)
+- Small codefactor patch (#714)
+- test nv with nv data (#709)
+- Add small test for wfsim (#716)
+
+
 1.1.1 / 2021-10-19
 -------------------
  - Fix to test for RunDB frontend when no test DB is sourced (6da2233)
@@ -18,7 +39,6 @@ major / minor:
 
 
 patches and fixes:
-
  
 - Use read by index and check for NaNs (#661)
 - Add small feature for printing versions of git (#665)
