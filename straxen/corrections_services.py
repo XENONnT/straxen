@@ -145,7 +145,7 @@ class CorrectionsManagementServices():
             else:
                 df = self.interface.read_at(correction, when)
                 if df[version].isnull().values.any():
-                    raise CMTnanValueError(f"For {it_correction} there are NaN values, this means no correction available "
+                    raise CMTnanValueError(f"For {correction} there are NaN values, this means no correction available "
                                            f"for {run_id} in version {version}, please check e-logbook for more info ")
  
                 if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
