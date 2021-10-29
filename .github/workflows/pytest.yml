@@ -90,9 +90,9 @@ jobs:
         env:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
-        run: |
-          bash .github/scripts/create_pre_apply_function.sh $HOME
-
+        run: bash .github/scripts/create_pre_apply_function.sh $HOME
+      - name: Print versions
+        run: python -c "import straxen; straxen.print_versions('strax straxen wfsim numpy numba tensorflow'.split())"
       # Run tests
       - name: Test package
         # This is running a normal test
