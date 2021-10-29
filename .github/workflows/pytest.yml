@@ -59,10 +59,10 @@ jobs:
       - name: Install requirements for tests and latest strax
         run: |
             pip install -r extra_requirements/requirements-tests.txt
-            # pip install git+https://github.com/AxFoundation/strax.git
+            pip install git+https://github.com/AxFoundation/strax.git
             # Why, just why???
-            git clone https://github.com/AxFoundation/strax ../strax
-            pip install -e ../strax
+            # git clone https://github.com/AxFoundation/strax ../strax
+            # pip install -e ../strax
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.6.0
         with:
@@ -94,9 +94,6 @@ jobs:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
-      - name: Print versions
-        run: python -c "import straxen; straxen.print_versions('strax straxen wfsim numpy numba tensorflow'.split())"
-      # Run tests
       - name: Test package
         # This is running a normal test
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
