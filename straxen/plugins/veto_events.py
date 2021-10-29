@@ -473,3 +473,41 @@ class muVETOEvents(nVETOEvents):
 
     def compute(self, hitlets_mv, start, end):
         return super().compute(hitlets_mv, start, end)
+
+
+class nVETOEvents(strax.OverlapWindowPlugin):
+    """
+    Plugin which computes time stamps which are synchronized with the
+    TPC.
+    """
+    depends_on = 'events_nv'
+    provides = 'events_sync_nv'
+
+    # Needed in case we make again an muVETO child.
+    ends_with = '_nv'
+    save_when = strax.SaveWhen.EXPLICIT
+
+    __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_fields
+        dtype += [(('Time of the event synchronized according to the '
+                    'total digitizer delay.',
+                    'time_sync'), np.int64),
+                  (('Endtime of the event synchronized according to the '
+                    'total digitizer delay.',
+                     'endtime_sync'), np.int64),
+                  ]
+        return dtype
+
+    def setup(self):
+        self.total_delay =
+
+    def compute(self, events_nv, start, end):
+        events_sync_nv = np.zeros(len(events_nv), self.dtype)
+        events_sync_nv['time'] = events_nv['time']
+        events_sync_nv['endtime'] = events_nv['endtime']
+        events_sync_nv['time_sync'] = events_nv['time'] + self.total_delay
+        events_sync_nv['endtime_sync'] = events_nv['time'] + self.total_delay
+        return events_sync_nv
