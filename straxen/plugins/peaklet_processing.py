@@ -54,6 +54,8 @@ FAKE_MERGED_S2_TYPE = -42
                       "a hit a tight coincidence (ns)"),
     strax.Option('n_tpc_pmts', type=int,
                  help='Number of TPC PMTs'),
+    strax.Option('n_tpc_top_pmts', type=int,
+                 help="Number of top TPC array PMTs"),
     strax.Option('saturation_correction_on', default=True,
                  help='On off switch for saturation correction'),
     strax.Option('saturation_reference_length', default=100,
@@ -193,7 +195,7 @@ class Peaklets(strax.Plugin):
         hitlets = strax.sort_by_time(hitlets)
         rlinks = strax.record_links(records)
 
-        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe)
+        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe, self.config['n_tpc_top_pmts'])
 
         strax.compute_widths(peaklets)
 
@@ -222,7 +224,8 @@ class Peaklets(strax.Plugin):
             peak_list = peak_saturation_correction(
                 r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
-                min_reference_length=self.config['saturation_min_reference_length'])
+                min_reference_length=self.config['saturation_min_reference_length'],
+                n_top_channels=self.config['n_tpc_top_pmts'])
 
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
@@ -322,6 +325,7 @@ def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
+                               n_top_channels=0,
                                ):
     """Correct the area and per pmt area of peaks from saturation
     :param records: Records
@@ -335,6 +339,7 @@ def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
     :param min_reference_length: Minimum number of reference sample used
     to correct saturated samples
     :param use_classification: Option of using classification to pick only S2
+    :param n_top_channels: Number of top array channels.
     """
 
     if not len(records):
@@ -400,7 +405,8 @@ def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
         peaks[peak_i]['length'] = p['length'] * p['dt'] / dt
         peaks[peak_i]['dt'] = dt
 
-    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, peak_list)
+    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, n_top_channels,
+                       peak_list)
     return peak_list
 
 
@@ -622,6 +628,8 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     strax.Option('merge_without_s1', default=True,
                  help="If true, S1s will be igored during the merging. "
                       "It's now possible for a S1 to be inside a S2 post merging"),
+    strax.Option('n_tpc_top_pmts', type=int,
+                 help="Number of top TPC array PMTs"),
 )
 class MergedS2s(strax.OverlapWindowPlugin):
     """
@@ -684,7 +692,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             lh['time'] = lh['time'] - lh_time_shift
             lh['length'] = (lh['right_integration'] - lh['left_integration'])
             lh = strax.sort_by_time(lh)
-            strax.add_lone_hits(merged_s2s, lh, self.to_pe)
+            strax.add_lone_hits(merged_s2s, lh, self.to_pe, self.config['n_tpc_top_pmts'])
 
             strax.compute_widths(merged_s2s)
 
