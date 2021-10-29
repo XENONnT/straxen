@@ -244,9 +244,10 @@ def xenonnt_led(**kwargs):
 
 def xenonnt_simulation(
                 output_folder='./strax_data',
+                wfsim_registry='RawRecordsFromFaxNT',
                 cmt_run_id_sim=None,
                 cmt_run_id_proc=None,
-                cmt_version='v3',
+                cmt_version='v5',
                 fax_config='fax_config_nt_design.json',
                 overwrite_from_fax_file_sim=False,
                 overwrite_from_fax_file_proc=False,
@@ -278,6 +279,7 @@ def xenonnt_simulation(
 
     CMT options can also be overwritten via fax config file.
     :param output_folder: Output folder for strax data.
+    :param wfsim_registry: Name of WFSim plugin used to generate data.
     :param cmt_run_id_sim: Run id for detector parameters from CMT to be used
         for creation of raw_records.
     :param cmt_run_id_proc: Run id for detector parameters from CMT to be used
@@ -308,7 +310,11 @@ def xenonnt_simulation(
                     check_raw_record_overlaps=True,
                     **straxen.contexts.xnt_common_config,),
         **straxen.contexts.xnt_common_opts, **kwargs)
-    st.register(wfsim.RawRecordsFromFaxNT)
+    st.register(getattr(wfsim, wfsim_registry))
+
+    # Make sure that the non-simulated raw-record types are not requested
+    st.deregister_plugins_with_missing_dependencies()
+
     if straxen.utilix_is_configured(
             warning_message='Bad context as we cannot set CMT since we '
                             'have no database access'''):
@@ -554,4 +560,5 @@ def xenon1t_simulation(output_folder='./strax_data'):
             **x1t_common_config),
         **x1t_context_config)
     st.register(wfsim.RawRecordsFromFax1T)
+    st.deregister_plugins_with_missing_dependencies()
     return st
