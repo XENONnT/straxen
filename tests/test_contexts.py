@@ -78,3 +78,10 @@ def test_fake_daq():
 def test_xenon1t_led():
     st = xenon1t_led()
     st.search_field('time')
+
+    
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+def test_sim_context():
+    import wfsim
+    st = straxen.contexts.xenonnt_simulation(cmt_run_id_sim='008000', cmt_version='global_ONLINE')
+    st.search_field('time')
