@@ -10,13 +10,13 @@ from hypothesis import strategies, given, settings
 TEST_DATA_LENGTH = 3
 R_TOL_DEFAULT = 1e-5
 
+
 def _not_close_to_0_or_1(x, rtol=R_TOL_DEFAULT):
     return not (np.isclose(x, 1, rtol=rtol) or np.isclose(x, 0, rtol=rtol))
 
 
 class TestComputePeakBasics(unittest.TestCase):
     """Tests for peak basics plugin"""
-
     def setUp(self, context=straxen.contexts.demo):
         self.st = context()
         self.n_top = self.st.config.get('n_top_pmts', 2)
@@ -84,15 +84,15 @@ def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
     :param allow_zero_length: If true allow zero length intervals.
     """
     strat = strategies.lists(elements=strategies.integers(*time_range),
-                             min_size=size*2,
-                             max_size=size*2
+                             min_size=size * 2,
+                             max_size=size * 2
                              ).map(lambda x: _convert_to_interval(x, allow_zero_length))
     return strat
 
 
 def _convert_to_interval(time_stamps, allow_zero_length):
     time_stamps = np.sort(time_stamps)
-    intervals = np.zeros(len(time_stamps)//2, strax.time_dt_fields)
+    intervals = np.zeros(len(time_stamps) // 2, strax.time_dt_fields)
     intervals['dt'] = 1
     intervals['time'] = time_stamps[::2]
     intervals['length'] = time_stamps[1::2] - time_stamps[::2]

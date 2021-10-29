@@ -6,7 +6,6 @@ import unittest
 import shutil
 import uuid
 
-
 test_run_id_1T = '180423_1021'
 
 
@@ -40,17 +39,22 @@ class TestBasics(unittest.TestCase):
         assert run_id == test_run_id_1T
 
     def test_processing(self):
-        st = self.st
-        df = st.get_df(self.run_id, 'event_info')
+        df = self.st.get_df(self.run_id, 'event_info')
 
         assert len(df) > 0
         assert 'cs1' in df.columns
         assert df['cs1'].sum() > 0
         assert not np.all(np.isnan(df['x'].values))
 
+    def test_event_info_double(self):
+        df = self.st.get_df(self.run_id, 'event_info_double')
+        assert 'cs2_a' in df.columns
+        assert df['cs2_a'].sum() > 0
+        assert len(df) > 0
+
     def test_get_livetime_sec(self):
         st = self.st
-        events = st.get_array(self.run_id, 'peaks')
+        events = st.get_array(self.run_id, 'events')
         straxen.get_livetime_sec(st, test_run_id_1T, things=events)
 
     def test_mini_analysis(self):
@@ -60,3 +64,34 @@ class TestBasics(unittest.TestCase):
 
         n = self.st.count_rr(self.run_id)
         assert n > 100
+
+    @staticmethod
+    def _extract_latest_comment(context,
+                                test_for_target='raw_records',
+                                **context_kwargs,
+                                ):
+        if context == 'xenonnt_online' and not straxen.utilix_is_configured():
+            return
+        st = getattr(straxen.contexts, context)(**context_kwargs)
+        assert hasattr(st, 'extract_latest_comment'), "extract_latest_comment not added to context?"
+        st.extract_latest_comment()
+        assert st.runs is not None, "No registry build?"
+        assert 'comments' in st.runs.keys()
+        st.select_runs(available=test_for_target)
+        if context == 'demo':
+            assert len(st.runs)
+        assert f'{test_for_target}_available' in st.runs.keys()
+
+    def test_extract_latest_comment_nt(self, **opt):
+        """Run the test for nt (but only 2000 runs"""
+        self._extract_latest_comment(context='xenonnt_online',
+                                     _minimum_run_number=10_000,
+                                     _maximum_run_number=12_000,
+                                     **opt)
+
+    def test_extract_latest_comment_demo(self):
+        self._extract_latest_comment(context='demo')
+
+    def test_extract_latest_comment_lone_hits(self):
+        """Run the test for some target that is not in the default availability check"""
+        self.test_extract_latest_comment_nt(test_for_target='lone_hits')

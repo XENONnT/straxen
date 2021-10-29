@@ -3,7 +3,9 @@ from hypothesis import given, settings
 import hypothesis.strategies as strat
 
 import strax
+from strax.testutils import fake_hits
 import straxen
+from straxen.plugins.peaklet_processing import get_tight_coin
 
 
 @settings(deadline=None)
@@ -35,13 +37,47 @@ def test_n_hits():
     records['length'] = 5
     records['pulse_length'] = 5
     records['dt'] = 1
-    records['channel'] = [0, 1]  
+    records['channel'] = [0, 1]
     records['data'][0, :5] = [0, 1, 1, 0, 1]
     records['data'][1, :5] = [0, 1, 0, 0, 0]
-    
+
     st = straxen.contexts.xenonnt_online()
     st.set_config({'hit_min_amplitude': 1})
     p = st.get_single_plugin('0', 'peaklets')
     res = p.compute(records, 0, 999)
     peaklets = res['peaklets']
     assert peaklets['n_hits'] == 3, f"Peaklet has the wrong number of hits!"
+
+
+@given(fake_hits,
+       strat.lists(elements=strat.integers(0, 9), min_size=20))
+@settings(deadline=None)
+def test_tight_coincidence(hits, channel):
+    hits['area'] = 1
+    hits['channel'] = channel[:len(hits)]  # In case there are less channel then hits (unlikely)
+    gap_threshold = 10
+    peaks = strax.find_peaks(hits,
+                             adc_to_pe=np.ones(10),
+                             right_extension=0, left_extension=0,
+                             gap_threshold=gap_threshold,
+                             min_channels=1,
+                             min_area=0)
+
+    peaks_max_time = peaks['time'] + peaks['length']//2
+    hits_max_time = hits['time'] + hits['length']//2
+
+    left = 5
+    right = 5
+    tight_coin, tight_coin_channel = get_tight_coin(hits_max_time,
+                                                    hits['channel'],
+                                                    peaks_max_time,
+                                                    left,
+                                                    right,
+                                                    )
+    for ind, p_max_t in enumerate(peaks_max_time):
+        m_hits_in_peak = (hits_max_time >= (p_max_t - left))
+        m_hits_in_peak &= (hits_max_time <= (p_max_t + right))
+        n_hits = np.sum(m_hits_in_peak)
+        n_channel = len(np.unique(hits[m_hits_in_peak]['channel']))
+        assert n_hits == tight_coin[ind], 'Wrong number of tight hits'
+        assert n_channel == tight_coin_channel[ind], f'Wrong number of tight channel got {tight_coin_channel[ind]}, but expectd {n_channel}'  # noqa

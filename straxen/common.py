@@ -2,7 +2,6 @@ import ast
 import configparser
 import gzip
 import inspect
-import io
 import commentjson
 import json
 import os
@@ -11,7 +10,6 @@ import pickle
 import dill
 import socket
 import sys
-import tarfile
 import urllib.request
 import tqdm
 import numpy as np
@@ -55,6 +53,7 @@ LAST_MISCABLED_RUN = 8796
 TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
 INFINITY_64BIT_SIGNED = 9223372036854775807
+
 
 @export
 def pmt_positions(xenon1t=False):
@@ -244,70 +243,6 @@ def resource_from_url(html: str, fmt='text'):
 
 
 @export
-def get_secret(x):
-    """Return secret key x. In order of priority, we search:
-      * Environment variable: uppercase version of x
-      * xenon_secrets.py (if included with your straxen installation)
-      * A standard xenon_secrets.py located on the midway analysis hub
-        (if you are running on midway)
-    """
-    warn("xenon_secrets is deprecated, and will be replaced with utilix"
-         "configuration file instead. See https://github.com/XENONnT/utilix")
-    env_name = x.upper()
-    if env_name in os.environ:
-        return os.environ[env_name]
-
-    message = (f"Secret {x} requested, but there is no environment "
-               f"variable {env_name}, ")
-
-    # now try using utilix. We need to check that it is not None first!
-    # this will be main method in a future release
-    if straxen.uconfig is not None and straxen.uconfig.has_option('straxen', x):
-        try:
-            return straxen.uconfig.get('straxen', x)
-        except configparser.NoOptionError:
-            warn(f'straxen.uconfig does not have {x}')
-
-    # if that doesn't work, revert to xenon_secrets
-    try:
-        from . import xenon_secrets
-    except ImportError:
-        message += ("nor was there a valid xenon_secrets.py "
-                    "included with your straxen installation, ")
-
-        # If on midway, try loading a standard secrets file instead
-        if 'rcc' in socket.getfqdn():
-            path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
-            if os.path.exists(path_to_secrets):
-                sys.path.append(osp.dirname(path_to_secrets))
-                import xenon_secrets
-                sys.path.pop()
-            else:
-                raise ValueError(
-                    message + ' nor could we load the secrets module from '
-                              f'{path_to_secrets}, even though you seem '
-                              'to be on the midway analysis hub.')
-
-        else:
-            raise ValueError(
-                message + 'nor are you on the midway analysis hub.')
-
-    if hasattr(xenon_secrets, x):
-        return getattr(xenon_secrets, x)
-    raise ValueError(message + " and the secret is not in xenon_secrets.py")
-
-
-@export
-def download_test_data():
-    """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/609b492e1389369734c7d2cbabb38059f14fc05e/strax_files/strax_test_data_straxv0.9.tar',  #  noqa
-                        fmt='binary')
-    f = io.BytesIO(blob)
-    tf = tarfile.open(fileobj=f)
-    tf.extractall()
-
-
-@export
 def get_livetime_sec(context, run_id, things=None):
     """Get the livetime of a run in seconds. If it is not in the run metadata,
     estimate it from the data-level metadata of the data things.
@@ -353,26 +288,8 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
 
 
 def _overwrite_testing_function_file(function_file):
-    """For testing purposes allow this function file to be loaded from HOME/testing_folder"""
-    if not straxen._is_on_pytest():
-        # If we are not on a pytest, never try using a local file.
-        return function_file
-
-    home = os.environ.get('HOME')
-    if home is None:
-        # Impossible to load from non-existent folder
-        return function_file
-
-    testing_file = os.path.join(home, function_file)
-
-    if os.path.exists(testing_file):
-        # For testing purposes allow loading from 'home/testing_folder'
-        warn(f'Using local function: {function_file} from {testing_file}! '
-             f'If you are not integrated testing on github you should '
-             f'absolutely remove this file. (See #559)')
-        function_file = testing_file
-
-    return function_file
+    warn('Use straxen.test_utils._overwrite_testing_function_file')
+    return straxen._overwrite_testing_function_file(function_file)
 
 
 @export
@@ -614,6 +531,7 @@ def _swap_values_in_array(data_arr, buffer, items, replacements):
                 buffer[i] = replacements[k]
                 break
     return buffer
+
 
 ##
 # Old XENON1T Stuff

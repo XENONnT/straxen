@@ -1,4 +1,4 @@
-strax>=1.0.0rc
+strax>=1.1.0
 utilix>=0.5.3
 # tensorflow>=2.3.0  # Optional, to (re)do posrec
 # holoviews          # Optional, to enable wf display

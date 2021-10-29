@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.1.8'
+__version__ = '1.1.9'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -38,6 +38,7 @@ import straxen
 import threading
 import pandas as pd
 import typing as ty
+import daqnt
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -203,12 +204,12 @@ max_queue_new_runs = 2
 # this many times. If high level data is hitting some edge case, we
 # might want to be able to keep the intermediate level data.
 # NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
-remove_target_after_fails = dict(events=2,
+remove_target_after_fails = dict(event=2,
                                  hitlets=2,
                                  peaks=4,
+                                 online=5,
                                  peak_basics=5,
                                  peaklets=6,
-                                 online=5,
                                  ALL=7)
 
 ##
@@ -216,17 +217,9 @@ remove_target_after_fails = dict(events=2,
 ##
 hostname = socket.getfqdn()
 
-try:
-    import daqnt
-    log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
-    log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
-except ModuleNotFoundError:
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
-        datefmt='%m-%d %H:%M')
-    log = logging.getLogger()
 
+log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
+log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
 log.info(f'---\n bootstrax version {__version__}\n---')
 log.info(
     straxen.print_versions(
@@ -280,7 +273,6 @@ def new_context(cores=args.cores,
         allow_multiprocess=cores > 1,
         allow_shm=cores > 1,
         allow_lazy=False,
-        use_rucio=False,
         max_messages=max_messages,
         timeout=timeout,
         _rucio_path=None,
