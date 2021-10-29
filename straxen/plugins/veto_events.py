@@ -502,7 +502,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return dtype
 
     def setup(self):
-        self.total_delay =
+        self.total_delay = 0
 
     def compute(self, events_nv, start, end):
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
