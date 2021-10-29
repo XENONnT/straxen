@@ -185,7 +185,7 @@ class OnlinePeakMonitor(strax.Plugin):
         track=False, 
         type=immutabledict,
         help='immutabledict mapping subdetector to (min, max) '
-            'channel number.'), 
+             'channel number.'),
     strax.Option(
         'events_area_bounds',
         type=tuple, default=(-0.5, 130.5),
@@ -194,7 +194,7 @@ class OnlinePeakMonitor(strax.Plugin):
         'events_area_nbins',
         type=int, default=131,
         help='Number of bins of histogram of events_nv_area_per_chunk, '
-            'defined value 1 PE/bin')
+             'defined value 1 PE/bin')
 )
 class OnlineMonitorNV(strax.Plugin):
     """
@@ -231,8 +231,9 @@ class OnlineMonitorNV(strax.Plugin):
 
         # Count number of hitlets_nv per PMT
         hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
-                                                 bins=self.n_channel,
-                                                 range=[self.channel_range[0], self.channel_range[1] + 1])        
+                                                bins=self.n_channel,
+                                                range=[self.channel_range[0],
+                                                       self.channel_range[1] + 1])
         res[f'hitlets{self.ends_with}_per_channel'] = hitlets_channel_count
 
         # Count number of events_nv with coincidence cut
@@ -278,17 +279,7 @@ def veto_monitor_dtype(veto_name: str = '_nv',
         help='conversion factor from ADC to PE for muon Veto')
 )
 class OnlineMonitorMV(OnlineMonitorNV):
-    """
-    Plugin to write data of nVeto detector to the online-monitor. 
-    Data that is written by this plugin should be small (~MB/chunk) 
-    to not overload the runs-database.
-
-    This plugin takes 'hitlets_mv' and 'events_mv'. Although they are
-    not strictly related, they are aggregated into a single data_type
-    in order to minimize the number of documents in the online monitor.
-
-    Produces 'online_monitor_mv' with info on the hitlets_mv and events_mv
-    """
+    __doc__ = OnlineMonitorNV.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
     depends_on = ('hitlets_mv', 'events_mv')
     provides = 'online_monitor_mv'
     data_kind = 'online_monitor_mv'
