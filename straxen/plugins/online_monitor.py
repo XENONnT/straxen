@@ -194,22 +194,18 @@ class OnlinePeakMonitor(strax.Plugin):
         'events_area_nbins',
         type=int, default=131,
         help='Number of bins of histogram of events_nv_area_per_chunk, '
-            'defined value 1 PE/bin'),
-    strax.Option(
-        'adc_to_pe_nv',
-        type=int, default=1.0,
-        help='conversion factor from ADC to PE for neutron Veto')
+            'defined value 1 PE/bin')
 )
 class OnlineMonitorNV(strax.Plugin):
     """
     Plugin to write data of nVeto detector to the online-monitor. 
     Data that is written by this plugin should be small (~MB/chunk) 
     to not overload the runs-database.
-    
+
     This plugin takes 'hitlets_nv' and 'events_nv'. Although they are
     not strictly related, they are aggregated into a single data_type
     in order to minimize the number of documents in the online monitor.
-    
+
     Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
     depends_on = ('hitlets_nv', 'events_nv')
@@ -251,7 +247,7 @@ class OnlineMonitorNV(strax.Plugin):
         res[f'events{self.ends_with}_10coinc_per_chunk'] = np.sum(sel)
 
         # Get histogram of events_nv_area per chunk
-        events_area, bins_ = np.histogram(events_nv['area']/self.config[f'adc_to_pe{self.ends_with}'],
+        events_area, bins_ = np.histogram(events_nv['area'],
                                           bins=self.config['events_area_nbins'],
                                           range=self.config['events_area_bounds'])
         res[f'events{self.ends_with}_area_per_chunk'] = events_area
@@ -310,4 +306,6 @@ class OnlineMonitorMV(OnlineMonitorNV):
         return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
 
     def compute(self, hitlets_mv, events_mv, start, end):
+        events_mv = np.copy(events_mv)
+        events_mv['area'] *= 1./self.config['adc_to_pe_mv']
         return super().compute(hitlets_mv, events_mv, start, end)
