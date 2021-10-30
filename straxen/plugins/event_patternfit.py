@@ -1,5 +1,6 @@
 import strax
 import straxen
+from straxen.get_corrections import get_correction_from_cmt
 import numpy as np
 import numba
 from straxen.numbafied_scipy import numba_gammaln, numba_betainc
@@ -34,7 +35,15 @@ export, __all__ = strax.exporter()
                  help='Store normalized LLH per channel for each peak'),
     strax.Option('max_r_pattern_fit', default=straxen.tpc_r, type=float,
                  help='Maximal radius of the peaks where llh calculation will be performed'),
+    strax.Option(name='electron_drift_velocity',
+                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
+                 default=("electron_drift_velocity", "ONLINE", True)),
+    strax.Option(name='electron_drift_time_gate',
+                 help='Electron drift time from the gate in ns',
+                 default=("electron_drift_time_gate", "ONLINE", True)
+                )
 )
+
 class EventPatternFit(strax.Plugin):
     '''
     Plugin that provides patter information for events
@@ -42,7 +51,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.0.8'
+    __version__ = '0.0.9'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -91,6 +100,9 @@ class EventPatternFit(strax.Plugin):
         return dtype
     
     def setup(self):
+        
+        self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
+        self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
         self.mean_pe_photon = self.config['mean_pe_per_photon']
         
         # Getting S1 AFT maps
@@ -130,8 +142,14 @@ class EventPatternFit(strax.Plugin):
         
         # Computing binomial test for s1 area fraction top
         s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
+        
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
+        
+        alt_drift_time = events['s2_center_time'] - events['alt_s1_center_time']
+        alt_z = - self.electron_drift_velocity * (alt_drift_time - self.electron_drift_time_gate)
+        alt_position = np.vstack([events['x'], events['y'], alt_z]).T     
+        alt_aft_prob = self.s1_aft_map(alt_position)
         
         # main s1 events
         mask_s1 = ~np.isnan(aft_prob)
@@ -154,7 +172,7 @@ class EventPatternFit(strax.Plugin):
             result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
         
         # alternative s1 events
-        mask_alt_s1 = ~np.isnan(aft_prob)
+        mask_alt_s1 = ~np.isnan(alt_aft_prob)
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area'])
         mask_alt_s1 &= ~np.isnan(events['alt_s1_area_fraction_top'])
         
