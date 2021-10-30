@@ -54,7 +54,7 @@ FAKE_MERGED_S2_TYPE = -42
                       "a hit a tight coincidence (ns)"),
     strax.Option('n_tpc_pmts', type=int,
                  help='Number of TPC PMTs'),
-    strax.Option('n_tpc_top_pmts', type=int,
+    strax.Option('n_top_pmts', type=int,
                  help="Number of top TPC array PMTs"),
     strax.Option('saturation_correction_on', default=True,
                  help='On off switch for saturation correction'),
@@ -195,7 +195,7 @@ class Peaklets(strax.Plugin):
         hitlets = strax.sort_by_time(hitlets)
         rlinks = strax.record_links(records)
 
-        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe, self.config['n_tpc_top_pmts'])
+        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe, self.config['n_top_pmts'])
 
         strax.compute_widths(peaklets)
 
@@ -225,7 +225,7 @@ class Peaklets(strax.Plugin):
                 r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.config['saturation_reference_length'],
                 min_reference_length=self.config['saturation_min_reference_length'],
-                n_top_channels=self.config['n_tpc_top_pmts'])
+                n_top_channels=self.config['n_top_pmts'])
 
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
@@ -628,7 +628,7 @@ class PeakletClassificationHighEnergy(PeakletClassification):
     strax.Option('merge_without_s1', default=True,
                  help="If true, S1s will be igored during the merging. "
                       "It's now possible for a S1 to be inside a S2 post merging"),
-    strax.Option('n_tpc_top_pmts', type=int,
+    strax.Option('n_top_pmts', type=int,
                  help="Number of top TPC array PMTs"),
 )
 class MergedS2s(strax.OverlapWindowPlugin):
@@ -692,7 +692,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             lh['time'] = lh['time'] - lh_time_shift
             lh['length'] = (lh['right_integration'] - lh['left_integration'])
             lh = strax.sort_by_time(lh)
-            strax.add_lone_hits(merged_s2s, lh, self.to_pe, self.config['n_tpc_top_pmts'])
+            strax.add_lone_hits(merged_s2s, lh, self.to_pe, self.config['n_top_pmts'])
 
             strax.compute_widths(merged_s2s)
 
