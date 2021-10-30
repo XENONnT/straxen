@@ -12,7 +12,7 @@ gitpython==3.1.18
 holoviews==1.14.5
 ipywidgets==7.6.4
 hypothesis==6.23.1
-jupyter-client==7.0.5                          # for ipywidgets
+jupyter-client==7.0.5                           # for ipywidgets
 matplotlib==3.4.3
 multihist==0.6.4
 npshmex==0.2.1                                  # Strax dependency
@@ -25,6 +25,7 @@ pytest-cov==2.12.1
 scikit-learn==1.0
 scipy==1.7.1                                    # Strax dependency
 tensorflow==2.6.0
+typing_extensions==3.7.4.3                      # Tensorflow depencency
 tqdm==4.62.2
 wfsim==0.5.9
 xarray==0.19.0
