@@ -40,8 +40,7 @@ export, __all__ = strax.exporter()
                  default=("electron_drift_velocity", "ONLINE", True)),
     strax.Option(name='electron_drift_time_gate',
                  help='Electron drift time from the gate in ns',
-                 default=("electron_drift_time_gate", "ONLINE", True)
-                )
+                 default=("electron_drift_time_gate", "ONLINE", True)),
 )
 
 class EventPatternFit(strax.Plugin):
@@ -100,7 +99,6 @@ class EventPatternFit(strax.Plugin):
         return dtype
     
     def setup(self):
-        
         self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
         self.mean_pe_photon = self.config['mean_pe_per_photon']
@@ -142,12 +140,11 @@ class EventPatternFit(strax.Plugin):
         
         # Computing binomial test for s1 area fraction top
         s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
-        
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
         alt_drift_time = events['s2_center_time'] - events['alt_s1_center_time']
-        alt_z = - self.electron_drift_velocity * (alt_drift_time - self.electron_drift_time_gate)
+        alt_z = -self.electron_drift_velocity*(alt_drift_time-self.electron_drift_time_gate)
         alt_position = np.vstack([events['x'], events['y'], alt_z]).T     
         alt_aft_prob = self.s1_aft_map(alt_position)
         
