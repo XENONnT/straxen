@@ -6,7 +6,6 @@ utilix>=0.5.3
 bokeh>=2.2.3
 multihist>=0.6.3
 immutabledict
-numpy<1.21
 numba>=0.50.0
 requests
 commentjson
