@@ -142,10 +142,10 @@ class EventPatternFit(strax.Plugin):
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
-        alt_drift_time = events['s2_center_time']-events['alt_s1_center_time']
-        alt_z = -self.electron_drift_velocity*(alt_drift_time-self.electron_drift_time_gate)
-        alt_position = np.vstack([events['x'], events['y'], alt_z]).T     
-        alt_aft_prob = self.s1_aft_map(alt_position)
+        alt_s1_interaction_drift_time = events['s2_center_time']-events['alt_s1_center_time']
+        alt_s1_interaction_z = -self.electron_drift_velocity*(alt_s1_interaction_drift_time-self.electron_drift_time_gate)
+        alt_positions = np.vstack([events['x'], events['y'], alt_s1_interaction_z]).T     
+        alt_aft_prob = self.s1_aft_map(alt_positions)
         
         # main s1 events
         mask_s1 = ~np.isnan(aft_prob)
