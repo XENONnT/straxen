@@ -7,7 +7,7 @@ bokeh>=2.2.3
 multihist>=0.6.3
 packaging
 immutabledict
-numpy<=1.21
+numpy<1.21
 numba>=0.50.0
 requests
 commentjson
