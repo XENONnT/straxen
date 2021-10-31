@@ -8,7 +8,6 @@ from scipy.special import loggamma
 
 export, __all__ = strax.exporter()
 
-
 @export
 @strax.takes_config(
     strax.Option('s1_optical_map', help='S1 (x, y, z) optical/pattern map.',
@@ -143,7 +142,7 @@ class EventPatternFit(strax.Plugin):
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
-        alt_drift_time = events['s2_center_time'] - events['alt_s1_center_time']
+        alt_drift_time = events['s2_center_time']-events['alt_s1_center_time']
         alt_z = -self.electron_drift_velocity*(alt_drift_time-self.electron_drift_time_gate)
         alt_position = np.vstack([events['x'], events['y'], alt_z]).T     
         alt_aft_prob = self.s1_aft_map(alt_position)
