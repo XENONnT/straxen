@@ -32,6 +32,7 @@ class GridFsInterface:
                  file_database='files',
                  config_identifier='config_name',
                  collection=None,
+                 _test_on_init=False,
                  ):
         """
         GridFsInterface
@@ -46,7 +47,10 @@ class GridFsInterface:
             PyMongo DataName Collection to bypass normal initiation
             using utilix. Should be an object of the form:
                 pymongo.MongoClient(..).DATABASE_NAME.COLLECTION_NAME
+        :param _test_on_init: Test if the collection is empty on init
+            (only deactivate if you are using a brand new database)!
         """
+
         if collection is None:
             if not readonly:
                 # We want admin access to start writing data!
@@ -79,7 +83,8 @@ class GridFsInterface:
 
         # Set collection and make sure it can at least do a 'find' operation
         self.collection = collection
-        self.test_find()
+        if _test_on_init:
+            self.test_find()
 
         # This is the identifier under which we store the files.
         self.config_identifier = config_identifier

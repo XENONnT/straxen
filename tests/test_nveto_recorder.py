@@ -6,7 +6,6 @@ import unittest
 
 
 class TestMergeIntervals(unittest.TestCase):
-
     def setUp(self):
         self.intervals = np.zeros(4, dtype=strax.time_fields)
         self.intervals['time'] = [2, 3, 7, 20]
@@ -34,7 +33,6 @@ class TestMergeIntervals(unittest.TestCase):
 
 
 class TestCoincidence(unittest.TestCase):
-
     def setUp(self):
         self.intervals = np.zeros(8, dtype=strax.time_fields)
         self.intervals['time'] = [3, 6, 9, 12, 15, 18, 21, 38]
@@ -134,3 +132,12 @@ class TestCoincidence(unittest.TestCase):
         endtime_is_correct = np.all(coincidence['endtime'] == endtime_truth)
         print(coincidence['endtime'], endtime_truth)
         assert endtime_is_correct, 'Coincidence does not have the correct endtime'
+
+
+def test_nv_for_dummy_rr():
+    """Basic test to run the nv rr for dummy raw-records"""
+    st = straxen.test_utils.nt_test_context(deregister=())
+    st.context_config['forbid_creation_of'] = tuple()
+    st.register(straxen.test_utils.DummyRawRecords)
+    st.make(straxen.test_utils.nt_test_run_id, 'hitlets_nv')
+    st.make(straxen.test_utils.nt_test_run_id, 'events_tagged')

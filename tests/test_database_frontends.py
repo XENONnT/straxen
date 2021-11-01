@@ -6,8 +6,11 @@ import os
 import shutil
 import tempfile
 import pymongo
-from warnings import warn
 import datetime
+
+
+def mongo_uri_not_set():
+    return 'TEST_MONGO_URI' not in os.environ
 
 
 class TestRunDBFrontend(unittest.TestCase):
@@ -22,15 +25,12 @@ class TestRunDBFrontend(unittest.TestCase):
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
     """
+    _run_test = True
 
     def setUp(self):
         # Just to make sure we are running some mongo server, see test-class docstring
         if 'TEST_MONGO_URI' not in os.environ:
-            self.run_test = False
-            warn('Cannot connect to test-database')
             return
-
-        self.run_test = True
         self.test_run_ids = ['0', '1']
         self.all_targets = ('peaks', 'records')
 
@@ -65,9 +65,8 @@ class TestRunDBFrontend(unittest.TestCase):
             collection.insert_one(_rundoc_format(run_id))
         assert not self.is_all_targets_stored
 
+    @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     def tearDown(self):
-        if not self.run_test:
-            return
         self.database[self.collection_name].drop()
         if os.path.exists(self.path):
             print(f'rm {self.path}')
@@ -80,9 +79,8 @@ class TestRunDBFrontend(unittest.TestCase):
             [self.st.is_stored(r, t) for t in self.all_targets])
             for r in self.test_run_ids])
 
+    @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     def test_finding_runs(self):
-        if not self.run_test:
-            return
         rdb = self.rundb_sf
         col = self.database[self.collection_name]
         assert col.find_one() is not None
@@ -91,9 +89,8 @@ class TestRunDBFrontend(unittest.TestCase):
         runs = self.st.select_runs()
         assert len(runs) == len(self.test_run_ids)
 
+    @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     def test_write_and_load(self):
-        if not self.run_test:
-            return
         assert not self.is_all_targets_stored
 
         # Make ALL the data
@@ -120,9 +117,8 @@ class TestRunDBFrontend(unittest.TestCase):
         assert len(available_runs) == len(self.test_run_ids)
         assert len(all_runs) == len(self.test_run_ids) + 1
 
+    @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     def test_lineage_changes(self):
-        if not self.run_test:
-            return
         st = strax.Context(register=[Records, Peaks],
                            storage=[self.rundb_sf],
                            use_per_run_defaults=True,

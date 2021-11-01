@@ -59,7 +59,8 @@ jobs:
       - name: Install requirements for tests and latest strax
         run: |
             pip install -r extra_requirements/requirements-tests.txt
-            pip install git+https://github.com/AxFoundation/strax.git
+            git clone https://github.com/AxFoundation/strax ../strax
+            pip install -e ../strax
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.6.0
         with:
@@ -90,21 +91,20 @@ jobs:
         env:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
-        run: |
-          bash .github/scripts/create_pre_apply_function.sh $HOME
-
-      # Run tests
+        run: bash .github/scripts/create_pre_apply_function.sh $HOME
       - name: Test package
         # This is running a normal test
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         env:
+          ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
         run: |
-          pytest -v
+          pytest -rsxv --durations 0
       - name: Coveralls
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
+          ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # We need to check if we had access to the secrets, otherwise coveralls

@@ -1,4 +1,4 @@
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 from utilix import uconfig
 from .common import *
@@ -25,6 +25,9 @@ from . import analyses
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
+
+from . import test_utils
+from .test_utils import *
 
 try:
     from . import holoviews_utils
