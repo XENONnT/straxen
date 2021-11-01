@@ -4,7 +4,6 @@ import unittest
 
 
 def test_widgets():
-    return
     tw = TimeWidgets()
     wig = tw.create_widgets()
     start, end = tw.get_start_end()
