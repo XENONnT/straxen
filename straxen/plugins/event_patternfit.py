@@ -15,7 +15,7 @@ export, __all__ = strax.exporter()
     strax.Option('s2_optical_map', help='S2 (x, y) optical/pattern map.',
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.',
-                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_19Oct2021.json'),
+                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_31Oct2021.json'),
     strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
                  default=1.2),
     strax.Option('gain_model',
