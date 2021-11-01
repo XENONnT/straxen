@@ -28,6 +28,9 @@ from .event_patternfit import *
 from . import event_processing
 from .event_processing import *
 
+from . import afterpulse_processing
+from .afterpulse_processing import *
+
 from . import double_scatter
 from .double_scatter import *
 
@@ -56,3 +59,6 @@ from .acqmon_processing import *
 
 from . import online_monitor
 from .online_monitor import *
+
+from . import event_shadow
+from .event_shadow import *

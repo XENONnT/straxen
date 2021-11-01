@@ -321,31 +321,25 @@ class SCADAInterface:
             offset = 1
         else:
             offset = 0
-        ntries = 0
-        max_tries = 40000  # This corresponds to ~23 years
-        while ntries < max_tries:
-            temp_df = self._query(query,
-                                  self.SCData_URL,
-                                  start=(start // 10**9) + offset,
-                                  end=(end // 10**9),
-                                  query_type_lab=query_type_lab,
-                                  seconds_interval=every_nth_value,
-                                  raise_error_message=False  # No valid value in query range...
-                                  )  # +1 since it is end before exclusive
-            if temp_df.empty:
-                # In case WebInterface does not return any data, e.g. if query range too small
-                break
-            times = (temp_df['timestampseconds'].values * 10**9).astype('<M8[ns]')
-            df.loc[times, parameter_key] = temp_df.loc[:, 'value'].values
 
-            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
-            offset += len(temp_df)
-            ntries += 1
-            if not (len(temp_df) == 35000 and endtime != end // 10**9):
-                # Max query are 35000 values, if end is reached the
-                # length of the dataframe is either smaller or the last
-                # time value is equivalent to queried range.
-                break
+        one_year_in_ns = int(24*3600*360*10**9)
+        starts = np.arange(start+offset, end, one_year_in_ns)
+        if len(starts):
+            ends = starts + one_year_in_ns
+            ends = np.clip(ends, a_max=end, a_min=0)
+        else:
+            ends = np.array([end])
+            starts = np.array([start])
+
+        for start_query, end_query in zip(starts, ends):
+            self._query_data_per_year(parameter_key,
+                                      query,
+                                      start_query,
+                                      end_query,
+                                      query_type_lab,
+                                      every_nth_value,
+                                      df,
+                                      )
 
         # Let user decided whether to ffill, interpolate or keep gaps:
         if fill_gaps == 'interpolation':
@@ -372,6 +366,56 @@ class SCADAInterface:
                 df[parameter_key] = nv
 
         return df
+
+    def _query_data_per_year(self, 
+                             parameter_name,
+                             query,
+                             start,
+                             end,
+                             query_type_lab,
+                             seconds_interval,
+                             result_dataframe,
+                             ):
+        """
+        The SCADA API cannot handle query ranges lasting longer than
+        one year. So in case the user specifies a longer time range
+        we have to chunk the time requests in steps of years.
+
+        Updates the resulting dataframe in place.
+        """
+        ntries = 0
+        # This corresponds to a bit more than one year assuming 1 value per second:
+        max_tries = 1000
+        while ntries < max_tries:
+            # Although we step the query already in years we also have to
+            # do the query in a whole loop as we can only query 35000
+            # data points at any given time, however it is not possible
+            # to know the sampling rate of the queried parameter apriori.
+            temp_df = self._query(query,
+                                  self.SCData_URL,
+                                  start=(start // 10**9),
+                                  end=(end // 10**9),
+                                  query_type_lab=query_type_lab,
+                                  seconds_interval=seconds_interval,
+                                  raise_error_message=False,  # No valid value in query range...
+                                  )  # +1 since it is end before exclusive
+            if temp_df.empty:
+                # In case WebInterface does not return any data, e.g. if query range too small
+                break
+
+            times = (temp_df['timestampseconds'].values * 10**9).astype('<M8[ns]')
+            result_dataframe.loc[times, parameter_name] = temp_df.loc[:, 'value'].values
+            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
+            start = endtime  # Next query should start at the last time seen.
+
+            ntries += 1
+            if not (len(temp_df) == 35000 and endtime != end // 10**9):
+                # Max query are 35000 values, if end is reached the
+                # length of the dataframe is either smaller or the last
+                # time value is equivalent to queried range.
+                break
+
+        return result_dataframe
 
     def _query(self,
                query,

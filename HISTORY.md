@@ -1,3 +1,59 @@
+1.1.2 / 2021-10-27
+-------------------
+minor / patches:
+- Plugin for afterpulse processing (#549)
+- Veto online monitor (#707)
+- Refactor straxen tests (#703)
+- WFSim registry as argument for simulations context (#713)
+- Update S1 AFT map in event pattern fit (#697)
+
+fixes/tests:
+- Set default drift time as nan (#700)
+- Revert auto inclusion of rucio remote #688 (#701)
+- fix bug in CMT (#710)
+- Fix one year querries (#711
+- Test new numba (#702)
+- Unify CMT call in contexts (#717)
+- Small codefactor patch (#714)
+- test nv with nv data (#709)
+- Add small test for wfsim (#716)
+
+
+1.1.1 / 2021-10-19
+-------------------
+ - Fix to test for RunDB frontend when no test DB is sourced (6da2233)
+
+
+1.1.0 / 2021-10-18
+-------------------
+major / minor:
+
+- Previous S2 Shadow Plugin draft (#664)
+- Use admix in straxen (#688)
+- Add posdiff plugin (#669)
+- updated S2 corrected area (#686)
+- Version bump of hitlets (#690)
+- Add n saturated channels (#691)
+- add small tool to extract run comments from database (#692)
+- Update online_monitor_nv to v0.0.3 (#696)
+
+
+patches and fixes:
+ 
+- Use read by index and check for NaNs (#661)
+- Add small feature for printing versions of git (#665)
+- Fix minianalyses from apply_selection (#666)
+- fix some warnings from testing (#667)
+- Add source to runs table (#673)
+- Pbar patch for rundb query (#685)
+- Implement SDSC as a local RSE for Expanse (#687)
+- Skips superruns in rucio frontend (#689)
+- Warn about non-loadable loggers (#693)
+- Add RunDb read/write-test (#695)
+- Fix bug in rucio frontend (#699)
+
+
+
 1.0.0 / 2021-09-01
 -------------------
 major / minor:

@@ -131,6 +131,7 @@ def get_cmt_resource(run_id, conf, fmt=''):
     return straxen.get_resource(get_correction_from_cmt(run_id, conf), fmt=fmt)
 
 
+@export
 def is_cmt_option(config):
     """
     Check if the input configuration is cmt style.

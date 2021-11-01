@@ -7,7 +7,6 @@ import sys
 import warnings
 import datetime
 import pytz
-from os import environ as os_environ
 from importlib import import_module
 from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
@@ -54,7 +53,7 @@ def print_versions(modules=('strax', 'straxen', 'cutax'),
         'cutax', 'pema'))
     :param return_string: optional. Instead of printing the message,
         return a string
-    :param include_git_details: Include the current branch and latest
+    :param include_git: Include the current branch and latest
         commit hash
     :return: optional, the message that would have been printed
     """
@@ -118,7 +117,8 @@ def utilix_is_configured(header: str = 'RunDB',
     except NoSectionError:
         is_configured = False
 
-    if not is_configured and bool(warning_message):
+    should_report = bool(warning_message) or warning_message is None
+    if not is_configured and should_report:
         if warning_message is None:
             warning_message = 'Utilix is not configured, cannot proceed'
         warnings.warn(warning_message)
@@ -244,6 +244,27 @@ class TimeWidgets:
         return time, time_ns
 
 
+@strax.Context.add_method
+def extract_latest_comment(self):
+    """
+    Extract the latest comment in the runs-database. This just adds info to st.runs
+
+    Example:
+        st.extract_latest_comment()
+        st.select_runs(available=('raw_records'))
+    """
+    if self.runs is None or 'comments' not in self.runs.keys():
+        self.scan_runs(store_fields=('comments',))
+        latest_comments = _parse_to_last_comment(self.runs['comments'])
+        self.runs['comments'] = latest_comments
+    return self.runs
+
+
+def _parse_to_last_comment(comments):
+    """Unpack to get the last comment (hence the -1) or give '' when there is none"""
+    return [(c[-1]['comment'] if hasattr(c, '__len__') else '') for c in comments]
+
+
 @export
 def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
@@ -255,9 +276,3 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
-
-
-@export
-def _is_on_pytest():
-    """Check if we are on a pytest"""
-    return 'PYTEST_CURRENT_TEST' in os_environ
