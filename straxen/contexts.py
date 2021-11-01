@@ -188,17 +188,12 @@ def xenonnt_online(output_folder='./strax_data',
 
     # Add the rucio frontend if we are able to
     if HAVE_ADMIX:
-        # try except to catch cases where we are not running on an endpoint with rucio endpoint
-        # TODO we should clean this up. Include_remote should be true in general.
-        try:
-            rucio_frontend = straxen.rucio.RucioFrontend(
-                include_remote=_include_rucio_remote,
-                staging_dir=os.path.join(output_folder, 'rucio'),
-                download_heavy=download_heavy,
-            )
-            st.storage += [rucio_frontend]
-        except RuntimeError:
-            pass
+        rucio_frontend = straxen.rucio.RucioFrontend(
+            include_remote=_include_rucio_remote,
+            staging_dir=os.path.join(output_folder, 'rucio'),
+            download_heavy=download_heavy,
+        )
+        st.storage += [rucio_frontend]
 
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):

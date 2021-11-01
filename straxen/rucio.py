@@ -64,12 +64,6 @@ class RucioFrontend(strax.StorageFrontend):
                                      f"I'm not sure what to do with that.")
                 local_rse = rse
 
-        # if there is no local host and we don't want to include the
-        # remote ones, we can't do anything
-        if local_rse is None and not include_remote:
-            raise RuntimeError(f"Could not find a local RSE for hostname {hostname}, "
-                               f"and include_remote is False.")
-
         self.local_rse = local_rse
         self.include_remote = include_remote
 
