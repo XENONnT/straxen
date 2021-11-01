@@ -14,10 +14,10 @@ from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
 
-corrections_w_file = ['mlp_model', 'gcn_model', 'cnn_model',
-                      's2_xy_map', 's1_xyz_map_mlp', 's1_xyz_map_cnn',
-                      's1_xyz_map_gcn', 'fdc_map_mlp', 'fdc_map_gcn',
-                      'fdc_map_cnn']
+corrections_w_file = ['mlp_model', 'cnn_model', 'gcn_model',
+                      's2_xy_map_mlp', 's2_xy_map_cnn', 's2_xy_map_gcn', 's2_xy_map',
+                      's1_xyz_map_mlp', 's1_xyz_map_cnn', 's1_xyz_map_gcn',
+                      'fdc_map_mlp', 'fdc_map_cnn', 'fdc_map_gcn']
 
 single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
                             'electron_drift_velocity', 'electron_drift_time_gate']
@@ -27,12 +27,14 @@ arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
 
 # needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
 # important for apply_cmt_version
-posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map']
+posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_xy_map']
 
 
 class CMTVersionError(Exception):
     pass
 
+class CMTnanValueError(Exception):
+    pass
 
 @export
 class CorrectionsManagementServices():
@@ -130,14 +132,22 @@ class CorrectionsManagementServices():
                 pmts = list(gains.keys())
                 for it_correction in pmts: # loop over all PMTs
                     if correction in it_correction:
-                        df = self.interface.read(it_correction)
+                        df = self.interface.read_at(it_correction, when)
+                        if df[version].isnull().values.any():
+                            raise CMTnanValueError(f"For {it_correction} there are NaN values, this means no correction available "
+                                                   f"for {run_id} in version {version}, please check e-logbook for more info ")
+ 
                         if version in 'ONLINE':
                             df = self.interface.interpolate(df, when, how='fill')
                         else:
                             df = self.interface.interpolate(df, when)
                         values.append(df.loc[df.index == when, version].values[0])
             else:
-                df = self.interface.read(correction)
+                df = self.interface.read_at(correction, when)
+                if df[version].isnull().values.any():
+                    raise CMTnanValueError(f"For {correction} there are NaN values, this means no correction available "
+                                           f"for {run_id} in version {version}, please check e-logbook for more info ")
+ 
                 if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
                     df = self.interface.interpolate(df, when, how='fill')
                 else:
@@ -189,12 +199,10 @@ class CorrectionsManagementServices():
                 to_pe = self._get_correction(run_id, target_detector, version)
 
             # be cautious with very early runs, check that not all are None
-            if np.isnan(to_pe).all():
+            if np.isnan(to_pe).any():
                 raise ValueError(
                     f"to_pe(PMT gains) values are NaN, no data available "
-                    f"for {run_id} in the gain model with version "
-                    f"{version}, please set constant values for "
-                    f"{run_id}")
+                    f"for {run_id} in the gain model with version")
 
         else:
             raise ValueError(f"{model_type} not implemented for to_pe values")

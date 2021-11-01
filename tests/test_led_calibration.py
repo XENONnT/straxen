@@ -17,7 +17,7 @@ def test_ext_timings_nv(records):
     # and channel start at 0, convert to nv:
     records['pulse_length'] = records['length']
     records['channel'] += 2000
-    
+
     st = straxen.contexts.xenonnt_led()
     plugin = st.get_single_plugin('1', 'ext_timings_nv')
     hits = strax.find_hits(records, min_amplitude=1)

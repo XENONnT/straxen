@@ -203,6 +203,7 @@ def draw_box(x, y, **kwargs):
     plt.gca().add_patch(matplotlib.patches.Rectangle(
         (x[0], y[0]), x[1] - x[0], y[1] - y[0], facecolor='none', **kwargs))
 
+
 @export
 def plot_single_pulse(records, run_id, pulse_i=''):
     """

@@ -2,9 +2,8 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
-import socket
-from warnings import warn
-
+from .rucio import HAVE_ADMIX
+import os
 
 common_opts = dict(
     register_all=[
@@ -29,7 +28,7 @@ common_opts = dict(
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
         'name', 'number',
-        'start', 'end', 'livetime', 'mode'))
+        'start', 'end', 'livetime', 'mode', 'source'))
 
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
@@ -76,6 +75,7 @@ xnt_common_opts.update({
                                            straxen.PeakPositionsMLP,
                                            straxen.PeakPositionsGCN,
                                            straxen.PeakPositionsNT,
+                                           straxen.S2ReconPosDiff,
                                            straxen.PeakBasicsHighEnergy,
                                            straxen.PeaksHighEnergy,
                                            straxen.PeakletsHighEnergy,
@@ -96,10 +96,10 @@ xnt_common_opts.update({
                                                    straxen.event_area_per_channel,
                                                    straxen.event_patternfit,
                                                    straxen.event_processing,
+                                                   straxen.event_shadow,
                                                    ],
     'use_per_run_defaults': False,
 })
-
 ##
 # XENONnT
 ##
@@ -113,15 +113,14 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
 
 
 def xenonnt_online(output_folder='./strax_data',
-                   use_rucio=None,
-                   use_rucio_remote=False,
                    we_are_the_daq=False,
+                   download_heavy=False,
                    _minimum_run_number=7157,
                    _maximum_run_number=None,
                    _database_init=True,
                    _forbid_creation_of=None,
-                   _rucio_path='/dali/lgrandi/rucio/',
                    _include_rucio_remote=False,
+                   _rucio_path='/dali/lgrandi/rucio/',
                    _raw_path='/dali/lgrandi/xenonnt/raw',
                    _processed_path='/dali/lgrandi/xenonnt/processed',
                    _add_online_monitor_frontend=False,
@@ -132,10 +131,8 @@ def xenonnt_online(output_folder='./strax_data',
 
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
-    :param use_rucio: bool, whether or not to use the rucio frontend (by
-        default, we add the frontend when running on an rcc machine)
-    :param use_rucio_remote: bool, if download data from rucio directly
     :param we_are_the_daq: bool, if we have admin access to upload data
+    :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less the aqmon)
     :param _minimum_run_number: int, lowest number to consider
     :param _maximum_run_number: Highest number to consider. When None
         (the default) consider all runs that are higher than the
@@ -160,7 +157,7 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration])
+    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulseProcessing])
 
     st.storage = [
         straxen.RunDB(
@@ -182,22 +179,21 @@ def xenonnt_online(output_folder='./strax_data',
                 readonly=True,
             )]
         if output_folder:
-            st.storage.append(
-                strax.DataDirectory(output_folder,
-                                    provide_run_metadata=True,
-                                   ))
-
+            st.storage += [strax.DataDirectory(output_folder,
+                                               provide_run_metadata=True,
+                                               )]
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
         if _forbid_creation_of is not None:
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
-    # Add the rucio frontend to storage when asked to or if we did not
-    # specify anything and are on rcc
-    if use_rucio or (use_rucio is None and 'rcc' in socket.getfqdn()):
-        st.storage.append(straxen.rucio.RucioFrontend(
-            include_remote=use_rucio_remote,
-            staging_dir=output_folder,
-        ))
+    # Add the rucio frontend if we are able to
+    if HAVE_ADMIX:
+        rucio_frontend = straxen.rucio.RucioFrontend(
+            include_remote=_include_rucio_remote,
+            staging_dir=os.path.join(output_folder, 'rucio'),
+            download_heavy=download_heavy,
+        )
+        st.storage += [rucio_frontend]
 
     # Only the online monitor backend for the DAQ
     if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
@@ -206,7 +202,9 @@ def xenonnt_online(output_folder='./strax_data',
             take_only=('veto_intervals',
                        'online_peak_monitor',
                        'event_basics',
-                       'online_monitor_nv'))]
+                       'online_monitor_nv',
+                       'online_monitor_mv',
+                       ))]
 
     # Remap the data if it is before channel swap (because of wrongly cabled
     # signal cable connectors) These are runs older than run 8797. Runs
@@ -224,7 +222,10 @@ def xenonnt_online(output_folder='./strax_data',
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
-    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    st.set_context_config(
+        {'check_available': ('raw_records', 'led_calibration'),
+         'free_options': list(xnt_common_config.keys())
+         })
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(
         replace=True,
@@ -243,9 +244,10 @@ def xenonnt_led(**kwargs):
 
 def xenonnt_simulation(
                 output_folder='./strax_data',
+                wfsim_registry='RawRecordsFromFaxNT',
                 cmt_run_id_sim=None,
                 cmt_run_id_proc=None,
-                cmt_version='v3',
+                cmt_version='global_v5',
                 fax_config='fax_config_nt_design.json',
                 overwrite_from_fax_file_sim=False,
                 overwrite_from_fax_file_proc=False,
@@ -277,6 +279,7 @@ def xenonnt_simulation(
 
     CMT options can also be overwritten via fax config file.
     :param output_folder: Output folder for strax data.
+    :param wfsim_registry: Name of WFSim plugin used to generate data.
     :param cmt_run_id_sim: Run id for detector parameters from CMT to be used
         for creation of raw_records.
     :param cmt_run_id_proc: Run id for detector parameters from CMT to be used
@@ -307,11 +310,15 @@ def xenonnt_simulation(
                     check_raw_record_overlaps=True,
                     **straxen.contexts.xnt_common_config,),
         **straxen.contexts.xnt_common_opts, **kwargs)
-    st.register(wfsim.RawRecordsFromFaxNT)
+    st.register(getattr(wfsim, wfsim_registry))
+
+    # Make sure that the non-simulated raw-record types are not requested
+    st.deregister_plugins_with_missing_dependencies()
+
     if straxen.utilix_is_configured(
             warning_message='Bad context as we cannot set CMT since we '
                             'have no database access'''):
-        st.apply_cmt_version(f'global_{cmt_version}')
+        st.apply_cmt_version(cmt_version)
 
     if _forbid_creation_of is not None:
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
@@ -356,7 +363,7 @@ def xenonnt_simulation(
                                          fax_config[fax_field])
             if overwrite_from_fax_file_sim:
                 st.config['fax_config_override_from_cmt'][fax_field] = (
-                         cmt_options[cmt_field][0] + '_constant',fax_config[fax_field])
+                         cmt_options[cmt_field][0] + '_constant', fax_config[fax_field])
 
     # And as the last step - manual overrrides, since they have the highest priority
     # User customized for simulation
@@ -364,16 +371,16 @@ def xenonnt_simulation(
         if option not in cmt_options:
             raise ValueError(f'Overwrite option {option} is not using CMT by default '
                              'you should just use set config')
-        if not option in _config_overlap.values():
+        if option not in _config_overlap.values():
             raise ValueError(f'Overwrite option {option} does not have mapping from '
-                              'CMT to fax config! ')
-        for fax_key,cmt_key in _config_overlap.items():
-            if cmt_key==option:
+                             f'CMT to fax config!')
+        for fax_key, cmt_key in _config_overlap.items():
+            if cmt_key == option:
                 _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
                 st.config['fax_config_override_from_cmt'][fax_key] = (
                                             cmt_options[option][_name_index] + '_constant',
                                             cmt_option_overwrite_sim[option])
-                del(_name_index)
+                del _name_index
             del(fax_key, cmt_key)
     # User customized for simulation
     for option in cmt_option_overwrite_proc:
@@ -383,7 +390,7 @@ def xenonnt_simulation(
         _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
         st.config[option] = (cmt_options[option][_name_index] + '_constant', 
                              cmt_option_overwrite_proc[option])
-        del(_name_index)
+        del _name_index
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
 
@@ -529,7 +536,10 @@ def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
-    st.context_config['check_available'] = ('raw_records', 'led_calibration')
+    st.set_context_config(
+        {'check_available': ('raw_records', 'led_calibration'),
+         'free_options': list(x1t_context_config.keys())
+         })
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(
         replace=True,
@@ -550,4 +560,5 @@ def xenon1t_simulation(output_folder='./strax_data'):
             **x1t_common_config),
         **x1t_context_config)
     st.register(wfsim.RawRecordsFromFax1T)
+    st.deregister_plugins_with_missing_dependencies()
     return st

@@ -135,7 +135,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.1.1'
+    __version__ = '1.2.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -153,7 +153,7 @@ class EventBasics(strax.Plugin):
         dtype += strax.time_fields
         dtype += [('n_peaks', np.int32,
                    'Number of peaks in the event'),
-                  ('drift_time', np.int32,
+                  ('drift_time', np.float32,
                    'Drift time between main S1 and S2 in ns'),
                   ('event_number', np.int64,
                    'Event number in this dataset'),
@@ -195,7 +195,11 @@ class EventBasics(strax.Plugin):
             ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
             ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
             ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
-            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array')
+            ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'),
+            ('tight_coincidence', np.int16, 'Hits within tight range of mean'),
+            ('n_saturated_channels',      np.int16, 'Total number of saturated channels'),
+            ('tight_coincidence_channel', np.int16, 'Number of PMT channel within tight range of '
+                                                    'mean'),
         )
 
     @staticmethod
@@ -215,7 +219,7 @@ class EventBasics(strax.Plugin):
 
             # Drifts and delays
             si_dtype += [
-                (f'alt_s{s_i}_interaction_drift_time', np.int32,
+                (f'alt_s{s_i}_interaction_drift_time', np.float32,
                  f'Drift time using alternate S{s_i} [ns]'),
                 (f'alt_s{s_i}_delay', np.int32,
                  f'Time between main and alternate S{s_i} [ns]')]
@@ -599,20 +603,20 @@ def get_veto_tags(events, split_tags, result):
             (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
     strax.Option(
         's2_xy_correction_map',
-        help="S2 (x, y) correction map. Correct S2 position dependence "
+        help="S2 (x, y) correction map. Correct S2 position dependence, including S2 top, bottom, and total."
              "manly due to bending of anode/gate-grid, PMT quantum efficiency "
              "and extraction field distribution, as well as other geometric factors.",
         default_by_run=[
             (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
             (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
-   strax.Option(
+    strax.Option(
         'elife_conf',
         default=("elife", "ONLINE", True),
         help='Electron lifetime '
              'Specify as (model_type->str, model_config->str, is_nT->bool) '
              'where model_type can be "elife" or "elife_constant" '
              'and model_config can be a version.'
-   ),
+    ),
     *DEFAULT_POSREC_ALGO_OPTION
 )
 class CorrectedAreas(strax.Plugin):
@@ -626,64 +630,97 @@ class CorrectedAreas(strax.Plugin):
     Note:
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
+        
+        There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
+        cs2_top and cs2_bottom are corrected by the corresponding maps,
+        and cs2 is the sum of the two.
     """
-    __version__ = '0.1.1'
+    __version__ = '0.1.3'
 
     depends_on = ['event_basics', 'event_positions']
-    dtype = [('cs1', np.float32, 'Corrected S1 area [PE]'),
-             ('cs2', np.float32, 'Corrected S2 area [PE]'),
-             ('alt_cs1', np.float32, 'Corrected area of the alternate S1 [PE]'),
-             ('alt_cs2', np.float32, 'Corrected area of the alternate S2 [PE]')
-             ] + strax.time_fields
+
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_fields
+
+        for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
+            dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
+                      (f'{peak_type}cs2_wo_elifecorr', np.float32,
+                       f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
+                      (f'{peak_type}cs2_area_fraction_top', np.float32,
+                       f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
+                      (f'{peak_type}cs2_bottom', np.float32,
+                       f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
+                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),]
+
+        return dtype
 
     def setup(self):
         self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
-
-        if isinstance(self.config['s1_xyz_correction_map'], str):
-            self.config['s1_xyz_correction_map'] = [self.config['s1_xyz_correction_map']]
-        if isinstance(self.config['s2_xy_correction_map'], str):
-            self.config['s2_xy_correction_map'] = [self.config['s2_xy_correction_map']]
 
         self.s1_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
                              tuple(['suffix',
                                     self.config['default_reconstruction_algorithm'],
-                                    *self.config['s1_xyz_correction_map']]),
+                                    *strax.to_str_tuple(self.config['s1_xyz_correction_map'])]),
                              fmt='text'))
 
         self.s2_map = InterpolatingMap(
             get_cmt_resource(self.run_id,
-                             tuple([*self.config['s2_xy_correction_map']]),
-                             fmt='text'))
+                             tuple(['suffix',
+                                    self.config['default_reconstruction_algorithm'],
+                                    *strax.to_str_tuple(self.config['s2_xy_correction_map'])]),
+                             fmt='json'))
 
     def compute(self, events):
+        result = dict(
+            time=events['time'],
+            endtime=strax.endtime(events)
+        )
+
         # S1 corrections depend on the actual corrected event position.
         # We use this also for the alternate S1; for e.g. Kr this is
         # fine as the S1 correction varies slowly.
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
+        for peak_type in ["", "alt_"]:
+            result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_map(event_positions)
 
-        # For electron lifetime corrections to the S2s,
-        # use lifetimes computed using the main S1.
-        lifetime_corr = np.exp(events['drift_time'] / self.elife)
-        alt_lifetime_corr = (
-            np.exp((events['alt_s2_interaction_drift_time'])
-                   / self.elife))
+        # s2 corrections
+        # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
+        # figure out the map name
+        if len(self.s2_map.map_names) > 1:
+            s2_top_map_name = "map_top"
+            s2_bottom_map_name = "map_bottom"
+        else:
+            s2_top_map_name = "map"
+            s2_bottom_map_name = "map"
 
-        # S2(x,y) corrections use the observed S2 positions
-        s2_positions = np.vstack([events['s2_x'], events['s2_y']]).T
-        alt_s2_positions = np.vstack([events['alt_s2_x'], events['alt_s2_y']]).T
+        for peak_type in ["", "alt_"]:
+            # S2(x,y) corrections use the observed S2 positions
+            s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
 
-        return dict(
-            time=events['time'],
-            endtime=strax.endtime(events),
+            # corrected s2 with s2 xy map only, i.e. no elife correction
+            # this is for s2-only events which don't have drift time info
+            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / 
+                                    self.s2_map(s2_positions, map_name=s2_top_map_name))
+            cs2_bottom_wo_elifecorr = (events[f'{peak_type}s2_area'] *
+                                       (1 - events[f'{peak_type}s2_area_fraction_top']) /
+                                       self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+            result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
-            cs1=events['s1_area'] / self.s1_map(event_positions),
-            alt_cs1=events['alt_s1_area'] / self.s1_map(event_positions),
+            # cs2aft doesn't need elife correction as it cancels
+            result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
 
-            cs2=(events['s2_area'] * lifetime_corr
-                 / self.s2_map(s2_positions)),
-            alt_cs2=(events['alt_s2_area'] * alt_lifetime_corr
-                     / self.s2_map(alt_s2_positions)))
+            # For electron lifetime corrections to the S2s,
+            # use drift time computed using the main S1.
+            el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
+            elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
+
+            cs2_top = cs2_top_wo_elifecorr * elife_correction
+            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
+            result[f"{peak_type}cs2"] = cs2_top + result[f"{peak_type}cs2_bottom"]
+
+        return result
 
 
 @export
