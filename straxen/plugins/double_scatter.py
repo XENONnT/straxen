@@ -56,8 +56,14 @@ class EventInfoDouble(strax.MergeOnlyPlugin):
                          'alt_cs2': 'cs2_b',
                          'cs1': 'cs1_a',
                          'cs2': 'cs2_a',
-                         'alt_s1_delay':'ds_s1_dt',
-                         'alt_s2_delay':'ds_s2_dt'}
+                         'alt_s1_delay': 'ds_s1_dt',
+                         'alt_s2_delay': 'ds_s2_dt'
+                         'cs2_wo_elifecorr': 'cs2_a_wo_elifecorr',
+                         'alt_cs2_wo_elifecorr': 'cs2_b_wo_elifecorr',
+                         'cs2_area_fraction_top': 'cs2_a_area_fraction_top',
+                         'alt_cs2_area_fraction_top': 'cs2_b_area_fraction_top',
+                         'cs2_bottom': 'cs2_a_bottom',
+                         'alt_cs2_bottom': 'cs2_b_bottom'}
         if orig_name in special_cases:
             return special_cases[orig_name]
 
