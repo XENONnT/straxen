@@ -51,9 +51,9 @@ _testing_config_nT = dict(
     nveto_pmt_position_map=_nveto_pmt_dummy,
     s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    s1_aft_map=aux_repo + 'ffdadba3439ae7922b19f5dd6479348b253c09b0/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
-    s2_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s2_map_UNITY_xy_XENONnT.json',  # noqa
-    s1_optical_map=aux_repo + '8a6f0c1a4da4f50546918cd15604f505d971a724/strax_files/s1_lce_UNITY_xyz_XENONnT.json',  # noqa
+    s1_aft_map=aux_repo + '023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
+    s2_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s2_xy_unity_patterns.json.gz',  # noqa
+    s1_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s1_xyz_unity_patterns.json.gz',  # noqa
     electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
     hit_min_amplitude='pmt_commissioning_initial',
     hit_min_amplitude_nv=20,
@@ -103,7 +103,7 @@ def _is_on_pytest():
 
 
 def nt_test_context(target_context='xenonnt_online',
-
+                    deregister = ('peak_veto_tags', 'events_tagged'),
                     **kwargs):
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
@@ -111,15 +111,16 @@ def nt_test_context(target_context='xenonnt_online',
     download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/1d3706d4b47cbd23b5cae66d5e258bb84487ad01/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
+    to_remove = list(deregister)
     if not straxen.utilix_is_configured(warning_message=False):
         st.set_config(_testing_config_nT)
-        to_remove = 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
+        to_remove += 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
         # TODO The test data for this plugin doesn't work
         to_remove += ['event_pattern_fit']
-        for plugin in to_remove:
-            del st._plugin_class_registry[plugin]
-        st.register(straxen.PeakPositions1T)
         st.set_config({'gain_model': ("to_pe_placeholder", True)})
+        st.register(straxen.PeakPositions1T)
+    for plugin in to_remove:
+        del st._plugin_class_registry[plugin]
     return st
 
 
