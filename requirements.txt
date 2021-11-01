@@ -1,3 +1,5 @@
+numpy~=1.19.5
+packaging~=20.8
 strax>=1.1.1
 utilix>=0.5.3
 # tensorflow>=2.3.0  # Optional, to (re)do posrec
@@ -5,7 +7,6 @@ utilix>=0.5.3
 # datashader         # Optional, to enable wf display
 bokeh>=2.2.3
 multihist>=0.6.3
-packaging
 immutabledict
 numba>=0.50.0
 requests
