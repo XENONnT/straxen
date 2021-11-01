@@ -46,7 +46,7 @@ class EventInfoDouble(strax.MergeOnlyPlugin):
       - Adds s1_b_distinct_channels, which can be tricky to compute
         (since it requires going back to peaks)
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     depends_on = ['event_info', 'distinct_channels']
     save_when = strax.SaveWhen.EXPLICIT
     
