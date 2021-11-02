@@ -6,12 +6,13 @@ minor / patches:
 - Refactor straxen tests (#703)
 - WFSim registry as argument for simulations context (#713)
 - Update S1 AFT map in event pattern fit (#697)
+- Refactor s2 correction (#704) 
 
 fixes/tests:
 - Set default drift time as nan (#700)
 - Revert auto inclusion of rucio remote #688 (#701)
 - fix bug in CMT (#710)
-- Fix one year querries (#711
+- Fix one year querries (#711)
 - Test new numba (#702)
 - Unify CMT call in contexts (#717)
 - Small codefactor patch (#714)
