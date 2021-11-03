@@ -205,6 +205,7 @@ class Peaklets(strax.Plugin):
         peaklets = strax.split_peaks(
             peaklets, hitlets, r, rlinks, self.to_pe,
             algorithm='natural_breaks',
+            n_top_channels=self.config['n_top_pmts'],
             threshold=self.natural_breaks_threshold,
             split_low=True,
             filter_wing_width=self.config['peak_split_filter_wing_width'],
