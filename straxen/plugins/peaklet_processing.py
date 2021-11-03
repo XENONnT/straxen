@@ -558,23 +558,21 @@ class PeakletClassification(strax.Plugin):
     parallel = True
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')])
-    __version__ = '0.2.1'
+    __version__ = '0.2.2'
 
     def compute(self, peaklets):
-        peaks = peaklets
-
         ptype = np.zeros(len(peaklets), dtype=np.int8)
 
         # Properties needed for classification. Bit annoying these computations
         # are duplicated in peak_basics curently...
-        rise_time = -peaks['area_decile_from_midpoint'][:, 1]
-        n_channels = (peaks['area_per_channel'] > 0).sum(axis=1)
+        rise_time = -peaklets['area_decile_from_midpoint'][:, 1]
+        n_channels = (peaklets['area_per_channel'] > 0).sum(axis=1)
 
         is_s1 = (
            (rise_time <= self.config['s1_max_rise_time'])
             | ((rise_time <= self.config['s1_max_rise_time_post100'])
-               & (peaks['area'] > 100)))
-        is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
+               & (peaklets['area'] > 100)))
+        is_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
         ptype[is_s1] = 1
 
         is_s2 = n_channels >= self.config['s2_min_pmts']
