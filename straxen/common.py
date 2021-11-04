@@ -277,7 +277,7 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     if function_name not in _resource_cache:
         # only load the function once and put it in the resource cache
         function_file = f'{function_name}.py'
-        function_file = _overwrite_testing_function_file(function_file)
+        function_file = straxen.test_utils._overwrite_testing_function_file(function_file)
         function = get_resource(function_file, fmt='txt')
         # pylint: disable=exec-used
         exec(function)
