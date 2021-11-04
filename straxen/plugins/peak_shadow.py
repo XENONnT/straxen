@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
                  help='Only take S2s large than this into account when calculating PeakShadow [PE]'),
     strax.Option('time_window_backward', default=int(3e9),
                  help='Search for S2s causing shadow in this time window [ns]'),
-    strax.Option('skip_drift_time', default=int(3e6),
+    strax.Option('skip_drift_time', default=0,
                  help='Deduct max drift time to avoid peak interference in a single event [ns]'))
 class PeakShadow(strax.Plugin):
     """
@@ -36,8 +36,8 @@ class PeakShadow(strax.Plugin):
         roi_shadow = np.zeros(len(peaks), dtype=roi_dt)
         n_seconds = self.config['time_window_backward']
         n_drift_time = self.config['skip_drift_time']
-        roi_shadow['time'] = peaks['time'] - n_seconds
-        roi_shadow['endtime'] = peaks['time'] - n_drift_time
+        roi_shadow['time'] = peaks['center_time'] - n_seconds
+        roi_shadow['endtime'] = peaks['center_time'] - n_drift_time
 
         mask_pre_s2 = (peaks['area'] > self.config['pre_s2_area_threshold']) & (peaks['type']==2)
         split_peaks = strax.split_touching_windows(peaks[mask_pre_s2], roi_shadow)
@@ -60,10 +60,10 @@ def _compute_shadow(peaks, split_peaks, res):
     for p_i, p_a in enumerate(peaks):
         new_shadow = 0
         for s2_a in split_peaks[p_i]:
-            new_shadow = s2_a['area'] / (p_a['time'] - s2_a['center_time'])
+            new_shadow = s2_a['area'] / (p_a['center_time'] - s2_a['center_time'])
             if new_shadow > res['shadow'][p_i]:
                 res['shadow'][p_i] = new_shadow
                 res['pre_s2_area'][p_i] = s2_a['area']
-                res['shadow_dt'][p_i] = p_a['time'] - s2_a['center_time']
+                res['shadow_dt'][p_i] = p_a['center_time'] - s2_a['center_time']
                 res['pre_s2_x'][p_i] = p_a['x']
                 res['pre_s2_y'][p_i] = p_a['y']

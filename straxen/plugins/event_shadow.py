@@ -11,7 +11,7 @@ class EventShadow(strax.Plugin):
     It also gives the area and position infomation of these previous S2s.
     """
     __version__ = '0.0.7'
-    depends_on = ('event_basics', 'peak_shadow')
+    depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
     save_when = strax.SaveWhen.EXPLICIT
 
@@ -29,17 +29,20 @@ class EventShadow(strax.Plugin):
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
         res = np.zeros(len(events), self.dtype)
+        # Initialization
+        res['shadow_index'] = -1
         res['pre_s2_x'] = np.nan
         res['pre_s2_y'] = np.nan
         for event_i, sp in enumerate(split_peaks):
-            if len(sp):
-                max_shadow_index = sp['shadow'].argmax()
-                res['shadow_index'][event_i] = max_shadow_index
-                res['shadow'][event_i] = sp['shadow'][max_shadow_index]
-                res['pre_s2_area'][event_i] = sp['pre_s2_area'][max_shadow_index]
-                res['shadow_dt'][event_i] = sp['shadow_dt'][max_shadow_index]
-                res['pre_s2_x'][event_i] = sp['pre_s2_x'][max_shadow_index]
-                res['pre_s2_y'][event_i] = sp['pre_s2_y'][max_shadow_index]
+            if (sp['type'] == 2).sum() > 0:
+                # Define event shadow as the first S2 peak shadow
+                first_s2_index = np.argwhere(sp['type'] == 2)[0]
+                res['shadow_index'][event_i] = first_s2_index
+                res['shadow'][event_i] = sp['shadow'][first_s2_index]
+                res['pre_s2_area'][event_i] = sp['pre_s2_area'][first_s2_index]
+                res['shadow_dt'][event_i] = sp['shadow_dt'][first_s2_index]
+                res['pre_s2_x'][event_i] = sp['pre_s2_x'][first_s2_index]
+                res['pre_s2_y'][event_i] = sp['pre_s2_y'][first_s2_index]
         res['shadow_distance'] = ((res['pre_s2_x'] - events['s2_x'])**2+(res['pre_s2_y'] - events['s2_y'])**2)**0.5
         res['time'] = events['time']
         res['endtime'] = strax.endtime(events)
