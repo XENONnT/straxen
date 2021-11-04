@@ -12,11 +12,11 @@ export, __all__ = strax.exporter()
 
 
 @strax.takes_config(
-    strax.Option('event_left_extension_nv', default=0,
+    strax.Option('event_left_extension_nv', default=0, infer_dtype=False,
                  help="Extends events this many ns to the left"),
-    strax.Option('event_resolving_time_nv', default=300,
+    strax.Option('event_resolving_time_nv', default=300, infer_dtype=False,
                  help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_nv', default=3,
+    strax.Option('event_min_hits_nv', default=3, infer_dtype=False,
                  help="Minimum number of fully confined hitlets to define an event."),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
@@ -224,12 +224,12 @@ def _make_event(hitlets: np.ndarray,
 
 
 @strax.takes_config(
-    strax.Option('position_max_time_nv', default=20,
+    strax.Option('position_max_time_nv', default=20, infer_dtype=False,
                  help="Time [ns] within an event use to compute the azimuthal angle of the "
                       "event."),
     strax.Option('nveto_pmt_position_map',
                  help="nVeto PMT position mapfile",
-                 default='nveto_pmt_position.csv'),
+                 default='nveto_pmt_position.csv', infer_dtype=False,),
 )
 class nVETOEventPositions(strax.Plugin):
     """
@@ -436,13 +436,13 @@ def first_hitlets(hitlets_per_event: np.ndarray,
 
 
 @strax.takes_config(
-    strax.Option('event_left_extension_mv', default=0,
+    strax.Option('event_left_extension_mv', default=0, infer_dtype=False,
                  child_option=True, parent_option_name='event_left_extension_nv',
                  help="Extends events this many ns to the left"),
-    strax.Option('event_resolving_time_mv', default=300,
+    strax.Option('event_resolving_time_mv', default=300, infer_dtype=False,
                  child_option=True, parent_option_name='event_resolving_time_nv',
                  help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_mv', default=3,
+    strax.Option('event_min_hits_mv', default=3, infer_dtype=False,
                  child_option=True, parent_option_name='event_min_hits_nv',
                  help="Minimum number of fully confined hitlets to define an event."),
 )
