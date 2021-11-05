@@ -36,8 +36,9 @@ class PeakShadow(strax.Plugin):
         roi_shadow = np.zeros(len(peaks), dtype=roi_dt)
         n_seconds = self.config['time_window_backward']
         n_drift_time = self.config['skip_drift_time']
-        roi_shadow['time'] = peaks['center_time'] - n_seconds
-        roi_shadow['endtime'] = peaks['center_time'] - n_drift_time
+        # Use 'time', otherwise this peaks center_time - pre s2 center_time may equals to 0
+        roi_shadow['time'] = peaks['time'] - n_seconds
+        roi_shadow['endtime'] = peaks['time'] - n_drift_time
 
         mask_pre_s2 = (peaks['area'] > self.config['pre_s2_area_threshold']) & (peaks['type']==2)
         split_peaks = strax.split_touching_windows(peaks[mask_pre_s2], roi_shadow)
