@@ -61,6 +61,8 @@ def _compute_shadow(peaks, split_peaks, res):
     for p_i, p_a in enumerate(peaks):
         new_shadow = 0
         for s2_a in split_peaks[p_i]:
+            if p_a['time'] - s2_a['center_time'] <= 0:
+                continue
             new_shadow = s2_a['area'] / (p_a['time'] - s2_a['center_time'])
             if new_shadow > res['shadow'][p_i]:
                 res['shadow'][p_i] = new_shadow
