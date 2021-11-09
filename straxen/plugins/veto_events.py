@@ -475,10 +475,14 @@ class muVETOEvents(nVETOEvents):
         return super().compute(hitlets_mv, start, end)
 
 
-class nVETOEvents(strax.OverlapWindowPlugin):
+@strax.takes_config(
+    strax.Option('hardware_delay', default=0, type=int,
+                 help="Hardware delay to be added to the set electronics offset."),
+)
+class nVETOEventsSync(strax.OverlapWindowPlugin):
     """
     Plugin which computes time stamps which are synchronized with the
-    TPC.
+    TPC. Uses delay set in the DAQ.
     """
     depends_on = 'events_nv'
     provides = 'events_sync_nv'
@@ -502,7 +506,8 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return dtype
 
     def setup(self):
-        self.total_delay =
+        self.total_delay = get_delay(self.run_id)
+        self.total_delay += self.config['hardware_delay']
 
     def compute(self, events_nv, start, end):
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
@@ -511,3 +516,39 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         events_sync_nv['time_sync'] = events_nv['time'] + self.total_delay
         events_sync_nv['endtime_sync'] = events_nv['time'] + self.total_delay
         return events_sync_nv
+
+
+def get_delay(run_id):
+    """
+    Function which returns the total delay between TPC and veto for a
+    given run_id. Returns nan if
+    """
+    try:
+        import utilix
+    except ModuleNotFoundError:
+        return np.nan
+
+    delay = np.nan
+    if straxen.utilix_is_configured():
+        run_db = utilix.DB()
+        run_meta = run_db.get_doc(run_id)
+        delay = _get_delay(run_meta)
+
+    return delay
+
+
+def _get_delay(run_meta):
+    """
+    Loops over registry entries for correct entries and computes delay.
+    """
+    for item in run_meta['daq_config']['registers']:
+        if (item['reg'] == '8034') & (item['board'] == 'tpc'):
+            delay_tpc = item['val']
+            delay_tpc = int('0x'+delay_tpc, 16)
+            delay_tpc = 2*delay_tpc*10
+        if (item['reg'] == '8170') & (item['board'] == 'neutron_veto'):
+            delay_nveto = item['val']
+            delay_nveto = int('0x'+delay_nveto, 16)
+            delay_nveto = 16*delay_nveto  # Delay is specified as multiple of 16 ns
+    delay = delay_tpc - delay_nveto
+    return delay
