@@ -479,7 +479,7 @@ class muVETOEvents(nVETOEvents):
     strax.Option('hardware_delay', default=0, type=int,
                  help="Hardware delay to be added to the set electronics offset."),
 )
-class nVETOEventsSync(strax.OverlapWindowPlugin):
+class nVETOEventsSync(strax.Plugin):
     """
     Plugin which computes time stamps which are synchronized with the
     TPC. Uses delay set in the DAQ.
@@ -515,7 +515,7 @@ class nVETOEventsSync(strax.OverlapWindowPlugin):
         events_sync_nv['time'] = events_nv['time']
         events_sync_nv['endtime'] = events_nv['endtime']
         events_sync_nv['time_sync'] = events_nv['time'] + self.total_delay
-        events_sync_nv['endtime_sync'] = events_nv['time'] + self.total_delay
+        events_sync_nv['endtime_sync'] = events_nv['endtime'] + self.total_delay
         return events_sync_nv
 
 
