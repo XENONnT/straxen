@@ -39,7 +39,6 @@ class nVETOVetoRegions(strax.OverlapWindowPlugin):
     save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
-    ends_with = '_nv'
 
     def get_window_size(self):
         return 10 * (self.config['veto_left_extension_nv'] + self.config['veto_right_extension_nv'])
@@ -150,7 +149,6 @@ class muVETOVetoRegions(nVETOVetoRegions):
     save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
-    ends_with = '_mv'
     child_plugin = True
 
     def get_window_size(self):

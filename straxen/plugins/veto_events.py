@@ -29,11 +29,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     depends_on = 'hitlets_nv'
     provides = 'events_nv'
     data_kind = 'events_nv'
-
     compressor = 'zstd'
-
-    # Needed in case we make again an muVETO child.
-    ends_with = '_nv'
 
     __version__ = '0.0.2'
     events_seen = 0
@@ -239,12 +235,7 @@ class nVETOEventPositions(strax.Plugin):
     depends_on = ('events_nv', 'hitlets_nv')
     data_kind = 'events_nv'
     provides = 'event_positions_nv'
-
-    loop_over = 'events_nv'
     compressor = 'zstd'
-
-    # Needed in case we make again an muVETO child.
-    ends_with = '_nv'
 
     __version__ = '0.1.0'
 
@@ -454,9 +445,6 @@ class muVETOEvents(nVETOEvents):
     data_kind = 'events_mv'
 
     compressor = 'zstd'
-
-    # Needed in case we make again an muVETO child.
-    ends_with = '_mv'
     child_plugin = True
 
     __version__ = '0.0.1'
@@ -486,11 +474,7 @@ class nVETOEventsSync(strax.OverlapWindowPlugin):
     """
     depends_on = 'events_nv'
     provides = 'events_sync_nv'
-
-    # Needed in case we make again an muVETO child.
-    ends_with = '_nv'
     save_when = strax.SaveWhen.EXPLICIT
-
     __version__ = '0.0.1'
 
     def infer_dtype(self):

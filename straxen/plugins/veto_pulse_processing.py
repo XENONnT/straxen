@@ -55,7 +55,6 @@ class nVETOPulseProcessing(strax.Plugin):
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
     data_kind = 'records_nv'
-    ends_with = '_nv'
 
     def setup(self):
         if isinstance(self.config['baseline_samples_nv'], int):
