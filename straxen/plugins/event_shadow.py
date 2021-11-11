@@ -6,9 +6,11 @@ export, __all__ = strax.exporter()
 @export
 class EventShadow(strax.Plugin):
     """
-    This plugin can find and calculate the previous S2 shadow at event level,
-    with time window backward and previous S2 area as options.
-    It also gives the area and position infomation of these previous S2s.
+    This plugin can calculate shadow at event level.
+    It depends on peak-level shadow.
+    The event-level shadow is its first S2 peak's shadow.
+    If no S2 peaks, the shadow will be nan. 
+    It also gives the position infomation of the previous S2s.
     """
     __version__ = '0.0.7'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
