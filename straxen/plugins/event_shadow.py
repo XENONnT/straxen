@@ -22,7 +22,7 @@ class EventShadow(strax.Plugin):
                  ('shadow_index', np.int32, 'max shadow peak index in event'),
                  ('pre_s2_x', np.float32, 'x of previous s2 peak causing shadow [cm]'),
                  ('pre_s2_y', np.float32, 'y of previous s2 peak causing shadow [cm]'),
-                 ('shadow_distance', np.float32, 'distance to the previous s2 peak causing the max shadow [cm]')]
+                 ('shadow_distance', np.float32, 'distance to the s2 peak with max shadow [cm]')]
         dtype += strax.time_fields
         return dtype
 
