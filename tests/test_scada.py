@@ -4,6 +4,7 @@ import unittest
 import requests
 
 
+@unittest.skip("Skip due to unreliable behavior of server.")
 class SCInterfaceTest(unittest.TestCase):
 
     def setUp(self):
