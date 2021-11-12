@@ -4,10 +4,8 @@ import unittest
 import requests
 
 
-
 class SCInterfaceTest(unittest.TestCase):
-    
-    
+
     def setUp(self):
         self.resources_available()
         # Simple query test:
@@ -16,7 +14,6 @@ class SCInterfaceTest(unittest.TestCase):
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
         self.start += 10**6
         self.end = self.start + 5*10**9
-
 
     def test_query_sc_values(self):
         """
@@ -47,7 +44,7 @@ class SCInterfaceTest(unittest.TestCase):
         assert np.all(np.isclose(df[:4], 2.079859)), 'First four values deviate from queried values.'
         assert np.all(np.isclose(df[4:], 2.117820)), 'Last two values deviate from queried values.'
 
-        print('Testing downsampling and averaging option:')
+        print('Testing down sampling and averaging option:')
         parameters = {'SomeParameter': 'XE1T.CRY_TE101_TCRYOBOTT_AI.PI'}
         df_all = self.sc.get_scada_values(parameters,
                                           start=self.start,
@@ -75,23 +72,23 @@ class SCInterfaceTest(unittest.TestCase):
 
         # Compare average for each second value:
         for ind, i in enumerate([0, 2, 4]):
-            assert np.isclose(np.mean(df_all[i:i + 2]), df['SomeParameter'][ind]), 'Averaging is incorrect.'
+            is_correct = np.isclose(np.mean(df_all[i:i + 2]), df['SomeParameter'][ind])
+            assert is_correct, 'Averaging is incorrect.'
 
         # Testing lab query type:
         df = self.sc.get_scada_values(parameters,
                                       start=self.start,
                                       end=self.end,
                                       query_type_lab=True,)
+        is_sorrect = np.all(df['SomeParameter'] // 1 == -96)
+        assert is_sorrect, 'Not all values are correct for query type lab.'
 
-        assert np.all(df['SomeParameter'] // 1 == -96), 'Not all values are correct for query type lab.'
-
-        
-    def test_average_scada(self):
+    @staticmethod
+    def test_average_scada():
         t = np.arange(0, 100, 10)
         t_t, t_a = straxen.scada._average_scada(t / 1e9, t, 1)
         assert len(t_a) == len(t), 'Scada deleted some of my 10 datapoints!'
 
-        
     def resources_available(self):
         """
         Exception to skip test if external requirements are not met. Otherwise define 
