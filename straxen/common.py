@@ -43,6 +43,9 @@ n_mveto_pmts = 84
 
 tpc_pmt_radius = 7.62 / 2  # cm
 
+perp_wire_angle = np.deg2rad(30)
+perp_wire_x_rot_pos = 13.06 #[cm]
+
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
 # it's needed in analyses
@@ -54,6 +57,13 @@ TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
 INFINITY_64BIT_SIGNED = 9223372036854775807
 
+@export
+def rotate_perp_wires(x_obs, y_obs):
+    """Returns x and y in the rotated plane where the perpendicular wires
+    area vertically aligned (parallel to the y-axis)."""
+    x_rot = np.cos(perp_wire_angle) * x_obs - np.sin(perp_wire_angle) * y_obs
+    y_rot = np.sin(perp_wire_angle) * x_obs + np.cos(perp_wire_angle) * y_obs
+    return x_rot, y_rot
 
 @export
 def pmt_positions(xenon1t=False):
