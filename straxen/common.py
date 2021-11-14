@@ -24,7 +24,7 @@ export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
             'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E',
             'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius', 'cryostat_outer_radius',
-            'INFINITY_64BIT_SIGNED']
+            'perp_wire_angle', 'perp_wire_x_rot_pos','INFINITY_64BIT_SIGNED']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -43,6 +43,9 @@ n_mveto_pmts = 84
 
 tpc_pmt_radius = 7.62 / 2  # cm
 
+perp_wire_angle = np.deg2rad(30)
+perp_wire_x_rot_pos = 13.06 #[cm]
+
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
 # it's needed in analyses
@@ -54,6 +57,15 @@ TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
 INFINITY_64BIT_SIGNED = 9223372036854775807
 
+@export
+def rotate_perp_wires(x_obs, y_obs, angle_extra = 0):
+    """Returns x and y in the rotated plane where the perpendicular wires 
+    area vertically aligned (parallel to the y-axis). Accepts addid to the 
+    rotation angle with `angle_extra` [deg]"""
+    angle_extra_rad = np.deg2rad(angle_extra)
+    x_rot = np.cos(perp_wire_angle + angle_extra_rad) * x_obs - np.sin(perp_wire_angle + angle_extra_rad) * y_obs
+    y_rot = np.sin(perp_wire_angle + angle_extra_rad) * x_obs + np.cos(perp_wire_angle + angle_extra_rad) * y_obs
+    return x_rot, y_rot
 
 @export
 def pmt_positions(xenon1t=False):
