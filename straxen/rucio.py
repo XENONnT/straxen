@@ -122,6 +122,13 @@ class RucioFrontend(strax.StorageFrontend):
 
         raise strax.DataNotAvailable
 
+    def find(self, key: strax.DataKey,
+             write=False,
+             check_broken=False,
+             allow_incomplete=False,
+             fuzzy_for=tuple(), fuzzy_for_options=tuple()):
+        return super().find(key, write, check_broken, allow_incomplete, fuzzy_for, fuzzy_for_options)
+
     def get_rse_prefix(self, rse):
         if HAVE_ADMIX:
             prefix = admix.rucio.get_rse_prefix(rse)
