@@ -81,6 +81,12 @@ parser.add_argument(
 parser.add_argument(
     '--max_messages', type=int, default=10,
     help="number of max mailbox messages")
+parser.add_argument(
+    '--pyroscope', action='store_true',
+    help="Use pyroscope profiler")
+parser.add_argument(
+    '--pyro_address', type=str, default='http://pyroscope:4040',
+    help="Address of the pyroscope server.")
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument(
@@ -95,12 +101,7 @@ actions.add_argument(
 actions.add_argument(
     '--undying', action='store_true',
     help="Except any error and ignore it")
-actions.add_argument(
-    '--pyroscope', action='store_true',
-    help="Use pyroscope profiler")
-parser.add_argument(
-    '--pyro_address', type=str, default='http://pyroscope:4040',
-    help="Address of the pyroscope server.")
+
 args = parser.parse_args()
 
 ##
