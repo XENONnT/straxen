@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
                  help='Search for S2s causing shadow in this time window [ns]'),
     strax.Option('skip_drift_time', default=0,
                  help='Deduct max drift time to avoid peak interference in a single event [ns]'))
-class PeakShadow(strax.Plugin):
+class PeakShadow(strax.OverlapWindowPlugin):
     """
     This plugin can find and calculate the previous S2 shadow at peak level,
     with time window backward and previous S2 area as options.
@@ -24,6 +24,9 @@ class PeakShadow(strax.Plugin):
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
+
+    def get_window_size(self):
+        return self.config['time_window_backward']
 
     def infer_dtype(self):
         dtype = [('shadow', np.float32, 'previous s2 shadow [PE/ns]'),
@@ -61,7 +64,7 @@ def compute_shadow(peaks, split_peaks, res):
         return _compute_shadow(peaks, split_peaks, res)
 
 
-@numba.njit()
+@numba.njit(cache=True)
 def _compute_shadow(peaks, split_peaks, res):
     for p_i, p_a in enumerate(peaks):
         new_shadow = 0
