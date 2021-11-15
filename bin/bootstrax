@@ -95,12 +95,6 @@ actions.add_argument(
 actions.add_argument(
     '--undying', action='store_true',
     help="Except any error and ignore it")
-actions.add_argument(
-    '--pyroscope', action='store_true',
-    help="Use pyroscope profiler")
-parser.add_argument(
-    '--pyro_address', type=str, default='http://pyroscope:4040',
-    help="Address of the pyroscope server.")
 args = parser.parse_args()
 
 ##
@@ -1669,15 +1663,6 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
-    if args.pyroscope:
-        import pyroscope
-        pyroscope.configure(
-            app_name       = "bootstrax",
-            server_address = args.pyro_addres,
-            tags           = {
-            }
-        )
-
     if not args.undying:
         main()
     else:
