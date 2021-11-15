@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
 def parse_val(val):
     try:
         val = literal_eval(val)
-    except:
+    except Exception:
         pass
     return val
 
