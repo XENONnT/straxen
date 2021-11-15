@@ -16,16 +16,16 @@ channel_list = [i for i in range(494)]
 @export
 @strax.takes_config(
     strax.Option('baseline_window',
-                 default=(0,40), infer_dtype=False,
+                 default=(0,40), infer_type=False,
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(78, 116), infer_dtype=False,
+                 default=(78, 116), infer_type=False,
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(10, 48), infer_dtype=False,
+                 default=(10, 48), infer_type=False,
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
-                 default=(tuple(channel_list)), infer_dtype=False,
+                 default=(tuple(channel_list)), infer_type=False,
                  help="List of PMTs. Defalt value: all the PMTs"))
 
 class LEDCalibration(strax.Plugin):

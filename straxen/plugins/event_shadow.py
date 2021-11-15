@@ -5,9 +5,9 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('pre_s2_area_threshold', default=1000, infer_dtype=False,
+    strax.Option('pre_s2_area_threshold', default=1000, infer_type=False,
                  help='Only take S2s large than this into account when calculating EventShadow.'),
-    strax.Option('time_window_backward', default=int(3e9), infer_dtype=False,
+    strax.Option('time_window_backward', default=int(3e9), infer_type=False,
                  help='Search for S2s causing shadow in this time window'))
 class EventShadow(strax.Plugin):
     """

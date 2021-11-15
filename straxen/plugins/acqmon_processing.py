@@ -15,9 +15,9 @@ T_NO_VETO_FOUND = int(3.6e+12)
 
 
 @export
-@strax.takes_config(strax.Option('hit_min_amplitude_aqmon', default=50, track=True, infer_dtype=False,
+@strax.takes_config(strax.Option('hit_min_amplitude_aqmon', default=50, track=True, infer_type=False,
                                  help='Minimum hit threshold in ADC*counts above baseline'),
-                    strax.Option('baseline_samples_aqmon', default=10, track=True, infer_dtype=False,
+                    strax.Option('baseline_samples_aqmon', default=10, track=True, infer_type=False,
                                  help='Number of samples to use at the start of the pulse to determine the baseline'))
 class AqmonHits(strax.Plugin):
     """ Find hits in acquisition monitor data. These hits could be 

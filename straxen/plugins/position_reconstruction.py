@@ -11,7 +11,7 @@ export, __all__ = strax.exporter()
 
 DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
                  help="default reconstruction algorithm that provides (x,y)",
-                 default="mlp", infer_dtype=False,
+                 default="mlp", infer_type=False,
                  )])
 
 
@@ -19,8 +19,8 @@ DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorit
 @strax.takes_config(
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10, infer_dtype=False,),
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_dtype=False,
+                 default=10, infer_type=False,),
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
                  help="Number of top PMTs")
 )
 class PeakPositionsBaseNT(strax.Plugin):
@@ -127,7 +127,7 @@ class PeakPositionsBaseNT(strax.Plugin):
                  help='Neural network model.' 
                       'If CMT, specify as (mlp_model, ONLINE, True)'
                       'Set to None to skip the computation of this plugin.',
-                 default=('mlp_model', "ONLINE", True), infer_dtype=False,
+                 default=('mlp_model', "ONLINE", True), infer_type=False,
                 )
 )
 class PeakPositionsMLP(PeakPositionsBaseNT):
@@ -142,7 +142,7 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
                  help='Neural network model.' 
                       'If CMT, specify as  (gcn_model, ONLINE, True)'
                       'Set to None to skip the computation of this plugin.',
-                 default=('gcn_model', "ONLINE", True), infer_dtype=False,
+                 default=('gcn_model', "ONLINE", True), infer_type=False,
                 )
 )
 class PeakPositionsGCN(PeakPositionsBaseNT):
@@ -158,7 +158,7 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
                  help='Neural network model.' 
                       'If CMT, specify as (cnn_model, ONLINE, True)'
                       'Set to None to skip the computation of this plugin.',
-                 default=('cnn_model', "ONLINE", True), infer_dtype=False,
+                 default=('cnn_model', "ONLINE", True), infer_type=False,
                 )
 )
 class PeakPositionsCNN(PeakPositionsBaseNT):
@@ -209,7 +209,7 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
 @export
 @strax.takes_config(
     strax.Option('recon_alg_included', help = 'The list of all reconstruction algorithm considered.',
-                 default = ('_mlp', '_gcn', '_cnn'), infer_dtype=False,
+                 default = ('_mlp', '_gcn', '_cnn'), infer_type=False,
                 )
 )
 class S2ReconPosDiff(strax.Plugin):

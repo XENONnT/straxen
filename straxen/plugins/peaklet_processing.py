@@ -14,13 +14,13 @@ FAKE_MERGED_S2_TYPE = -42
 
 @export
 @strax.takes_config(
-    strax.Option('peaklet_gap_threshold', default=700, infer_dtype=False,
+    strax.Option('peaklet_gap_threshold', default=700, infer_type=False,
                  help="No hits for this many ns triggers a new peak"),
-    strax.Option('peak_left_extension', default=30, infer_dtype=False,
+    strax.Option('peak_left_extension', default=30, infer_type=False,
                  help="Include this many ns left of hits in peaks"),
-    strax.Option('peak_right_extension', default=200, infer_dtype=False,
+    strax.Option('peak_right_extension', default=200, infer_type=False,
                  help="Include this many ns right of hits in peaks"),
-    strax.Option('peak_min_pmts', default=2, infer_dtype=False,
+    strax.Option('peak_min_pmts', default=2, infer_type=False,
                  help="Minimum number of contributing PMTs needed to define a peak"),
     strax.Option('peak_split_gof_threshold',
                  # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
@@ -30,39 +30,39 @@ FAKE_MERGED_S2_TYPE = -42
                  default=(
                      None,  # Reserved
                      ((0.5, 1.0), (6.0, 0.4)),
-                     ((2.5, 1.0), (5.625, 0.4))), infer_dtype=False,
+                     ((2.5, 1.0), (5.625, 0.4))), infer_type=False,
                  help='Natural breaks goodness of fit/split threshold to split '
                       'a peak. Specify as tuples of (log10(area), threshold).'),
-    strax.Option('peak_split_filter_wing_width', default=70, infer_dtype=False,
+    strax.Option('peak_split_filter_wing_width', default=70, infer_type=False,
                  help='Wing width of moving average filter for '
                       'low-split natural breaks'),
-    strax.Option('peak_split_min_area', default=40., infer_dtype=False,
+    strax.Option('peak_split_min_area', default=40., infer_type=False,
                  help='Minimum area to evaluate natural breaks criterion. '
                       'Smaller peaks are not split.'),
-    strax.Option('peak_split_iterations', default=20, infer_dtype=False,
+    strax.Option('peak_split_iterations', default=20, infer_type=False,
                  help='Maximum number of recursive peak splits to do.'),
-    strax.Option('diagnose_sorting', track=False, default=False, infer_dtype=False,
+    strax.Option('diagnose_sorting', track=False, default=False, infer_type=False,
                  help="Enable runtime checks for sorting and disjointness"),
-    strax.Option('gain_model', infer_dtype=False,
+    strax.Option('gain_model', infer_type=False,
                  help='PMT gain model. Specify as '
                  '(str(model_config), str(version), nT-->boolean'),
-    strax.Option('tight_coincidence_window_left', default=50, infer_dtype=False,
+    strax.Option('tight_coincidence_window_left', default=50, infer_type=False,
                  help="Time range left of peak center to call "
                       "a hit a tight coincidence (ns)"),
-    strax.Option('tight_coincidence_window_right', default=50, infer_dtype=False,
+    strax.Option('tight_coincidence_window_right', default=50, infer_type=False,
                  help="Time range right of peak center to call "
                       "a hit a tight coincidence (ns)"),
     strax.Option('n_tpc_pmts', type=int,
                  help='Number of TPC PMTs'),
-    strax.Option('saturation_correction_on', default=True, infer_dtype=False,
+    strax.Option('saturation_correction_on', default=True, infer_type=False,
                  help='On off switch for saturation correction'),
-    strax.Option('saturation_reference_length', default=100, infer_dtype=False,
+    strax.Option('saturation_reference_length', default=100, infer_type=False,
                  help="Maximum number of reference sample used "
                       "to correct saturated samples"),
-    strax.Option('saturation_min_reference_length', default=20, infer_dtype=False,
+    strax.Option('saturation_min_reference_length', default=20, infer_type=False,
                  help="Minimum number of reference sample used "
                       "to correct saturated samples"),
-    strax.Option('peaklet_max_duration', default=int(10e6), infer_dtype=False,
+    strax.Option('peaklet_max_duration', default=int(10e6), infer_type=False,
                  help="Maximum duration [ns] of a peaklet"),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
@@ -484,18 +484,18 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
 @export
 @strax.takes_config(
-    strax.Option('n_he_pmts', track=False, default=752, infer_dtype=False,
+    strax.Option('n_he_pmts', track=False, default=752, infer_type=False,
                  help="Maximum channel of the he channels"),
-    strax.Option('he_channel_offset', track=False, default=500, infer_dtype=False,
+    strax.Option('he_channel_offset', track=False, default=500, infer_type=False,
                  help="Minimum channel number of the he channels"),
-    strax.Option('le_to_he_amplification', default=20, track=True, infer_dtype=False,
+    strax.Option('le_to_he_amplification', default=20, track=True, infer_type=False,
                  help="Difference in amplification between low energy and high "
                       "energy channels"),
-    strax.Option('peak_min_pmts_he', default=2, infer_dtype=False,
+    strax.Option('peak_min_pmts_he', default=2, infer_type=False,
                  child_option=True, parent_option_name='peak_min_pmts',
                  track=True,
                  help="Minimum number of contributing PMTs needed to define a peak"),
-    strax.Option('saturation_correction_on_he', default=False, infer_dtype=False,
+    strax.Option('saturation_correction_on_he', default=False, infer_type=False,
                  child_option=True, parent_option_name='saturation_correction_on',
                  track=True,
                  help='On off switch for saturation correction for High Energy'
@@ -543,13 +543,13 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_rise_time', default=110, infer_dtype=False,
+    strax.Option('s1_max_rise_time', default=110, infer_type=False,
                  help="Maximum S1 rise time for < 100 PE [ns]"),
-    strax.Option('s1_max_rise_time_post100', default=200, infer_dtype=False,
+    strax.Option('s1_max_rise_time_post100', default=200, infer_type=False,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=2, infer_dtype=False,
+    strax.Option('s1_min_coincidence', default=2, infer_type=False,
                  help="Minimum tight coincidence necessary to make an S1"),
-    strax.Option('s2_min_pmts', default=4, infer_dtype=False,
+    strax.Option('s2_min_pmts', default=4, infer_type=False,
                  help="Minimum number of PMTs contributing to an S2"))
 class PeakletClassification(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
@@ -606,21 +606,21 @@ class PeakletClassificationHighEnergy(PeakletClassification):
 
 @export
 @strax.takes_config(
-    strax.Option('s2_merge_max_duration', default=50_000, infer_dtype=False,
+    strax.Option('s2_merge_max_duration', default=50_000, infer_type=False,
                  help="Do not merge peaklets at all if the result would be a peak "
                       "longer than this [ns]"),
     strax.Option('s2_merge_gap_thresholds', default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
-                 infer_dtype=False,
+                 infer_type=False,
                  help="Points to define maximum separation between peaklets to allow "
                       "merging [ns] depending on log10 area of the merged peak\n"
                       "where the gap size of the first point is the maximum gap to allow merging"
                       "and the area of the last point is the maximum area to allow merging. "
                       "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
                  ),
-    strax.Option('gain_model', infer_dtype=False,
+    strax.Option('gain_model', infer_type=False,
                  help='PMT gain model. Specify as '
                       '(str(model_config), str(version), nT-->boolean'),
-    strax.Option('merge_without_s1', default=True, infer_dtype=False,
+    strax.Option('merge_without_s1', default=True, infer_type=False,
                  help="If true, S1s will be igored during the merging. "
                       "It's now possible for a S1 to be inside a S2 post merging"),
 )
@@ -803,9 +803,9 @@ class MergedS2sHighEnergy(MergedS2s):
 
 @export
 @strax.takes_config(
-    strax.Option('diagnose_sorting', track=False, default=False, infer_dtype=False,
+    strax.Option('diagnose_sorting', track=False, default=False, infer_type=False,
                  help="Enable runtime checks for sorting and disjointness"),
-    strax.Option('merge_without_s1', default=True, infer_dtype=False,
+    strax.Option('merge_without_s1', default=True, infer_type=False,
                  help="If true, S1s will be igored during the merging. "
                       "It's now possible for a S1 to be inside a S2 post merging"),
 )

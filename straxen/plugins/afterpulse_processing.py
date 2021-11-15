@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('gain_model', infer_dtype=False,
+    strax.Option('gain_model', infer_type=False,
                  help='PMT gain model. Specify as (model_type, model_config)',
                  ),
     strax.Option('n_tpc_pmts',
@@ -17,19 +17,19 @@ export, __all__ = strax.exporter()
                  help="Number of PMTs in TPC",
                  ),
     strax.Option('LED_window_left',
-                 default=50, infer_dtype=False,
+                 default=50, infer_type=False,
                  help='Left boundary of sample range for LED pulse integration',
                  ),
     strax.Option('LED_window_right',
-                 default=100, infer_dtype=False,
+                 default=100, infer_type=False,
                  help='Right boundary of sample range for LED pulse integration',
                  ),
     strax.Option('baseline_samples',
-                 default=40, infer_dtype=False,
+                 default=40, infer_type=False,
                  help='Number of samples to use at start of WF to determine the baseline',
                  ),
     strax.Option('hit_min_amplitude',
-                 track=True, infer_dtype=False,
+                 track=True, infer_type=False,
                  default=('hit_thresholds_tpc', 'ONLINE', True),
                  help='Minimum hit amplitude in ADC counts above baseline. '
                       'Specify as a tuple of length n_tpc_pmts, or a number,'
@@ -39,13 +39,13 @@ export, __all__ = strax.exporter()
                       'which means we are using cmt.',
                  ),
     strax.Option('hit_min_height_over_noise',
-                 default=4, infer_dtype=False,
+                 default=4, infer_type=False,
                  help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
                       'Actual threshold used is max(hit_min_amplitude, hit_min_'
                       'height_over_noise * baseline_rms).',
                  ),
     strax.Option('save_outside_hits',
-                 default=(3, 20), infer_dtype=False,
+                 default=(3, 20), infer_type=False,
                  help='Save (left, right) samples besides hits; cut the rest',
                  ),
 )

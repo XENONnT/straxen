@@ -50,13 +50,13 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="Directory where readers put data"),
 
     # DAQReader settings
-    strax.Option('safe_break_in_pulses', default=1000, track=False, infer_dtype=False,
+    strax.Option('safe_break_in_pulses', default=1000, track=False, infer_type=False,
                  help="Time (ns) between pulses indicating a safe break "
                       "in the datastream -- gaps of this size cannot be "
                       "interior to peaklets."),
-    strax.Option('erase', default=False, track=False, infer_dtype=False,
+    strax.Option('erase', default=False, track=False, infer_type=False,
                  help="Delete reader data after processing"),
-    strax.Option('channel_map', track=False, type=immutabledict, infer_dtype=False,
+    strax.Option('channel_map', track=False, type=immutabledict, infer_type=False,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."))
 class DAQReader(strax.Plugin):
