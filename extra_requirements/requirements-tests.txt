@@ -1,5 +1,6 @@
 # File for the requirements of straxen with the automated tests
 blosc==1.10.6                                   # Strax dependency
+bokeh==2.3.3
 boltons==21.0.0
 datashader==0.13.0
 dask==2021.10.0
