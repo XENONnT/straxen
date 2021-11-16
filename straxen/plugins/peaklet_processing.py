@@ -673,7 +673,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s = strax.merge_peaks(
                 peaklets,
                 start_merge_at, end_merge_at,
-                max_buffer=int(np.gcd.reduce(peaklets['dt'])),
+                max_buffer=int(self.config['s2_merge_max_duration']//np.gcd.reduce(peaklets['dt'])),
             )
             merged_s2s['type'] = 2
             
