@@ -38,8 +38,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         return dtype
 
     def compute(self, peaks):
-        roi_dt = np.dtype([('time', int), ('endtime', int)])
-        roi_shadow = np.zeros(len(peaks), dtype=roi_dt)
+        roi_shadow = np.zeros(len(peaks), dtype=strax.time_fields)
         n_seconds = self.config['time_window_backward']
         n_drift_time = self.config['skip_drift_time']
         roi_shadow['time'] = peaks['center_time'] - n_seconds
