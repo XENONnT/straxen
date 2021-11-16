@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
 def parse_val(val):
     try:
         val = literal_eval(val)
-    except Exception:
+    except ValueError:
         pass
     return val
 
@@ -34,7 +34,12 @@ class URLConfig(strax.Config):
     QUERY_SEP = '?'
     PLUGIN_ATTR_PREFIX = 'plugin.'
 
-    def __init__(self, cache=False, **kwargs):
+    def __init__(self, cache=0, **kwargs):
+        """
+        :param cache: number of values to keep in cache, 
+                      if set to True will cache all values
+        :param \**kwargs: additional keyword arguments accepted by strax.Option              
+        """
         self.final_type = OMITTED
         super().__init__(**kwargs)
         # Ensure backwards compatibility with Option validation
@@ -129,6 +134,9 @@ class URLConfig(strax.Config):
         return {k:v for k,v in kwargs.items() if k in params}
 
     def fetch(self, plugin):
+        '''override the Config.fetch method
+           this is called when the attribute is accessed 
+        '''
         # first fetch the user-set value 
         # from the config dictionary
         url = super().fetch(plugin)
@@ -159,9 +167,11 @@ class URLConfig(strax.Config):
         return self.dispatch(url, **kwargs)
  
 @strax.URLConfig.register('cmt')
-def get_correction(name, run_id=0, version='ONLINE', detector='nt', **kwargs):
+def get_correction(name, run_id=None, version='ONLINE', detector='nt', **kwargs):
     '''Get value for name from CMT
     '''
+    if run_id is None:
+        raise ValueError('Attempting to fetch a correction without a run id.')
     return straxen.get_correction_from_cmt(run_id, ( name, version, detector=='nt'))
 
 @strax.URLConfig.register('resource')
