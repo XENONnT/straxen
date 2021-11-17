@@ -464,7 +464,7 @@ class muVETOEvents(nVETOEvents):
 
 
 @strax.takes_config(
-    strax.Option('hardware_delay', default=0, type=int,
+    strax.Option('hardware_delay_nv', default=0, type=int,
                  help="Hardware delay to be added to the set electronics offset."),
 )
 class nVETOEventsSync(strax.Plugin):
@@ -491,10 +491,9 @@ class nVETOEventsSync(strax.Plugin):
 
     def setup(self):
         self.total_delay = get_delay(self.run_id)
-        self.total_delay += self.config['hardware_delay']
+        self.total_delay += self.config['hardware_delay_nv']
 
-
-    def compute(self, events_nv, start, end):
+    def compute(self, events_nv):
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
         events_sync_nv['time'] = events_nv['time']
         events_sync_nv['endtime'] = events_nv['endtime']
@@ -537,3 +536,20 @@ def _get_delay(run_meta):
             delay_nveto = 16*delay_nveto  # Delay is specified as multiple of 16 ns
     delay = delay_tpc - delay_nveto
     return delay
+
+
+@strax.takes_config(
+    strax.Option('hardware_delay_mv', default=0, type=int,
+                 help="Hardware delay to be added to the set electronics offset."),
+)
+class mVETOEventSync(nVETOEventsSync):
+    depends_on = 'events_mv'
+    provides = 'events_sync_mv'
+    __version__ = '0.0.1'
+    child_plugin = True
+
+    def setup(self):
+        self.total_delay = self.config['hardware_delay_mv']
+
+    def compute(self, events_mv):
+        return super().compute(events_mv)
