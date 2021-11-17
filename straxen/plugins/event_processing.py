@@ -532,7 +532,7 @@ class EventPositions(strax.Plugin):
                        'r_field_distortion_correction': delta_r,
                        'theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
                        'z_naive': z_obs,
-                       'z': z_obs,
+                       'z': z_cor,
                        'z_field_distortion_correction': delta_z
                        })
 
