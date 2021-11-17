@@ -532,6 +532,7 @@ def _swap_values_in_array(data_arr, buffer, items, replacements):
                 break
     return buffer
 
+
 ##
 # Old XENON1T Stuff
 ##
