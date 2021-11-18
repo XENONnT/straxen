@@ -1670,7 +1670,7 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
-    if args.pyroscope:
+    if args.pyroscope and args.production:
         import pyroscope
         pyroscope.configure(
             app_name       = "bootstrax",
