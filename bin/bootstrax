@@ -652,7 +652,7 @@ def log_warning(message, priority='warning', run_id=None):
     """
     if not args.production:
         return
-    getattr(log, priority)(message)
+    getattr(log, priority.lower())(message)
     # Log according to redax rules
     # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
     warning_message = {
