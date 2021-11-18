@@ -480,12 +480,10 @@ class nVETOEventsSync(strax.Plugin):
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
-        dtype += [(('Time of the event synchronized according to the '
-                    'total digitizer delay.',
+        dtype += [(('Time of the event synchronized according to the total digitizer delay.',
                     'time_sync'), np.int64),
-                  (('Endtime of the event synchronized according to the '
-                    'total digitizer delay.',
-                     'endtime_sync'), np.int64),
+                  (('Endtime of the event synchronized according to the total digitizer delay.',
+                    'endtime_sync'), np.int64),
                   ]
         return dtype
 
@@ -526,11 +524,11 @@ def _get_delay(run_meta):
     Loops over registry entries for correct entries and computes delay.
     """
     for item in run_meta['daq_config']['registers']:
-        if (item['reg'] == '8034') & (item['board'] == 'tpc'):
+        if (item['reg'] == '8034') and (item['board'] == 'tpc'):
             delay_tpc = item['val']
             delay_tpc = int('0x'+delay_tpc, 16)
             delay_tpc = 2*delay_tpc*10
-        if (item['reg'] == '8170') & (item['board'] == 'neutron_veto'):
+        if (item['reg'] == '8170') and (item['board'] == 'neutron_veto'):
             delay_nveto = item['val']
             delay_nveto = int('0x'+delay_nveto, 16)
             delay_nveto = 16*delay_nveto  # Delay is specified as multiple of 16 ns
@@ -543,6 +541,10 @@ def _get_delay(run_meta):
                  help="Hardware delay to be added to the set electronics offset."),
 )
 class mVETOEventSync(nVETOEventsSync):
+    """
+    Plugin which computes synchronized timestamps for the muon-veto with
+    respect to the TPC.
+    """
     depends_on = 'events_mv'
     provides = 'events_sync_mv'
     __version__ = '0.0.1'
