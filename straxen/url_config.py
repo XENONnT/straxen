@@ -28,7 +28,6 @@ class URLConfig(strax.Config):
     unrecognized protocol returns identity
     inspired by dasks Dispatch and fsspec fs protocols.
     """
-    
     _LOOKUP = {}
     SCHEME_SEP = '://'
     QUERY_SEP = '?'
