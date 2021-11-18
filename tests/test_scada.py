@@ -94,5 +94,8 @@ class SCInterfaceTest(unittest.TestCase):
         if not straxen.utilix_is_configured('scada','scdata_url',):
             self.skipTest("Cannot test scada since we have no access to xenon secrets.)")
 
-        self.sc = straxen.SCADAInterface(use_progress_bar=False)
-        self.sc.get_new_token()
+        try:
+            self.sc = straxen.SCADAInterface(use_progress_bar=False)
+            self.sc.get_new_token()
+        except requests.exceptions.SSLError:
+            self.skipTest("Cannot reach database since HTTPs certifcate expired.")
