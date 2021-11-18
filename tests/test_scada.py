@@ -4,9 +4,7 @@ import unittest
 import requests
 
 
-@unittest.skip("Skip due to unreliable behavior of server.")
 class SCInterfaceTest(unittest.TestCase):
-
     def setUp(self):
         self.resources_available()
         # Simple query test:
@@ -22,7 +20,6 @@ class SCInterfaceTest(unittest.TestCase):
         return is correct.
         """
         print('Testing SCADAInterface')
-
         parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
         df = self.sc.get_scada_values(parameters,
                                       start=self.start,
@@ -33,7 +30,6 @@ class SCInterfaceTest(unittest.TestCase):
         assert df['SomeParameter'][0] // 1 == 1253, 'First values returned is not corrrect.'
         assert np.all(np.isnan(df['SomeParameter'][1:])), 'Subsequent values are not correct.'
 
-        # Test ffill option:
         print('Testing forwardfill option:')
         parameters = {'SomeParameter': 'XE1T.CRY_FCV104FMON.PI'}
         df = self.sc.get_scada_values(parameters,
@@ -97,7 +93,7 @@ class SCInterfaceTest(unittest.TestCase):
         """
         if not straxen.utilix_is_configured('scada','scdata_url',):
             self.skipTest("Cannot test scada since we have no access to xenon secrets.)")
-        
+
         try:
             self.sc = straxen.SCADAInterface(use_progress_bar=False)
             self.sc.get_new_token()
