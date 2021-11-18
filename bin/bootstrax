@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.1.9'
+__version__ = '1.1.10'
 
 import argparse
 from datetime import datetime, timedelta, timezone
