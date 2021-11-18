@@ -12,6 +12,14 @@ straxen.plugins.acqmon\_processing module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.afterpulse\_processing module
+---------------------------------------------
+
+.. automodule:: straxen.plugins.afterpulse_processing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.daqreader module
 --------------------------------
 
@@ -56,6 +64,14 @@ straxen.plugins.event\_processing module
 ----------------------------------------
 
 .. automodule:: straxen.plugins.event_processing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.event\_shadow module
+------------------------------------
+
+.. automodule:: straxen.plugins.event_shadow
    :members:
    :undoc-members:
    :show-inheritance:

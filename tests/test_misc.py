@@ -16,10 +16,12 @@ def test_widgets():
     start_utc, end_utc = tw.get_start_end()
 
     h_in_ns_unix = 60*60*10**9
-    unix_conversion_worked = start_utc - start == h_in_ns_unix or start_utc - start == 2 * h_in_ns_unix
-    assert unix_conversion_worked
-    unix_conversion_worked = start_utc - end == h_in_ns_unix or start_utc - end == 2 * h_in_ns_unix
-    assert unix_conversion_worked
+    assert (start_utc - start == h_in_ns_unix 
+            or start_utc - start == 2 * h_in_ns_unix
+            or start_utc - start == 0 * h_in_ns_unix)
+    assert (start_utc - end == h_in_ns_unix 
+            or start_utc - end == 2 * h_in_ns_unix
+            or start_utc - end == 0 * h_in_ns_unix)
 
 
 def test_change_in_fields():
