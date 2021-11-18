@@ -532,6 +532,8 @@ class EventPositions(strax.Plugin):
                        'r_field_distortion_correction': delta_r,
                        'theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
                        'z_naive': z_obs,
+                       # using z_obs in agreement with the dtype description
+                       # the FDC for z (z_cor) is found to be not reliable (see #527)
                        'z': z_obs,
                        'z_field_distortion_correction': delta_z
                        })

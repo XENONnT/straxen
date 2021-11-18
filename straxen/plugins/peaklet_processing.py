@@ -632,7 +632,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.4.0'
+    __version__ = '0.4.1'
 
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
@@ -674,8 +674,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s = strax.merge_peaks(
                 peaklets,
                 start_merge_at, end_merge_at,
-                max_buffer=int(self.config['s2_merge_max_duration']
-                               // peaklets['dt'].min()))
+                max_buffer=int(self.config['s2_merge_max_duration']//np.gcd.reduce(peaklets['dt'])),
+            )
             merged_s2s['type'] = 2
             
             # Updated time and length of lone_hits and sort again:
