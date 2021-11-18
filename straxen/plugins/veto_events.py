@@ -523,6 +523,8 @@ def _get_delay(run_meta):
     """
     Loops over registry entries for correct entries and computes delay.
     """
+    delay_nveto = 0
+    delay_tpc = 0
     for item in run_meta['daq_config']['registers']:
         if (item['reg'] == '8034') and (item['board'] == 'tpc'):
             delay_tpc = item['val']
