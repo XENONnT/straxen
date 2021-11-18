@@ -7,6 +7,10 @@ class TestCreateVetoIntervals(unittest.TestCase):
     def setUp(self):
         dtype = straxen.plugins.veto_events.veto_event_dtype('nveto_eventbumber')
         dtype += straxen.plugins.veto_events.veto_event_positions_dtype()[2:]
+        # Get dtype from EventSync plugin:
+        p = straxen.plugins.veto_events.nVETOEventsSync()
+        dtype_sync = p.infer_dtype()
+        dtype += dtype_sync[2:]
         self.dtype = dtype
 
         self.events = np.zeros(4, self.dtype)
