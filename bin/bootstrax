@@ -1673,12 +1673,10 @@ if __name__ == '__main__':
     if args.pyroscope and args.production:
         import pyroscope
         pyroscope.configure(
-            app_name       = "bootstrax",
-            server_address = args.pyro_addres,
-            tags           = {
-            }
+            app_name = "bootstrax",
+            server_address = args.pyro_address,
+            tags = {'host': hostname}
         )
-
     if not args.undying:
         main()
     else:
