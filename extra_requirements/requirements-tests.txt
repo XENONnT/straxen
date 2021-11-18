@@ -1,5 +1,6 @@
 # File for the requirements of straxen with the automated tests
 blosc==1.10.6                                   # Strax dependency
+bokeh==2.3.3
 boltons==21.0.0
 datashader==0.13.0
 dask==2021.10.0
@@ -11,7 +12,7 @@ flake8==4.0.1
 gitpython==3.1.18
 holoviews==1.14.5
 ipywidgets==7.6.4
-keras==2.6.0
+keras==2.6.0                                    # Tensorflow depencency
 hypothesis==6.24.1
 jupyter-client==7.0.6                           # for ipywidgets
 matplotlib==3.4.3
@@ -21,13 +22,14 @@ numba==0.54.1                                   # Strax dependency
 numpy==1.19.5
 packaging==20.8
 pandas==1.3.2                                   # Strax dependency
+panel==0.12.1                                   # Bokeh dependency
 psutil==5.8.0                                   # Strax dependency
 pytest==6.2.5
 pytest-cov==3.0.0
 scikit-learn==1.0.1
 scipy==1.7.1                                    # Strax dependency
 tensorflow==2.6.1
-typing_extensions==3.7.4.3                      # Tensorflow depencency
+typing_extensions==3.7.4.3                      # Tensorflow/bokeh depencency
 tqdm==4.62.2
 wfsim==0.5.9
 xarray==0.19.0
