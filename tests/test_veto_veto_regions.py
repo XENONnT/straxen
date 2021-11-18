@@ -14,7 +14,9 @@ class TestCreateVetoIntervals(unittest.TestCase):
         self.events['n_hits'] = 1
         self.events['n_contributing_pmt'] = 1
         self.events['time'] = [2, 5, 7, 20]
+        self.events['time_sync'] = [2, 5, 7, 20]
         self.events['endtime'] = [3, 7, 8, 22]
+        self.events['endtime_sync'] = [3, 7, 8, 22]
 
     def test_empty_inputs(self):
         events = np.zeros(0, self.dtype)
