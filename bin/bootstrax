@@ -470,7 +470,7 @@ def _remove_veto_from_t(targets: ty.Union[str, list, tuple],
                         remove: ty.Union[str, list, tuple] = ('_mv', '_nv'),
                         _flip: bool = False) -> ty.Union[str, list, tuple, None]:
     """Remove veto(s) from targets"""
-    start = targets
+    start = strax.to_str_tuple(targets)
     remove = strax.to_str_tuple(remove)
     if targets is None:
         return None
@@ -494,7 +494,7 @@ def _keep_veto_from_t(targets: ty.Union[str, list, tuple],
 def keep_target(targets, compare_with, n_fails):
     kept_targets = []
     delete_after = -1  # just to make logging never fail below
-    for target_name in targets:
+    for target_name in strax.to_str_tuple(targets):
         for delete_target, delete_after in compare_with.items():
             failed_too_much = n_fails > delete_after
             name_matches = fnmatch.fnmatch(target_name, delete_target)
@@ -556,6 +556,9 @@ def infer_target(rd: dict) -> dict:
         # also use source field, outcome is the same)
         if 'event_info' in targets or 'event_info' in post_process:
             targets = list(targets) + ['event_info_double']
+
+    targets = strax.to_str_tuple(targets)
+    post_process = strax.to_str_tuple(post_process)
 
     if 'tpc' not in detectors:
         keep = []
