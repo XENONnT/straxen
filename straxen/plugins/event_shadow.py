@@ -9,16 +9,19 @@ class EventShadow(strax.Plugin):
     This plugin can calculate shadow at event level.
     It depends on peak-level shadow.
     The event-level shadow is its first S2 peak's shadow.
-    If no S2 peaks, the shadow will be nan. 
-    It also gives the position infomation of the previous S2s.
+    If no S2 peaks, the event shadow will be nan. 
+    It also gives the position infomation of the previous S2s
+    and main peaks' shadow.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
     save_when = strax.SaveWhen.EXPLICIT
 
     def infer_dtype(self):
-        dtype = [('shadow', np.float32, 'previous s2 shadow [PE/ns]'),
+        dtype = [('s1_shadow', np.float32, 'main s1 shadow [PE/ns]'),
+                 ('s2_shadow', np.float32, 'mian s2 shadow [PE/ns]'),
+                 ('shadow', np.float32, 'shadow of event [PE/ns]'),
                  ('pre_s2_area', np.float32, 'previous s2 area [PE]'),
                  ('shadow_dt', np.int64, 'time diffrence to the previous s2 [ns]'),
                  ('shadow_index', np.int32, 'max shadow peak index in event'),
@@ -35,7 +38,11 @@ class EventShadow(strax.Plugin):
         res['shadow_index'] = -1
         res['pre_s2_x'] = np.nan
         res['pre_s2_y'] = np.nan
-        for event_i, sp in enumerate(split_peaks):
+        for event_i, (e, sp) in enumerate(zip(events, split_peaks)):
+            if e['s1_index'] >= 0:
+                res['s1_shadow'][event_i] = sp['shadow'][e['s1_index']]
+            if e['s2_index'] >= 0:
+                res['s2_shadow'][event_i] = sp['shadow'][e['s2_index']]
             if (sp['type'] == 2).sum() > 0:
                 # Define event shadow as the first S2 peak shadow
                 first_s2_index = np.argwhere(sp['type'] == 2)[0]
