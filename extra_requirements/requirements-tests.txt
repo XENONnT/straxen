@@ -31,7 +31,7 @@ scipy==1.7.1                                    # Strax dependency
 tensorflow==2.6.1
 typing_extensions==3.7.4.3                      # Tensorflow/bokeh depencency
 tqdm==4.62.2
-wfsim==0.5.9
+wfsim==0.5.10
 xarray==0.19.0
 utilix==0.6.5
 zstd==1.5.0.2                                   # Strax dependency
