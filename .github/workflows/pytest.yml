@@ -62,7 +62,7 @@ jobs:
             git clone https://github.com/AxFoundation/strax ../strax
             pip install -e ../strax
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.6.0
+        uses: supercharge/mongodb-github-action@1.7.0
         with:
           mongodb-version: 4.2
       # Secrets and required files
