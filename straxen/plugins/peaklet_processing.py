@@ -546,7 +546,7 @@ class PeakletsHighEnergy(Peaklets):
                 help="A, B, T in the empirical boundary in the risetime-area plot"),
     strax.Option('s1_aft_risetime_parameters',default=(-1,2.6),
                 help="k, b in the empirial boundary in the risetime-AFT plot"),
-    strax.Option('s1_flatten_threshold_aft',default=0.7,
+    strax.Option('s1_flatten_threshold_aft',default=0.6,
                 help="Threshold for AFT, above which we use a flatted boundary for risetime"),
     strax.Option('n_top_pmts', default=straxen.n_top_pmts,
                  help="Number of top PMTs"),
@@ -588,7 +588,7 @@ class PeakletClassification(strax.Plugin):
             | ((rise_time <= self.config['s1_max_rise_time_post100']) & (peaks['area'] > 100)))
         
         is_s1 &= (peaks['area'] > 100) | (((peaks['area'] < 100) & (rise_time <= (10**(k * area_fraction_top + b)))) 
-                 | ((rise_time < B) & (area_fraction_top > self.config['s1_flatten_threshold_aft'])))
+                 | ((rise_time < (10 ** (k * self.config['s1_flatten_threshold_aft'] + b))) & (area_fraction_top > self.config['s1_flatten_threshold_aft'])))
         
         is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
         ptype[is_s1] = 1
