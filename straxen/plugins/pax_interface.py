@@ -120,13 +120,14 @@ def pax_to_records(input_filename,
 
 @export
 @strax.takes_config(
-    strax.Option('pax_raw_dir', default='/data/xenon/raw', track=False,
+    strax.Option('pax_raw_dir', default='/data/xenon/raw', track=False, infer_type=False,
                  help="Directory with raw pax datasets"),
-    strax.Option('stop_after_zips', default=0, track=False,
+    strax.Option('stop_after_zips', default=0, track=False, infer_type=False,
                  help="Convert only this many zip files. 0 = all."),
-    strax.Option('events_per_chunk', default=50, track=False,
+    strax.Option('events_per_chunk', default=50, track=False, infer_type=False,
                  help="Number of events to yield per chunk"),
-    strax.Option('samples_per_record', default=strax.DEFAULT_RECORD_LENGTH, track=False,
+    strax.Option('samples_per_record', default=strax.DEFAULT_RECORD_LENGTH,
+                 track=False, infer_type=False,
                  help="Number of samples per record")
 )
 class RecordsFromPax(strax.Plugin):
