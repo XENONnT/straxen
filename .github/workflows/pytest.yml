@@ -44,14 +44,14 @@ jobs:
             test: pytest_no_database
     steps:
       # Setup and installation
+      - name: Checkout repo
+        uses: actions/checkout@v2
       - name: Setup python
         uses: actions/setup-python@v2.3.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
-      - name: Checkout repo
-        uses: actions/checkout@v2
       - name: Remove strax from reqs.
         if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
         env:
