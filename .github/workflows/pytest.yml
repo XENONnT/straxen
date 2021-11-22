@@ -45,9 +45,11 @@ jobs:
     steps:
       # Setup and installation
       - name: Setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v2.3.0
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: '*/requirements-tests.txt'
       - name: Checkout repo
         uses: actions/checkout@v2
       - name: Remove strax from reqs.
@@ -56,9 +58,10 @@ jobs:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         run: |
           bash .github/scripts/filter_strax_from_requirements.sh
-      - name: Install requirements for tests and latest strax
+      - name: Install requirements
+        run: pip install -r extra_requirements/requirements-tests.txt
+      - name: Install strax
         run: |
-            pip install -r extra_requirements/requirements-tests.txt
             git clone https://github.com/AxFoundation/strax ../strax
             pip install -e ../strax
       - name: Start MongoDB
