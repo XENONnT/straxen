@@ -20,7 +20,7 @@ class EventShadow(strax.Plugin):
 
     def infer_dtype(self):
         dtype = [('s1_shadow', np.float32, 'main s1 shadow [PE/ns]'),
-                 ('s2_shadow', np.float32, 'mian s2 shadow [PE/ns]'),
+                 ('s2_shadow', np.float32, 'main s2 shadow [PE/ns]'),
                  ('shadow', np.float32, 'shadow of event [PE/ns]'),
                  ('pre_s2_area', np.float32, 'previous s2 area [PE]'),
                  ('shadow_dt', np.int64, 'time diffrence to the previous s2 [ns]'),
