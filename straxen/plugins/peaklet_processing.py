@@ -543,14 +543,29 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    strax.Option('s1_max_rise_time', default=110, infer_type=False,
-                 help="Maximum S1 rise time for < 100 PE [ns]"),
+    #strax.Option('s1_max_rise_time', default=110,
+    #             help="Maximum S1 rise time for < 100 PE [ns]"),
+    # We are going to use another function for the classification < 100 PE, so the s1_max_rise_time is abandoned.
+    
+    strax.Option('s1_risetime_area_parameters',default=(50,80,12), infer_type=False,
+                help="A, B, T in the empirical boundary in the risetime-area plot"),
+    strax.Option('s1_risetime_aft_parameters',default=(-1,2.6), infer_type=False,
+                help="k, b in the empirial boundary in the risetime-AFT plot"),
+    strax.Option('s1_flatten_threshold_aft',default=0.7, infer_type=False,
+                help="Threshold for AFT, above which we use a flatted boundary for risetime"),
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
+                 help="Number of top PMTs"),
+    
+    # Other settings remain the same as before
     strax.Option('s1_max_rise_time_post100', default=200, infer_type=False,
                  help="Maximum S1 rise time for > 100 PE [ns]"),
     strax.Option('s1_min_coincidence', default=2, infer_type=False,
                  help="Minimum tight coincidence necessary to make an S1"),
     strax.Option('s2_min_pmts', default=4, infer_type=False,
                  help="Minimum number of PMTs contributing to an S2"))
+
+
+
 class PeakletClassification(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
     provides = 'peaklet_classification'
@@ -558,7 +573,7 @@ class PeakletClassification(strax.Plugin):
     parallel = True
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')])
-    __version__ = '0.2.1'
+    __version__ = '3.0.2'
 
     def compute(self, peaklets):
         peaks = peaklets
@@ -566,19 +581,26 @@ class PeakletClassification(strax.Plugin):
         ptype = np.zeros(len(peaklets), dtype=np.int8)
 
         # Properties needed for classification. Bit annoying these computations
-        # are duplicated in peak_basics curently...
+        # are duplicated in peak_basics currently...
         rise_time = -peaks['area_decile_from_midpoint'][:, 1]
         n_channels = (peaks['area_per_channel'] > 0).sum(axis=1)
-
-        is_s1 = (
-           (rise_time <= self.config['s1_max_rise_time'])
-            | ((rise_time <= self.config['s1_max_rise_time_post100'])
-               & (peaks['area'] > 100)))
-        is_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
-        ptype[is_s1] = 1
-
+        n_top = self.config['n_top_pmts']
+        area_top = peaks['area_per_channel'][:, :n_top].sum(axis=1)
+        area_total = peaks['area_per_channel'].sum(axis=1)
+        area_fraction_top = area_top/area_total
+        
+        is_large_s1 = ((rise_time <= self.config['s1_max_rise_time_post100']) & (peaks['area'] > 100))
+        is_large_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
+        
+        is_small_s1 = peaks["area"] < 100
+        is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(peaks["area"],self.config["s1_risetime_area_parameters"])
+        is_small_s1 &= rise_time < self.upper_rise_time_aft_boundary(area_fraction_top,self.config["s1_flatten_threshold_aft"],self.config["s1_risetime_aft_parameters"])
+        is_small_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
+                           
+        ptype[is_large_s1|is_small_s1] = 1
+        
         is_s2 = n_channels >= self.config['s2_min_pmts']
-        is_s2[is_s1] = False
+        is_s2[is_large_s1|is_small_s1] = False
         ptype[is_s2] = 2
 
         return dict(type=ptype,
@@ -590,7 +612,14 @@ class PeakletClassification(strax.Plugin):
                     # This way S2 merging works on arrays of the same dtype.
                     channel=-1,
                     length=peaklets['length'])
-
+    
+    def upper_rise_time_area_boundary(self,area,s1_risetime_area_parameters):
+        norm, const, tau = s1_risetime_area_parameters
+        return norm*np.exp(-area/tau)+ const 
+    
+    def upper_rise_time_aft_boundary(self,area_fraction_top,s1_flatten_threshold_aft,s1_aft_risetime_parameters):
+        k, b = s1_aft_risetime_parameters
+        return np.where(area_fraction_top < s1_flatten_threshold_aft,10 ** (k * area_fraction_top + b),10 ** (k * s1_flatten_threshold_aft + b)) 
 
 @export
 class PeakletClassificationHighEnergy(PeakletClassification):
