@@ -599,10 +599,11 @@ class PeakletClassification(strax.Plugin):
         area_top = peaks['area_per_channel'][:, :n_top].sum(axis=1)
         area_total = peaks['area_per_channel'].sum(axis=1)
         area_fraction_top = area_top/area_total
-        
-        is_large_s1 = ((rise_time <= self.config['s1_max_rise_time_post100']) & (peaks['area'] > 100))
+
+        is_large_s1 = (peaks['area'] > 100)
+        is_large_s1 &= (rise_time <= self.config['s1_max_rise_time_post100'])
         is_large_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
-        
+
         is_small_s1 = peaks["area"] < 100
         is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
             peaks["area"],
@@ -616,9 +617,9 @@ class PeakletClassification(strax.Plugin):
         )
 
         is_small_s1 &= peaks['tight_coincidence'] >= self.config['s1_min_coincidence']
-                           
+
         ptype[is_large_s1 | is_small_s1] = 1
-        
+
         is_s2 = n_channels >= self.config['s2_min_pmts']
         is_s2[is_large_s1 | is_small_s1] = False
         ptype[is_s2] = 2
