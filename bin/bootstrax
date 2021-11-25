@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -624,10 +624,10 @@ def set_state(state, update_fields=None):
         bootstrax_state.update(update_fields)
 
     need_new_doc = (
-        (previous_entry is None) or
-        ((now() - previous_entry['time'].replace(tzinfo=pytz.utc)).seconds
-         > timeouts['min_status_interval']
-         )
+            (previous_entry is None) or
+            ((now() - previous_entry['time'].replace(tzinfo=pytz.utc)).seconds
+             > timeouts['min_status_interval']
+             )
     )
     if need_new_doc:
         bs_coll.insert_one(bootstrax_state)
@@ -743,7 +743,7 @@ def infer_mode(rd):
     try:
         started_looking = time.time()
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
-                tzinfo=timezone.utc) - now()).seconds
+            tzinfo=timezone.utc) - now()).seconds
         if time_to_wait > 0:
             log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
             time.sleep(time_to_wait)
@@ -1097,10 +1097,10 @@ def upload_file_metadata(rd):
 
             run_coll.update_one(
                 {'_id': rd['_id'],
-                'data': {
-                    '$elemMatch': {
-                        'location': ddoc['location'],
-                        'host': ddoc['host']}}},
+                 'data': {
+                     '$elemMatch': {
+                         'location': ddoc['location'],
+                         'host': ddoc['host']}}},
                 {'$set':
                      {'data.$.file_count': file_count,
                       'data.$.meta.strax_version': strax.__version__,
@@ -1577,6 +1577,9 @@ def clean_run(*, mongo_id=None, number=None, force=False):
                 log.info(f'delete data at {loc}')
                 _delete_data(rd, loc, ddoc['type'])
 
+    # Also wipe the online_monitor if there is any
+    run_db['online_monitor'].delete_many({'number': int(rd['number'])})
+
 
 def clean_run_test_data(run_id):
     """
@@ -1659,10 +1662,10 @@ def cleanup_db():
           'bootstrax.state': 'done',
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
-        ({'tags.name': 'abandon', 
+        ({'tags.name': 'abandon',
           'bootstrax.state': 'failed'},
          "Run has an 'abandon' tag and was failing"),
-        ]
+    ]
 
     for query, failure_message in abandon_queries:
         failure_message += ' -- run has been abandoned'
