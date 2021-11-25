@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.2.1'
+__version__ = '1.2.0'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1576,9 +1576,6 @@ def clean_run(*, mongo_id=None, number=None, force=False):
                 loc = loc + '_temp'
                 log.info(f'delete data at {loc}')
                 _delete_data(rd, loc, ddoc['type'])
-
-    # Also wipe the online_monitor if there is any
-    run_db['online_monitor'].delete_many({'number': int(rd['number'])})
 
 
 def clean_run_test_data(run_id):
