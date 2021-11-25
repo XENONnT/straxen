@@ -16,7 +16,7 @@ class EventShadow(strax.Plugin):
     __version__ = '0.0.8'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
-    save_when = strax.SaveWhen.EXPLICIT
+    save_when = strax.SaveWhen.ALWAYS
 
     def infer_dtype(self):
         dtype = [('s1_shadow', np.float32, 'main s1 shadow [PE/ns]'),

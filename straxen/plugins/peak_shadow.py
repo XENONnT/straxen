@@ -9,20 +9,20 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option(name='pre_s2_area_threshold', default=1000,
+    strax.Option(name='pre_s2_area_threshold', default=1000, infer_type=False,
                  help='Only take S2s large than this into account'
                  ' when calculating PeakShadow [PE]'),
-    strax.Option(name='deltatime_exponent', default=-1.0,
+    strax.Option(name='deltatime_exponent', default=-1.0, infer_type=False,
                  help='The exponent of delta t when calculating shadow'),
-    strax.Option('time_window_backward', default=int(3e9),
+    strax.Option('time_window_backward', default=int(3e9), infer_type=False,
                  help='Search for S2s causing shadow in this time window [ns]'),
     strax.Option(name='electron_drift_velocity',
-                 default=('electron_drift_velocity', 'ONLINE', True),
+                 default=('electron_drift_velocity', 'ONLINE', True), infer_type=False,
                  help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'),
-    strax.Option(name='max_drift_length', default=straxen.tpc_z,
+    strax.Option(name='max_drift_length', default=straxen.tpc_z, infer_type=False,
                  help='Total length of the TPC from the bottom of gate to the'
                  ' top of cathode wires [cm]'), 
-    strax.Option(name='exclude_drift_time', default=False,
+    strax.Option(name='exclude_drift_time', default=False, infer_type=False,
                  help=' Whether deduct max drift time to avoid peak interference in a single event [ns]'))
 class PeakShadow(strax.OverlapWindowPlugin):
     '''
@@ -34,7 +34,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     __version__ = '0.0.3'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
-    save_when = strax.SaveWhen.EXPLICIT
+    save_when = strax.SaveWhen.ALWAYS
 
     def setup(self):
         self.n_seconds = self.config['time_window_backward']
