@@ -543,29 +543,20 @@ class PeakletsHighEnergy(Peaklets):
 
 @export
 @strax.takes_config(
-    #strax.Option('s1_max_rise_time', default=110,
-    #             help="Maximum S1 rise time for < 100 PE [ns]"),
-    # We are going to use another function for the classification < 100 PE, so the s1_max_rise_time is abandoned.
-    
-    strax.Option('s1_risetime_area_parameters',default=(50,80,12), infer_type=False,
-                help="A, B, T in the empirical boundary in the risetime-area plot"),
-    strax.Option('s1_risetime_aft_parameters',default=(-1,2.6), infer_type=False,
-                help="k, b in the empirial boundary in the risetime-AFT plot"),
-    strax.Option('s1_flatten_threshold_aft',default=0.7, infer_type=False,
-                help="Threshold for AFT, above which we use a flatted boundary for risetime"),
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
+    strax.Option('s1_risetime_area_parameters', default=(50, 80, 12), type=(list, tuple),
+                 help="A, B, T in the empirical boundary in the risetime-area plot"),
+    strax.Option('s1_risetime_aft_parameters', default=(-1, 2.6), type=(list, tuple),
+                 help="k, b in the empirial boundary in the rise time-AFT plot"),
+    strax.Option('s1_flatten_threshold_aft', default=0.7, type=float,
+                 help="Threshold for AFT, above which we use a flatted boundary for rise time"),
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts, type=int,
                  help="Number of top PMTs"),
-    
-    # Other settings remain the same as before
-    strax.Option('s1_max_rise_time_post100', default=200, infer_type=False,
+    strax.Option('s1_max_rise_time_post100', default=200, type=(int, float),
                  help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=2, infer_type=False,
+    strax.Option('s1_min_coincidence', default=2, type=int,
                  help="Minimum tight coincidence necessary to make an S1"),
-    strax.Option('s2_min_pmts', default=4, infer_type=False,
+    strax.Option('s2_min_pmts', default=4, type=int,
                  help="Minimum number of PMTs contributing to an S2"))
-
-
-
 class PeakletClassification(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
     provides = 'peaklet_classification'
