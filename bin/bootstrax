@@ -623,11 +623,11 @@ def set_state(state, update_fields=None):
         update_fields = strax.storage.mongo.remove_np(update_fields)
         bootstrax_state.update(update_fields)
 
-        need_new_doc = (
-                (previous_entry is None) or
-                ((now() - previous_entry['time'].replace(tzinfo=pytz.utc)).seconds
-                 > timeouts['min_status_interval']
-                 )
+    need_new_doc = (
+            (previous_entry is None) or
+            ((now() - previous_entry['time'].replace(tzinfo=pytz.utc)).seconds
+             > timeouts['min_status_interval']
+             )
     )
     if need_new_doc:
         bs_coll.insert_one(bootstrax_state)
