@@ -623,11 +623,11 @@ def set_state(state, update_fields=None):
         update_fields = strax.storage.mongo.remove_np(update_fields)
         bootstrax_state.update(update_fields)
 
-    need_new_doc = (
-            (previous_entry is None) or
-            ((now() - previous_entry['time'].replace(tzinfo=pytz.utc)).seconds
-             > timeouts['min_status_interval']
-             )
+        need_new_doc = (
+                (previous_entry is None) or
+                ((now() - previous_entry['time'].replace(tzinfo=pytz.utc)).seconds
+                 > timeouts['min_status_interval']
+                 )
     )
     if need_new_doc:
         bs_coll.insert_one(bootstrax_state)
@@ -743,7 +743,7 @@ def infer_mode(rd):
     try:
         started_looking = time.time()
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
-            tzinfo=timezone.utc) - now()).seconds
+                tzinfo=timezone.utc) - now()).seconds
         if time_to_wait > 0:
             log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
             time.sleep(time_to_wait)
@@ -1097,10 +1097,10 @@ def upload_file_metadata(rd):
 
             run_coll.update_one(
                 {'_id': rd['_id'],
-                 'data': {
-                     '$elemMatch': {
-                         'location': ddoc['location'],
-                         'host': ddoc['host']}}},
+                'data': {
+                    '$elemMatch': {
+                        'location': ddoc['location'],
+                        'host': ddoc['host']}}},
                 {'$set':
                      {'data.$.file_count': file_count,
                       'data.$.meta.strax_version': strax.__version__,
@@ -1665,7 +1665,7 @@ def cleanup_db():
         ({'tags.name': 'abandon',
           'bootstrax.state': 'failed'},
          "Run has an 'abandon' tag and was failing"),
-    ]
+        ]
 
     for query, failure_message in abandon_queries:
         failure_message += ' -- run has been abandoned'
