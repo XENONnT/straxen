@@ -71,6 +71,8 @@ class Events(strax.OverlapWindowPlugin):
             self.run_id,
             self.config['electron_drift_velocity'])
         self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        # Left_extension and right_extension should be computed in setup to be 
+        # reflected in cutax too.
         self.left_extension = self.config['left_event_extension'] + self.drift_time_max
         self.right_extension = self.config['right_event_extension']
 
