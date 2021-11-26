@@ -71,6 +71,8 @@ class Events(strax.OverlapWindowPlugin):
             self.run_id,
             self.config['electron_drift_velocity'])
         self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.left_extension = self.config['left_event_extension'] + self.drift_time_max
+        self.right_extension = self.config['right_event_extension']
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
@@ -79,9 +81,6 @@ class Events(strax.OverlapWindowPlugin):
                      + self.config['right_event_extension'])
 
     def compute(self, peaks, start, end):
-        le = self.config['left_event_extension'] + self.drift_time_max
-        re = self.config['right_event_extension']
-
         triggers = peaks[
             (peaks['area'] > self.config['trigger_min_area'])
             & (peaks['n_competing'] <= self.config['trigger_max_competing'])]
@@ -89,9 +88,9 @@ class Events(strax.OverlapWindowPlugin):
         # Join nearby triggers
         t0, t1 = strax.find_peak_groups(
             triggers,
-            gap_threshold=le + re + 1,
-            left_extension=le,
-            right_extension=re)
+            gap_threshold=self.left_extension + self.right_extension + 1,
+            left_extension=self.left_extension,
+            right_extension=self.right_extension)
 
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
