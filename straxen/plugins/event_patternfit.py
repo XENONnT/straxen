@@ -17,7 +17,7 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s2_optical_map', help='S2 (x, y) optical/pattern map.', infer_type=False,
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
-    strax.Option('s2_optical_tensorflow_model', help='S2 (x, y) optical data-driven model', infer_type=False,
+    strax.Option('s2_tf_model', help='S2 (x, y) optical data-driven model', infer_type=False,
                  default='XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.', infer_type=False,
                  default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_31Oct2021.json'),
@@ -60,11 +60,11 @@ class EventPatternFit(strax.Plugin):
         dtype = [('s2_2llh', np.float32,
                   'Modified Poisson likelihood value for main S2 in the event'),
                  ('s2_neural_2llh', np.float32,
-                  'Data-driven and neural network based likelihood value for main S2 in the event'),
+                  'Data-driven based likelihood value for main S2 in the event'),
                  ('alt_s2_2llh', np.float32,
                   'Modified Poisson likelihood value for alternative S2'),
                  ('alt_s2_neural_2llh', np.float32,
-                  'Data-driven and neural network based likelihood value for alternative S2 in the event'),
+                  'Data-driven based likelihood value for alternative S2 in the event'),
                  ('s1_2llh', np.float32,
                   'Modified Poisson likelihood value for main S1'),
                  ('s1_top_2llh', np.float32,
@@ -147,7 +147,7 @@ class EventPatternFit(strax.Plugin):
         self.compute_s2_llhvalue(events, result)
 
         # Computing chi2 values for S2s
-        self.compute_s2_neural_2llhvalue(events, result)
+        self.compute_s2_neural_llhvalue(events, result)
 
         # Computing binomial test for s1 area fraction top
         s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
@@ -318,10 +318,10 @@ class EventPatternFit(strax.Plugin):
                     store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
                     result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
 
-    def compute_s2_neural_2llhvalue(self, events, result):
+    def compute_s2_neural_llhvalue(self, events, result):
 
         downloader = straxen.MongoDownloader()
-        self.model_file = downloader.download_single(self.config['s2_optical_tensorflow_model'])
+        self.model_file = downloader.download_single(self.config['s2_tf_model'])
         with tempfile.TemporaryDirectory() as tmpdirname:
             tar = tarfile.open(self.model_file, mode="r:gz")
             tar.extractall(path=tmpdirname)
@@ -329,8 +329,10 @@ class EventPatternFit(strax.Plugin):
             def _logl_loss(patterns_true, likelihood):
                 return likelihood / 10.
 
-            self.model = tf.keras.models.load_model(tmpdirname, custom_objects={"_logl_loss": _logl_loss})
-            self.model_chi2 = tf.keras.Model(self.model.inputs, self.model.get_layer('Likelihood').output)
+            self.model = tf.keras.models.load_model(tmpdirname,
+                                                    custom_objects={"_logl_loss": _logl_loss})
+            self.model_chi2 = tf.keras.Model(self.model.inputs,
+                                             self.model.get_layer('Likelihood').output)
 
         for t_ in ['s2', 'alt_s2']:
             # Selecting S2s for pattern fit calculation
