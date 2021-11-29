@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -1577,6 +1577,9 @@ def clean_run(*, mongo_id=None, number=None, force=False):
                 log.info(f'delete data at {loc}')
                 _delete_data(rd, loc, ddoc['type'])
 
+    # Also wipe the online_monitor if there is any
+    run_db['online_monitor'].delete_many({'number': int(rd['number'])})
+
 
 def clean_run_test_data(run_id):
     """
@@ -1659,7 +1662,7 @@ def cleanup_db():
           'bootstrax.state': 'done',
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
-        ({'tags.name': 'abandon', 
+        ({'tags.name': 'abandon',
           'bootstrax.state': 'failed'},
          "Run has an 'abandon' tag and was failing"),
         ]
