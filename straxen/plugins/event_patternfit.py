@@ -17,6 +17,8 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s2_optical_map', help='S2 (x, y) optical/pattern map.', infer_type=False,
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
+    strax.Option('s2_optical_tensorflow_model', help='S2 (x, y) optical data-driven model', infer_type=False,
+                 default='XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.', infer_type=False,
                  default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_31Oct2021.json'),
     strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
@@ -52,7 +54,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.0.9'
+    __version__ = '0.1.0'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -137,7 +139,6 @@ class EventPatternFit(strax.Plugin):
         result = np.zeros(len(events), dtype=self.dtype)
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
-        raise 'Nothing'
 
         # Computing LLH values for S1s
         self.compute_s1_llhvalue(events, result)
@@ -320,7 +321,7 @@ class EventPatternFit(strax.Plugin):
     def compute_s2_neural_2llhvalue(self, events, result):
 
         downloader = straxen.MongoDownloader()
-        self.model_file = downloader.download_single('XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz')
+        self.model_file = downloader.download_single(self.config['s2_optical_tensorflow_model'])
         with tempfile.TemporaryDirectory() as tmpdirname:
             tar = tarfile.open(self.model_file, mode="r:gz")
             tar.extractall(path=tmpdirname)
