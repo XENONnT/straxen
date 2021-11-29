@@ -566,10 +566,10 @@ class PeakletClassification(strax.Plugin):
     parallel = True
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')])
-    __version__ = '3.0.2'
+    __version__ = '3.0.3'
 
     @staticmethod
-    def upper_rise_time_area_boundary(area, norm, tau, const):
+    def upper_rise_time_area_boundary(area, norm, const, tau):
         """
         Function which determines the upper boundary for the rise-time
         for a given area.
