@@ -332,7 +332,6 @@ class EventPatternFit(strax.Plugin):
             self.model = tf.keras.models.load_model(tmpdirname, custom_objects={"_logl_loss": _logl_loss})
             self.model_chi2 = tf.keras.Model(self.model.inputs, self.model.get_layer('Likelihood').output)
 
-
         for t_ in ['s2', 'alt_s2']:
             # Selecting S2s for pattern fit calculation
             # - must exist (index != -1)
@@ -350,7 +349,6 @@ class EventPatternFit(strax.Plugin):
             if np.sum(cur_s2_bool):
                 s2_pos = np.stack((x, y)).T[cur_s2_bool]
                 s2_pat = events[t_ + '_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
-
                 result[t_ + '_neural_2llh'][cur_s2_bool] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
 
 
