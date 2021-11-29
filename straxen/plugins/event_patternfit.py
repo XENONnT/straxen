@@ -351,8 +351,6 @@ class EventPatternFit(strax.Plugin):
                 s2_pat = events[t_ + '_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
                 result[t_ + '_neural_2llh'][cur_s2_bool] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
 
-
-
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
         for fmt in known_formats:
