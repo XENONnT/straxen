@@ -5,6 +5,9 @@ import numpy as np
 import numba
 from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
+import tensorflow as tf
+import tarfile
+import tempfile
 
 export, __all__ = strax.exporter()
 
@@ -54,8 +57,12 @@ class EventPatternFit(strax.Plugin):
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
                   'Modified Poisson likelihood value for main S2 in the event'),
+                 ('s2_neural_2llh', np.float32,
+                  'Data-driven and neural network based likelihood value for main S2 in the event'),
                  ('alt_s2_2llh', np.float32,
                   'Modified Poisson likelihood value for alternative S2'),
+                 ('alt_s2_neural_2llh', np.float32,
+                  'Data-driven and neural network based likelihood value for alternative S2 in the event'),
                  ('s1_2llh', np.float32,
                   'Modified Poisson likelihood value for main S1'),
                  ('s1_top_2llh', np.float32,
@@ -130,13 +137,17 @@ class EventPatternFit(strax.Plugin):
         result = np.zeros(len(events), dtype=self.dtype)
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
+        raise 'Nothing'
 
         # Computing LLH values for S1s
         self.compute_s1_llhvalue(events, result)
         
         # Computing LLH values for S2s
         self.compute_s2_llhvalue(events, result)
-        
+
+        # Computing chi2 values for S2s
+        self.compute_s2_neural_2llhvalue(events, result)
+
         # Computing binomial test for s1 area fraction top
         s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
         positions = np.vstack([events['x'], events['y'], events['z']]).T
@@ -305,7 +316,44 @@ class EventPatternFit(strax.Plugin):
                     store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
                     store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
                     result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
-                    
+
+    def compute_s2_neural_2llhvalue(self, events, result):
+
+        downloader = straxen.MongoDownloader()
+        self.model_file = downloader.download_single('XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tar = tarfile.open(self.model_file, mode="r:gz")
+            tar.extractall(path=tmpdirname)
+
+            def _logl_loss(patterns_true, likelihood):
+                return likelihood / 10.
+
+            self.model = tf.keras.models.load_model(tmpdirname,
+                                                    custom_objects={"_logl_loss": _logl_loss})
+
+        for t_ in ['s2', 'alt_s2']:
+            # Selecting S2s for pattern fit calculation
+            # - must exist (index != -1)
+            # - must have total area larger minimal one
+            # - must have positive AFT
+            x, y = events[t_ + '_x'], events[t_ + '_y']
+            cur_s2_bool = (events[t_ + '_area'] > self.config['s2_min_area_pattern_fit'])
+            cur_s2_bool &= (events[t_ + '_index'] != -1)
+            cur_s2_bool &= (events[t_ + '_area_fraction_top'] > 0)
+
+            # default value is nan, it will be ovewrite if the event satisfy the requirments
+            result[t_ + '_neural_2llh'][:] = np.nan
+
+            # Produce position and top pattern to feed tensorflow mode, return chi2/N
+            if np.sum(cur_s2_bool):
+                s2_pos = np.stack((x, y)).T[cur_s2_bool]
+                s2_pat = events[t_ + '_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
+
+                result[t_ + '_neural_2llh'][cur_s2_bool] = self.model.predict({'xx': s2_pos,
+                                                                               'yy': s2_pat})
+
+
+
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
         for fmt in known_formats:
