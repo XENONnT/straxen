@@ -548,7 +548,7 @@ class PeakletsHighEnergy(Peaklets):
     strax.Option('s1_risetime_aft_parameters', default=(-1, 2.6), type=(list, tuple),
                  help=("Slope and offset in exponential of emperical boundary in the rise time-AFT "
                       "plot. Specified as (slope, offset)")),
-    strax.Option('s1_flatten_threshold_aft', default=(0.7, 100), type=(tuple, list),
+    strax.Option('s1_flatten_threshold_aft', default=(0.6, 100), type=(tuple, list),
                  help=("Threshold for AFT, above which we use a flatted boundary for rise time" 
                        "Specified values: (AFT boundary, constant rise time).")),
     strax.Option('n_top_pmts', default=straxen.n_top_pmts, type=int,
