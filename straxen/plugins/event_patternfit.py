@@ -5,7 +5,6 @@ import numpy as np
 import numba
 from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
-import tensorflow as tf
 import tarfile
 import tempfile
 
@@ -326,9 +325,9 @@ class EventPatternFit(strax.Plugin):
             tar = tarfile.open(self.model_file, mode="r:gz")
             tar.extractall(path=tmpdirname)
 
+            import tensorflow as tf
             def _logl_loss(patterns_true, likelihood):
                 return likelihood / 10.
-
             self.model = tf.keras.models.load_model(tmpdirname,
                                                     custom_objects={"_logl_loss": _logl_loss})
             self.model_chi2 = tf.keras.Model(self.model.inputs,
