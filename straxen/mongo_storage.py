@@ -112,6 +112,7 @@ class GridFsInterface:
         doc = self.get_query_config(config)
         doc.update({
             'added': datetime.now(tz=pytz.utc),
+            
         })
         return doc
 
@@ -247,6 +248,7 @@ class MongoUploader(GridFsInterface):
         :param abs_path: str, the absolute path of the file 
         """
         doc = self.document_format(config)
+        doc['md5'] = self.compute_md5(abs_path)
         if not os.path.exists(abs_path):
             raise CouldNotLoadError(f'{abs_path} does not exits')
 
