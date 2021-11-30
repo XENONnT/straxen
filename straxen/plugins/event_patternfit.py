@@ -356,7 +356,7 @@ def binom_pmf(k, n, p):
 
 @numba.njit
 def binom_cdf(k, n, p):
-    if k == n:
+    if k >= n:
         return 1.0
     return numba_betainc(n - k, k + 1, 1.0 - p)
 
