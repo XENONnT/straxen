@@ -342,9 +342,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
 
 @numba.njit
 def lbinom_pmf(k, n, p):
-    """
-    Log of binomial probability mass function approximated with gamma function 
-    """
+    """Log of binomial probability mass function approximated with gamma function"""
     scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
     return ret_log
@@ -352,9 +350,7 @@ def lbinom_pmf(k, n, p):
 
 @numba.njit
 def binom_pmf(k, n, p):
-    """
-    Binomial probability mass function approximated with gamma function 
-    """
+    """Binomial probability mass function approximated with gamma function"""
     return np.exp(lbinom_pmf(k, n, p))
 
 
@@ -372,9 +368,7 @@ def binom_sf(k, n, p):
 
 @numba.njit
 def lbinom_pmf_diriv(k, n, p, dk=1e-7):
-    """
-    Numerical dirivitive of Binomial pmf approximated with gamma function 
-    """
+    """Numerical dirivitive of Binomial pmf approximated with gamma function"""
     if k + dk < n:
         return (lbinom_pmf(k + dk, n, p) - lbinom_pmf(k, n, p)) / dk
     else:
@@ -383,9 +377,7 @@ def lbinom_pmf_diriv(k, n, p, dk=1e-7):
 
 @numba.njit
 def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
-    """
-    Find the root of the dirivitive of log Binomial pmf with secant method
-    """
+    """Find the root of the dirivitive of log Binomial pmf with secant method"""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
@@ -410,9 +402,7 @@ def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
 
 @numba.njit
 def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
-    """
-    Find the where the log Binomial pmf cross target with secant method
-    """
+    """Find the where the log Binomial pmf cross target with secant method"""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
@@ -462,9 +452,7 @@ def binom_test(k, n, p):
 @np.vectorize
 @numba.njit
 def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
-    '''
-    Function to compute the S1 AFT probability
-    '''
+    """Function to compute the S1 AFT probability"""
     area_top = area_tot * area_fraction_top
 
     # Raise a warning in case one of these three condition is verified
