@@ -2,6 +2,7 @@
 import json
 import strax
 import fsspec
+import pandas as pd
 import straxen
 from numpy import isin
 import inspect
@@ -164,7 +165,25 @@ class URLConfig(strax.Config):
                 kwargs[k] = v
         
         return self.dispatch(url, **kwargs)
- 
+    
+    @classmethod
+    def protocol_descr(cls):
+        rows = []
+        for k,v in cls._LOOKUP.items():
+            row = {
+                'name': f"{k}://",
+                'description': v.__doc__,
+                'signature': str(inspect.signature(v)),
+            }
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    @classmethod
+    def print_protocols(cls):
+        df = cls.protocol_descr()
+        print(df)
+
+
 @URLConfig.register('cmt')
 def get_correction(name, run_id=None, version='ONLINE', detector='nt', **kwargs):
     '''Get value for name from CMT
