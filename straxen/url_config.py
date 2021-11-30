@@ -106,7 +106,7 @@ class URLConfig(strax.Config):
     def split_url_kwargs(self, url):
         """split a url into path and kwargs
         """
-        path, _, _ = url.rpartition(self.QUERY_SEP)
+        path, _, _ = url.partition(self.QUERY_SEP)
         kwargs = {}
         for k,v in parse_qs(urlparse(url).query).items():
             # values of query arguments are evaluated as lists
