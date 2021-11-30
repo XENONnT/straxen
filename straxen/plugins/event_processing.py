@@ -626,8 +626,10 @@ class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
     life time to the data.
+
     Computes the cS1/cS2 for the main/alternative S1/S2 as well as the
     corrected life time.
+
     Note:
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
@@ -652,7 +654,7 @@ class CorrectedAreas(strax.Plugin):
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
+                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),]
 
         return dtype
 
