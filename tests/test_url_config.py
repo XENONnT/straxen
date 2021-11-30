@@ -1,7 +1,9 @@
 
+import json
 import strax
 import straxen
 import numpy as np
+import fsspec
 from warnings import warn
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
@@ -15,7 +17,6 @@ class TestPlugin(strax.Plugin):
     
     def compute(self):
         pass
-
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
@@ -47,6 +48,13 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'format://{run_id}?run_id=plugin.run_id'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config , nt_test_run_id)
+    
+    def test_fsspec_protocol(self):
+        with fsspec.open('memory://test_file.json', mode='w') as f:
+            json.dump({"value": 999}, f)
+        self.st.set_config({'test_config': 'take://json://fsspec://memory://test_file.json?take=value'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config , 999)
 
     def test_chained(self):
         self.st.set_config({'test_config': 'take://json://[1,2,3]?take=0'})
