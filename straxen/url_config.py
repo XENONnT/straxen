@@ -1,4 +1,5 @@
 import json
+from typing import Container
 import strax
 import fsspec
 import pandas as pd
@@ -183,7 +184,7 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name, run_id=None, version='ONLINE', detector='nt', **kwargs):
+def get_correction(name: str, run_id: str=None, version: str='ONLINE', detector: str='nt', **kwargs):
     '''Get value for name from CMT
     '''
     if run_id is None:
@@ -192,14 +193,14 @@ def get_correction(name, run_id=None, version='ONLINE', detector='nt', **kwargs)
 
 
 @URLConfig.register('resource')
-def get_resource(name, fmt='text', **kwargs):
+def get_resource(name: str, fmt: str='text', **kwargs):
     '''Fetch a straxen resource
     '''
     return straxen.get_resource(name, fmt=fmt)
 
 
 @URLConfig.register('fsspec')
-def read_file(path, **kwargs):
+def read_file(path: str, **kwargs):
     '''Support fetching files from arbitrary filesystems
     '''
     with fsspec.open(path, **kwargs) as f:
@@ -208,14 +209,14 @@ def read_file(path, **kwargs):
 
 
 @URLConfig.register('json')
-def read_json(content, **kwargs):
+def read_json(content: str, **kwargs):
     ''' Load json string as a python object
     '''
     return json.loads(content)
 
 
 @URLConfig.register('take')
-def get_key(container, take=None, **kwargs):
+def get_key(container: Container, take=None, **kwargs):
     ''' return a single element of a container
     '''
     if take is None:
@@ -224,7 +225,7 @@ def get_key(container, take=None, **kwargs):
 
 
 @URLConfig.register('format')
-def format_arg(arg, **kwargs):
+def format_arg(arg: str, **kwargs):
     '''apply pythons builtin format function to a string
     '''
     return arg.format(**kwargs)
