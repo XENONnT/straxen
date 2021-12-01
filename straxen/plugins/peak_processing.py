@@ -409,7 +409,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
 @numba.njit
 def compute_shadow(peaks, pre_s2_peaks, touching_windows, exponent, res):
     """
-    Numba accelerated shadow calculation
+    For each peak in peaks, check if there is a shadow-casting S2 peak
+    and check if it casts the largest shadow
     """
     for p_i, p_a in enumerate(peaks):
         new_shadow = 0
