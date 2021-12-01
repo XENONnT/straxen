@@ -12,7 +12,7 @@ flake8==4.0.1
 gitpython==3.1.18
 holoviews==1.14.5
 ipywidgets==7.6.4
-keras==2.6.0                                    # Tensorflow depencency
+keras==2.7.0                                    # Tensorflow depencency
 hypothesis==6.29.0
 jupyter-client==7.0.6                           # for ipywidgets
 matplotlib==3.4.3
@@ -29,7 +29,7 @@ pytest==6.2.5
 pytest-cov==3.0.0
 scikit-learn==1.0.1
 scipy==1.7.1                                    # Strax dependency
-tensorflow==2.6.1
+tensorflow==2.7.0
 typing_extensions==3.10.0                       # Tensorflow/bokeh depencency
 tqdm==4.62.2
 wfsim==0.5.11
