@@ -138,7 +138,6 @@ class EventPatternFit(strax.Plugin):
         self.compute_s2_llhvalue(events, result)
         
         # Computing binomial test for s1 area fraction top
-        s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
