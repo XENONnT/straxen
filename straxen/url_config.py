@@ -192,6 +192,7 @@ def get_correction(name, run_id=None, version='ONLINE', detector='nt', **kwargs)
         raise ValueError('Attempting to fetch a correction without a run id.')
     return straxen.get_correction_from_cmt(run_id, ( name, version, detector=='nt'))
 
+
 @URLConfig.register('resource')
 def get_resource(name, fmt='text', **kwargs):
     '''Fetch a straxen resource
@@ -207,11 +208,13 @@ def read_file(path, **kwargs):
         content = f.read()
     return content
 
+
 @URLConfig.register('json')
 def read_json(content, **kwargs):
     ''' Load json string as a python object
     '''
     return json.loads(content)
+
 
 @URLConfig.register('take')
 def get_key(container, take=None, **kwargs):
@@ -221,9 +224,9 @@ def get_key(container, take=None, **kwargs):
         return container
     return container[take]
 
+
 @URLConfig.register('format')
 def format_arg(arg, **kwargs):
     '''apply pythons builtin format function to a string
     '''
     return arg.format(**kwargs)
-    
