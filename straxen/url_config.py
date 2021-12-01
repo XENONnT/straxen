@@ -1,10 +1,8 @@
-
 import json
 import strax
 import fsspec
 import pandas as pd
 import straxen
-from numpy import isin
 import inspect
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
@@ -38,7 +36,7 @@ class URLConfig(strax.Config):
         """
         :param cache: number of values to keep in cache, 
                       if set to True will cache all values
-        :param \**kwargs: additional keyword arguments accepted by strax.Option              
+        :param **kwargs: additional keyword arguments accepted by strax.Option
         """
         self.final_type = OMITTED
         super().__init__(**kwargs)
@@ -79,7 +77,7 @@ class URLConfig(strax.Config):
         overrides are passed to any protocol whos signature can accept them.
         """
         
-        # seperate the protocol name from the path
+        # separate the protocol name from the path
         protocol, _, path =  url.partition(self.SCHEME_SEP)
 
         # find the corresponding protocol method
@@ -109,13 +107,13 @@ class URLConfig(strax.Config):
         """
         path, _, _ = url.partition(self.QUERY_SEP)
         kwargs = {}
-        for k,v in parse_qs(urlparse(url).query).items():
+        for k, v in parse_qs(urlparse(url).query).items():
             # values of query arguments are evaluated as lists
             # split logic depending on length
             n = len(v)
             if not n:
                 kwargs[k] = None
-            elif n==1:
+            elif n == 1:
                 kwargs[k] = parse_val(v[0])
             else:
                 kwargs[k] = map(parse_val, v)
@@ -131,7 +129,7 @@ class URLConfig(strax.Config):
         if any([str(p).startswith('**') for p in params.values()]):
             # if func accepts wildcard kwargs, return all
             return kwargs
-        return {k:v for k,v in kwargs.items() if k in params}
+        return {k: v for k, v in kwargs.items() if k in params}
 
     def fetch(self, plugin):
         '''override the Config.fetch method
@@ -151,12 +149,12 @@ class URLConfig(strax.Config):
             # as string-literal config and returned as is
             return url
 
-        # sperate out the query part of the URL which 
+        # separate out the query part of the URL which
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
         kwargs = {}
-        for k,v in url_kwargs.items():
+        for k, v in url_kwargs.items():
             if isinstance(v, str) and v.startswith(self.PLUGIN_ATTR_PREFIX):
                 # kwarg is referring to a plugin attribute, lets fetch it
                 kwargs[k] = getattr(plugin, v[len(self.PLUGIN_ATTR_PREFIX):], v)
@@ -169,7 +167,7 @@ class URLConfig(strax.Config):
     @classmethod
     def protocol_descr(cls):
         rows = []
-        for k,v in cls._LOOKUP.items():
+        for k, v in cls._LOOKUP.items():
             row = {
                 'name': f"{k}://",
                 'description': v.__doc__,
@@ -190,7 +188,7 @@ def get_correction(name, run_id=None, version='ONLINE', detector='nt', **kwargs)
     '''
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
-    return straxen.get_correction_from_cmt(run_id, ( name, version, detector=='nt'))
+    return straxen.get_correction_from_cmt(run_id, (name, version, detector=='nt'))
 
 
 @URLConfig.register('resource')
