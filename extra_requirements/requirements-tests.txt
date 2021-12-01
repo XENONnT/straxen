@@ -3,9 +3,9 @@ blosc==1.10.6                                   # Strax dependency
 bokeh==2.3.3
 boltons==21.0.0
 datashader==0.13.0
-dask==2021.10.0
+dask==2021.11.2
 dill==0.3.4                                     # Strax dependency
-coveralls==3.2.0
+coveralls==3.3.1
 commentjson==0.9.0
 coverage==5.5
 flake8==4.0.1
@@ -13,7 +13,7 @@ gitpython==3.1.18
 holoviews==1.14.5
 ipywidgets==7.6.4
 keras==2.6.0                                    # Tensorflow depencency
-hypothesis==6.24.1
+hypothesis==6.29.0
 jupyter-client==7.0.6                           # for ipywidgets
 matplotlib==3.4.3
 multihist==0.6.4
@@ -32,7 +32,7 @@ scipy==1.7.1                                    # Strax dependency
 tensorflow==2.6.1
 typing_extensions==3.7.4.3                      # Tensorflow/bokeh depencency
 tqdm==4.62.2
-wfsim==0.5.10
-xarray==0.19.0
+wfsim==0.5.11
+xarray==0.20.1
 utilix==0.6.5
 zstd==1.5.0.2                                   # Strax dependency
