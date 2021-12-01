@@ -118,6 +118,8 @@ jobs:
         run: |
           coverage run --source=straxen setup.py test -v
           coveralls --service=github
+      - name: pip freeze
+        run: pip freeze
       # Done
       - name: goodbye
         run: echo "tests done, bye bye"
