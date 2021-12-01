@@ -399,33 +399,35 @@ class PeakShadow(strax.OverlapWindowPlugin):
         res['pre_s2_x'] = np.nan
         res['pre_s2_y'] = np.nan
         if len(peaks):
-            compute_shadow(peaks, peaks[mask_pre_s2], split_peaks, self.exponent, res)
+            self.compute_shadow(peaks, peaks[mask_pre_s2], split_peaks, self.exponent, res)
 
         res['time'] = peaks['time']
         res['endtime'] = strax.endtime(peaks)
         return res
 
-
-@numba.njit
-def compute_shadow(peaks, pre_s2_peaks, touching_windows, exponent, res):
-    """
-    For each peak in peaks, check if there is a shadow-casting S2 peak
-    and check if it casts the largest shadow
-    """
-    for p_i, p_a in enumerate(peaks):
-        new_shadow = 0
-        s2_indices = touching_windows[p_i]
-        for s2_idx in range(s2_indices[0], s2_indices[1]):
-            s2_a = pre_s2_peaks[s2_idx]
-            if p_a['center_time'] - s2_a['center_time'] <= 0:
-                continue
-            new_shadow = s2_a['area'] * (p_a['center_time'] - s2_a['center_time'])**exponent
-            if new_shadow > res['shadow'][p_i]:
-                res['shadow'][p_i] = new_shadow
-                res['pre_s2_area'][p_i] = s2_a['area']
-                res['shadow_dt'][p_i] = p_a['center_time'] - s2_a['center_time']
-                res['pre_s2_x'][p_i] = s2_a['x']
-                res['pre_s2_y'][p_i] = s2_a['y']
+    @staticmethod
+    @numba.njit
+    def compute_shadow(peaks, pre_s2_peaks, touching_windows, exponent, res):
+        """
+        For each peak in peaks, check if there is a shadow-casting S2 peak
+        and check if it casts the largest shadow
+        """
+        for p_i, p_a in enumerate(peaks):
+            # reset for every peak
+            new_shadow = 0
+            s2_indices = touching_windows[p_i]
+            for s2_idx in range(s2_indices[0], s2_indices[1]):
+                s2_a = pre_s2_peaks[s2_idx]
+                if p_a['center_time'] - s2_a['center_time'] <= 0:
+                    continue
+                new_shadow = s2_a['area'] * (
+                        p_a['center_time'] - s2_a['center_time'])**exponent
+                if new_shadow > res['shadow'][p_i]:
+                    res['shadow'][p_i] = new_shadow
+                    res['pre_s2_area'][p_i] = s2_a['area']
+                    res['shadow_dt'][p_i] = p_a['center_time'] - s2_a['center_time']
+                    res['pre_s2_x'][p_i] = s2_a['x']
+                    res['pre_s2_y'][p_i] = s2_a['y']
 
 
 @export
