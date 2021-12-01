@@ -12,5 +12,5 @@ immutabledict
 numba>=0.50.0
 requests
 commentjson
-matplotlib
+matplotlib<3.5.0
 gitpython
