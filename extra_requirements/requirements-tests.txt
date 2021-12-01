@@ -20,7 +20,7 @@ multihist==0.6.4
 npshmex==0.2.1                                  # Strax dependency
 numba==0.54.1                                   # Strax dependency
 numpy==1.19.5
-packaging==21.3
+packaging==20.8
 pandas==1.3.2                                   # Strax dependency
 panel==0.12.1                                   # Bokeh dependency
 psutil==5.8.0                                   # Strax dependency
