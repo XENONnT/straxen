@@ -3,6 +3,7 @@ import strax
 
 export, __all__ = strax.exporter()
 
+
 @export
 class EventShadow(strax.Plugin):
     """
@@ -23,7 +24,7 @@ class EventShadow(strax.Plugin):
                  ('s2_shadow', np.float32, 'main s2 shadow [PE/ns]'),
                  ('shadow', np.float32, 'shadow of event [PE/ns]'),
                  ('pre_s2_area', np.float32, 'previous s2 area [PE]'),
-                 ('shadow_dt', np.int64, 'time diffrence to the previous s2 [ns]'),
+                 ('shadow_dt', np.int64, 'time difference to the previous s2 [ns]'),
                  ('shadow_index', np.int32, 'max shadow peak index in event'),
                  ('pre_s2_x', np.float32, 'x of previous s2 peak causing shadow [cm]'),
                  ('pre_s2_y', np.float32, 'y of previous s2 peak causing shadow [cm]'),
