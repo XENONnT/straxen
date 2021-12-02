@@ -16,6 +16,7 @@ from .rundb import *
 from .scada import *
 from .bokeh_utils import *
 from .rucio import *
+from .url_config import *
 
 from . import plugins
 from .plugins import *
