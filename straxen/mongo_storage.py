@@ -79,7 +79,8 @@ class GridFsInterface:
             # Check the user input is fine for what we want to do.
             if not isinstance(collection, pymongo_collection):
                 raise ValueError('Provide PyMongo collection (see docstring)!')
-            assert file_database is None, "Already provided a collection!"
+            if file_database is not None:
+                raise ValueError("Already provided a collection!")
 
         # Set collection and make sure it can at least do a 'find' operation
         self.collection = collection
