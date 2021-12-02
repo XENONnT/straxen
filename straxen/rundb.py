@@ -181,7 +181,8 @@ class RunDB(strax.StorageFrontend):
             if doc is not None:
                 datum = doc['data'][0]
                 error_message = f'Expected {rucio_key} got data on {datum["location"]}'
-                assert datum.get('did', '') == rucio_key, error_message
+                if datum.get('did', '') != rucio_key:
+                    raise RuntimeError(error_message)
                 backend_name = 'RucioLocalBackend'
                 backend_key = key_to_rucio_did(key)
                 return backend_name, backend_key
