@@ -7,6 +7,7 @@ not show up in Pull Requests.
 import straxen
 import os
 import unittest
+from pymongo import ReadPreference
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
@@ -71,11 +72,13 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
         if max_run is not None:
             # One run failed before, lets try a more recent one.
             query.update({'number': {"$gt": int(max_run)}})
-        some_run = om.db[om.col_name].find_one(query,
-                                               projection={'number': 1,
-                                                           'metadata': 1,
-                                                           'lineage_hash': 1,
-                                                           })
+        collection = om.db[om.col_name].with_options(
+            read_preference=ReadPreference.SECONDARY_PREFERRED)
+        some_run = collection.find_one(query,
+                                       projection={'number': 1,
+                                                   'metadata': 1,
+                                                   'lineage_hash': 1,
+                                                   })
         if some_run.get('lineage_hash', False):
             if some_run['lineage_hash'] != st.key_for("0", target).lineage_hash:
                 # We are doing a new release, therefore there is no
