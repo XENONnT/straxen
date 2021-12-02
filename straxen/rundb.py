@@ -181,7 +181,8 @@ class RunDB(strax.StorageFrontend):
             if doc is not None:
                 datum = doc['data'][0]
                 error_message = f'Expected {rucio_key} got data on {datum["location"]}'
-                assert datum.get('did', '') == rucio_key, error_message
+                if datum.get('did', '') != rucio_key:
+                    raise RuntimeError(error_message)
                 backend_name = 'RucioLocalBackend'
                 backend_key = key_to_rucio_did(key)
                 return backend_name, backend_key
@@ -278,7 +279,7 @@ class RunDB(strax.StorageFrontend):
             projection=projection)
         for doc in strax.utils.tqdm(
                 cursor, desc='Fetching run info from MongoDB',
-                total=cursor.count()):
+                total=self.collection.count_documents(query)):
             del doc['_id']
             if self.reader_ini_name_is_mode:
                 doc['mode'] = \

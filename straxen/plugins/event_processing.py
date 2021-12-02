@@ -12,18 +12,18 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('trigger_min_area', default=100, infer_type=False,
+    strax.Option('trigger_min_area', default=100, type=(int,float),
                  help='Peaks must have more area (PE) than this to '
                       'cause events'),
-    strax.Option('trigger_max_competing', default=7, infer_type=False,
+    strax.Option('trigger_max_competing', default=7, type=int,
                  help='Peaks must have FEWER nearby larger or slightly smaller'
                       ' peaks to cause events'),
-    strax.Option('left_event_extension', default=int(0.25e6), infer_type=False,
+    strax.Option('left_event_extension', default=int(0.25e6), type=(int, float),
                  help='Extend events this many ns to the left from each '
                       'triggering peak. This extension is added to the maximum '
                       'drift time.',
                  ),
-    strax.Option('right_event_extension', default=int(0.25e6), infer_type=False,
+    strax.Option('right_event_extension', default=int(0.25e6), type=(int, float),
                  help='Extend events this many ns to the right from each '
                       'triggering peak.',
                  ),
@@ -32,7 +32,7 @@ export, __all__ = strax.exporter()
                  help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
                  ),
     strax.Option(name='max_drift_length',
-                 default=straxen.tpc_z, infer_type=False,
+                 default=straxen.tpc_z, type=(int, float),
                  help='Total length of the TPC from the bottom of gate to the '
                       'top of cathode wires [cm]',
                  ),
@@ -75,6 +75,10 @@ class Events(strax.OverlapWindowPlugin):
             self.run_id,
             self.config['electron_drift_velocity'])
         self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        # Left_extension and right_extension should be computed in setup to be
+        # reflected in cutax too.
+        self.left_extension = self.config['left_event_extension'] + self.drift_time_max
+        self.right_extension = self.config['right_event_extension']
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
@@ -96,9 +100,9 @@ class Events(strax.OverlapWindowPlugin):
         # Join nearby triggers
         t0, t1 = strax.find_peak_groups(
             triggers,
-            gap_threshold=le + re + 1,
-            left_extension=le,
-            right_extension=re)
+            gap_threshold=self.left_extension + self.right_extension + 1,
+            left_extension=self.left_extension,
+            right_extension=self.right_extension)
 
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
