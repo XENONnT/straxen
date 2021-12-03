@@ -125,6 +125,21 @@ class EventPatternFit(strax.Plugin):
             straxen.get_resource(
                 self.config['s2_optical_map'],
                 fmt=self._infer_map_format(self.config['s2_optical_map'])))
+
+        # Getting S2 data-driven tensorflow models
+        downloader = straxen.MongoDownloader()
+        self.model_file = downloader.download_single(self.config['s2_tf_model'])
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tar = tarfile.open(self.model_file, mode="r:gz")
+            tar.extractall(path=tmpdirname)
+
+            import tensorflow as tf
+            def _logl_loss(patterns_true, likelihood):
+                return likelihood / 10.
+            self.model = tf.keras.models.load_model(tmpdirname,
+                                                    custom_objects={"_logl_loss": _logl_loss})
+            self.model_chi2 = tf.keras.Model(self.model.inputs,
+                                             self.model.get_layer('Likelihood').output)
         
         # Getting gain model to get dead PMTs
         self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
@@ -318,21 +333,6 @@ class EventPatternFit(strax.Plugin):
                     result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
 
     def compute_s2_neural_llhvalue(self, events, result):
-
-        downloader = straxen.MongoDownloader()
-        self.model_file = downloader.download_single(self.config['s2_tf_model'])
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tar = tarfile.open(self.model_file, mode="r:gz")
-            tar.extractall(path=tmpdirname)
-
-            import tensorflow as tf
-            def _logl_loss(patterns_true, likelihood):
-                return likelihood / 10.
-            self.model = tf.keras.models.load_model(tmpdirname,
-                                                    custom_objects={"_logl_loss": _logl_loss})
-            self.model_chi2 = tf.keras.Model(self.model.inputs,
-                                             self.model.get_layer('Likelihood').output)
-
         for t_ in ['s2', 'alt_s2']:
             # Selecting S2s for pattern fit calculation
             # - must exist (index != -1)
@@ -343,10 +343,10 @@ class EventPatternFit(strax.Plugin):
             cur_s2_bool &= (events[t_ + '_index'] != -1)
             cur_s2_bool &= (events[t_ + '_area_fraction_top'] > 0)
 
-            # default value is nan, it will be ovewrite if the event satisfy the requirments
+            # default value is nan, it will be ovewrite if the event satisfy the requirements
             result[t_ + '_neural_2llh'][:] = np.nan
 
-            # Produce position and top pattern to feed tensorflow mode, return chi2/N
+            # Produce position and top pattern to feed tensorflow model, return chi2/N
             if np.sum(cur_s2_bool):
                 s2_pos = np.stack((x, y)).T[cur_s2_bool]
                 s2_pat = events[t_ + '_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
