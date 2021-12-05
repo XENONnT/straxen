@@ -574,7 +574,7 @@ class PeakletClassification(strax.Plugin):
         Function which determines the upper boundary for the rise-time
         for a given area.
         """
-        return norm*np.exp(area/tau) + const
+        return norm*np.exp(-area/tau) + const
 
     @staticmethod
     def upper_rise_time_aft_boundary(aft, slope, offset, aft_boundary, flat_threshold):
@@ -582,7 +582,7 @@ class PeakletClassification(strax.Plugin):
         Function which computes the upper rise time boundary as a function
         of area fraction top.
         """
-        res = 10**(-slope * aft + offset)
+        res = 10**(slope * aft + offset)
         res[aft >= aft_boundary] = flat_threshold
         return res
 
