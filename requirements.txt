@@ -1,5 +1,5 @@
 numpy~=1.19.5
-packaging~=20.8
+packaging
 pymongo<=3.12.0
 strax>=1.1.2
 utilix>=0.5.3
