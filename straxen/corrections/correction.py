@@ -1,154 +1,175 @@
-from abc import ABC, abstractclassmethod, abstractmethod
-from datetime import datetime
-import pandas as pd
-import typing as ty
+import re
+import pytz
 import strax
+import numpy as np
+import pandas as pd
 
-from .model import BaseCorrectionModel, BaseIntervalCorrection
-from .storage import BaseCorrectionStore, BaseIntervalStore, InsertionError
+import typing as ty
+from datetime import datetime
+import time
+from .storage import InsertionError, BaseCorrectionStore
+import utilix
+from scipy.interpolate import interp1d
+from pydantic import BaseModel, Field
 
 
-class CorrectionError(Exception):
-    pass
+export, __all__ = strax.exporter()
 
-class CorrectionInsertionError(CorrectionError):
-    pass
+# editing will not be allowed for for time periods
+# this many seconds into the future 
+EDITING_BUFFER = 12*3600 
 
-class CorrectionReadError(CorrectionError):
-    pass
+def camel_to_snake(name):
+  name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+  return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
-class BaseCorrection(ABC):
-    CORRECTIONS = {}
 
-    name: ty.ClassVar
-    Model = BaseCorrectionModel
-    Storage = BaseCorrectionStore
+def run_id_to_time(run_id):
+    run_id = int(run_id)
+    runsdb = utilix.rundb.xent_collection()
+    rundoc = runsdb.find_one(
+            {'number': run_id},
+            {'start': 1})
+    if rundoc is None:
+        raise ValueError(f'run_id = {run_id} not found')
+    time = rundoc['start']
+    return time.replace(tzinfo=pytz.utc)
+
+def infer_time(kwargs):
+    if 'time' in kwargs:
+        return pd.to_datetime(kwargs['time'], utc=True)
+    if 'run_id' in kwargs:
+        return run_id_to_time(kwargs['run_id'])
+    else:
+        return None
+
+@export
+class BaseCorrection(BaseModel):
+    _corrections: ty.ClassVar = {}
+    index_fields: ty.ClassVar = ('version',)
+    version: int = 0
+    value: ty.Union[int,float,str]
+
+    def __init_subclass__(cls):
+        cls.name = camel_to_snake(cls.__name__)
+        if cls.name.startswith('base'):
+            return
+        correction = cls._corrections.setdefault(cls.name, cls)
+        if correction is not cls:
+            raise ValueError(f"A correction with the name \
+                             {cls.name} already exists.")
     
-    def __init_subclass__(cls, *args, **kwargs):
-        super().__init_subclass__(*args, **kwargs)
-        if 'Base' in cls.__name__:
-            return
-        if cls is BaseCorrection:
-            return
-        if hasattr(cls, 'name'):
-            name = cls.name
-        else:
-            name = strax.camel_to_snake(cls.__name__)
-        if name in cls.CORRECTIONS:
-            raise CorrectionError(f'A correction with the name {cls.name} already exists.')
-        cls.CORRECTIONS[name] = cls
-        
-        for superclass in cls.mro():
-            if hasattr(superclass, 'Model') and not issubclass(cls.Model, superclass.Model):
-                raise CorrectionError(f'Class attribute Model must be a subclass of {superclass.Model}, got {cls.Model}')
-            if hasattr(superclass, 'Storage') and not issubclass(cls.Storage, superclass.Storage):
-                raise CorrectionError(f'Class attribute Storage must be a subclass of {superclass.Storage}, got {cls.Storage}')    
+    @property
+    def index(self):
+        return {field: getattr(self, field) 
+                for field in self.index_fields}
+
+    @property
+    def cutoff(self):
+        return pd.to_datetime(time.time()+EDITING_BUFFER, unit='s', utc=True)
+
+    def pre_insert(self, store):
+        pass
 
     @classmethod
-    def find(cls, storage, **kwargs):
-        storage = cls.validate_storage(storage)
-        docs = cls._find(storage, **kwargs)
-        docs = cls.validate_documents(docs)
+    def insert(cls, store, docs):
+        if isinstance(docs, (ty.Mapping, cls)):
+            docs = [docs]
+        if not isinstance(docs, ty.Iterable):
+            raise TypeError(f'docs must be of type Mapping or {cls} or iterable of those types.')
+        docs = [doc if isinstance(doc, cls) else cls(**doc) for doc in docs]
+        for doc in docs:
+            doc.save(store)
         return docs
 
-    @abstractclassmethod
-    def _find(cls, storage, **kwargs):
-        pass
+    def save(self, store):
+        self.pre_insert(store)
+        store.insert(self.name, self.dict())
+
+    @classmethod
+    def from_store(cls, store, **index):
+        raise NotImplementedError
     
     @classmethod
-    def validate_documents(cls, docs):
-        validated = []
-        for doc in docs:
-            if isinstance(doc, cls.Model):
-                 validated.append(doc)
-            if isinstance(doc, ty.Mapping):
-                validated.append(cls.Model(**doc))
-            else:
-                raise InsertionError('Documents must be of type {cls.Model} or dict.')
-        return validated
+    def validity(cls, store, begin, end, version):
+        raise NotImplementedError
+
+@export
+class BaseSampledCorrection(BaseCorrection):
+    time: datetime
+
+    @staticmethod
+    def interpolate(left, right, time):
+        x1,x2 = left.time.timestamp(), right.time.timestamp()
+        y1,y2 = left.value, right.value
+        func = interp1d([x1,x2], [y1,y2], fill_value=(y1,y2), bounds_error=False)
+        return np.asscalar(func(time.timestamp()))
 
     @classmethod
-    def validate_storage(cls, storage):
-        if not isinstance(storage, cls.Storage):
-            raise TypeError('Storage class is not suitable \
-                 for this type of correction.')
-        return storage
+    def from_store(cls, store, time, version=0):
+        time = pd.to_datetime(time, utc=True)
+        before = store.find_before(cls.name, 'time', time, version=version)
+        left = cls(**before[0])
+        after = store.find_after(cls.name,'time', time, version=version)
+        if len(after):
+            right = cls(**after[0])
+            left.value = cls.interpolate(left, right, time)
+            left.time = time
+            return left
+        elif left.version:
+            raise ValueError('Invalid time')
+        return left
 
-    @classmethod
-    def insert(cls, storage, docs=None, **kwargs):
-        storage = cls.validate_storage(storage)
-        if docs is None:
-            docs = kwargs
+    def pre_insert(self, store):
+        existing = self.__class__.from_store(store, self.time, version=self.version)
+        if existing and existing.value != self.value:
+            raise InsertionError(f'Values for {self.time} already set to {existing.value}.')
+            
+    def pre_delete(self, store):
+        if self.time<self.cutoff:
+            raise InsertionError(f'You cannot delete values before {self.cutoff}.')
 
-        if not isinstance(docs, ty.Iterable):
-            docs = [docs]
-        docs = cls.validate_documents(docs)
-        return cls._insert(storage, docs)
-
-    @abstractclassmethod
-    def _insert(cls, storage, docs):
-        pass
-
-    def update(cls, storage, docs=None, **kwargs):
-        storage = cls.validate_storage(storage)
-        if docs is None:
-            docs = kwargs
-        if not isinstance(docs, ty.Iterable):
-            docs = [docs]
-        docs = cls.validate_documents(docs)
-        return cls._update(storage ,docs)
-
-    @abstractclassmethod
-    def _update(cls, storage, docs):
-        pass
-
+    def pre_update(self, store):
+        self.pre_insert(store)
     
+
+@export
+class BaseMappingCorrection(BaseCorrection):
+    index_fields = ('version', 'key')
+    key: ty.Union[str,int]
+
+@export
 class BaseIntervalCorrection(BaseCorrection):
-    Storage = BaseIntervalCorrection
+    begin: ty.Union[int,datetime]
+    end: ty.Union[int,datetime]
+
+    @property
+    def interval(self):
+        return pd.Interval(self.begin, self.end)
+
+@export
+class BaseIntIntervalCorrection(BaseIntervalCorrection):
+    begin: int
+    end: int
     
-    @abstractclassmethod
-    def overlaps(cls, storage,  begin, end=None, **kwargs):
-        if not isinstance(storage,  cls.Storage):
-            raise TypeError('Storage class is not suitable \
-                 for this type of correction.')
-        return storage.overlaps(begin, end=end, **kwargs)
+@export
+class BaseTimeIntervalCorrection(BaseIntervalCorrection):
+    begin: datetime
+    end: datetime
 
     @classmethod
-    def _find(cls, storage, **kwargs):
-        pass
+    def from_store(cls, store: BaseCorrectionStore, time, version=0):
+        time = pd.to_datetime(time, utc=True)
+        overlaps = store.overlaps(cls.name, time, time, version=version)
+        if len(overlaps):
+            return cls(**overlaps[0])
 
-    @classmethod
-    def _insert(cls, storage, docs):
-        pass
-
-    @classmethod
-    def _update(cls, storage, docs):
-        pass
-
-class BaseInterpolatingCorrection(BaseCorrection):
-
-    @abstractclassmethod
-    def interpolate(cls, storage, index, **kwargs):
-        storage = cls.validate_storage(storage)
-        if isinstance(index, cls.Model):
-            index = index.index
-
-    @classmethod
-    def _find(cls, index, **kwargs):
-        pass
-
-class BaseCorrectionClient:
-    def __init__(self, correction, storage) -> None:
-        self.correction = correction
-        self.storage = storage
-
-    def value_at(self, index, **kwargs):
-        overlaps = self.overlaps(index, **kwargs)
+    def pre_insert(self, store):
+        overlaps = store.overlaps(self.name, 
+                                self.begin,
+                                self.end,
+                                version=self.version)
         if overlaps:
-            return overlaps[-1].get_value()
-        
-    def get_values(self, **kwargs):
-        return [c.get_value() for c in self.find(**kwargs)]
+            raise InsertionError(f'Document overlaps with existing documents.')
+
     
-    def get_value(self, **kwargs):
-        return self.find_one().get_value()
