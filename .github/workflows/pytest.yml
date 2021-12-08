@@ -44,24 +44,28 @@ jobs:
             test: pytest_no_database
     steps:
       # Setup and installation
-      - name: Setup python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v2.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: 'extra_requirements/requirements-tests.txt'
       - name: Remove strax from reqs.
         if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
         env:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         run: |
           bash .github/scripts/filter_strax_from_requirements.sh
-      - name: Install requirements for tests and latest strax
+      - name: Install requirements
+        run: pip install -r extra_requirements/requirements-tests.txt
+      - name: Install strax
         run: |
-            pip install -r extra_requirements/requirements-tests.txt
-            pip install git+https://github.com/AxFoundation/strax.git
+            git clone https://github.com/AxFoundation/strax ../strax
+            pip install -e ../strax
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.6.0
+        uses: supercharge/mongodb-github-action@1.7.0
         with:
           mongodb-version: 4.2
       # Secrets and required files
@@ -90,14 +94,12 @@ jobs:
         env:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
-        run: |
-          bash .github/scripts/create_pre_apply_function.sh $HOME
-
-      # Run tests
+        run: bash .github/scripts/create_pre_apply_function.sh $HOME
       - name: Test package
         # This is running a normal test
         if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'
         env:
+          ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
         run: |
           pytest -rsxv --durations 0
@@ -105,6 +107,7 @@ jobs:
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
+          ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # We need to check if we had access to the secrets, otherwise coveralls

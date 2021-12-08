@@ -1,3 +1,63 @@
+1.1.3 / 2021-11-19
+-------------------
+minor / patches:
+- Add URL based configs (#758)
+- Add perpendicular wires handling info and function (#756)
+- Add a few special cases event_info_double (#740)
+- Process afterpulses on ebs (#727)
+- Add zenodo (#742)
+- Set check_broken=False for RucioFrontend.find (#749)
+- Explicitly set infer_dtype=False for all Options (#750)
+- Use alt z for alternative s1 binomial test (#724)
+
+fixes/tests:
+- update docs (#743)
+- Remove RuntimeError in RucioFrontend (#719)
+- cleanup bootstrax logic for target determination (#768)
+- Test installation without extra requirements (#725)
+- Adding code comments for corrected z position (#763)
+- Reactivate scada test (#764)
+- Added resource exception for Scada (#755)
+- test_widgets is broken? (#726)
+- Track bokeh (#759)
+- Fix keras requirement (#748)
+- Update requirements-tests.txt (#739)
+- Fix deprecation warning (#723)
+- Update test_misc.py (90f2fc30141704158a0e297ea05679515a62b397)
+
+notes:
+ - plugins changed (new lineage) are `event_info_double` and `event_pattern_fit`
+
+
+1.1.2 / 2021-10-27
+-------------------
+minor / patches:
+- Plugin for afterpulse processing (#549)
+- Veto online monitor (#707)
+- Refactor straxen tests (#703)
+- WFSim registry as argument for simulations context (#713)
+- Update S1 AFT map in event pattern fit (#697)
+- Refactor s2 correction (#704) 
+
+fixes/tests:
+- Set default drift time as nan (#700)
+- Revert auto inclusion of rucio remote #688 (#701)
+- fix bug in CMT (#710)
+- Fix one year querries (#711)
+- Test new numba (#702)
+- Unify CMT call in contexts (#717)
+- Small codefactor patch (#714)
+- test nv with nv data (#709)
+- Add small test for wfsim (#716)
+
+notes:
+ - plugins changed (new lineage) are:
+   - `afterpulses`
+   - `online_monitor_nv`
+   - `online_monitor_mv`
+   - `event_pattern_fit`
+   - `corrected_areas`
+
 1.1.1 / 2021-10-19
 -------------------
  - Fix to test for RunDB frontend when no test DB is sourced (6da2233)
@@ -18,7 +78,6 @@ major / minor:
 
 
 patches and fixes:
-
  
 - Use read by index and check for NaNs (#661)
 - Add small feature for printing versions of git (#665)

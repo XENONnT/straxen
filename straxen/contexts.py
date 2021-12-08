@@ -83,7 +83,9 @@ xnt_common_opts.update({
                                            straxen.MergedS2sHighEnergy,
                                            straxen.PeakVetoTagging,
                                            straxen.EventInfo,
-                                          ],
+                                           straxen.PeakShadow,
+                                           straxen.EventShadow,
+                                           ],
     'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
                                                    straxen.nveto_recorder,
                                                    straxen.veto_pulse_processing,
@@ -96,7 +98,6 @@ xnt_common_opts.update({
                                                    straxen.event_area_per_channel,
                                                    straxen.event_patternfit,
                                                    straxen.event_processing,
-                                                   straxen.event_shadow,
                                                    ],
     'use_per_run_defaults': False,
 })
