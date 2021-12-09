@@ -289,22 +289,22 @@ class EventPatternFit(strax.Plugin):
             # - must have total area larger minimal one
             # - must have positive AFT
             x, y = events[t_+'_x'], events[t_+'_y']
-            cur_s2_bool = (events[t_+'_area']>self.config['s2_min_area_pattern_fit'])
-            cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
-            cur_s2_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
+            s2_mask = (events[t_+'_area']>self.config['s2_min_area_pattern_fit'])
+            s2_mask &= (events[t_+'_area_fraction_top']>0)
+            s2_mask &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
             
             # default value is nan, it will be ovewrite if the event satisfy the requirments
             result[t_+'_2llh'][:] = np.nan
             
             # Making expectation patterns [ in PE ]
-            if np.sum(cur_s2_bool):
-                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
+            if np.sum(s2_mask):
+                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[s2_mask, 0:self.config['n_top_pmts']]
                 s2_map_effs = s2_map_effs[:, self.pmtbool_top]
-                s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[cur_s2_bool]
+                s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[s2_mask]
                 s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]
 
                 # Getting pattern from data
-                s2_top_area_per_channel = events[t_+'_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
+                s2_top_area_per_channel = events[t_+'_area_per_channel'][s2_mask, 0:self.config['n_top_pmts']]
                 s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
 
                 # Calculating LLH, this is shifted Poisson
@@ -320,35 +320,32 @@ class EventPatternFit(strax.Plugin):
                                      areas = s2_top_area_per_channel, 
                                      mean_pe_photon=self.mean_pe_photon)
                                )
-                result[t_+'_2llh'][cur_s2_bool] = np.sum(norm_llh_val, axis=1)
+                result[t_+'_2llh'][s2_mask] = np.sum(norm_llh_val, axis=1)
 
                 if self.config['store_per_channel']:
                     store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
                     store_patterns[:, self.pmtbool_top] = s2_pattern
-                    result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
+                    result[t_+'_pattern'][s2_mask] = store_patterns#:s2_pattern[s2_mask]
 
                     store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
                     store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
-                    result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
+                    result[t_+'_2llh_per_channel'][s2_mask] = store_2LLH_ch
 
     def compute_s2_neural_llhvalue(self, events, result):
         for t_ in ['s2', 'alt_s2']:
-            # Selecting S2s for pattern fit calculation
-            # - must exist (index != -1)
-            # - must have total area larger minimal one
-            # - must have positive AFT
             x, y = events[t_ + '_x'], events[t_ + '_y']
-            cur_s2_bool = (events[t_ + '_area'] > self.config['s2_min_area_pattern_fit'])
-            cur_s2_bool &= (events[t_ + '_area_fraction_top'] > 0)
+            s2_mask = (events[t_ + '_area'] > self.config['s2_min_area_pattern_fit'])
+            s2_mask &= (events[t_ + '_area_fraction_top'] > 0)
 
             # default value is nan, it will be ovewrite if the event satisfy the requirements
             result[t_ + '_neural_2llh'][:] = np.nan
 
             # Produce position and top pattern to feed tensorflow model, return chi2/N
-            if np.sum(cur_s2_bool):
-                s2_pos = np.stack((x, y)).T[cur_s2_bool]
-                s2_pat = events[t_ + '_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
-                result[t_ + '_neural_2llh'][cur_s2_bool] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
+            if np.sum(s2_mask):
+                s2_pos = np.stack((x, y)).T[s2_mask]
+                s2_pat = events[t_ + '_area_per_channel'][s2_mask, 0:self.config['n_top_pmts']]
+                # Output[0]: loss function, -2*log-likelihood, Output[1]: chi2
+                result[t_ + '_neural_2llh'][s2_mask] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
 
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
