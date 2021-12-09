@@ -590,23 +590,21 @@ class PeakletClassification(strax.Plugin):
     def compute(self, peaklets):
         ptype = np.zeros(len(peaklets), dtype=np.int8)
 
-        # Properties needed for classification. Bit annoying these computations
-
-        # are duplicated in peak_basics currently...
-        rise_time = -peaks['area_decile_from_midpoint'][:, 1]
-        n_channels = (peaks['area_per_channel'] > 0).sum(axis=1)
+        # Properties needed for classification:
+        rise_time = -peaklets['area_decile_from_midpoint'][:, 1]
+        n_channels = (peaklets['area_per_channel'] > 0).sum(axis=1)
         n_top = self.config['n_top_pmts']
-        area_top = peaks['area_per_channel'][:, :n_top].sum(axis=1)
-        area_total = peaks['area_per_channel'].sum(axis=1)
+        area_top = peaklets['area_per_channel'][:, :n_top].sum(axis=1)
+        area_total = peaklets['area_per_channel'].sum(axis=1)
         area_fraction_top = area_top/area_total
 
-        is_large_s1 = (peaks['area'] >= 100)
+        is_large_s1 = (peaklets['area'] >= 100)
         is_large_s1 &= (rise_time <= self.config['s1_max_rise_time_post100'])
-        is_large_s1 &= peaks['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
+        is_large_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
 
-        is_small_s1 = peaks["area"] < 100
+        is_small_s1 = peaklets["area"] < 100
         is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
-            peaks["area"],
+            peaklets["area"],
             *self.config["s1_risetime_area_parameters"],
         )
 
@@ -616,7 +614,7 @@ class PeakletClassification(strax.Plugin):
             *self.config["s1_flatten_threshold_aft"],
         )
 
-        is_small_s1 &= peaks['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
+        is_small_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
 
         ptype[is_large_s1 | is_small_s1] = 1
 
