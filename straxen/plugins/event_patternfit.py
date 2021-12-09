@@ -442,7 +442,11 @@ def binom_test(k, n, p):
     target = lbinom_pmf(k, n, p)
     j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
 
-    pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
+    pval = 0
+    if min(k, j) > 0:
+        pval += binom_cdf(min(k, j), n, p)
+    if max(k, j) > 0:
+        pval += binom_sf(max(k, j), n, p)
     pval = min(1.0, pval)
 
     return pval
