@@ -47,7 +47,6 @@ def infer_time(kwargs):
 @export
 class BaseCorrection(BaseModel):
     name: ClassVar = ''
-    version: ClassVar = Indexer()
     value: Union[str,int,float]
     
     @classmethod
@@ -84,6 +83,7 @@ class BaseCorrection(BaseModel):
 
 @export
 class TimeIntervalCorrection(BaseCorrection):
+    version: ClassVar = Indexer(type=int)
     time: ClassVar = IntervalIndexer(type=datetime.datetime, left_name='begin', right_name='end')
     
     def pre_insert(self, **index):
@@ -101,6 +101,7 @@ def can_extrapolate(index):
         
 @export
 class TimeSampledCorrection(BaseCorrection):
+    version: ClassVar = Indexer(type=int)
     time: ClassVar = InterpolatedIndexer(extrapolate=can_extrapolate)
         
     def pre_insert(self, **index):

@@ -18,6 +18,13 @@ class CorrectionClient:
             index = (index, )
         return self.get(*index)
 
+    def __setitem__(self, key, value):
+        if not isinstance(key, tuple):
+            key = (key,)
+        if not isinstance(value, dict):
+            value = {'value': value}
+        self.insert(*key, **value)
+
     def insert(self, *args, **kwargs):
         doc = self.correction(**kwargs)
         index = self.store.construct_index(self.correction, *args, **kwargs)
