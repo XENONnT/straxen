@@ -36,6 +36,10 @@ export, __all__ = strax.exporter()
                  help='Total length of the TPC from the bottom of gate to the '
                       'top of cathode wires [cm]',
                  ),
+    strax.Option(name='exclude_s1_as_triggering_peaks',
+                 default=True, type=bool,
+                 help='If true exclude S1s as triggering peaks.',
+                 ),
 )
 class Events(strax.OverlapWindowPlugin):
     """
@@ -56,7 +60,7 @@ class Events(strax.OverlapWindowPlugin):
     depends_on = ['peak_basics', 'peak_proximity']
     provides = 'events'
     data_kind = 'events'
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
     save_when = strax.SaveWhen.NEVER
 
     dtype = [
@@ -83,9 +87,15 @@ class Events(strax.OverlapWindowPlugin):
                      + self.config['right_event_extension'])
 
     def compute(self, peaks, start, end):
-        triggers = peaks[
-            (peaks['area'] > self.config['trigger_min_area'])
-            & (peaks['n_competing'] <= self.config['trigger_max_competing'])]
+        le = self.config['left_event_extension'] + self.drift_time_max
+        re = self.config['right_event_extension']
+
+        _is_triggering = peaks['area'] > self.config['trigger_min_area']
+        _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
+        if self.config['exclude_s1_as_triggering_peaks']:
+            _is_triggering &= peaks['type'] == 2
+
+        triggers = peaks[_is_triggering]
 
         # Join nearby triggers
         t0, t1 = strax.find_peak_groups(
