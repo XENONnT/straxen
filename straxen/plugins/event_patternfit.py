@@ -290,7 +290,6 @@ class EventPatternFit(strax.Plugin):
             # - must have positive AFT
             x, y = events[t_+'_x'], events[t_+'_y']
             cur_s2_bool = (events[t_+'_area']>self.config['s2_min_area_pattern_fit'])
-            cur_s2_bool &= (events[t_+'_index']!=-1)
             cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
             cur_s2_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
             
@@ -340,7 +339,6 @@ class EventPatternFit(strax.Plugin):
             # - must have positive AFT
             x, y = events[t_ + '_x'], events[t_ + '_y']
             cur_s2_bool = (events[t_ + '_area'] > self.config['s2_min_area_pattern_fit'])
-            cur_s2_bool &= (events[t_ + '_index'] != -1)
             cur_s2_bool &= (events[t_ + '_area_fraction_top'] > 0)
 
             # default value is nan, it will be ovewrite if the event satisfy the requirements
