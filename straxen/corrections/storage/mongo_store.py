@@ -3,7 +3,7 @@
 from dask.utils import Dispatch
 import pymongo
 from itertools import product
-from .store import CorrectionStore
+from .store import CorrectionStore, InsertionError
 from ..indexers import Indexer, InterpolatedIndexer, IntervalIndexer
 
 class MongoCorrectionStore(CorrectionStore):
@@ -59,18 +59,30 @@ class MongoCorrectionStore(CorrectionStore):
                     record[k] = v.construct_index(d)
                 records.append(record)
                 
-        for indx in correction.indices().values():
-            records = indx.process_records(records, index)
+        for indexer in correction.indices().values():
+            records = indexer.process_records(records, index)
         return records
     
     def get_value(self, correction, *args, **kwargs):
         index = self.construct_index(correction, *args, **kwargs)
-        index.update(kwargs)
         if set(index).symmetric_difference(correction.indices()):
             raise ValueError(f'get_value method only supports exact index lookup.\
             A value for all of the indices: {list(correction.indices())} must be provided')
-        values = self.get_values(correction, **index)
-    
+        hits = self.get_values(correction, **index)
+        if hits:
+            results = hits[-1]
+            if len(args)>len(index):
+                results = results[args[len(index)]]
+            return results
+        else:
+            raise KeyError(f'No values defined for {index}')
+
+    def _insert(self, correction, **index):
+        doc = correction.dict()
+        doc.update(index)
+        self.db[correction.name].insert_one(doc)
+        return doc
+
 @MongoCorrectionStore.index_query.register(Indexer)
 def index_query(index, value):
     return [dict(filter={index.name: value})]
@@ -85,11 +97,18 @@ def interval_index_query(index, value):
         left = right = value
     if left>right:
         left, right = right, left
-    query = {}
+    rquery = {}
     right_op = '$gte' if index.closed in ['right', 'both'] else '$gt'
-    query[index.right_name] = {right_op: left}
+    rquery = {'$or': [
+        {index.right_name: None},
+        {index.right_name: {right_op: left}}
+                     ]}
     left_op = '$lte' if index.closed in ['left', 'both'] else '$lt'
-    query[index.left_name] = {left_op: right}
+    lquery = {'$or': [
+        {index.left_name: None},
+        {index.left_name: {left_op: right}}
+    ]}
+    query = {'$and': [lquery, rquery]}
     return [dict(filter=query)]
 
 @MongoCorrectionStore.index_query.register(InterpolatedIndexer)
@@ -100,7 +119,9 @@ def interpolated_index_query(index, value):
     if index.inclusive:
         op += 'e'
     after_query[index.name] = {op: value}
-    query = dict(filter=after_query, sort=(index.name, pymongo.ASCENDING), limit=1)
+    query = dict(filter=after_query,
+                 sort=(index.name, pymongo.ASCENDING),
+                limit=index.neighbours)
     queries.append(query)
     
     before_query = {}
@@ -108,6 +129,8 @@ def interpolated_index_query(index, value):
     if index.inclusive:
         op += 'e'
     before_query[index.name] = {op: value}
-    query = dict(filter=before_query, sort=(index.name, pymongo.DESCENDING), limit=1)
+    query = dict(filter=before_query,
+                sort=(index.name, pymongo.DESCENDING),
+                limit=index.neighbours)
     queries.append(query)
     return queries

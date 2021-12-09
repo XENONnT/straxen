@@ -1,13 +1,14 @@
 import re
 import pytz
+import time
 import strax
 import utilix
 import pandas as pd
-
+import datetime
 from pydantic import BaseModel
 from typing import ClassVar, Union
 
-from .indexers import Indexer
+from .indexers import Indexer, InterpolatedIndexer, IntervalIndexer
 
 
 export, __all__ = strax.exporter()
@@ -20,6 +21,9 @@ def camel_to_snake(name):
   name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
+def all_subclasses(cls):
+    return set(cls.__subclasses__()).union(
+        [s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
 def run_id_to_time(run_id):
     run_id = int(run_id)
@@ -42,7 +46,7 @@ def infer_time(kwargs):
 
 @export
 class BaseCorrection(BaseModel):
-    name: ClassVar = 'correction'
+    name: ClassVar = ''
     version: ClassVar = Indexer()
     value: Union[str,int,float]
     
@@ -66,4 +70,42 @@ class BaseCorrection(BaseModel):
         fields = cls.index_fields()
         fields.update(cls.schema()['properties'])
         return fields
+
+    @classmethod
+    def correction_classes(cls):
+        return {c.name: c for c in all_subclasses(cls) if c.name}
+
+    def pre_insert(self, **index):
+        pass
+
+    def pre_update(self, old, **index):
+        pass
+    
+
+@export
+class TimeIntervalCorrection(BaseCorrection):
+    time: ClassVar = IntervalIndexer(type=datetime.datetime, left_name='begin', right_name='end')
+    
+    def pre_insert(self, **index):
+        begin = pd.to_datetime(index['begin'], utc=True)
+        cutoff = pd.to_datetime(time.time()+3600, unit='s', utc=True)
+        if index['version']==0 and begin<cutoff:
+            raise ValueError(f'Can only insert online intervals begining at least two hours in the future.')
+
+def can_extrapolate(index):
+    if index.get('version', 1):
+        return False
+    now = pd.to_datetime(time.time(), unit='s', utc=True)
+    ts = pd.to_datetime(index.get('time', now), utc=True)
+    return ts < now
+        
+@export
+class TimeSampledCorrection(BaseCorrection):
+    time: ClassVar = InterpolatedIndexer(extrapolate=can_extrapolate)
+        
+    def pre_insert(self, **index):
+        cutoff = pd.to_datetime(time.time()+3600, unit='s', utc=True)
+        ts = pd.to_datetime(index['time'], utc=True)
+        if index['version']==0 and ts<cutoff:
+            raise ValueError(f'Can only insert online values for times at least two hours in the future.')
     
