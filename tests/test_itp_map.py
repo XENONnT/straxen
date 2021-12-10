@@ -1,11 +1,11 @@
-from straxen import InterpolatingMap, utilix_is_configured, get_resource
 from unittest import TestCase, skipIf
+from straxen import InterpolatingMap, utilix_is_configured, get_resource
 
 
 class TestItpMaps(TestCase):
-    def open_map(self, map_name, fmt):
+    def open_map(self, map_name, fmt, method='WeightedNearestNeighbors'):
         map_data = get_resource(map_name, fmt=fmt)
-        m = InterpolatingMap(map_data, method='WeightedNearestNeighbors')
+        m = InterpolatingMap(map_data, method=method)
         self.assertTrue(m is not None)
 
     @skipIf(not utilix_is_configured(), 'Cannot download maps without db access')
@@ -29,4 +29,10 @@ class TestItpMaps(TestCase):
                         [3.3, 5.8],
                         [3.3, 5.7]]}
         itp_map = InterpolatingMap(_map)
-        print(itp_map([[0, 0, 0], [0, 0, -140]]))
+
+        # Let's do something easy, check if one fixed point yields the
+        # same result if not, our interpolation map depends on the
+        # straxen version?! That's bad!
+        map_at_random_point = itp_map([[0, 0, 0], [0, 0, -140]])
+        self.assertAlmostEqual(map_at_random_point[0][0], 2.80609655)
+        self.assertAlmostEqual(map_at_random_point[1][1], 7.37967879)
