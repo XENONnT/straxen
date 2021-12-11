@@ -19,7 +19,7 @@ class IntervalIndexer(Indexer):
             self.closed = closed
 
     @property
-    def fields(self):
+    def store_fields(self):
         return (self.left_name, self.right_name)
     
     def construct_index(self, record):

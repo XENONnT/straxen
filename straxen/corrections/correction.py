@@ -1,4 +1,5 @@
 import re
+from pandas.core.indexes.base import Index
 import pytz
 import time
 import strax
@@ -8,7 +9,7 @@ import datetime
 from pydantic import BaseModel
 from typing import ClassVar, Union
 
-from .indexers import Indexer, InterpolatedIndexer, IntervalIndexer
+from .indexers import Index, Indexer, InterpolatedIndexer, IntervalIndexer
 
 
 export, __all__ = strax.exporter()
@@ -47,6 +48,7 @@ def infer_time(kwargs):
 @export
 class BaseCorrection(BaseModel):
     name: ClassVar = ''
+    index: ClassVar = Index(index=Indexer())
     value: Union[str,int,float]
     
     @classmethod
@@ -60,7 +62,7 @@ class BaseCorrection(BaseModel):
     @classmethod
     def index_fields(cls):
         fields = set()
-        for index in cls.indices().values():
+        for index in cls.index.values():
             fields.update(index.fields)
         return fields
     
@@ -83,8 +85,10 @@ class BaseCorrection(BaseModel):
 
 @export
 class TimeIntervalCorrection(BaseCorrection):
-    version: ClassVar = Indexer(type=int)
-    time: ClassVar = IntervalIndexer(type=datetime.datetime, left_name='begin', right_name='end')
+    index = Index(
+        version = Indexer(type=int),
+        time = IntervalIndexer(type=datetime.datetime, left_name='begin', right_name='end'),
+        )
     
     def pre_insert(self, **index):
         begin = pd.to_datetime(index['begin'], utc=True)
@@ -101,9 +105,11 @@ def can_extrapolate(index):
         
 @export
 class TimeSampledCorrection(BaseCorrection):
-    version: ClassVar = Indexer(type=int)
-    time: ClassVar = InterpolatedIndexer(extrapolate=can_extrapolate)
-        
+    index = Index(
+            version = Indexer(type=int),
+            time = InterpolatedIndexer(extrapolate=can_extrapolate),
+            )
+                
     def pre_insert(self, **index):
         cutoff = pd.to_datetime(time.time()+3600, unit='s', utc=True)
         ts = pd.to_datetime(index['time'], utc=True)

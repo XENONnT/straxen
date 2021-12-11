@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 from typing import Callable, Union, Type
 
 class Indexer:
-    name: str = 'index'
+    name: str = 'indexer'
     type: Type = (str,int,tuple,float,datetime.datetime)
     coerce: Callable = None
 
@@ -19,7 +19,15 @@ class Indexer:
             owner._indices = {}
         owner._indices[name] = self
         self.name = name
+
+    @property
+    def query_fields(self):
+        return (self.name, )
         
+    @property
+    def store_fields(self):
+        return (self.name,)
+
     @property
     def fields(self):
         return (self.name,)

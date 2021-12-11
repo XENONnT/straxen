@@ -3,7 +3,7 @@
 from dask.utils import Dispatch
 import pymongo
 from itertools import product
-from .store import CorrectionStore, InsertionError
+from .store import CorrectionStore, setionError
 from ..indexers import Indexer, InterpolatedIndexer, IntervalIndexer
 
 class MongoCorrectionStore(CorrectionStore):
@@ -47,28 +47,28 @@ class MongoCorrectionStore(CorrectionStore):
                     query['limit'] = sub_query['limit']
             yield query
     
-    def get_values(self, correction, *args, **kwargs):
+    def get(self, correction, *args, **kwargs):
         if not isinstance(correction, type):
             correction = correction.__class__
         index = self.construct_index(correction, *args, **kwargs)
         records = []
-        for query in self.build_mongo_queries(correction.indices(), index):
+        for query in self.build_mongo_queries(correction.index, index):
             for d in self.db[correction.name].find(projection={'_id': 0}, **query):
                 record = correction(**d).dict()
-                for k,v in correction.indices().items():
+                for k,v in correction.index.items():
                     record[k] = v.construct_index(d)
                 records.append(record)
                 
-        for indexer in correction.indices().values():
+        for indexer in correction.index.values():
             records = indexer.process_records(records, index)
         return records
     
-    def get_value(self, correction, *args, **kwargs):
+    def get_one(self, correction, *args, **kwargs):
         index = self.construct_index(correction, *args, **kwargs)
-        if set(index).symmetric_difference(correction.indices()):
-            raise ValueError(f'get_value method only supports exact index lookup.\
-            A value for all of the indices: {list(correction.indices())} must be provided')
-        hits = self.get_values(correction, **index)
+        if set(index).symmetric_difference(correction.index):
+            raise ValueError(f'get_one method only supports exact index lookup.\
+            A value for all of the indices: {list(correction.index)} must be provided')
+        hits = self.get(correction, **index)
         if hits:
             results = hits[-1]
             if len(args)>len(index):
@@ -77,10 +77,10 @@ class MongoCorrectionStore(CorrectionStore):
         else:
             raise KeyError(f'No values defined for {index}')
 
-    def _insert(self, correction, **index):
+    def _set(self, correction, **index):
         doc = correction.dict()
         doc.update(index)
-        self.db[correction.name].insert_one(doc)
+        self.db[correction.name].set_one(doc)
         return doc
 
 @MongoCorrectionStore.index_query.register(Indexer)

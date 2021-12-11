@@ -11,24 +11,32 @@ class CorrectionClient:
         self.store = store
         
     def get(self, *args, **kwargs):
-        return self.store.get_value(self.correction, *args, **kwargs)
+        docs = self.store.get(self.correction, *args, **kwargs)
+        if len(docs)==1:
+            return docs[0]
+        return docs
     
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index, )
-        return self.get(*index)
+        docs = self.get(*index)
+        nfields = len(self.correction.index.query_fields)
+        if len(index)>nfields:
+            for k in index[nfields:]:
+                docs = docs[k]
+        return docs
 
     def __setitem__(self, key, value):
         if not isinstance(key, tuple):
             key = (key,)
         if not isinstance(value, dict):
             value = {'value': value}
-        self.insert(*key, **value)
+        self.set(*key, **value)
 
-    def insert(self, *args, **kwargs):
+    def set(self, *args, **kwargs):
         doc = self.correction(**kwargs)
         index = self.store.construct_index(self.correction, *args, **kwargs)
-        return self.store.insert(doc, **index)
+        return self.store.set(doc, **index)
 
 class CorrectionsClient:
     store: CorrectionStore
@@ -72,6 +80,6 @@ class CorrectionsClient:
         correction = self.corrections[correction_name]
         return CorrectionClient(correction, self.store).get(*args, **kwargs)
 
-    def insert(self, correction_name, **kwargs):
+    def set(self, correction_name, **kwargs):
         correction = self.corrections[correction_name]
-        return CorrectionClient(correction, self.store).insert(**kwargs)
+        return CorrectionClient(correction, self.store).set(**kwargs)

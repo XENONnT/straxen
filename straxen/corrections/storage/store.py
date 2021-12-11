@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-class InsertionError(Exception):
+class setionError(Exception):
     pass
 
 
@@ -10,35 +10,35 @@ class CorrectionStore:
 
     @staticmethod
     def construct_index(correction, *args, **kwargs):
-        index = dict(zip(correction.indices(), args))
+        index = dict(zip(correction.index, args))
         index.update(kwargs)
-        index = {k:v for k,v in index.items() if k in correction.indices()}
+        index = {k:v for k,v in index.items() if k in correction.index}
         return index
     
-    def get_values(self, correction, *args, **kwargs):
+    def get(self, correction, *args, **kwargs):
         raise NotImplementedError
     
-    def get_value(self, correction, *args, **kwargs):
+    def get_one(self, correction, *args, **kwargs):
         raise NotImplementedError
 
     def get_df(self, correction, *args, **kwargs):
-        df = pd.DataFrame(self.get_values(correction, *args, **kwargs))
-        return df.set_index(list(correction.indices()))
+        df = pd.DataFrame(self.get(correction, *args, **kwargs))
+        return df.set_index(list(correction.index))
 
-    def insert(self, correction, **index):
-        for indexer in correction.indices().values():
+    def set(self, correction, **index):
+        for indexer in correction.index.values():
             for field in indexer.fields:
                 if field not in index:
-                    raise InsertionError(f'{correction.__class__.__name__}\
+                    raise setionError(f'{correction.__class__.__name__}\
                                          requires value for {field}')
             indexer.validate(index[field])
 
-        if self.get_values(correction, **index):
-            raise InsertionError(f'Values already defined for {index}.')
+        if self.get(correction, **index):
+            raise setionError(f'Values already defined for {index}.')
         
-        correction.pre_insert(**index)
+        correction.pre_set(**index)
 
-        return self._insert(correction, **index)
+        return self._set(correction, **index)
 
-    def _insert(self, correction, **index):
+    def _set(self, correction, **index):
         raise NotImplementedError
