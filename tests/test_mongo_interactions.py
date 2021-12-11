@@ -4,47 +4,44 @@ NB! this only works if one has access to the database. This does not
 work e.g. on travis jobs and therefore the tests failing locally will
 not show up in Pull Requests.
 """
-
 import straxen
 import os
-from warnings import warn
-from .test_plugins import test_run_id_nT
+import unittest
+from pymongo import ReadPreference
 
 
-def test_select_runs(check_n_runs=2):
-    """
-    Test (if we have a connection) if we can perform strax.select_runs
-        on the last two runs in the runs collection
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+class TestSelectRuns(unittest.TestCase):
+    def test_select_runs(self, check_n_runs=2):
+        """
+        Test (if we have a connection) if we can perform strax.select_runs
+            on the last two runs in the runs collection
 
-    :param check_n_runs: int, the number of runs we want to check
-    """
+        :param check_n_runs: int, the number of runs we want to check
+        """
+        self.assertTrue(check_n_runs >= 1)
+        st = straxen.contexts.xenonnt_online(use_rucio=False)
+        run_col = st.storage[0].collection
 
-    if not straxen.utilix_is_configured():
-        return
-    assert check_n_runs >= 1
-    st = straxen.contexts.xenonnt_online(use_rucio=False)
-    run_col = st.storage[0].collection
+        # Find the latest run in the runs collection
+        last_run = run_col.find_one(projection={'number': 1},
+                                    sort=[('number', -1)]
+                                    ).get('number')
 
-    # Find the latest run in the runs collection
-    last_run = run_col.find_one(projection={'number': 1},
-                                sort=[('number', -1)]
-                                ).get('number')
-
-    # Set this number as the minimum run number. This limits the
-    # amount of documents checked and therefore keeps the test short.
-    st.storage[0].minimum_run_number = int(last_run) - (check_n_runs - 1)
-    st.select_runs()
+        # Set this number as the minimum run number. This limits the
+        # amount of documents checked and therefore keeps the test short.
+        st.storage[0].minimum_run_number = int(last_run) - (check_n_runs - 1)
+        st.select_runs()
 
 
-def test_downloader():
-    """Test if we can download a small file from the downloader"""
-    if not straxen.utilix_is_configured(
-            warning_message='Cannot download because utilix is not configured'):
-        return
-
-    downloader = straxen.MongoDownloader()
-    path = downloader.download_single('to_pe_nt.npy')
-    assert os.path.exists(path)
+@unittest.skipIf(not straxen.utilix_is_configured(),
+                 "Cannot download because utilix is not configured")
+class TestDownloader(unittest.TestCase):
+    def test_downloader(self):
+        """Test if we can download a small file from the downloader"""
+        downloader = straxen.MongoDownloader()
+        path = downloader.download_single('to_pe_nt.npy')
+        self.assertTrue(os.path.exists(path))
 
 
 def _patch_om_init(take_only):
@@ -59,6 +56,7 @@ def _patch_om_init(take_only):
     return straxen.OnlineMonitor(uri=uri, take_only=take_only)
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_online_monitor(target='online_peak_monitor', max_tries=3):
     """
     See if we can get some data from the online monitor before max_tries
@@ -67,9 +65,8 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
     :param max_tries: number of queries max allowed to get a non-failing
         run
     """
-    if not straxen.utilix_is_configured():
-        return
     st = straxen.contexts.xenonnt_online(use_rucio=False)
+    straxen.get_mongo_uri()
     om = _patch_om_init(target)
     st.storage = [om]
     max_run = None
@@ -78,11 +75,13 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
         if max_run is not None:
             # One run failed before, lets try a more recent one.
             query.update({'number': {"$gt": int(max_run)}})
-        some_run = om.db[om.col_name].find_one(query,
-                                               projection={'number': 1,
-                                                           'metadata': 1,
-                                                           'lineage_hash': 1,
-                                                           })
+        collection = om.db[om.col_name].with_options(
+            read_preference=ReadPreference.SECONDARY_PREFERRED)
+        some_run = collection.find_one(query,
+                                       projection={'number': 1,
+                                                   'metadata': 1,
+                                                   'lineage_hash': 1,
+                                                   })
         if some_run.get('lineage_hash', False):
             if some_run['lineage_hash'] != st.key_for("0", target).lineage_hash:
                 # We are doing a new release, therefore there is no

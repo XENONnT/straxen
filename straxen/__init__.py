@@ -1,4 +1,4 @@
-__version__ = '1.0.0'
+__version__ = '1.1.3'
 
 from utilix import uconfig
 from .common import *
@@ -16,6 +16,7 @@ from .rundb import *
 from .scada import *
 from .bokeh_utils import *
 from .rucio import *
+from .url_config import *
 
 from . import plugins
 from .plugins import *
@@ -25,6 +26,9 @@ from . import analyses
 # Do not make all contexts directly available under straxen.
 # Otherwise we have straxen.demo() etc.
 from . import contexts
+
+from . import test_utils
+from .test_utils import *
 
 try:
     from . import holoviews_utils

@@ -19,11 +19,11 @@ export, __all__ = strax.exporter()
                  help="Pretrigger time before coincidence window in ns."),
     strax.Option('resolving_time_recorder_nv', type=int, default=600,
                  help="Resolving time of the coincidence in ns."),
-    strax.Option('baseline_samples_nv',
+    strax.Option('baseline_samples_nv', infer_type=False,
                  default=('baseline_samples_nv', 'ONLINE', True), track=True,
                  help="Number of samples used in baseline rms calculation"),
     strax.Option(
-        'hit_min_amplitude_nv',
+        'hit_min_amplitude_nv', infer_type=False,
         default=('hit_thresholds_nv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number, '
@@ -37,7 +37,7 @@ export, __all__ = strax.exporter()
                  help="frozendict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('check_raw_record_overlaps_nv',
-                 default=True, track=False,
+                 default=True, track=False, infer_type=False,
                  help='Crash if any of the pulses in raw_records overlap with others '
                       'in the same channel'),
 )
