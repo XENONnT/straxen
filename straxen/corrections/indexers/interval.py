@@ -1,13 +1,14 @@
 import pandas as pd
 import pymongo
 
-from .indexer import Indexer
+from .index import Index
+from ..utils import singledispatchmethod
 
-class IntervalIndexer(Indexer):
+class IntervalIndex(Index):
     left_name: str = 'left'
     right_name: str = 'right'
     closed: str = 'left'
-    
+        
     def __init__(self, left_name=None,
                  right_name=None, 
                  closed=None, **kwargs):
@@ -36,53 +37,37 @@ class IntervalIndexer(Indexer):
         return pd.Interval(left, right,
                           closed=self.closed)
 
-    def query_db(self, db, key, value):
-        return self.apply_selection(db, value, 
-                                    left_name=self.left_name,
-                                    right_name=self.right_name,
-                                    closed=self.closed)
-
-    def process(self, key, value, docs):
+    def reduce(self, docs, value):
         for doc in docs:
-            doc[key] = value
+            doc[self.name]= value
         return docs
 
+    @singledispatchmethod
+    def build_query(self, db, value):
+        raise TypeError(f"{type(db)} backend not supported.")
 
-@IntervalIndexer.apply_selection.register(pymongo.collection.Collection)
-def mongo_collection(db, value, left_name, right_name, closed):
-    return IntervalIndexer.apply_selection(db.find(), value, left_name, right_name, closed)
-
-@IntervalIndexer.apply_selection.register(pymongo.cursor.Cursor)
-def mongo_cursor(db, value, left_name, right_name, closed):
-    if isinstance(value, tuple) and len(value)==2:
-        left, right = value
-    elif isinstance(value, slice):
-        left, right = value.start, value.stop
-    else:
-        left = right = value
-    if left>right:
-        left, right = right, left
-    rquery = {}
-    right_op = '$gte' if closed in ['right', 'both'] else '$gt'
-    rquery = {'$or': [
-        {right_name: None},
-        {right_name: {right_op: left}}
-                     ]}
-    left_op = '$lte' if closed in ['left', 'both'] else '$lt'
-    lquery = {'$or': [
-        {left_name: None},
-        {left_name: {left_op: right}}
-    ]}
-    if '$and' in db._Cursor__spec:
-        db._Cursor__spec['$and'].extend([lquery, rquery])
-    else:
-        db._Cursor__spec['$and'] =  [lquery, rquery]
-    return db.clone()
-
-@IntervalIndexer.apply_selection.register(list)
-def apply_list(db, value, left_name, right_name, closed):
-    return [IntervalIndexer.apply_selection(d, value, left_name, right_name, closed) for d in db]
-
-@IntervalIndexer.apply_selection.register(dict)
-def apply_dict( db, value, left_name, right_name, closed):
-    return {k: IntervalIndexer.apply_selection(d, value, left_name, right_name, closed) for k,d in db.items()}
+    @build_query.register(pymongo.collection.Collection)
+    @build_query.register(pymongo.database.Database)
+    def build_mongo_query(self, db, value):
+        gt_op = '$gte' if self.closed in ['right', 'both'] else '$gt'
+        lt_op = '$lte' if self.closed in ['left', 'both'] else '$lt'
+        return [
+            {
+                '$match':  {
+                    '$and': [
+                        {
+                            '$or': [{self.right_name: None},
+                                    {self.right_name: {gt_op: value}}]
+                        },
+                        {
+                            '$or': [{self.left_name: None},
+                                    {self.left_name: {lt_op: value}}]
+                        },
+                        ]
+                }
+            },
+            {
+            '$project': {"_id": 0,},
+            },
+            
+        ]

@@ -1,84 +1,73 @@
-import re
-import inspect
-from urllib.parse import urlparse, parse_qs
-from ast import literal_eval
+'''
+Copied from python 3.8 functools for 3.7 support
+'''
+
+from functools import singledispatch
+
+WRAPPER_ASSIGNMENTS = ('__module__', '__name__', '__qualname__', '__doc__',
+                       '__annotations__')
+WRAPPER_UPDATES = ('__dict__',)
 
 
-class TypeDispatch:
-    """Simple single dispatch.
-       Implementation is copied from dask source code
+def update_wrapper(wrapper,
+                   wrapped,
+                   assigned = WRAPPER_ASSIGNMENTS,
+                   updated = WRAPPER_UPDATES):
+    """Update a wrapper function to look like the wrapped function
+       wrapper is the function to be updated
+       wrapped is the original function
+       assigned is a tuple naming the attributes assigned directly
+       from the wrapped function to the wrapper function (defaults to
+       functools.WRAPPER_ASSIGNMENTS)
+       updated is a tuple naming the attributes of the wrapper that
+       are updated with the corresponding attribute from the wrapped
+       function (defaults to functools.WRAPPER_UPDATES)
+    """
+    for attr in assigned:
+        try:
+            value = getattr(wrapped, attr)
+        except AttributeError:
+            pass
+        else:
+            setattr(wrapper, attr, value)
+    for attr in updated:
+        getattr(wrapper, attr).update(getattr(wrapped, attr, {}))
+    # Issue #17482: set __wrapped__ last so we don't inadvertently copy it
+    # from the wrapped function when updating __dict__
+    wrapper.__wrapped__ = wrapped
+    # Return the wrapper so this can be used as a decorator via partial()
+    return wrapper
+
+# Descriptor version
+class singledispatchmethod:
+    """Single-dispatch generic method descriptor.
+    Supports wrapping existing descriptors and handles non-descriptor
+    callables as instance methods.
     """
 
-    def __init__(self, name=None):
-        self._lookup = {}
-        self._lazy = {}
-        if name:
-            self.__name__ = name
+    def __init__(self, func):
+        if not callable(func) and not hasattr(func, "__get__"):
+            raise TypeError(f"{func!r} is not callable or a descriptor")
 
-    def register(self, type, func=None):
-        """Register dispatch of `func` on arguments of type `type`"""
+        self.dispatcher = singledispatch(func)
+        self.func = func
 
-        def wrapper(func):
-            if isinstance(type, tuple):
-                for t in type:
-                    self.register(t, func)
-            else:
-                self._lookup[type] = func
-            return func
-
-        return wrapper(func) if func is not None else wrapper
-
-    def register_lazy(self, toplevel, func=None):
+    def register(self, cls, method=None):
+        """generic_method.register(cls, func) -> func
+        Registers a new implementation for the given *cls* on a *generic_method*.
         """
-        Register a registration function which will be called if the
-        *toplevel* module (e.g. 'pandas') is ever loaded.
-        """
+        return self.dispatcher.register(cls, func=method)
 
-        def wrapper(func):
-            self._lazy[toplevel] = func
-            return func
+    def __get__(self, obj, cls=None):
+        def _method(*args, **kwargs):
+            method = self.dispatcher.dispatch(args[0].__class__)
+            return method.__get__(obj, cls)(*args, **kwargs)
 
-        return wrapper(func) if func is not None else wrapper
-
-    def dispatch(self, cls):
-        """Return the function implementation for the given ``cls``"""
-        # Fast path with direct lookup on cls
-        lk = self._lookup
-        try:
-            impl = lk[cls]
-        except KeyError:
-            pass
-        else:
-            return impl
-        # Is a lazy registration function present?
-        toplevel, _, _ = cls.__module__.partition(".")
-        try:
-            register = self._lazy.pop(toplevel)
-        except KeyError:
-            pass
-        else:
-            register()
-            return self.dispatch(cls)  # recurse
-        # Walk the MRO and cache the lookup result
-        for cls2 in inspect.getmro(cls)[1:]:
-            if cls2 in lk:
-                lk[cls] = lk[cls2]
-                return lk[cls2]
-        raise TypeError("No dispatch for {0}".format(cls))
-
-    def __call__(self, arg, *args, **kwargs):
-        """
-        Call the corresponding method based on type of argument.
-        """
-        meth = self.dispatch(type(arg))
-        return meth(arg, *args, **kwargs)
+        _method.__isabstractmethod__ = self.__isabstractmethod__
+        _method.register = self.register
+        update_wrapper(_method, self.func)
+        return _method
 
     @property
-    def __doc__(self):
-        try:
-            func = self.dispatch(object)
-            return func.__doc__
-        except TypeError:
-            return "Single Dispatch for %s" % self.__name__
-
-
+    def __isabstractmethod__(self):
+        return getattr(self.func, '__isabstractmethod__', False)

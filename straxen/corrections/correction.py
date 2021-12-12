@@ -11,9 +11,8 @@ import pandas as pd
 from pydantic import BaseModel
 
 from typing import ClassVar, Type, Union
-from dask.utils import Dispatch
 
-from .indexers import Index, Indexer, InterpolatedIndexer, IntervalIndexer
+from .indexers import Index, InterpolatedIndex, IntervalIndex, MultiIndex
 
 
 export, __all__ = strax.exporter()
@@ -54,17 +53,11 @@ class BaseCorrection(BaseModel):
     name: ClassVar = ''
     index: ClassVar
     value: Union[str,int,float]
-
-    db_client = Dispatch('db_client')
     
     def __init_subclass__(cls) -> None:
         if 'index' not in cls.__dict__:
             raise AttributeError(f'Correction class {cls.__name__} has no index.')
 
-        for base in reversed(cls.mro()):
-            if hasattr(base, 'index'):
-                cls.index.indexers.update(base.index.indexers)
-        
     @classmethod
     def indices(cls):
         indices = {}
@@ -109,9 +102,9 @@ class BaseCorrection(BaseModel):
 
 @export
 class TimeIntervalCorrection(BaseCorrection):
-    index = Index(
-        version = Indexer(type=int),
-        time = IntervalIndexer(type=datetime.datetime, left_name='begin', right_name='end'),
+    index = MultiIndex(
+        version = Index(type=int),
+        time = IntervalIndex(type=datetime.datetime, left_name='begin', right_name='end'),
         )
     
     def pre_insert(self, **index):
@@ -130,9 +123,9 @@ def can_extrapolate(index):
         
 @export
 class TimeSampledCorrection(BaseCorrection):
-    index = Index(
-            version = Indexer(type=int),
-            time = InterpolatedIndexer(extrapolate=can_extrapolate),
+    index = MultiIndex(
+            version = Index(type=int),
+            time = InterpolatedIndex(extrapolate=can_extrapolate),
             )
                 
     def pre_insert(self, **index):

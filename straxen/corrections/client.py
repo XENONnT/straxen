@@ -17,7 +17,7 @@ class CorrectionClient:
         self.db = db
         
     def get(self, *args, **kwargs):
-        docs = self.correction.index.find(self.db, *args, **kwargs)
+        docs = self.correction.index.query_db(self.db, *args, **kwargs)
         return docs
     
     def get_df(self, *args, **kwargs):

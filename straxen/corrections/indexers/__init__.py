@@ -1,4 +1,4 @@
 from .index import Index
-from .indexer import Indexer
-from .interval import IntervalIndexer
-from .interpolated import InterpolatedIndexer
+from .interval import IntervalIndex
+from .interpolated import InterpolatedIndex
+from .multi_index import MultiIndex
