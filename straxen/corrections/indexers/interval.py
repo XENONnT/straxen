@@ -1,4 +1,5 @@
 import pandas as pd
+import pymongo
 
 from .indexer import Indexer
 
@@ -34,3 +35,54 @@ class IntervalIndexer(Indexer):
             return (left, right)
         return pd.Interval(left, right,
                           closed=self.closed)
+
+    def query_db(self, db, key, value):
+        return self.apply_selection(db, value, 
+                                    left_name=self.left_name,
+                                    right_name=self.right_name,
+                                    closed=self.closed)
+
+    def process(self, key, value, docs):
+        for doc in docs:
+            doc[key] = value
+        return docs
+
+
+@IntervalIndexer.apply_selection.register(pymongo.collection.Collection)
+def mongo_collection(db, value, left_name, right_name, closed):
+    return IntervalIndexer.apply_selection(db.find(), value, left_name, right_name, closed)
+
+@IntervalIndexer.apply_selection.register(pymongo.cursor.Cursor)
+def mongo_cursor(db, value, left_name, right_name, closed):
+    if isinstance(value, tuple) and len(value)==2:
+        left, right = value
+    elif isinstance(value, slice):
+        left, right = value.start, value.stop
+    else:
+        left = right = value
+    if left>right:
+        left, right = right, left
+    rquery = {}
+    right_op = '$gte' if closed in ['right', 'both'] else '$gt'
+    rquery = {'$or': [
+        {right_name: None},
+        {right_name: {right_op: left}}
+                     ]}
+    left_op = '$lte' if closed in ['left', 'both'] else '$lt'
+    lquery = {'$or': [
+        {left_name: None},
+        {left_name: {left_op: right}}
+    ]}
+    if '$and' in db._Cursor__spec:
+        db._Cursor__spec['$and'].extend([lquery, rquery])
+    else:
+        db._Cursor__spec['$and'] =  [lquery, rquery]
+    return db.clone()
+
+@IntervalIndexer.apply_selection.register(list)
+def apply_list(db, value, left_name, right_name, closed):
+    return [IntervalIndexer.apply_selection(d, value, left_name, right_name, closed) for d in db]
+
+@IntervalIndexer.apply_selection.register(dict)
+def apply_dict( db, value, left_name, right_name, closed):
+    return {k: IntervalIndexer.apply_selection(d, value, left_name, right_name, closed) for k,d in db.items()}

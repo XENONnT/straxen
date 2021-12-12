@@ -1,13 +1,17 @@
 import re
-from pandas.core.indexes.base import Index
 import pytz
 import time
 import strax
 import utilix
-import pandas as pd
+
 import datetime
+
+import pandas as pd
+
 from pydantic import BaseModel
-from typing import ClassVar, Union
+
+from typing import ClassVar, Type, Union
+from dask.utils import Dispatch
 
 from .indexers import Index, Indexer, InterpolatedIndexer, IntervalIndexer
 
@@ -48,9 +52,19 @@ def infer_time(kwargs):
 @export
 class BaseCorrection(BaseModel):
     name: ClassVar = ''
-    index: ClassVar = Index(index=Indexer())
+    index: ClassVar
     value: Union[str,int,float]
+
+    db_client = Dispatch('db_client')
     
+    def __init_subclass__(cls) -> None:
+        if 'index' not in cls.__dict__:
+            raise AttributeError(f'Correction class {cls.__name__} has no index.')
+
+        for base in reversed(cls.mro()):
+            if hasattr(base, 'index'):
+                cls.index.indexers.update(base.index.indexers)
+        
     @classmethod
     def indices(cls):
         indices = {}
@@ -76,12 +90,22 @@ class BaseCorrection(BaseModel):
     def correction_classes(cls):
         return {c.name: c for c in all_subclasses(cls) if c.name}
 
+    @classmethod
+    def db_client(cls, db):
+        from .client import CorrectionClient
+        return CorrectionClient(cls, db)
+
+    def default_db(cls):
+        from .client import CorrectionClient
+        import pymongo
+        db = pymongo.MongoClient()['cmt2']
+        return CorrectionClient(cls, db)
+
     def pre_insert(self, **index):
         pass
 
     def pre_update(self, old, **index):
         pass
-    
 
 @export
 class TimeIntervalCorrection(BaseCorrection):
@@ -97,6 +121,7 @@ class TimeIntervalCorrection(BaseCorrection):
             raise ValueError(f'Can only insert online intervals begining at least two hours in the future.')
 
 def can_extrapolate(index):
+    # only extrapolate online (version=0) values
     if index.get('version', 1):
         return False
     now = pd.to_datetime(time.time(), unit='s', utc=True)
@@ -115,4 +140,4 @@ class TimeSampledCorrection(BaseCorrection):
         ts = pd.to_datetime(index['time'], utc=True)
         if index['version']==0 and ts<cutoff:
             raise ValueError(f'Can only insert online values for times at least two hours in the future.')
-    
+
