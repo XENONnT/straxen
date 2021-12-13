@@ -1,7 +1,7 @@
 import numpy as np
 from multihist import Hist1d, Histdd
 import matplotlib.pyplot as plt
-
+from matplotlib.colors import LogNorm
 import straxen
 
 
@@ -71,7 +71,7 @@ def plot_peaks_aft_histogram(
 
     plt.sca(axes[1])
     mh.average(axis=2).plot(
-        vmin=aft_range[0], vmax=aft_range[1],
+        norm=LogNorm(vmin=aft_range[0], vmax=aft_range[1]),
         colorbar_kwargs=dict(extend='max'),
         cmap=plt.cm.jet, cblabel='Mean area fraction top')
 

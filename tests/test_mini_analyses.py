@@ -140,6 +140,14 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_event_display(self):
         self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_event_display_no_rr(self):
+        self.st.event_display(nt_test_run_id,
+                              time_within=self.first_event,
+                              records_matrix=False,
+                              event_time_litit=[self.first_event['time'], self.first_event['endtime']],
+                              )
+
     def test_calc_livetime(self):
         try:
             live_time = straxen.get_livetime_sec(self.st, nt_test_run_id)
@@ -152,6 +160,48 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_df_wiki(self):
         df = self.st.get_df(nt_test_run_id, 'peak_basics')
         straxen.dataframe_to_wiki(df)
+
+    @unittest.skipIf(straxen.utilix_is_configured(), "Test for no DB access")
+    def test_daq_plot_errors_without_utilix(self):
+        with self.assertRaises(NotImplementedError):
+            straxen.analyses.daq_waveforms._get_daq_config('som_run', run_collection=None)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_daq_plot_errors(self):
+        with self.assertRaises(ValueError):
+            straxen.analyses.daq_waveforms._get_daq_config('no_run')
+        with self.assertRaises(ValueError):
+            straxen.analyses.daq_waveforms._board_to_host_link({'boards': {'boo': 'far'}}, 1)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_event_plot_errors(self):
+        with self.assertRaises(ValueError):
+            self.st.event_display(records_matrix='records_are_bad')
+        with self.assertRaises(ValueError):
+            straxen.analyses.event_display._event_display(events=[1, 2, 3],
+                                                          context=None,
+                                                          to_pe=None,
+                                                          run_id=None
+                                                          )
+        with self.assertRaises(ValueError):
+            straxen.analyses.event_display._event_display(axes=None,
+                                                          events=[None],
+                                                          context=self.st,
+                                                          to_pe=None,
+                                                          run_id=None,
+                                                          )
+        with self.assertRaises(strax.DataNotAvailable):
+            st_dummy = self.st.new_context()
+            st_dummy._plugin_class_regisrty['peaklets'].__version__ = 'lorusipsum'
+            straxen.analyses.event_display._event_display(axes=None,
+                                                          events=[None],
+                                                          context=st_dummy,
+                                                          to_pe=None,
+                                                          run_id=None,
+                                                          )
+        with self.assertRaises(ValueError):
+            straxen.analyses.event_display.plot_single_event(
+                events=[1, 2, 3], event_number=None,)
 
     def test_interactive_display(self):
         fig = self.st.event_display_interactive(nt_test_run_id,

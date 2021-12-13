@@ -143,7 +143,7 @@ def event_display(context,
     ax_rec = None
 
     # (raw)records matrix (optional)
-    if records_matrix and ax_rec is not None:
+    if records_matrix:
         gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
         ax_rec = fig.add_subplot(gss_2[0])
     axes = dict(
