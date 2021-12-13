@@ -53,7 +53,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -164,7 +164,6 @@ class EventPatternFit(strax.Plugin):
         self.compute_s2_neural_llhvalue(events, result)
 
         # Computing binomial test for s1 area fraction top
-        s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
@@ -380,162 +379,126 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
 
 
 # continuous and discrete binomial test
-# https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
-@numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)])
-def binom_pmf(k, n, p):
+@numba.njit
+def lbinom_pmf(k, n, p):
+    """Log of binomial probability mass function approximated with gamma function"""
     scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
-    return np.exp(ret_log)
+    return ret_log
+
+
+@numba.njit
+def binom_pmf(k, n, p):
+    """Binomial probability mass function approximated with gamma function"""
+    return np.exp(lbinom_pmf(k, n, p))
+
 
 @numba.njit
 def binom_cdf(k, n, p):
-    if k < 0:
-        return np.nan
-    if k == n:
+    if k >= n:
         return 1.0
-    dn = n - k
-    if k == 0:
-        dk = np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = numba_betainc(dn, dk, 1.0 - p)
-    return dk
+    return numba_betainc(n - k, k + 1, 1.0 - p)
+
 
 @numba.njit
 def binom_sf(k, n, p):
-    if k < 0:
-        return 1.0
-    if k == n:
-        return 0.0
-    dn = n - k
-    if k == 0:
-        if p < .01:
-            dk = -np.expm1(dn * np.log1p(-p))
-        else:
-            dk = 1.0 - np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = numba_betainc(dk, dn, p)
-    return dk
+    return 1 - binom_cdf(k, n, p)
+
 
 @numba.njit
-def _find_interval(n, p):
-    mu = n*p
-    sigma = np.sqrt(n*p*(1-p))
-    if mu-2*sigma < 0:
-        s1_min_range = 0
+def lbinom_pmf_diriv(k, n, p, dk=1e-7):
+    """Numerical dirivitive of Binomial pmf approximated with gamma function"""
+    if k + dk < n:
+        return (lbinom_pmf(k + dk, n, p) - lbinom_pmf(k, n, p)) / dk
     else:
-        s1_min_range = mu-2*sigma
-    if mu+2*sigma > n:
-        s1_max_range = n
-    else:
-        s1_max_range = mu+2*sigma
-    return s1_min_range, s1_max_range
+        return (lbinom_pmf(k - dk, n, p) - lbinom_pmf(k, n, p)) / - dk
+
 
 @numba.njit
-def _get_min_and_max(s1_min, s1_max, n, p, shift):
-    s1 = np.arange(s1_min, s1_max, 0.01)
-    ds1 = binom_pmf(s1, n, p)
-    s1argmax = np.argmax(ds1)
-    if np.argmax(ds1) - shift > 0:
-        minimum = s1[s1argmax - shift]
-    else:
-        minimum = s1[0]
-    maximum = s1[s1argmax + shift]
-    return minimum, maximum, s1[s1argmax]
+def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
+    """Find the root of the dirivitive of log Binomial pmf with secant method"""
+    x0 = x_min
+    x1 = x_max
+    dx = abs(x1 - x0)
+
+    while (dx > err) and (max_iter > 0):
+        y0, y1 = lbinom_pmf_diriv(x0, *args), lbinom_pmf_diriv(x1, *args)
+        if abs(y1 - y0) < err:
+            break
+        
+        x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
+        x = min(x, x_max)
+        x = max(x, x_min)
+
+        dx = abs(x - x1)
+        x0 = x1
+        x1 = x
+
+        max_iter -= 1
+
+    return x1
+
+
+@numba.njit
+def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
+    """Find the where the log Binomial pmf cross target with secant method"""
+    x0 = x_min
+    x1 = x_max
+    dx = abs(x1 - x0)
+
+    while (dx > err) and (max_iter > 0):
+        y0, y1 = lbinom_pmf(x0, *args), lbinom_pmf(x1, *args)
+        if abs(y1 - y0) < err:
+            break
+
+        x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
+        x = min(x, x_max)
+        x = max(x, x_min)
+
+        dx = abs(x - x1)
+        x0 = x1
+        x1 = x
+
+        max_iter -= 1
+
+    return x1
+
 
 @numba.njit
 def binom_test(k, n, p):
     """
     The main purpose of this algorithm is to find the value j on the
-    other side of the mean that has the same probability as k, and
+    other side of the mode that has the same probability as k, and
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
     """
-    # define the S1 interval for finding the maximum
-    _s1_min_range, _s1_max_range = _find_interval(n, p)
+    mode = lbinom_pmf_mode(0, n, 0, (n, p))
 
-    # compute the binomial probability for each S1 and define the Binom range for later
-    minimum, maximum, s1max = _get_min_and_max(_s1_min_range, _s1_max_range, n, p, shift=2)
-   
-    # comments TODO
-    _d0 = binom_pmf(0, n, p)
-    _dmax = binom_pmf(s1max, n, p)
-    _dn = binom_pmf(n, n, p)
-    d = binom_pmf(k, n, p)
-    rerr = 1 + 1e-7
-    d = d * rerr
-    _d0 = _d0 * rerr
-    _dmax = _dmax * rerr 
-    _dn = _dn * rerr
-    # define number of interaction for finding the the value j
-    # the exceptional case of n<=0, is avoid since n_iter is at least 2
-    if n > 0:
-        n_iter = int(np.round_(np.log10(n)) + 1)
-        n_iter = max(n_iter, 2)
+    if k <= mode:
+        j_min, j_max = mode, n
     else:
-        n_iter = 2
-    # comments TODO
-    if k < minimum:
-        if (_d0 >= d) and (_d0 > _dmax):
-            n_iter, j_min, j_max = -1, 0, 0
-        elif _dn > d:
-            n_iter, j_min, j_max = -2, 0, 0
-        else:
-            j_min, j_max = s1max, n
-        def _check_(d, y0, y1):
-            return (d>y1) and (d<=y0)
-    # comments TODO
-    elif k>maximum:
-        if _d0 >= d:
-            n_iter, j_min, j_max = -1, 0, 0
-        else:
-            j_min, j_max = 0, s1max
-        def _check_(d, y0, y1):
-            return (d>=y0) and (d<y1)
-    # comments TODO
-    else:
-        n_iter, j_min, j_max = 0, k, k
-        def _check_(d, y0, y1):
-            return (d>=y0) and (d<y1)
-    
-    # comments TODO
-    if (d==0):
-        pval = 0.0
-    # comments TODO
-    else:
-        for i in range(n_iter):
-            n_pts = int(j_max - j_min)
-            if (i<2) and (n_pts < 50): 
-                n_pts = 50
-            j_range = np.linspace(j_min, j_max, n_pts)
-            y = binom_pmf(j_range, n, p)
-            for ii in range(n_pts - 1):
-                if _check_(d, y[ii], y[ii + 1]):
-                    j_min, j_max = j_range[ii], j_range[ii + 1]
-                    break
+        j_min, j_max = 0, mode
 
-        j = max(min((j_min + j_max) / 2, n), 0)
-        
-        # here we use n_iter also for decide to do one-side (left/right) test 
-        # or two-side test
-        if (k * j == 0)and(n_iter==-1):
-            pval = binom_sf(max(k, j), n, p)
-        elif (k * j == 0)and(n_iter==-2):
-            pval = binom_cdf(max(k, j), n, p)
-        else:
-            pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
-        pval = min(1.0, pval)
+    target = lbinom_pmf(k, n, p)
+    j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
+
+    pval = 0
+    if min(k, j) > 0:
+        pval += binom_cdf(min(k, j), n, p)
+    if max(k, j) > 0:
+        pval += binom_sf(max(k, j), n, p)
+    pval = min(1.0, pval)
+
     return pval
 
-def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
-    '''
-    Wrapper that does the S1 AFT probability calculation for you
-    '''
-    
+
+@np.vectorize
+@numba.njit
+def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
+    """Function to compute the S1 AFT probability"""
     area_top = area_tot * area_fraction_top
-    
+
     # Raise a warning in case one of these three condition is verified
     # and return binomial test equal to nan since they are not physical
     # k: size_top, n: size_tot, p: aft_prob
@@ -552,11 +515,11 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
         # warnings.warn(f'k {area_top} must be >= 0')
         binomial_test = np.nan
         do_test = False
-        
+
     if do_test:
         if mode == 'discrete':
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
-        
+
     return binomial_test
