@@ -31,7 +31,7 @@ class nVETOVetoRegions(strax.OverlapWindowPlugin):
     tagged as vetoed. An event must surpass all three criteria to trigger
     a veto.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     depends_on = ('events_nv', 'events_sync_nv')
     provides = 'veto_regions_nv'
