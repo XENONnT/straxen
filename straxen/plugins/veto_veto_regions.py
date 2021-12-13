@@ -31,15 +31,14 @@ class nVETOVetoRegions(strax.OverlapWindowPlugin):
     tagged as vetoed. An event must surpass all three criteria to trigger
     a veto.
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
-    depends_on = 'events_nv'
+    depends_on = ('events_nv', 'events_sync_nv')
     provides = 'veto_regions_nv'
     data_kind = 'veto_regions_nv'
     save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
-    ends_with = '_nv'
 
     def get_window_size(self):
         return 10 * (self.config['veto_left_extension_nv'] + self.config['veto_right_extension_nv'])
@@ -112,8 +111,8 @@ def _create_veto_intervals(events,
         if not satisfies_veto_trigger:
             continue
 
-        res[offset]['time'] = ev['time'] - left_extension
-        res[offset]['endtime'] = ev['endtime'] + right_extension
+        res[offset]['time'] = ev['time_sync'] - left_extension
+        res[offset]['endtime'] = ev['endtime_sync'] + right_extension
         offset += 1
     return res[:offset]
 
@@ -144,13 +143,12 @@ class muVETOVetoRegions(nVETOVetoRegions):
     __doc__ = MV_PREAMBLE + nVETOVetoRegions.__doc__
     __version__ = '0.0.1'
 
-    depends_on = 'events_mv'
+    depends_on = ('events_mv', 'events_sync_mv')
     provides = 'veto_regions_mv'
     data_kind = 'veto_regions_mv'
     save_when = strax.SaveWhen.NEVER
 
     dtype = strax.time_fields
-    ends_with = '_mv'
     child_plugin = True
 
     def get_window_size(self):

@@ -5,6 +5,8 @@ import numpy as np
 import numba
 from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
+import tarfile
+import tempfile
 
 export, __all__ = strax.exporter()
 
@@ -14,6 +16,8 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s2_optical_map', help='S2 (x, y) optical/pattern map.', infer_type=False,
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
+    strax.Option('s2_tf_model', help='S2 (x, y) optical data-driven model', infer_type=False,
+                 default='XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.', infer_type=False,
                  default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_31Oct2021.json'),
     strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
@@ -49,13 +53,17 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.0.9'
+    __version__ = '0.1.1'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
                   'Modified Poisson likelihood value for main S2 in the event'),
+                 ('s2_neural_2llh', np.float32,
+                  'Data-driven based likelihood value for main S2 in the event'),
                  ('alt_s2_2llh', np.float32,
                   'Modified Poisson likelihood value for alternative S2'),
+                 ('alt_s2_neural_2llh', np.float32,
+                  'Data-driven based likelihood value for alternative S2 in the event'),
                  ('s1_2llh', np.float32,
                   'Modified Poisson likelihood value for main S1'),
                  ('s1_top_2llh', np.float32,
@@ -117,6 +125,21 @@ class EventPatternFit(strax.Plugin):
             straxen.get_resource(
                 self.config['s2_optical_map'],
                 fmt=self._infer_map_format(self.config['s2_optical_map'])))
+
+        # Getting S2 data-driven tensorflow models
+        downloader = straxen.MongoDownloader()
+        self.model_file = downloader.download_single(self.config['s2_tf_model'])
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tar = tarfile.open(self.model_file, mode="r:gz")
+            tar.extractall(path=tmpdirname)
+
+            import tensorflow as tf
+            def _logl_loss(patterns_true, likelihood):
+                return likelihood / 10.
+            self.model = tf.keras.models.load_model(tmpdirname,
+                                                    custom_objects={"_logl_loss": _logl_loss})
+            self.model_chi2 = tf.keras.Model(self.model.inputs,
+                                             self.model.get_layer('Likelihood').output)
         
         # Getting gain model to get dead PMTs
         self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
@@ -136,9 +159,11 @@ class EventPatternFit(strax.Plugin):
         
         # Computing LLH values for S2s
         self.compute_s2_llhvalue(events, result)
-        
+
+        # Computing chi2 values for S2s
+        self.compute_s2_neural_llhvalue(events, result)
+
         # Computing binomial test for s1 area fraction top
-        s1_area_fraction_top_probability = np.vectorize(_s1_area_fraction_top_probability)
         positions = np.vstack([events['x'], events['y'], events['z']]).T
         aft_prob = self.s1_aft_map(positions)
         
@@ -263,23 +288,22 @@ class EventPatternFit(strax.Plugin):
             # - must have total area larger minimal one
             # - must have positive AFT
             x, y = events[t_+'_x'], events[t_+'_y']
-            cur_s2_bool = (events[t_+'_area']>self.config['s2_min_area_pattern_fit'])
-            cur_s2_bool &= (events[t_+'_index']!=-1)
-            cur_s2_bool &= (events[t_+'_area_fraction_top']>0)
-            cur_s2_bool &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
+            s2_mask = (events[t_+'_area']>self.config['s2_min_area_pattern_fit'])
+            s2_mask &= (events[t_+'_area_fraction_top']>0)
+            s2_mask &= (x**2 + y**2) < self.config['max_r_pattern_fit']**2
             
             # default value is nan, it will be ovewrite if the event satisfy the requirments
             result[t_+'_2llh'][:] = np.nan
             
             # Making expectation patterns [ in PE ]
-            if np.sum(cur_s2_bool):
-                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[cur_s2_bool, 0:self.config['n_top_pmts']]
+            if np.sum(s2_mask):
+                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[s2_mask, 0:self.config['n_top_pmts']]
                 s2_map_effs = s2_map_effs[:, self.pmtbool_top]
-                s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[cur_s2_bool]
+                s2_top_area = (events[t_+'_area_fraction_top']*events[t_+'_area'])[s2_mask]
                 s2_pattern  = s2_top_area[:, None]*s2_map_effs/np.sum(s2_map_effs, axis=1)[:,None]
 
                 # Getting pattern from data
-                s2_top_area_per_channel = events[t_+'_area_per_channel'][cur_s2_bool, 0:self.config['n_top_pmts']]
+                s2_top_area_per_channel = events[t_+'_area_per_channel'][s2_mask, 0:self.config['n_top_pmts']]
                 s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
 
                 # Calculating LLH, this is shifted Poisson
@@ -295,17 +319,33 @@ class EventPatternFit(strax.Plugin):
                                      areas = s2_top_area_per_channel, 
                                      mean_pe_photon=self.mean_pe_photon)
                                )
-                result[t_+'_2llh'][cur_s2_bool] = np.sum(norm_llh_val, axis=1)
+                result[t_+'_2llh'][s2_mask] = np.sum(norm_llh_val, axis=1)
 
                 if self.config['store_per_channel']:
                     store_patterns = np.zeros((s2_pattern.shape[0], self.config['n_top_pmts']) )
                     store_patterns[:, self.pmtbool_top] = s2_pattern
-                    result[t_+'_pattern'][cur_s2_bool] = store_patterns#:s2_pattern[cur_s2_bool]
+                    result[t_+'_pattern'][s2_mask] = store_patterns#:s2_pattern[s2_mask]
 
                     store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.config['n_top_pmts']) )
                     store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val
-                    result[t_+'_2llh_per_channel'][cur_s2_bool] = store_2LLH_ch
-                    
+                    result[t_+'_2llh_per_channel'][s2_mask] = store_2LLH_ch
+
+    def compute_s2_neural_llhvalue(self, events, result):
+        for t_ in ['s2', 'alt_s2']:
+            x, y = events[t_ + '_x'], events[t_ + '_y']
+            s2_mask = (events[t_ + '_area'] > self.config['s2_min_area_pattern_fit'])
+            s2_mask &= (events[t_ + '_area_fraction_top'] > 0)
+
+            # default value is nan, it will be ovewrite if the event satisfy the requirements
+            result[t_ + '_neural_2llh'][:] = np.nan
+
+            # Produce position and top pattern to feed tensorflow model, return chi2/N
+            if np.sum(s2_mask):
+                s2_pos = np.stack((x, y)).T[s2_mask]
+                s2_pat = events[t_ + '_area_per_channel'][s2_mask, 0:self.config['n_top_pmts']]
+                # Output[0]: loss function, -2*log-likelihood, Output[1]: chi2
+                result[t_ + '_neural_2llh'][s2_mask] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
+
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
         for fmt in known_formats:
@@ -339,162 +379,126 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
 
 
 # continuous and discrete binomial test
-# https://github.com/poliastro/cephes/blob/master/src/bdtr.c
 
-@numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)])
-def binom_pmf(k, n, p):
+@numba.njit
+def lbinom_pmf(k, n, p):
+    """Log of binomial probability mass function approximated with gamma function"""
     scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
-    return np.exp(ret_log)
+    return ret_log
+
+
+@numba.njit
+def binom_pmf(k, n, p):
+    """Binomial probability mass function approximated with gamma function"""
+    return np.exp(lbinom_pmf(k, n, p))
+
 
 @numba.njit
 def binom_cdf(k, n, p):
-    if k < 0:
-        return np.nan
-    if k == n:
+    if k >= n:
         return 1.0
-    dn = n - k
-    if k == 0:
-        dk = np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = numba_betainc(dn, dk, 1.0 - p)
-    return dk
+    return numba_betainc(n - k, k + 1, 1.0 - p)
+
 
 @numba.njit
 def binom_sf(k, n, p):
-    if k < 0:
-        return 1.0
-    if k == n:
-        return 0.0
-    dn = n - k
-    if k == 0:
-        if p < .01:
-            dk = -np.expm1(dn * np.log1p(-p))
-        else:
-            dk = 1.0 - np.exp(dn * np.log(1.0 - p))
-    else:
-        dk = k + 1
-        dk = numba_betainc(dk, dn, p)
-    return dk
+    return 1 - binom_cdf(k, n, p)
+
 
 @numba.njit
-def _find_interval(n, p):
-    mu = n*p
-    sigma = np.sqrt(n*p*(1-p))
-    if mu-2*sigma < 0:
-        s1_min_range = 0
+def lbinom_pmf_diriv(k, n, p, dk=1e-7):
+    """Numerical dirivitive of Binomial pmf approximated with gamma function"""
+    if k + dk < n:
+        return (lbinom_pmf(k + dk, n, p) - lbinom_pmf(k, n, p)) / dk
     else:
-        s1_min_range = mu-2*sigma
-    if mu+2*sigma > n:
-        s1_max_range = n
-    else:
-        s1_max_range = mu+2*sigma
-    return s1_min_range, s1_max_range
+        return (lbinom_pmf(k - dk, n, p) - lbinom_pmf(k, n, p)) / - dk
+
 
 @numba.njit
-def _get_min_and_max(s1_min, s1_max, n, p, shift):
-    s1 = np.arange(s1_min, s1_max, 0.01)
-    ds1 = binom_pmf(s1, n, p)
-    s1argmax = np.argmax(ds1)
-    if np.argmax(ds1) - shift > 0:
-        minimum = s1[s1argmax - shift]
-    else:
-        minimum = s1[0]
-    maximum = s1[s1argmax + shift]
-    return minimum, maximum, s1[s1argmax]
+def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
+    """Find the root of the dirivitive of log Binomial pmf with secant method"""
+    x0 = x_min
+    x1 = x_max
+    dx = abs(x1 - x0)
+
+    while (dx > err) and (max_iter > 0):
+        y0, y1 = lbinom_pmf_diriv(x0, *args), lbinom_pmf_diriv(x1, *args)
+        if abs(y1 - y0) < err:
+            break
+        
+        x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
+        x = min(x, x_max)
+        x = max(x, x_min)
+
+        dx = abs(x - x1)
+        x0 = x1
+        x1 = x
+
+        max_iter -= 1
+
+    return x1
+
+
+@numba.njit
+def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
+    """Find the where the log Binomial pmf cross target with secant method"""
+    x0 = x_min
+    x1 = x_max
+    dx = abs(x1 - x0)
+
+    while (dx > err) and (max_iter > 0):
+        y0, y1 = lbinom_pmf(x0, *args), lbinom_pmf(x1, *args)
+        if abs(y1 - y0) < err:
+            break
+
+        x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
+        x = min(x, x_max)
+        x = max(x, x_min)
+
+        dx = abs(x - x1)
+        x0 = x1
+        x1 = x
+
+        max_iter -= 1
+
+    return x1
+
 
 @numba.njit
 def binom_test(k, n, p):
     """
     The main purpose of this algorithm is to find the value j on the
-    other side of the mean that has the same probability as k, and
+    other side of the mode that has the same probability as k, and
     integrate the tails outward from k and j. In the case where either
     k or j are zero, only the non-zero tail is integrated.
     """
-    # define the S1 interval for finding the maximum
-    _s1_min_range, _s1_max_range = _find_interval(n, p)
+    mode = lbinom_pmf_mode(0, n, 0, (n, p))
 
-    # compute the binomial probability for each S1 and define the Binom range for later
-    minimum, maximum, s1max = _get_min_and_max(_s1_min_range, _s1_max_range, n, p, shift=2)
-   
-    # comments TODO
-    _d0 = binom_pmf(0, n, p)
-    _dmax = binom_pmf(s1max, n, p)
-    _dn = binom_pmf(n, n, p)
-    d = binom_pmf(k, n, p)
-    rerr = 1 + 1e-7
-    d = d * rerr
-    _d0 = _d0 * rerr
-    _dmax = _dmax * rerr 
-    _dn = _dn * rerr
-    # define number of interaction for finding the the value j
-    # the exceptional case of n<=0, is avoid since n_iter is at least 2
-    if n > 0:
-        n_iter = int(np.round_(np.log10(n)) + 1)
-        n_iter = max(n_iter, 2)
+    if k <= mode:
+        j_min, j_max = mode, n
     else:
-        n_iter = 2
-    # comments TODO
-    if k < minimum:
-        if (_d0 >= d) and (_d0 > _dmax):
-            n_iter, j_min, j_max = -1, 0, 0
-        elif _dn > d:
-            n_iter, j_min, j_max = -2, 0, 0
-        else:
-            j_min, j_max = s1max, n
-        def _check_(d, y0, y1):
-            return (d>y1) and (d<=y0)
-    # comments TODO
-    elif k>maximum:
-        if _d0 >= d:
-            n_iter, j_min, j_max = -1, 0, 0
-        else:
-            j_min, j_max = 0, s1max
-        def _check_(d, y0, y1):
-            return (d>=y0) and (d<y1)
-    # comments TODO
-    else:
-        n_iter, j_min, j_max = 0, k, k
-        def _check_(d, y0, y1):
-            return (d>=y0) and (d<y1)
-    
-    # comments TODO
-    if (d==0):
-        pval = 0.0
-    # comments TODO
-    else:
-        for i in range(n_iter):
-            n_pts = int(j_max - j_min)
-            if (i<2) and (n_pts < 50): 
-                n_pts = 50
-            j_range = np.linspace(j_min, j_max, n_pts)
-            y = binom_pmf(j_range, n, p)
-            for ii in range(n_pts - 1):
-                if _check_(d, y[ii], y[ii + 1]):
-                    j_min, j_max = j_range[ii], j_range[ii + 1]
-                    break
+        j_min, j_max = 0, mode
 
-        j = max(min((j_min + j_max) / 2, n), 0)
-        
-        # here we use n_iter also for decide to do one-side (left/right) test 
-        # or two-side test
-        if (k * j == 0)and(n_iter==-1):
-            pval = binom_sf(max(k, j), n, p)
-        elif (k * j == 0)and(n_iter==-2):
-            pval = binom_cdf(max(k, j), n, p)
-        else:
-            pval = binom_cdf(min(k, j), n, p) + binom_sf(max(k, j), n, p)
-        pval = min(1.0, pval)
+    target = lbinom_pmf(k, n, p)
+    j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
+
+    pval = 0
+    if min(k, j) > 0:
+        pval += binom_cdf(min(k, j), n, p)
+    if max(k, j) > 0:
+        pval += binom_sf(max(k, j), n, p)
+    pval = min(1.0, pval)
+
     return pval
 
-def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
-    '''
-    Wrapper that does the S1 AFT probability calculation for you
-    '''
-    
+
+@np.vectorize
+@numba.njit
+def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
+    """Function to compute the S1 AFT probability"""
     area_top = area_tot * area_fraction_top
-    
+
     # Raise a warning in case one of these three condition is verified
     # and return binomial test equal to nan since they are not physical
     # k: size_top, n: size_tot, p: aft_prob
@@ -511,11 +515,11 @@ def _s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mod
         # warnings.warn(f'k {area_top} must be >= 0')
         binomial_test = np.nan
         do_test = False
-        
+
     if do_test:
         if mode == 'discrete':
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
-        
+
     return binomial_test
