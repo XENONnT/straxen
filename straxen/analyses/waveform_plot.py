@@ -139,7 +139,7 @@ def plot_records_matrix(context, run_id,
             "to plot_records_matrix.")
 
     if single_figure:
-        plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize, constrained_layout=True)
 
     f = context.raw_records_matrix if raw else context.records_matrix
 
@@ -207,9 +207,6 @@ def plot_records_matrix(context, run_id,
             matplotlib.ticker.FormatStrFormatter('%g'))
 
     plt.sca(ax)
-
-    if single_figure:
-        straxen.quiet_tight_layout()
 
 
 def seconds_range_xaxis(seconds_range, t0=None):
