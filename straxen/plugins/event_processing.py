@@ -12,18 +12,18 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('trigger_min_area', default=100, infer_type=False,
+    strax.Option('trigger_min_area', default=100, type=(int,float),
                  help='Peaks must have more area (PE) than this to '
                       'cause events'),
-    strax.Option('trigger_max_competing', default=7, infer_type=False,
+    strax.Option('trigger_max_competing', default=7, type=int,
                  help='Peaks must have FEWER nearby larger or slightly smaller'
                       ' peaks to cause events'),
-    strax.Option('left_event_extension', default=int(0.25e6), infer_type=False,
+    strax.Option('left_event_extension', default=int(0.25e6), type=(int, float),
                  help='Extend events this many ns to the left from each '
                       'triggering peak. This extension is added to the maximum '
                       'drift time.',
                  ),
-    strax.Option('right_event_extension', default=int(0.25e6), infer_type=False,
+    strax.Option('right_event_extension', default=int(0.25e6), type=(int, float),
                  help='Extend events this many ns to the right from each '
                       'triggering peak.',
                  ),
@@ -32,9 +32,13 @@ export, __all__ = strax.exporter()
                  help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
                  ),
     strax.Option(name='max_drift_length',
-                 default=straxen.tpc_z, infer_type=False,
+                 default=straxen.tpc_z, type=(int, float),
                  help='Total length of the TPC from the bottom of gate to the '
                       'top of cathode wires [cm]',
+                 ),
+    strax.Option(name='exclude_s1_as_triggering_peaks',
+                 default=True, type=bool,
+                 help='If true exclude S1s as triggering peaks.',
                  ),
 )
 class Events(strax.OverlapWindowPlugin):
@@ -56,7 +60,7 @@ class Events(strax.OverlapWindowPlugin):
     depends_on = ['peak_basics', 'peak_proximity']
     provides = 'events'
     data_kind = 'events'
-    __version__ = '0.0.1'
+    __version__ = '0.1.0'
     save_when = strax.SaveWhen.NEVER
 
     dtype = [
@@ -71,6 +75,10 @@ class Events(strax.OverlapWindowPlugin):
             self.run_id,
             self.config['electron_drift_velocity'])
         self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        # Left_extension and right_extension should be computed in setup to be
+        # reflected in cutax too.
+        self.left_extension = self.config['left_event_extension'] + self.drift_time_max
+        self.right_extension = self.config['right_event_extension']
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
@@ -82,16 +90,19 @@ class Events(strax.OverlapWindowPlugin):
         le = self.config['left_event_extension'] + self.drift_time_max
         re = self.config['right_event_extension']
 
-        triggers = peaks[
-            (peaks['area'] > self.config['trigger_min_area'])
-            & (peaks['n_competing'] <= self.config['trigger_max_competing'])]
+        _is_triggering = peaks['area'] > self.config['trigger_min_area']
+        _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
+        if self.config['exclude_s1_as_triggering_peaks']:
+            _is_triggering &= peaks['type'] == 2
+
+        triggers = peaks[_is_triggering]
 
         # Join nearby triggers
         t0, t1 = strax.find_peak_groups(
             triggers,
-            gap_threshold=le + re + 1,
-            left_extension=le,
-            right_extension=re)
+            gap_threshold=self.left_extension + self.right_extension + 1,
+            left_extension=self.left_extension,
+            right_extension=self.right_extension)
 
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
@@ -769,3 +780,61 @@ class EnergyEstimates(strax.Plugin):
 
     def cs2_to_e(self, x):
         return self.config['lxe_w'] * x / self.config['g2']
+
+
+@export
+class EventShadow(strax.Plugin):
+    """
+    This plugin can calculate shadow at event level.
+    It depends on peak-level shadow.
+    The event-level shadow is its first S2 peak's shadow.
+    If no S2 peaks, the event shadow will be nan.
+    It also gives the position infomation of the previous S2s
+    and main peaks' shadow.
+    """
+    __version__ = '0.0.8'
+    depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
+    provides = 'event_shadow'
+    save_when = strax.SaveWhen.EXPLICIT
+
+    def infer_dtype(self):
+        dtype = [('s1_shadow', np.float32, 'main s1 shadow [PE/ns]'),
+                 ('s2_shadow', np.float32, 'main s2 shadow [PE/ns]'),
+                 ('shadow', np.float32, 'shadow of event [PE/ns]'),
+                 ('pre_s2_area', np.float32, 'previous s2 area [PE]'),
+                 ('shadow_dt', np.int64, 'time difference to the previous s2 [ns]'),
+                 ('shadow_index', np.int32, 'max shadow peak index in event'),
+                 ('pre_s2_x', np.float32, 'x of previous s2 peak causing shadow [cm]'),
+                 ('pre_s2_y', np.float32, 'y of previous s2 peak causing shadow [cm]'),
+                 ('shadow_distance', np.float32, 'distance to the s2 peak with max shadow [cm]')]
+        dtype += strax.time_fields
+        return dtype
+
+    def compute(self, events, peaks):
+        split_peaks = strax.split_by_containment(peaks, events)
+        res = np.zeros(len(events), self.dtype)
+
+        res['shadow_index'] = -1
+        res['pre_s2_x'] = np.nan
+        res['pre_s2_y'] = np.nan
+
+        for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
+            if event['s1_index'] >= 0:
+                res['s1_shadow'][event_i] = sp['shadow'][event['s1_index']]
+            if event['s2_index'] >= 0:
+                res['s2_shadow'][event_i] = sp['shadow'][event['s2_index']]
+            if (sp['type'] == 2).sum() > 0:
+                # Define event shadow as the first S2 peak shadow
+                first_s2_index = np.argwhere(sp['type'] == 2)[0]
+                res['shadow_index'][event_i] = first_s2_index
+                res['shadow'][event_i] = sp['shadow'][first_s2_index]
+                res['pre_s2_area'][event_i] = sp['pre_s2_area'][first_s2_index]
+                res['shadow_dt'][event_i] = sp['shadow_dt'][first_s2_index]
+                res['pre_s2_x'][event_i] = sp['pre_s2_x'][first_s2_index]
+                res['pre_s2_y'][event_i] = sp['pre_s2_y'][first_s2_index]
+        res['shadow_distance'] = ((res['pre_s2_x'] - events['s2_x'])**2 +
+                                  (res['pre_s2_y'] - events['s2_y'])**2
+                                  )**0.5
+        res['time'] = events['time']
+        res['endtime'] = strax.endtime(events)
+        return res

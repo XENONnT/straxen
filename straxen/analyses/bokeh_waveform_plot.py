@@ -718,7 +718,7 @@ def _make_event_title(event, run_id, width=1600):
                              sizing_mode='scale_both',
                              width=width,
                              default_size=width,
-                             orientation='vertical',
+#                              orientation='vertical',
                              width_policy='fit',
                              margin=(0, 0, -30, 50)
                              )
