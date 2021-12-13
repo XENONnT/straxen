@@ -81,7 +81,6 @@ class nVETOHitlets(strax.Plugin):
 
     provides = 'hitlets_nv'
     data_kind = 'hitlets_nv'
-    ends_with = '_nv'
 
     dtype = strax.hitlet_dtype()
 
