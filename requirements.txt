@@ -14,3 +14,4 @@ requests
 commentjson
 matplotlib<3.5.0
 gitpython
+pytoolz

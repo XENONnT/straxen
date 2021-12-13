@@ -1,7 +1,5 @@
 import re
 import pymongo
-import pytz
-import time
 import strax
 from straxen.records.utils import singledispatchmethod
 import utilix
