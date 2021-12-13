@@ -1,5 +1,6 @@
 
 from typing import Any
+from numpy import exp
 import pytz
 import time
 import strax
@@ -10,6 +11,7 @@ import pandas as pd
 
 
 export, __all__ = strax.exporter()
+__all__ += ['corrections_db']
 
 @export
 class CorrectionsClient:
@@ -47,9 +49,9 @@ class CorrectionsClient:
     def __dir__(self):
         return super().__dir__() + list(self.corrections)
     
-    def __getattr__(self, name):
+    def __getattr__(self, name):            
         if name in self.corrections:
-            return self[name]
+            return self.client(name)
         raise AttributeError(name)
 
     def get(self, correction_name, *args, **kwargs):
@@ -70,10 +72,21 @@ def run_id_to_time(run_id):
     time = rundoc['start']
     return time.replace(tzinfo=pytz.utc)
 
-def infer_time(kwargs):
+def extract_time(kwargs):
     if 'time' in kwargs:
-        return pd.to_datetime(kwargs['time'], utc=True)
+        return pd.to_datetime(kwargs.pop('time'), utc=True)
     if 'run_id' in kwargs:
-        return run_id_to_time(kwargs['run_id'])
+        return run_id_to_time(kwargs.pop('run_id'))
     else:
         return None
+
+corrections_db = CorrectionsClient.default()
+
+@export
+def cmt2(name, version=0, **kwargs):
+    dtime = extract_time(kwargs)
+    docs = corrections_db[name].get(time=dtime, version=version, **kwargs)
+    if len(docs)==1:
+        return docs[0]
+    return docs
+

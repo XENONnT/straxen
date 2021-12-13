@@ -19,7 +19,7 @@ class RecordClient:
     def get(self, *args, **kwargs):
         docs = self.record.index.query_db(self.db, *args, **kwargs)
         return docs
-    
+            
     def get_df(self, *args, **kwargs):
         docs = self.get(*args, **kwargs)
         df = pd.DataFrame(docs, columns=list(self.record.all_fields()))
