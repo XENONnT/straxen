@@ -1,53 +1,15 @@
 
+from typing import Any
+import pytz
+import time
 import strax
+import straxen
+import utilix
+
 import pandas as pd
 
-from typing import Any, Type
-from .correction import BaseCorrection
 
 export, __all__ = strax.exporter()
-
-@export
-class CorrectionClient:
-    correction: Type[BaseCorrection]
-    db: Any
-    
-    def __init__(self, correction, db):
-        self.correction = correction
-        self.db = db
-        
-    def get(self, *args, **kwargs):
-        docs = self.correction.index.query_db(self.db, *args, **kwargs)
-        return docs
-    
-    def get_df(self, *args, **kwargs):
-        docs = self.get(*args, **kwargs)
-        df = pd.DataFrame(docs)
-        idx = [c for c in self.correction.index.query_fields if c in df.columns]
-        return df.sort_values(idx).set_index(idx)
-
-    def set(self, *args, **kwargs):
-        doc = self.correction(**kwargs)
-        return self.correction.index.set(self.db, doc)
-
-    def __getitem__(self, index):
-        if not isinstance(index, tuple):
-            index = (index,)
-        docs = self.get(*index)
-        nfields = len(self.correction.index.query_fields)
-        if len(index)>nfields:
-            for k in index[nfields:]:
-                docs = [doc[k] for doc in docs]
-        if len(docs)==1:
-            return docs[0]
-        return docs
-
-    def __setitem__(self, key, value):
-        if not isinstance(key, tuple):
-            key = (key,)
-        if not isinstance(value, dict):
-            value = {'value': value}
-        self.set(*key, **value)
 
 @export
 class CorrectionsClient:
@@ -64,7 +26,7 @@ class CorrectionsClient:
 
     @property
     def corrections(self):
-        return BaseCorrection.correction_classes()
+        return straxen.BaseCorrection.subclasses()
     
     @property
     def correction_names(self):
@@ -72,7 +34,7 @@ class CorrectionsClient:
 
     def client(self, name):
         correction = self.corrections[name]
-        return CorrectionClient(correction, self.db)
+        return straxen.RecordClient(correction, self.db)
 
     def __getitem__(self, key):
         if isinstance(key, tuple) and key[0] in self.corrections:
@@ -95,3 +57,23 @@ class CorrectionsClient:
 
     def set(self, correction_name, **kwargs):
         return self.client(correction_name).set(**kwargs)
+
+        
+def run_id_to_time(run_id):
+    run_id = int(run_id)
+    runsdb = utilix.rundb.xent_collection()
+    rundoc = runsdb.find_one(
+            {'number': run_id},
+            {'start': 1})
+    if rundoc is None:
+        raise ValueError(f'run_id = {run_id} not found')
+    time = rundoc['start']
+    return time.replace(tzinfo=pytz.utc)
+
+def infer_time(kwargs):
+    if 'time' in kwargs:
+        return pd.to_datetime(kwargs['time'], utc=True)
+    if 'run_id' in kwargs:
+        return run_id_to_time(kwargs['run_id'])
+    else:
+        return None

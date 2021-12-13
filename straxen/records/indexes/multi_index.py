@@ -8,18 +8,22 @@ from ..utils import singledispatchmethod
 class MultiIndex(Index):
     indexes: list
 
-    def __init__(self, correction=None, **indexes) -> None:
-        for k,v in indexes.items():
+    def __init__(self, *args, record=None, **kwargs) -> None:
+        self.indexes = list(args)
+        for k,v in kwargs.items():
             v.name = k
-        self.indexes = list(indexes.values())
-        if correction is not None:
-            self.correction = correction
+            self.indexes.append(v)
+        if record is not None:
+            self.record = record
 
     def __set_name__(self, owner, name):
-        self.correction = owner
-        self.name = name
+        self.record = owner
         for v in self.indexes:
-            v.correction = owner
+            v.record = owner
+
+    @property
+    def name(self):
+        return self.query_fields
 
     @property
     def query_fields(self):
@@ -35,14 +39,16 @@ class MultiIndex(Index):
             fields += indexer.store_fields
         return fields
 
-    def build_query(self, db, value):
-        return [index.build_query(db, value) for index in self.indexes]
+    def infer_index_value(self, **kwargs):
+        return tuple(idx.infer_index_value(**kwargs) for idx in self.indexes)
 
-    def build_index(self, *args, **kwargs):
+    def infer_index(self, *args, **kwargs):
         index = dict(zip(self.query_fields, args))
         index.update(kwargs)
-        index = {k:v for k,v in index.items() if k in self.query_fields}
-        return index
+        return {idx.name: idx.infer_index_value(**index) for idx in self.indexes}
+    
+    def build_query(self, db, value):
+        return [index.build_query(db, value) for index in self.indexes]
 
     def reduce(self, documents, index_values):
         if not documents:
@@ -65,7 +71,7 @@ class MultiIndex(Index):
         return documents
 
     def query_db(self, db, *args, **kwargs):
-        index_values = self.build_index(*args, **kwargs)
+        index_values = self.infer_index(*args, **kwargs)
         query = []
         for index in self.indexes:
             if index.name not in index_values:
@@ -74,3 +80,6 @@ class MultiIndex(Index):
         documents = self.apply_query(db, query)
         documents = self.reduce(documents, index_values)
         return documents
+
+    def __repr__(self):
+        return f"MultiIndex({self.indexes})"

@@ -59,6 +59,8 @@ class InterpolatedIndex(Index):
         return self.extrapolate
 
     def reduce(self, docs, value):
+        if value is None:
+            return docs
         new_record = {self.name: value}
         if len(docs)==1:
             new_record.update(docs[0])
@@ -78,8 +80,12 @@ class InterpolatedIndex(Index):
     def build_query(self, db, value):
         raise TypeError(f"{type(db)} backend not supported.")
 
-    @build_query.register(pymongo.collection.Collection)
+    @build_query.register(pymongo.common.BaseObject)
     def build_mongo_query(self, db, value):
+        if value is None:
+            return [{
+                '$project': {"_id": 0},
+            }]
         return [
             {
                 '$addFields': {
