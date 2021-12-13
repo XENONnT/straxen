@@ -73,6 +73,11 @@ class BaseRecord(BaseModel):
         from .client import RecordClient
         return RecordClient(cls, db)
 
+    @classmethod
+    def query_db(cls, db, *args, **kwargs):
+        return cls.query_db( db, *args, **kwargs)
+        
+    @classmethod
     def default_db(cls):
         from .client import RecordClient
         import pymongo
