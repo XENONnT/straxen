@@ -223,15 +223,13 @@ class TestMiniAnalyses(unittest.TestCase):
         self.assertTrue(os.path.exists(save_as))
         os.remove(save_as)
         self.assertFalse(os.path.exists(save_as))
-        dummy_st = self.st.new_context()
-        dummy_st._plugin_class_registry['records'].__version__ = 'bar_foo'
-        dummy_st.make(nt_test_run_id, 'event_basics')
-        dummy_st.event_display_interactive(nt_test_run_id,
-                                           time_within=self.first_event,
-                                           xenon1t=False,
-                                           plot_record_matrix=False,
-                                           only_main_peaks=True,
-                                           )
+        st = self.st.new_context()
+        st.event_display_interactive(nt_test_run_id,
+                                     time_within=self.first_event,
+                                     xenon1t=False,
+                                     plot_record_matrix=False,
+                                     only_main_peaks=True,
+                                    )
 
     def test_selector(self):
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
