@@ -1,15 +1,13 @@
+import warnings
+
 import bokeh
 import bokeh.plotting as bklt
-
-from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, \
-    plot_record_polygons, get_records_matrix_in_window
-
-import numpy as np
 import numba
+import numpy as np
 import strax
 import straxen
-
-import warnings
+from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, \
+    plot_record_polygons, get_records_matrix_in_window
 
 # Default legend, unknow, S1 and S2
 LEGENDS = ('Unknown', 'S1', 'S2')
@@ -143,7 +141,8 @@ def event_display_interactive(events,
     if np.any(m_other_s2) and not only_main_peaks:
         # Now we have to add the positions of all the other S2 to the top pmt array
         # if not only main peaks.
-        fig_top, plot = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type_style_id=2)
+        fig_top, plot = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top,
+                                    s2_type_style_id=2)
         plot.visible = False
 
     # Main waveform plot:
@@ -179,15 +178,19 @@ def event_display_interactive(events,
     if plot_record_matrix:
         if st.is_stored(run_id, 'records'):
             # Check if records can be found and load:
-            r = st.get_array(run_id, 'records', time_range=(events[0]['time'], events[0]['endtime']))
+            r = st.get_array(run_id, 'records',
+                             time_range=(events[0]['time'], events[0]['endtime']))
         elif st.is_stored(run_id, 'raw_records'):
-            warnings.warn(f'Cannot find records for {run_id}, making them from raw_records instead.')
+            warnings.warn(
+                f'Cannot find records for {run_id}, making them from raw_records instead.')
             p = st.get_single_plugin(run_id, 'records')
-            r = st.get_array(run_id, 'raw_records', time_range=(events[0]['time'], events[0]['endtime']))
+            r = st.get_array(run_id, 'raw_records',
+                             time_range=(events[0]['time'], events[0]['endtime']))
             r = p.compute(r, events[0]['time'], events[0]['endtime'])['records']
         else:
-            warnings.warn(f'Can neither find records nor raw_records for run {run_id}, proceed without record '
-                          f'matrix.')
+            warnings.warn(
+                f'Can neither find records nor raw_records for run {run_id}, proceed without record '
+                f'matrix.')
             plot_record_matrix = False
 
     if plot_record_matrix:
@@ -199,8 +202,9 @@ def event_display_interactive(events,
         wf, record_points, time_stream = _hvdisp_plot_records_2d(records=r,
                                                                  to_pe=to_pe,
                                                                  t_reference=peaks[0]['time'],
-                                                                 event_range=(waveform.x_range.start,
-                                                                              waveform.x_range.end),
+                                                                 event_range=(
+                                                                 waveform.x_range.start,
+                                                                 waveform.x_range.end),
                                                                  config=st.config,
                                                                  hooks=[x_range_hook],
                                                                  tools=[],
@@ -317,7 +321,8 @@ def plot_pmt_arrays_and_positions(top_array_keys,
 
             if pmt_array_type == 'top' and 's2' in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
-                fig, plot = plot_posS2s(signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind)
+                fig, plot = plot_posS2s(signal[k][0], label=labels[k], fig=fig,
+                                        s2_type_style_id=ind)
                 if ind:
                     # Not main S2
                     plot.visible = False
@@ -366,10 +371,10 @@ def plot_event(peaks, signal, labels, event, colors, yscale='linear'):
 
     # Get some meaningful x-range limit to 10% left and right extending
     # beyond first last peak, clip at event boundary.
-    length = (end - start) / 10**3
+    length = (end - start) / 10 ** 3
 
-    waveform.x_range.start = max(-0.1 * length, (event['time'] - start) / 10**3)
-    waveform.x_range.end = min(1.1 * length, (event['endtime'] - start) / 10**3)
+    waveform.x_range.start = max(-0.1 * length, (event['time'] - start) / 10 ** 3)
+    waveform.x_range.end = min(1.1 * length, (event['endtime'] - start) / 10 ** 3)
     return waveform
 
 
@@ -704,7 +709,7 @@ def _make_event_title(event, run_id, width=1600):
     """
     start = event['time']
     date = np.datetime_as_string(start.astype('<M8[ns]'), unit='s')
-    start_ns = start - (start // 10**9) * 10**9
+    start_ns = start - (start // 10 ** 9) * 10 ** 9
     end = strax.endtime(event)
     end_ns = end - start + start_ns
     event_number = event['event_number']
@@ -718,7 +723,7 @@ def _make_event_title(event, run_id, width=1600):
                              sizing_mode='scale_both',
                              width=width,
                              default_size=width,
-#                              orientation='vertical',
+                             #                              orientation='vertical',
                              width_policy='fit',
                              margin=(0, 0, -30, 50)
                              )
@@ -752,6 +757,7 @@ class DataSelectionHist:
     """
     Class for an interactive data selection plot.
     """
+
     def __init__(self, name, size=600):
         """
          Class for an interactive data selection plot.

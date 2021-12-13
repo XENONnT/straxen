@@ -2,7 +2,6 @@ import warnings
 
 import numba
 import numpy as np
-
 import strax
 import straxen
 

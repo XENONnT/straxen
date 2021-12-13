@@ -1,11 +1,12 @@
-import straxen
-import pandas
 import os
+import unittest
+
 import numpy as np
+import pandas
 import strax
+import straxen
 from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
-import unittest
 
 
 def test_pmt_pos_1t():
@@ -105,8 +106,19 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_event_scatter(self):
         self.st.event_scatter(nt_test_run_id)
 
+    def test_event_scatter_diff_options(self):
+        self.st.event_scatter(nt_test_run_id, color_range=(0, 10), color_dim='s1_area')
+
     def test_energy_spectrum(self):
         self.st.plot_energy_spectrum(nt_test_run_id)
+
+    def test_energy_spectrum_diff_options(self):
+        self.st.plot_energy_spectrum(nt_test_run_id, unit='kg_day_kev', exposure_kg_sec=1)
+        self.st.plot_energy_spectrum(nt_test_run_id, unit='tonne_day_kev', exposure_kg_sec=1)
+        self.st.plot_energy_spectrum(nt_test_run_id, unit='tonne_year_kev', exposure_kg_sec=1,
+                                     geomspace=False)
+        with self.assertRaises(ValueError):
+            self.st.plot_energy_spectrum(nt_test_run_id, unit='bar_foo', exposure_kg_sec=1)
 
     def test_peak_classification(self):
         self.st.plot_peak_classification(nt_test_run_id)
@@ -126,7 +138,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def test_plot_pulses_tpc(self):
         self.st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
-                                ignore_time_warning=True)
+                                ignore_time_warning=True, store_pdf=True)
 
     def test_plot_pulses_mv(self):
         self.st.plot_pulses_mv(nt_test_run_id, max_plots=2, plot_hits=True,
@@ -145,7 +157,8 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.event_display(nt_test_run_id,
                               time_within=self.first_event,
                               records_matrix=False,
-                              event_time_litit=[self.first_event['time'], self.first_event['endtime']],
+                              event_time_limit=[self.first_event['time'],
+                                                self.first_event['endtime']],
                               )
 
     def test_calc_livetime(self):
@@ -171,37 +184,33 @@ class TestMiniAnalyses(unittest.TestCase):
         with self.assertRaises(ValueError):
             straxen.analyses.daq_waveforms._get_daq_config('no_run')
         with self.assertRaises(ValueError):
-            straxen.analyses.daq_waveforms._board_to_host_link({'boards': {'boo': 'far'}}, 1)
+            straxen.analyses.daq_waveforms._board_to_host_link({'boards': [{'no_boards': 0}]}, 1)
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_event_plot_errors(self):
         with self.assertRaises(ValueError):
-            self.st.event_display(records_matrix='records_are_bad')
+            self.st.event_display(nt_test_run_id, records_matrix='records_are_bad')
         with self.assertRaises(ValueError):
             straxen.analyses.event_display._event_display(events=[1, 2, 3],
-                                                          context=None,
+                                                          context=self.st,
                                                           to_pe=None,
-                                                          run_id=None
+                                                          run_id='1'
                                                           )
         with self.assertRaises(ValueError):
             straxen.analyses.event_display._event_display(axes=None,
                                                           events=[None],
                                                           context=self.st,
                                                           to_pe=None,
-                                                          run_id=None,
-                                                          )
-        with self.assertRaises(strax.DataNotAvailable):
-            st_dummy = self.st.new_context()
-            st_dummy._plugin_class_regisrty['peaklets'].__version__ = 'lorusipsum'
-            straxen.analyses.event_display._event_display(axes=None,
-                                                          events=[None],
-                                                          context=st_dummy,
-                                                          to_pe=None,
-                                                          run_id=None,
+                                                          run_id=nt_test_run_id,
                                                           )
         with self.assertRaises(ValueError):
-            straxen.analyses.event_display.plot_single_event(
-                events=[1, 2, 3], event_number=None,)
+            straxen.analyses.event_display.plot_single_event(context=None,
+                                                             run_id=None,
+                                                             events=[1, 2, 3],
+                                                             event_number=None,
+                                                             )
+        with self.assertRaises(ValueError):
+            straxen.analyses.event_display._scatter_rec(_event=None, recs=list(range(10)))
 
     def test_interactive_display(self):
         fig = self.st.event_display_interactive(nt_test_run_id,
@@ -214,6 +223,15 @@ class TestMiniAnalyses(unittest.TestCase):
         assert os.path.exists(save_as)
         os.remove(save_as)
         assert not os.path.exists(save_as), f'Should have removed {save_as}'
+        dummy_st = self.st.new_context()
+        dummy_st._plugin_class_registry['records'].__version__ = 'bar_foo'
+        dummy_st.make(nt_test_run_id, 'event_basics')
+        dummy_st.event_display_interactive(nt_test_run_id,
+                                           time_within=self.first_event,
+                                           xenon1t=False,
+                                           plot_record_matrix=False,
+                                           only_main_peaks=True,
+                                           )
 
     def test_selector(self):
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist

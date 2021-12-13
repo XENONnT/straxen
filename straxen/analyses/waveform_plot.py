@@ -1,11 +1,12 @@
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
-from .records_matrix import DEFAULT_MAX_SAMPLES
+
 from .daq_waveforms import group_by_daq
+from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
 __all__ += ['plot_wf']
@@ -130,8 +131,8 @@ def plot_records_matrix(context, run_id,
                         group_by=None,
                         max_samples=DEFAULT_MAX_SAMPLES,
                         ignore_max_sample_warning=False,
-                        vmin = None,
-                        vmax = None,
+                        vmin=None,
+                        vmax=None,
                         **kwargs):
     if seconds_range is None:
         raise ValueError(
