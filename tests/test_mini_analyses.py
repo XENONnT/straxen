@@ -55,7 +55,7 @@ class TestMiniAnalyses(unittest.TestCase):
         if not straxen.utilix_is_configured():
             # If we do things with dummy maps, things might be slightly different
             tol += 10
-        assert np.abs(len(data) - self._expected_test_results[target]) < tol, message
+        self.assertTrue(np.abs(len(data) - self._expected_test_results[target]) < tol, message)
 
     def test_target_events(self):
         self.test_target_peaks(target='event_basics')
@@ -220,9 +220,9 @@ class TestMiniAnalyses(unittest.TestCase):
                                                 )
         save_as = 'test_display.html'
         fig.save(save_as)
-        assert os.path.exists(save_as)
+        self.assertTrue(os.path.exists(save_as))
         os.remove(save_as)
-        assert not os.path.exists(save_as), f'Should have removed {save_as}'
+        self.assertFalse(os.path.exists(save_as))
         dummy_st = self.st.new_context()
         dummy_st._plugin_class_registry['records'].__version__ = 'bar_foo'
         dummy_st.make(nt_test_run_id, 'event_basics')
@@ -249,9 +249,9 @@ class TestMiniAnalyses(unittest.TestCase):
         import bokeh.plotting as bklt
         save_as = 'test_data_selector.html'
         bklt.save(fig, save_as)
-        assert os.path.exists(save_as)
+        self.assertTrue(os.path.exists(save_as))
         os.remove(save_as)
-        assert not os.path.exists(save_as), f'Should have removed {save_as}'
+        self.assertFalse(os.path.exists(save_as))
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_daq_plot(self):
