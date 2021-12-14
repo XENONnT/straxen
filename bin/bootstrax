@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.1.9'
+__version__ = '1.2.1'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -39,6 +39,7 @@ import threading
 import pandas as pd
 import typing as ty
 import daqnt
+import fnmatch
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -81,6 +82,7 @@ parser.add_argument(
 parser.add_argument(
     '--max_messages', type=int, default=10,
     help="number of max mailbox messages")
+
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument(
@@ -203,14 +205,18 @@ max_queue_new_runs = 2
 # Remove any targets or post processing targets after the run failed
 # this many times. If high level data is hitting some edge case, we
 # might want to be able to keep the intermediate level data.
-# NB: string match so events applies e.g. to event_basics, peak to e.g. peaklets
-remove_target_after_fails = dict(event=2,
-                                 hitlets=2,
-                                 peaks=4,
-                                 online=5,
-                                 peak_basics=5,
-                                 peaklets=6,
-                                 ALL=7)
+# NB: fnmatch so event* applies e.g. to event_basics, peak* to e.g. peaklets
+remove_target_after_fails = {
+    'event*': 2,
+    'hitlets*': 2,
+    'online_monitor_*v': 3,
+    'online_peak': 5,
+    'peaks*': 4,
+    'peak_basics': 5,
+    'peaklets': 6,
+    'veto_*': 4,
+    '*': 7,
+}
 
 ##
 # Initialize globals (e.g. rundb connection)
@@ -255,7 +261,7 @@ else:
 
 if os.access(output_folder, os.W_OK) is not True:
     message = f'No writing access to {output_folder}'
-    log.warning(message, priority='fatal')
+    log.warning(message)
     raise IOError(message)
 
 
@@ -464,12 +470,12 @@ def _remove_veto_from_t(targets: ty.Union[str, list, tuple],
                         remove: ty.Union[str, list, tuple] = ('_mv', '_nv'),
                         _flip: bool = False) -> ty.Union[str, list, tuple, None]:
     """Remove veto(s) from targets"""
-    start = targets
+    start = strax.to_str_tuple(targets)
     remove = strax.to_str_tuple(remove)
     if targets is None:
         return None
     for r in remove:
-        targets = [t for t in strax.to_str_tuple(targets) if (r not in t)]
+        targets = keep_target(targets, {f'*{r}': 0}, 1)
     if _flip:
         targets = [t for i, t in enumerate(start) if not np.in1d(start, targets)[i]]
     return strax.to_str_tuple(targets)
@@ -483,6 +489,24 @@ def _keep_veto_from_t(targets: ty.Union[str, list, tuple],
     if not len(targets):
         targets = strax.to_str_tuple('raw_records')
     return targets
+
+
+def keep_target(targets, compare_with, n_fails):
+    kept_targets = []
+    delete_after = -1  # just to make logging never fail below
+    for target_name in strax.to_str_tuple(targets):
+        for delete_target, delete_after in compare_with.items():
+            failed_too_much = n_fails > delete_after
+            name_matches = fnmatch.fnmatch(target_name, delete_target)
+            if failed_too_much and name_matches:
+                log.warning(f'remove {target_name} ({n_fails}>{delete_after})')
+                break
+        else:
+            log.debug(f'keep {target_name} ({n_fails}!>{delete_after})')
+            kept_targets.append(target_name)
+    if not len(kept_targets):
+        kept_targets = ['raw_records']
+    return kept_targets
 
 
 def infer_target(rd: dict) -> dict:
@@ -502,24 +526,10 @@ def infer_target(rd: dict) -> dict:
 
     if n_fails:
         log.debug(f'Deleting targets')
-        for rm_target, rm_after_n in remove_target_after_fails.items():
-            for target_i, targ in enumerate(targets):
-                if rm_target in targ and n_fails > rm_after_n:
-                    log.debug(f'Remove {targ}')
-                    del targets[target_i]
-                else:
-                    log.debug(f'Keep {targ} for not in {rm_target} ({n_fails}<{rm_after_n})')
-            for post_i, post_targ in enumerate(post_process):
-                if post_targ in rm_target and n_fails > rm_after_n:
-                    log.debug(f'Remove {post_targ}')
-                    del post_process[post_i]
+        targets = keep_target(targets, remove_target_after_fails, n_fails)
+        post_process = keep_target(post_process, remove_target_after_fails, n_fails)
 
     log.debug(f'{targets} and {post_process} remaining')
-
-    if n_fails >= remove_target_after_fails['ALL']:
-        log.debug(f'Overwriting to raw-records only')
-        return {'targets': strax.to_str_tuple('raw_records'),
-                'post_processing': strax.to_str_tuple('raw_records')}
 
     # Special modes override target for these
     led_modes = ['pmtgain']
@@ -541,11 +551,14 @@ def infer_target(rd: dict) -> dict:
         log.debug('diagnostic-mode')
         targets = 'raw_records'
         post_process = 'raw_records'
-    elif 'kr83m' in mode and len(targets):
+    elif 'kr83m' in mode and (len(targets) or len(post_process)):
         # Override the first (highest level) plugin for Kr runs (could
         # also use source field, outcome is the same)
-        if targets[0] == 'event_info':
-            targets[0] = 'event_info_double'
+        if 'event_info' in targets or 'event_info' in post_process:
+            targets = list(targets) + ['event_info_double']
+
+    targets = strax.to_str_tuple(targets)
+    post_process = strax.to_str_tuple(post_process)
 
     if 'tpc' not in detectors:
         keep = []
@@ -578,7 +591,7 @@ def infer_target(rd: dict) -> dict:
     for check in (targets, post_process):
         if not len(set(check)) == len(check):
             log_warning(f'Duplicates in (post) targets {check}',
-                        priority='Fatal')
+                        priority='fatal')
             raise ValueError(f'Duplicates in (post) targets {check}')
 
     return {'targets': targets, 'post_processing': post_process}
@@ -642,7 +655,7 @@ def log_warning(message, priority='warning', run_id=None):
     """
     if not args.production:
         return
-    getattr(log, priority)(message)
+    getattr(log, priority.lower())(message)
     # Log according to redax rules
     # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
     warning_message = {
@@ -1562,6 +1575,9 @@ def clean_run(*, mongo_id=None, number=None, force=False):
                 log.info(f'delete data at {loc}')
                 _delete_data(rd, loc, ddoc['type'])
 
+    # Also wipe the online_monitor if there is any
+    run_db['online_monitor'].delete_many({'number': int(rd['number'])})
+
 
 def clean_run_test_data(run_id):
     """
@@ -1644,7 +1660,7 @@ def cleanup_db():
           'bootstrax.state': 'done',
           'start': {'$gt': now(-timeouts['abandoning_allowed'])}},
          "Run has an 'abandon' tag"),
-        ({'tags.name': 'abandon', 
+        ({'tags.name': 'abandon',
           'bootstrax.state': 'failed'},
          "Run has an 'abandon' tag and was failing"),
         ]

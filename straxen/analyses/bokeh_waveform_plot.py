@@ -1,15 +1,12 @@
+import warnings
+
 import bokeh
 import bokeh.plotting as bklt
-
-from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, \
-    plot_record_polygons, get_records_matrix_in_window
-
-import numpy as np
 import numba
+import numpy as np
 import strax
 import straxen
-
-import warnings
+from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, plot_record_polygons, get_records_matrix_in_window  # noqa
 
 # Default legend, unknow, S1 and S2
 LEGENDS = ('Unknown', 'S1', 'S2')
@@ -186,8 +183,9 @@ def event_display_interactive(events,
             r = st.get_array(run_id, 'raw_records', time_range=(events[0]['time'], events[0]['endtime']))
             r = p.compute(r, events[0]['time'], events[0]['endtime'])['records']
         else:
-            warnings.warn(f'Can neither find records nor raw_records for run {run_id}, proceed without record '
-                          f'matrix.')
+            warnings.warn(
+                f'Can neither find records nor raw_records for run {run_id}, proceed without record '
+                f'matrix.')
             plot_record_matrix = False
 
     if plot_record_matrix:
@@ -718,7 +716,7 @@ def _make_event_title(event, run_id, width=1600):
                              sizing_mode='scale_both',
                              width=width,
                              default_size=width,
-                             orientation='vertical',
+                             # orientation='vertical',
                              width_policy='fit',
                              margin=(0, 0, -30, 50)
                              )
@@ -752,6 +750,7 @@ class DataSelectionHist:
     """
     Class for an interactive data selection plot.
     """
+
     def __init__(self, name, size=600):
         """
          Class for an interactive data selection plot.

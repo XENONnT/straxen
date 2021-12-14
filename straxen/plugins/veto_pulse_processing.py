@@ -14,15 +14,15 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
 @strax.takes_config(
     strax.Option(
         'save_outside_hits_nv',
-        default=(3, 15), track=True,
+        default=(3, 15), track=True, infer_type=False,
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
-        'baseline_samples_nv',
+        'baseline_samples_nv', infer_type=False,
         default=('baseline_samples_nv', 'ONLINE', True), track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
-        'hit_min_amplitude_nv',
+        'hit_min_amplitude_nv', infer_type=False,
         default=('hit_thresholds_nv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_nveto_pmts, or a number, '
@@ -32,7 +32,7 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
              'which means we are using cmt.'),
     strax.Option(
         'min_samples_alt_baseline_nv',
-        default=None, track=True,
+        default=None, track=True, infer_type=False,
         help='Min. length of pulse before alternative baselineing via '
              'pulse median is applied.'),
 )
@@ -55,7 +55,6 @@ class nVETOPulseProcessing(strax.Plugin):
     depends_on = 'raw_records_coin_nv'
     provides = 'records_nv'
     data_kind = 'records_nv'
-    ends_with = '_nv'
 
     def setup(self):
         if isinstance(self.config['baseline_samples_nv'], int):
@@ -172,17 +171,17 @@ def _correct_baseline(records):
 @strax.takes_config(
     strax.Option(
         'save_outside_hits_mv',
-        default=(2, 5), track=True,
+        default=(2, 5), track=True, infer_type=False,
         child_option=True, parent_option_name='save_outside_hits_nv',
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
         'baseline_samples_mv',
-        default=100, track=True,
+        default=100, track=True, infer_type=False,
         child_option=True, parent_option_name='baseline_samples_nv',
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     strax.Option(
-        'hit_min_amplitude_mv',
+        'hit_min_amplitude_mv', infer_type=False,
         default=('hit_thresholds_mv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_mveto_pmts, or a number, '
@@ -192,7 +191,7 @@ def _correct_baseline(records):
              'which means we are using cmt.'),
     strax.Option(
         'check_raw_record_overlaps',
-        default=True, track=False,
+        default=True, track=False, infer_type=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
 )

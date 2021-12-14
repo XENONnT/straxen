@@ -7,6 +7,8 @@ Streaming analysis for XENON(nT)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/straxen.svg)](https://pypi.python.org/pypi/straxen/)
 [![Readthedocs Badge](https://readthedocs.org/projects/straxen/badge/?version=latest)](https://straxen.readthedocs.io/en/latest/?badge=latest)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5618215.svg)](https://doi.org/10.5281/zenodo.5618215)
+
 [Straxen](https://straxen.readthedocs.io) is the analysis framework for XENONnT, built on top of the generic [strax framework](https://github.com/AxFoundation/strax). Currently it is configured for analyzing XENONnT and XENON1T data.
 
 For installation instructions and usage information, please see the [straxen documentation](https://straxen.readthedocs.io/en/latest/setup.html).
