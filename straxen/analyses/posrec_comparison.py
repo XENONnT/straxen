@@ -32,8 +32,7 @@ def load_corrected_positions(context, run_id, events,
             raise ValueError(f'CMT is not set? Your fdc config is {fdc_config}') from e
 
     if (
-            hasattr(cmt_version, '__len__')
-            and not isinstance(cmt_version, str)
+            isinstance(cmt_version, (tuple, list))
             and len(cmt_version) != len(posrec_algos)
     ):
         raise TypeError(f"cmt_version is a list but does not match the "

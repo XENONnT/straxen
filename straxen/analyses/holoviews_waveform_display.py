@@ -197,7 +197,8 @@ def _hvdisp_plot_records_2d(records,
 
 def plot_record_polygons(record_points,
                          center_time=True,
-                         scaling=10 ** -3, ):
+                         scaling=10**-3,
+                         ):
     """
     Plots record hv.Points as polygons for record matrix.
 
