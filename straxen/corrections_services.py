@@ -10,7 +10,8 @@ import utilix
 import straxen
 import os
 from immutabledict import immutabledict
-
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
 
 export, __all__ = strax.exporter()
 
@@ -327,6 +328,15 @@ def get_cmt_local_versions(global_version):
     return cmt.get_local_versions(global_version)
 
 
+args_idx = lambda x: x.rfind('?') if '?' in x else None
+
+def replace_version(url, version):
+    kwargs = {k:v[0] for k,v in parse_qs(urlparse(url).query).items()}
+    kwargs['version'] = version
+    args = [f"{k}={v}" for k,v in kwargs.items()]
+    args_str = "&".join(args)
+    return f'{url[:args_idx(url)]}?{args_str}'
+
 @strax.Context.add_method
 def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     """Sets all the relevant correction variables
@@ -357,6 +367,12 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
             if correction_name in posrec_corrections_basenames:
                 correction_name += f"_{posrec_algo}"
             new_tup = (tup[0], local_versions[correction_name], tup[2])
+
+            # check if this is a URLConfig, if it is just update the version argument
+            default_config = context.config.get(option, None)
+            if isinstance(default_config, str) and 'cmt://' in default_config:
+                new_tup = replace_version(default_config, new_tup[1])
+
         except KeyError:
             failed_keys.append(option)
             continue
