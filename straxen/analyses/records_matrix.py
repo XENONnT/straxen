@@ -129,7 +129,7 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
         if dt > r['dt']:
             # Downsample
             duration = samples_per_record * r['dt']
-            if duration % dt == 0:
+            if duration % dt != 0:
                 raise ValueError("Cannot downsample fractionally")
             # .astype here keeps numba happy ... ??
             w = w.reshape(duration // dt, -1).sum(axis=1).astype(np.int32)
