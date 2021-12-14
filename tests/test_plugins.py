@@ -1,4 +1,5 @@
 import tempfile
+import unittest
 import strax
 import straxen
 from straxen.test_utils import nt_test_run_id, DummyRawRecords, testing_config_1T, test_run_id_1T
@@ -118,6 +119,7 @@ def _test_child_options(st, run_id):
                                f'"{option_name}"!')
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
 def test_1T(ncores=1):
     if ncores == 1:
         print('-- 1T lazy mode --')
@@ -143,6 +145,7 @@ def test_1T(ncores=1):
     print(st.context_config)
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
 def test_nT(ncores=1):
     if ncores == 1:
         print('-- nT lazy mode --')
@@ -161,6 +164,7 @@ def test_nT(ncores=1):
     print(st.context_config)
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
 def test_nT_mutlticore():
     print('nT multicore')
     test_nT(2)

@@ -459,10 +459,13 @@ x1t_common_config = dict(
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife_conf=('elife_xenon1t', 'v1', False),
+    elife=('elife_xenon1t', 'v1', False),
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
     max_drift_length=96.9,
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
+    se_gain=28.2,
+    avg_se_gain=28.2,
+    rel_extraction_eff=1.0,
 )
 
 
