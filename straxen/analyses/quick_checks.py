@@ -205,7 +205,8 @@ def plot_energy_spectrum(
     if unit == 'events':
         scale, ylabel = 1, 'Events per bin'
     else:
-        assert exposure_kg_sec is not None
+        if exposure_kg_sec is None:
+            raise ValueError('you did not specify exposure_kg_sec')
         exposure_kg_day = exposure_kg_sec / (3600 * 24)
         if unit == 'kg_day_kev':
             scale = exposure_kg_day

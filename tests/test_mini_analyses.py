@@ -47,7 +47,8 @@ class TestMiniAnalyses(unittest.TestCase):
         plt_clf()
 
     def test_target_peaks(self, target='peak_basics', tol=2):
-        assert target in self._expected_test_results, f'No expectation for {target}?!'
+        self.assertTrue(target in self._expected_test_results,
+                        f'No expectation for {target}?!')
         data = self.st.get_array(nt_test_run_id, target)
         message = (f'Got more/less data for {target}. If you changed something '
                    f'on {target}, please update the numbers in '
@@ -168,7 +169,8 @@ class TestMiniAnalyses(unittest.TestCase):
             things = self.st.get_array(nt_test_run_id, 'peaks')
             live_time = straxen.get_livetime_sec(self.st, nt_test_run_id, things=things)
         assertion_statement = "Live-time calculation is wrong"
-        assert live_time == self._expected_test_results['run_live_time'], assertion_statement
+        expected = self._expected_test_results['run_live_time']
+        self.assertTrue(live_time == expected, assertion_statement)
 
     def test_df_wiki(self):
         df = self.st.get_df(nt_test_run_id, 'peak_basics')
