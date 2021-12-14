@@ -229,3 +229,8 @@ def format_arg(arg: str, **kwargs):
     '''apply pythons builtin format function to a string
     '''
     return arg.format(**kwargs)
+
+
+@URLConfig.register('interpolatingmap')
+def load_map(some_map):
+    return straxen.InterpolatingMap(some_map)

@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 from warnings import warn
-from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION
+from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION, DEFAULT_POSREC_ALGO
 from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
 from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
@@ -607,31 +607,6 @@ def get_veto_tags(events, split_tags, result):
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        's1_xyz_correction_map', infer_type=False,
-        help="S1 relative (x, y, z) correction map",
-        default_by_run=[
-            (0, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json')),  # noqa
-            (first_sr1_run, pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json'))]),  # noqa
-    strax.Option(
-        's2_xy_correction_map', infer_type=False,
-        help="S2 (x, y) correction map. Correct S2 position dependence, including S2 top, bottom, and total."
-             "manly due to bending of anode/gate-grid, PMT quantum efficiency "
-             "and extraction field distribution, as well as other geometric factors.",
-        default_by_run=[
-            (0, pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json')),
-            (170118_1327, pax_file('XENON1T_s2_xy_ly_SR1_v2.2.json'))]),
-    strax.Option(
-        'elife_conf', infer_type=False,
-        default=("elife", "ONLINE", True),
-        help='Electron lifetime '
-             'Specify as (model_type->str, model_config->str, is_nT->bool) '
-             'where model_type can be "elife" or "elife_constant" '
-             'and model_config can be a version.'
-    ),
-    *DEFAULT_POSREC_ALGO_OPTION
-)
 class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
@@ -643,14 +618,42 @@ class CorrectedAreas(strax.Plugin):
     Note:
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
-        
+
         There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.1.3'
+    __version__ = '0.2.0'
 
     depends_on = ['event_basics', 'event_positions']
+
+    # Descriptor configs
+    # online elife
+    elife = straxen.URLConfig(default='cmt://elife?version=ONLINE&run_id=plugin.run_id')
+
+    # online s1_xyz_map
+    s1_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s1_xyz_map_{DEFAULT_POSREC_ALGO}?'
+                                       'version=ONLINE'
+                                       '&run_id=plugin.run_id'
+                                       '&fmt=json')
+
+    # online s2_xy map
+    s2_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s2_xy_map_{DEFAULT_POSREC_ALGO}?'
+                                       'version=ONLINE'
+                                       '&run_id=plugin.run_id'
+                                       '&fmt=json')
+
+    # average SE gain for a given science run. default to 1T value
+    avg_se_gain = straxen.URLConfig(default=28.2,
+                                    help='Nominal single electron (SE) gain in PE / electron extracted. '
+                                         'Data will be corrected to this value')
+    # se gain for this run, allowing for using CMT. default to online
+    se_gain = straxen.URLConfig(default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
+                                help='Actual SE gain for a given run (allows for time dependence)')
+    # relative extraction efficiency which can change with time and modeled by CMT. defaults to no correction
+    rel_extraction_eff = straxen.URLConfig(default=1.0,
+                                           help='Relative extraction efficiency for this run '
+                                                '(allows for time dependence)')
 
     def infer_dtype(self):
         dtype = []
@@ -664,26 +667,11 @@ class CorrectedAreas(strax.Plugin):
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),]
+                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
 
+        dtype += [('tcs2', np.float32, f'Time-corrected area of main S2 [PE], incl. changing SE gain and/or '
+                                       f'extraction efficiency'),]
         return dtype
-
-    def setup(self):
-        self.elife = get_correction_from_cmt(self.run_id, self.config['elife_conf'])
-
-        self.s1_map = InterpolatingMap(
-            get_cmt_resource(self.run_id,
-                             tuple(['suffix',
-                                    self.config['default_reconstruction_algorithm'],
-                                    *strax.to_str_tuple(self.config['s1_xyz_correction_map'])]),
-                             fmt='text'))
-
-        self.s2_map = InterpolatingMap(
-            get_cmt_resource(self.run_id,
-                             tuple(['suffix',
-                                    self.config['default_reconstruction_algorithm'],
-                                    *strax.to_str_tuple(self.config['s2_xy_correction_map'])]),
-                             fmt='json'))
 
     def compute(self, events):
         result = dict(
@@ -714,7 +702,7 @@ class CorrectedAreas(strax.Plugin):
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / 
+            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
                                     self.s2_map(s2_positions, map_name=s2_top_map_name))
             cs2_bottom_wo_elifecorr = (events[f'{peak_type}s2_area'] *
                                        (1 - events[f'{peak_type}s2_area_fraction_top']) /
@@ -733,26 +721,13 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
             result[f"{peak_type}cs2"] = cs2_top + result[f"{peak_type}cs2_bottom"]
 
+        # correct for changing SE gain and/or extraction efficiency
+        result['tcs2'] = result['cs2'] * (self.avg_se_gain / self.se_gain) / self.rel_extraction_eff
+
         return result
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        'g1', infer_type=False,
-        help="S1 gain in PE / photons produced",
-        default_by_run=[(0, 0.1442),
-                        (first_sr1_run, 0.1426)]),
-    strax.Option(
-        'g2', infer_type=False,
-        help="S2 gain in PE / electrons produced",
-        default_by_run=[(0, 11.52/(1 - 0.63)),
-                        (first_sr1_run, 11.55/(1 - 0.63))]),
-    strax.Option(
-        'lxe_w', infer_type=False,
-        help="LXe work function in quanta/keV",
-        default=13.7e-3),
-)
 class EnergyEstimates(strax.Plugin):
     """
     Plugin which converts cS1 and cS2 into energies (from PE to KeVee).
@@ -765,6 +740,15 @@ class EnergyEstimates(strax.Plugin):
         ('e_ces', np.float32, 'Energy estimate [keVee]')
     ] + strax.time_fields
     save_when = strax.SaveWhen.TARGET
+
+    # config options
+    # g1 and g2 values default to 1T values
+    g1 = straxen.URLConfig(default=0.1426,
+                           help="S1 gain in PE / photons produced")
+    g2 = straxen.URLConfig(default=11.55 / (1 - 0.63),
+                           help="S2 gain in PE / electrons produced")
+    lxe_w = straxen.URLConfig(default=13.7e-3,
+                              help="LXe work function in quanta/keV")
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])
