@@ -31,13 +31,20 @@ def load_corrected_positions(context, run_id, events,
         except IndexError as e:
             raise ValueError(f'CMT is not set? Your fdc config is {fdc_config}') from e
 
-  if hasattr(cmt_version, '__len__') and not isinstance(cmt_version, str) and len(cmt_version) != len(posrec_algos):
-        raise TypeError(f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
+    if (
+            hasattr(cmt_version, '__len__')
+            and not isinstance(cmt_version, str)
+            and len(cmt_version) != len(posrec_algos)
+    ):
+        raise TypeError(f"cmt_version is a list but does not match the "
+                        f"posrec_algos ({posrec_algos}) length.")
 
-    cmt_version = (cmt_version, ) * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
+    cmt_version = ((cmt_version, ) * len(posrec_algos)
+                   if isinstance(cmt_version, str) else cmt_version)
 
     # Get drift from CMT
-    drift_conf = context.get_single_plugin(run_id, 'event_positions').config.get('electron_drift_velocity')
+    ep = context.get_single_plugin(run_id, 'event_positions')
+    drift_conf = ep.config.get('electron_drift_velocity')
     drift_speed = straxen.get_correction_from_cmt(run_id, drift_conf)
     dtype = []
 
