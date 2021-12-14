@@ -34,6 +34,10 @@ class BaseRecord(BaseModel):
     value: Union[str,int,float]
     
     def __init_subclass__(cls) -> None:
+        #FIXME: maybe move this logic into the Index class?
+        # Index can be a descriptor that does a dynamic lookup and
+        # concatentation of all indexes in parent classes to return
+        # the final indexer initialized with the record class.
         indexes = []
         for base in reversed(cls.mro()):
             if not issubclass(base, BaseRecord):
@@ -76,7 +80,7 @@ class BaseRecord(BaseModel):
     @classmethod
     def query_db(cls, db, *args, **kwargs):
         return cls.query_db( db, *args, **kwargs)
-        
+
     @classmethod
     def default_db(cls):
         from .client import RecordClient

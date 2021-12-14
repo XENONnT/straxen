@@ -5,14 +5,12 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 from typing import Callable, Union, Type
-
 from ..utils import singledispatchmethod
 
 class Index:
     name: str = ''
     type: Type = (str,int,tuple,float,datetime.datetime)
     coerce: Callable = None
-
 
     def __init__(self, type=None, name=None, 
                 record=None, coerce=None,
@@ -38,10 +36,6 @@ class Index:
     def store_fields(self):
         return (self.name,)
 
-    @property
-    def fields(self):
-        return (self.name,)
-
     def infer_index_value(self, **kwargs):
         return kwargs.get(self.name, None)
 
@@ -49,9 +43,6 @@ class Index:
         index = dict(zip(self.query_fields, args))
         index.update(kwargs)
         return {self.name: self.infer_index_value(**index)}
-    
-    def process_records(self, records, index_value):
-        return records
 
     def validate(self, value):
         if isinstance(value, list):

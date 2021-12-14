@@ -52,7 +52,13 @@ class InterpolatedIndex(Index):
         self.neighbours = neighbours
         self.inclusive = inclusive
         self.extrapolate = extrapolate
-    
+
+    def validate(self, value):
+        if self.coerce is not None:
+            value = self.coerce(value)
+        if not isinstance(value, self.type):
+            raise TypeError(f'{self.name} must be of type {self.type}')
+
     def can_extrapolate(self, index):
         if callable(self.extrapolate):
             return self.extrapolate(index)
