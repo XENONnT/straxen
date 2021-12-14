@@ -21,7 +21,11 @@ class CorrectionsClient:
         self.db = db
     
     @classmethod
-    def local(cls, dbname='cmt2'):
+    def default(cls, *args, **kwargs):
+        return cls.local_mongo(*args, **kwargs)
+    
+    @classmethod
+    def local_mongo(cls, dbname='cmt2'):
         import pymongo
         db = pymongo.MongoClient()[dbname]
         return cls(db)
@@ -80,7 +84,7 @@ def extract_time(kwargs):
     else:
         return None
 
-corrections_db = CorrectionsClient.local()
+corrections_db = CorrectionsClient.local_mongo()
 
 @export
 def cmt2(name, version=0, **kwargs):
