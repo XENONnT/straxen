@@ -156,7 +156,7 @@ def _hvdisp_plot_records_2d(records,
                             tools=(),
                             hooks=(),
                             plot_library='bokeh',
-                            unit_conversion=10 ** 3):
+                            unit_conversion=10**3):
     import holoviews as hv
     import holoviews.operation.datashader
     hv.extension(plot_library)
