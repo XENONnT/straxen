@@ -79,7 +79,7 @@ class BaseRecord(BaseModel):
 
     @classmethod
     def query_db(cls, db, *args, **kwargs):
-        return cls.query_db( db, *args, **kwargs)
+        return cls.index.query_db(db, *args, **kwargs)
 
     @classmethod
     def default_db(cls):

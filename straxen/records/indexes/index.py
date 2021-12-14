@@ -121,7 +121,7 @@ class Index:
             if not q:
                 continue
             db = db.query(q, local_dict=kwargs)
-        if db.index.name is not None:
+        if any(db.index.names):
             db = db.reset_index()
         docs = db.to_dict(orient='records')
         return docs

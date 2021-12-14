@@ -1,13 +1,10 @@
 
 from typing import Callable, Union
 
-from pymongo import cursor
-import toolz
 import datetime
 import pymongo
 import numpy as np
-
-from dask.utils import Dispatch
+import pandas as pd
 from scipy.interpolate import interp1d
 
 from .index import Index
@@ -113,3 +110,21 @@ class InterpolatedIndex(Index):
             },
         ]
 
+    @build_query.register(pd.core.generic.NDFrame)
+    def build_pandas_query(self, db, value):
+        queries = []
+        kwargs = {}
+        idx_column = db.reset_index()[self.name]
+        before = idx_column[idx_column<=value]
+        if len(before):
+            before_idx = before.iloc[(before-value).abs().argmin()]
+            query = f"({self.name}==@{self.name}__before)"
+            kwargs[f"{self.name}__before"] = before_idx
+            queries.append(query)
+        after = idx_column[idx_column>value]
+        if len(after):
+            after_idx = after.iloc[(after-value).abs().argmin()]
+            query = f"({self.name}==@{self.name}__after)"
+            kwargs[f"{self.name}__after"] = after_idx
+            queries.append(query)
+        return " or ".join(queries), kwargs
