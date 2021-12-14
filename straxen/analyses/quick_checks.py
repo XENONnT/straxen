@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import straxen
 from multihist import Hist1d, Histdd
+from matplotlib.colors import LogNorm
 
 
 @straxen.mini_analysis(requires=('peak_basics',))
@@ -62,15 +63,14 @@ def plot_peaks_aft_histogram(
 
     plt.sca(axes[0])
     (mh / livetime_sec).sum(axis=2).plot(
-        log_scale=True,
-        vmin=rate_range[0], vmax=rate_range[1],
+        norm=LogNorm(vmin=rate_range[0], vmax=rate_range[1]),
         colorbar_kwargs=dict(extend='both'),
         cblabel='Peaks / (bin * s)')
     std_axes()
 
     plt.sca(axes[1])
     mh.average(axis=2).plot(
-        # norm=LogNorm(vmin=aft_range[0], vmax=aft_range[1]),
+        norm=LogNorm(vmin=aft_range[0], vmax=aft_range[1]),
         colorbar_kwargs=dict(extend='max'),
         cmap=plt.cm.jet,
         cblabel='Mean area fraction top')
