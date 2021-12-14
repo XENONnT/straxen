@@ -370,8 +370,8 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
         # if we are on a fixed offline version, raise an error.
         if "ONLINE" in cmt_global_version:
             warnings.warn("CMT {cmt_global_version} is missing these corrections: {failed_keys}")
-        # else:
-        #     raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
-        #                           f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
+        else:
+            raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
+                                  f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
 
     context.set_config(cmt_config)
