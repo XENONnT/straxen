@@ -70,7 +70,7 @@ def plot_peaks_aft_histogram(
 
     plt.sca(axes[1])
     mh.average(axis=2).plot(
-        norm=LogNorm(vmin=aft_range[0], vmax=aft_range[1]),
+        vmin=aft_range[0], vmax=aft_range[1],
         colorbar_kwargs=dict(extend='max'),
         cmap=plt.cm.jet,
         cblabel='Mean area fraction top')
