@@ -5,6 +5,8 @@ from copy import deepcopy
 from .rucio import HAVE_ADMIX
 import os
 
+from straxen.common import pax_file
+
 common_opts = dict(
     register_all=[
         straxen.double_scatter,
@@ -63,7 +65,7 @@ xnt_simulation_config = deepcopy(xnt_common_config)
 xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
                              gain_model_nv=("adc_nv", True),
                              gain_model_mv=("adc_mv", True),
-                             elife_conf=('elife_constant', 1e6),
+                             elife=('elife_constant', 1e6),
                              )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -258,7 +260,7 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife_conf'),
+                            electron_lifetime_liquid='elife'),
                 **kwargs):
     """
     The most generic context that allows for setting full divergent
@@ -459,13 +461,15 @@ x1t_common_config = dict(
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife=('elife_xenon1t', 'v1', False),
+    elife=1e6,
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
     max_drift_length=96.9,
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
     se_gain=28.2,
     avg_se_gain=28.2,
     rel_extraction_eff=1.0,
+    s1_map=f'interpolatingmap://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+    s2_map=f'interpolatingmap://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
 )
 
 
@@ -487,8 +491,13 @@ def demo():
     st.set_config(dict(
         hev_gain_model=('1T_to_pe_placeholder', False),
         gain_model=('1T_to_pe_placeholder', False),
-        elife_conf=('elife_constant', 1e6),
+        elife=1e6,
         electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
+        se_gain=28.2,
+        avg_se_gain=28.2,
+        rel_extraction_eff=1.0,
+        s1_map=f'interpolatingmap://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+        s2_map=f'interpolatingmap://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
         ))
     return st
 
