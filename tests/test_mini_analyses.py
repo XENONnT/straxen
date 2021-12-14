@@ -389,7 +389,7 @@ class TestMiniAnalyses(unittest.TestCase):
         Test NV event display for a time range without data (should fail)
         """
         self.st.make(nt_test_run_id, 'events_nv')
-        ev_nv = self.st.get_arry(nt_test_run_id, 'event_positions_nv')
+        ev_nv = self.st.get_array(nt_test_run_id, 'event_positions_nv')
         self.assertFalse(ev_nv, "this test assumes NV events are empty")
         with self.assertRaises(ValueError):
             self.st.plot_nveto_event_display(nt_test_run_id,
