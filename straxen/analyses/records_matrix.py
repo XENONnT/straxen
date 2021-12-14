@@ -2,7 +2,6 @@ import warnings
 
 import numba
 import numpy as np
-
 import strax
 import straxen
 
@@ -130,7 +129,8 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
         if dt > r['dt']:
             # Downsample
             duration = samples_per_record * r['dt']
-            assert duration % dt == 0, "Cannot downsample fractionally"
+            if duration % dt != 0:
+                raise ValueError("Cannot downsample fractionally")
             # .astype here keeps numba happy ... ??
             w = w.reshape(duration // dt, -1).sum(axis=1).astype(np.int32)
 
