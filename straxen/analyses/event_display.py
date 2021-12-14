@@ -1,10 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
+from datetime import datetime
+
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import numpy as np
+import pytz
 import strax
 import straxen
-from datetime import datetime
-import pytz
 
 export, __all__ = strax.exporter()
 
@@ -143,7 +144,7 @@ def event_display(context,
     ax_rec = None
 
     # (raw)records matrix (optional)
-    if records_matrix and ax_rec is not None:
+    if records_matrix:
         gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
         ax_rec = fig.add_subplot(gss_2[0])
     axes = dict(
@@ -202,9 +203,6 @@ def _event_display(context,
     if len(events) != 1:
         raise ValueError(f'Found {len(events)} only request one')
     event = events[0]
-
-    if not context.is_stored(run_id, 'peaklets'):
-        raise strax.DataNotAvailable(f'peaklets not available for {run_id}')
 
     if axes is None:
         raise ValueError(f'No axes provided')
@@ -399,7 +397,7 @@ def plot_single_event(context: strax.Context,
 def _scatter_rec(_event,
                  recs=None,
                  scatter_kwargs=None,
-                ):
+                 ):
     """Convenient wrapper to show posrec of three algorithms for xenonnt"""
     if recs is None:
         recs = ('mlp', 'cnn', 'gcn')

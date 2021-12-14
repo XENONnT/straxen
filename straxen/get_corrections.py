@@ -141,17 +141,16 @@ def is_cmt_option(config):
 
 @correction_options
 def _is_cmt_option(run_id, config):
-    # checks tuple configuration
-    is_cmt_tuple = (isinstance(config, tuple)
-                    and len(config)==3
-                    and isinstance(config[0], str)
-                    and isinstance(config[1], (str, int, float))
-                    and isinstance(config[2], bool))
-
-    # check urlconfig
-    is_cmt_urlconfig = (isinstance(config, str) and 'cmt://' in config)
-
-    return (is_cmt_tuple or is_cmt_urlconfig)
+    # Compatibilty with URLConfig
+    if isinstance(config, str) and "cmt://" in config:
+        return True
+    is_cmt = (isinstance(config, tuple)
+              and len(config)==3
+              and isinstance(config[0], str)
+              and isinstance(config[1], (str, int, float))
+              and isinstance(config[2], bool))
+    
+    return is_cmt
 
 
 def get_cmt_options(context):
