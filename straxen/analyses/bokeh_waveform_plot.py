@@ -366,8 +366,8 @@ def plot_event(peaks, signal, labels, event, colors, yscale='linear'):
     # beyond first last peak, clip at event boundary.
     length = (end - start) / 10**3
 
-    waveform.x_range.start = max(-0.1 * length, (event['time'] - start) / 10 ** 3)
-    waveform.x_range.end = min(1.1 * length, (event['endtime'] - start) / 10 ** 3)
+    waveform.x_range.start = max(-0.1 * length, (event['time'] - start) / 10**3)
+    waveform.x_range.end = min(1.1 * length, (event['endtime'] - start) / 10**3)
     return waveform
 
 
