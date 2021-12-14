@@ -140,8 +140,7 @@ def event_display_interactive(events,
     if np.any(m_other_s2) and not only_main_peaks:
         # Now we have to add the positions of all the other S2 to the top pmt array
         # if not only main peaks.
-        fig_top, plot = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top,
-                                    s2_type_style_id=2)
+        fig_top, plot = plot_posS2s(peaks[m_other_s2], label='OS2s', fig=fig_top, s2_type_style_id=2)
         plot.visible = False
 
     # Main waveform plot:
