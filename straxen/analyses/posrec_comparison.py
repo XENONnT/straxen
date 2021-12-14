@@ -37,8 +37,7 @@ def load_corrected_positions(context, run_id, events,
     cmt_version = (cmt_version, ) * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
 
     # Get drift from CMT
-    drift_conf = context.get_single_plugin(run_id, 'event_positions').config.get(
-        'electron_drift_velocity')
+    drift_conf = context.get_single_plugin(run_id, 'event_positions').config.get('electron_drift_velocity')
     drift_speed = straxen.get_correction_from_cmt(run_id, drift_conf)
     dtype = []
 
