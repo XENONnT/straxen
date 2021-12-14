@@ -630,6 +630,20 @@ def get_veto_tags(events, split_tags, result):
              'where model_type can be "elife" or "elife_constant" '
              'and model_config can be a version.'
     ),
+    strax.Option('avg_se_gain', infer_type=False,
+                 default=("se_gain", "ONLINE", True),
+                 help="Average SE gain over some time period. "
+                      "tcs2 is corrected to this value."
+                      "Defaults to the value for this run, which is equiv. to no correction",
+                 ),
+    strax.Option('se_gain', infer_type=False,
+                 default=("se_gain", "ONLINE", True),
+                 help="SE gain for this run",
+                 ),
+    strax.Option('rel_extraction_eff', infer_type=False,
+                 default=("rel_extraction_eff", "ONLINE", True),
+                 help='Relative extraction efficiency, used to correct tcs2'
+                 ),
     *DEFAULT_POSREC_ALGO_OPTION
 )
 class CorrectedAreas(strax.Plugin):
@@ -643,12 +657,12 @@ class CorrectedAreas(strax.Plugin):
     Note:
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
-        
+
         There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.1.3'
+    __version__ = '0.2.0'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -664,8 +678,10 @@ class CorrectedAreas(strax.Plugin):
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'),]
+                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
 
+        dtype += [('tcs2', np.float32, f'Time-corrected area of main S2 [PE], incl. changing SE gain and/or '
+                                       f'extraction efficiency'),]
         return dtype
 
     def setup(self):
@@ -684,6 +700,10 @@ class CorrectedAreas(strax.Plugin):
                                     self.config['default_reconstruction_algorithm'],
                                     *strax.to_str_tuple(self.config['s2_xy_correction_map'])]),
                              fmt='json'))
+
+        self.avg_se_gain = get_correction_from_cmt(self.run_id, self.config['avg_se_gain'])
+        self.se_gain = get_correction_from_cmt(self.run_id, self.config['se_gain'])
+        self.rel_extraction_eff = get_correction_from_cmt(self.run_id, self.config['rel_extraction_eff'])
 
     def compute(self, events):
         result = dict(
@@ -714,7 +734,7 @@ class CorrectedAreas(strax.Plugin):
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / 
+            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
                                     self.s2_map(s2_positions, map_name=s2_top_map_name))
             cs2_bottom_wo_elifecorr = (events[f'{peak_type}s2_area'] *
                                        (1 - events[f'{peak_type}s2_area_fraction_top']) /
@@ -732,6 +752,9 @@ class CorrectedAreas(strax.Plugin):
             cs2_top = cs2_top_wo_elifecorr * elife_correction
             result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
             result[f"{peak_type}cs2"] = cs2_top + result[f"{peak_type}cs2_bottom"]
+
+        # correct for changing SE gain and/or extraction efficiency
+        result['tcs2'] = result['cs2'] * (self.avg_se_gain / self.se_gain) / self.rel_extraction_eff
 
         return result
 

@@ -463,6 +463,9 @@ x1t_common_config = dict(
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
     max_drift_length=96.9,
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
+    avg_se_gain=('avg_se_gain_constant', 28.2),
+    se_gain=('se_gain_constant', 28.2),
+    rel_extraction_eff=('rel_extraction_eff_constant', 1.0)
 )
 
 

@@ -20,7 +20,8 @@ corrections_w_file = ['mlp_model', 'cnn_model', 'gcn_model',
                       'fdc_map_mlp', 'fdc_map_cnn', 'fdc_map_gcn']
 
 single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
-                            'electron_drift_velocity', 'electron_drift_time_gate']
+                            'electron_drift_velocity', 'electron_drift_time_gate',
+                            'se_gain', 'rel_extraction_eff']
 
 arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
                       'hit_thresholds_nv', 'hit_thresholds_mv']
@@ -351,19 +352,26 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     cmt_config = dict()
     failed_keys = []
     for option, tup in cmt_options.items():
+        correction_name = tup[0]
+        if correction_name in posrec_corrections_basenames:
+            correction_name += f"_{posrec_algo}"
         try:
             # might need to modify correction name to include position reconstruction algo
-            correction_name = tup[0]
-            if correction_name in posrec_corrections_basenames:
-                correction_name += f"_{posrec_algo}"
             new_tup = (tup[0], local_versions[correction_name], tup[2])
+            cmt_config[option] = new_tup
         except KeyError:
-            failed_keys.append(option)
-            continue
-        cmt_config[option] = new_tup
+            if correction_name not in failed_keys:
+                failed_keys.append(correction_name)
+                continue
+
     if len(failed_keys):
         failed_keys = ', '.join(failed_keys)
-        raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
-                              f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
+        # are we on the ONLINE global version? If so just pass a warning.
+        # if we are on a fixed offline version, raise an error.
+        if "ONLINE" in cmt_global_version:
+            warnings.warn("CMT {cmt_global_version} is missing these corrections: {failed_keys}")
+        # else:
+        #     raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
+        #                           f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
 
     context.set_config(cmt_config)
