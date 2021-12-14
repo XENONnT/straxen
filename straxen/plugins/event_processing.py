@@ -638,13 +638,15 @@ class CorrectedAreas(strax.Plugin):
     s1_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s1_xyz_map_{DEFAULT_POSREC_ALGO}?'
                                        'version=ONLINE'
                                        '&run_id=plugin.run_id'
-                                       '&fmt=json')
+                                       '&fmt=json',
+                               cache=True)
 
     # online s2_xy map
     s2_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s2_xy_map_{DEFAULT_POSREC_ALGO}?'
                                        'version=ONLINE'
                                        '&run_id=plugin.run_id'
-                                       '&fmt=json')
+                                       '&fmt=json',
+                               cache=True)
 
     # average SE gain for a given time period. default to the value of this run in ONLINE model
     # thus, by default, there will be no time-dependent correction according to se gain(tcs2 == cs2)
@@ -669,14 +671,14 @@ class CorrectedAreas(strax.Plugin):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
+                      (f'{peak_type}cs2_wo_timecorr', np.float32,
+                       f'Corrected area of {peak_name} S2 before SE gain + EE correction '
+                       f'(s2 xy correction + elife only) [PE]'),
                       (f'{peak_type}cs2_area_fraction_top', np.float32,
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
                       (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
-
-        dtype += [('tcs2', np.float32, f'Time-corrected area of main S2 [PE], incl. changing SE gain and/or '
-                                       f'extraction efficiency'),]
         return dtype
 
     def compute(self, events):
@@ -689,6 +691,7 @@ class CorrectedAreas(strax.Plugin):
         # We use this also for the alternate S1; for e.g. Kr this is
         # fine as the S1 correction varies slowly.
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
+
         for peak_type in ["", "alt_"]:
             result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_map(event_positions)
 
@@ -701,6 +704,10 @@ class CorrectedAreas(strax.Plugin):
         else:
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
+
+        # time correction, which includes possible changes to SE gain and extraction efficiency in time
+        # we will divide by this to get the corrected s2
+
 
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
@@ -722,13 +729,14 @@ class CorrectedAreas(strax.Plugin):
             # use drift time computed using the main S1.
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
+            cs2_top_wo_timecorr = cs2_top_wo_elifecorr * elife_correction
+            cs2_bottom_wo_timecorr = cs2_bottom_wo_elifecorr * elife_correction
+            result[f"{peak_type}cs2_wo_timecorr"] = cs2_top_wo_timecorr + cs2_bottom_wo_timecorr
 
-            cs2_top = cs2_top_wo_elifecorr * elife_correction
-            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
-            result[f"{peak_type}cs2"] = cs2_top + result[f"{peak_type}cs2_bottom"]
-
-        # correct for changing SE gain and/or extraction efficiency
-        result['tcs2'] = result['cs2'] * (self.avg_se_gain / self.se_gain) / self.rel_extraction_eff
+            # Correct for SEgain and extraction efficiency
+            seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
+            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_timecorr / seg_ee_corr
+            result[f"{peak_type}cs2"] = cs2_top_wo_timecorr / seg_ee_corr + result[f"{peak_type}cs2_bottom"]
 
         return result
 
