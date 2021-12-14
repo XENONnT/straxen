@@ -180,8 +180,7 @@ def event_display_interactive(events,
         elif st.is_stored(run_id, 'raw_records'):
             warnings.warn(f'Cannot find records for {run_id}, making them from raw_records instead.')
             p = st.get_single_plugin(run_id, 'records')
-            r = st.get_array(run_id, 'raw_records',
-                             time_range=(events[0]['time'], events[0]['endtime']))
+            r = st.get_array(run_id, 'raw_records', time_range=(events[0]['time'], events[0]['endtime']))
             r = p.compute(r, events[0]['time'], events[0]['endtime'])['records']
         else:
             warnings.warn(
