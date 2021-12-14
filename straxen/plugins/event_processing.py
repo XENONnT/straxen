@@ -643,13 +643,16 @@ class CorrectedAreas(strax.Plugin):
                                        '&run_id=plugin.run_id'
                                        '&fmt=json')
 
-    # average SE gain for a given science run. default to 1T value
-    avg_se_gain = straxen.URLConfig(default=28.2,
+    # average SE gain for a given time period. default to the value of this run in ONLINE model
+    # thus, by default, there will be no time-dependent correction according to se gain(tcs2 == cs2)
+    avg_se_gain = straxen.URLConfig(default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
                                     help='Nominal single electron (SE) gain in PE / electron extracted. '
                                          'Data will be corrected to this value')
+
     # se gain for this run, allowing for using CMT. default to online
     se_gain = straxen.URLConfig(default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
                                 help='Actual SE gain for a given run (allows for time dependence)')
+
     # relative extraction efficiency which can change with time and modeled by CMT. defaults to no correction
     rel_extraction_eff = straxen.URLConfig(default=1.0,
                                            help='Relative extraction efficiency for this run '
