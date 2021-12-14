@@ -14,18 +14,18 @@ class Index:
     coerce: Callable = None
 
     def __init__(self, type=None, name=None, 
-                record=None, coerce=None,
+                document=None, coerce=None,
                 ):
         if type is not None:
             self.type = type
         self.coerce = coerce
         if name is not None:
             self.name = name
-        if record is not None:
-            self.record = record
+        if document is not None:
+            self.document = document
             
     def __set_name__(self, owner, name):
-        self.record = owner
+        self.document = owner
         if not self.name:
             self.name = name
 
@@ -71,64 +71,6 @@ class Index:
     @singledispatchmethod
     def apply_query(self, db, query):
         raise TypeError(f"{type(db)} backend not supported.")
-
-    @build_query.register(pymongo.common.BaseObject)
-    def build_mongo_query(self, db, value):
-        if value is None:
-            return [{
-                '$project': {"_id": 0,},
-                }]
-        if isinstance(value, list):
-            value = {'$in': value}
-        return [{
-                '$match': {self.name: value},
-                },
-                {
-                '$project': {"_id": 0,},
-                },
-                ]
-    
-    @apply_query.register(pymongo.collection.Collection)
-    def apply_mongo_query(self, db, query):
-        if isinstance(query, dict):
-            query = [query]
-        agg = []
-        for q in query:
-            if isinstance(q, list):
-                agg.extend(q)
-            elif isinstance(q, dict):
-                agg.append(q)
-        return list(db.aggregate(agg))
-
-    @apply_query.register(pymongo.database.Database)
-    def apply_mongo_query(self, db, query):
-        return self.apply_query(db[self.record.name], query)
-
-    @build_query.register(pd.core.generic.NDFrame)
-    def build_pandas_query(self, db, value):
-        return f'{self.name}==@{self.name}', {self.name: value}
-
-    @apply_query.register(pd.DataFrame)
-    def apply_dataframe(self, db, query):
-        if not isinstance(query, list):
-            query = [query]
-        for q in query:
-            if isinstance(q, tuple) and len(q)==2:
-                kwargs = q[1]
-                q = q[0]
-            else:
-                kwargs = {}
-            if not q:
-                continue
-            db = db.query(q, local_dict=kwargs)
-        if any(db.index.names):
-            db = db.reset_index()
-        docs = db.to_dict(orient='records')
-        return docs
-
-    @apply_query.register(pd.Series)
-    def apply_series(self, db, query):
-        return self.apply_query(db, query.to_frame())
 
     @apply_query.register(list)
     def apply_list(self, db, query):

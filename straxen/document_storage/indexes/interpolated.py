@@ -64,67 +64,21 @@ class InterpolatedIndex(Index):
     def reduce(self, docs, value):
         if value is None:
             return docs
-        new_record = {self.name: value}
+        new_document = {self.name: value}
         if len(docs)==1:
-            new_record.update(docs[0])
-            if self.can_extrapolate(new_record):
-                new_record[self.name] = value
+            new_document.update(docs[0])
+            if self.can_extrapolate(new_document):
+                new_document[self.name] = value
             else:
                 return []
         else:
             xs = [d[self.name] for d in docs]
             for yname in docs[0]:
                 ys = [d[yname] for d in docs]
-                new_record[yname] = interpolater(value, 
+                new_document[yname] = interpolater(value, 
                                                 xs, ys, kind=self.kind)
-        return [new_record]
+        return [new_document]
 
     @singledispatchmethod
     def build_query(self, db, value):
         raise TypeError(f"{type(db)} backend not supported.")
-
-    @build_query.register(pymongo.common.BaseObject)
-    def build_mongo_query(self, db, value):
-        if value is None:
-            return [{
-                '$project': {"_id": 0},
-            }]
-        return [
-            {
-                '$addFields': {
-                    '_after': {'$gt': [f'${self.name}', value]},
-                    '_diff': {'$abs': {'$subtract': [value, f'${self.name}']}},        
-                    }
-            },
-            {
-                '$sort': {'_diff': 1},
-            },
-            {
-                '$group' : { '_id' : '$_after', 'doc': {'$first': '$$ROOT'},  }
-            },
-            {
-                "$replaceRoot": { "newRoot": "$doc" },
-            },
-            {
-                '$project': {"_id": 0, '_diff':0, '_after':0 },
-            },
-        ]
-
-    @build_query.register(pd.core.generic.NDFrame)
-    def build_pandas_query(self, db, value):
-        queries = []
-        kwargs = {}
-        idx_column = db.reset_index()[self.name]
-        before = idx_column[idx_column<=value]
-        if len(before):
-            before_idx = before.iloc[(before-value).abs().argmin()]
-            query = f"({self.name}==@{self.name}__before)"
-            kwargs[f"{self.name}__before"] = before_idx
-            queries.append(query)
-        after = idx_column[idx_column>value]
-        if len(after):
-            after_idx = after.iloc[(after-value).abs().argmin()]
-            query = f"({self.name}==@{self.name}__after)"
-            kwargs[f"{self.name}__after"] = after_idx
-            queries.append(query)
-        return " or ".join(queries), kwargs

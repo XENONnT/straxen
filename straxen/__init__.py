@@ -3,7 +3,7 @@ __version__ = '1.1.3'
 from utilix import uconfig
 from .common import *
 # contexts.py below
-from .records import *
+from .document_storage import *
 from .corrections import *
 from .corrections_services import *
 from .get_corrections import *

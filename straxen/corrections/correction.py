@@ -19,7 +19,7 @@ EDITING_BUFFER = 12*3600
 
 
 @export
-class BaseCorrection(straxen.BaseRecord):
+class BaseCorrection(straxen.BaseDocument):
     index = straxen.Index(name='version', type=int)
 
 @export

@@ -8,18 +8,18 @@ from ..utils import singledispatchmethod
 class MultiIndex(Index):
     indexes: list
 
-    def __init__(self, *args, record=None, **kwargs) -> None:
+    def __init__(self, *args, document=None, **kwargs) -> None:
         self.indexes = list(args)
         for k,v in kwargs.items():
             v.name = k
             self.indexes.append(v)
-        if record is not None:
-            self.record = record
+        if document is not None:
+            self.document = document
 
     def __set_name__(self, owner, name):
-        self.record = owner
+        self.document = owner
         for v in self.indexes:
-            v.record = owner
+            v.document = owner
 
     @property
     def name(self):

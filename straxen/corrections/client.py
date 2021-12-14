@@ -40,7 +40,7 @@ class CorrectionsClient:
 
     def client(self, name):
         correction = self.corrections[name]
-        return straxen.RecordClient(correction, self.db)
+        return straxen.DocumentClient(correction, self.db)
 
     def __getitem__(self, key):
         if isinstance(key, tuple) and key[0] in self.corrections:

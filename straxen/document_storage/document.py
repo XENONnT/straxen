@@ -1,7 +1,7 @@
 import re
 import pymongo
 import strax
-from straxen.records.utils import singledispatchmethod
+from straxen.document_storage.utils import singledispatchmethod
 import utilix
 
 import datetime
@@ -28,7 +28,7 @@ def camel_to_snake(name):
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
 @export
-class BaseRecord(BaseModel):
+class BaseDocument(BaseModel):
     name: ClassVar = ''
     index: ClassVar
     value: Union[str,int,float]
@@ -37,10 +37,10 @@ class BaseRecord(BaseModel):
         #FIXME: maybe move this logic into the Index class?
         # Index can be a descriptor that does a dynamic lookup and
         # concatentation of all indexes in parent classes to return
-        # the final indexer initialized with the record class.
+        # the final indexer initialized with the document class.
         indexes = []
         for base in reversed(cls.mro()):
-            if not issubclass(base, BaseRecord):
+            if not issubclass(base, BaseDocument):
                 continue
             if 'index' not in base.__dict__:
                 continue
@@ -51,7 +51,7 @@ class BaseRecord(BaseModel):
             elif isinstance(base.index, Index):
                 indexes.append(copy(base.index))
         if not indexes:
-            raise AttributeError(f'Record class {cls.__name__} has no index.')
+            raise AttributeError(f'Document class {cls.__name__} has no index.')
         
         if len(indexes) == 1:
             cls.index = indexes[0]
@@ -74,8 +74,8 @@ class BaseRecord(BaseModel):
 
     @classmethod
     def db_client(cls, db):
-        from .client import RecordClient
-        return RecordClient(cls, db)
+        from .client import DocumentClient
+        return DocumentClient(cls, db)
 
     @classmethod
     def query_db(cls, db, *args, **kwargs):
@@ -83,10 +83,10 @@ class BaseRecord(BaseModel):
 
     @classmethod
     def default_db(cls):
-        from .client import RecordClient
+        from .client import DocumentClient
         import pymongo
         db = pymongo.MongoClient()['cmt2']
-        return RecordClient(cls, db)
+        return DocumentClient(cls, db)
 
     def pre_insert(self, **index):
         pass
@@ -118,11 +118,3 @@ class BaseRecord(BaseModel):
     def _insert(self, db, doc):
         raise TypeError(f'Inserts are not supported \
                         for {type(db)} data stores.')
-
-    @_insert.register(pymongo.collection.Collection)
-    def _save_mongo_collection(self, db, doc):
-        return db.find_one_and_replace(doc, doc, upsert=True)
-
-    @_insert.register(pymongo.database.Database)
-    def _save_mongo_database(self, db, doc):
-        return self._insert(db[self.name], doc)
