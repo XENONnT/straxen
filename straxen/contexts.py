@@ -53,9 +53,7 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     # Event level parameters
-    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
     fdc_map=('fdc_map', "ONLINE", True),
-    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
     g1=0.1426,
     g2=11.55,
 )
@@ -65,7 +63,7 @@ xnt_simulation_config = deepcopy(xnt_common_config)
 xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
                              gain_model_nv=("adc_nv", True),
                              gain_model_mv=("adc_mv", True),
-                             elife=('elife_constant', 1e6),
+                             elife=1e6,
                              )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
