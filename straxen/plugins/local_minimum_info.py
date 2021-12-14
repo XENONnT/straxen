@@ -31,6 +31,7 @@ class LocalMinimumInfo(strax.LoopPlugin):
     """
 
     depends_on = ('event_basics', 'peaks')
+    data_kind = 'local_min_info'
     provides = 'local_min_info'
     parallel = 'process'
     compressor = 'zstd'
