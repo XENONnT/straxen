@@ -43,6 +43,7 @@ def plot_waveform(context,
 
     else:
         f, axes = plt.subplots(2, 1,
+                               constrained_layout=True,
                                figsize=figsize,
                                gridspec_kw={'height_ratios': [1, lower_panel_height]})
 
@@ -59,7 +60,6 @@ def plot_waveform(context,
                                     raw=deep == 'raw',
                                     single_figure=False)
 
-        straxen.quiet_tight_layout()
         plt.subplots_adjust(hspace=0)
 
 

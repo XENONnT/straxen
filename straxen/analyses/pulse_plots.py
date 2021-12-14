@@ -7,7 +7,7 @@ import straxen
 
 
 @straxen.mini_analysis(requires=('raw_records',), warn_beyond_sec=5)
-def plot_pulses_tpc(context, raw_records, run_id, time_range,
+def plot_pulses_tpc(context, raw_records, run_id, time_range=None,
                     plot_hits=False, plot_median=False,
                     max_plots=20, store_pdf=False, path=''):
     plot_pulses(context, raw_records, run_id, time_range,
@@ -16,7 +16,7 @@ def plot_pulses_tpc(context, raw_records, run_id, time_range,
 
 
 @straxen.mini_analysis(requires=('raw_records_mv',), warn_beyond_sec=5)
-def plot_pulses_mv(context, raw_records_mv, run_id, time_range,
+def plot_pulses_mv(context, raw_records_mv, run_id, time_range=None,
                    plot_hits=False, plot_median=False,
                    max_plots=20, store_pdf=False, path=''):
     plot_pulses(context, raw_records_mv, run_id, time_range,
@@ -25,7 +25,7 @@ def plot_pulses_mv(context, raw_records_mv, run_id, time_range,
 
 
 @straxen.mini_analysis(requires=('raw_records_nv',), warn_beyond_sec=5)
-def plot_pulses_nv(context, raw_records_nv, run_id, time_range,
+def plot_pulses_nv(context, raw_records_nv, run_id, time_range=None,
                    plot_hits=False, plot_median=False,
                    max_plots=20, store_pdf=False, path=''):
     plot_pulses(context, raw_records_nv, run_id, time_range,
@@ -75,6 +75,8 @@ def plot_pulses(context, raw_records, run_id, time_range,
                    flip=True)
 
     nfigs = 1
+    if store_pdf and time_range is None:
+        raise ValueError(f'Specify time range!')
     if store_pdf:
         from matplotlib.backends.backend_pdf import PdfPages
         fname = f'pulses_{run_id}_{time_range[0]}_{time_range[1]}.pdf'

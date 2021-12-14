@@ -138,8 +138,21 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st_attr_for_one_peak('hvdisp_plot_peak_waveforms')
 
     def test_plot_pulses_tpc(self):
-        self.st.plot_pulses_tpc(nt_test_run_id, max_plots=2, plot_hits=True,
-                                ignore_time_warning=True, store_pdf=True)
+        self.st.plot_pulses_tpc(nt_test_run_id,
+                                time_within=self.first_peak,
+                                max_plots=2,
+                                plot_hits=True,
+                                ignore_time_warning=False,
+                                store_pdf=True,
+                                )
+        with self.assertRaises(ValueError):
+            # Raise an error if no time range is specified
+            self.st.plot_pulses_tpc(nt_test_run_id,
+                                    max_plots=2,
+                                    plot_hits=True,
+                                    ignore_time_warning=True,
+                                    store_pdf=True,
+                                    )
 
     def test_plot_pulses_mv(self):
         self.st.plot_pulses_mv(nt_test_run_id, max_plots=2, plot_hits=True,
