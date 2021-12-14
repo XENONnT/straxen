@@ -6,8 +6,7 @@ import numba
 import numpy as np
 import strax
 import straxen
-from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, \
-    plot_record_polygons, get_records_matrix_in_window
+from straxen.analyses.holoviews_waveform_display import _hvdisp_plot_records_2d, hook, plot_record_polygons, get_records_matrix_in_window  # noqa
 
 # Default legend, unknow, S1 and S2
 LEGENDS = ('Unknown', 'S1', 'S2')
