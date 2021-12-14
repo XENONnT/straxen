@@ -1,11 +1,12 @@
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
-from .records_matrix import DEFAULT_MAX_SAMPLES
+
 from .daq_waveforms import group_by_daq
+from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
 __all__ += ['plot_wf']
@@ -42,6 +43,7 @@ def plot_waveform(context,
 
     else:
         f, axes = plt.subplots(2, 1,
+                               constrained_layout=True,
                                figsize=figsize,
                                gridspec_kw={'height_ratios': [1, lower_panel_height]})
 
@@ -58,7 +60,6 @@ def plot_waveform(context,
                                     raw=deep == 'raw',
                                     single_figure=False)
 
-        straxen.quiet_tight_layout()
         plt.subplots_adjust(hspace=0)
 
 
@@ -130,8 +131,8 @@ def plot_records_matrix(context, run_id,
                         group_by=None,
                         max_samples=DEFAULT_MAX_SAMPLES,
                         ignore_max_sample_warning=False,
-                        vmin = None,
-                        vmax = None,
+                        vmin=None,
+                        vmax=None,
                         **kwargs):
     if seconds_range is None:
         raise ValueError(
@@ -139,7 +140,7 @@ def plot_records_matrix(context, run_id,
             "to plot_records_matrix.")
 
     if single_figure:
-        plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize, constrained_layout=True)
 
     f = context.raw_records_matrix if raw else context.records_matrix
 
@@ -207,9 +208,6 @@ def plot_records_matrix(context, run_id,
             matplotlib.ticker.FormatStrFormatter('%g'))
 
     plt.sca(ax)
-
-    if single_figure:
-        straxen.quiet_tight_layout()
 
 
 def seconds_range_xaxis(seconds_range, t0=None):
