@@ -59,8 +59,7 @@ def load_corrected_positions(context, run_id, events,
               f'posrec algorithm', f'theta_{algo}'),
              np.float32)]
 
-    dtype += [
-        (('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
+    dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
     result = np.zeros(len(events), dtype=dtype)
 
     z_obs = - drift_speed * events['drift_time']
