@@ -94,6 +94,32 @@ class IntervalIndex(Index):
             },
         ]
 
+    @build_query.register(pd.core.generic.NDFrame)
+    def build_pandas_query(self, db, intervals):
+        if isinstance(intervals, list):
+            return [self.pandas_overlap_query(iv) for iv in intervals]
+        else:
+            return self.pandas_overlap_query(intervals)
+
+    def pandas_overlap_query(self, interval):
+        gt_op = '>=' if self.closed in ['right', 'both'] else '>'
+        lt_op = '<=' if self.closed in ['left', 'both'] else '<'
+        if isinstance(interval, tuple):
+            left, right = interval
+        elif isinstance(interval, slice):
+            left, right = interval.start, interval.stop
+        else:
+            left = right = interval
+        conditions = []
+        if left is not None:
+            condition = f'{self.right_name}{gt_op}@{self.left_name}'
+            conditions.append(condition)
+        if right is not None:
+            condition = f'{self.left_name}{lt_op}@{self.right_name}'
+            conditions.append(condition)
+        query = " and ".join(conditions)
+        return query, {self.left_name: left, self.right_name: right}
+
     def mongo_overlap_query(self, interval):
         gt_op = '$gte' if self.closed in ['right', 'both'] else '$gt'
         lt_op = '$lte' if self.closed in ['left', 'both'] else '$lt'

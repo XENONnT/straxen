@@ -70,13 +70,17 @@ class MultiIndex(Index):
             documents = reduced_documents
         return documents
 
-    def query_db(self, db, *args, **kwargs):
-        index_values = self.infer_index(*args, **kwargs)
+    def build_query(self, db, index_values):
         query = []
         for index in self.indexes:
             if index.name not in index_values:
                 continue
             query.append(index.build_query(db, index_values[index.name]))
+        return query
+
+    def query_db(self, db, *args, **kwargs):
+        index_values = self.infer_index(*args, **kwargs)
+        query = self.build_query(db, index_values)
         documents = self.apply_query(db, query)
         documents = self.reduce(documents, index_values)
         return documents

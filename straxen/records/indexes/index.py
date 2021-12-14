@@ -1,5 +1,6 @@
 
 import datetime
+from pandas.core.algorithms import isin
 import pymongo
 import numpy as np
 import pandas as pd
@@ -102,6 +103,32 @@ class Index:
     @apply_query.register(pymongo.database.Database)
     def apply_mongo_query(self, db, query):
         return self.apply_query(db[self.record.name], query)
+
+    @build_query.register(pd.core.generic.NDFrame)
+    def build_pandas_query(self, db, value):
+        return f'{self.name}==@{self.name}', {self.name: value}
+
+    @apply_query.register(pd.DataFrame)
+    def apply_dataframe(self, db, query):
+        if not isinstance(query, list):
+            query = [query]
+        for q in query:
+            if isinstance(q, tuple) and len(q)==2:
+                kwargs = q[1]
+                q = q[0]
+            else:
+                kwargs = {}
+            if not q:
+                continue
+            db = db.query(q, local_dict=kwargs)
+        if db.index.name is not None:
+            db = db.reset_index()
+        docs = db.to_dict(orient='records')
+        return docs
+
+    @apply_query.register(pd.Series)
+    def apply_series(self, db, query):
+        return self.apply_query(db, query.to_frame())
 
     @apply_query.register(list)
     def apply_list(self, db, query):
