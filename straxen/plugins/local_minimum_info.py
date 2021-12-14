@@ -7,7 +7,7 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('divide_90p_width', default=10,
+    strax.Option('divide_90p_width', default=7,
                  help="The peak is smoothed by dividing the 90p width by"
                       "this number, and coverting it into number of samples."
                       "This is then the 'n' used in the smoothing kernel"
