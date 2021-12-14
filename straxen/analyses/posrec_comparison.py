@@ -36,8 +36,7 @@ def load_corrected_positions(context, run_id, events,
         raise TypeError(
             f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length.")
 
-    cmt_version = (cmt_version,) * len(posrec_algos) if isinstance(cmt_version,
-                                                                   str) else cmt_version
+    cmt_version = (cmt_version, ) * len(posrec_algos) if isinstance(cmt_version, str) else cmt_version
 
     # Get drift from CMT
     drift_conf = context.get_single_plugin(run_id, 'event_positions').config.get(
