@@ -12,7 +12,7 @@ immutabledict
 numba>=0.50.0
 requests
 commentjson
-matplotlib<3.5.0
+matplotlib
 gitpython
 pytoolz
 pydantic
