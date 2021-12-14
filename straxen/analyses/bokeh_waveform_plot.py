@@ -702,7 +702,7 @@ def _make_event_title(event, run_id, width=1600):
     """
     start = event['time']
     date = np.datetime_as_string(start.astype('<M8[ns]'), unit='s')
-    start_ns = start - (start // 10 ** 9) * 10 ** 9
+    start_ns = start - (start // 10**9) * 10**9
     end = strax.endtime(event)
     end_ns = end - start + start_ns
     event_number = event['event_number']
