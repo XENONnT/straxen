@@ -315,8 +315,7 @@ def plot_pmt_arrays_and_positions(top_array_keys,
 
             if pmt_array_type == 'top' and 's2' in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
-                fig, plot = plot_posS2s(signal[k][0], label=labels[k], fig=fig,
-                                        s2_type_style_id=ind)
+                fig, plot = plot_posS2s(signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind)
                 if ind:
                     # Not main S2
                     plot.visible = False
