@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 from warnings import warn
-from .position_reconstruction import DEFAULT_POSREC_ALGO_OPTION, DEFAULT_POSREC_ALGO
+from .position_reconstruction import DEFAULT_POSREC_ALGO
 from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
 from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
@@ -453,7 +453,6 @@ class EventBasics(strax.Plugin):
             (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
             (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))], # noqa
     ),
-    *DEFAULT_POSREC_ALGO_OPTION
 )
 class EventPositions(strax.Plugin):
     """
@@ -467,6 +466,10 @@ class EventPositions(strax.Plugin):
     depends_on = ('event_basics', )
     
     __version__ = '0.1.4'
+
+    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
+                                                         help="default reconstruction algorithm that provides (x,y)"
+                                                         )
 
     dtype = [
         ('x', np.float32,

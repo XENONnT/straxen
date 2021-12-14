@@ -141,13 +141,17 @@ def is_cmt_option(config):
 
 @correction_options
 def _is_cmt_option(run_id, config):
-    is_cmt = (isinstance(config, tuple)
-              and len(config)==3
-              and isinstance(config[0], str)
-              and isinstance(config[1], (str, int, float))
-              and isinstance(config[2], bool))
-    
-    return is_cmt
+    # checks tuple configuration
+    is_cmt_tuple = (isinstance(config, tuple)
+                    and len(config)==3
+                    and isinstance(config[0], str)
+                    and isinstance(config[1], (str, int, float))
+                    and isinstance(config[2], bool))
+
+    # check urlconfig
+    is_cmt_urlconfig = (isinstance(config, str) and 'cmt://' in config)
+
+    return (is_cmt_tuple or is_cmt_urlconfig)
 
 
 def get_cmt_options(context):
@@ -161,10 +165,10 @@ def get_cmt_options(context):
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
             if (option_key in context.config and
-                straxen.get_corrections.is_cmt_option(context.config[option_key])
+                is_cmt_option(context.config[option_key])
                 ):
                 cmt_options[option_key] = context.config[option_key]
-            elif straxen.get_corrections.is_cmt_option(option.default):
+            elif is_cmt_option(option.default):
                 cmt_options[option_key] = option.default
 
     return cmt_options

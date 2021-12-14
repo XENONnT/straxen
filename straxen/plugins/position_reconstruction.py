@@ -10,11 +10,6 @@ from warnings import warn
 export, __all__ = strax.exporter()
 
 DEFAULT_POSREC_ALGO = "mlp"
-DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
-                 help="default reconstruction algorithm that provides (x,y)",
-                 default=DEFAULT_POSREC_ALGO, infer_type=False,
-                 )])
-
 
 @export
 @strax.takes_config(
@@ -170,9 +165,6 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
 
 
 @export
-@strax.takes_config(
-    *DEFAULT_POSREC_ALGO_OPTION
-)
 class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
     Merge the reconstructed algorithms of the different algorithms 
@@ -190,6 +182,10 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn")
     save_when = strax.SaveWhen.NEVER
     __version__ = '0.0.0'
+
+    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
+                                                         help="default reconstruction algorithm that provides (x,y)"
+                                                         )
 
     def infer_dtype(self):
         dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])
@@ -209,8 +205,8 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     
 @export
 @strax.takes_config(
-    strax.Option('recon_alg_included', help = 'The list of all reconstruction algorithm considered.',
-                 default = ('_mlp', '_gcn', '_cnn'), infer_type=False,
+    strax.Option('recon_alg_included', help='The list of all reconstruction algorithm considered.',
+                 default=('_mlp', '_gcn', '_cnn'), infer_type=False,
                 )
 )
 class S2ReconPosDiff(strax.Plugin):
