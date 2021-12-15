@@ -634,22 +634,27 @@ class CorrectedAreas(strax.Plugin):
     # online elife
     elife = straxen.URLConfig(default='cmt://elife?version=ONLINE&run_id=plugin.run_id')
 
+    # default posrec, used to determine which LCE map to use
+    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
+                                                         help="default reconstruction algorithm that provides (x,y)"
+                                                         )
+
     # online s1_xyz_map
-    s1_xyz_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s1_xyz_map_{DEFAULT_POSREC_ALGO}?'
-                                       'version=ONLINE'
-                                       '&run_id=plugin.run_id'
-                                       '&fmt=json',
+    s1_xyz_map = straxen.URLConfig(default='interpolatingmap://resource://'
+                                           'cmt://format://s1_xyz_map_{algo}'
+                                           '?version=ONLINE&run_id=plugin.run_id&fmt=json'
+                                           '&algo=plugin.default_reconstruction_algorithm',
                                cache=True)
 
     # online s2_xy map
-    s2_xy_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s2_xy_map_{DEFAULT_POSREC_ALGO}?'
-                                       'version=ONLINE'
-                                       '&run_id=plugin.run_id'
-                                       '&fmt=json',
+    s2_xy_map = straxen.URLConfig(default='interpolatingmap://resource://'
+                                          'cmt://format://s2_xy_map_{algo}?'
+                                          'version=ONLINE&run_id=plugin.run_id&fmt=json'
+                                          '&algo=plugin.default_reconstruction_algorithm',
                                cache=True)
 
     # average SE gain for a given time period. default to the value of this run in ONLINE model
-    # thus, by default, there will be no time-dependent correction according to se gain(tcs2 == cs2)
+    # thus, by default, there will be no time-dependent correction according to se gain
     avg_se_gain = straxen.URLConfig(default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
                                     help='Nominal single electron (SE) gain in PE / electron extracted. '
                                          'Data will be corrected to this value')
