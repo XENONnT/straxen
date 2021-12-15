@@ -2,24 +2,29 @@ import json
 import strax
 import straxen
 import fsspec
+import random
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 
 
-class TestPlugin(strax.Plugin):
+class ExamplePlugin(strax.Plugin):
     depends_on = ()
     dtype = strax.time_fields
     provides = ('test_data',)
     test_config = straxen.URLConfig(default=42,)
+    cached_config = straxen.URLConfig(default=666, cache=1)
 
     def compute(self):
         pass
 
+straxen.URLConfig.register('random')
+def generate_random(_):
+    return random.random()
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
         st = nt_test_context()
-        st.register(TestPlugin)
+        st.register(ExamplePlugin)
         self.st = st
 
     def test_default(self):
@@ -59,6 +64,20 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'take://json://[1,2,3]?take=0'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 1)
+
+    def test_cache(self):
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.cached_config, 666)
+        self.st.set_config({'cached_config': 'random://abc'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        cached_value = p.cached_config
+        self.assertEqual(cached_value, p.cached_config)
+
+        # test if previous value is evicted, since cache size is 1
+        self.st.set_config({'cached_config': 'random://dfg'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.cached_config, p.cached_config)
+        self.assertNotEqual(cached_value, p.cached_config)
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()

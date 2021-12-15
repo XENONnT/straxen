@@ -8,11 +8,11 @@ import inspect
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
 from functools import lru_cache
-
 from strax.config import OMITTED
 
 export, __all__ = strax.exporter()
 
+_CACHES = {}
 
 def parse_val(val):
     try:
@@ -47,8 +47,13 @@ class URLConfig(strax.Config):
             self.final_type = self.type
             self.type = OMITTED # do not enforce type on the URL
         if cache:
-            maxsize = cache if isinstance(cache, int) else None
-            self.dispatch = lru_cache(maxsize)(self.dispatch)
+            cache_len = cache if isinstance(cache, int) else 1_000_000
+            cache = straxen.CacheDict(cache_len=cache_len)
+            _CACHES[id(self)] = cache
+
+    @property
+    def cache(self):
+        return _CACHES.get(id(self), {})
 
     @classmethod
     def register(cls, protocol, func=None):
@@ -149,6 +154,18 @@ class URLConfig(strax.Config):
             # no protocol in the url so its evaluated 
             # as string-literal config and returned as is
             return url
+
+        # fetch from cache if exists
+        value = self.cache.get(url, None)
+
+        # not in cache, letch fetch it
+        if value is None:
+            value = self._fetch(url, plugin)
+            self.cache[url] = value
+
+        return value
+        
+    def _fetch(self, url, plugin):
 
         # separate out the query part of the URL which
         # will become the method kwargs
