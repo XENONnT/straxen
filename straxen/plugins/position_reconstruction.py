@@ -49,29 +49,11 @@ class PeakPositionsBaseNT(strax.Plugin):
         dtype += strax.time_fields
         return dtype
 
-    def setup(self):
-        self.model_file = self._get_model_file_name()
-        if self.model_file is None:
-            warn(f'No file provided for {self.algorithm}. Setting all values '
-                 f'for {self.provides} to None.')
-            # No further setup required
-            return
-
-        # Load the tensorflow model
-        import tensorflow as tf
-        if os.path.exists(self.model_file):
-            print(f"Path is local. Loading {self.algorithm} TF model locally "
-                  f"from disk.")
-        else:
-            downloader = straxen.MongoDownloader()
-            try:
-                self.model_file = downloader.download_single(self.model_file)
-            except straxen.mongo_storage.CouldNotLoadError as e:
-                raise RuntimeError(f'Model files {self.model_file} is not found') from e
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tar = tarfile.open(self.model_file, mode="r:gz")
-            tar.extractall(path=tmpdirname)
-            self.model = tf.keras.models.load_model(tmpdirname)
+    def get_tf_model(self):
+        model = getattr(self, f'tf_model_{self.algorithm}', None)
+        if model is None:
+            warn(f'Setting model to None for {__class__.__name__}')
+        return model
 
     def compute(self, peaks):
         result = np.ones(len(peaks), dtype=self.dtype)
@@ -80,7 +62,8 @@ class PeakPositionsBaseNT(strax.Plugin):
         result['x_' + self.algorithm] *= float('nan')
         result['y_' + self.algorithm] *= float('nan')
 
-        if self.model_file is None:
+        model = self.get_tf_model()
+        if model is None:
             # This plugin is disabled since no model is provided
             return result
 
@@ -95,7 +78,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         with np.errstate(divide='ignore', invalid='ignore'):
             _in = _in / np.max(_in, axis=1).reshape(-1, 1)
         _in = _in.reshape(-1, self.config['n_top_pmts'])
-        _out = self.model.predict(_in)
+        _out = model.predict(_in)
 
         # writing output to the result
         result['x_' + self.algorithm][peak_mask] = _out[:, 0]
@@ -121,52 +104,39 @@ class PeakPositionsBaseNT(strax.Plugin):
         return model_file
 
 
-@export
-@strax.takes_config(
-    strax.Option('mlp_model',
-                 help='Neural network model.' 
-                      'If CMT, specify as (mlp_model, ONLINE, True)'
-                      'Set to None to skip the computation of this plugin.',
-                 default=('mlp_model', "ONLINE", True), infer_type=False,
-                )
-)
 class PeakPositionsMLP(PeakPositionsBaseNT):
     """Multilayer Perceptron (MLP) neural net for position reconstruction"""
     provides = "peak_positions_mlp"
     algorithm = "mlp"
 
+    tf_model_mlp = straxen.URLConfig(
+        default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        cache=True
+    )
 
-@export
-@strax.takes_config(
-    strax.Option('gcn_model',
-                 help='Neural network model.' 
-                      'If CMT, specify as  (gcn_model, ONLINE, True)'
-                      'Set to None to skip the computation of this plugin.',
-                 default=('gcn_model', "ONLINE", True), infer_type=False,
-                )
-)
+
 class PeakPositionsGCN(PeakPositionsBaseNT):
     """Graph Convolutional Network (GCN) neural net for position reconstruction"""
     provides = "peak_positions_gcn"
     algorithm = "gcn"
     __version__ = '0.0.1'
 
+    tf_model_gcn = straxen.URLConfig(
+        default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        cache=True
+    )
 
-@export
-@strax.takes_config(
-    strax.Option('cnn_model',
-                 help='Neural network model.' 
-                      'If CMT, specify as (cnn_model, ONLINE, True)'
-                      'Set to None to skip the computation of this plugin.',
-                 default=('cnn_model', "ONLINE", True), infer_type=False,
-                )
-)
+
 class PeakPositionsCNN(PeakPositionsBaseNT):
     """Convolutional Neural Network (CNN) neural net for position reconstruction"""
     provides = "peak_positions_cnn"
     algorithm = "cnn"
     __version__ = '0.0.1'
 
+    tf_model_ccn = straxen.URLConfig(
+        default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        cache=True
+    )
 
 @export
 @strax.takes_config(
