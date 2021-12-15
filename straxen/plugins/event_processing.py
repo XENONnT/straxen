@@ -737,7 +737,7 @@ class CorrectedAreas(strax.Plugin):
             # Correct for SEgain and extraction efficiency
             seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
             result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_timecorr / seg_ee_corr
-            result[f"{peak_type}cs2"] = cs2_top_wo_timecorr / seg_ee_corr + result[f"{peak_type}cs2_bottom"]
+            result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_timecorr"] / seg_ee_corr 
         return result
 
 
