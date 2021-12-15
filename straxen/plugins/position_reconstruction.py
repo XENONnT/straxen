@@ -130,7 +130,7 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
         help='MLP model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
-        cache=True
+        cache=True.
     )
 
 
@@ -144,7 +144,7 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
         help='GCN model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
-        cache=True
+        cache=True,
     )
 
 
@@ -158,7 +158,7 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
         help='CNN model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
-        cache=True
+        cache=True,
     )
 
 
