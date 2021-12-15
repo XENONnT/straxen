@@ -25,11 +25,12 @@ def open_neural_net(model_path: str, **kwargs):
         return tf.keras.models.load_model(tmpdirname)
 
 
+@export
 @URLConfig.register('download')
 def download(file_name: str) -> str:
     """
-    Download single and return path to object. Different from recource
-    is that we don't to open the file.
+    Download single and return path to object. Different from
+    "resource://" is that we don't to open the file.
     """
     downloader = straxen.MongoDownloader()
     return downloader.download_single(file_name)
@@ -77,6 +78,8 @@ class PeakPositionsBaseNT(strax.Plugin):
         model = getattr(self, f'tf_model_{self.algorithm}', None)
         if model is None:
             warn(f'Setting model to None for {self.__class__.__name__}')
+        if isinstance(model, str):
+            model = open_neural_net(model)
         return model
 
     def compute(self, peaks):
