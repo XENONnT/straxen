@@ -9,6 +9,32 @@ import straxen
 from warnings import warn
 export, __all__ = strax.exporter()
 
+
+from straxen import URLConfig
+
+
+@URLConfig.register('tf')
+def open_neural_net(model_path: str, **kwargs):
+    # Nested import to reduce loading time of import straxen
+    import tensorflow as tf
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f'No file at {model_path}')
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tar = tarfile.open(model_path, mode="r:gz")
+        tar.extractall(path=tmpdirname)
+        return tf.keras.models.load_model(tmpdirname)
+
+
+@URLConfig.register('download')
+def download(file_name: str, **kwargs) -> str:
+    """
+    Download single and return path to object. Different from recource
+    is that we don't to open the file.
+    """
+    downloader = straxen.MongoDownloader(**kwargs)
+    return downloader.download_single(file_name)
+
+
 DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
                  help="default reconstruction algorithm that provides (x,y)",
                  default="mlp", infer_type=False,
@@ -33,9 +59,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     depends_on = ('peaks',)
     algorithm = None
     compressor = 'zstd'
-    # Using parallel = 'process' is not allowed as we cannot Pickle
-    # self.model during multiprocessing (to fix?)
-    parallel = True
+    parallel = "process"
     __version__ = '0.0.0'
 
     def infer_dtype(self):
@@ -52,7 +76,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     def get_tf_model(self):
         model = getattr(self, f'tf_model_{self.algorithm}', None)
         if model is None:
-            warn(f'Setting model to None for {__class__.__name__}')
+            warn(f'Setting model to None for {self.__class__.__name__}')
         return model
 
     def compute(self, peaks):
@@ -63,6 +87,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         result['y_' + self.algorithm] *= float('nan')
 
         model = self.get_tf_model()
+
         if model is None:
             # This plugin is disabled since no model is provided
             return result
@@ -74,34 +99,23 @@ class PeakPositionsBaseNT(strax.Plugin):
             return result
 
         # Getting actual position reconstruction
-        _in = peaks['area_per_channel'][peak_mask, 0:self.config['n_top_pmts']]
+        area_per_channel_top = peaks['area_per_channel'][
+                               peak_mask,
+                               0:self.config['n_top_pmts']]
         with np.errstate(divide='ignore', invalid='ignore'):
-            _in = _in / np.max(_in, axis=1).reshape(-1, 1)
-        _in = _in.reshape(-1, self.config['n_top_pmts'])
-        _out = model.predict(_in)
+            area_per_channel_top = (
+                    area_per_channel_top /
+                    np.max(area_per_channel_top, axis=1).reshape(-1, 1)
+            )
+        area_per_channel_top = area_per_channel_top.reshape(-1,
+                                                            self.config['n_top_pmts']
+                                                            )
+        output = model.predict(area_per_channel_top)
 
         # writing output to the result
-        result['x_' + self.algorithm][peak_mask] = _out[:, 0]
-        result['y_' + self.algorithm][peak_mask] = _out[:, 1]
+        result['x_' + self.algorithm][peak_mask] = output[:, 0]
+        result['y_' + self.algorithm][peak_mask] = output[:, 1]
         return result
-
-    def _get_model_file_name(self):
-
-        config_file = f'{self.algorithm}_model'
-        model_from_config = self.config.get(config_file, 'No file')
-        if model_from_config == 'No file':
-            raise ValueError(f'{__class__.__name__} should have {config_file} '
-                             f'provided as an option.')
-        if isinstance(model_from_config, str) and os.path.exists(model_from_config):
-            # Allow direct path specification
-            return model_from_config
-        if model_from_config is None:
-            # Allow None to be specified (disables processing for given posrec)
-            return model_from_config
-
-        # Use CMT
-        model_file = straxen.get_correction_from_cmt(self.run_id, model_from_config)
-        return model_file
 
 
 class PeakPositionsMLP(PeakPositionsBaseNT):
@@ -111,6 +125,8 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 
     tf_model_mlp = straxen.URLConfig(
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        help='MLP model. Should be opened using the "tf" descriptor. '
+             'Set to "None" to skip computation',
         cache=True
     )
 
@@ -123,6 +139,8 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
 
     tf_model_gcn = straxen.URLConfig(
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        help='GCN model. Should be opened using the "tf" descriptor. '
+             'Set to "None" to skip computation',
         cache=True
     )
 
@@ -133,10 +151,13 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
     algorithm = "cnn"
     __version__ = '0.0.1'
 
-    tf_model_ccn = straxen.URLConfig(
+    tf_model_cnn = straxen.URLConfig(
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        help='CNN model. Should be opened using the "tf" descriptor. '
+             'Set to "None" to skip computation',
         cache=True
     )
+
 
 @export
 @strax.takes_config(
