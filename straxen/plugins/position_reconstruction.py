@@ -12,8 +12,9 @@ export, __all__ = strax.exporter()
 
 from straxen import URLConfig
 
-##############
-# Temporary placed here, I don't want to mess with #817
+# TODO
+#  #############
+#  Temporary placed here, I don't want to mess with #817
 @URLConfig.register('tf')
 def open_neural_net(model_path: str, **kwargs):
     # Nested import to reduce loading time of import straxen
@@ -85,8 +86,8 @@ class PeakPositionsBaseNT(strax.Plugin):
         if model is None:
             warn(f'Setting model to None for {self.__class__.__name__}')
         if isinstance(model, str):
-            raise ValueError(model)
-            raise ValueError(r'open files from tf:// protocol! see tests/test_posrec.py')
+            raise ValueError(f'open files from tf:// protocol! Got {model} '
+                             f'instead, see tests/test_posrec.py for examples.')
         return model
 
     def compute(self, peaks):
