@@ -121,6 +121,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         return result
 
 
+@export
 class PeakPositionsMLP(PeakPositionsBaseNT):
     """Multilayer Perceptron (MLP) neural net for position reconstruction"""
     provides = "peak_positions_mlp"
@@ -130,10 +131,11 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
         default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
         help='MLP model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
-        cache=True.
+        cache=True,
     )
 
 
+@export
 class PeakPositionsGCN(PeakPositionsBaseNT):
     """Graph Convolutional Network (GCN) neural net for position reconstruction"""
     provides = "peak_positions_gcn"
@@ -148,6 +150,7 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
     )
 
 
+@export
 class PeakPositionsCNN(PeakPositionsBaseNT):
     """Convolutional Neural Network (CNN) neural net for position reconstruction"""
     provides = "peak_positions_cnn"
@@ -202,15 +205,16 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
 
 @export
 @strax.takes_config(
-    strax.Option('recon_alg_included', help = 'The list of all reconstruction algorithm considered.',
-                 default = ('_mlp', '_gcn', '_cnn'), infer_type=False,
+    strax.Option('recon_alg_included',
+                 help='The list of all reconstruction algorithm considered.',
+                 default=('_mlp', '_gcn', '_cnn'), infer_type=False,
                 )
 )
 class S2ReconPosDiff(strax.Plugin):
-    '''
+    """
     Plugin that provides position reconstruction difference for S2s in events, see note:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
-    '''
+    """
 
     __version__ = '0.0.3'
     parallel = True
