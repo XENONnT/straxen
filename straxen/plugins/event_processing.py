@@ -2,9 +2,8 @@ import strax
 import numpy as np
 import numba
 import straxen
-from warnings import warn
 from .position_reconstruction import DEFAULT_POSREC_ALGO
-from straxen.common import pax_file, get_resource, first_sr1_run, pre_apply_function
+from straxen.common import pax_file, get_resource, first_sr1_run
 from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
@@ -87,9 +86,6 @@ class Events(strax.OverlapWindowPlugin):
                      + self.config['right_event_extension'])
 
     def compute(self, peaks, start, end):
-        le = self.config['left_event_extension'] + self.drift_time_max
-        re = self.config['right_event_extension']
-
         _is_triggering = peaks['area'] > self.config['trigger_min_area']
         _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
         if self.config['exclude_s1_as_triggering_peaks']:
@@ -467,9 +463,10 @@ class EventPositions(strax.Plugin):
     
     __version__ = '0.1.4'
 
-    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
-                                                         help="default reconstruction algorithm that provides (x,y)"
-                                                         )
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO,
+        help="default reconstruction algorithm that provides (x,y)"
+    )
 
     dtype = [
         ('x', np.float32,
@@ -494,8 +491,10 @@ class EventPositions(strax.Plugin):
 
     def setup(self):
 
-        self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
-        self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
+        self.electron_drift_velocity = get_correction_from_cmt(
+            self.run_id, self.config['electron_drift_velocity'])
+        self.electron_drift_time_gate = get_correction_from_cmt(
+            self.run_id, self.config['electron_drift_time_gate'])
         
         if isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
@@ -631,42 +630,43 @@ class CorrectedAreas(strax.Plugin):
     depends_on = ['event_basics', 'event_positions']
 
     # Descriptor configs
-    # online elife
-    elife = straxen.URLConfig(default='cmt://elife?version=ONLINE&run_id=plugin.run_id')
+    elife = straxen.URLConfig(
+        default='cmt://elife?version=ONLINE&run_id=plugin.run_id',
+        help='electron lifetime in [ns]')
 
     # default posrec, used to determine which LCE map to use
-    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
-                                                         help="default reconstruction algorithm that provides (x,y)"
-                                                         )
-
-    # online s1_xyz_map
-    s1_xyz_map = straxen.URLConfig(default='interpolatingmap://resource://'
-                                           'cmt://format://s1_xyz_map_{algo}'
-                                           '?version=ONLINE&run_id=plugin.run_id&fmt=json'
-                                           '&algo=plugin.default_reconstruction_algorithm',
-                               cache=True)
-
-    # online s2_xy map
-    s2_xy_map = straxen.URLConfig(default='interpolatingmap://resource://'
-                                          'cmt://format://s2_xy_map_{algo}?'
-                                          'version=ONLINE&run_id=plugin.run_id&fmt=json'
-                                          '&algo=plugin.default_reconstruction_algorithm',
-                               cache=True)
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO,
+        help="default reconstruction algorithm that provides (x,y)"
+    )
+    s1_xyz_map = straxen.URLConfig(
+        default='interpolatingmap://resource://cmt://format://'
+                's1_xyz_map_{algo}?version=ONLINE&run_id=plugin.run_id'
+                '&fmt=json&algo=plugin.default_reconstruction_algorithm',
+        cache=True)
+    s2_xy_map = straxen.URLConfig(
+        default='interpolatingmap://resource://cmt://format://'
+                's2_xy_map_{algo}?version=ONLINE&run_id=plugin.run_id'
+                '&fmt=json&algo=plugin.default_reconstruction_algorithm',
+        cache=True)
 
     # average SE gain for a given time period. default to the value of this run in ONLINE model
     # thus, by default, there will be no time-dependent correction according to se gain
-    avg_se_gain = straxen.URLConfig(default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
-                                    help='Nominal single electron (SE) gain in PE / electron extracted. '
-                                         'Data will be corrected to this value')
+    avg_se_gain = straxen.URLConfig(
+        default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
+        help='Nominal single electron (SE) gain in PE / electron extracted. '
+             'Data will be corrected to this value')
 
     # se gain for this run, allowing for using CMT. default to online
-    se_gain = straxen.URLConfig(default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
-                                help='Actual SE gain for a given run (allows for time dependence)')
+    se_gain = straxen.URLConfig(
+        default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
+        help='Actual SE gain for a given run (allows for time dependence)')
 
-    # relative extraction efficiency which can change with time and modeled by CMT. defaults to no correction
-    rel_extraction_eff = straxen.URLConfig(default=1.0,
-                                           help='Relative extraction efficiency for this run '
-                                                '(allows for time dependence)')
+    # relative extraction efficiency which can change with time and modeled by CMT.
+    # defaults to no correction
+    rel_extraction_eff = straxen.URLConfig(
+        default=1.0,
+        help='Relative extraction efficiency for this run (allows for time dependence)')
 
     def infer_dtype(self):
         dtype = []
@@ -757,12 +757,15 @@ class EnergyEstimates(strax.Plugin):
 
     # config options
     # g1 and g2 values default to 1T values
-    g1 = straxen.URLConfig(default=0.1426,
-                           help="S1 gain in PE / photons produced")
-    g2 = straxen.URLConfig(default=11.55 / (1 - 0.63),
-                           help="S2 gain in PE / electrons produced")
-    lxe_w = straxen.URLConfig(default=13.7e-3,
-                              help="LXe work function in quanta/keV")
+    g1 = straxen.URLConfig(
+        default=0.1426,
+        help="S1 gain in PE / photons produced")
+    g2 = straxen.URLConfig(
+        default=11.55 / (1 - 0.63),
+        help="S2 gain in PE / electrons produced")
+    lxe_w = straxen.URLConfig(
+        default=13.7e-3,
+        help="LXe work function in quanta/keV")
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])

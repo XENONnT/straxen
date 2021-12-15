@@ -11,6 +11,7 @@ xenon_secrets.py
 *.npy
 *.blosc
 *.h5
+*.pdf
 strax_data
 strax_test_data
 from_fake_daq

@@ -326,13 +326,16 @@ def get_cmt_local_versions(global_version):
     return cmt.get_local_versions(global_version)
 
 
-args_idx = lambda x: x.rfind('?') if '?' in x else None
+def args_idx(x):
+    """Get the idx of "?" in the string"""
+    return x.rfind('?') if '?' in x else None
 
 
-def replace_version(url, version):
-    kwargs = {k:v[0] for k,v in parse_qs(urlparse(url).query).items()}
+def replace_url_version(url, version):
+    """Replace the local version of a correction in a CMT config"""
+    kwargs = {k: v[0] for k, v in parse_qs(urlparse(url).query).items()}
     kwargs['version'] = version
-    args = [f"{k}={v}" for k,v in kwargs.items()]
+    args = [f"{k}={v}" for k, v in kwargs.items()]
     args_str = "&".join(args)
     return f'{url[:args_idx(url)]}?{args_str}'
 
@@ -384,7 +387,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
         # now see if our correction is in our local_versions dict
         if correction_name in local_versions:
             if isinstance(value, str) and 'cmt://' in value:
-                new_value = replace_version(value, local_versions[correction_name])
+                new_value = replace_url_version(value, local_versions[correction_name])
             # if it is a tuple, make a new tuple
             else:
                 new_value = (value[0], local_versions[correction_name], value[2])

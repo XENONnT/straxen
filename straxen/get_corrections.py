@@ -63,7 +63,7 @@ def get_correction_from_cmt(run_id, conf):
     where True means looking at nT runs, e.g. 
     get_correction_from_cmt(run_id, conf[:2])
     special cases:
-    version can be replaced by consant int, float or array
+    version can be replaced by constant int, float or array
     when user specify value(s)
     :param run_id: run id from runDB
     :param conf: configuration 
