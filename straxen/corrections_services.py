@@ -1,7 +1,6 @@
 """Return corrections from corrections DB
 """
 import warnings
-
 import pytz
 import numpy as np
 from functools import lru_cache
@@ -9,9 +8,7 @@ import strax
 import utilix
 import straxen
 import os
-from immutabledict import immutabledict
-from urllib.parse import urlparse
-from urllib.parse import parse_qs
+from urllib.parse import urlparse, parse_qs
 
 export, __all__ = strax.exporter()
 

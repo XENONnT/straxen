@@ -42,14 +42,14 @@ _testing_config_nT = dict(
     nn_weights=
     aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
     gain_model=("to_pe_placeholder", True),
-    s2_xy_correction_map=pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
+    s2_map=pax_file('XENON1T_s2_xy_ly_SR0_24Feb2017.json'),
     elife_conf=('elife_constant', 1e6),
     baseline_samples_nv=10,
     fdc_map=pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
     gain_model_nv=("adc_nv", True),
     gain_model_mv=("adc_mv", True),
     nveto_pmt_position_map=_nveto_pmt_dummy,
-    s1_xyz_correction_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
+    s1_map=pax_file('XENON1T_s1_xyz_lce_true_kr83m_SR0_pax-680_fdc-3d_v0.json'),
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
     s1_aft_map=aux_repo + '023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
     s2_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s2_xy_unity_patterns.json.gz',  # noqa
@@ -59,9 +59,9 @@ _testing_config_nT = dict(
     hit_min_amplitude_nv=20,
     hit_min_amplitude_mv=80,
     hit_min_amplitude_he='pmt_commissioning_initial_he',
-    avg_se_gain=1,
-    se_gain=1,
-    rel_extraction_eff=1,
+    avg_se_gain=1.0,
+    se_gain=1.0,
+    rel_extraction_eff=1.0,
 )
 
 
