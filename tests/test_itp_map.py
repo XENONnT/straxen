@@ -35,4 +35,7 @@ class TestItpMaps(TestCase):
         # straxen version?! That's bad!
         map_at_random_point = itp_map([[0, 0, 0], [0, 0, -140]])
         self.assertAlmostEqual(map_at_random_point[0][0], 2.80609655)
-        self.assertAlmostEqual(map_at_random_point[1][1], 7.37967879)
+        self.assertAlmostEqual(map_at_random_point[0][1], 7.37967879)
+
+        self.assertAlmostEqual(map_at_random_point[1][0], 2.17815179)
+        self.assertAlmostEqual(map_at_random_point[1][1], 9.47282782)
