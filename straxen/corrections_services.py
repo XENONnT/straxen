@@ -331,23 +331,6 @@ def args_idx(x):
     return x.rfind('?') if '?' in x else None
 
 
-def replace_url_version(url, version):
-    """Replace the local version of a correction in a CMT config"""
-    kwargs = {k: v[0] for k, v in parse_qs(urlparse(url).query).items()}
-    kwargs['version'] = version
-    args = [f"{k}={v}" for k, v in kwargs.items()]
-    args_str = "&".join(args)
-    return f'{url[:args_idx(url)]}?{args_str}'
-
-
-def correction_name_from_urlstring(url):
-    # only care about what happens after cmt
-    before_url, cmt, after_url = url.partition('cmt://')
-    tmp_config = straxen.URLConfig(default=after_url)
-    new_url, kwargs = tmp_config.split_url_kwargs(after_url)
-    return tmp_config.dispatch(new_url, **kwargs)
-
-
 @strax.Context.add_method
 def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     """Sets all the relevant correction variables
@@ -409,3 +392,20 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
             raise CMTVersionError(msg)
 
     context.set_config(cmt_config)
+
+
+def replace_url_version(url, version):
+    """Replace the local version of a correction in a CMT config"""
+    kwargs = {k: v[0] for k, v in parse_qs(urlparse(url).query).items()}
+    kwargs['version'] = version
+    args = [f"{k}={v}" for k, v in kwargs.items()]
+    args_str = "&".join(args)
+    return f'{url[:args_idx(url)]}?{args_str}'
+
+
+def correction_name_from_urlstring(url):
+    # only care about what happens after cmt
+    before_url, cmt, after_url = url.partition('cmt://')
+    tmp_config = straxen.URLConfig(default=after_url)
+    new_url, kwargs = tmp_config.split_url_kwargs(after_url)
+    return tmp_config.dispatch(new_url, **kwargs)

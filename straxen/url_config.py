@@ -232,6 +232,13 @@ def format_arg(arg: str, **kwargs):
     return arg.format(**kwargs)
 
 
-@URLConfig.register('interpolatingmap')
+@URLConfig.register('itp_map')
 def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
+    '''Make an InterpolatingMap'''
     return straxen.InterpolatingMap(some_map, method=method)
+
+@URLConfig.register('bodega')
+def load_value(name: str, version='v0'):
+    '''Load a number from BODEGA file'''
+    nT_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
+    return nT_numbers[name][version]["value"]

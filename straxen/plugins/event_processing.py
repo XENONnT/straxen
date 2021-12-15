@@ -640,12 +640,12 @@ class CorrectedAreas(strax.Plugin):
         help="default reconstruction algorithm that provides (x,y)"
     )
     s1_xyz_map = straxen.URLConfig(
-        default='interpolatingmap://resource://cmt://format://'
+        default='itp_map://resource://cmt://format://'
                 's1_xyz_map_{algo}?version=ONLINE&run_id=plugin.run_id'
                 '&fmt=json&algo=plugin.default_reconstruction_algorithm',
         cache=True)
     s2_xy_map = straxen.URLConfig(
-        default='interpolatingmap://resource://cmt://format://'
+        default='itp_map://resource://cmt://format://'
                 's2_xy_map_{algo}?version=ONLINE&run_id=plugin.run_id'
                 '&fmt=json&algo=plugin.default_reconstruction_algorithm',
         cache=True)
@@ -746,7 +746,7 @@ class EnergyEstimates(strax.Plugin):
     """
     Plugin which converts cS1 and cS2 into energies (from PE to KeVee).
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     depends_on = ['corrected_areas']
     dtype = [
         ('e_light', np.float32, 'Energy in light signal [keVee]'),
@@ -756,16 +756,11 @@ class EnergyEstimates(strax.Plugin):
     save_when = strax.SaveWhen.TARGET
 
     # config options
-    # g1 and g2 values default to 1T values
-    g1 = straxen.URLConfig(
-        default=0.1426,
-        help="S1 gain in PE / photons produced")
-    g2 = straxen.URLConfig(
-        default=11.55 / (1 - 0.63),
-        help="S2 gain in PE / electrons produced")
-    lxe_w = straxen.URLConfig(
-        default=13.7e-3,
-        help="LXe work function in quanta/keV")
+    g1 = straxen.URLConfig(default='bodega://g1?version=v2', help="S1 gain in PE / photons produced",
+                           cache=True)
+    g2 = straxen.URLConfig(default='bodega://g2?version=v2', help="S2 gain in PE / electrons produced",
+                           cache=True)
+    lxe_w = straxen.URLConfig(default=13.7e-3, help="LXe work function in quanta/keV")
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])
@@ -777,10 +772,10 @@ class EnergyEstimates(strax.Plugin):
                     endtime=strax.endtime(events))
 
     def cs1_to_e(self, x):
-        return self.config['lxe_w'] * x / self.config['g1']
+        return self.lxe_w * x / self.g1
 
     def cs2_to_e(self, x):
-        return self.config['lxe_w'] * x / self.config['g2']
+        return self.lxe_w * x / self.g2
 
 
 @export
