@@ -73,19 +73,28 @@ class TestURLConfig(unittest.TestCase):
 
     def test_cache(self):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+
+        # sanity check that default value is not affected
         self.assertEqual(p.cached_config, 666)
         self.st.set_config({'cached_config': 'random://abc'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+
+        # value is randomly generated when accessed so if
+        # its equal when we access it again, its coming from the cache
         cached_value = p.cached_config
         self.assertEqual(cached_value, p.cached_config)
 
-        # test if previous value is evicted, since cache size is 1
+        # now change the config to which will generate a new number
         self.st.set_config({'cached_config': 'random://dfg'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+
+        # sanity check that the new value is still consistent i.e. cached
         self.assertEqual(p.cached_config, p.cached_config)
+
+        # test if previous value is evicted, since cache size is 1
         self.assertNotEqual(cached_value, p.cached_config)
 
-        # verify cache pickalibility doesnt affect plugin pickalibility
+        # verify pickalibility of objects in cache dont affect plugin pickalibility
         self.st.set_config({'cached_config': 'unpicklable://dfg'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         pickle.dumps(p.cached_config)
