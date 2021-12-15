@@ -12,7 +12,8 @@ export, __all__ = strax.exporter()
 
 from straxen import URLConfig
 
-
+##############
+# Temporary placed here, I don't want to mess with #817
 @URLConfig.register('tf')
 def open_neural_net(model_path: str, **kwargs):
     # Nested import to reduce loading time of import straxen
@@ -34,6 +35,7 @@ def download(file_name: str) -> str:
     """
     downloader = straxen.MongoDownloader()
     return downloader.download_single(file_name)
+##############
 
 
 DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
@@ -75,11 +77,16 @@ class PeakPositionsBaseNT(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
+        """
+        Simple wrapper to have several tf_model_mlp, tf_model_cnn, ..
+        point to this same function in the compute method
+        """
         model = getattr(self, f'tf_model_{self.algorithm}', None)
         if model is None:
             warn(f'Setting model to None for {self.__class__.__name__}')
         if isinstance(model, str):
-            model = open_neural_net(model)
+            raise ValueError(model)
+            raise ValueError(r'open files from tf:// protocol! see tests/test_posrec.py')
         return model
 
     def compute(self, peaks):
@@ -88,7 +95,6 @@ class PeakPositionsBaseNT(strax.Plugin):
 
         result['x_' + self.algorithm] *= float('nan')
         result['y_' + self.algorithm] *= float('nan')
-
         model = self.get_tf_model()
 
         if model is None:
@@ -208,7 +214,7 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     strax.Option('recon_alg_included',
                  help='The list of all reconstruction algorithm considered.',
                  default=('_mlp', '_gcn', '_cnn'), infer_type=False,
-                )
+                 )
 )
 class S2ReconPosDiff(strax.Plugin):
     """
