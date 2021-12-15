@@ -635,14 +635,14 @@ class CorrectedAreas(strax.Plugin):
     elife = straxen.URLConfig(default='cmt://elife?version=ONLINE&run_id=plugin.run_id')
 
     # online s1_xyz_map
-    s1_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s1_xyz_map_{DEFAULT_POSREC_ALGO}?'
+    s1_xyz_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s1_xyz_map_{DEFAULT_POSREC_ALGO}?'
                                        'version=ONLINE'
                                        '&run_id=plugin.run_id'
                                        '&fmt=json',
                                cache=True)
 
     # online s2_xy map
-    s2_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s2_xy_map_{DEFAULT_POSREC_ALGO}?'
+    s2_xy_map = straxen.URLConfig(default=f'interpolatingmap://resource://cmt://s2_xy_map_{DEFAULT_POSREC_ALGO}?'
                                        'version=ONLINE'
                                        '&run_id=plugin.run_id'
                                        '&fmt=json',
@@ -693,12 +693,12 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
 
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_map(event_positions)
+            result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
 
         # s2 corrections
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
         # figure out the map name
-        if len(self.s2_map.map_names) > 1:
+        if len(self.s2_xy_map.map_names) > 1:
             s2_top_map_name = "map_top"
             s2_bottom_map_name = "map_bottom"
         else:
@@ -712,10 +712,10 @@ class CorrectedAreas(strax.Plugin):
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
             cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
-                                    self.s2_map(s2_positions, map_name=s2_top_map_name))
+                                    self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
             cs2_bottom_wo_elifecorr = (events[f'{peak_type}s2_area'] *
                                        (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                       self.s2_map(s2_positions, map_name=s2_bottom_map_name))
+                                       self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
             result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
             # cs2aft doesn't need elife correction as it cancels

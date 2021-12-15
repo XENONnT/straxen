@@ -401,7 +401,6 @@ def xenonnt_simulation(
 # XENON1T
 ##
 
-
 x1t_context_config = {
     **common_opts,
     **dict(
@@ -466,8 +465,8 @@ x1t_common_config = dict(
     se_gain=28.2,
     avg_se_gain=28.2,
     rel_extraction_eff=1.0,
-    s1_map=f'interpolatingmap://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
-    s2_map=f'interpolatingmap://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
+    s1_xyz_map=f'interpolatingmap://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+    s2_xy_map=f'interpolatingmap://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
 )
 
 
@@ -494,8 +493,8 @@ def demo():
         se_gain=28.2,
         avg_se_gain=28.2,
         rel_extraction_eff=1.0,
-        s1_map=f'interpolatingmap://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
-        s2_map=f'interpolatingmap://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
+        s1_xyz_map=f'interpolatingmap://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+        s2_xy_map=f'interpolatingmap://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
         ))
     return st
 
