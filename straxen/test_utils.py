@@ -58,7 +58,10 @@ _testing_config_nT = dict(
     hit_min_amplitude='pmt_commissioning_initial',
     hit_min_amplitude_nv=20,
     hit_min_amplitude_mv=80,
-    hit_min_amplitude_he='pmt_commissioning_initial_he'
+    hit_min_amplitude_he='pmt_commissioning_initial_he',
+    avg_se_gain=1,
+    se_gain=1,
+    rel_extraction_eff=1,
 )
 
 
