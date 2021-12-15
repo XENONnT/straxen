@@ -203,8 +203,6 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     def compute(self, peaks):
         result = {dtype: peaks[dtype] for dtype in peaks.dtype.names}
         algorithm = self.config['default_reconstruction_algorithm']
-        if not 'x_' + algorithm in peaks.dtype.names:
-            raise ValueError
         for xy in ('x', 'y'):
             result[xy] = peaks[f'{xy}_{algorithm}']
         return result
