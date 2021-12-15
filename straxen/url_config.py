@@ -103,10 +103,11 @@ class URLConfig(strax.Config):
 
         return meth(arg, *args, **kwargs)
 
-    def split_url_kwargs(self, url):
+    @classmethod
+    def split_url_kwargs(cls, url):
         """split a url into path and kwargs
         """
-        path, _, _ = url.partition(self.QUERY_SEP)
+        path, _, _ = url.partition(cls.QUERY_SEP)
         kwargs = {}
         for k, v in parse_qs(urlparse(url).query).items():
             # values of query arguments are evaluated as lists
@@ -232,5 +233,5 @@ def format_arg(arg: str, **kwargs):
 
 
 @URLConfig.register('interpolatingmap')
-def load_map(some_map):
-    return straxen.InterpolatingMap(some_map)
+def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
+    return straxen.InterpolatingMap(some_map, method=method)
