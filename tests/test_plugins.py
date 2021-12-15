@@ -163,4 +163,4 @@ def test_nT(ncores=1):
 
 def test_nT_mutlticore():
     print('nT multicore')
-    test_nT(2)
+    test_nT(3)
