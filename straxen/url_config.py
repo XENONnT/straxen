@@ -1,3 +1,4 @@
+import sys
 import json
 from typing import Container
 import strax
@@ -13,6 +14,15 @@ from strax.config import OMITTED
 export, __all__ = strax.exporter()
 
 _CACHES = {}
+
+@export
+def clear_config_caches():
+    for cache in _CACHES.values():
+        cache.clear()
+
+@export
+def config_cache_size_mb():
+    return straxen.total_size(_CACHES)//1e6
 
 def parse_val(val):
     try:
