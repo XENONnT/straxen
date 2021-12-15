@@ -155,18 +155,6 @@ class URLConfig(strax.Config):
             # as string-literal config and returned as is
             return url
 
-        # fetch from cache if exists
-        value = self.cache.get(url, None)
-
-        # not in cache, letch fetch it
-        if value is None:
-            value = self._fetch(url, plugin)
-            self.cache[url] = value
-
-        return value
-        
-    def _fetch(self, url, plugin):
-
         # separate out the query part of the URL which
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
@@ -180,7 +168,18 @@ class URLConfig(strax.Config):
                 # kwarg is a literal, add its value to the kwargs dict
                 kwargs[k] = v
 
-        return self.dispatch(url, **kwargs)
+        # construct a deterministic hash key
+        key = strax.deterministic_hash((url, kwargs))
+
+        # fetch from cache if exists
+        value = self.cache.get(key, None)
+
+        # not in cache, letch fetch it
+        if value is None:
+            value = self.dispatch(url, **kwargs)
+            self.cache[key] = value
+
+        return value
 
     @classmethod
     def protocol_descr(cls):
