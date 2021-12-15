@@ -340,6 +340,14 @@ def replace_version(url, version):
     return f'{url[:args_idx(url)]}?{args_str}'
 
 
+def correction_name_from_urlstring(url):
+    # only care about what happens after cmt
+    before_url, cmt, after_url = url.partition('cmt://')
+    tmp_config = straxen.URLConfig(default=after_url)
+    new_url, kwargs = tmp_config.split_url_kwargs(after_url)
+    return tmp_config.dispatch(new_url, **kwargs)
+
+
 @strax.Context.add_method
 def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     """Sets all the relevant correction variables
@@ -363,27 +371,41 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     # we want this error to occur in order to keep fixed global versions
     cmt_config = dict()
     failed_keys = []
-    for option, tup in cmt_options.items():
-        try:
-            # might need to modify correction name to include position reconstruction algo
-            correction_name = tup[0]
+
+    for option, value in cmt_options.items():
+        # might need to modify correction name to include position reconstruction algo
+        # if the config is a URL, get the correction name in CMT
+        if isinstance(value, str) and 'cmt://' in value:
+            correction_name = correction_name_from_urlstring(value)
+        # if it's still a tuple, it's the first element
+        else:
+            correction_name = value[0]
+            # this is a bit of a mess, but posrec configs are treated differently in the tuples
             if correction_name in posrec_corrections_basenames:
                 correction_name += f"_{posrec_algo}"
-            new_tup = (tup[0], local_versions[correction_name], tup[2])
 
-            # check if this is a URLConfig, if it is just update the version argument
-            default_config = context.config.get(option, None)
-            if isinstance(default_config, str) and 'cmt://' in default_config:
-                new_tup = replace_version(default_config, new_tup[1])
-
-        except KeyError:
-            failed_keys.append(option)
+        # now see if our correction is in our local_versions dict
+        if correction_name in local_versions:
+            if isinstance(value, str) and 'cmt://' in value:
+                new_value = replace_version(value, local_versions[correction_name])
+            # if it is a tuple, make a new tuple
+            else:
+                new_value = (value[0], local_versions[correction_name], value[2])
+        else:
+            failed_keys.append(correction_name)
             continue
-        cmt_config[option] = new_tup
+
+        cmt_config[option] = new_value
 
     if len(failed_keys):
         failed_keys = ', '.join(failed_keys)
-        raise CMTVersionError(f"CMT version {cmt_global_version} is not compatible with this straxen version! "
-                              f"CMT {cmt_global_version} is missing these corrections: {failed_keys}")
+        msg = f"CMT version {cmt_global_version} is not compatible with this straxen version! " \
+              f"CMT {cmt_global_version} is missing these corrections: {failed_keys}"
+
+        # only raise a warning if we are working with the online context
+        if cmt_global_version == "global_ONLINE":
+            warnings.warn(msg)
+        else:
+            raise CMTVersionError(msg)
 
     context.set_config(cmt_config)

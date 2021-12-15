@@ -705,10 +705,6 @@ class CorrectedAreas(strax.Plugin):
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
 
-        # time correction, which includes possible changes to SE gain and extraction efficiency in time
-        # we will divide by this to get the corrected s2
-
-
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
@@ -737,7 +733,6 @@ class CorrectedAreas(strax.Plugin):
             seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
             result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_timecorr / seg_ee_corr
             result[f"{peak_type}cs2"] = cs2_top_wo_timecorr / seg_ee_corr + result[f"{peak_type}cs2_bottom"]
-
         return result
 
 
