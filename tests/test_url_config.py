@@ -2,6 +2,7 @@ import json
 import strax
 import straxen
 import fsspec
+import pickle
 import random
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
@@ -20,6 +21,11 @@ class ExamplePlugin(strax.Plugin):
 straxen.URLConfig.register('random')
 def generate_random(_):
     return random.random()
+
+straxen.URLConfig.register('unpicklable')
+def return_lamba(_):
+    return lambda x: x
+
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
@@ -78,6 +84,11 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.cached_config, p.cached_config)
         self.assertNotEqual(cached_value, p.cached_config)
+
+        # verify cache pickalibility doesnt affect plugin pickalibility
+        self.st.set_config({'cached_config': 'unpicklable://dfg'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        pickle.dumps(p.cached_config)
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
