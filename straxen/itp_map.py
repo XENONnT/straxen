@@ -216,6 +216,8 @@ class InterpolatingMap:
     def _weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs):
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
+        else:
+            map_data = map_data.flatten()
 
         return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
 
