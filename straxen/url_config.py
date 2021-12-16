@@ -45,7 +45,7 @@ class URLConfig(strax.Config):
         # type of the config value can be different from the fetched value.
         if self.type is not OMITTED:
             self.final_type = self.type
-            self.type = OMITTED # do not enforce type on the URL
+            self.type = OMITTED  # do not enforce type on the URL
         if cache:
             maxsize = cache if isinstance(cache, int) else None
             self.dispatch = lru_cache(maxsize)(self.dispatch)
@@ -79,12 +79,12 @@ class URLConfig(strax.Config):
         """
 
         # separate the protocol name from the path
-        protocol, _, path =  url.partition(self.SCHEME_SEP)
+        protocol, _, path = url.partition(self.SCHEME_SEP)
 
         # find the corresponding protocol method
         meth = self._LOOKUP.get(protocol, None)
         if meth is None:
-            # unrecongnized protocol
+            # unrecognized protocol
             # evaluate as string-literal
             return url
 
@@ -134,7 +134,7 @@ class URLConfig(strax.Config):
 
     def fetch_attribute(self, plugin, value):
         if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
-                # kwarg is referring to a plugin attribute, lets fetch it
+            # kwarg is referring to a plugin attribute, lets fetch it
             return getattr(plugin, value[len(self.PLUGIN_ATTR_PREFIX):], value)
 
         if isinstance(value, list):
@@ -142,7 +142,7 @@ class URLConfig(strax.Config):
 
         # kwarg is a literal, add its value to the kwargs dict
         return value
-        
+
     def fetch(self, plugin):
         '''override the Config.fetch method
            this is called when the attribute is accessed 
@@ -165,8 +165,8 @@ class URLConfig(strax.Config):
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
-        kwargs = {k: self.fetch_attribute(plugin, v) 
-                for k, v in url_kwargs.items()}
+        kwargs = {k: self.fetch_attribute(plugin, v)
+                  for k, v in url_kwargs.items()}
 
         return self.dispatch(url, **kwargs)
 
@@ -189,7 +189,8 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name: str, run_id: str=None, version: str='ONLINE', detector: str='nt', **kwargs):
+def get_correction(name: str, run_id: str=None, version: str='ONLINE',
+                   detector: str='nt', **kwargs):
     '''Get value for name from CMT
     '''
     if run_id is None:
@@ -229,8 +230,8 @@ def get_key(container: Container, take=None, **kwargs):
     if not isinstance(take, list):
         take = [take]
 
-    # support for multiple keys for 
-    # nested objects 
+    # support for multiple keys for
+    # nested objects
     for t in take:
         container = container[t]
 
@@ -239,6 +240,6 @@ def get_key(container: Container, take=None, **kwargs):
 
 @URLConfig.register('format')
 def format_arg(arg: str, **kwargs):
-    '''apply pythons builtin format function to a string
+    ''' apply pythons builtin format function to a string
     '''
     return arg.format(**kwargs)
