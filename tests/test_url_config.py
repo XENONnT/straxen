@@ -82,5 +82,10 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
+        st2 = self.st.new_context()
+        st2.set_config({'test_config': 'bodega://g2?bodega_version=v1'})
+        p2 = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, p2.test_config)
+
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()

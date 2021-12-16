@@ -755,11 +755,11 @@ class EnergyEstimates(strax.Plugin):
 
     # config options don't double cache things from the resource cache!
     g1 = straxen.URLConfig(
-        default='take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value',
+        default='bodega://g2?version=v1',
         help="S1 gain in PE / photons produced",
     )
     g2 = straxen.URLConfig(
-        default='take://resource://XENONnT_numbers.json?fmt=json&take=g2&take=v2&take=value',
+        default='bodega://g2?version=v2',
         help="S2 gain in PE / electrons produced",
     )
     lxe_w = straxen.URLConfig(
