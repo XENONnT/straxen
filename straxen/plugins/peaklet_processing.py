@@ -6,6 +6,7 @@ from strax.processing.general import _touching_windows
 import straxen
 from .pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
 from straxen.get_corrections import is_cmt_option
+from .peaklet_classification import PeakletClassification
 
 
 export, __all__ = strax.exporter()
@@ -540,99 +541,6 @@ class PeakletsHighEnergy(Peaklets):
         result = super().compute(records_he, start, end)
         return result['peaklets']
 
-
-@export
-@strax.takes_config(
-    strax.Option('s1_risetime_area_parameters', default=(50, 80, 12), type=(list, tuple),
-                 help="norm, const, tau in the empirical boundary in the risetime-area plot"),
-    strax.Option('s1_risetime_aft_parameters', default=(-1, 2.6), type=(list, tuple),
-                 help=("Slope and offset in exponential of emperical boundary in the rise time-AFT "
-                      "plot. Specified as (slope, offset)")),
-    strax.Option('s1_flatten_threshold_aft', default=(0.6, 100), type=(tuple, list),
-                 help=("Threshold for AFT, above which we use a flatted boundary for rise time" 
-                       "Specified values: (AFT boundary, constant rise time).")),
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, type=int,
-                 help="Number of top PMTs"),
-    strax.Option('s1_max_rise_time_post100', default=200, type=(int, float),
-                 help="Maximum S1 rise time for > 100 PE [ns]"),
-    strax.Option('s1_min_coincidence', default=2, type=int,
-                 help="Minimum tight coincidence necessary to make an S1"),
-    strax.Option('s2_min_pmts', default=4, type=int,
-                 help="Minimum number of PMTs contributing to an S2"))
-class PeakletClassification(strax.Plugin):
-    """Classify peaklets as unknown, S1, or S2."""
-    provides = 'peaklet_classification'
-    depends_on = ('peaklets',)
-    parallel = True
-    dtype = (strax.peak_interval_dtype
-             + [('type', np.int8, 'Classification of the peak(let)')])
-
-    __version__ = '3.0.3'
-
-    @staticmethod
-    def upper_rise_time_area_boundary(area, norm, const, tau):
-        """
-        Function which determines the upper boundary for the rise-time
-        for a given area.
-        """
-        return norm*np.exp(-area/tau) + const
-
-    @staticmethod
-    def upper_rise_time_aft_boundary(aft, slope, offset, aft_boundary, flat_threshold):
-        """
-        Function which computes the upper rise time boundary as a function
-        of area fraction top.
-        """
-        res = 10**(slope * aft + offset)
-        res[aft >= aft_boundary] = flat_threshold
-        return res
-
-    def compute(self, peaklets):
-        ptype = np.zeros(len(peaklets), dtype=np.int8)
-
-        # Properties needed for classification:
-        rise_time = -peaklets['area_decile_from_midpoint'][:, 1]
-        n_channels = (peaklets['area_per_channel'] > 0).sum(axis=1)
-        n_top = self.config['n_top_pmts']
-        area_top = peaklets['area_per_channel'][:, :n_top].sum(axis=1)
-        area_total = peaklets['area_per_channel'].sum(axis=1)
-        area_fraction_top = area_top/area_total
-
-        is_large_s1 = (peaklets['area'] >= 100)
-        is_large_s1 &= (rise_time <= self.config['s1_max_rise_time_post100'])
-        is_large_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
-
-        is_small_s1 = peaklets["area"] < 100
-        is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
-            peaklets["area"],
-            *self.config["s1_risetime_area_parameters"],
-        )
-
-        is_small_s1 &= rise_time < self.upper_rise_time_aft_boundary(
-            area_fraction_top,
-            *self.config["s1_risetime_aft_parameters"],
-            *self.config["s1_flatten_threshold_aft"],
-        )
-
-        is_small_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
-
-        ptype[is_large_s1 | is_small_s1] = 1
-
-        is_s2 = n_channels >= self.config['s2_min_pmts']
-        is_s2[is_large_s1 | is_small_s1] = False
-        ptype[is_s2] = 2
-
-        return dict(type=ptype,
-                    time=peaklets['time'],
-                    dt=peaklets['dt'],
-                    # Channel is added so the field order of the merger of
-                    # peaklet_classification and peaklets matches that
-                    # of peaklets.
-                    # This way S2 merging works on arrays of the same dtype.
-                    channel=-1,
-                    length=peaklets['length'])
-
-
 @export
 class PeakletClassificationHighEnergy(PeakletClassification):
     __doc__ = HE_PREAMBLE + PeakletClassification.__doc__
@@ -680,8 +588,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
                                                      self.config['gain_model'])
 
     def infer_dtype(self):
-        return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
-
+        # wrong order
+        dtype = (strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
+                 +[('type_bayse', np.int8, 'Bayes peak classification type')]
+                 +[('s1_prob', np.float32, 'S1 probability' )]
+                 +[('s2_prob', np.float32, 'S2 probability' )]
+                )
+        # shamless hack  
+        order = [0, 1, 2, 3, 4, 17, 18, 19, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        dtype = [dtype[i] for i in order]
+        return  dtype
+    
     def get_window_size(self):
         return 5 * (int(self.config['s2_merge_gap_thresholds'][0][1])
                     + self.config['s2_merge_max_duration'])

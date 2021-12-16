@@ -10,6 +10,9 @@ from .pulse_processing import *
 from . import peaklet_processing
 from .peaklet_processing import *
 
+from .peaklet_classification import *
+from . import peaklet_classification
+
 from . import peak_processing
 from .peak_processing import *
 
