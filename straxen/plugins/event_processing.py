@@ -753,12 +753,19 @@ class EnergyEstimates(strax.Plugin):
     ] + strax.time_fields
     save_when = strax.SaveWhen.TARGET
 
-    # config options
-    g1 = straxen.URLConfig(default='bodega://g1?version=v2', help="S1 gain in PE / photons produced",
-                           cache=True)
-    g2 = straxen.URLConfig(default='bodega://g2?version=v2', help="S2 gain in PE / electrons produced",
-                           cache=True)
-    lxe_w = straxen.URLConfig(default=13.7e-3, help="LXe work function in quanta/keV")
+    # config options don't double cache things from the resource cache!
+    g1 = straxen.URLConfig(
+        default='take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value',
+        help="S1 gain in PE / photons produced",
+    )
+    g2 = straxen.URLConfig(
+        default='take://resource://XENONnT_numbers.json?fmt=json&take=g2&take=v2&take=value',
+        help="S2 gain in PE / electrons produced",
+    )
+    lxe_w = straxen.URLConfig(
+        default=13.7e-3,
+        help="LXe work function in quanta/keV"
+    )
 
     def compute(self, events):
         el = self.cs1_to_e(events['cs1'])

@@ -121,7 +121,6 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
-
     def fetch_attribute(self, plugin, value):
         if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
             # kwarg is referring to a plugin attribute, lets fetch it
