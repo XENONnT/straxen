@@ -99,7 +99,7 @@ class URLConfig(strax.Config):
 
         # filter kwargs to pass only the kwargs
         #  accepted by the method.
-        kwargs = self.filter_kwargs(meth, kwargs)
+        kwargs = straxen.filter_kwargs(meth, kwargs)
 
         return meth(arg, *args, **kwargs)
 
@@ -121,17 +121,6 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
-    @staticmethod
-    def filter_kwargs(func, kwargs):
-        """Filter out keyword arguments that
-            are not in the call signature of func
-            and return filtered kwargs dictionary
-        """
-        params = inspect.signature(func).parameters
-        if any([str(p).startswith('**') for p in params.values()]):
-            # if func accepts wildcard kwargs, return all
-            return kwargs
-        return {k: v for k, v in kwargs.items() if k in params}
 
     def fetch_attribute(self, plugin, value):
         if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
