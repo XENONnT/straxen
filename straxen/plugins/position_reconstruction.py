@@ -17,7 +17,8 @@ from straxen import URLConfig
 #  Temporary placed here, I don't want to mess with #817
 @URLConfig.register('tf')
 def open_neural_net(model_path: str, **kwargs):
-    # Nested import to reduce loading time of import straxen
+    # Nested import to reduce loading time of import straxen and it not
+    # base requirement
     import tensorflow as tf
     if not os.path.exists(model_path):
         raise FileNotFoundError(f'No file at {model_path}')
@@ -63,7 +64,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     depends_on = ('peaks',)
     algorithm = None
     compressor = 'zstd'
-    parallel = "process"
+    parallel = True # can set to "process" after #82
     __version__ = '0.0.0'
 
     def infer_dtype(self):
@@ -84,7 +85,8 @@ class PeakPositionsBaseNT(strax.Plugin):
         """
         model = getattr(self, f'tf_model_{self.algorithm}', None)
         if model is None:
-            warn(f'Setting model to None for {self.__class__.__name__}')
+            warn(f'Setting model to None for {self.__class__.__name__} will '
+                 f'set only nans as output for {self.algorithm}')
         if isinstance(model, str):
             raise ValueError(f'open files from tf:// protocol! Got {model} '
                              f'instead, see tests/test_posrec.py for examples.')
