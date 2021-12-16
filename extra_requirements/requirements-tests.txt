@@ -15,7 +15,7 @@ ipywidgets==7.6.4
 keras==2.7.0                                    # Tensorflow depencency
 hypothesis==6.29.0
 jupyter-client==7.1.0                           # for ipywidgets
-matplotlib==3.4.3
+matplotlib==3.5.1
 multihist==0.6.4
 npshmex==0.2.1                                  # Strax dependency
 numba==0.54.1                                   # Strax dependency
