@@ -62,6 +62,8 @@ _testing_config_nT = dict(
     avg_se_gain=1.0,
     se_gain=1.0,
     rel_extraction_eff=1.0,
+    g1=0.1,
+    g2=10
 )
 
 

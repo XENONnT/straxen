@@ -465,6 +465,8 @@ x1t_common_config = dict(
     rel_extraction_eff=1.0,
     s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
+    g1=0.1426,
+    g2=11.55/(1 - 0.63),
 )
 
 
