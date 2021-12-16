@@ -133,9 +133,9 @@ class URLConfig(strax.Config):
         return value
 
     def fetch(self, plugin):
-        '''override the Config.fetch method
-           this is called when the attribute is accessed 
-        '''
+        """override the Config.fetch method
+        this is called when the attribute is accessed
+        """
         # first fetch the user-set value 
         # from the config dictionary
         url = super().fetch(plugin)
@@ -180,8 +180,7 @@ class URLConfig(strax.Config):
 @URLConfig.register('cmt')
 def get_correction(name: str, run_id: str=None, version: str='ONLINE',
                    detector: str='nt', **kwargs):
-    '''Get value for name from CMT
-    '''
+    """Get value for name from CMT"""
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
     return straxen.get_correction_from_cmt(run_id, (name, version, detector=='nt'))
@@ -189,15 +188,14 @@ def get_correction(name: str, run_id: str=None, version: str='ONLINE',
 
 @URLConfig.register('resource')
 def get_resource(name: str, fmt: str='text', **kwargs):
-    '''Fetch a straxen resource
-    '''
+    """Fetch a straxen resource"""
     return straxen.get_resource(name, fmt=fmt)
 
 
 @URLConfig.register('fsspec')
 def read_file(path: str, **kwargs):
-    '''Support fetching files from arbitrary filesystems
-    '''
+    """Support fetching files from arbitrary filesystems
+    """
     with fsspec.open(path, **kwargs) as f:
         content = f.read()
     return content
@@ -205,15 +203,15 @@ def read_file(path: str, **kwargs):
 
 @URLConfig.register('json')
 def read_json(content: str, **kwargs):
-    ''' Load json string as a python object
-    '''
+    """Load json string as a python object
+    """
     return json.loads(content)
 
 
 @URLConfig.register('take')
 def get_key(container: Container, take=None, **kwargs):
-    ''' return a single element of a container
-    '''
+    """ return a single element of a container
+    """
     if take is None:
         return container
     if not isinstance(take, list):
@@ -229,19 +227,18 @@ def get_key(container: Container, take=None, **kwargs):
 
 @URLConfig.register('format')
 def format_arg(arg: str, **kwargs):
-    ''' apply pythons builtin format function to a string
-    '''
+    """apply pythons builtin format function to a string"""
     return arg.format(**kwargs)
 
 
 @URLConfig.register('itp_map')
 def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
-    '''Make an InterpolatingMap'''
+    """Make an InterpolatingMap"""
     return straxen.InterpolatingMap(some_map, method=method, **kwargs)
 
 
 @URLConfig.register('bodega')
 def load_value(name: str, bodega_version='v0'):
-    '''Load a number from BODEGA file'''
+    """Load a number from BODEGA file"""
     nT_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
     return nT_numbers[name][bodega_version]["value"]
