@@ -117,7 +117,7 @@ class URLConfig(strax.Config):
             elif n == 1:
                 kwargs[k] = parse_val(v[0])
             else:
-                kwargs[k] = map(parse_val, v)
+                kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
     @staticmethod
@@ -132,6 +132,17 @@ class URLConfig(strax.Config):
             return kwargs
         return {k: v for k, v in kwargs.items() if k in params}
 
+    def fetch_attribute(self, plugin, value):
+        if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
+                # kwarg is referring to a plugin attribute, lets fetch it
+            return getattr(plugin, value[len(self.PLUGIN_ATTR_PREFIX):], value)
+
+        if isinstance(value, list):
+            return [self.fetch_attribute(plugin, v) for v in value]
+
+        # kwarg is a literal, add its value to the kwargs dict
+        return value
+        
     def fetch(self, plugin):
         '''override the Config.fetch method
            this is called when the attribute is accessed 
@@ -154,14 +165,8 @@ class URLConfig(strax.Config):
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
-        kwargs = {}
-        for k, v in url_kwargs.items():
-            if isinstance(v, str) and v.startswith(self.PLUGIN_ATTR_PREFIX):
-                # kwarg is referring to a plugin attribute, lets fetch it
-                kwargs[k] = getattr(plugin, v[len(self.PLUGIN_ATTR_PREFIX):], v)
-            else:
-                # kwarg is a literal, add its value to the kwargs dict
-                kwargs[k] = v
+        kwargs = {k: self.fetch_attribute(plugin, v) 
+                for k, v in url_kwargs.items()}
 
         return self.dispatch(url, **kwargs)
 
@@ -221,7 +226,15 @@ def get_key(container: Container, take=None, **kwargs):
     '''
     if take is None:
         return container
-    return container[take]
+    if not isinstance(take, list):
+        take = [take]
+
+    # support for multiple keys for 
+    # nested objects 
+    for t in take:
+        container = container[t]
+
+    return container
 
 
 @URLConfig.register('format')
