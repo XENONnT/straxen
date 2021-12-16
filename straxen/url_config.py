@@ -57,7 +57,7 @@ class URLConfig(strax.Config):
             self.final_type = self.type
             self.type = OMITTED # do not enforce type on the URL
         if cache:
-            cache_len = 1_000_000 if cache is True else int(cache) 
+            cache_len = 100 if cache is True else int(cache) 
             cache = straxen.CacheDict(cache_len=cache_len)
             _CACHES[id(self)] = cache
 
