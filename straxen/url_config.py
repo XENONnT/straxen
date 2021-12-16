@@ -238,6 +238,19 @@ class URLConfig(strax.Config):
 
         # kwarg is a literal, add its value to the kwargs dict
         return value
+
+    def fetch_key(self, config, value):
+
+        if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
+            # kwarg is referring to a plugin attribute, lets fetch it
+            return config.get(value[len(self.PLUGIN_ATTR_PREFIX):], value)
+
+        if isinstance(value, list):
+            return [self.fetch_key(config, v) for v in value]
+
+        # kwarg is a literal, add its value to the kwargs dict
+        return value
+
     def format_url_kwargs(self, url, kwargs):
         url, extra_kwargs = self.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
@@ -298,21 +311,22 @@ class URLConfig(strax.Config):
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
+        # fetch any kwargs that reference other configs
         kwargs = {}
         for k, v in url_kwargs.items():
-            if isinstance(v, str) and v.startswith(self.PLUGIN_ATTR_PREFIX):
-                # kwarg is referring to a plugin attribute, lets try to fetch it
-                # from the config dict
-                kwargs[k] = config.get(v[len(self.PLUGIN_ATTR_PREFIX):], v)
-            else:
-                # kwarg is a literal or computed at runtime
-                # add its value to the kwargs dict
-                kwargs[k] = v
-
+            kwargs[k] = self.fetch_key(config, v)
+        
+        # dispatch any protocol preprocessors
         url, extra_kwargs = self.preprocessor_dispatch(url, **kwargs)
+
+        # add/update any extra kwargs the preprocessors produced 
         url_kwargs.update(extra_kwargs)
 
-        config[self.name] = self.format_url_kwargs(url, url_kwargs)
+        # build the modified URL from the preprocessor results
+        url = self.format_url_kwargs(url, url_kwargs)
+
+        # finally replace config value with processed url
+        config[self.name] = url
 
     @classmethod
     def protocol_descr(cls):
