@@ -209,8 +209,6 @@ class EventBasics(strax.Plugin):
             ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'),
             ('tight_coincidence', np.int16, 'Hits within tight range of mean'),
             ('n_saturated_channels',      np.int16, 'Total number of saturated channels'),
-            ('tight_coincidence_channel', np.int16, 'Number of PMT channel within tight range of '
-                                                    'mean'),
         )
 
     @staticmethod

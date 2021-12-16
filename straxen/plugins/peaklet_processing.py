@@ -240,7 +240,7 @@ class Peaklets(strax.Plugin):
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
-        tight_coincidence, tight_coincidence_channel = get_tight_coin(
+        _, tight_coincidence_channel = get_tight_coin(
             hit_max_times,
             hitlets['channel'],
             peaklet_max_times,
@@ -248,8 +248,7 @@ class Peaklets(strax.Plugin):
             self.config['tight_coincidence_window_right'],
             self.channel_range)
 
-        peaklets['tight_coincidence'] = tight_coincidence
-        peaklets['tight_coincidence_channel'] = tight_coincidence_channel
+        peaklets['tight_coincidence'] = tight_coincidence_channel
 
         if self.config['diagnose_sorting'] and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
@@ -600,7 +599,7 @@ class PeakletClassification(strax.Plugin):
 
         is_large_s1 = (peaklets['area'] >= 100)
         is_large_s1 &= (rise_time <= self.config['s1_max_rise_time_post100'])
-        is_large_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
+        is_large_s1 &= peaklets['tight_coincidence'] >= self.config['s1_min_coincidence']
 
         is_small_s1 = peaklets["area"] < 100
         is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
@@ -614,7 +613,7 @@ class PeakletClassification(strax.Plugin):
             *self.config["s1_flatten_threshold_aft"],
         )
 
-        is_small_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
+        is_small_s1 &= peaklets['tight_coincidence'] >= self.config['s1_min_coincidence']
 
         ptype[is_large_s1 | is_small_s1] = 1
 
