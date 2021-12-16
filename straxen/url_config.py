@@ -184,7 +184,7 @@ class URLConfig(strax.Config):
         # fetch from cache if exists
         value = self.cache.get(key, None)
 
-        # not in cache, letch fetch it
+        # not in cache, lets fetch it
         if value is None:
             value = self.dispatch(url, **kwargs)
             self.cache[key] = value
