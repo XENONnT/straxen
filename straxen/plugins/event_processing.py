@@ -755,7 +755,7 @@ class EnergyEstimates(strax.Plugin):
 
     # config options don't double cache things from the resource cache!
     g1 = straxen.URLConfig(
-        default='bodega://g2?bodega_version=v1',
+        default='bodega://g1?bodega_version=v2',
         help="S1 gain in PE / photons produced",
     )
     g2 = straxen.URLConfig(
