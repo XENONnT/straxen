@@ -21,12 +21,14 @@ def parse_val(val):
         pass
     return val
 
+
 class URLConfigError(Exception):
     pass
 
 
 class PreProcessorError(URLConfigError):
     pass
+
 
 @export
 class URLConfig(strax.Config):
@@ -42,7 +44,7 @@ class URLConfig(strax.Config):
 
     def __init__(self, cache=0, **kwargs):
         """
-        :param cache: number of values to keep in cache, 
+        :param cache: number of values to keep in cache,
                       if set to True will cache all values
         :param **kwargs: additional keyword arguments accepted by strax.Option
         """
@@ -52,7 +54,8 @@ class URLConfig(strax.Config):
         # type of the config value can be different from the fetched value.
         if self.type is not OMITTED:
             self.final_type = self.type
-            self.type = OMITTED # do not enforce type on the URL
+            # do not enforce type on the URL
+            self.type = OMITTED
         if cache:
             maxsize = cache if isinstance(cache, int) else None
             self.dispatch = lru_cache(maxsize)(self.dispatch)
@@ -99,7 +102,7 @@ class URLConfig(strax.Config):
                 raise ValueError(f'Preprocessor for protocol {protocol}\
                      already registered.')
 
-            #FIXME: maybe check here that signature of preprocessor
+            # FIXME: maybe check here that signature of preprocessor
             # matches (url, arg, **kwargs)
 
             cls._PREPROCESSORS[protocol] = func
@@ -115,7 +118,7 @@ class URLConfig(strax.Config):
         """
 
         # separate the protocol name from the path
-        protocol, _, path =  url.partition(self.SCHEME_SEP)
+        protocol, _, path = url.partition(self.SCHEME_SEP)
 
         # find the corresponding protocol method
         meth = self._LOOKUP.get(protocol, None)
@@ -141,27 +144,27 @@ class URLConfig(strax.Config):
 
     def preprocessor_dispatch(self, url, **kwargs):
         """
-        
+
         """
         if self.SCHEME_SEP not in url:
             return url, {}
 
         # separate the protocol name from the path
-        protocol, _, path =  url.partition(self.SCHEME_SEP)
+        protocol, _, path = url.partition(self.SCHEME_SEP)
 
         # find the corresponding protocol method
         meth = self._PREPROCESSORS.get(protocol, None)
-        
+
         # if meth is None:
-            # no registered preprocessor
-            # skip preprocessing for this protocol 
-            # and preprocess the next
+        # no registered preprocessor
+        # skip preprocessing for this protocol
+        # and preprocess the next
         path, extra_kwargs = self.preprocessor_dispatch(path, **kwargs)
         kwargs.update(extra_kwargs)
 
         if protocol:
             url = f"{protocol}{self.SCHEME_SEP}{path}"
-            
+
         if meth is None:
             return url, extra_kwargs
 
@@ -190,7 +193,7 @@ class URLConfig(strax.Config):
             raise PreProcessorError('Preprocessor for {protocol} protocol'
                                 ' has returned incompatible value.'
                                 ' Got {processed}, should be a url string'
-                                ' or a tuple(str,dict)')  
+                                ' or a tuple(str,dict)')
 
         url, extra_kwargs = self.split_url_kwargs(url)
 
@@ -228,14 +231,14 @@ class URLConfig(strax.Config):
     def format_url_kwargs(self, url, kwargs):
         url, extra_kwargs = self.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
-        arg_str = "&".join([f"{k}={v}" for k,v in kwargs.items()])
+        arg_str = "&".join([f"{k}={v}" for k, v in kwargs.items()])
         return url+self.QUERY_SEP+arg_str
 
     def fetch(self, plugin):
         '''override the Config.fetch method
-           this is called when the attribute is accessed 
+           this is called when the attribute is accessed
         '''
-        # first fetch the user-set value 
+        # first fetch the user-set value
         # from the config dictionary
         url = super().fetch(plugin)
 
@@ -245,7 +248,7 @@ class URLConfig(strax.Config):
             return url
 
         if self.SCHEME_SEP not in url:
-            # no protocol in the url so its evaluated 
+            # no protocol in the url so its evaluated
             # as string-literal config and returned as is
             return url
 
@@ -269,7 +272,7 @@ class URLConfig(strax.Config):
                  run_defaults=None, set_defaults=True):
 
         super().validate(config, run_id, run_defaults, set_defaults)
-        
+
         url = config[self.name]
 
         if not isinstance(url, str) or self.SCHEME_SEP not in url:
@@ -280,10 +283,10 @@ class URLConfig(strax.Config):
                 UserWarning(
                     f"Invalid type for option {self.name}. "
                     f"Excepted a {self.final_type}, got a {type(url)}")
-            return 
+            return
 
         if self.SCHEME_SEP not in url:
-            # no protocol in the url so its evaluated 
+            # no protocol in the url so its evaluated
             # as string-literal config and returned as is
             return url
 
@@ -307,9 +310,11 @@ class URLConfig(strax.Config):
 
         config[self.name] = self.format_url_kwargs(url, url_kwargs)
 
-
     @classmethod
     def protocol_descr(cls):
+        '''Return a dataframe with descriptions
+        and call signature of all registered protocols
+        '''
         rows = []
         for k, v in cls._LOOKUP.items():
             row = {
@@ -327,16 +332,16 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name: str, run_id: str=None, version: str='ONLINE', detector: str='nt', **kwargs):
+def get_correction(name: str, run_id: str = None, version: str = 'ONLINE', detector: str = 'nt'):
     '''Get value for name from CMT
     '''
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector=='nt'))
+    return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
 
 @URLConfig.register('resource')
-def get_resource(name: str, fmt: str='text', **kwargs):
+def get_resource(name: str, fmt: str = 'text'):
     '''Fetch a straxen resource
     '''
     return straxen.get_resource(name, fmt=fmt)
