@@ -58,6 +58,9 @@ docs/_build
 # Pycharm
 .idea
 
+# vscode
+.vscode
+
 # coverage
 .coverage
 
