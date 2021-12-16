@@ -39,9 +39,9 @@ class PeakletClassification(strax.Plugin):
     parallel = True
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')]
-             + [('type_bayse', np.int8, 'Bayes peak classification type')]
-             + [('s1_prob', np.float32, 'S1 probability' )]
-             + [('s2_prob', np.float32, 'S2 probability' )]
+             + [('type_bayes', np.int8, 'Bayes peak classification type')]
+             + [('s1_prob', np.float32, 'S1 ln probability' )]
+             + [('s2_prob', np.float32, 'S2 ln probability' )]
              )
 
     __version__ = '4.0.0'
@@ -115,10 +115,10 @@ class PeakletClassification(strax.Plugin):
             class_assignments = np.zeros(len(peaklets))
             class_assignments[C_S1] = 1
             class_assignments[C_S2] = 2
-            bayse_ptype = class_assignments
+            bayes_ptype = class_assignments
 
         return dict(type=ptype,
-                    type_bayse=bayse_ptype,
+                    type_bayes=bayes_ptype,
                     time=peaklets['time'],
                     dt=peaklets['dt'],
                     channel=-1,
