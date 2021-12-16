@@ -235,7 +235,8 @@ def format_arg(arg: str, **kwargs):
 @URLConfig.register('itp_map')
 def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
     '''Make an InterpolatingMap'''
-    return straxen.InterpolatingMap(some_map, method=method)
+    return straxen.InterpolatingMap(some_map, method=method, **kwargs)
+
 
 @URLConfig.register('bodega')
 def load_value(name: str, version='v0'):
