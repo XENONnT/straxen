@@ -253,7 +253,7 @@ def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
 
 
 @URLConfig.register('bodega')
-def load_value(name: str, version='v0'):
+def load_value(name: str, bodega_version='v0'):
     '''Load a number from BODEGA file'''
     nT_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
-    return nT_numbers[name][version]["value"]
+    return nT_numbers[name][bodega_version]["value"]
