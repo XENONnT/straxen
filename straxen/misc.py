@@ -278,6 +278,7 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
 
+
 @export
 def filter_kwargs(func, kwargs):
     """Filter out keyword arguments that
