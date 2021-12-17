@@ -251,7 +251,7 @@ class URLConfig(strax.Config):
     def format_url_kwargs(self, url, kwargs):
         url, extra_kwargs = self.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
-        arg_str = "&".join([f"{k}={v}" for k, v in kwargs.items()])
+        arg_str = "&".join([f"{k}={v}" for k, v in sorted(kwargs.items())])
         return url+self.QUERY_SEP+arg_str
 
     def fetch(self, plugin):
