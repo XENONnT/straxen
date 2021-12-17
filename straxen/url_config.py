@@ -206,10 +206,11 @@ class URLConfig(strax.Config):
 
         return url, extra_kwargs
 
-    def split_url_kwargs(self, url):
+    @classmethod
+    def split_url_kwargs(cls, url):
         """split a url into path and kwargs
         """
-        path, _, _ = url.partition(self.QUERY_SEP)
+        path, _, _ = url.partition(cls.QUERY_SEP)
         kwargs = {}
         for k, v in parse_qs(urlparse(url).query).items():
             # values of query arguments are evaluated as lists
@@ -248,11 +249,22 @@ class URLConfig(strax.Config):
         # kwarg is a literal, add its value to the kwargs dict
         return value
 
-    def format_url_kwargs(self, url, kwargs):
-        url, extra_kwargs = self.split_url_kwargs(url)
+    @classmethod
+    def format_url_kwargs(cls, url, **kwargs):
+        url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
         arg_str = "&".join([f"{k}={v}" for k, v in sorted(kwargs.items())])
-        return url+self.QUERY_SEP+arg_str
+        return url+cls.QUERY_SEP+arg_str
+
+    @classmethod
+    def build_url(cls, protocols, path='', **kwargs):
+        if isinstance(protocols, str):
+            protocols = [protocols]
+        if protocols:
+            protocol_prefix = protocols[0] + cls.SCHEME_SEP
+            url = cls.build_url(protocols[1:], path=path, **kwargs)
+            return protocol_prefix + url
+        return cls.format_url_kwargs(path, **kwargs)
 
     def fetch(self, plugin):
         '''override the Config.fetch method
@@ -320,7 +332,7 @@ class URLConfig(strax.Config):
         url_kwargs.update(extra_kwargs)
 
         # build the modified URL from the preprocessor results
-        url = self.format_url_kwargs(url, url_kwargs)
+        url = self.format_url_kwargs(url, **url_kwargs)
 
         # finally replace config value with processed url
         config[self.name] = url
