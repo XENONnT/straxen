@@ -581,7 +581,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.4.1'
+    __version__ = '0.4.2'
 
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
@@ -590,12 +590,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def infer_dtype(self):
         # wrong order
         dtype = (strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
-                 +[('type_bayes', np.int8, 'Bayes peak classification type')]
-                 +[('s1_prob', np.float32, 'S1 ln probability' )]
-                 +[('s2_prob', np.float32, 'S2 ln probability' )]
-                )
+                 +[(('Bayes peak classification type', 'type_bayes'), np.dtype('i1'))]
+                 +[(('S1 ln probability', 's1_prob'), np.dtype('<f4'))]
+                 +[(('S2 ln probability', 's2_prob'), np.dtype('<f4'))]
+                )     
+        tocount = len(dtype)        
         # shamless hack  
-        order = [0, 1, 2, 3, 4, 17, 18, 19, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        order = [0, 1, 2, 3, 4, tocount-3, tocount-2, tocount-1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         dtype = [dtype[i] for i in order]
         return  dtype
     
@@ -782,7 +783,17 @@ class Peaks(strax.Plugin):
     __version__ = '0.1.2'
 
     def infer_dtype(self):
-        return self.deps['peaklets'].dtype_for('peaklets')
+        # wrong order
+        dtype = (strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
+                 +[(('Bayes peak classification type', 'type_bayes'), np.dtype('i1'))]
+                 +[(('S1 ln probability', 's1_prob'), np.dtype('<f4'))]
+                 +[(('S2 ln probability', 's2_prob'), np.dtype('<f4'))]
+                )     
+        tocount = len(dtype)        
+        # shamless hack  
+        order = [0, 1, 2, 3, 4, tocount-3, tocount-2, tocount-1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        dtype = [dtype[i] for i in order]
+        return  dtype
 
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
