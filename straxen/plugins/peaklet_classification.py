@@ -44,7 +44,7 @@ class PeakletClassification(strax.Plugin):
              + [('s2_prob', np.float32, 'S2 ln probability' )]
              )
 
-    __version__ = '4.0.0'
+    __version__ = '4.0.1'
 
     @staticmethod
     def upper_rise_time_area_boundary(area, norm, const, tau):
@@ -144,7 +144,7 @@ class PeakClassificationBayes():
 
 
     def compute(self, peaklets):
-        bayse_ptype = np.zeros(len(peaklets), dtype=np.int8) 
+        bayes_ptype = np.zeros(len(peaklets), dtype=np.int8) 
         s1_prob = np.zeros(len(peaklets), dtype=np.float32) 
         s2_prob = np.zeros(len(peaklets), dtype=np.float32)
 
