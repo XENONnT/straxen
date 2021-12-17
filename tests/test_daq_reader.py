@@ -9,6 +9,7 @@ from straxen.plugins.daqreader import ArtificialDeadtimeInserted, \
 from datetime import timezone, datetime
 from time import sleep
 
+
 class DummyDAQReader(DAQReader):
     """Dummy version of DAQReader with different provides and different lineage"""
     provides = ['raw_records',
@@ -16,14 +17,11 @@ class DummyDAQReader(DAQReader):
                 'raw_records_aqmon',
                 ]
     dummy_version = strax.Config(
-        default=0,
+        default=None,
         track=True,
-        type=int,
-        help="Number of samples per raw_record",
+        help="Extra option to make sure that we are getting a different lineage if we want to",
     )
     data_kind = dict(zip(provides, provides))
-    parallel = 'process'
-    chunk_target_size_mb = 50
     rechunk_on_save = False
 
     def _path(self, chunk_i):
