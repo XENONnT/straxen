@@ -42,6 +42,12 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertTrue(abs(p.test_config-219203.49884000001)<1e-2)
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    def test_cmt_preprocessor(self):
+        self.st.set_config({'test_config': 'cmt://elife?version=global_v1'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.config['test_config'], 'cmt://elife?version=v1')
+
     def test_json_protocol(self):
         self.st.set_config({'test_config': 'json://[1,2,3]'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')

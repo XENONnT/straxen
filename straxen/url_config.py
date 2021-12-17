@@ -399,3 +399,19 @@ def format_arg(arg: str, **kwargs):
     ''' apply pythons builtin format function to a string
     '''
     return arg.format(**kwargs)
+
+
+@URLConfig.register_preprocessor('cmt')
+def replace_global_version(url, correction, version=''):
+    if version.startswith('global'):
+        local_versions = get_cmt_local_versions(version)
+        v = local_versions.get(correction, version)
+        url += f'?version={v}'
+    return url
+
+
+@lru_cache(maxsize=2)
+def get_cmt_local_versions(global_version):
+    cmt = straxen.CorrectionsManagementServices()
+    return cmt.get_local_versions(global_version)
+
