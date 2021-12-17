@@ -144,10 +144,13 @@ class PeakClassificationBayes():
 
 
     def compute(self, peaklets):
+<<<<<<< HEAD
         bayes_ptype = np.zeros(len(peaklets), dtype=np.int8) 
         s1_prob = np.zeros(len(peaklets), dtype=np.float32) 
         s2_prob = np.zeros(len(peaklets), dtype=np.float32)
 
+=======
+>>>>>>> 26fb1e4a16616c33ecec362598b507e9aba8e6dc
         waveforms = np.zeros((len(peaklets), self.num_nodes))
         quantiles = np.zeros((len(peaklets), self.num_nodes))
 

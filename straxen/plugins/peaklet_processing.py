@@ -591,8 +591,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # wrong order
         dtype = (strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
                  +[('type_bayes', np.int8, 'Bayes peak classification type')]
+<<<<<<< HEAD
                  +[('s1_prob', np.float32, 'S1 ln probability' )]
                  +[('s2_prob', np.float32, 'S2 ln probability' )]
+=======
+                 +[('s1_prob', np.float32, 'S1 probability' )]
+                 +[('s2_prob', np.float32, 'S2 probability' )]
+>>>>>>> 26fb1e4a16616c33ecec362598b507e9aba8e6dc
                 )
         # shamless hack  
         order = [0, 1, 2, 3, 4, 17, 18, 19, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
