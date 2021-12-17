@@ -36,6 +36,7 @@ class URLConfig(strax.Config):
     unrecognized protocol returns identity
     inspired by dasks Dispatch and fsspec fs protocols.
     """
+    _PLUGIN_CLASS = None
     _LOOKUP = {}
     _PREPROCESSORS = {}
     SCHEME_SEP = '://'
@@ -59,6 +60,10 @@ class URLConfig(strax.Config):
         if cache:
             maxsize = cache if isinstance(cache, int) else None
             self.dispatch = lru_cache(maxsize)(self.dispatch)
+
+    def __set_name__(self, owner, name):
+        super().__set_name__(owner, name)
+        self._PLUGIN_CLASS = owner
 
     @classmethod
     def register(cls, protocol, func=None):
@@ -194,8 +199,10 @@ class URLConfig(strax.Config):
                                 ' has returned incompatible value.'
                                 ' Got {processed}, should be a url string'
                                 ' or a tuple(str,dict)')
+        
+        url, url_kwargs = self.split_url_kwargs(url)
 
-        url, extra_kwargs = self.split_url_kwargs(url)
+        extra_kwargs.update(url_kwargs)
 
         return url, extra_kwargs
 
@@ -228,25 +235,15 @@ class URLConfig(strax.Config):
             return kwargs
         return {k: v for k, v in kwargs.items() if k in params}
 
-    def fetch_attribute(self, plugin, value):
+    def fetch_attribute(self, plugin, value, **config):
         if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
             # kwarg is referring to a plugin attribute, lets fetch it
-            return getattr(plugin, value[len(self.PLUGIN_ATTR_PREFIX):], value)
+            attr = value[len(self.PLUGIN_ATTR_PREFIX):]
+            default = config.get(attr, value)
+            return getattr(plugin, attr, default)
 
         if isinstance(value, list):
-            return [self.fetch_attribute(plugin, v) for v in value]
-
-        # kwarg is a literal, add its value to the kwargs dict
-        return value
-
-    def fetch_key(self, config, value):
-
-        if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
-            # kwarg is referring to a plugin attribute, lets fetch it
-            return config.get(value[len(self.PLUGIN_ATTR_PREFIX):], value)
-
-        if isinstance(value, list):
-            return [self.fetch_key(config, v) for v in value]
+            return [self.fetch_attribute(plugin, v, **config) for v in value]
 
         # kwarg is a literal, add its value to the kwargs dict
         return value
@@ -314,7 +311,7 @@ class URLConfig(strax.Config):
         # fetch any kwargs that reference other configs
         kwargs = {}
         for k, v in url_kwargs.items():
-            kwargs[k] = self.fetch_key(config, v)
+            kwargs[k] = self.fetch_attribute(self._PLUGIN_CLASS, v, **config)
         
         # dispatch any protocol preprocessors
         url, extra_kwargs = self.preprocessor_dispatch(url, **kwargs)

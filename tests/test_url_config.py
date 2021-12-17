@@ -15,6 +15,11 @@ class TestPlugin(strax.Plugin):
     def compute(self):
         pass
 
+@straxen.URLConfig.register_preprocessor('take')
+def increment_take(url, arg, take, increment_take=False):
+    if increment_take:
+        return url+f"?take={take+1}"
+    return url
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
@@ -64,6 +69,15 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'take://json://{"a":[1,2,3]}?take=a&take=0'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 1)
+
+    def test_preprocessor(self):
+        # The take preprocessor will increment the take parameter by one in increment_take is True
+        self.st.set_config({'test_config': 'take://json://[1,2,3]?take=0&increment_take=True'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        
+        # verify that the second item was taken i.e. the preprocessor
+        # has incremented the value of take from 0 to 1
+        self.assertEqual(p.test_config, 2)
 
     @unittest.skipIf(not straxen.utilix_is_configured(),
                      "No db access, cannot test!")
