@@ -144,7 +144,7 @@ class PeakClassificationBayes():
 
 
     def compute(self, peaklets):
-        bayse_ptype = np.zeros(len(peaklets), dtype=np.int8) 
+        bayes_ptype = np.zeros(len(peaklets), dtype=np.int8) 
         s1_prob = np.zeros(len(peaklets), dtype=np.float32) 
         s2_prob = np.zeros(len(peaklets), dtype=np.float32)
 
