@@ -267,6 +267,47 @@ class URLConfig(strax.Config):
         url = cls.build_url(*args[1:], **kwargs)
         return protocol_prefix + url
 
+    @classmethod
+    def parse_url(cls, url):
+        if not isinstance(url, str):
+            # if the value is not a string it is evaluated
+            # as a literal config and returned as is.
+            return url
+
+        if cls.SCHEME_SEP not in url:
+            # no protocol in the url so its evaluated
+            # as string-literal config and returned as is
+            return url
+
+        # separate the protocol name from the path
+        protocol, _, path = url.partition(cls.SCHEME_SEP)
+
+        # find the corresponding protocol method
+        meth = cls._LOOKUP.get(protocol, None)
+        if meth is None:
+            # unrecognized protocol
+            # evaluate as string-literal
+            return url
+
+        
+        arg, kwargs = cls.split_url_kwargs(path)
+
+        if cls.SCHEME_SEP in path:
+            # url contains a nested protocol
+            # first parsce sub-protocol
+            arg = cls.parse_url(path)
+
+        # filter kwargs to pass only the kwargs
+        #  accepted by the method.
+        
+        kwargs = cls.filter_kwargs(meth, kwargs)
+
+        return {
+            'protocol': protocol,
+            'argument': arg,
+            'kwargs': kwargs,
+            }
+
     def fetch(self, plugin):
         '''override the Config.fetch method
            this is called when the attribute is accessed
