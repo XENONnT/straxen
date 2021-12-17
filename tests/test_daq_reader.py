@@ -1,30 +1,35 @@
-import datetime
 import os
 import shutil
 import unittest
 import strax
 from straxen import download_test_data, get_resource
-from straxen.plugins.daqreader import ArtificialDeadtimeInserted, DAQReader, ARTIFICIAL_DEADTIME_CHANNEL
-from datetime import timezone
+from straxen.plugins.daqreader import ArtificialDeadtimeInserted, \
+                                      DAQReader, \
+                                      ARTIFICIAL_DEADTIME_CHANNEL
+from datetime import timezone, datetime
 from time import sleep
-
 
 class DummyDAQReader(DAQReader):
     """Dummy version of DAQReader with different provides and different lineage"""
-    __version__ = 'test_0.0.0'
     provides = ['raw_records',
                 'raw_records_nv',
                 'raw_records_aqmon',
                 ]
+    dummy_version = strax.Config(
+        default=0,
+        track=True,
+        type=int,
+        help="Number of samples per raw_record",
+    )
     data_kind = dict(zip(provides, provides))
-    depends_on = tuple()
     parallel = 'process'
     chunk_target_size_mb = 50
     rechunk_on_save = False
 
     def _path(self, chunk_i):
         path = super()._path(chunk_i)
-        print(f'looked for {chunk_i} on {path}. Is found = {os.path.exists(path)}')
+        path_exists = os.path.exists(path)
+        print(f'looked for {chunk_i} on {path}. Is found = {path_exists}')
         return path
 
 
@@ -33,6 +38,7 @@ class TestDAQReader(unittest.TestCase):
     Test DAQReader with a few chunks of amstrax data:
     https://github.com/XAMS-nikhef/amstrax
     """
+
     run_id = '999999'
     run_doc_name = 'rundoc_999999.json'
     live_data_path = f'./live_data/{run_id}'
@@ -52,7 +58,7 @@ class TestDAQReader(unittest.TestCase):
             sleep(0.5)  # allow os to rename the file
             if plugin_class.save_when >= strax.SaveWhen.TARGET:
                 self.assertTrue(
-                    self.st.is_stored(run_id, target)
+                    self.st.is_stored(run_id, target),
                 )
 
     def test_insert_deadtime(self):
@@ -63,14 +69,25 @@ class TestDAQReader(unittest.TestCase):
         raw-records-aqmon) if we set this value to an unrealistic value
         of 0.5 s.
         """
-        st = self.st
-        st.set_config({'safe_break_in_pulses': int(0.5e9)})
+        st = self.st.new_context()
+        st.set_config({'safe_break_in_pulses': int(0.5e9),
+                       'dummy_version': 'test_insert_deadtime',
+                       })
 
         with self.assertWarns(ArtificialDeadtimeInserted):
-            self.st.make(self.run_id, 'raw_records')
-        #
+            st.make(self.run_id, 'raw_records')
+
         rr_aqmon = st.get_array(self.run_id, 'raw_records_aqmon')
         self.assertTrue(len(rr_aqmon))
+
+    def test_invalid_setting(self):
+        """The safe break in pulses cannot be longer than the chunk size"""
+        st = self.st.new_context()
+        st.set_config({'safe_break_in_pulses': int(3600e9),
+                       'dummy_version': 'test_invalid_setting',
+                       })
+        with self.assertRaises(ValueError):
+            st.make(self.run_id, 'raw_records')
 
     # Setup of tests like getting data and removing it after the test
     # ---------------------------------------------------------------
@@ -92,7 +109,7 @@ class TestDAQReader(unittest.TestCase):
     def setUp(self) -> None:
         if not os.path.exists(self.live_data_path):
             print(f'Fetch {self.live_data_path}')
-            self.get_test_data()
+            self.download_test_data()
         rd = self.get_metadata()
         st = self.set_context_config(self.st, rd)
         self.st = st
@@ -106,7 +123,7 @@ class TestDAQReader(unittest.TestCase):
 
     # Small utility functions needed in setup
     # ---------------------------------------------------------------
-    def get_test_data(self):
+    def download_test_data(self):
         download_test_data(self.data_file)
         self.assertTrue(os.path.exists(self.live_data_path))
 
@@ -115,7 +132,7 @@ class TestDAQReader(unittest.TestCase):
         # This is a flat dict but we need to have a datetime object,
         # since this is only a test, let's just replace it with a
         # placeholder
-        md['start'] = datetime.datetime.now()
+        md['start'] = datetime.now()
         return md
 
     @staticmethod
@@ -130,7 +147,7 @@ class TestDAQReader(unittest.TestCase):
                     # Channels must be listed in a ascending order!
                     tpc=(0, 1),
                     nveto=(1, 2),
-                    aqmon=(ARTIFICIAL_DEADTIME_CHANNEL, ARTIFICIAL_DEADTIME_CHANNEL+1),
+                    aqmon=(ARTIFICIAL_DEADTIME_CHANNEL, ARTIFICIAL_DEADTIME_CHANNEL + 1),
                 )})
         update_config = {
             'readout_threads': daq_config['processing_threads'],
@@ -139,8 +156,8 @@ class TestDAQReader(unittest.TestCase):
             'run_start_time': run_doc['start'].replace(tzinfo=timezone.utc).timestamp(),
             'daq_chunk_duration': int(daq_config['strax_chunk_length'] * 1e9),
             'daq_overlap_chunk_duration': int(daq_config['strax_chunk_overlap'] * 1e9),
-            'compressor': daq_config.get('compressor', 'lz4')
-            }
+            'daq_compressor': daq_config.get('compressor', 'lz4'),
+        }
         print(f'set config to {update_config}')
         st.set_config(update_config)
         return st
