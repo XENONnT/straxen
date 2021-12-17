@@ -257,14 +257,15 @@ class URLConfig(strax.Config):
         return url+cls.QUERY_SEP+arg_str
 
     @classmethod
-    def build_url(cls, protocols, path='', **kwargs):
-        if isinstance(protocols, str):
-            protocols = [protocols]
-        if protocols:
-            protocol_prefix = protocols[0] + cls.SCHEME_SEP
-            url = cls.build_url(protocols[1:], path=path, **kwargs)
-            return protocol_prefix + url
-        return cls.format_url_kwargs(path, **kwargs)
+    def build_url(cls, *args, **kwargs):
+        if not args:
+            return cls.format_url_kwargs('', **kwargs)
+        if len(args) == 1:
+            return cls.format_url_kwargs(args[0], **kwargs)
+
+        protocol_prefix = args[0] + cls.SCHEME_SEP
+        url = cls.build_url(*args[1:], **kwargs)
+        return protocol_prefix + url
 
     def fetch(self, plugin):
         '''override the Config.fetch method
