@@ -13,6 +13,10 @@ class MultiIndex(Index):
         for k,v in kwargs.items():
             v.name = k
             self.indexes.append(v)
+        for i, index in enumerate(self.indexes):
+            if index.name  in ['', 'index']:
+                index.name = f'index_{i}'
+
         if document is not None:
             self.document = document
 

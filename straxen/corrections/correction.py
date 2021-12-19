@@ -33,12 +33,12 @@ class TimeIntervalCorrection(BaseCorrection):
         if index['version']==0 and begin<cutoff:
             raise ValueError(f'Can only insert online intervals begining at least two hours in the future.')
 
-def can_extrapolate(index):
+def can_extrapolate(doc):
     # only extrapolate online (version=0) values
-    if index.get('version', 1):
+    if doc.get('version', 1):
         return False
     now = pd.to_datetime(time.time(), unit='s', utc=True)
-    ts = pd.to_datetime(index.get('time', now), utc=True)
+    ts = pd.to_datetime(doc.get('time', now), utc=True)
     return ts < now
         
 @export

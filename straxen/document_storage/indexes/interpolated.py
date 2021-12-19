@@ -64,20 +64,25 @@ class InterpolatedIndex(Index):
     def reduce(self, docs, value):
         if value is None:
             return docs
-        new_document = {self.name: value}
-        if len(docs)==1:
-            new_document.update(docs[0])
-            if self.can_extrapolate(new_document):
-                new_document[self.name] = value
-            else:
-                return []
-        else:
-            xs = [d[self.name] for d in docs]
+
+        if isinstance(value, list):
+            return [d for val in value for d in self.reduce(docs, val)]
+        
+        xs = [d[self.name] for d in docs]
+        new_document = dict(nn_interpolate(value, xs, docs))
+        new_document[self.name] = value
+        if max(xs)>=value>=min(xs):
             for yname in docs[0]:
                 ys = [d[yname] for d in docs]
                 new_document[yname] = interpolater(value, 
                                                 xs, ys, kind=self.kind)
-        return [new_document]
+            return [new_document]
+
+        if self.can_extrapolate(new_document):
+            return [new_document]
+        
+        return []
+            
 
     @singledispatchmethod
     def build_query(self, db, value):

@@ -78,34 +78,36 @@ def build_mongo_query(self, db, value):
             ]
 
 @InterpolatedIndex.build_query.register(pymongo.common.BaseObject)
-def build_interpolation_query(self, db, value):
+def build_interpolation_query(self, db, values):
     '''For interpolation we match the values directly before and after
     the value of interest
     '''
-    if value is None:
+    if values is None:
         return [{
             '$project': {"_id": 0},
         }]
+    if not isinstance(values, list):
+        values = [values]
+    
+    queries = {f'agg{i}': mongo_closest_query(self.name, value) for i,value in enumerate(values)}
     return [
-        {
-            '$addFields': {
-                '_after': {'$gt': [f'${self.name}', value]},
-                '_diff': {'$abs': {'$subtract': [value, f'${self.name}']}},        
-                }
-        },
-        {
-            '$sort': {'_diff': 1},
-        },
-        {
-            '$group' : { '_id' : '$_after', 'doc': {'$first': '$$ROOT'},  }
-        },
-        {
-            "$replaceRoot": { "newRoot": "$doc" },
-        },
-        {
-            '$project': {"_id": 0, '_diff':0, '_after':0 },
-        },
-    ]
+            {
+                '$facet': queries,
+            },
+            {
+                '$project': {
+                    'union': {
+                        '$setUnion': [f'${name}' for name in queries],
+                        }
+                        }
+            },
+            {
+                '$unwind': '$union'
+            },
+            {
+                '$replaceRoot': { 'newRoot': "$union" }
+            },
+        ]        
 
 
 @IntervalIndex.build_query.register(pymongo.common.BaseObject)
@@ -173,4 +175,25 @@ def mongo_overlap_query(index, interval):
             }
     else:
         return {}
-    
+
+def mongo_closest_query(name, value):
+    return [
+        {
+            '$addFields': {
+                '_after': {'$gt': [f'${name}', value]},
+                '_diff': {'$abs': {'$subtract': [value, f'${name}']}},        
+                }
+        },
+        {
+            '$sort': {'_diff': 1},
+        },
+        {
+            '$group' : { '_id' : '$_after', 'doc': {'$first': '$$ROOT'},  }
+        },
+        {
+            "$replaceRoot": { "newRoot": "$doc" },
+        },
+        {
+            '$project': {"_id": 0, '_diff':0, '_after':0 },
+        },
+    ]

@@ -38,7 +38,7 @@ class BaseDocument(BaseModel):
         # Index can be a descriptor that does a dynamic lookup and
         # concatentation of all indexes in parent classes to return
         # the final indexer initialized with the document class.
-        indexes = []
+        indexes = {}
         for base in reversed(cls.mro()):
             if not issubclass(base, BaseDocument):
                 continue
@@ -47,22 +47,16 @@ class BaseDocument(BaseModel):
             if base.index in indexes:
                 continue
             if isinstance(base.index, MultiIndex):
-                indexes.extend([copy(index) for index in base.index.indexes])
+                indexes.update({index.name: copy(index) for index in base.index.indexes})
             elif isinstance(base.index, Index):
-                indexes.append(copy(base.index))
+                indexes[base.index.name] = copy(base.index)
         if not indexes:
             raise AttributeError(f'Document class {cls.__name__} has no index.')
-        
         if len(indexes) == 1:
-            cls.index = indexes[0]
-            cls.index.__set_name__(cls, 'index')
+            cls.index = list(indexes.values())[0]
         else:
-            for i,idx in enumerate(indexes):
-                if idx.name in ['', 'index']:
-                    idx.name = f'index_{i}'
-
-            cls.index = MultiIndex(**{idx.name: idx for idx in indexes})
-            cls.index.__set_name__(cls, 'index')
+            cls.index = MultiIndex(**indexes)
+        cls.index.__set_name__(cls, 'index')
         
     @classmethod
     def all_fields(cls):
@@ -80,13 +74,6 @@ class BaseDocument(BaseModel):
     @classmethod
     def query_db(cls, db, *args, **kwargs):
         return cls.index.query_db(db, *args, **kwargs)
-
-    @classmethod
-    def default_db(cls):
-        from .client import DocumentClient
-        import pymongo
-        db = pymongo.MongoClient()['cmt2']
-        return DocumentClient(cls, db)
 
     def pre_insert(self, **index):
         pass

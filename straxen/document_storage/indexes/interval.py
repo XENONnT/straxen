@@ -68,4 +68,3 @@ class IntervalIndex(Index):
     @singledispatchmethod
     def build_query(self, db, value):
         raise TypeError(f"{type(db)} backend not supported.")
-    
