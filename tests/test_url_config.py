@@ -60,5 +60,27 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 1)
 
+    def test_take_nested(self):
+        self.st.set_config({'test_config': 'take://json://{"a":[1,2,3]}?take=a&take=0'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 1)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(),
+                     "No db access, cannot test!")
+    def test_bodedga_get(self):
+        """Just a didactic example"""
+        self.st.set_config({
+            'test_config':
+                'take://'
+                'resource://'
+                'XENONnT_numbers.json'
+                '?fmt=json'
+                '&take=g1'
+                '&take=v2'
+                '&take=value'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        # Either g1 is 0, bodega changed or someone broke URLConfigs
+        self.assertTrue(p.test_config)
+
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
