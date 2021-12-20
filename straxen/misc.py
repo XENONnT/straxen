@@ -313,7 +313,7 @@ class CacheDict(OrderedDict):
         return val
 
 @export
-def total_size(o, handlers={}, verbose=False):
+def total_size(o, handlers=None, verbose=False):
     """ Returns the approximate memory footprint an object and all of its contents.
 
     Automatically finds the contents of the following builtin containers and
@@ -333,7 +333,8 @@ def total_size(o, handlers={}, verbose=False):
                     set: iter,
                     frozenset: iter,
                    }
-    all_handlers.update(handlers)     # user handlers take precedence
+    if handlers is not None:
+        all_handlers.update(handlers)     # user handlers take precedence
     seen = set()                      # track which object id's have already been seen
     default_size = getsizeof(0)       # estimate sizeof object without __sizeof__
 
