@@ -4,6 +4,7 @@ import straxen
 import fsspec
 import pickle
 import random
+import numpy as np
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 
@@ -18,14 +19,17 @@ class ExamplePlugin(strax.Plugin):
     def compute(self):
         pass
 
-straxen.URLConfig.register('random')
+@straxen.URLConfig.register('random')
 def generate_random(_):
     return random.random()
 
-straxen.URLConfig.register('unpicklable')
+@straxen.URLConfig.register('unpicklable')
 def return_lamba(_):
     return lambda x: x
 
+@straxen.URLConfig.register('large-array')
+def large_array(_):
+    return np.ones(1_000_000).tolist()
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
@@ -71,6 +75,31 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 1)
 
+    def test_take_nested(self):
+        self.st.set_config({'test_config': 'take://json://{"a":[1,2,3]}?take=a&take=0'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 1)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(),
+                     "No db access, cannot test!")
+    def test_bodedga_get(self):
+        """Just a didactic example"""
+        self.st.set_config({
+            'test_config':
+                'take://'
+                'resource://'
+                'XENONnT_numbers.json'
+                '?fmt=json'
+                '&take=g1'
+                '&take=v2'
+                '&take=value'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        # Either g1 is 0, bodega changed or someone broke URLConfigs
+        self.assertTrue(p.test_config)
+
+    def test_print_protocol_desc(self):
+        straxen.URLConfig.print_protocols()
+
     def test_cache(self):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
 
@@ -97,29 +126,14 @@ class TestURLConfig(unittest.TestCase):
         # verify pickalibility of objects in cache dont affect plugin pickalibility
         self.st.set_config({'cached_config': 'unpicklable://dfg'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        pickle.dumps(p.cached_config)
-        
-    def test_take_nested(self):
-        self.st.set_config({'test_config': 'take://json://{"a":[1,2,3]}?take=a&take=0'})
+        with self.assertRaises(AttributeError):
+            pickle.dumps(p.cached_config)
+        pickle.dumps(p)
+    
+    def test_cache_size(self):
+        self.st.set_config({'cached_config': 'large-array://dfg'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        self.assertEqual(p.test_config, 1)
-
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
-    def test_bodedga_get(self):
-        """Just a didactic example"""
-        self.st.set_config({
-            'test_config':
-                'take://'
-                'resource://'
-                'XENONnT_numbers.json'
-                '?fmt=json'
-                '&take=g1'
-                '&take=v2'
-                '&take=value'})
-        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        # Either g1 is 0, bodega changed or someone broke URLConfigs
-        self.assertTrue(p.test_config)
-
-    def test_print_protocol_desc(self):
-        straxen.URLConfig.print_protocols()
+        value = p.cached_config
+        self.assertGreater(straxen.config_cache_size_mb(), 0.0)
+        straxen.clear_config_caches()
+        self.assertEqual(straxen.config_cache_size_mb(), 0.0)
