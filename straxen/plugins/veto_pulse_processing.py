@@ -8,7 +8,7 @@ from straxen.get_corrections import is_cmt_option
 export, __all__ = strax.exporter()
 
 MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
-NV_HIT_OPTIONS = [
+NV_HIT_OPTIONS = (
     strax.Option(
         'save_outside_hits_nv',
         default=(3, 15), track=True, infer_type=False,
@@ -22,7 +22,7 @@ NV_HIT_OPTIONS = [
              'hitfinder_thresholds.py, '
              'or a tuple like (correction=str, version=str, nT=boolean), '
              'which means we are using cmt.'),
-]
+)
 
 
 @export

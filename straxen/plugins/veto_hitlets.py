@@ -5,10 +5,9 @@ import strax
 import straxen
 
 from straxen.get_corrections import is_cmt_option
+from straxen.plugins.veto_pulse_processing import MV_PREAMBLE, NV_HIT_OPTIONS
 
 export, __all__ = strax.exporter()
-
-from straxen.plugins.veto_pulse_processing import MV_PREAMBLE, NV_HIT_OPTIONS
 
 
 @export
