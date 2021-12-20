@@ -2,12 +2,11 @@ import json
 import strax
 import straxen
 import fsspec
+from straxen.test_utils import nt_test_context, nt_test_run_id
+import unittest
 import pickle
 import random
 import numpy as np
-from straxen.test_utils import nt_test_context, nt_test_run_id
-import unittest
-
 
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
