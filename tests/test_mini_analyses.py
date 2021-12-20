@@ -398,7 +398,7 @@ class TestMiniAnalyses(unittest.TestCase):
         self.assertTrue(len(events_nv), warning)
         self.st.make(nt_test_run_id, 'event_positions_nv')
         self.st.plot_nveto_event_display(nt_test_run_id,
-                                         time_within=events_nv[0]
+                                         time_within=events_nv[0],
                                          )
 
 
