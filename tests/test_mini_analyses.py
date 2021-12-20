@@ -400,6 +400,11 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.plot_nveto_event_display(nt_test_run_id,
                                          time_within=events_nv[0],
                                          )
+        with self.assertRaises(ValueError):
+            # If there is no data, we should raise a ValueError
+            self.st.plot_nveto_event_display(nt_test_run_id,
+                                             time_range=[-1000,-900],
+                                             )
 
 
 def test_plots():
