@@ -115,7 +115,7 @@ def nt_test_context(target_context='xenonnt_online',
     if not straxen.utilix_is_configured(warning_message=False):
         st.set_config(_testing_config_nT)
         to_remove += 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
-        # TODO The test data for this plugin doesn't work
+        # The test data for this plugin doesn't work
         to_remove += ['event_pattern_fit']
         st.set_config({'gain_model': ("to_pe_placeholder", True)})
         st.register(straxen.PeakPositions1T)

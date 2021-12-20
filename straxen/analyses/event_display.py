@@ -39,21 +39,13 @@ EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
 # Don't be smart with the arguments, since it is a minianalyses we
 # need to have all the arguments
 @straxen.mini_analysis(requires=('event_info',))
-def event_display_simple(context,
-                         run_id,
-                         events,
-                         to_pe,
-                         records_matrix=True,
-                         s2_fuzz=50,
-                         s1_fuzz=0,
-                         max_peaks=500,
-                         xenon1t=False,
+def event_display_simple(context, run_id, events, to_pe,
+                         records_matrix=True, s2_fuzz=50, s1_fuzz=0,
+                         max_peaks=500, xenon1t=False, s1_hp_kwargs=None,
+                         s2_hp_kwargs=None, event_time_limit=None,
+                         plot_all_positions=True,
                          display_peak_info=PEAK_DISPLAY_DEFAULT_INFO,
                          display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
-                         s1_hp_kwargs=None,
-                         s2_hp_kwargs=None,
-                         event_time_limit=None,
-                         plot_all_positions=True,
                          ):
     """
     {event_docs}
@@ -67,23 +59,16 @@ def event_display_simple(context,
     axes["ax_s2_hp_t"] = fig.add_subplot(grid[0, 2])
     axes["ax_ev"] = fig.add_subplot(grid[1, :])
 
-    return _event_display(context,
-                          run_id,
-                          events,
-                          to_pe,
-                          axes=axes,
-                          records_matrix=records_matrix,
-                          s2_fuzz=s2_fuzz,
-                          s1_fuzz=s1_fuzz,
-                          max_peaks=max_peaks,
-                          xenon1t=xenon1t,
-                          display_peak_info=display_peak_info,
-                          display_event_info=display_event_info,
-                          s1_hp_kwargs=s1_hp_kwargs,
-                          s2_hp_kwargs=s2_hp_kwargs,
-                          event_time_limit=event_time_limit,
-                          plot_all_positions=plot_all_positions,
-                          )
+    return _event_display(
+        context, run_id, events, to_pe,
+        axes=axes, records_matrix=records_matrix, s2_fuzz=s2_fuzz,
+        s1_fuzz=s1_fuzz, max_peaks=max_peaks, xenon1t=xenon1t,
+        display_peak_info=display_peak_info,
+        display_event_info=display_event_info,
+        s1_hp_kwargs=s1_hp_kwargs, s2_hp_kwargs=s2_hp_kwargs,
+        event_time_limit=event_time_limit,
+        plot_all_positions=plot_all_positions,
+    )
 
 
 # Don't be smart with the arguments, since it is a minianalyses we
@@ -159,23 +144,16 @@ def event_display(context,
         ax_ev=ax_ev,
         ax_rec=ax_rec)
 
-    return _event_display(context,
-                          run_id,
-                          events,
-                          to_pe,
-                          axes=axes,
-                          records_matrix=records_matrix,
-                          s2_fuzz=s2_fuzz,
-                          s1_fuzz=s1_fuzz,
-                          max_peaks=max_peaks,
-                          xenon1t=xenon1t,
+    return _event_display(context, run_id, events, to_pe,
+                          axes=axes, records_matrix=records_matrix,
+                          s2_fuzz=s2_fuzz, s1_fuzz=s1_fuzz,
+                          max_peaks=max_peaks, xenon1t=xenon1t,
                           display_peak_info=display_peak_info,
                           display_event_info=display_event_info,
                           s1_hp_kwargs=s1_hp_kwargs,
                           s2_hp_kwargs=s2_hp_kwargs,
                           event_time_limit=event_time_limit,
-                          plot_all_positions=plot_all_positions,
-                          )
+                          plot_all_positions=plot_all_positions,)
 
 
 def _event_display(context,

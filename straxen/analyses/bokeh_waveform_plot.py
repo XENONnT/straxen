@@ -15,6 +15,7 @@ straxen._BOKEH_CONFIGURED_NOTEBOOK = False
 
 @straxen.mini_analysis(requires=('event_basics', 'peaks', 'peak_basics', 'peak_positions'),
                        warn_beyond_sec=0.05)
+# pylint: disable=
 def event_display_interactive(events,
                               peaks,
                               to_pe,

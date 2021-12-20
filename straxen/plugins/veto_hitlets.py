@@ -1,4 +1,3 @@
-import numba
 import numpy as np
 from immutabledict import immutabledict
 
@@ -9,24 +8,12 @@ from straxen.get_corrections import is_cmt_option
 
 export, __all__ = strax.exporter()
 
-MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+from straxen.plugins.veto_pulse_processing import MV_PREAMBLE, NV_HIT_OPTIONS
 
 
 @export
 @strax.takes_config(
-    strax.Option(
-        'save_outside_hits_nv',
-        default=(3, 15), track=True, infer_type=False,
-        help='Save (left, right) samples besides hits; cut the rest'),
-    strax.Option(
-        'hit_min_amplitude_nv',
-        default=('hit_thresholds_nv', 'ONLINE', True), track=True, infer_type=False,
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_nveto_pmts, or a number, '
-             'or a string like "pmt_commissioning_initial" which means calling '
-             'hitfinder_thresholds.py, '
-             'or a tuple like (correction=str, version=str, nT=boolean), '
-             'which means we are using cmt.'),
+    *NV_HIT_OPTIONS,
     strax.Option(
         'min_split_nv',
         default=0.063, track=True, infer_type=False,
