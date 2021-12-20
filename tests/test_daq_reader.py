@@ -35,6 +35,16 @@ class TestDAQReader(unittest.TestCase):
     """
     Test DAQReader with a few chunks of amstrax data:
     https://github.com/XAMS-nikhef/amstrax
+
+
+    This class is structured with three parts:
+      - A. The test(s) where we execute some tests to make sure the
+      DAQ-reader works well;
+      - B. Setup and teardown logic which downloads/removes test data if
+      we run this test so that we get a fresh sample of data every time
+      we run this test;
+      - C. Some utility functions for part A and B (like setting the
+      context etc).
     """
 
     run_id = '999999'
@@ -43,8 +53,7 @@ class TestDAQReader(unittest.TestCase):
     rundoc_file = 'https://raw.githubusercontent.com/XAMS-nikhef/amstrax_files/73681f112d748f6cd0e95045970dd29c44e983b0/data/rundoc_999999.json'  # noqa
     data_file = 'https://raw.githubusercontent.com/XAMS-nikhef/amstrax_files/73681f112d748f6cd0e95045970dd29c44e983b0/data/999999.tar'  # noqa
 
-    # Tests
-    # -----
+    # # Part A. the actual tests
     def test_make(self) -> None:
         """
         Test if we can run the daq-reader without chrashing and if we
@@ -87,8 +96,7 @@ class TestDAQReader(unittest.TestCase):
         with self.assertRaises(ValueError):
             st.make(self.run_id, 'raw_records')
 
-    # Setup of tests like getting data and removing it after the test
-    # ---------------------------------------------------------------
+    # # Part B. data-download and cleanup
     @classmethod
     def setUpClass(cls) -> None:
         st = strax.Context()
@@ -119,8 +127,7 @@ class TestDAQReader(unittest.TestCase):
             shutil.rmtree(data_path)
             print(f'rm {data_path}')
 
-    # Small utility functions needed in setup
-    # ---------------------------------------------------------------
+    # # Part C. Some utility functions for A & B
     def download_test_data(self):
         download_test_data(self.data_file)
         self.assertTrue(os.path.exists(self.live_data_path))
