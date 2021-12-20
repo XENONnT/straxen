@@ -673,10 +673,11 @@ class CorrectedAreas(strax.Plugin):
         for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
-                       f'Corrected area of {peak_name} S2 before elife correction (s2 xy correction only) [PE]'),
+                       f'Corrected area of {peak_name} S2 before elife correction '
+                       f'(s2 xy correction + SEG/EE correction applied) [PE]'),
                       (f'{peak_type}cs2_wo_timecorr', np.float32,
-                       f'Corrected area of {peak_name} S2 before SE gain + EE correction '
-                       f'(s2 xy correction + elife only) [PE]'),
+                       f'Corrected area of {peak_name} S2 before SEG/EE and elife corrections'
+                       f'(s2 xy correction applied) [PE]'),
                       (f'{peak_type}cs2_area_fraction_top', np.float32,
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
@@ -714,28 +715,30 @@ class CorrectedAreas(strax.Plugin):
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-            cs2_top_wo_elifecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
+            cs2_top_wo_timecorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
                                     self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
-            cs2_bottom_wo_elifecorr = (events[f'{peak_type}s2_area'] *
+            cs2_bottom_wo_timecorr = (events[f'{peak_type}s2_area'] *
                                        (1 - events[f'{peak_type}s2_area_fraction_top']) /
                                        self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
-            result[f"{peak_type}cs2_wo_elifecorr"] = (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
-            # cs2aft doesn't need elife correction as it cancels
-            result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
+            result[f"{peak_type}cs2_wo_timecorr"] = cs2_top_wo_timecorr + cs2_bottom_wo_timecorr
+
+            # cs2aft doesn't need elife/time corrections as they cancel
+            result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_timecorr / result[f"{peak_type}cs2_wo_timecorr"]
+
+            # Correct for SEgain and extraction efficiency
+            seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
+            cs2_top_wo_elifecorr = cs2_top_wo_timecorr / seg_ee_corr
+            cs2_bottom_wo_elifecorr = cs2_bottom_wo_timecorr / seg_ee_corr
+            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
             # For electron lifetime corrections to the S2s,
             # use drift time computed using the main S1.
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
-            cs2_top_wo_timecorr = cs2_top_wo_elifecorr * elife_correction
-            cs2_bottom_wo_timecorr = cs2_bottom_wo_elifecorr * elife_correction
-            result[f"{peak_type}cs2_wo_timecorr"] = cs2_top_wo_timecorr + cs2_bottom_wo_timecorr
+            result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_elifecorr"] * elife_correction
+            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
 
-            # Correct for SEgain and extraction efficiency
-            seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
-            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_timecorr / seg_ee_corr
-            result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_timecorr"] / seg_ee_corr 
         return result
 
 
