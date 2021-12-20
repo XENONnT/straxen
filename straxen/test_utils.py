@@ -109,7 +109,7 @@ def nt_test_context(target_context='xenonnt_online',
     st.set_config({'diagnose_sorting': True})
     st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
     st.storage = [strax.DataDirectory('./strax_test_data')]
-    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/1d3706d4b47cbd23b5cae66d5e258bb84487ad01/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
+    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f0d177401e11408b273564f0e29df77528e83d26/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
