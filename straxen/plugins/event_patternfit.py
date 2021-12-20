@@ -417,16 +417,18 @@ def lbinom_pmf_diriv(k, n, p, dk=1e-7):
 
 @numba.njit
 def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50, inverse=False):
-    """Find the root of the dirivitive of log Binomial pmf with secant method"""
+    """Find the root of the derivative of log Binomial pmf with secant method"""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
 
     while (dx > err) and (max_iter > 0):
         if inverse:
-            y0, y1 = lbinom_pmf_diriv(x0, *args), lbinom_pmf_diriv(x1, *args)
+            y0 = lbinom_pmf_diriv(x0, *args)
+            y1 = lbinom_pmf_diriv(x1, *args)
         else:
-            y0, y1 = lbinom_pmf_diriv(x0, *args), lbinom_pmf_diriv(x1, *args)
+            y0 = lbinom_pmf_diriv(x0, *args)
+            y1 = lbinom_pmf_diriv(x1, *args)
 
         if abs(y1 - y0) < err:
             break
