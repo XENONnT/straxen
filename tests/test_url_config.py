@@ -4,9 +4,7 @@ import straxen
 import fsspec
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
-import pickle
-import random
-import numpy as np
+
 
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
@@ -18,17 +16,6 @@ class ExamplePlugin(strax.Plugin):
     def compute(self):
         pass
 
-@straxen.URLConfig.register('random')
-def generate_random(_):
-    return random.random()
-
-@straxen.URLConfig.register('unpicklable')
-def return_lamba(_):
-    return lambda x: x
-
-@straxen.URLConfig.register('large-array')
-def large_array(_):
-    return np.ones(1_000_000).tolist()
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
@@ -130,9 +117,40 @@ class TestURLConfig(unittest.TestCase):
         pickle.dumps(p)
     
     def test_cache_size(self):
+        '''test the cache helper functions
+        '''
+        # make sure the value has a detectable size
         self.st.set_config({'cached_config': 'large-array://dfg'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+
+        # fetch the value so its stored in the cache
         value = p.cached_config
+        
+        # cache should now have finite size
         self.assertGreater(straxen.config_cache_size_mb(), 0.0)
+
+        # test if clearing cache works as expected
         straxen.clear_config_caches()
         self.assertEqual(straxen.config_cache_size_mb(), 0.0)
+
+# moved here to prevent git diff making a mess of things
+# FIXME: move to head of file
+import pickle
+import random
+import numpy as np
+
+
+@straxen.URLConfig.register('random')
+def generate_random(_):
+    return random.random()
+
+
+@straxen.URLConfig.register('unpicklable')
+def return_lamba(_):
+    return lambda x: x
+
+
+@straxen.URLConfig.register('large-array')
+def large_array(_):
+    return np.ones(1_000_000).tolist()
+
