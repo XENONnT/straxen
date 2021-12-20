@@ -82,7 +82,6 @@ class PeakBasics(strax.Plugin):
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
-        r['tight_coincidence_channel'] = p['tight_coincidence_channel']
         r['n_saturated_channels'] = p['n_saturated_channels']
 
         n_top = self.config['n_top_pmts']

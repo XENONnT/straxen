@@ -240,7 +240,7 @@ class Peaklets(strax.Plugin):
         peaklet_max_times = (
                 peaklets['time']
                 + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
-        tight_coincidence, tight_coincidence_channel = get_tight_coin(
+        tight_coincidence_channel = get_tight_coin(
             hit_max_times,
             hitlets['channel'],
             peaklet_max_times,
@@ -248,8 +248,7 @@ class Peaklets(strax.Plugin):
             self.config['tight_coincidence_window_right'],
             self.channel_range)
 
-        peaklets['tight_coincidence'] = tight_coincidence
-        peaklets['tight_coincidence_channel'] = tight_coincidence_channel
+        peaklets['tight_coincidence'] = tight_coincidence_channel
 
         if self.config['diagnose_sorting'] and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
@@ -600,7 +599,7 @@ class PeakletClassification(strax.Plugin):
 
         is_large_s1 = (peaklets['area'] >= 100)
         is_large_s1 &= (rise_time <= self.config['s1_max_rise_time_post100'])
-        is_large_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
+        is_large_s1 &= peaklets['tight_coincidence'] >= self.config['s1_min_coincidence']
 
         is_small_s1 = peaklets["area"] < 100
         is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
@@ -614,7 +613,7 @@ class PeakletClassification(strax.Plugin):
             *self.config["s1_flatten_threshold_aft"],
         )
 
-        is_small_s1 &= peaklets['tight_coincidence_channel'] >= self.config['s1_min_coincidence']
+        is_small_s1 &= peaklets['tight_coincidence'] >= self.config['s1_min_coincidence']
 
         ptype[is_large_s1 | is_small_s1] = 1
 
@@ -910,7 +909,7 @@ class PeaksHighEnergy(Peaks):
 @numba.jit(nopython=True, nogil=True, cache=True)
 def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
                    channels=(0, 493)):
-    """Calculates the tight coincidence based on hits and PMT channels.
+    """Calculates the tight coincidence based on PMT channels.
 
     Defined by number of hits within a specified time range of the
     the peak's maximum amplitude.
@@ -926,11 +925,10 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
         coincidence in ns.
     :param channel_range: (min/max) channel for the corresponding detector.
 
-    :returns: n_coin_hit, n_coin_channel of length peaks containing the
+    :returns: n_coin_channel of length peaks containing the
         tight coincidence.
     """
     left_hit_i = 0
-    n_coin_hit = np.zeros(len(peak_max_times), dtype=np.int16)
     n_coin_channel = np.zeros(len(peak_max_times), dtype=np.int16)
     start_ch, end_ch = channels
     channels_seen = np.zeros(end_ch-start_ch+1, dtype=np.bool_)
@@ -944,7 +942,6 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
             # if the hit is in the window, its a tight coin
             d = hit_max_times[left_hit_i] - p_t
             if (-left <= d) & (d <= right):
-                n_coin_hit[p_i] += 1
                 channels_seen[hit_channel[left_hit_i]-start_ch] = 1
 
             # stop the loop when we know we're outside the range
@@ -956,7 +953,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right,
         # the last peak:
         n_coin_channel[p_i] = np.sum(channels_seen)
 
-    return n_coin_hit, n_coin_channel
+    return n_coin_channel
 
 
 @numba.njit(cache=True, nogil=True)

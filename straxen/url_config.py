@@ -55,7 +55,7 @@ class URLConfig(strax.Config):
         # type of the config value can be different from the fetched value.
         if self.type is not OMITTED:
             self.final_type = self.type
-            self.type = OMITTED # do not enforce type on the URL
+            self.type = OMITTED  # do not enforce type on the URL
         if cache:
             cache_len = 100 if cache is True else int(cache) 
             cache = straxen.CacheDict(cache_len=cache_len)
@@ -94,12 +94,12 @@ class URLConfig(strax.Config):
         """
 
         # separate the protocol name from the path
-        protocol, _, path =  url.partition(self.SCHEME_SEP)
+        protocol, _, path = url.partition(self.SCHEME_SEP)
 
         # find the corresponding protocol method
         meth = self._LOOKUP.get(protocol, None)
         if meth is None:
-            # unrecongnized protocol
+            # unrecognized protocol
             # evaluate as string-literal
             return url
 
@@ -132,7 +132,7 @@ class URLConfig(strax.Config):
             elif n == 1:
                 kwargs[k] = parse_val(v[0])
             else:
-                kwargs[k] = map(parse_val, v)
+                kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
     @staticmethod
@@ -146,6 +146,17 @@ class URLConfig(strax.Config):
             # if func accepts wildcard kwargs, return all
             return kwargs
         return {k: v for k, v in kwargs.items() if k in params}
+
+    def fetch_attribute(self, plugin, value):
+        if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
+            # kwarg is referring to a plugin attribute, lets fetch it
+            return getattr(plugin, value[len(self.PLUGIN_ATTR_PREFIX):], value)
+
+        if isinstance(value, list):
+            return [self.fetch_attribute(plugin, v) for v in value]
+
+        # kwarg is a literal, add its value to the kwargs dict
+        return value
 
     def fetch(self, plugin):
         '''override the Config.fetch method
@@ -169,14 +180,8 @@ class URLConfig(strax.Config):
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
-        kwargs = {}
-        for k, v in url_kwargs.items():
-            if isinstance(v, str) and v.startswith(self.PLUGIN_ATTR_PREFIX):
-                # kwarg is referring to a plugin attribute, lets fetch it
-                kwargs[k] = getattr(plugin, v[len(self.PLUGIN_ATTR_PREFIX):], v)
-            else:
-                # kwarg is a literal, add its value to the kwargs dict
-                kwargs[k] = v
+        kwargs = {k: self.fetch_attribute(plugin, v)
+                  for k, v in url_kwargs.items()}
 
         # construct a deterministic hash key
         key = strax.deterministic_hash((url, kwargs))
@@ -210,7 +215,8 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name: str, run_id: str=None, version: str='ONLINE', detector: str='nt', **kwargs):
+def get_correction(name: str, run_id: str=None, version: str='ONLINE',
+                   detector: str='nt', **kwargs):
     '''Get value for name from CMT
     '''
     if run_id is None:
@@ -247,11 +253,19 @@ def get_key(container: Container, take=None, **kwargs):
     '''
     if take is None:
         return container
-    return container[take]
+    if not isinstance(take, list):
+        take = [take]
+
+    # support for multiple keys for
+    # nested objects
+    for t in take:
+        container = container[t]
+
+    return container
 
 
 @URLConfig.register('format')
 def format_arg(arg: str, **kwargs):
-    '''apply pythons builtin format function to a string
+    ''' apply pythons builtin format function to a string
     '''
     return arg.format(**kwargs)
