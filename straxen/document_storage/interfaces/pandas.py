@@ -34,15 +34,15 @@ def build_pandas_query(self, db, value):
     return f'{self.name}==@{self.name}', {self.name: value}
 
 @Index.apply_query.register(pd.DataFrame)
-def apply_dataframe(self, db, query):
+def apply_dataframe(self, db, queries):
     ''' Apply one or more queries to a dataframe
     if a query is a tuple of size 2 its assumed that the first
     item is the query and the second is a dict with the namespace 
     to make available to the query eval operation.
     '''
-    if not isinstance(query, list):
-        query = [query]
-    for q in query:
+    if not isinstance(queries, list):
+        queries = [queries]
+    for q in queries:
         if isinstance(q, tuple) and len(q)==2:
             kwargs = q[1]
             q = q[0]
@@ -65,10 +65,14 @@ def apply_series(self, db, query):
 
 
 @InterpolatedIndex.build_query.register(pd.core.generic.NDFrame)
-def build_pandas_query(self, db, value):
+def build_pandas_query(self, db, values):
     '''Interpolated index selects the rows before and after
     the requested value if they exist.
     '''
+    
+    if not isinstance(values, list):
+        values = [values]
+    values  = [v for v in values if v is not None]
     queries = []
     kwargs = {}
 
@@ -78,27 +82,27 @@ def build_pandas_query(self, db, value):
 
     # we only need the column we are matching on
     idx_column = db[self.name]
+    for i, value in enumerate(values):
 
+        # select all values before requested values
+        before = idx_column[idx_column<=value]
 
-    # select all values before requested values
-    before = idx_column[idx_column<=value]
+        if len(before):
+            # if ther are values after `value`, we find the closest
+            # one and add a query for that value.
+            before_idx = before.iloc[(before-value).abs().argmin()]
+            query = f"({self.name}==@{self.name}__before_{i})"
+            kwargs[f"{self.name}__before_{i}"] = before_idx
+            queries.append(query)
 
-    if len(before):
-        # if ther are values after `value`, we find the closest
-        # one and add a query for that value.
-        before_idx = before.iloc[(before-value).abs().argmin()]
-        query = f"({self.name}==@{self.name}__before)"
-        kwargs[f"{self.name}__before"] = before_idx
-        queries.append(query)
-
-    # select all values after requested values
-    after = idx_column[idx_column>value]
-    if len(after):
-        # same as before
-        after_idx = after.iloc[(after-value).abs().argmin()]
-        query = f"({self.name}==@{self.name}__after)"
-        kwargs[f"{self.name}__after"] = after_idx
-        queries.append(query)
+        # select all values after requested values
+        after = idx_column[idx_column>value]
+        if len(after):
+            # same as before
+            after_idx = after.iloc[(after-value).abs().argmin()]
+            query = f"({self.name}==@{self.name}__after_{i})"
+            kwargs[f"{self.name}__after_{i}"] = after_idx
+            queries.append(query)
     
     # match on both before and after queries
     return " or ".join(queries), kwargs

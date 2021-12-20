@@ -27,7 +27,7 @@ class TimeIntervalCorrection(BaseCorrection):
     index = straxen.IntervalIndex(name='time', type=datetime.datetime,
                                 left_name='begin', right_name='end')
         
-    def pre_insert(self, **index):
+    def pre_insert(self, db, **index):
         begin = pd.to_datetime(index['begin'], utc=True)
         cutoff = pd.to_datetime(time.time()+3600, unit='s', utc=True)
         if index['version']==0 and begin<cutoff:
@@ -45,7 +45,7 @@ def can_extrapolate(doc):
 class TimeSampledCorrection(BaseCorrection):
     index = straxen.InterpolatedIndex(name='time', type=datetime.datetime, extrapolate=can_extrapolate)
                 
-    def pre_insert(self, **index):
+    def pre_insert(self, db, **index):
         cutoff = pd.to_datetime(time.time()+3600, unit='s', utc=True)
         ts = pd.to_datetime(index['time'], utc=True)
         if index['version']==0 and ts<cutoff:

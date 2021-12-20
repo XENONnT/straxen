@@ -75,10 +75,10 @@ class BaseDocument(BaseModel):
     def query_db(cls, db, *args, **kwargs):
         return cls.index.query_db(db, *args, **kwargs)
 
-    def pre_insert(self, **index):
+    def pre_insert(self, db, **index):
         pass
 
-    def pre_update(self, old, **index):
+    def pre_update(self, db, old, **index):
         if old != self:
             message = f'Values already set for {index} are different\
                         than the values you are trying to set.'
@@ -88,15 +88,19 @@ class BaseDocument(BaseModel):
         kwargs.update(self.dict())
         existing = self.index.query_db(db, *args, **kwargs)
         if len(existing)>1:
-            raise InsertionError('Multiple documents exist that match \
-                the index you are attempting to save to.')
+            raise InsertionError('Multiple documents exist that match '
+                                 'the index you are attempting to save to. '
+                                 'This is usually due to one or more indices not '
+                                 'being passed or multi-valued (list/slice). '
+                                 'If you are passing the index values by name '
+                                 'please check the names passed match the actualy names.')
 
         index = self.index.infer_index(*args, **kwargs)
         if len(existing) == 1:
             old = self.__class__(**existing[0])
-            self.pre_update(old, **index)
+            self.pre_update(db, old, **index)
         else:
-            self.pre_insert(**index)
+            self.pre_insert(db, **index)
         doc = self.dict()
         doc.update(index)
         return self._insert(db, doc)
