@@ -15,6 +15,7 @@ from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
 import typing as ty
 try:
+    # pylint: disable=redefined-builtin
     from reprlib import repr
 except ImportError:
     pass
