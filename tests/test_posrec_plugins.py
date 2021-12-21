@@ -24,7 +24,6 @@ class TestPosRecAlgorithms(unittest.TestCase):
         """Test that we can reconstruct even if we set a hardcoded path"""
         # Manually do a similar thing as the URL config does behind the
         # scenes
-        # TODO this only works after #817
         # plugin = self.st.get_single_plugin(self.run_id, self.target)
         # cmt_config = plugin.config[self.config_name]
         # model = straxen.get_correction_from_cmt(self.run_id, cmt_config)
