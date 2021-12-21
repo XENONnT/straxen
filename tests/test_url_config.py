@@ -101,6 +101,11 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
+        st2 = self.st.new_context()
+        st2.set_config({'test_config': 'bodega://g1?bodega_version=v2'})
+        p2 = st2.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, p2.test_config)
+
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
 
@@ -158,7 +163,7 @@ class TestURLConfig(unittest.TestCase):
         def func1(a=None, b=None):
             return
         
-        filtered1 = straxen.URLConfig.filter_kwargs(func1, all_kwargs)
+        filtered1 = straxen.filter_kwargs(func1, all_kwargs)
         self.assertEqual(filtered1, dict(a=1, b=2))
         func1(**filtered1)
 
@@ -166,6 +171,6 @@ class TestURLConfig(unittest.TestCase):
         # test function that accepts wildcard kwargs
         def func2(**kwargs):
             return
-        filtered2 = straxen.URLConfig.filter_kwargs(func2, all_kwargs)
+        filtered2 = straxen.filter_kwargs(func2, all_kwargs)
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
