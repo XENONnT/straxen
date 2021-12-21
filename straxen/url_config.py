@@ -1,3 +1,4 @@
+import sys
 import json
 from typing import Container
 import strax
@@ -8,11 +9,20 @@ import inspect
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
 from functools import lru_cache
-
 from strax.config import OMITTED
 
 export, __all__ = strax.exporter()
 
+_CACHES = {}
+
+@export
+def clear_config_caches():
+    for cache in _CACHES.values():
+        cache.clear()
+
+@export
+def config_cache_size_mb():
+    return straxen.total_size(_CACHES)//1e6
 
 def parse_val(val):
     try:
@@ -58,8 +68,13 @@ class URLConfig(strax.Config):
             # do not enforce type on the URL
             self.type = OMITTED
         if cache:
-            maxsize = cache if isinstance(cache, int) else None
-            self.dispatch = lru_cache(maxsize)(self.dispatch)
+            cache_len = 100 if cache is True else int(cache) 
+            cache = straxen.CacheDict(cache_len=cache_len)
+            _CACHES[id(self)] = cache
+
+    @property
+    def cache(self):
+        return _CACHES.get(id(self), {})
 
     def __set_name__(self, owner, name):
         super().__set_name__(owner, name)
@@ -333,7 +348,18 @@ class URLConfig(strax.Config):
         kwargs = {k: self.fetch_attribute(plugin, v)
                   for k, v in url_kwargs.items()}
 
-        return self.dispatch(url, **kwargs)
+        # construct a deterministic hash key
+        key = strax.deterministic_hash((url, kwargs))
+
+        # fetch from cache if exists
+        value = self.cache.get(key, None)
+
+        # not in cache, lets fetch it
+        if value is None:
+            value = self.dispatch(url, **kwargs)
+            self.cache[key] = value
+
+        return value
 
     def validate(self, config,
                  run_id=None,   # TODO: will soon be removed
