@@ -73,30 +73,30 @@ class LocalMinimumInfo(strax.LoopPlugin):
                                          int(smoothing_number),
                                          self.config['smoothing_power_localmin'])
             
-            print(smoothed_peak)
-            # Set data below percentage threshold on both side to zeros
-            left, right = bounds_above_percentage_height(smoothed_peak,
-                                                         self.config['percentage_threshold_localmin'])
+            if len(smoothed_peak)>0:
+                # Set data below percentage threshold on both side to zeros
+                left, right = bounds_above_percentage_height(smoothed_peak,
+                                                             self.config['percentage_threshold_localmin'])
 
-            # Maximum GOS calculation for data above percentage
-            max_gos = np.max(natural_breaks_gof(p['data'][left: right],
-                                                p['dt']))
+                # Maximum GOS calculation for data above percentage
+                max_gos = np.max(natural_breaks_gof(p['data'][left: right],
+                                                    p['dt']))
 
-            # Local minimum based information
-            maxes, mins = identify_local_extrema(smoothed_peak)
+                # Local minimum based information
+                maxes, mins = identify_local_extrema(smoothed_peak)
 
-            maxes = maxes[np.logical_and(maxes >= left, maxes < right)]
-            mins = mins[np.logical_and(mins >= left, mins < right)]
+                maxes = maxes[np.logical_and(maxes >= left, maxes < right)]
+                mins = mins[np.logical_and(mins >= left, mins < right)]
 
-            num_loc_maxes = len(maxes)
+                num_loc_maxes = len(maxes)
 
-            valley_gap, valley = full_gap_percent_valley(smoothed_peak,
-                                                         maxes,
-                                                         mins,
-                                                         self.config['percent_valley_height'],
-                                                         p['dt'])
+                valley_gap, valley = full_gap_percent_valley(smoothed_peak,
+                                                             maxes,
+                                                             mins,
+                                                             self.config['percent_valley_height'],
+                                                             p['dt'])
 
-            valley_height_ratio = valley / np.max(smoothed_peak)
+                valley_height_ratio = valley / np.max(smoothed_peak)
 
         return {'time': event['time'],
                 'endtime': event['endtime'],
