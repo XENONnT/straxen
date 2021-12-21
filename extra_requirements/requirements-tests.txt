@@ -35,4 +35,4 @@ tqdm==4.62.2
 utilix==0.6.5
 wfsim==0.5.11
 xarray==0.20.1
-zstd==1.5.0.2                                   # Strax dependency
+zstd==1.5.0.4                                   # Strax dependency
