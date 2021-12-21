@@ -111,6 +111,7 @@ def nt_test_context(target_context='xenonnt_online',
                     deregister=('peak_veto_tags', 'events_tagged'),
                     **kwargs):
     st = getattr(straxen.contexts, target_context)(**kwargs)
+    st.set_config({'diagnose_sorting': True})
     st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
     st.storage = [strax.DataDirectory('./strax_test_data')]
     download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f0d177401e11408b273564f0e29df77528e83d26/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
