@@ -109,8 +109,6 @@ class TestMiniAnalyses(unittest.TestCase):
             # old way of calling the simple display
             self.st.event_display_simple(nt_test_run_id,
                                          time_within=self.first_event,
-                                         xenon1t=False,
-                                         plot_all_positions=plot_all_positions,
                                          )
         # New, correct way of calling the simple display
         self.st.event_display(nt_test_run_id,
