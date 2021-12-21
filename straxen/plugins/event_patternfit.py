@@ -424,8 +424,8 @@ def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50, inverse=F
 
     while (dx > err) and (max_iter > 0):
         if inverse:
-            y0 = lbinom_pmf_diriv(x0, *args)
-            y1 = lbinom_pmf_diriv(x1, *args)
+            y0 = lbinom_pmf(x0, *args)
+            y1 = lbinom_pmf(x1, *args)
         else:
             y0 = lbinom_pmf_diriv(x0, *args)
             y1 = lbinom_pmf_diriv(x1, *args)
