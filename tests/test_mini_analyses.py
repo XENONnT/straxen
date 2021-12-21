@@ -105,11 +105,20 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def test_event_display_simple(self):
         plot_all_positions = straxen.utilix_is_configured()
-        self.st.event_display_simple(nt_test_run_id,
-                                     time_within=self.first_event,
-                                     xenon1t=False,
-                                     plot_all_positions=plot_all_positions,
-                                     )
+        with self.assertRaises(NotImplementedError):
+            # old way of calling the simple display
+            self.st.event_display_simple(nt_test_run_id,
+                                         time_within=self.first_event,
+                                         xenon1t=False,
+                                         plot_all_positions=plot_all_positions,
+                                         )
+        # New, correct way of calling the simple display
+        self.st.event_display(nt_test_run_id,
+                              time_within=self.first_event,
+                              xenon1t=False,
+                              plot_all_positions=plot_all_positions,
+                              simple_layout=True,
+                              )
 
     def test_single_event_plot(self):
         plot_all_positions = straxen.utilix_is_configured()
