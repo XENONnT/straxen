@@ -416,39 +416,51 @@ def lbinom_pmf_diriv(k, n, p, dk=1e-7):
 
 
 @numba.njit
-def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50, inverse=False):
+def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
+    """Get close to <target> by doing a numeric derivative"""
+    if abs(y1 - y0) < err:
+        # break by passing dx == 0
+        return 0., x1, x1
+
+    x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
+    x = min(x, x_max)
+    x = max(x, x_min)
+
+    dx = abs(x - x1)
+    x0 = x1
+    x1 = x
+
+    return dx, x0, x1
+
+
+@numba.njit
+def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
     """Find the root of the derivative of log Binomial pmf with secant method"""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
 
     while (dx > err) and (max_iter > 0):
-        if inverse:
-            y0 = lbinom_pmf(x0, *args)
-            y1 = lbinom_pmf(x1, *args)
-        else:
-            y0 = lbinom_pmf_diriv(x0, *args)
-            y1 = lbinom_pmf_diriv(x1, *args)
-
-        if abs(y1 - y0) < err:
-            break
-
-        x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
-        x = min(x, x_max)
-        x = max(x, x_min)
-
-        dx = abs(x - x1)
-        x0 = x1
-        x1 = x
-
+        y0 = lbinom_pmf(x0, *args)
+        y1 = lbinom_pmf(x1, *args)
+        dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
         max_iter -= 1
-
     return x1
 
 
+@numba.njit
 def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
     """Find the where the log Binomial pmf cross target with secant method"""
-    return lbinom_pmf_mode(x_min, x_max, target, args, err, max_iter, inverse=True)
+    x0 = x_min
+    x1 = x_max
+    dx = abs(x1 - x0)
+
+    while (dx > err) and (max_iter > 0):
+        y0 = lbinom_pmf(x0, *args)
+        y1 = lbinom_pmf(x1, *args)
+        dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
+        max_iter -= 1
+    return x1
 
 
 @numba.njit
