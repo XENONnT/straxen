@@ -66,13 +66,14 @@ class LocalMinimumInfo(strax.LoopPlugin):
 
         if event['s2_area'] > 0:
             p = peaks[event['s2_index']]
-
+            
             smoothing_number = p['width'][9] / p['dt']
             smoothing_number = np.ceil(smoothing_number / self.config['divide_90p_width_localmin'])
             smoothed_peak = power_smooth(p['data'][:p['length']],
                                          int(smoothing_number),
                                          self.config['smoothing_power_localmin'])
-
+            
+            print(smoothed_peak)
             # Set data below percentage threshold on both side to zeros
             left, right = bounds_above_percentage_height(smoothed_peak,
                                                          self.config['percentage_threshold_localmin'])
