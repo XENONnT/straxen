@@ -95,8 +95,9 @@ def raw_records_matrix(context, run_id, raw_records, time_range,
 
 
 def _records_to_matrix(records, t0, window, n_channels, dt=10):
-    warnings.warn('Ignoring amplitude bitshift')
-    _records_to_matrix_inner(records, t0, window, n_channels, dt)
+    if np.any(records['amplitude_bit_shift'] > 0):
+        warnings.warn('Ignoring amplitude bitshift!')
+    return _records_to_matrix_inner(records, t0, window, n_channels, dt)
 
 
 @numba.njit
