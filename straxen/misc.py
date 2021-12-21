@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import socket
 import strax
+import inspect
 import straxen
 import sys
 import warnings
@@ -287,6 +288,19 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
 
 
 @export
+def filter_kwargs(func, kwargs):
+    """Filter out keyword arguments that
+        are not in the call signature of func
+        and return filtered kwargs dictionary
+    """
+    params = inspect.signature(func).parameters
+    if any([str(p).startswith('**') for p in params.values()]):
+        # if func accepts wildcard kwargs, return all
+        return kwargs
+    return {k: v for k, v in kwargs.items() if k in params}
+
+  
+@export  
 class CacheDict(OrderedDict):
     """Dict with a limited length, ejecting LRUs as needed.
         copied from

@@ -7,10 +7,10 @@ import numpy as np
 import strax
 import straxen
 from warnings import warn
+from straxen import URLConfig
+
 export, __all__ = strax.exporter()
 
-
-from straxen import URLConfig
 
 # TODO
 #  #############
@@ -37,13 +37,8 @@ def download(file_name: str) -> str:
     """
     downloader = straxen.MongoDownloader()
     return downloader.download_single(file_name)
-##############
 
-
-DEFAULT_POSREC_ALGO_OPTION = tuple([strax.Option("default_reconstruction_algorithm",
-                 help="default reconstruction algorithm that provides (x,y)",
-                 default="mlp", infer_type=False,
-                 )])
+DEFAULT_POSREC_ALGO = "mlp"
 
 
 @export
@@ -175,9 +170,6 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
 
 
 @export
-@strax.takes_config(
-    *DEFAULT_POSREC_ALGO_OPTION
-)
 class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
     Merge the reconstructed algorithms of the different algorithms
@@ -195,6 +187,10 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn")
     save_when = strax.SaveWhen.NEVER
     __version__ = '0.0.0'
+
+    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
+                                                         help="default reconstruction algorithm that provides (x,y)"
+                                                         )
 
     def infer_dtype(self):
         dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])

@@ -63,7 +63,7 @@ def get_correction_from_cmt(run_id, conf):
     where True means looking at nT runs, e.g. 
     get_correction_from_cmt(run_id, conf[:2])
     special cases:
-    version can be replaced by consant int, float or array
+    version can be replaced by constant int, float or array
     when user specify value(s)
     :param run_id: run id from runDB
     :param conf: configuration 
@@ -141,6 +141,9 @@ def is_cmt_option(config):
 
 @correction_options
 def _is_cmt_option(run_id, config):
+    # Compatibilty with URLConfig
+    if isinstance(config, str) and "cmt://" in config:
+        return True
     is_cmt = (isinstance(config, tuple)
               and len(config)==3
               and isinstance(config[0], str)
@@ -161,10 +164,10 @@ def get_cmt_options(context):
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
             if (option_key in context.config and
-                straxen.get_corrections.is_cmt_option(context.config[option_key])
+                is_cmt_option(context.config[option_key])
                 ):
                 cmt_options[option_key] = context.config[option_key]
-            elif straxen.get_corrections.is_cmt_option(option.default):
+            elif is_cmt_option(option.default):
                 cmt_options[option_key] = option.default
 
     return cmt_options
