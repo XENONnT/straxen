@@ -75,16 +75,23 @@ def event_display(context,
     else:
         axes = _event_display_full_layout(_rr_resize_int, records_matrix)
 
-    return _event_display(context, run_id, events, to_pe,
-                          axes=axes, records_matrix=records_matrix,
-                          s2_fuzz=s2_fuzz, s1_fuzz=s1_fuzz,
-                          max_peaks=max_peaks, xenon1t=xenon1t,
+    return _event_display(context,
+                          run_id,
+                          events,
+                          to_pe,
+                          axes=axes,
+                          records_matrix=records_matrix,
+                          s2_fuzz=s2_fuzz,
+                          s1_fuzz=s1_fuzz,
+                          max_peaks=max_peaks,
+                          xenon1t=xenon1t,
                           display_peak_info=display_peak_info,
                           display_event_info=display_event_info,
                           s1_hp_kwargs=s1_hp_kwargs,
                           s2_hp_kwargs=s2_hp_kwargs,
                           event_time_limit=event_time_limit,
-                          plot_all_positions=plot_all_positions,)
+                          plot_all_positions=plot_all_positions,
+                          )
 
 
 def _event_display(context,
