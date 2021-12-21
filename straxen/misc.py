@@ -7,10 +7,18 @@ import sys
 import warnings
 import datetime
 import pytz
+from sys import getsizeof, stderr
+from itertools import chain
+from collections import OrderedDict, deque
 from importlib import import_module
 from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
 import typing as ty
+try:
+    # pylint: disable=redefined-builtin
+    from reprlib import repr
+except ImportError:
+    pass
 
 export, __all__ = strax.exporter()
 
@@ -276,3 +284,74 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
+
+
+@export
+class CacheDict(OrderedDict):
+    """Dict with a limited length, ejecting LRUs as needed.
+        copied from
+        https://gist.github.com/davesteele/44793cd0348f59f8fadd49d7799bd306
+    """
+
+    def __init__(self, *args, cache_len: int = 10, **kwargs):
+        assert cache_len > 0
+        self.cache_len = cache_len
+
+        super().__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        super().move_to_end(key)
+
+        while len(self) > self.cache_len:
+            oldkey = next(iter(self))
+            super().__delitem__(oldkey)
+
+    def __getitem__(self, key):
+        val = super().__getitem__(key)
+        super().move_to_end(key)
+
+        return val
+
+@export
+def total_size(o, handlers=None, verbose=False):
+    """ Returns the approximate memory footprint an object and all of its contents.
+
+    Automatically finds the contents of the following builtin containers and
+    their subclasses:  tuple, list, deque, dict, set and frozenset.
+    To search other containers, add handlers to iterate over their contents:
+
+        handlers = {SomeContainerClass: iter,
+                    OtherContainerClass: OtherContainerClass.get_elements}
+                    
+    from: https://code.activestate.com/recipes/577504/
+    """
+    dict_handler = lambda d: chain.from_iterable(d.items())
+    all_handlers = {tuple: iter,
+                    list: iter,
+                    deque: iter,
+                    dict: dict_handler,
+                    set: iter,
+                    frozenset: iter,
+                   }
+    if handlers is not None:
+        all_handlers.update(handlers)     # user handlers take precedence
+    seen = set()                      # track which object id's have already been seen
+    default_size = getsizeof(0)       # estimate sizeof object without __sizeof__
+
+    def sizeof(o):
+        if id(o) in seen:       # do not double count the same object
+            return 0
+        seen.add(id(o))
+        s = getsizeof(o, default_size)
+
+        if verbose:
+            print(s, type(o), repr(o), file=stderr)
+
+        for typ, handler in all_handlers.items():
+            if isinstance(o, typ):
+                s += sum(map(sizeof, handler(o)))
+                break
+        return s
+
+    return sizeof(o)
