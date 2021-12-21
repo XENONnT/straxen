@@ -1,42 +1,13 @@
 """Position reconstruction for Xenon-nT"""
 
-import os
-import tempfile
-import tarfile
 import numpy as np
 import strax
 import straxen
 from warnings import warn
-from straxen import URLConfig
+
 
 export, __all__ = strax.exporter()
 
-
-# TODO
-#  #############
-#  Temporary placed here, I don't want to mess with #817
-@URLConfig.register('tf')
-def open_neural_net(model_path: str, **kwargs):
-    # Nested import to reduce loading time of import straxen and it not
-    # base requirement
-    import tensorflow as tf
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f'No file at {model_path}')
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tar = tarfile.open(model_path, mode="r:gz")
-        tar.extractall(path=tmpdirname)
-        return tf.keras.models.load_model(tmpdirname)
-
-
-@export
-@URLConfig.register('download')
-def download(file_name: str) -> str:
-    """
-    Download single and return path to object. Different from
-    "resource://" is that we don't to open the file.
-    """
-    downloader = straxen.MongoDownloader()
-    return downloader.download_single(file_name)
 
 DEFAULT_POSREC_ALGO = "mlp"
 
@@ -59,7 +30,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     depends_on = ('peaks',)
     algorithm = None
     compressor = 'zstd'
-    parallel = True # can set to "process" after #82
+    parallel = True  # can set to "process" after #82
     __version__ = '0.0.0'
 
     def infer_dtype(self):
@@ -132,10 +103,15 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
     algorithm = "mlp"
 
     tf_model_mlp = straxen.URLConfig(
-        default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        default=f'tf://'
+                f'resource://'
+                f'cmt://{algorithm}_model'
+                f'?version=ONLINE'
+                f'&run_id=plugin.run_id'
+                f'&fmt=abs_path',
         help='MLP model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
-        cache=True,
+        cache=3,
     )
 
 
@@ -147,10 +123,15 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
     __version__ = '0.0.1'
 
     tf_model_gcn = straxen.URLConfig(
-        default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
+        default=f'tf://'
+                f'resource://'
+                f'cmt://{algorithm}_model'
+                f'?version=ONLINE'
+                f'&run_id=plugin.run_id'
+                f'&fmt=abs_path',
         help='GCN model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
-        cache=True,
+        cache=3,
     )
 
 
@@ -162,10 +143,13 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
     __version__ = '0.0.1'
 
     tf_model_cnn = straxen.URLConfig(
-        default=f'tf://download://cmt://{algorithm}_model?version=ONLINE&run_id=plugin.run_id',
-        help='CNN model. Should be opened using the "tf" descriptor. '
-             'Set to "None" to skip computation',
-        cache=True,
+        default=f'tf://'
+                f'resource://'
+                f'cmt://{algorithm}_model'
+                f'?version=ONLINE'
+                f'&run_id=plugin.run_id'
+                f'&fmt=abs_path',
+        cache=3,
     )
 
 
@@ -188,9 +172,10 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     save_when = strax.SaveWhen.NEVER
     __version__ = '0.0.0'
 
-    default_reconstruction_algorithm = straxen.URLConfig(default=DEFAULT_POSREC_ALGO,
-                                                         help="default reconstruction algorithm that provides (x,y)"
-                                                         )
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO,
+        help="default reconstruction algorithm that provides (x,y)"
+    )
 
     def infer_dtype(self):
         dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])

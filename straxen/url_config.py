@@ -1,4 +1,3 @@
-import sys
 import json
 from typing import Container
 import strax
@@ -8,21 +7,26 @@ import straxen
 import inspect
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
-from functools import lru_cache
 from strax.config import OMITTED
+import os
+import tempfile
+import tarfile
 
 export, __all__ = strax.exporter()
 
 _CACHES = {}
+
 
 @export
 def clear_config_caches():
     for cache in _CACHES.values():
         cache.clear()
 
+
 @export
 def config_cache_size_mb():
     return straxen.total_size(_CACHES)//1e6
+
 
 def parse_val(val):
     try:
@@ -213,8 +217,18 @@ def get_correction(name: str, run_id: str=None, version: str='ONLINE',
 
 
 @URLConfig.register('resource')
-def get_resource(name: str, fmt: str='text', **kwargs):
-    """Fetch a straxen resource"""
+def get_resource(name: str,
+                 fmt: str = 'text',
+                 **kwargs):
+    """
+    Fetch a straxen resource
+
+    Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    passed directly to straxen.get_resource.
+    """
+    if fmt == 'abs_path':
+        downloader = straxen.MongoDownloader()
+        return downloader.download_single(name)
     return straxen.get_resource(name, fmt=fmt)
 
 
@@ -270,3 +284,16 @@ def load_value(name: str, bodega_version=None):
         raise ValueError('Provide version see e.g. tests/test_url_config.py')
     nt_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
     return nt_numbers[name][bodega_version]["value"]
+
+
+@URLConfig.register('tf')
+def open_neural_net(model_path: str, **kwargs):
+    # Nested import to reduce loading time of import straxen and it not
+    # base requirement
+    import tensorflow as tf
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f'No file at {model_path}')
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tar = tarfile.open(model_path, mode="r:gz")
+        tar.extractall(path=tmpdirname)
+        return tf.keras.models.load_model(tmpdirname)

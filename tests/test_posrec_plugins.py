@@ -30,7 +30,7 @@ class TestPosRecAlgorithms(unittest.TestCase):
         # model = straxen.get_correction_from_cmt(self.run_id, cmt_config)
         model = 'xnt_mlp_wfsim_20210124.tar.gz'
         st_with_hardcoded_path = self.st.new_context()
-        file_name = straxen.position_reconstruction.download(model)
+        file_name = straxen.url_config.get_resource(model, fmt='abs_path')
         self.assertTrue(os.path.exists(file_name))
 
         # Now let's see if we can get the same results with both contexts
