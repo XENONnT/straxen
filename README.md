@@ -5,6 +5,7 @@ Streaming analysis for XENON(nT)
 [![Coverage Status](https://coveralls.io/repos/github/XENONnT/straxen/badge.svg)](https://coveralls.io/github/XENONnT/straxen)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/straxen.svg)](https://pypi.python.org/pypi/straxen/)
 [![Readthedocs Badge](https://readthedocs.org/projects/straxen/badge/?version=latest)](https://straxen.readthedocs.io/en/latest/?badge=latest)
+[![CodeFactor](https://www.codefactor.io/repository/github/xenonnt/straxen/badge)](https://www.codefactor.io/repository/github/xenonnt/straxen)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5618215.svg)](https://doi.org/10.5281/zenodo.5618215)
 
