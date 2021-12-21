@@ -163,7 +163,7 @@ class TestURLConfig(unittest.TestCase):
         def func1(a=None, b=None):
             return
         
-        filtered1 = straxen.URLConfig.filter_kwargs(func1, all_kwargs)
+        filtered1 = straxen.filter_kwargs(func1, all_kwargs)
         self.assertEqual(filtered1, dict(a=1, b=2))
         func1(**filtered1)
 
@@ -171,6 +171,6 @@ class TestURLConfig(unittest.TestCase):
         # test function that accepts wildcard kwargs
         def func2(**kwargs):
             return
-        filtered2 = straxen.URLConfig.filter_kwargs(func2, all_kwargs)
+        filtered2 = straxen.filter_kwargs(func2, all_kwargs)
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
