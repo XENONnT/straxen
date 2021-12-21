@@ -1,3 +1,51 @@
+1.2.0 / 2021-12-21
+-------------------
+major:
+
+* Update CorrectedAreas (instead of EnergyEstimates) (#817)
+* S2 pattern fit (#780)
+* Exclude S1 as triggering peak (#779) 
+* Two manual boundaries (updated 11/24/2021) (#775) 
+* Add main peaks' shadow for event shadow (#770)
+* Events synchronize (#761)
+* Implement peak-level shadow and event-level shadow refactor (#753) 
+* use channel tight coincidence level (#745)
+
+minor / patches:
+
+* Normalized line endings (#833)
+* Fix codefactor issues (#832)
+* Another try at codefactor (#831) 
+* URLConfig take protocol for nested keys (#826)
+* Rename tight coincidence (#825) 
+* Move URLConfig cache to global dictionary (#822)
+* Remove codefactor (#818) 
+* Performance update for binomial test (#783) 
+* URLConfig not in strax (#781)
+* Add refactor event building cut (#778) 
+* whipe online monitor data (#777)
+* Cache dependencies (#772) 
+* Update definition array_valued (#757) 
+
+fixes/tests:
+
+* Add test for filter_kwargs (#837)
+* Fix nv testing data (#830)  
+* Unittest for DAQreader (#828) 
+* Fix broken matplotlib/minianalyses (#815)
+* Itp test (#813)
+* Loose packaging requirement (#810) 
+* can we disable codefactor please (#809) 
+* Fix #781 (#808) 
+* Matplotlib changed requirements (#805) 
+* Pin pymongo (#801) 
+* Bump wfsim tests (#773) 
+* Patch peaks merging (#767)
+
+notes:
+ - plugins changed (new lineage) everything >= 'peaklet_classification'
+
+
 1.1.3 / 2021-11-19
 -------------------
 minor / patches:
