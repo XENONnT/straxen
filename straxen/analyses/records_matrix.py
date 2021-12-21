@@ -94,12 +94,17 @@ def raw_records_matrix(context, run_id, raw_records, time_range,
                                   **kwargs)
 
 
-@numba.njit
 def _records_to_matrix(records, t0, window, n_channels, dt=10):
+    if np.any(records['amplitude_bit_shift'] > 0):
+        warnings.warn('Ignoring amplitude bitshift!')
+    return _records_to_matrix_inner(records, t0, window, n_channels, dt)
+
+
+@numba.njit
+def _records_to_matrix_inner(records, t0, window, n_channels, dt=10):
     n_samples = (window // dt) + 1
     # Use 32-bit integers, so downsampling saturated samples doesn't
     # cause wraparounds
-    # TODO: amplitude bit shift!
     y = np.zeros((n_samples, n_channels),
                  dtype=np.int32)
 
