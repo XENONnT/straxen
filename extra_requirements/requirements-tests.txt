@@ -13,7 +13,7 @@ gitpython==3.1.18
 holoviews==1.14.5
 ipywidgets==7.6.4
 keras==2.7.0                                    # Tensorflow depencency
-hypothesis==6.29.0
+hypothesis==6.31.6
 jupyter-client==7.1.0                           # for ipywidgets
 matplotlib==3.5.1
 multihist==0.6.4
@@ -34,5 +34,5 @@ typing_extensions==3.10.0                       # Tensorflow/bokeh depencency
 tqdm==4.62.2
 utilix==0.6.5
 wfsim==0.5.11
-xarray==0.20.1
+xarray==0.20.2
 zstd==1.5.0.4                                   # Strax dependency
