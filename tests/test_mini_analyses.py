@@ -138,6 +138,7 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_plot_peaks_aft_histogram(self):
         self.st.plot_peaks_aft_histogram(nt_test_run_id)
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_event_scatter(self):
         self.st.event_scatter(nt_test_run_id)
 
