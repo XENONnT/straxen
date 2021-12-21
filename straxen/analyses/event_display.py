@@ -281,7 +281,7 @@ def _event_display(context,
 
 
 @straxen.mini_analysis(requires=('event_info',))
-def event_display_simple(context, run_id, events,):
+def event_display_simple(context, run_id, events, **kwargs):
     raise NotImplementedError('Pass st.event_display(.., simple_layout=True)')
 
 
