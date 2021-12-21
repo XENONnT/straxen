@@ -150,3 +150,22 @@ class TestURLConfig(unittest.TestCase):
         # test if clearing cache works as expected
         straxen.clear_config_caches()
         self.assertEqual(straxen.config_cache_size_mb(), 0.0)
+
+    def test_filter_kwargs(self):
+        all_kwargs = dict(a=1, b=2, c=3)
+
+        # test a function that takes only a seubset of the kwargs
+        def func1(a=None, b=None):
+            return
+        
+        filtered1 = straxen.URLConfig.filter_kwargs(func1, all_kwargs)
+        self.assertEqual(filtered1, dict(a=1, b=2))
+        func1(**filtered1)
+
+
+        # test function that accepts wildcard kwargs
+        def func2(**kwargs):
+            return
+        filtered2 = straxen.URLConfig.filter_kwargs(func2, all_kwargs)
+        self.assertEqual(filtered2, all_kwargs)
+        func2(**filtered2)
