@@ -208,12 +208,15 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name: str, run_id: str=None, version: str='ONLINE',
-                   detector: str='nt', **kwargs):
+def get_correction(name: str,
+                   run_id: str = None,
+                   version: str = 'ONLINE',
+                   detector: str = 'nt',
+                   **kwargs):
     """Get value for name from CMT"""
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector=='nt'))
+    return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
 
 @URLConfig.register('resource')
