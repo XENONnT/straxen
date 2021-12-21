@@ -8,19 +8,11 @@ from straxen.get_corrections import is_cmt_option
 export, __all__ = strax.exporter()
 
 MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
-
-
-@export
-@strax.takes_config(
+NV_HIT_OPTIONS = (
     strax.Option(
         'save_outside_hits_nv',
         default=(3, 15), track=True, infer_type=False,
         help='Save (left, right) samples besides hits; cut the rest'),
-    strax.Option(
-        'baseline_samples_nv', infer_type=False,
-        default=('baseline_samples_nv', 'ONLINE', True), track=True,
-        help='Number of samples to use at the start of the pulse to determine '
-             'the baseline'),
     strax.Option(
         'hit_min_amplitude_nv', infer_type=False,
         default=('hit_thresholds_nv', 'ONLINE', True), track=True,
@@ -30,6 +22,17 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
              'hitfinder_thresholds.py, '
              'or a tuple like (correction=str, version=str, nT=boolean), '
              'which means we are using cmt.'),
+)
+
+
+@export
+@strax.takes_config(
+    *NV_HIT_OPTIONS,
+    strax.Option(
+        'baseline_samples_nv', infer_type=False,
+        default=('baseline_samples_nv', 'ONLINE', True), track=True,
+        help='Number of samples to use at the start of the pulse to determine '
+             'the baseline'),
     strax.Option(
         'min_samples_alt_baseline_nv',
         default=None, track=True, infer_type=False,

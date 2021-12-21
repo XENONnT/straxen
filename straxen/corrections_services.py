@@ -105,7 +105,6 @@ class CorrectionsManagementServices():
                              f"available {single_value_corrections}, {arrays_corrections} and "
                              f"{corrections_w_file} ")
 
-    # TODO add option to extract 'when'. Also, the start time might not be the best
     # entry for e.g. for super runs
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
@@ -248,7 +247,6 @@ class CorrectionsManagementServices():
                              f"Please contact CMT manager and yell at him")
         return file_name
 
-    # TODO change to st.estimate_start_time
     def get_start_time(self, run_id):
         """
         Smart logic to return start time from runsDB
