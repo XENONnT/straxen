@@ -7,19 +7,19 @@ export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
-    strax.Option('divide_90p_width', default=7,
+    strax.Option('divide_90p_width_localmin', default=7., type = float,
                  help="The peak is smoothed by dividing the 90p width by"
                       "this number, and coverting it into number of samples."
                       "This is then the 'n' used in the smoothing kernel"
                       "shown below."),
-    strax.Option('smoothing_power', default=3,
+    strax.Option('smoothing_power_localmin', default=3., type = float,
                  help="The power used in the smoothing filter with a kernel of"
                       "(1-(x/n)^p)^p, where p is the power"),
-    strax.Option('percentage_threshold', default=0.1,
+    strax.Option('percentage_threshold_localmin', default=0.1, type = float,
                  help="The height threshold for the peak as a percentage"
                       "of the maximum, used to reject the low parts"
                       "of the peak in order to find the local extrema."),
-    strax.Option('percent_valley_height', default=0.9,
+    strax.Option('percent_valley_height', default=0.9, type = float,
                  help="The percentage of the valley height of the deepest"
                       "valley for which to calculate the valley width"),
 )
@@ -32,7 +32,7 @@ class LocalMinimumInfo(strax.LoopPlugin):
 
     depends_on = ('event_basics', 'peaks')
     data_kind = 'events'
-    provides = 'local_min_info'
+    provides = 'event_local_min_info'
     parallel = 'process'
     compressor = 'zstd'
 
@@ -68,14 +68,14 @@ class LocalMinimumInfo(strax.LoopPlugin):
             p = peaks[event['s2_index']]
 
             smoothing_number = p['width'][9] / p['dt']
-            smoothing_number = np.ceil(smoothing_number / self.config['divide_90p_width'])
+            smoothing_number = np.ceil(smoothing_number / self.config['divide_90p_width_localmin'])
             smoothed_peak = power_smooth(p['data'][:p['length']],
                                          int(smoothing_number),
-                                         self.config['smoothing_power'])
+                                         self.config['smoothing_power_localmin'])
 
             # Set data below percentage threshold on both side to zeros
             left, right = bounds_above_percentage_height(smoothed_peak,
-                                                         self.config['percentage_threshold'])
+                                                         self.config['percentage_threshold_localmin'])
 
             # Maximum GOS calculation for data above percentage
             max_gos = np.max(natural_breaks_gof(p['data'][left: right],
@@ -121,7 +121,9 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     """
     n_gap = len(min_loc)
     p_length = len(smoothp)
-    if (len(max_loc) - n_gap) == 1 and len(min_loc):
+    if ~((len(max_loc) - n_gap) == 1 and len(min_loc)):
+        return 0, 0
+    else:
         gaps = np.zeros(n_gap)
         gap_heights = np.zeros(len(min_loc))
         for j in range(n_gap):
@@ -144,9 +146,6 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
         max_gap = np.max(gap_heights)
         valley_depth = gap_heights[np.argmax(gap_heights)]
         return max_gap * dt, valley_depth
-    else:
-        return 0, 0
-
 
 def bounds_above_percentage_height(p, percent):
     """
