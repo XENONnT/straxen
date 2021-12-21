@@ -441,8 +441,8 @@ def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
     dx = abs(x1 - x0)
 
     while (dx > err) and (max_iter > 0):
-        y0 = lbinom_pmf(x0, *args)
-        y1 = lbinom_pmf(x1, *args)
+        y0 = lbinom_pmf_diriv(x0, *args)
+        y1 = lbinom_pmf_diriv(x1, *args)
         dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
         max_iter -= 1
     return x1
@@ -456,8 +456,8 @@ def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
     dx = abs(x1 - x0)
 
     while (dx > err) and (max_iter > 0):
-        y0 = lbinom_pmf_diriv(x0, *args)
-        y1 = lbinom_pmf_diriv(x1, *args)
+        y0 = lbinom_pmf(x0, *args)
+        y1 = lbinom_pmf(x1, *args)
         dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
         max_iter -= 1
     return x1
