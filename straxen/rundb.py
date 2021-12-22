@@ -243,7 +243,6 @@ class RunDB(strax.StorageFrontend):
         projection.update({
             k: True
             for k in f'name number'.split()})
-
         results_dict = dict()
         for doc in self.collection.find(
                 {**run_query, **dq}, projection=projection):
