@@ -119,9 +119,10 @@ def open_resource(file_name: str, fmt='text'):
     :param fmt: format of the file
     :return: opened file
     """
+    cache_name = f'{fmt}://{file_name}'
     if file_name in _resource_cache:
         # Retrieve from in-memory cache
-        return _resource_cache[file_name]
+        return _resource_cache[cache_name]
     # File resource
     if fmt in ['npy', 'npy_pickle']:
         result = np.load(file_name, allow_pickle=fmt == 'npy_pickle')
@@ -161,7 +162,7 @@ def open_resource(file_name: str, fmt='text'):
         raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
-    _resource_cache[file_name] = result
+    _resource_cache[cache_name] = result
 
     return result
 
