@@ -207,9 +207,9 @@ def get_resource(x: str, fmt='text'):
         f'cannot download it from anywhere.')
 
 
-def _cache_name(name: str, format: str)->str:
+def _cache_name(name: str, fmt: str)->str:
     """Return a name under which to store the requested name with the given format in the _cache"""
-    return f'{format}::{name}'
+    return f'{fmt}::{name}'
 
 
 # Legacy loader for public URL files
