@@ -246,7 +246,7 @@ def xenonnt_simulation(
                 wfsim_registry='RawRecordsFromFaxNT',
                 cmt_run_id_sim=None,
                 cmt_run_id_proc=None,
-                cmt_version='global_v5',
+                cmt_version='global_ONLINE',
                 fax_config='fax_config_nt_design.json',
                 overwrite_from_fax_file_sim=False,
                 overwrite_from_fax_file_proc=False,

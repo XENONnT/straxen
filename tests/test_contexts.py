@@ -80,7 +80,34 @@ def test_xenon1t_led():
     st.search_field('time')
 
 
-@unittest.skipIf('ALLOW_WFSIM_TEST' not in os.environ, "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`")
+# Simulation contexts are only tested when special flags are set
+
+@unittest.skipIf('ALLOW_WFSIM_TEST' not in os.environ,
+                 "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`")
+class TestSimContextNT(unittest.TestCase):
+    @staticmethod
+    def context(*args, **kwargs):
+        kwargs.setdefault('cmt_version', 'global_ONLINE')
+        return straxen.contexts.xenonnt_simulation(*args, **kwargs)
+
+    def test_nt_sim_context_main(self):
+        st = self.context(cmt_run_id_sim='008000')
+        st.search_field('time')
+
+    def test_nt_sim_context_alt(self):
+        self.context(cmt_run_id_sim='008000', cmt_run_id_proc='008001')
+        self.context(cmt_run_id_sim='008000',
+                     cmt_option_overwrite_sim={'elife': 1e6})
+        self.context(cmt_run_id_sim='008000',
+                     cmt_option_overwrite_proc={'elife': 1e6})
+
+    def test_nt_sim_context_bad_inits(self):
+        with self.assertRaises(RuntimeError):
+            self.context(cmt_run_id_sim=None, cmt_run_id_proc=None,)
+
+
+@unittest.skipIf('ALLOW_WFSIM_TEST' not in os.environ,
+                 "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`")
 def test_sim_context():
-    st = straxen.contexts.xenonnt_simulation(cmt_run_id_sim='008000', cmt_version='global_ONLINE')
+    st = straxen.contexts.xenon1t_simulation()
     st.search_field('time')
