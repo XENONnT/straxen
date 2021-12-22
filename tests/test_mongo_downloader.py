@@ -7,6 +7,7 @@ import pymongo
 def mongo_uri_not_set():
     return 'TEST_MONGO_URI' not in os.environ
 
+
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
 class TestMongoDownloader(unittest.TestCase):
     """
@@ -58,10 +59,10 @@ class TestMongoDownloader(unittest.TestCase):
         file_content = 'This is a test'
         with open(file_name, 'w') as f:
             f.write(file_content)
-        self.assertTrue( os.path.exists(file_name))
+        self.assertTrue(os.path.exists(file_name))
         self.uploader.upload_from_dict({file_name: os.path.abspath(file_name)})
-        self.assertTrue( self.uploader.md5_stored(file_name))
-        self.assertTrue( self.downloader.config_exists(file_name))
+        self.assertTrue(self.uploader.md5_stored(file_name))
+        self.assertTrue(self.downloader.config_exists(file_name))
         path = self.downloader.download_single(file_name)
         path_hr = self.downloader.download_single(file_name, human_readable_file_name=True)
         abs_path = self.downloader.get_abs_path(file_name)
@@ -69,7 +70,7 @@ class TestMongoDownloader(unittest.TestCase):
         for p in [path, path_hr, abs_path]:
             self.assertTrue(os.path.exists(p))
         read_file = straxen.get_resource(path)
-        self.assertTrue( file_content == read_file)
+        self.assertTrue(file_content == read_file)
         os.remove(file_name)
         self.assertFalse(os.path.exists(file_name))
         self.downloader.test_find()
