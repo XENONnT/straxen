@@ -28,41 +28,44 @@ class TestRunDBFrontend(unittest.TestCase):
     """
     _run_test = True
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls) -> None:
         # Just to make sure we are running some mongo server, see test-class docstring
-        self.test_run_ids = ['0', '1']
-        self.all_targets = ('peaks', 'records')
+        cls.test_run_ids = ['0', '1']
+        cls.all_targets = ('peaks', 'records')
 
         uri = os.environ.get('TEST_MONGO_URI')
         db_name = 'test_rundb'
-        self.collection_name = 'test_rundb_coll'
+        cls.collection_name = 'test_rundb_coll'
         client = pymongo.MongoClient(uri)
-        self.database = client[db_name]
-        collection = self.database[self.collection_name]
-        self.path = os.path.join(tempfile.gettempdir(), 'strax_data')
-        assert self.collection_name not in self.database.list_collection_names()
+        cls.database = client[db_name]
+        collection = cls.database[cls.collection_name]
+        cls.path = os.path.join(tempfile.gettempdir(), 'strax_data')
+        # assert cls.collection_name not in cls.database.list_collection_names()
 
         if not straxen.utilix_is_configured():
             # Bit of an ugly hack but there is no way to get around this
             # function even though we don't need it
             straxen.rundb.utilix.rundb.xent_collection = lambda *args, **kwargs: collection
 
-        self.rundb_sf = straxen.RunDB(readonly=False,
-                                      runid_field='number',
-                                      new_data_path=self.path,
-                                      minimum_run_number=-1,
-                                      rucio_path='./strax_test_data',
-                                      )
-        self.rundb_sf.client = client
-        self.rundb_sf.collection = collection
+        cls.rundb_sf = straxen.RunDB(readonly=False,
+                                     runid_field='number',
+                                     new_data_path=cls.path,
+                                     minimum_run_number=-1,
+                                     rucio_path='./strax_test_data',
+                                     )
+        cls.rundb_sf.client = client
+        cls.rundb_sf.collection = collection
 
-        self.st = strax.Context(register=[Records, Peaks],
-                                storage=[self.rundb_sf],
-                                use_per_run_defaults=False,
-                                config=dict(bonus_area=0),
-                                )
+        cls.st = strax.Context(register=[Records, Peaks],
+                               storage=[cls.rundb_sf],
+                               use_per_run_defaults=False,
+                               config=dict(bonus_area=0),
+                               )
+
+    def setUp(self) -> None:
         for run_id in self.test_run_ids:
-            collection.insert_one(_rundoc_format(run_id))
+            self.collection.insert_one(_rundoc_format(run_id))
         assert not self.is_all_targets_stored
 
     def tearDown(self):
@@ -70,6 +73,10 @@ class TestRunDBFrontend(unittest.TestCase):
         if os.path.exists(self.path):
             print(f'rm {self.path}')
             shutil.rmtree(self.path)
+
+    @property
+    def collection(self):
+        return self.database[self.collection_name]
 
     @property
     def is_all_targets_stored(self) -> bool:
@@ -137,7 +144,7 @@ class TestRunDBFrontend(unittest.TestCase):
     def test_invalids(self):
         """Test a couble of invalid ways of passing arguments to the RunDB"""
         with self.assertRaises(ValueError):
-            straxen.RunDB(runid_field='numbersdfgsd',)
+            straxen.RunDB(runid_field='numbersdfgsd', )
         with self.assertRaises(ValueError):
             r = self.test_run_ids[0]
             keys = [self.st.key_for(r, t) for t in self.all_targets]
