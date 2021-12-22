@@ -119,10 +119,10 @@ def open_resource(file_name: str, fmt='text'):
     :param fmt: format of the file
     :return: opened file
     """
-    cache_name = f'{fmt}://{file_name}'
-    if file_name in _resource_cache:
+    cached_name = _cache_name(file_name, fmt)
+    if cached_name in _resource_cache:
         # Retrieve from in-memory cache
-        return _resource_cache[cache_name]
+        return _resource_cache[cached_name]
     # File resource
     if fmt in ['npy', 'npy_pickle']:
         result = np.load(file_name, allow_pickle=fmt == 'npy_pickle')
@@ -162,7 +162,7 @@ def open_resource(file_name: str, fmt='text'):
         raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
-    _resource_cache[cache_name] = result
+    _resource_cache[cached_name] = result
 
     return result
 
@@ -187,8 +187,9 @@ def get_resource(x: str, fmt='text'):
         specified format
     """
     # 1. load from memory
-    if x in _resource_cache:
-        return _resource_cache[x]
+    cached_name = _cache_name(x, fmt)
+    if cached_name in _resource_cache:
+        return _resource_cache[cached_name]
     # 2. load from file
     elif os.path.exists(x):
         return open_resource(x, fmt=fmt)
@@ -204,6 +205,11 @@ def get_resource(x: str, fmt='text'):
     raise FileNotFoundError(
         f'Cannot open {x} because it is either not stored or we '
         f'cannot download it from anywhere.')
+
+
+def _cache_name(name: str, format: str)->str:
+    """Return a name under which to store the requested name with the given format in the _cache"""
+    return f'{format}::{name}'
 
 
 # Legacy loader for public URL files

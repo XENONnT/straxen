@@ -28,5 +28,11 @@ class TestGetResourceFmt(TestCase):
         """
         json_as_text = get_resource(self.json_file, fmt='text')
         self.assertIsInstance(json_as_text, str)
+        # load it from memory
+        json_as_text_from_mem = get_resource(self.json_file, fmt='text')
+        self.assertEqual(json_as_text, json_as_text_from_mem)
+
+        # Now let's check out if we do a JSON file
         json_as_dict = get_resource(self.json_file, fmt='json')
         self.assertIsInstance(json_as_dict, dict)
+        self.assertEqual(json_as_dict, get_resource(self.json_file, fmt='json'))
