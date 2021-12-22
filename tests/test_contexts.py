@@ -99,7 +99,11 @@ class TestSimContextNT(unittest.TestCase):
         self.context(cmt_run_id_sim='008000',
                      cmt_option_overwrite_sim={'elife': 1e6})
         self.context(cmt_run_id_sim='008000',
-                     overwrite_fax_file_proc={'elife': 1e6})
+                     cmt_option_overwrite_sim={'elife': 1e6},
+                     cmt_option_overwrite_proc={'elife': 1e5},
+                     overwrite_fax_file_sim=True,
+                     overwrite_fax_file_proc=True,
+                     )
         self.context(cmt_run_id_sim='008000',
                      overwrite_fax_file_sim={'elife': 1e6})
 
