@@ -315,7 +315,7 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
 
 @export
 def check_loading_allowed(data, run_id, target,
-                          max_in_disallowed = 1,
+                          max_in_disallowed=1,
                           disallowed=('event_positions',
                                       'corrected_areas',
                                       'energy_estimates')
@@ -368,16 +368,6 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     remap = get_resource(
         aux_repo + '/ecb6da7bd4deb98cd0a4e83b3da81c1e67505b16/remapped_channels_since_20200729_17.20UTC.csv',
         fmt='csv')
-
-    def wr_tqdm(x):
-        """Wrap input x with tqdm"""
-        if _tqdm:
-            try:
-                return tqdm.tqdm_notebook(x)
-            except (AttributeError, ModuleNotFoundError, ImportError):
-                # ok, sorry lets not wrap but return x
-                pass
-        return x
 
     def convert_channel(_data, replace=('channel', 'max_pmt')):
         """
@@ -458,7 +448,7 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
             return channel_data
         # Create a buffer to overright
         buffer = channel_data.copy()
-        for k in wr_tqdm(get_dtypes(channel_data)):
+        for k in strax.utils.tqdm(get_dtypes(channel_data), disable=not _tqdm):
             if np.iterable(channel_data[k][0]) and len(channel_data[k][0]) == n_chs:
                 if verbose:
                     print(f'convert_channel_like::\tupdate {k}')
