@@ -289,7 +289,7 @@ def xenonnt_simulation(
         parameters for truth/raw_records from from fax_config file istead of CMT
     :param overwrite_from_fax_file_proc:  If true sets detector processing
         parameters after raw_records(peaklets/events/etc) from from fax_config
-        file istead of CMT
+        file instead of CMT
     :param cmt_option_overwrite_sim: Dictionary to overwrite CMT settings for
         the detector simulation part.
     :param cmt_option_overwrite_proc: Dictionary to overwrite CMT settings for

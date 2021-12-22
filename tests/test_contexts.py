@@ -95,17 +95,31 @@ class TestSimContextNT(unittest.TestCase):
         st.search_field('time')
 
     def test_nt_sim_context_alt(self):
+        """Some examples of how to run with a custom WFSim context"""
         self.context(cmt_run_id_sim='008000', cmt_run_id_proc='008001')
         self.context(cmt_run_id_sim='008000',
                      cmt_option_overwrite_sim={'elife': 1e6})
-        self.context(cmt_run_id_sim='008000',
-                     cmt_option_overwrite_sim={'elife': 1e6},
-                     cmt_option_overwrite_proc={'elife': 1e5},
-                     overwrite_fax_file_sim=True,
-                     overwrite_fax_file_proc=True,
-                     )
+
         self.context(cmt_run_id_sim='008000',
                      overwrite_fax_file_sim={'elife': 1e6})
+
+    def test_nt_diverging_context_options(self):
+        """
+        Test diverging options. Idea is that you can use different
+        settings for processing and generating data, should have been
+        handled by RawRecordsFromWFsim but is now hacked into the
+        xenonnt_simulation context
+
+        Just to show how convoluted this syntax for the
+        xenonnt_simulation context / CMT is...
+        """
+        self.context(cmt_run_id_sim='008000',
+                     cmt_option_overwrite_sim={'elife': ('elife_constant', 1e6, True)},
+                     cmt_option_overwrite_proc={'elife': ('elife_constant', 1e5, True)},
+                     overwrite_from_fax_file_proc=True,
+                     overwrite_from_fax_file_sim=True,
+                     _config_overlap={'electron_lifetime_liquid': 'elife'},
+                     )
 
     def test_nt_sim_context_bad_inits(self):
         with self.assertRaises(RuntimeError):
