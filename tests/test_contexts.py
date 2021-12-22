@@ -99,7 +99,9 @@ class TestSimContextNT(unittest.TestCase):
         self.context(cmt_run_id_sim='008000',
                      cmt_option_overwrite_sim={'elife': 1e6})
         self.context(cmt_run_id_sim='008000',
-                     cmt_option_overwrite_proc={'elife': 1e6})
+                     overwrite_fax_file_proc={'elife': 1e6})
+        self.context(cmt_run_id_sim='008000',
+                     overwrite_fax_file_sim={'elife': 1e6})
 
     def test_nt_sim_context_bad_inits(self):
         with self.assertRaises(RuntimeError):
