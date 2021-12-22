@@ -150,9 +150,9 @@ def test_replace_url_version():
     """
     Tests the replace_url_version function which is important in apply_cmt_version
     """
-    url = 'cmt://elife?version=ONLINE?run_id=plugin.run_id'
-    url_check = 'cmt://elife?version=v1?run_id=plugin.run_id'
-    url_test = straxen.replace_url_version(url, 'v1')
+    url = 'cmt://elife?version=ONLINE&run_id=plugin.run_id'
+    url_check = 'cmt://elife?version=v1&run_id=plugin.run_id'
+    url_test = straxen.corrections_services.replace_url_version(url, 'v1')
     if url_check != url_test:
         msg = "replace_url_version did not do its job! " \
               f"it returns:\n{url_test}\nwhen it should return:\n{url_check}"
