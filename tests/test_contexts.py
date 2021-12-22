@@ -18,10 +18,10 @@ def test_xenonnt_online():
     st.search_field('time')
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_xennonnt():
-    if straxen.utilix_is_configured():
-        st = xenonnt(_database_init=False)
-        st.search_field('time')
+    st = xenonnt(_database_init=False)
+    st.search_field('time')
 
 
 def test_xenonnt_led():
@@ -94,6 +94,7 @@ class TestSimContextNT(unittest.TestCase):
         st = self.context(cmt_run_id_sim='008000')
         st.search_field('time')
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_sim_context_alt(self):
         """Some examples of how to run with a custom WFSim context"""
         self.context(cmt_run_id_sim='008000', cmt_run_id_proc='008001')
@@ -103,6 +104,7 @@ class TestSimContextNT(unittest.TestCase):
         self.context(cmt_run_id_sim='008000',
                      overwrite_fax_file_sim={'elife': 1e6})
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_diverging_context_options(self):
         """
         Test diverging options. Idea is that you can use different
