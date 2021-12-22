@@ -240,7 +240,7 @@ class DAQReader(strax.Plugin):
                     # We still have to break somewhere, but this can involve
                     # throwing away data.
                     # Let's do it at the end of the chunk
-                    # TODO: find a better time, e.g. a longish-but-not-quite
+                    # Maybe find a better time, e.g. a longish-but-not-quite
                     # satisfactory gap
                     break_time = end - min_gap
 
