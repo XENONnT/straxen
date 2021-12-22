@@ -156,20 +156,46 @@ def _is_cmt_option(run_id, config):
 def get_cmt_options(context):
     """
     Function which loops over all plugin configs and returns dictionary
-    with option name as key and current settings as values.
+    with option name as key and a nested dict of CMT correction name and version as values.
 
     :param context: Context with registered plugins.
     """
+
     cmt_options = {}
+    runid_test_str = 'norunids!'
+
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
             if (option_key in context.config and
-                is_cmt_option(context.config[option_key])
-                ):
-                cmt_options[option_key] = context.config[option_key]
-            elif is_cmt_option(option.default):
-                cmt_options[option_key] = option.default
+                    is_cmt_option(context.config[option_key])
+            ):
+                opt = context.config[option_key]
 
+            elif is_cmt_option(option.default):
+                opt = option.default
+
+            else:
+                continue
+
+            # check if it's a URLConfig
+            if isinstance(opt, str) and 'cmt://' in opt:
+                before_cmt, cmt, after_cmt = opt.partition('cmt://')
+                p = context.get_single_plugin(runid_test_str, data_type)
+                url_config = p.takes_config[option_key]
+                url, url_kwargs = url_config.split_url_kwargs(after_cmt)
+                kwargs = {k: url_config.fetch_attribute(p, v) for k, v in url_kwargs.items()}
+                correction_name = url_config.dispatch(url, **kwargs)
+                version = kwargs.get('version', 'ONLINE')
+                cmt_options[option_key] = {'correction': correction_name,
+                                           'version': version,
+                                           'strax_option': opt
+                                           }
+
+            else:
+                cmt_options[option_key] = {'correction': opt[0],
+                                           'version': opt[1],
+                                           'strax_option':  opt
+                                           }
     return cmt_options
 
 

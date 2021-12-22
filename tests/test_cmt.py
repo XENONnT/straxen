@@ -141,3 +141,19 @@ def test_is_cmt_option():
     """
     dummy_option = ('hit_thresholds_tpc', 'ONLINE', True)
     assert straxen.is_cmt_option(dummy_option), 'Structure of CMT options changed!'
+
+    dummy_url_config = 'cmt://correction?version=ONLINE&run_id=plugin.run_id'
+    assert straxen.is_cmt_option(dummy_url_config), 'Structure of CMT options changed!'
+
+
+def test_replace_url_version():
+    """
+    Tests the replace_url_version function which is important in apply_cmt_version
+    """
+    url = 'cmt://elife?version=ONLINE?run_id=plugin.run_id'
+    url_check = 'cmt://elife?version=v1?run_id=plugin.run_id'
+    url_test = straxen.replace_url_version(url, 'v1')
+    if url_check != url_test:
+        msg = "replace_url_version did not do its job! " \
+              f"it returns:\n{url_test}\nwhen it should return:\n{url_check}"
+        raise AssertionError(msg)
