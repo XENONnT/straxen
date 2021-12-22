@@ -6,7 +6,7 @@ coveralls==3.3.1
 commentjson==0.9.0
 coverage==6.2
 datashader==0.13.0
-dask==2021.11.2
+dask==2021.12.0
 dill==0.3.4                                     # Strax dependency
 flake8==4.0.1
 gitpython==3.1.18
@@ -33,6 +33,6 @@ tensorflow==2.7.0
 typing_extensions==3.10.0                       # Tensorflow/bokeh depencency
 tqdm==4.62.2
 utilix==0.6.5
-wfsim==0.5.11
+wfsim==0.5.12
 xarray==0.20.2
 zstd==1.5.0.4                                   # Strax dependency
