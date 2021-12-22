@@ -2,14 +2,13 @@ import ast
 import configparser
 import gzip
 import inspect
+import typing as ty
 import commentjson
 import json
 import os
 import os.path as osp
 import pickle
 import dill
-import socket
-import sys
 import urllib.request
 import tqdm
 import numpy as np
@@ -24,7 +23,7 @@ export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
             'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E',
             'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius', 'cryostat_outer_radius',
-            'perp_wire_angle', 'perp_wire_x_rot_pos','INFINITY_64BIT_SIGNED']
+            'perp_wire_angle', 'perp_wire_x_rot_pos', 'INFINITY_64BIT_SIGNED']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -44,7 +43,7 @@ n_mveto_pmts = 84
 tpc_pmt_radius = 7.62 / 2  # cm
 
 perp_wire_angle = np.deg2rad(30)
-perp_wire_x_rot_pos = 13.06 #[cm]
+perp_wire_x_rot_pos = 13.06  #[cm]
 
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
@@ -57,15 +56,30 @@ TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
 INFINITY_64BIT_SIGNED = 9223372036854775807
 
+
 @export
-def rotate_perp_wires(x_obs, y_obs, angle_extra = 0):
-    """Returns x and y in the rotated plane where the perpendicular wires 
-    area vertically aligned (parallel to the y-axis). Accepts addid to the 
-    rotation angle with `angle_extra` [deg]"""
+def rotate_perp_wires(x_obs: np.ndarray,
+                      y_obs: np.ndarray,
+                      angle_extra: ty.Union[float, int] = 0):
+    """
+    Returns x and y in the rotated plane where the perpendicular wires
+    area vertically aligned (parallel to the y-axis). Accepts addition to the
+    rotation angle with `angle_extra` [deg]
+
+    :param x_obs: array of x coordinates
+    :param y_obs: array of y coordinates
+    :param angle_extra: extra rotation in [deg]
+    :return: x_rotated, y_rotated
+    """
+    if len(x_obs) != len(y_obs):
+        raise ValueError('x and y are not of the same length')
     angle_extra_rad = np.deg2rad(angle_extra)
-    x_rot = np.cos(perp_wire_angle + angle_extra_rad) * x_obs - np.sin(perp_wire_angle + angle_extra_rad) * y_obs
-    y_rot = np.sin(perp_wire_angle + angle_extra_rad) * x_obs + np.cos(perp_wire_angle + angle_extra_rad) * y_obs
+    x_rot = (np.cos(perp_wire_angle + angle_extra_rad) * x_obs
+             - np.sin(perp_wire_angle + angle_extra_rad) * y_obs)
+    y_rot = (np.sin(perp_wire_angle + angle_extra_rad) * x_obs
+             + np.cos(perp_wire_angle + angle_extra_rad) * y_obs)
     return x_rot, y_rot
+
 
 @export
 def pmt_positions(xenon1t=False):
@@ -297,11 +311,6 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
         _resource_cache[function_name] = locals().get(function_name)
     data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
     return data
-
-
-def _overwrite_testing_function_file(function_file):
-    warn('Use straxen.test_utils._overwrite_testing_function_file')
-    return straxen._overwrite_testing_function_file(function_file)
 
 
 @export
