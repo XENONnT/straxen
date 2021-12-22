@@ -1,6 +1,4 @@
 import unittest
-import warnings
-
 import strax
 from strax.testutils import Records, Peaks
 import straxen
@@ -13,6 +11,7 @@ import datetime
 
 def mongo_uri_not_set():
     return 'TEST_MONGO_URI' not in os.environ
+
 
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
 class TestRunDBFrontend(unittest.TestCase):
@@ -127,6 +126,7 @@ class TestRunDBFrontend(unittest.TestCase):
             st.select_runs(available='peaks')
 
     def test_fuzzy(self):
+        """See that fuzzy for does not work yet with the RunDB"""
         fuzzy_st = self.st.new_context(fuzzy_for=self.all_targets)
         with self.assertWarns(UserWarning):
             fuzzy_st.is_stored(self.test_run_ids[0], self.all_targets[0])
@@ -135,13 +135,16 @@ class TestRunDBFrontend(unittest.TestCase):
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
 
     def test_invalids(self):
+        """Test a couble of invalid ways of passing arguments to the RunDB"""
         with self.assertRaises(ValueError):
             straxen.RunDB(runid_field='numbersdfgsd',)
         with self.assertRaises(ValueError):
-            keys = [self.st.key_for(self.test_run_ids[0], t) for t in self.all_targets]
+            r = self.test_run_ids[0]
+            keys = [self.st.key_for(r, t) for t in self.all_targets]
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
 
     def test_rucio_format(self):
+        """Test that document retrieval works for rucio files in the RunDB"""
         rucio_id = '999999'
         target = self.all_targets[-1]
         key = self.st.key_for(rucio_id, target)
@@ -153,7 +156,7 @@ class TestRunDBFrontend(unittest.TestCase):
                        'status': 'transferred',
                        'did': did,
                        'number': int(rucio_id),
-                       'type': target
+                       'type': target,
                        }]
         self.database[self.collection_name].insert_one(rd)
 
@@ -164,8 +167,8 @@ class TestRunDBFrontend(unittest.TestCase):
                                 allow_incomplete=False,
                                 fuzzy_for=None,
                                 fuzzy_for_options=None,
-                                )[1] == did
-                        )
+                                )[1] == did,
+        )
         with self.assertRaises(strax.DataNotAvailable):
             # Although we did insert a document, we should get a data
             # not available error as we did not actually save any data
