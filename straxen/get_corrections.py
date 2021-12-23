@@ -178,19 +178,23 @@ def get_cmt_options(context):
             if isinstance(opt, str) and 'cmt://' in opt:
                 before_cmt, cmt, after_cmt = opt.partition('cmt://')
                 p = context.get_single_plugin(runid_test_str, data_type)
-                url_config = p.takes_config[option_key]
-                url, url_kwargs = url_config.split_url_kwargs(after_cmt)
-                kwargs = {k: url_config.fetch_attribute(p, v) for k, v in url_kwargs.items()}
-                correction_name = url_config.dispatch(url, **kwargs)
-                version = kwargs.get('version', 'ONLINE')
+                p.config[option_key] = after_cmt
+                correction_name = getattr(p, option_key)
+                # make sure the correction name does not depend on runid
+                if runid_test_str in correction_name:
+                    raise RuntimeError("Correction names should not depend on runids! "
+                                       f"Please check your option for {option_key}")
+
+                # if there is no other protocol being called before cmt,
+                # we will get a string back including the query part
+                if option.QUERY_SEP in correction_name:
+                    correction_name, _ = option.split_url_kwargs(correction_name)
                 cmt_options[option_key] = {'correction': correction_name,
-                                           'version': version,
                                            'strax_option': opt,
                                            }
 
             else:
                 cmt_options[option_key] = {'correction': opt[0],
-                                           'version': opt[1],
                                            'strax_option': opt,
                                            }
     return cmt_options
