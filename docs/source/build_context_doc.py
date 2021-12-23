@@ -13,7 +13,7 @@ Below, all of the contexts functions are shown including the
 
 Contexts documentation
 ----------------------
-Auto generated documention of all the context functions
+Auto generated documention of all the context functions including minianalyses
 
 
 .. automodule:: strax.context
