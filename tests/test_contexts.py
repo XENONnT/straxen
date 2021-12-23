@@ -84,3 +84,8 @@ def test_xenon1t_led():
 def test_sim_context():
     st = straxen.contexts.xenonnt_simulation(cmt_run_id_sim='008000', cmt_version='global_ONLINE')
     st.search_field('time')
+
+
+def test_offline():
+    st = xenonnt('latest')
+    dtypes = st.provided_dtypes()
