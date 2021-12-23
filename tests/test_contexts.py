@@ -86,6 +86,7 @@ def test_sim_context():
     st.search_field('time')
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_offline():
     st = xenonnt('latest')
-    dtypes = st.provided_dtypes()
+    st.provided_dtypes()
