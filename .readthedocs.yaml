@@ -12,6 +12,7 @@ sphinx:
 
 python:
   # Install our python package before building the docs
+  # NB, this is not the default path for sphinx builds
   install:
   - requirements: extra_requirements/requirements-tests.txt
   - method: pip
