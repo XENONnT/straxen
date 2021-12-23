@@ -26,33 +26,22 @@ class TooMuchDataError(Exception):
 
 
 @export
-class RucioFrontend(strax.StorageFrontend):
+class LocalRucioFrontend(strax.StorageFrontend):
     """
-    Uses the rucio client for the data find.
-    """
-    local_rses = {'UC_DALI_USERDISK': r'.rcc.',
-                  'SDSC_USERDISK': r'.sdsc.'
-                  }
-    local_did_cache = None
-    path = None
-    local_prefixes = {'UC_DALI_USERDISK': '/dali/lgrandi/rucio/',
-                      'SDSC_USERDISK': '/expanse/lustre/projects/chi135/shockley/rucio',
-                      }
+    Storage that loads from rucio by assuming the rucio file naming
+    convention without access to the rucio database.
 
-    def __init__(self,
-                 include_remote=False,
-                 download_heavy=False,
-                 staging_dir='./strax_data',
-                 *args, **kwargs):
-        """
-        :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites
-        :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
-        :param args: Passed to strax.StorageFrontend
-        :param kwargs: Passed to strax.StorageFrontend
-        """
-        super().__init__(*args, **kwargs)
-        self.readonly = True
-        self.collection = xent_collection()
+    Normally, you don't need this StorageFrontend as it should return
+    the same data as the RunDB frontend
+    """
+    storage_type = strax.StorageType.LOCAL
+    # Todo fix duplication
+    local_prefixes = {
+        'UC_DALI_USERDISK': '/dali/lgrandi/rucio/',
+        'SDSC_USERDISK': '/expanse/lustre/projects/chi135/shockley/rucio',
+    }
+
+    def __init__(self, *args, **kwargs):
 
         # check if there is a local rse for the host we are running on
         hostname = socket.getfqdn()
@@ -63,39 +52,12 @@ class RucioFrontend(strax.StorageFrontend):
                     raise ValueError(f"The regex {host_regex} matches two RSEs {rse} and {local_rse}. "
                                      f"I'm not sure what to do with that.")
                 local_rse = rse
-
-        self.local_rse = local_rse
-        self.include_remote = include_remote
-
-        self.backends = []
-        if local_rse:
-            # get the rucio prefix for the local rse, and setup strax
-            # rucio backend to read from that path
-            rucio_prefix = self.get_rse_prefix(local_rse)
-            self.backends.append(RucioLocalBackend(rucio_prefix))
-            self.path = rucio_prefix
-
-        if include_remote:
-            if not HAVE_ADMIX:
-                self.log.warning("You passed use_remote=True to rucio fronted, "
-                                 "but you don't have access to admix/rucio! Using local backed only.")
-            else:
-                self.backends.append(RucioRemoteBackend(staging_dir,
-                                                        download_heavy=download_heavy))
-
-    def __repr__(self):
-        # List the relevant attributes
-        attributes = ('include_remote', 'readonly', 'path', 'exclude', 'take_only')
-        representation = f'{self.__class__.__module__}.{self.__class__.__name__}'
-        for attr in attributes:
-            if hasattr(self, attr) and getattr(self, attr):
-                representation += f', {attr}: {getattr(self, attr)}'
-        return representation
-
-    def find_several(self, keys, **kwargs):
-        # for performance, dont do find_several with this plugin
-        # we basically do the same query we would do in the RunDB plugin
-        return np.zeros_like(keys, dtype=bool).tolist()
+        super().__init__(*args, **kwargs)
+        # This frontend is naive, neither smart nor flexible
+        self.readonly = True
+        self.path = self.local_prefixes[local_rse]
+        self.backends = [strax.storage.rucio.rucio(self.path)]
+    # end TODO
 
     def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
         did = key_to_rucio_did(key)
@@ -105,13 +67,6 @@ class RucioFrontend(strax.StorageFrontend):
                                f'continuous')
         if self.did_is_local(did):
             return "RucioLocalBackend", did
-        elif self.include_remote:
-            try:
-                rules = admix.rucio.list_rules(did, state="OK")
-                if len(rules):
-                    return "RucioRemoteBackend", did
-            except DataIdentifierNotFound:
-                pass
 
         if fuzzy_for or fuzzy_for_options:
             matches_to = self._match_fuzzy(key,
@@ -121,22 +76,6 @@ class RucioFrontend(strax.StorageFrontend):
                 return matches_to
 
         raise strax.DataNotAvailable
-
-    def find(self, key: strax.DataKey,
-             write=False,
-             check_broken=False,
-             allow_incomplete=False,
-             fuzzy_for=tuple(), fuzzy_for_options=tuple()):
-        return super().find(key, write, check_broken, allow_incomplete, fuzzy_for, fuzzy_for_options)
-
-    def get_rse_prefix(self, rse):
-        if HAVE_ADMIX:
-            prefix = admix.rucio.get_rse_prefix(rse)
-        elif self.local_rse in self.local_prefixes:
-            prefix = self.local_prefixes[self.local_rse]
-        else:
-            raise ValueError(f'We are not on dali nor expanse and thus cannot load rucio')
-        return prefix
 
     def did_is_local(self, did):
         """
@@ -172,9 +111,9 @@ class RucioFrontend(strax.StorageFrontend):
                      fuzzy_for: tuple,
                      fuzzy_for_options: tuple,
                      ) -> tuple:
-        # fuzzy for local backend
-        pattern = os.path.join(self.get_rse_prefix(self.local_rse),
-                               f'xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
+        pattern = os.path.join(
+            self.get_rse_prefix(self.local_rse),
+            f'xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
         mds = glob.glob(pattern)
         for md in mds:
             md_dict = read_md(md)
@@ -187,12 +126,101 @@ class RucioFrontend(strax.StorageFrontend):
                 did = f'xnt_{key.run_id}:{key.data_type}-{fuzzy_lineage_hash}'
                 self.log.warning(f'Was asked for {key} returning {md}')
                 if self._all_chunk_stored(md_dict, did):
-                    return 'RucioLocalBackend', did
+                    return self.backends[0].__class__.__name__, did
+
+
+@export
+class RemoteRucioFrontend(strax.StorageFrontend):
+    """
+    Uses the rucio client for the data find.
+    """
+
+    storage_type = strax.StorageType.REMOTE
+    local_rses = {'UC_DALI_USERDISK': r'.rcc.',
+                  'SDSC_USERDISK': r'.sdsc.'
+                  }
+    local_did_cache = None
+    path = None
+    local_prefixes = {'UC_DALI_USERDISK': '/dali/lgrandi/rucio/',
+                      'SDSC_USERDISK': '/expanse/lustre/projects/chi135/shockley/rucio',
+                      }
+
+    def __init__(self,
+                 include_remote=True,
+                 download_heavy=False,
+                 staging_dir='./strax_data',
+                 *args, **kwargs):
+        """
+        :param include_remote: Flag specifying whether or not to allow rucio downloads from remote sites
+        :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
+        :param args: Passed to strax.StorageFrontend
+        :param kwargs: Passed to strax.StorageFrontend
+        """
+        super().__init__(*args, **kwargs)
+        self.readonly = True
+        self.collection = xent_collection()
+
+        # check if there is a local rse for the host we are running on
+        hostname = socket.getfqdn()
+        local_rse = None
+        for rse, host_regex in self.local_rses.items():
+            if re.search(host_regex, hostname):
+                if local_rse is not None:
+                    raise ValueError(f"The regex {host_regex} matches two RSEs {rse} and {local_rse}. "
+                                     f"I'm not sure what to do with that.")
+                local_rse = rse
+
+        self.local_rse = local_rse
+        self.include_remote = include_remote
+
+        self.backends = []
+
+        if not include_remote:
+            raise ValueError
+        if HAVE_ADMIX:
+            self.backends = [
+                RucioRemoteBackend(staging_dir, download_heavy=download_heavy),
+            ]
+        else:
+            self.log.warning("You passed use_remote=True to rucio fronted, "
+                             "but you don't have access to admix/rucio! Using local backed only.")
+
+    def find_several(self, keys, **kwargs):
+        # for performance, dont do find_several with this storage frontend
+        # we basically do the same query we would do in the RunDB plugin
+        return np.zeros_like(keys, dtype=bool).tolist()
+
+    def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
+        did = key_to_rucio_did(key)
+        if allow_incomplete or write:
+            raise RuntimeError(f'Allow incomplete/writing is not allowed for '
+                               f'{self.__class.__name__} since data might not be '
+                               f'continuous')
+        try:
+            rules = admix.rucio.list_rules(did, state="OK")
+            if len(rules):
+                return "RucioRemoteBackend", did
+        except DataIdentifierNotFound:
+            pass
+
+        raise strax.DataNotAvailable
+
+    def find(self,
+             key: strax.DataKey,
+             write=False,
+             check_broken=False,
+             **kwargs):
+        # Overwrite defaults of super().find()
+        return super().find(key, write, check_broken, **kwargs)
+
+    def get_rse_prefix(self, rse):
+        return admix.rucio.get_rse_prefix(rse)
 
 
 @export
 class RucioLocalBackend(strax.FileSytemBackend):
     """Get data from local rucio RSE"""
+
     def __init__(self, rucio_dir, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rucio_dir = rucio_dir
@@ -236,21 +264,23 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
     def __init__(self, staging_dir, download_heavy=False, **kwargs):
         """
-        :param staging_dir: Path (a string) where to save data. Must be a writable location.
-        :param download_heavy: Whether or not to allow downloads of the heaviest data (raw_records*, less aqmon and MV)
+        :param staging_dir: Path (a string) where to save data. Must be
+            a writable location.
+        :param download_heavy: Whether or not to allow downloads of the
+            heaviest data (raw_records*, less aqmon and MV)
         :param **kwargs: Passed to strax.FileSystemBackend
         """
-
+        mess = (f"You told the rucio backend to download data to {staging_dir}, "
+                f"but that path is not writable by your user")
         if os.path.exists(staging_dir):
             if not os.access(staging_dir, os.W_OK):
-                raise PermissionError(f"You told the rucio backend to download data to {staging_dir}, "
-                                      f"but that path is not writable by your user")
+
+                raise PermissionError(mess)
         else:
             try:
                 os.makedirs(staging_dir)
             except OSError:
-                raise PermissionError(f"You told the rucio backend to download data to {staging_dir}, "
-                                      f"but that path is not writable by your user")
+                raise PermissionError(mess)
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
@@ -265,7 +295,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
         metadata_did = f'{dset_did}-metadata.json'
         downloaded = admix.download(metadata_did, rse=rse, location=self.staging_dir)
-        assert len(downloaded) == 1, f"{metadata_did} should be a single file. We found {len(downloaded)}."
+        if len(downloaded) != 1:
+            raise ValueError(f"{metadata_did} should be a single file. "
+                             f"We found {len(downloaded)}.")
         metadata_path = downloaded[0]
         # check again
         if not os.path.exists(metadata_path):
@@ -298,7 +330,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 self.dset_cache[dset_did] = rse
 
             downloaded = admix.download(chunk_did, rse=rse, location=self.staging_dir)
-            assert len(downloaded) == 1, f"{chunk_did} should be a single file. We found {len(downloaded)}."
+            if len(downloaded) != 1:
+                raise ValueError(f"{chunk_did} should be a single file. "
+                                 f"We found {len(downloaded)}.")
             assert chunk_path == downloaded[0]
 
         # check again
@@ -308,14 +342,14 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         return strax.load_file(chunk_path, dtype=dtype, compressor=compressor)
 
     def _saver(self, dirname, metadata, **kwargs):
-        raise NotImplementedError("Cannot save directly into rucio (yet), upload with admix instead")
+        raise NotImplementedError("Cannot save directly into rucio (yet), "
+                                  "upload with admix instead")
 
 
 class RucioSaver(strax.Saver):
     """
     TODO Saves data to rucio if you are the production user
     """
-
     def __init__(self, *args, **kwargs):
         raise NotImplementedError
 

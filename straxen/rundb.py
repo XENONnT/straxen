@@ -23,6 +23,8 @@ class RunDB(strax.StorageFrontend):
     """
     Frontend that searches RunDB MongoDB for data.
     """
+
+    storage_type = strax.StorageType.LOCAL
     # Dict of alias used in rundb: regex on hostname
     hosts = {
         'dali': r'^dali.*rcc.*',
