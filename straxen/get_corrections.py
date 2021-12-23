@@ -156,7 +156,7 @@ def _is_cmt_option(run_id, config):
 def get_cmt_options(context):
     """
     Function which loops over all plugin configs and returns dictionary
-    with option name as key and a nested dict of CMT correction name and version as values.
+    with option name as key and a nested dict of CMT correction name and strax option as values.
 
     :param context: Context with registered plugins.
     """
