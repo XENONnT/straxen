@@ -26,7 +26,7 @@ class TooMuchDataError(Exception):
 
 
 @export
-class LocalRucioFrontend(strax.StorageFrontend):
+class RucioLocalFrontend(strax.StorageFrontend):
     """
     Storage that loads from rucio by assuming the rucio file naming
     convention without access to the rucio database.
@@ -56,7 +56,7 @@ class LocalRucioFrontend(strax.StorageFrontend):
         # This frontend is naive, neither smart nor flexible
         self.readonly = True
         self.path = self.local_prefixes[local_rse]
-        self.backends = [strax.storage.rucio.rucio(self.path)]
+        self.backends = [RucioLocalBackend(self.path)]
     # end TODO
 
     def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
@@ -66,7 +66,7 @@ class LocalRucioFrontend(strax.StorageFrontend):
                                f'{self.__class.__name__} since data might not be '
                                f'continuous')
         if self.did_is_local(did):
-            return "RucioLocalBackend", did
+            return self.backends[0].__class__.__name__, did
 
         if fuzzy_for or fuzzy_for_options:
             matches_to = self._match_fuzzy(key,
@@ -130,7 +130,7 @@ class LocalRucioFrontend(strax.StorageFrontend):
 
 
 @export
-class RemoteRucioFrontend(strax.StorageFrontend):
+class RucioRemoteFrontend(strax.StorageFrontend):
     """
     Uses the rucio client for the data find.
     """

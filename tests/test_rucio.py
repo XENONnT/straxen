@@ -3,7 +3,7 @@ import unittest
 import strax
 import socket
 
-
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -15,9 +15,10 @@ class TestBasics(unittest.TestCase):
             return
         if 'rcc' not in socket.getfqdn():
             # If we are not on RCC, for testing, add some dummy site
-            straxen.RucioFrontend.local_rses = {'UC_DALI_USERDISK': r'.rcc.',
-                                                'test_rucio': f'{socket.getfqdn()}'}
-            straxen.RucioFrontend.get_rse_prefix = lambda *x: 'test_rucio'
+            straxen.RucioLocalFrontend.local_rses = {'UC_DALI_USERDISK': r'.rcc.',
+                                                     'test_rucio': f'{socket.getfqdn()}'}
+            straxen.RucioLocalFrontend.local_prefixes = {'test_rucio': r'./rucio_test'}
+            straxen.RucioLocalFrontend.get_rse_prefix = lambda *x: 'test_rucio'
 
         # Some non-existing keys that we will try finding in the test cases.
         cls.test_keys = [
@@ -28,7 +29,6 @@ class TestBasics(unittest.TestCase):
             for run_id in ('-1', '-2')
         ]
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_load_context_defaults(self):
         """Don't fail immediately if we start a context due to Rucio"""
         st = straxen.contexts.xenonnt_online(_minimum_run_number=10_000,
@@ -36,10 +36,9 @@ class TestBasics(unittest.TestCase):
                                              )
         st.select_runs()
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_find_local(self):
         """Make sure that we don't find the non existing data"""
-        rucio = straxen.RucioFrontend(include_remote=False,)
+        rucio = straxen.RucioLocalFrontend()
         self.assertRaises(strax.DataNotAvailable,
                           rucio.find,
                           self.test_keys[0]
@@ -48,7 +47,7 @@ class TestBasics(unittest.TestCase):
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_find_several_local(self):
         """Let's try finding some keys (won't be available)"""
-        rucio = straxen.RucioFrontend(include_remote=False,)
+        rucio = straxen.RucioLocalFrontend()
         print(rucio)
         found = rucio.find_several(self.test_keys)
         # We shouldn't find any of these
@@ -62,7 +61,7 @@ class TestBasics(unittest.TestCase):
         shouldn't find any data.
         """
         try:
-            rucio = straxen.RucioFrontend(include_remote=True,)
+            rucio = straxen.RucioLocalFrontend()
         except ImportError:
             pass
         else:
