@@ -167,13 +167,10 @@ def get_cmt_options(context):
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
             if (option_key in context.config and
-                    is_cmt_option(context.config[option_key])
-            ):
+                    is_cmt_option(context.config[option_key])):
                 opt = context.config[option_key]
-
             elif is_cmt_option(option.default):
                 opt = option.default
-
             else:
                 continue
 
@@ -188,13 +185,13 @@ def get_cmt_options(context):
                 version = kwargs.get('version', 'ONLINE')
                 cmt_options[option_key] = {'correction': correction_name,
                                            'version': version,
-                                           'strax_option': opt
+                                           'strax_option': opt,
                                            }
 
             else:
                 cmt_options[option_key] = {'correction': opt[0],
                                            'version': opt[1],
-                                           'strax_option':  opt
+                                           'strax_option': opt,
                                            }
     return cmt_options
 
