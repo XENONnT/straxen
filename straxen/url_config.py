@@ -171,7 +171,7 @@ class URLConfig(strax.Config):
         kwargs_overrides = {}
 
         if isinstance(arg, tuple) and protocol in cls._LOOKUP:
-            protocol, arg, kwargs_overrides = cls.dispatch_preprocessor(*arg)
+            _, _, kwargs_overrides = cls.dispatch_preprocessor(*arg)
 
         if protocol not in cls._PREPROCESSORS:
             return protocol, arg, kwargs
@@ -187,11 +187,11 @@ class URLConfig(strax.Config):
             
         # Just to be on the safe side
         kwargs = cls.filter_kwargs(meth, kwargs)
-        kwargs.update(kwargs_overrides)
         kwargs = meth(meth_arg, **kwargs)
-        kwargs = kwargs if kwargs else {}
+        if isinstance(kwargs, dict):
+            kwargs_overrides.update(kwargs)
 
-        return protocol, arg, kwargs
+        return protocol, arg, kwargs_overrides
 
     @classmethod
     def split_url_kwargs(cls, url):

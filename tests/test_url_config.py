@@ -24,6 +24,11 @@ def large_array(_):
     return np.ones(1_000_000).tolist()
 
 
+@straxen.URLConfig.register_preprocessor('take')
+def increment_take(arg, take, increment_take=False):
+    if increment_take:
+        return dict(take=take+1)
+    
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
     dtype = strax.time_fields
@@ -34,11 +39,6 @@ class ExamplePlugin(strax.Plugin):
     def compute(self):
         pass
 
-@straxen.URLConfig.register_preprocessor('take')
-def increment_take(url, arg, take, increment_take=False):
-    if increment_take:
-        return url+f"?take={take+1}"
-    return url
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
@@ -63,9 +63,9 @@ class TestURLConfig(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_cmt_preprocessor(self):
-        self.st.set_config({'test_config': 'cmt://elife?version=global_v1'})
+        self.st.set_config({'test_config': 'cmt://elife?version=global_v1&run_id=plugin.run_id'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        self.assertEqual(p.config['test_config'], 'cmt://elife?version=v1')
+        self.assertEqual(p.config['test_config'], 'cmt://elife?run_id=plugin.run_id&version=v1')
 
     def test_json_protocol(self):
         self.st.set_config({'test_config': 'json://[1,2,3]'})
