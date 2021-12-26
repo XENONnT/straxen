@@ -1,11 +1,12 @@
 import sys
 import json
-from typing import Container
+from typing import Container, Union
 import strax
 import fsspec
 import pandas as pd
 import straxen
 import inspect
+import numbers
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
 from functools import lru_cache
@@ -20,9 +21,11 @@ def clear_config_caches():
     for cache in _CACHES.values():
         cache.clear()
 
+
 @export
 def config_cache_size_mb():
     return straxen.total_size(_CACHES)//1e6
+
 
 def parse_val(val):
     try:
@@ -52,6 +55,7 @@ class URLConfig(strax.Config):
     SCHEME_SEP = '://'
     QUERY_SEP = '?'
     PLUGIN_ATTR_PREFIX = 'plugin.'
+    CONFIG_PREFIX = 'config.'
 
     def __init__(self, cache=0, **kwargs):
         """
@@ -68,7 +72,7 @@ class URLConfig(strax.Config):
             # do not enforce type on the URL
             self.type = OMITTED
         if cache:
-            cache_len = 100 if cache is True else int(cache) 
+            cache_len = 100 if cache is True else int(cache)
             cache = straxen.CacheDict(cache_len=cache_len)
             _CACHES[id(self)] = cache
 
@@ -93,6 +97,10 @@ class URLConfig(strax.Config):
 
             if not isinstance(protocol, str):
                 raise ValueError('Protocol name must be a string.')
+
+            if not len(inspect.signature(func).parameters):
+                raise TypeError(f"Cant use {func.__name__} for protocol {protocol}.\
+                     Protocols must accept at least one positional argument.")
 
             if protocol in cls._LOOKUP:
                 raise ValueError(f'Protocol with name {protocol} already registered.')
@@ -129,97 +137,53 @@ class URLConfig(strax.Config):
             return func
         return wrapper(func) if func is not None else wrapper
 
-    def dispatch(self, url, *args, **kwargs):
-        """
-        Call the corresponding method based on protocol in url.
-        chained protocols will be called with the result of the
-        previous protocol as input
-        overrides are passed to any protocol whos signature can accept them.
-        """
+    @classmethod
+    def dispatch_protocol(cls, protocol, arg, kwargs=None):
+        if kwargs is None:
+            kwargs = {}
 
-        # separate the protocol name from the path
-        protocol, _, path = url.partition(self.SCHEME_SEP)
+        if protocol is None:
+            return arg
 
-        # find the corresponding protocol method
-        meth = self._LOOKUP.get(protocol, None)
-        if meth is None:
-            # unrecognized protocol
-            # evaluate as string-literal
-            return url
+        meth = cls._LOOKUP[protocol]
 
-        if self.SCHEME_SEP in path:
-            # url contains a nested protocol
-            # first call sub-protocol
-            arg = self.dispatch(path, **kwargs)
-        else:
-            # we are at the end of the chain
-            # method should be called with path as argument
-            arg = path
-
-        # filter kwargs to pass only the kwargs
-        #  accepted by the method.
-        kwargs = self.filter_kwargs(meth, kwargs)
-
-        return meth(arg, *args, **kwargs)
-
-    def preprocessor_dispatch(self, url, **kwargs):
-        """
-
-        """
-        if self.SCHEME_SEP not in url:
-            return url, {}
-
-        # separate the protocol name from the path
-        protocol, _, path = url.partition(self.SCHEME_SEP)
-
-        # find the corresponding protocol method
-        meth = self._PREPROCESSORS.get(protocol, None)
-
-        # if meth is None:
-        # no registered preprocessor
-        # skip preprocessing for this protocol
-        # and preprocess the next
-        path, extra_kwargs = self.preprocessor_dispatch(path, **kwargs)
-        kwargs.update(extra_kwargs)
-
-        if protocol:
-            url = f"{protocol}{self.SCHEME_SEP}{path}"
-
-        if meth is None:
-            return url, extra_kwargs
-
-        if self.SCHEME_SEP in path:
-            # url contains a nested protocol
-            # first call sub-protocol
-
-            # FIXME: dispatch may depend on runtime evaluated
-            # kwargs, maybe check if any kwargs are urls,
-            # meaning they will only be evaluated at runtime
-            arg = self.dispatch(path, **kwargs)
-
-        else:
-            # we are at the end of the chain
-            # method should be called with path as argument
-            arg = path
-
-        # filter kwargs to pass only the kwargs
-        #  accepted by the method.
-        kwargs = self.filter_kwargs(meth, kwargs)
-
-        # run the protocol
-        url = meth(url, arg, **kwargs)
-
-        if not isinstance(url, str):
-            raise PreProcessorError('Preprocessor for {protocol} protocol'
-                                ' has returned incompatible value.'
-                                ' Got {processed}, should be a url string'
-                                ' or a tuple(str,dict)')
+        if isinstance(arg, tuple):
+            arg = cls.dispatch_protocol(*arg)
         
-        url, url_kwargs = self.split_url_kwargs(url)
+        # Just to be on the safe side
+        kwargs = cls.filter_kwargs(meth, kwargs)
 
-        extra_kwargs.update(url_kwargs)
+        return meth(arg, **kwargs)
 
-        return url, extra_kwargs
+    @classmethod
+    def dispatch_preprocessor(cls, protocol: str, arg: Union[str,tuple], kwargs=None):
+        """
+
+        """
+        kwargs_overrides = {}
+
+        if isinstance(arg, tuple) and protocol in cls._LOOKUP:
+            protocol, arg, kwargs_overrides = cls.dispatch_preprocessor(*arg)
+
+        if protocol not in cls._PREPROCESSORS:
+            return protocol, arg, kwargs
+        
+        meth = cls._PREPROCESSORS[protocol]
+
+        if kwargs is None:
+            kwargs = {}
+
+        meth_arg = arg
+        if isinstance(meth_arg, tuple):
+            meth_arg = cls.dispatch_protocol(*meth_arg)
+            
+        # Just to be on the safe side
+        kwargs = cls.filter_kwargs(meth, kwargs)
+        kwargs.update(kwargs_overrides)
+        kwargs = meth(meth_arg, **kwargs)
+        kwargs = kwargs if kwargs else {}
+
+        return protocol, arg, kwargs
 
     @classmethod
     def split_url_kwargs(cls, url):
@@ -252,12 +216,16 @@ class URLConfig(strax.Config):
         return {k: v for k, v in kwargs.items() if k in params}
 
     def fetch_attribute(self, plugin, value, **config):
-        if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
-            # kwarg is referring to a plugin attribute, lets fetch it
-            attr = value[len(self.PLUGIN_ATTR_PREFIX):]
-            default = config.get(attr, value)
-            return getattr(plugin, attr, default)
 
+        if isinstance(value, str):
+            if value.startswith(self.PLUGIN_ATTR_PREFIX):
+                # kwarg is referring to a plugin attribute, lets fetch it
+                attr = value[len(self.PLUGIN_ATTR_PREFIX):]
+                return getattr(plugin, attr, value)
+            elif value.startswith(self.CONFIG_PREFIX):
+                key = value[len(self.CONFIG_PREFIX):]
+                return config.get(key, value)
+            
         if isinstance(value, list):
             return [self.fetch_attribute(plugin, v, **config) for v in value]
 
@@ -269,30 +237,46 @@ class URLConfig(strax.Config):
         url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
         arg_str = "&".join([f"{k}={v}" for k, v in sorted(kwargs.items())])
-        return url+cls.QUERY_SEP+arg_str
+        arg_str = cls.QUERY_SEP + arg_str if arg_str else ''
+        return url + arg_str
 
     @classmethod
-    def build_url(cls, *args, **kwargs):
-        if not args:
-            return cls.format_url_kwargs('', **kwargs)
-        if len(args) == 1:
-            return cls.format_url_kwargs(args[0], **kwargs)
+    def ast_to_url(cls, protocol: str, arg: Union[str,tuple], kwargs: dict=None):
+        
+        if kwargs is None:
+            kwargs = {}
 
-        protocol_prefix = args[0] + cls.SCHEME_SEP
-        url = cls.build_url(*args[1:], **kwargs)
-        return protocol_prefix + url
+        if protocol is None:
+            return arg
+        
+        if isinstance(arg, (list, dict, numbers.Number)) and protocol != 'json':
+            arg = ('json', json.dumps(arg),)
+
+        if isinstance(arg, tuple):
+            arg = cls.ast_to_url(*arg)
+
+        if not isinstance(arg, str):
+            raise TypeError(f"Type {type(arg)} is not supported as an argument.")
+
+        arg, extra_kwargs = cls.split_url_kwargs(arg)
+
+        kwargs.update(extra_kwargs)
+        
+        url = f'{protocol}{cls.SCHEME_SEP}{arg}'
+        
+        url = cls.format_url_kwargs(url, **kwargs)
+
+        return url
 
     @classmethod
-    def parse_url(cls, url):
+    def parse_url(cls, url, **kwargs):
         if not isinstance(url, str):
-            # if the value is not a string it is evaluated
-            # as a literal config and returned as is.
-            return url
+            raise TypeError(f'URL must be a string, got {type(url)}')
 
         if cls.SCHEME_SEP not in url:
             # no protocol in the url so its evaluated
             # as string-literal config and returned as is
-            return url
+            return None, url, {}
 
         # separate the protocol name from the path
         protocol, _, path = url.partition(cls.SCHEME_SEP)
@@ -302,26 +286,20 @@ class URLConfig(strax.Config):
         if meth is None:
             # unrecognized protocol
             # evaluate as string-literal
-            return url
-
+            return None, url, {}
         
-        arg, kwargs = cls.split_url_kwargs(path)
+        arg, url_kwargs = cls.split_url_kwargs(path)
+        kwargs.update(url_kwargs)
 
-        if cls.SCHEME_SEP in path:
-            # url contains a nested protocol
-            # first parsce sub-protocol
-            arg = cls.parse_url(path)
-
-        # filter kwargs to pass only the kwargs
-        #  accepted by the method.
-        
         kwargs = cls.filter_kwargs(meth, kwargs)
 
-        return {
-            'protocol': protocol,
-            'argument': arg,
-            'kwargs': kwargs,
-            }
+        if cls.SCHEME_SEP in arg:
+            # url contains a nested protocol
+            # first parsce sub-protocol
+            arg = cls.parse_url(arg, **kwargs)
+            
+        return protocol, arg, kwargs
+
 
     def fetch(self, plugin):
         '''override the Config.fetch method
@@ -343,20 +321,23 @@ class URLConfig(strax.Config):
 
         # separate out the query part of the URL which
         # will become the method kwargs
-        url, url_kwargs = self.split_url_kwargs(url)
+        url, kwargs = self.split_url_kwargs(url)
+        
+        # resolve any referenced to plugin attributes
+        kwargs = {k: self.fetch_attribute(plugin, v, **plugin.config)
+                  for k, v in kwargs.items()}
 
-        kwargs = {k: self.fetch_attribute(plugin, v)
-                  for k, v in url_kwargs.items()}
+        protocol, arg, kwargs = self.parse_url(url, **kwargs)
 
         # construct a deterministic hash key
-        key = strax.deterministic_hash((url, kwargs))
+        key = strax.deterministic_hash((protocol, arg, kwargs))
 
         # fetch from cache if exists
         value = self.cache.get(key, None)
 
         # not in cache, lets fetch it
         if value is None:
-            value = self.dispatch(url, **kwargs)
+            value = self.dispatch_protocol(protocol, arg, kwargs)
             self.cache[key] = value
 
         return value
@@ -379,28 +360,25 @@ class URLConfig(strax.Config):
                     f"Excepted a {self.final_type}, got a {type(url)}")
             return
 
-        if self.SCHEME_SEP not in url:
-            # no protocol in the url so its evaluated
-            # as string-literal config and returned as is
-            return url
-
         # separate out the query part of the URL which
         # will become the method kwargs
-        url, url_kwargs = self.split_url_kwargs(url)
+        protocol, arg, kwargs = self.parse_url(url)
+
+        plugin = self._PLUGIN_CLASS()
+        plugin.config = {k:v for k,v in config.items() if k in plugin.takes_config}
 
         # fetch any kwargs that reference other configs
-        kwargs = {}
-        for k, v in url_kwargs.items():
-            kwargs[k] = self.fetch_attribute(self._PLUGIN_CLASS, v, **config)
+        original_kwargs = kwargs
+        kwargs = {k: self.fetch_attribute(plugin, v, **config) for k,v in kwargs.items()}
         
         # dispatch any protocol preprocessors
-        url, extra_kwargs = self.preprocessor_dispatch(url, **kwargs)
+        protocol, arg, kwargs = self.dispatch_preprocessor(protocol, arg, kwargs)
 
-        # add/update any extra kwargs the preprocessors produced 
-        url_kwargs.update(extra_kwargs)
-
+        # update with any overrides from preprocessors
+        original_kwargs.update(kwargs)
+        
         # build the modified URL from the preprocessor results
-        url = self.format_url_kwargs(url, **url_kwargs)
+        url = self.ast_to_url(protocol, arg, original_kwargs)
 
         # finally replace config value with processed url
         config[self.name] = url
@@ -482,16 +460,16 @@ def format_arg(arg: str, **kwargs):
 
 
 @URLConfig.register_preprocessor('cmt')
-def replace_global_version(url, correction, version=''):
+def replace_global_version(correction, version=''):
     if version.startswith('global'):
         local_versions = get_cmt_local_versions(version)
         v = local_versions.get(correction, version)
-        url += f'?version={v}'
-    return url
+        return dict(version=v)
 
 
 @lru_cache(maxsize=2)
 def get_cmt_local_versions(global_version):
     cmt = straxen.CorrectionsManagementServices()
     return cmt.get_local_versions(global_version)
+
 
