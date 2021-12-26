@@ -300,12 +300,13 @@ class URLConfig(strax.Config):
         kwargs.update(url_kwargs)
 
         kwargs = cls.filter_kwargs(meth, kwargs)
+        kwargs = dict(sorted(kwargs.items()))
 
         if cls.SCHEME_SEP in arg:
             # url contains a nested protocol
             # first parsce sub-protocol
             arg = cls.parse_url(arg, **kwargs)
-            
+        
         return protocol, arg, kwargs
 
 
