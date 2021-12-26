@@ -138,7 +138,13 @@ class URLConfig(strax.Config):
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
-    def dispatch_protocol(cls, protocol, arg, kwargs=None):
+    def dispatch_protocol(cls, protocol: str,
+                        arg: Union[str,tuple] = None,
+                        kwargs: dict = None):
+
+        if arg is None:
+            protocol, arg, kwargs = cls.parse_url(protocol)
+            
         if kwargs is None:
             kwargs = {}
 
@@ -156,10 +162,12 @@ class URLConfig(strax.Config):
         return meth(arg, **kwargs)
 
     @classmethod
-    def dispatch_preprocessor(cls, protocol: str, arg: Union[str,tuple], kwargs=None):
-        """
-
-        """
+    def dispatch_preprocessor(cls, protocol: str,
+                            arg: Union[str,tuple] = None,
+                            kwargs: dict = None):
+        if arg is None:
+            protocol, arg, kwargs = cls.parse_url(protocol)
+            
         kwargs_overrides = {}
 
         if isinstance(arg, tuple) and protocol in cls._LOOKUP:
