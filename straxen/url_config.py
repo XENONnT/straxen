@@ -1,4 +1,3 @@
-import sys
 import json
 from typing import Container, Union
 import strax
@@ -9,12 +8,15 @@ import inspect
 import numbers
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
-from functools import lru_cache
 from strax.config import OMITTED
+import os
+import tempfile
+import tarfile
 
 export, __all__ = strax.exporter()
 
 _CACHES = {}
+
 
 @export
 def clear_config_caches():
@@ -315,6 +317,7 @@ class URLConfig(strax.Config):
            this is called when the attribute is accessed
         '''
         # first fetch the user-set value
+
         # from the config dictionary
         url = super().fetch(plugin)
 
@@ -414,25 +417,37 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name: str, run_id: str = None, version: str = 'ONLINE', detector: str = 'nt'):
-    '''Get value for name from CMT
-    '''
+def get_correction(name: str,
+                   run_id: str = None,
+                   version: str = 'ONLINE',
+                   detector: str = 'nt',
+                   **kwargs):
+    """Get value for name from CMT"""
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
     return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
 
 @URLConfig.register('resource')
-def get_resource(name: str, fmt: str = 'text'):
-    '''Fetch a straxen resource
-    '''
+def get_resource(name: str,
+                 fmt: str = 'text',
+                 **kwargs):
+    """
+    Fetch a straxen resource
+
+    Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    passed directly to straxen.get_resource.
+    """
+    if fmt == 'abs_path':
+        downloader = straxen.MongoDownloader()
+        return downloader.download_single(name)
     return straxen.get_resource(name, fmt=fmt)
 
 
 @URLConfig.register('fsspec')
 def read_file(path: str, **kwargs):
-    '''Support fetching files from arbitrary filesystems
-    '''
+    """Support fetching files from arbitrary filesystems
+    """
     with fsspec.open(path, **kwargs) as f:
         content = f.read()
     return content
@@ -440,15 +455,15 @@ def read_file(path: str, **kwargs):
 
 @URLConfig.register('json')
 def read_json(content: str, **kwargs):
-    ''' Load json string as a python object
-    '''
+    """Load json string as a python object
+    """
     return json.loads(content)
 
 
 @URLConfig.register('take')
 def get_key(container: Container, take=None, **kwargs):
-    ''' return a single element of a container
-    '''
+    """ return a single element of a container
+    """
     if take is None:
         return container
         
@@ -463,8 +478,7 @@ def get_key(container: Container, take=None, **kwargs):
 
 @URLConfig.register('format')
 def format_arg(arg: str, **kwargs):
-    ''' apply pythons builtin format function to a string
-    '''
+    """apply pythons builtin format function to a string"""
     return arg.format(**kwargs)
 
 
@@ -482,3 +496,29 @@ def get_cmt_local_versions(global_version):
     return cmt.get_local_versions(global_version)
 
 
+@URLConfig.register('itp_map')
+def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
+    """Make an InterpolatingMap"""
+    return straxen.InterpolatingMap(some_map, method=method, **kwargs)
+
+
+@URLConfig.register('bodega')
+def load_value(name: str, bodega_version=None):
+    """Load a number from BODEGA file"""
+    if bodega_version is None:
+        raise ValueError('Provide version see e.g. tests/test_url_config.py')
+    nt_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
+    return nt_numbers[name][bodega_version]["value"]
+
+
+@URLConfig.register('tf')
+def open_neural_net(model_path: str, **kwargs):
+    # Nested import to reduce loading time of import straxen and it not
+    # base requirement
+    import tensorflow as tf
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f'No file at {model_path}')
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tar = tarfile.open(model_path, mode="r:gz")
+        tar.extractall(path=tmpdirname)
+        return tf.keras.models.load_model(tmpdirname)

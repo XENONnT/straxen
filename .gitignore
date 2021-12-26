@@ -12,6 +12,7 @@ xenon_secrets.py
 *.npy
 *.blosc
 *.h5
+*.pdf
 live_data
 daq_test_data
 strax_data
