@@ -12,7 +12,7 @@ from strax.config import OMITTED
 import os
 import tempfile
 import tarfile
-
+from functools import lru_cache
 export, __all__ = strax.exporter()
 
 _CACHES = {}
