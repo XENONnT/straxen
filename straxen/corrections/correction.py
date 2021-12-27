@@ -48,5 +48,21 @@ class TimeSampledCorrection(BaseCorrection):
     def pre_insert(self, db, **index):
         cutoff = pd.to_datetime(time.time()+3600, unit='s', utc=True)
         ts = pd.to_datetime(index['time'], utc=True)
-        if index['version']==0 and ts<cutoff:
-            raise ValueError(f'Can only insert online values for times at least two hours in the future.')
+        if index['version']==0:
+            if ts<cutoff:
+                raise ValueError(f'Can only insert online values for times at one hour in the future.')
+            now = pd.to_datetime(time.time()-10, unit='s', utc=True)
+            now_index = dict(index, time=now)
+            now_values = self.query_db(db, **now_index)
+
+            # no documents exist yet, nothing to do
+            if not now_values:
+                return 
+            
+            # enforce existence of document with the current time, in case its being extrapolated.
+            now_doc = self.parse_obj(now_values[0])
+            now_doc.save(db, **now_index)
+
+
+
+
