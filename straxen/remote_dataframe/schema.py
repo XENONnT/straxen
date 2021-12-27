@@ -1,7 +1,7 @@
 import re
 import pymongo
 import strax
-from straxen.document_storage.utils import singledispatchmethod
+from straxen.remote_dataframe.utils import singledispatchmethod
 import utilix
 
 import datetime
@@ -28,7 +28,7 @@ def camel_to_snake(name):
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
 @export
-class BaseDocument(BaseModel):
+class BaseSchema(BaseModel):
     name: ClassVar = ''
     index: ClassVar
     value: Union[str,int,float]
@@ -37,10 +37,10 @@ class BaseDocument(BaseModel):
         #FIXME: maybe move this logic into the Index class?
         # Index can be a descriptor that does a dynamic lookup and
         # concatentation of all indexes in parent classes to return
-        # the final indexer initialized with the document class.
+        # the final indexer initialized with the schema class.
         indexes = {}
         for base in reversed(cls.mro()):
-            if not issubclass(base, BaseDocument):
+            if not issubclass(base, BaseSchema):
                 continue
             if 'index' not in base.__dict__:
                 continue
@@ -51,16 +51,20 @@ class BaseDocument(BaseModel):
             elif isinstance(base.index, Index):
                 indexes[base.index.name] = copy(base.index)
         if not indexes:
-            raise AttributeError(f'Document class {cls.__name__} has no index.')
+            raise AttributeError(f'Schema {cls.__name__} has no index.')
         if len(indexes) == 1:
             cls.index = list(indexes.values())[0]
         else:
             cls.index = MultiIndex(**indexes)
         cls.index.__set_name__(cls, 'index')
-        
+    
+    @classmethod
+    def columns(cls):
+        return cls.schema()['properties']
+
     @classmethod
     def all_fields(cls):
-        return cls.index.store_fields + tuple(cls.schema()['properties'])
+        return cls.index.store_fields + tuple(cls.columns())
 
     @classmethod
     def subclasses(cls):
@@ -68,8 +72,8 @@ class BaseDocument(BaseModel):
 
     @classmethod
     def db_client(cls, db):
-        from .client import DocumentClient
-        return DocumentClient(cls, db)
+        from .dataframe import RemoteDataframe
+        return RemoteDataframe(cls, db)
 
     @classmethod
     def query_db(cls, db, *args, **kwargs):

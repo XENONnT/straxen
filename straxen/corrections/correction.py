@@ -19,11 +19,11 @@ EDITING_BUFFER = 12*3600
 
 
 @export
-class BaseCorrection(straxen.BaseDocument):
+class BaseCorrectionSchema(straxen.BaseSchema):
     index = straxen.Index(name='version', type=int)
 
 @export
-class TimeIntervalCorrection(BaseCorrection):
+class TimeIntervalCorrection(BaseCorrectionSchema):
     index = straxen.IntervalIndex(name='time', type=datetime.datetime,
                                 left_name='begin', right_name='end')
         
@@ -42,7 +42,7 @@ def can_extrapolate(doc):
     return ts < now
         
 @export
-class TimeSampledCorrection(BaseCorrection):
+class TimeSampledCorrection(BaseCorrectionSchema):
     index = straxen.InterpolatedIndex(name='time', type=datetime.datetime, extrapolate=can_extrapolate)
                 
     def pre_insert(self, db, **index):

@@ -1,5 +1,5 @@
 
 from .indexes import *
-from .document import *
-from .client import *
+from .schema import *
+from .dataframe import *
 from .interfaces import *

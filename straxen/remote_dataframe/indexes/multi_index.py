@@ -8,7 +8,7 @@ from ..utils import singledispatchmethod
 class MultiIndex(Index):
     indexes: list
 
-    def __init__(self, *args, document=None, **kwargs) -> None:
+    def __init__(self, *args, schema=None, **kwargs) -> None:
         self.indexes = list(args)
         for k,v in kwargs.items():
             v.name = k
@@ -17,13 +17,13 @@ class MultiIndex(Index):
             if index.name  in ['', 'index']:
                 index.name = f'index_{i}'
 
-        if document is not None:
-            self.document = document
+        if schema is not None:
+            self.schema = schema
 
     def __set_name__(self, owner, name):
-        self.document = owner
+        self.schema = owner
         for v in self.indexes:
-            v.document = owner
+            v.schema = owner
 
     @property
     def name(self):

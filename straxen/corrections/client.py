@@ -14,7 +14,7 @@ export, __all__ = strax.exporter()
 __all__ += ['corrections_db']
 
 @export
-class CorrectionsClient:
+class CorrectionDataframes:
     db: Any
 
     def __init__(self, db):
@@ -32,22 +32,22 @@ class CorrectionsClient:
 
     @property
     def corrections(self):
-        return straxen.BaseCorrection.subclasses()
+        return straxen.BaseCorrectionSchema.subclasses()
     
     @property
     def correction_names(self):
         return list(self.corrections)
 
-    def client(self, name):
+    def get_df(self, name):
         correction = self.corrections[name]
-        return straxen.DocumentClient(correction, self.db)
+        return straxen.RemoteDataframe(correction, self.db)
 
     def __getitem__(self, key):
         if isinstance(key, tuple) and key[0] in self.corrections:
-            return self.client(key[0])[key[1:]]
+            return self.get_df(key[0])[key[1:]]
         
         if key in self.corrections:
-            return self.client(key)
+            return self.get_df(key)
         raise KeyError(key)
         
     def __dir__(self):
@@ -55,14 +55,14 @@ class CorrectionsClient:
     
     def __getattr__(self, name):            
         if name in self.corrections:
-            return self.client(name)
+            return self.get_df(name)
         raise AttributeError(name)
 
     def get(self, correction_name, *args, **kwargs):
-        return self.client(correction_name).get(*args, **kwargs)
+        return self.get_df(correction_name).get(*args, **kwargs)
 
     def set(self, correction_name, **kwargs):
-        return self.client(correction_name).set(**kwargs)
+        return self.get_df(correction_name).set(**kwargs)
 
         
 def run_id_to_time(run_id):
@@ -84,7 +84,7 @@ def extract_time(kwargs):
     else:
         return None
 
-corrections_db = CorrectionsClient.local_mongo()
+corrections_db = CorrectionDataframes.local_mongo()
 
 @export
 def cmt2(name, version=0, **kwargs):

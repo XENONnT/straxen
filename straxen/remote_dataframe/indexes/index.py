@@ -14,18 +14,18 @@ class Index:
     coerce: Callable = None
 
     def __init__(self, type=None, name=None, 
-                document=None, coerce=None,
+                schema=None, coerce=None,
                 ):
         if type is not None:
             self.type = type
         self.coerce = coerce
         if name is not None:
             self.name = name
-        if document is not None:
-            self.document = document
+        if schema is not None:
+            self.schema = schema
             
     def __set_name__(self, owner, name):
-        self.document = owner
+        self.schema = owner
         if not self.name:
             self.name = name
 

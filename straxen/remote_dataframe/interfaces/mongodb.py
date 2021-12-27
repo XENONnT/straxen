@@ -9,13 +9,13 @@ import strax
 from .. import Index
 from .. import IntervalIndex
 from .. import InterpolatedIndex
-from .. import BaseDocument
+from .. import BaseSchema
 
 
 export, __all__ = strax.exporter()
 
 
-@BaseDocument._insert.register(pymongo.collection.Collection)
+@BaseSchema._insert.register(pymongo.collection.Collection)
 def _save_mongo_collection(self, db, doc):
     '''We want the client logic to be agnostic to
     whether the value being replaced is actually stored in the DB or
@@ -28,7 +28,7 @@ def _save_mongo_collection(self, db, doc):
     '''
     return db.find_one_and_replace(doc, doc, upsert=True)
 
-@BaseDocument._insert.register(pymongo.database.Database)
+@BaseSchema._insert.register(pymongo.database.Database)
 def _save_mongo_database(self, db, doc):
     '''If a mongo database was passed to the insert operation
     the correct collection needs to be passed instead.
@@ -56,7 +56,7 @@ def apply_mongo_query(self, db, query):
     '''If a database was passed to this operation
     its applied to a collection instead
     '''
-    return self.apply_query(db[self.document.name], query)
+    return self.apply_query(db[self.schema.name], query)
 
 @Index.build_query.register(pymongo.common.BaseObject)
 def build_mongo_query(self, db, value):
