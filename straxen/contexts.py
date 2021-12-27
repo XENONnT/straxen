@@ -256,7 +256,8 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife'),
+                            # electron_lifetime_liquid='elife'  # see issue#864
+                ),
                 **kwargs):
     """
     The most generic context that allows for setting full divergent
@@ -338,7 +339,8 @@ def xenonnt_simulation(
     # Replace default cmt options with cmt_run_id tag + cmt run id
     cmt_options = straxen.get_corrections.get_cmt_options(st)
     # prune to just get the strax options
-    cmt_options = {key: val['strax_option'] for key, val in cmt_options.items()}
+    cmt_options = {key: strax.to_str_tuple(val['strax_option'])
+                   for key, val in cmt_options.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
