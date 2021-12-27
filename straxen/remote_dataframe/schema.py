@@ -63,6 +63,10 @@ class BaseSchema(BaseModel):
         return cls.schema()['properties']
 
     @classmethod
+    def index_names(cls):
+        return cls.index.query_fields
+
+    @classmethod
     def all_fields(cls):
         return cls.index.store_fields + tuple(cls.columns())
 

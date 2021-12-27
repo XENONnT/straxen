@@ -20,6 +20,14 @@ class RemoteDataframe:
     def columns(self):
         return self.schema.columns()
 
+    @property
+    def loc(self):
+        return LocIndexer(self)
+
+    @property
+    def at(self):
+        return AtIndexer(self)
+
     def get(self, *args, **kwargs):
         docs = self.schema.index.query_db(self.db, *args, **kwargs)
         return docs
@@ -36,19 +44,18 @@ class RemoteDataframe:
 
     def __getitem__(self, index):
         if isinstance(index, str) and index in self.columns:
-            return ColumnsClient(self, index)
-        if isinstance(index, list) and all([idx in self.columns for idx in index]):
-            return ColumnsClient(self, index)
-        if not isinstance(index, tuple):
-            index = (index,)
-        docs = self.get(*index)
-        nfields = len(self.schema.index.query_fields)
-        if len(index)>nfields:
-            for k in index[nfields:]:
-                docs = [doc[k] for doc in docs]
-        if len(docs)==1:
-            return docs[0]
-        return docs
+            return RemoteSeries(self, index)
+        if isinstance(index, tuple) and index[0] in self.columns:
+            return RemoteSeries(self, index[0])[index[1:]]
+        raise KeyError(f'{index} is not a dataframe column.')
+
+    def __dir__(self):
+        return self.columns + super().__dir__()
+
+    def __getattr__(self, name):
+        if name in self.columns:
+            return self[name]
+        raise AttributeError(name)
 
     def __setitem__(self, key, value):
         if not isinstance(key, tuple):
@@ -57,22 +64,54 @@ class RemoteDataframe:
             value = {'value': value}
         self.set(*key, **value)
 
-class ColumnsClient:
-    client: RemoteDataframe
-    column: Union[list,str]
+class RemoteSeries:
+    df: RemoteDataframe
+    column: str
 
-    def __init__(self, client, column):
-        self.client = client
+    def __init__(self, df, column):
+        self.df = df
         self.column = column
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index,)
-        docs = self.client.get(*index)
-        if isinstance(self.column, str):
-            docs = [doc[self.column] for doc in docs]
-        else:
-            docs = [{k: doc[k] for k in self.column} for doc in docs]
+        docs = self.df.get_df(*index)
+
+        docs = [doc[self.column] for doc in docs]
+        return docs
+
+class Indexer:
+    def __init__(self, df):
+        self.df = df
+
+class LocIndexer(Indexer):
+
+    def __getitem__(self, index):
+        if not isinstance(index, tuple):
+            index = (index,)
+
+        index_fields = self.df.schema.index_names()
+        nfields = len(index_fields)
+        if len(index)>nfields+1:
+            raise 
+        df = self.df.get_df(*index)
+    
+        if len(index)==nfields+1:
+            columns = index[-1]
+            if not isinstance(columns, list):
+                columns = [columns]
+            df = df[columns]
+        return df
+
+class AtIndexer(Indexer):
+
+    def __getitem__(self, index):
+        if not isinstance(index, tuple):
+            index = (index,)
+        if len(index) != len(self.df.schema.index_names()) + 1:
+            raise KeyError('Under defined index.')
+        docs = self.df.get(*index[:-1])
+        docs = [doc[index[-1]] for doc in docs]
         if len(docs)==1:
             return docs[0]
         return docs
