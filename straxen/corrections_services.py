@@ -29,11 +29,14 @@ arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
 posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_xy_map']
 
 
+@export
 class CMTVersionError(Exception):
     pass
 
+
 class CMTnanValueError(Exception):
     pass
+
 
 @export
 class CorrectionsManagementServices():
@@ -330,7 +333,7 @@ def args_idx(x):
 
 
 @strax.Context.add_method
-def apply_cmt_version(context: strax.Context, cmt_global_version: str):
+def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
     """Sets all the relevant correction variables
     :param cmt_global_version: A specific CMT global version, or 'latest' to get the newest one
     :returns None

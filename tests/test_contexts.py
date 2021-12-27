@@ -42,6 +42,29 @@ def test_nt_is_nt_online():
         assert str(nt_key) == str(nt_online_key)
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+def test_offline():
+    """
+    Let's try and see which CMT versions are compatible with this straxen
+    version
+    """
+    cmt = straxen.CorrectionsManagementServices()
+    cmt_versions = list(cmt.global_versions)[::-1]
+    print(cmt_versions)
+    success_for = []
+    for global_version in cmt_versions:
+        try:
+            xenonnt(global_version)
+            success_for.append(global_version)
+        except straxen.CMTVersionError:
+            pass
+    print(f'This straxen version works with {success_for} but is '
+          f'incompatible with {set(cmt_versions)-set(success_for)}')
+
+    test = unittest.TestCase()
+    test.assertTrue(len(success_for) > 1)
+
+
 ##
 # XENON1T
 ##
@@ -79,14 +102,12 @@ def test_xenon1t_led():
     st = xenon1t_led()
     st.search_field('time')
 
+##
+# WFSim
+##
+
 
 @unittest.skipIf('ALLOW_WFSIM_TEST' not in os.environ, "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`")
 def test_sim_context():
     st = straxen.contexts.xenonnt_simulation(cmt_run_id_sim='008000', cmt_version='global_ONLINE')
     st.search_field('time')
-
-
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_offline():
-    st = xenonnt('latest')
-    st.provided_dtypes()
