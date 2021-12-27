@@ -1,7 +1,7 @@
 import numpy as np
 import strax
 import straxen
-from warnings import warn
+import typing as ty
 from functools import wraps
 from straxen.corrections_services import corrections_w_file
 from straxen.corrections_services import single_value_corrections
@@ -153,10 +153,10 @@ def _is_cmt_option(run_id, config):
     return is_cmt
 
 
-def get_cmt_options(context):
+def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]:
     """
     Function which loops over all plugin configs and returns dictionary
-    with option name as key and a nested dict of CMT correction name and version as values.
+    with option name as key and a nested dict of CMT correction name and strax option as values.
 
     :param context: Context with registered plugins.
     """
@@ -166,6 +166,10 @@ def get_cmt_options(context):
 
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
+            if option_key in cmt_options:
+                # let's not do work twice if needed by > 1 plugin
+                continue
+
             if (option_key in context.config and
                     is_cmt_option(context.config[option_key])):
                 opt = context.config[option_key]

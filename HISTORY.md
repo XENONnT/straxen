@@ -1,3 +1,14 @@
+1.2.1 / 2021-12-27
+------------------
+fixes/tests:
+ - Add cmt tests and fix bug in apply_cmt_version (#860)
+ - Pin documentation requirements (#862)
+ - Add read the docs config (#861)
+ - Pymongo requirement should be <4.0 (#852)
+ 
+notes:
+ - No lineage changes
+ 
 1.2.0 / 2021-12-21
 -------------------
 major:
@@ -44,7 +55,7 @@ fixes/tests:
 
 notes:
  - plugins changed (new lineage) everything >= 'peaklet_classification'
-
+ - offline CMT versions don't work in this release
 
 1.1.3 / 2021-11-19
 -------------------
