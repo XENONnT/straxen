@@ -62,7 +62,8 @@ def test_offline():
           f'incompatible with {set(cmt_versions)-set(success_for)}')
 
     test = unittest.TestCase()
-    test.assertTrue(len(success_for) > 1)
+    # We should always work for one offline and the online version
+    test.assertTrue(len(success_for) >= 2)
 
 
 ##
