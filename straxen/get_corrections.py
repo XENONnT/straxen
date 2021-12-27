@@ -1,7 +1,7 @@
 import numpy as np
 import strax
 import straxen
-from warnings import warn
+import typing as ty
 from functools import wraps
 from straxen.corrections_services import corrections_w_file
 from straxen.corrections_services import single_value_corrections
@@ -153,23 +153,54 @@ def _is_cmt_option(run_id, config):
     return is_cmt
 
 
-def get_cmt_options(context):
+def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]:
     """
     Function which loops over all plugin configs and returns dictionary
-    with option name as key and current settings as values.
+    with option name as key and a nested dict of CMT correction name and strax option as values.
 
     :param context: Context with registered plugins.
     """
+
     cmt_options = {}
+    runid_test_str = 'norunids!'
+
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
-            if (option_key in context.config and
-                is_cmt_option(context.config[option_key])
-                ):
-                cmt_options[option_key] = context.config[option_key]
-            elif is_cmt_option(option.default):
-                cmt_options[option_key] = option.default
+            if option_key in cmt_options:
+                # let's not do work twice if needed by > 1 plugin
+                continue
 
+            if (option_key in context.config and
+                    is_cmt_option(context.config[option_key])):
+                opt = context.config[option_key]
+            elif is_cmt_option(option.default):
+                opt = option.default
+            else:
+                continue
+
+            # check if it's a URLConfig
+            if isinstance(opt, str) and 'cmt://' in opt:
+                before_cmt, cmt, after_cmt = opt.partition('cmt://')
+                p = context.get_single_plugin(runid_test_str, data_type)
+                p.config[option_key] = after_cmt
+                correction_name = getattr(p, option_key)
+                # make sure the correction name does not depend on runid
+                if runid_test_str in correction_name:
+                    raise RuntimeError("Correction names should not depend on runids! "
+                                       f"Please check your option for {option_key}")
+
+                # if there is no other protocol being called before cmt,
+                # we will get a string back including the query part
+                if option.QUERY_SEP in correction_name:
+                    correction_name, _ = option.split_url_kwargs(correction_name)
+                cmt_options[option_key] = {'correction': correction_name,
+                                           'strax_option': opt,
+                                           }
+
+            else:
+                cmt_options[option_key] = {'correction': opt[0],
+                                           'strax_option': opt,
+                                           }
     return cmt_options
 
 
