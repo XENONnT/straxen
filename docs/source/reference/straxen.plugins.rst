@@ -68,14 +68,6 @@ straxen.plugins.event\_processing module
    :undoc-members:
    :show-inheritance:
 
-straxen.plugins.event\_shadow module
-------------------------------------
-
-.. automodule:: straxen.plugins.event_shadow
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 straxen.plugins.led\_calibration module
 ---------------------------------------
 
