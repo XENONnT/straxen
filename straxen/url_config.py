@@ -269,7 +269,7 @@ class URLConfig(strax.Config):
         Sorts all arguments by key for hash consistency
         '''
         url, extra_kwargs = cls.split_url_kwargs(url)
-        kwargs.update(extra_kwargs)
+        kwargs = dict(extra_kwargs, **kwargs)
         arg_list = []
         for k, v in sorted(kwargs.items()):
             if isinstance(v, list):
