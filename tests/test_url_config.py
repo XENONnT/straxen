@@ -200,3 +200,13 @@ class TestURLConfig(unittest.TestCase):
         filtered2 = straxen.filter_kwargs(func2, all_kwargs)
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
+
+    def test_ast_equality(self):
+        '''test whether ast-based URL comparison works
+        '''
+        url1 = 'format://{a}{b}{c}?a=1&b=2'
+        url2 = 'format://{a}{b}{c}?b=2&a=1'
+        assert straxen.URLConfig.are_equal(url1, url2)
+
+        url2 = 'format://{a}{b}{c}?b=2&a=2'
+        assert not straxen.URLConfig.are_equal(url1, url2)

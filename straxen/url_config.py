@@ -282,9 +282,13 @@ class URLConfig(strax.Config):
         return url + arg_str
 
     @classmethod
-    def ast_to_url(cls, protocol: str, arg: Union[str,tuple], kwargs: dict=None):
+    def ast_to_url(cls, protocol: Union[str,tuple], arg: Union[str,tuple] = None, kwargs: dict=None):
         '''Convert a protocol abstract syntax tree to a valid URL 
         '''
+
+        if isinstance(protocol, tuple):
+            protocol, arg, kwargs = protocol
+
         if kwargs is None:
             kwargs = {}
 
@@ -435,6 +439,12 @@ class URLConfig(strax.Config):
 
         # finally replace config value with processed url
         config[self.name] = url
+
+    @classmethod
+    def are_equal(cls, first, second):
+        '''Return whether two URLs are equivalent (have equal ASTs)
+        '''
+        return cls.url_to_ast(first) == cls.url_to_ast(second)
 
     @classmethod
     def protocol_descr(cls):
