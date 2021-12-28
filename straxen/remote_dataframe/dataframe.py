@@ -1,4 +1,5 @@
 
+import pymongo
 import strax
 import pandas as pd
 
@@ -13,6 +14,14 @@ class RemoteDataframe:
     db: Any
     
     def __init__(self, schema, db):
+        if isinstance(db, str) and db.startswith('mongodb'):
+            db = pymongo.MongoClient(db)
+        if isinstance(db, str) and db.endswith('.csv'):
+            db = pd.read_csv(db)
+        if isinstance(db, str) and db.endswith('.pkl'):
+            db = pd.read_pickle(db)
+        if isinstance(db, str) and db.endswith('.pq'):
+            db = pd.read_parquet(db)
         self.schema = schema
         self.db = db
     
