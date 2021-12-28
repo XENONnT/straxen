@@ -108,6 +108,8 @@ The URL is evaluated recursively:
   3) **cmt://** - Loads value from CMT, in this case it loads the name of the resource encoding the keras model.
   4) **?version=ONLINE&run_id=plugin.run_id&fmt=abs_path** - Query is parsed and substituted (plugin.* are replaced with plugin attributes as evaluated at runtime) the values are then passed as keyword arguments to any protocols that include them in their signature. Everythin after the rightmost `?` character is considered the keyword arguments for the protocols.
 
+**Important** The URL arguments are sorted before they are passed to the plugin so that hashing is not sensitive to the order of the arguments.
+This is important to remember when performing tests.
 All of the actual code snippets for these protocols are shared among all plugins.
 
 Adding new protocols
