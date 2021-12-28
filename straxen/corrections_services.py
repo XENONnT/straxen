@@ -29,11 +29,14 @@ arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
 posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_xy_map']
 
 
+@export
 class CMTVersionError(Exception):
     pass
 
+
 class CMTnanValueError(Exception):
     pass
+
 
 @export
 class CorrectionsManagementServices():
@@ -330,7 +333,7 @@ def args_idx(x):
 
 
 @strax.Context.add_method
-def apply_cmt_version(context: strax.Context, cmt_global_version: str):
+def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
     """Sets all the relevant correction variables
     :param cmt_global_version: A specific CMT global version, or 'latest' to get the newest one
     :returns None
@@ -353,17 +356,19 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
     cmt_config = dict()
     failed_keys = []
 
-    for option, value in cmt_options.items():
+    for option, option_info in cmt_options.items():
+        # name of the CMT correction, this is not always equal to the strax option
+        correction_name = option_info['correction']
+        # actual config option
+        # this could be either a CMT tuple or a URLConfig
+        value = option_info['strax_option']
+
         # might need to modify correction name to include position reconstruction algo
-        # if the config is a URL, get the correction name in CMT
-        if isinstance(value, str) and 'cmt://' in value:
-            correction_name = correction_name_from_urlstring(value)
-        # if it's still a tuple, it's the first element
-        else:
-            correction_name = value[0]
-            # this is a bit of a mess, but posrec configs are treated differently in the tuples
-            if correction_name in posrec_corrections_basenames:
-                correction_name += f"_{posrec_algo}"
+        # this is a bit of a mess, but posrec configs are treated differently in the tuples
+        # URL configs should already include the posrec suffix
+        # (it's real mess -- we should drop tuple configs)
+        if correction_name in posrec_corrections_basenames:
+            correction_name += f"_{posrec_algo}"
 
         # now see if our correction is in our local_versions dict
         if correction_name in local_versions:
@@ -373,7 +378,8 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
             else:
                 new_value = (value[0], local_versions[correction_name], value[2])
         else:
-            failed_keys.append(correction_name)
+            if correction_name not in failed_keys:
+                failed_keys.append(correction_name)
             continue
 
         cmt_config[option] = new_value
@@ -385,7 +391,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str):
 
         # only raise a warning if we are working with the online context
         if cmt_global_version == "global_ONLINE":
-            warnings.warn(msg)
+            warnings.warn(msg, UserWarning)
         else:
             raise CMTVersionError(msg)
 
@@ -399,11 +405,3 @@ def replace_url_version(url, version):
     args = [f"{k}={v}" for k, v in kwargs.items()]
     args_str = "&".join(args)
     return f'{url[:args_idx(url)]}?{args_str}'
-
-
-def correction_name_from_urlstring(url):
-    # only care about what happens after cmt
-    before_url, cmt, after_url = url.partition('cmt://')
-    tmp_config = straxen.URLConfig(default=after_url)
-    new_url, kwargs = tmp_config.split_url_kwargs(after_url)
-    return tmp_config.dispatch(new_url, **kwargs)

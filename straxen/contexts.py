@@ -337,6 +337,8 @@ def xenonnt_simulation(
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
     cmt_options = straxen.get_corrections.get_cmt_options(st)
+    # prune to just get the strax options
+    cmt_options = {key: val['strax_option'] for key, val in cmt_options.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
