@@ -159,7 +159,7 @@ class URLConfig(strax.Config):
             arg = cls.dispatch_protocol(*arg)
         
         # Just to be on the safe side
-        kwargs = cls.filter_kwargs(meth, kwargs)
+        kwargs = straxen.filter_kwargs(meth, kwargs)
 
         return meth(arg, **kwargs)
 
@@ -175,7 +175,7 @@ class URLConfig(strax.Config):
         if isinstance(arg, tuple) and protocol in cls._LOOKUP:
             # since this is a valid protocol with a sub-protocol, it may have 
             # a preprocessor registered for its sub-protocol
-            _, _, kwargs_overrides = cls.dispatch_preprocessor(*arg)
+            arg = cls.dispatch_preprocessor(*arg)
 
         if protocol not in cls._PREPROCESSORS:
             # no preprocessor registered for this protocol
@@ -189,15 +189,17 @@ class URLConfig(strax.Config):
 
         meth_arg = arg
         if isinstance(meth_arg, tuple):
-            meth_arg = cls.dispatch_protocol(*meth_arg)
+            meth_kwargs = dict(kwargs, **meth_arg[2])
+
+            meth_arg = cls.dispatch_protocol(*meth_arg[:2], meth_kwargs)
             
         # Just to be on the safe side
-        kwargs = cls.filter_kwargs(meth, kwargs)
+        kwargs = straxen.filter_kwargs(meth, kwargs)
         result = meth(meth_arg, **kwargs)
 
         if isinstance(result, dict):
             # a dictionary is interpreted as just kwarg overrides
-            kwargs_overrides.update(result)
+            kwargs_overrides = result
         elif isinstance(result, str):
             # a string is interpreted as a URL to replace existing one
             protocol, arg, kwargs_overrides = cls.url_to_ast(result)
@@ -225,18 +227,6 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
-    @staticmethod
-    def filter_kwargs(func, kwargs):
-        """Filter out keyword arguments that
-            are not in the call signature of func
-            and return filtered kwargs dictionary
-        """
-        params = inspect.signature(func).parameters
-        if any([str(p).startswith('**') for p in params.values()]):
-            # if func accepts wildcard kwargs, return all
-            return kwargs
-        return {k: v for k, v in kwargs.items() if k in params}
-
     def fetch_attribute(self, plugin, value, **config):
 
         if isinstance(value, str):
@@ -261,7 +251,14 @@ class URLConfig(strax.Config):
         '''
         url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
-        arg_str = "&".join([f"{k}={v}" for k, v in sorted(kwargs.items())])
+        arg_list = []
+        for k, v in sorted(kwargs.items()):
+            if isinstance(v, list):
+                # lists are passed as multiple arguments with the same key
+                arg_list.extend([f"{k}={vi}" for vi in v])
+            else:
+                arg_list.append(f"{k}={v}")
+        arg_str = "&".join(arg_list)
         arg_str = cls.QUERY_SEP + arg_str if arg_str else ''
         return url + arg_str
 
@@ -319,7 +316,7 @@ class URLConfig(strax.Config):
         arg, url_kwargs = cls.split_url_kwargs(path)
         kwargs.update(url_kwargs)
 
-        kwargs = cls.filter_kwargs(meth, kwargs)
+        kwargs = straxen.filter_kwargs(meth, kwargs)
         kwargs = dict(sorted(kwargs.items()))
 
         if cls.SCHEME_SEP in arg:
@@ -394,7 +391,7 @@ class URLConfig(strax.Config):
         # separate out the query part of the URL which
         # will become the method kwargs
         protocol, arg, kwargs = self.url_to_ast(url)
-
+        
         plugin = self._PLUGIN_CLASS()
         plugin.run_id = run_id
         plugin.config = {k:v for k,v in config.items() if k in plugin.takes_config}
@@ -449,7 +446,7 @@ def get_correction(name: str,
 
 
 @URLConfig.register('resource')
-def get_resource(name: str,
+def xenon_resource(name: str,
                  fmt: str = 'text',
                  **kwargs):
     """
