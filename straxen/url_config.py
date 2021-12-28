@@ -189,10 +189,14 @@ class URLConfig(strax.Config):
             
         # Just to be on the safe side
         kwargs = cls.filter_kwargs(meth, kwargs)
-        kwargs = meth(meth_arg, **kwargs)
-        if isinstance(kwargs, dict):
-            kwargs_overrides.update(kwargs)
-
+        result = meth(meth_arg, **kwargs)
+        if isinstance(result, dict):
+            kwargs_overrides.update(result)
+        elif isinstance(result, str):
+            protocol, arg, kwargs_overrides = cls.parse_url(result)
+        elif isinstance(result, tuple) and len(result)==3:
+            protocol, arg, kwargs_overrides = result
+        
         return protocol, arg, kwargs_overrides
 
     @classmethod
