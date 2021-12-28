@@ -145,7 +145,7 @@ class URLConfig(strax.Config):
                         kwargs: dict = None):
 
         if arg is None:
-            protocol, arg, kwargs = cls.parse_url(protocol)
+            protocol, arg, kwargs = cls.url_to_ast(protocol)
             
         if kwargs is None:
             kwargs = {}
@@ -168,15 +168,19 @@ class URLConfig(strax.Config):
                             arg: Union[str,tuple] = None,
                             kwargs: dict = None):
         if arg is None:
-            protocol, arg, kwargs = cls.parse_url(protocol)
+            protocol, arg, kwargs = cls.url_to_ast(protocol)
             
         kwargs_overrides = {}
 
         if isinstance(arg, tuple) and protocol in cls._LOOKUP:
+            # since this is a valid protocol with a sub-protocol, it may have 
+            # a preprocessor registered for its sub-protocol
             _, _, kwargs_overrides = cls.dispatch_preprocessor(*arg)
 
         if protocol not in cls._PREPROCESSORS:
-            return protocol, arg, kwargs
+            # no preprocessor registered for this protocol
+            # return any overrides from sub-protocols preprocessor
+            return protocol, arg, kwargs_overrides
         
         meth = cls._PREPROCESSORS[protocol]
 
@@ -190,11 +194,15 @@ class URLConfig(strax.Config):
         # Just to be on the safe side
         kwargs = cls.filter_kwargs(meth, kwargs)
         result = meth(meth_arg, **kwargs)
+
         if isinstance(result, dict):
+            # a dictionary is interpreted as just kwarg overrides
             kwargs_overrides.update(result)
         elif isinstance(result, str):
-            protocol, arg, kwargs_overrides = cls.parse_url(result)
+            # a string is interpreted as a URL to replace existing one
+            protocol, arg, kwargs_overrides = cls.url_to_ast(result)
         elif isinstance(result, tuple) and len(result)==3:
+            # a tuple is interpreted as an ast
             protocol, arg, kwargs_overrides = result
         
         return protocol, arg, kwargs_overrides
@@ -248,6 +256,9 @@ class URLConfig(strax.Config):
 
     @classmethod
     def format_url_kwargs(cls, url, **kwargs):
+        '''Add keyword arguments to a URL.
+        Sorts all arguments by key for hash consistency
+        '''
         url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs.update(extra_kwargs)
         arg_str = "&".join([f"{k}={v}" for k, v in sorted(kwargs.items())])
@@ -256,7 +267,8 @@ class URLConfig(strax.Config):
 
     @classmethod
     def ast_to_url(cls, protocol: str, arg: Union[str,tuple], kwargs: dict=None):
-        
+        '''Convert a protocol abstract syntax tree to URL 
+        '''
         if kwargs is None:
             kwargs = {}
 
@@ -283,7 +295,9 @@ class URLConfig(strax.Config):
         return url
 
     @classmethod
-    def parse_url(cls, url, **kwargs):
+    def url_to_ast(cls, url, **kwargs):
+        '''Convert a URL to a protocol abstract syntax tree
+        '''
         if not isinstance(url, str):
             raise TypeError(f'URL must be a string, got {type(url)}')
 
@@ -311,7 +325,7 @@ class URLConfig(strax.Config):
         if cls.SCHEME_SEP in arg:
             # url contains a nested protocol
             # first parsce sub-protocol
-            arg = cls.parse_url(arg, **kwargs)
+            arg = cls.url_to_ast(arg, **kwargs)
         
         return protocol, arg, kwargs
 
@@ -319,6 +333,7 @@ class URLConfig(strax.Config):
     def fetch(self, plugin):
         '''override the Config.fetch method
            this is called when the attribute is accessed
+           from withing the Plugin instance
         '''
         # first fetch the user-set value
 
@@ -343,7 +358,7 @@ class URLConfig(strax.Config):
         kwargs = {k: self.fetch_attribute(plugin, v, **plugin.config)
                   for k, v in kwargs.items()}
 
-        protocol, arg, kwargs = self.parse_url(url, **kwargs)
+        protocol, arg, kwargs = self.url_to_ast(url, **kwargs)
 
         # construct a deterministic hash key
         key = strax.deterministic_hash((protocol, arg, kwargs))
@@ -378,9 +393,10 @@ class URLConfig(strax.Config):
 
         # separate out the query part of the URL which
         # will become the method kwargs
-        protocol, arg, kwargs = self.parse_url(url)
+        protocol, arg, kwargs = self.url_to_ast(url)
 
         plugin = self._PLUGIN_CLASS()
+        plugin.run_id = run_id
         plugin.config = {k:v for k,v in config.items() if k in plugin.takes_config}
 
         # fetch any kwargs that reference other configs
@@ -488,7 +504,7 @@ def format_arg(arg: str, **kwargs):
 
 @URLConfig.register_preprocessor('cmt')
 def replace_global_version(correction, version=''):
-    if version.startswith('global'):
+    if isinstance(version, str) and version.startswith('global'):
         local_versions = get_cmt_local_versions(version)
         v = local_versions.get(correction, version)
         return dict(version=v)
