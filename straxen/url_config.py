@@ -221,10 +221,10 @@ class URLConfig(strax.Config):
         elif isinstance(result, str):
             # a string is interpreted as a URL to replace existing one
             protocol, arg, kwargs_overrides = cls.url_to_ast(result)
-        elif isinstance(result, tuple) and len(result)==3:
-            # a tuple is interpreted as an ast
-            protocol, arg, kwargs_overrides = result
-        
+        else:
+            # any other object is interpreted as a literal value
+            protocol, arg = None, result
+
         return protocol, arg, kwargs_overrides
 
     @classmethod
