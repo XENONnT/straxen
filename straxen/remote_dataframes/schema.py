@@ -1,7 +1,7 @@
 import re
 import pymongo
 import strax
-from straxen.remote_dataframe.utils import singledispatchmethod
+from straxen.remote_dataframes.utils import singledispatchmethod
 import utilix
 
 import datetime
@@ -19,13 +19,17 @@ export, __all__ = strax.exporter()
 class InsertionError(Exception):
     pass
 
+@export
 def all_subclasses(cls):
     return set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
+
+@export
 def camel_to_snake(name):
   name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
+
 
 @export
 class BaseSchema(BaseModel):
@@ -76,7 +80,7 @@ class BaseSchema(BaseModel):
 
     @classmethod
     def db_client(cls, db):
-        from .dataframe import RemoteDataframe
+        from .remote_dataframe import RemoteDataframe
         return RemoteDataframe(cls, db)
 
     @classmethod
@@ -99,12 +103,13 @@ class BaseSchema(BaseModel):
             raise InsertionError('Multiple documents exist that match '
                                  'the index you are attempting to save to. '
                                  'This is usually due to one or more indices not '
-                                 'being passed or multi-valued (list/slice). '
+                                 'being passed or multi-valued (list/slice) indices. '
                                  'If you are passing the index values by name '
                                  'please check the names passed match the actualy names.')
 
         index = self.index.infer_index(*args, **kwargs)
-        if len(existing) == 1:
+            
+        if existing:
             old = self.__class__(**existing[0])
             self.pre_update(db, old, **index)
         else:

@@ -1,5 +1,5 @@
 
 from .indexes import *
 from .schema import *
-from .dataframe import *
+from .remote_dataframe import *
 from .interfaces import *

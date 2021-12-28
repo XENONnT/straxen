@@ -32,7 +32,7 @@ class CorrectionDataframes:
 
     @property
     def corrections(self):
-        return straxen.BaseCorrectionSchema.subclasses()
+        return dict(straxen.BaseCorrectionSchema._CORRECTIONS)
     
     @property
     def correction_names(self):

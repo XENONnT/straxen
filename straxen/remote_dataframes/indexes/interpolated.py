@@ -71,7 +71,7 @@ class InterpolatedIndex(Index):
         xs = [d[self.name] for d in docs]
         new_document = dict(nn_interpolate(value, xs, docs))
         new_document[self.name] = value
-        if max(xs)>=value>=min(xs):
+        if len(xs)>1 and max(xs)>=value>=min(xs):
             for yname in docs[0]:
                 ys = [d[yname] for d in docs]
                 new_document[yname] = interpolater(value, 

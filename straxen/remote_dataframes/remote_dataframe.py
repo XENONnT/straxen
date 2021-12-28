@@ -66,32 +66,26 @@ class RemoteDataframe:
             return self[name]
         raise AttributeError(name)
 
-    def __setitem__(self, key, value):
-        if not isinstance(key, tuple):
-            key = (key,)
-        if not isinstance(value, dict):
-            value = {'value': value}
-        self.set(*key, **value)
 
 class RemoteSeries:
-    df: RemoteDataframe
+    obj: RemoteDataframe
     column: str
 
-    def __init__(self, df, column):
-        self.df = df
+    def __init__(self, obj, column):
+        self.obj = obj
         self.column = column
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index,)
-        docs = self.df.get_df(*index)
+        docs = self.obj.get_df(*index)
 
         docs = [doc[self.column] for doc in docs]
         return docs
 
 class Indexer:
-    def __init__(self, df):
-        self.df = df
+    def __init__(self, obj: RemoteDataframe):
+        self.obj = obj
 
 class LocIndexer(Indexer):
 
@@ -99,11 +93,11 @@ class LocIndexer(Indexer):
         if not isinstance(index, tuple):
             index = (index,)
 
-        index_fields = self.df.schema.index_names()
+        index_fields = self.obj.schema.index_names()
         nfields = len(index_fields)
         if len(index)>nfields+1:
             raise 
-        df = self.df.get_df(*index)
+        df = self.obj.get_df(*index)
     
         if len(index)==nfields+1:
             columns = index[-1]
@@ -112,14 +106,21 @@ class LocIndexer(Indexer):
             df = df[columns]
         return df
 
+    def __setitem__(self, key, value):
+        if not isinstance(key, tuple):
+            key = (key,)
+        if not isinstance(value, dict):
+            value = {'value': value}
+        self.obj.set(*key, **value)
+
 class AtIndexer(Indexer):
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index,)
-        if len(index) != len(self.df.schema.index_names()) + 1:
+        if len(index) != len(self.obj.schema.index_names()) + 1:
             raise KeyError('Under defined index.')
-        docs = self.df.get(*index[:-1])
+        docs = self.obj.get(*index[:-1])
         docs = [doc[index[-1]] for doc in docs]
         if len(docs)==1:
             return docs[0]

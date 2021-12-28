@@ -5,10 +5,10 @@ import time
 import strax
 import straxen
 import utilix
-
 import datetime
 
 import pandas as pd
+from collections import Counter
 
 
 export, __all__ = strax.exporter()
@@ -20,7 +20,20 @@ EDITING_BUFFER = 12*3600
 
 @export
 class BaseCorrectionSchema(straxen.BaseSchema):
+
+    _CORRECTIONS = {}
+
     index = straxen.Index(name='version', type=int)
+
+    def __init_subclass__(cls) -> None:
+                
+        if cls.name in BaseCorrectionSchema._CORRECTIONS:
+            raise TypeError(f'A correction with the name {cls.name} already exists.')
+        if cls.name:
+            cls._CORRECTIONS[cls.name] = cls
+
+        super().__init_subclass__()
+        
 
 @export
 class TimeIntervalCorrection(BaseCorrectionSchema):
