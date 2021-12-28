@@ -143,6 +143,13 @@ class URLConfig(strax.Config):
     def dispatch_protocol(cls, protocol: str,
                         arg: Union[str,tuple] = None,
                         kwargs: dict = None):
+        '''dispatch protocol with argument and kwargs
+        :param protocol: name of the protocol or a URL
+        :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs)
+                    tuple, in which case sub-protocol will be evaluated and passed to protocol
+        :param kwargs: keyword arguments to be passed to the protocol
+        :return: (Any) The return value of the protocol on these arguments
+        '''
 
         if arg is None:
             protocol, arg, kwargs = cls.url_to_ast(protocol)
@@ -155,7 +162,7 @@ class URLConfig(strax.Config):
 
         meth = cls._LOOKUP[protocol]
 
-        if isinstance(arg, tuple):
+        if isinstance(arg, tuple) and len(arg)==3 and arg[0] in cls._LOOKUP:
             arg = cls.dispatch_protocol(*arg)
         
         # Just to be on the safe side
@@ -167,7 +174,18 @@ class URLConfig(strax.Config):
     def dispatch_preprocessor(cls, protocol: str,
                             arg: Union[str,tuple] = None,
                             kwargs: dict = None):
+
+        '''dispatch protocol preprocessors
+        :param protocol: name of the protocol or a URL
+        :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs)
+                    tuple, in which case any sub-preprocessors will be applied if they exist
+                    and sub-protocol will be evaluated and passed to the preprocessor
+                    of `protocol` if it exists
+        :param kwargs: keyword arguments to be passed to the protocol
+        :return: The modified abstract syntax tree
+        '''
         if arg is None:
+            # Support passing a URL, is converted to an AST
             protocol, arg, kwargs = cls.url_to_ast(protocol)
             
         kwargs_overrides = {}
@@ -228,7 +246,8 @@ class URLConfig(strax.Config):
         return path, kwargs
 
     def fetch_attribute(self, plugin, value, **config):
-
+        '''Fetch an attribute from either plugin or config dict
+        '''
         if isinstance(value, str):
             if value.startswith(self.PLUGIN_ATTR_PREFIX):
                 # kwarg is referring to a plugin attribute, lets fetch it
@@ -264,7 +283,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def ast_to_url(cls, protocol: str, arg: Union[str,tuple], kwargs: dict=None):
-        '''Convert a protocol abstract syntax tree to URL 
+        '''Convert a protocol abstract syntax tree to a valid URL 
         '''
         if kwargs is None:
             kwargs = {}
@@ -373,7 +392,12 @@ class URLConfig(strax.Config):
     def validate(self, config,
                  run_id=None,   # TODO: will soon be removed
                  run_defaults=None, set_defaults=True):
-
+        '''This method is called by the context on plugin intialization
+            at this stage, the run_id and context config are already known but the
+            config values are not yet set on the plugin. Therefore its the perfect 
+            place to run any preprocessors on the config values to make any needed changes
+            before the configs are hashed.
+        '''
         super().validate(config, run_id, run_defaults, set_defaults)
 
         url = config[self.name]
