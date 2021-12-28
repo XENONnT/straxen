@@ -148,10 +148,10 @@ def test_is_cmt_option():
 
 def test_replace_url_version():
     """Tests the replace_url_version function which is important in apply_cmt_version"""
-    url = 'cmt://elife?version=ONLINE&run_id=plugin.run_id'
-    url_check = 'cmt://elife?version=v1&run_id=plugin.run_id'
-    url_test = straxen.corrections_services.replace_url_version(url, 'v1')
+    url = 'cmt://elife?run_id=plugin.run_id&version=ONLINE'
+    url_check = 'cmt://elife?run_id=plugin.run_id&version=v1'
+    url_test = straxen.URLConfig.format_url_kwargs(url, version='v1')
     if url_check != url_test:
-        raise AssertionError("replace_url_version did not do its job! "
+        raise AssertionError("URLConfig.format_url_kwargs did not do its job! "
                              f"it returns:\n{url_test}\nwhen it should return:\n{url_check}"
                              )
