@@ -358,6 +358,12 @@ class TestMiniAnalyses(unittest.TestCase):
         self.assertTrue(os.path.exists(save_as))
         os.remove(save_as)
         self.assertFalse(os.path.exists(save_as))
+        # Also test if we can write it to the wiki
+        straxen.bokeh_to_wiki(fig)
+        straxen.bokeh_to_wiki(fig, save_as)
+        self.assertTrue(os.path.exists(save_as))
+        os.remove(save_as)
+        self.assertFalse(os.path.exists(save_as))
 
     @unittest.skipIf(not straxen.utilix_is_configured(),
                      "No db access, cannot test!")

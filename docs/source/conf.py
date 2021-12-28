@@ -196,3 +196,5 @@ def setup(app):
     import build_datastructure_doc
     build_datastructure_doc.build_datastructure_doc(True)
     build_datastructure_doc.build_datastructure_doc(False)
+    import build_context_doc
+    build_context_doc.main()
