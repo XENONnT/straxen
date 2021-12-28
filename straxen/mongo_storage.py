@@ -353,11 +353,8 @@ class MongoDownloader(GridFsInterface):
 
     def download_all(self):
         """Download all the files that are stored in the mongo collection"""
-        raise NotImplementedError('This feature is disabled for now')
-        # Disable the inspection of `Unreachable code`
-        # pylint: disable=unreachable
         for config in self.list_files():
-            self.download_single(config)
+            print(config, self.download_single(config))
 
     @staticmethod
     def _check_store_files_at(cache_folder_alternatives):
