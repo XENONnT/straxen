@@ -162,7 +162,7 @@ class URLConfig(strax.Config):
 
         meth = cls._LOOKUP[protocol]
 
-        if isinstance(arg, tuple) and len(arg)==3 and arg[0] in cls._LOOKUP:
+        if isinstance(arg, tuple):
             arg = cls.dispatch_protocol(*arg)
         
         # Just to be on the safe side

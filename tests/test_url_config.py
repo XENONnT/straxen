@@ -64,8 +64,11 @@ class TestURLConfig(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_cmt_preprocessor(self):
+        # Set a config with a cmt global version
         self.st.set_config({'test_config': 'cmt://elife?version=global_v1&run_id=plugin.run_id'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        
+        # If the cmt preprocessor worked, it has replaced the global version with the local version
         self.assertEqual(p.config['test_config'], 'cmt://elife?run_id=plugin.run_id&version=v1')
 
     def test_json_protocol(self):
@@ -99,7 +102,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, 1)
 
     def test_preprocessor(self):
-        # The take preprocessor will increment the take parameter by one in increment_take is True
+        # The take preprocessor will increment the take parameter by one if increment_take=True
         self.st.set_config({'test_config': 'take://json://[1,2,3]?take=0&increment_take=True'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         
