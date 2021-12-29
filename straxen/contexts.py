@@ -256,7 +256,7 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            # electron_lifetime_liquid='elife'  # see issue#864
+                            electron_lifetime_liquid='elife'  # see issue#864
                 ),
                 **kwargs):
     """
@@ -337,10 +337,18 @@ def xenonnt_simulation(
         cmt_run_id_proc = cmt_id
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
-    cmt_options = straxen.get_corrections.get_cmt_options(st)
+
+    cmt_options = {}
+    for name, opt_dict in straxen.get_corrections.get_cmt_options(st).items():
+        if isinstance(opt_dict['strax_option'], str):
+            # simulation context wants CMT tuples for now.
+            cmt_options[name] = (opt_dict['correction'], opt_dict['version'], True)
+        else:
+            cmt_options[name] = opt_dict['strax_option']
+
     # prune to just get the strax options
-    cmt_options = {key: strax.to_str_tuple(val['strax_option'])
-                   for key, val in cmt_options.items()}
+    # cmt_options = {key: strax.to_str_tuple(val['strax_option'])
+    #                for key, val in cmt_options.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
