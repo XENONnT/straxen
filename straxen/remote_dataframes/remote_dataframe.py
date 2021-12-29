@@ -78,10 +78,7 @@ class RemoteSeries:
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index,)
-        docs = self.obj.get_df(*index)
-
-        docs = [doc[self.column] for doc in docs]
-        return docs
+        return self.obj.get_df(*index)[self.column]
 
 class Indexer:
     def __init__(self, obj: RemoteDataframe):
