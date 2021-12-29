@@ -58,6 +58,12 @@ class RemoteDataframe:
             return RemoteSeries(self, index[0])[index[1:]]
         raise KeyError(f'{index} is not a dataframe column.')
 
+    def extend(self, df: pd.DataFrame):
+        records = df.reset_index().to_dict(orient='records')
+        for record in records:
+            doc = self.schema(**record)
+            doc.save(self.db, **records)
+
     def __dir__(self):
         return self.columns + super().__dir__()
 
