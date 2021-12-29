@@ -1,5 +1,5 @@
 import json
-from typing import Container, Union
+from typing import Container, Mapping, Union
 import strax
 import fsspec
 import pandas as pd
@@ -56,8 +56,6 @@ class URLConfig(strax.Config):
     _PREPROCESSORS = {}
     SCHEME_SEP = '://'
     QUERY_SEP = '?'
-    PLUGIN_ATTR_PREFIX = 'plugin.'
-    CONFIG_PREFIX = 'config.'
 
     def __init__(self, cache=0, **kwargs):
         """
@@ -194,7 +192,7 @@ class URLConfig(strax.Config):
             # since this is a valid protocol with a sub-protocol, it may have 
             # a preprocessor registered for its sub-protocol
             arg = cls.dispatch_preprocessor(*arg)
-
+        
         if protocol not in cls._PREPROCESSORS:
             # no preprocessor registered for this protocol
             # return any overrides from sub-protocols preprocessor
@@ -221,8 +219,8 @@ class URLConfig(strax.Config):
         elif isinstance(result, str):
             # a string is interpreted as a URL to replace existing one
             protocol, arg, kwargs_overrides = cls.url_to_ast(result)
-        else:
-            # any other object is interpreted as a literal value
+        elif result is not None:
+            # any other non None object is interpreted as a literal value
             protocol, arg = None, result
 
         return protocol, arg, kwargs_overrides
@@ -245,22 +243,23 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
-    def fetch_attribute(self, plugin, value, **config):
-        '''Fetch an attribute from either plugin or config dict
+    @staticmethod
+    def evaluate(value, **namespace):
+        '''Fetch an attribute from namespace
         '''
-        if isinstance(value, str):
-            if value.startswith(self.PLUGIN_ATTR_PREFIX):
-                # kwarg is referring to a plugin attribute, lets fetch it
-                attr = value[len(self.PLUGIN_ATTR_PREFIX):]
-                return getattr(plugin, attr, value)
-            elif value.startswith(self.CONFIG_PREFIX):
-                key = value[len(self.CONFIG_PREFIX):]
-                return config.get(key, value)
-            
-        if isinstance(value, list):
-            return [self.fetch_attribute(plugin, v, **config) for v in value]
 
-        # kwarg is a literal, add its value to the kwargs dict
+        if isinstance(value, list):
+            return [URLConfig.evaluate(v, **namespace) for v in value]
+
+        if isinstance(value, str) and '.' in value:
+            name, _, key = value.partition('.')
+            if name in namespace:
+                obj = namespace[name]
+                if isinstance(obj, Mapping):
+                    value = obj.get(key, value)
+                else:
+                    value = getattr(obj, key, value)
+                
         return value
 
     @classmethod
@@ -375,7 +374,7 @@ class URLConfig(strax.Config):
         url, kwargs = self.split_url_kwargs(url)
         
         # resolve any referenced to plugin attributes
-        kwargs = {k: self.fetch_attribute(plugin, v, **plugin.config)
+        kwargs = {k: self.evaluate(v, config=plugin.config, plugin=plugin)
                   for k, v in kwargs.items()}
 
         protocol, arg, kwargs = self.url_to_ast(url, **kwargs)
@@ -426,17 +425,14 @@ class URLConfig(strax.Config):
 
         # fetch any kwargs that reference other configs
         original_kwargs = kwargs
-        kwargs = {k: self.fetch_attribute(plugin, v, **config) for k,v in kwargs.items()}
-        
+        kwargs = {k: self.evaluate(v, config=config, plugin=plugin) for k,v in kwargs.items()}
         # dispatch any protocol preprocessors
         protocol, arg, kwargs = self.dispatch_preprocessor(protocol, arg, kwargs)
 
         # update with any overrides from preprocessors
         original_kwargs.update(kwargs)
-        
         # build the modified URL from the preprocessor results
         url = self.ast_to_url(protocol, arg, original_kwargs)
-
         # finally replace config value with processed url
         config[self.name] = url
 
