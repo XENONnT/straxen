@@ -12,7 +12,7 @@ from copy import copy
 from pydantic import BaseModel
 from typing import ClassVar, Type, Union
 
-from .indexes import Index, MultiIndex
+from .indexes import BaseIndex, MultiIndex
 
 export, __all__ = strax.exporter()
 
@@ -52,7 +52,7 @@ class BaseSchema(BaseModel):
                 continue
             if isinstance(base.index, MultiIndex):
                 indexes.update({index.name: copy(index) for index in base.index.indexes})
-            elif isinstance(base.index, Index):
+            elif isinstance(base.index, BaseIndex):
                 indexes[base.index.name] = copy(base.index)
         if not indexes:
             raise AttributeError(f'Schema {cls.__name__} has no index.')
@@ -64,15 +64,17 @@ class BaseSchema(BaseModel):
     
     @classmethod
     def columns(cls):
-        return cls.schema()['properties']
+        return list(cls.schema()['properties'])
 
     @classmethod
     def index_names(cls):
-        return cls.index.query_fields
+        return list(cls.index.query_fields)
 
     @classmethod
     def all_fields(cls):
-        return cls.index.store_fields + tuple(cls.columns())
+        fields = set(cls.index_names()+cls.columns())
+        fields.update(cls.index.store_fields)
+        return list(fields)
 
     @classmethod
     def subclasses(cls):
@@ -115,10 +117,12 @@ class BaseSchema(BaseModel):
         else:
             self.pre_insert(db, **index)
         doc = self.dict()
-        doc.update(index)
+        index_fields = self.index.index_to_storage_doc(index)
+        doc.update(index_fields)
         return self._insert(db, doc)
 
     @singledispatchmethod
     def _insert(self, db, doc):
         raise TypeError(f'Inserts are not supported \
                         for {type(db)} data stores.')
+        

@@ -4,6 +4,7 @@ from numpy import exp
 import pytz
 import time
 import strax
+import numbers
 import straxen
 import utilix
 
@@ -58,12 +59,14 @@ class CorrectionDataframes:
             return self.get_df(name)
         raise AttributeError(name)
 
-    def get(self, correction_name, *args, **kwargs):
-        return self.get_df(correction_name).get(*args, **kwargs)
+    def sel(self, correction_name, *args, **kwargs):
+        return self.get_df(correction_name).sel(*args, **kwargs)
 
-    def set(self, correction_name, **kwargs):
-        return self.get_df(correction_name).set(**kwargs)
+    def set(self, correction_name, *args, **kwargs):
+        return self.get_df(correction_name).set(*args, **kwargs)
 
+    def insert(self, correction_name, records):
+        return self.get_df(correction_name).insert(records=records)
         
 def run_id_to_time(run_id):
     run_id = int(run_id)
@@ -89,8 +92,7 @@ corrections_db = CorrectionDataframes.local_mongo()
 @export
 def cmt2(name, version=0, **kwargs):
     dtime = extract_time(kwargs)
-    docs = corrections_db[name].get(time=dtime, version=version, **kwargs)
+    docs = corrections_db[name].sel(time=dtime, version=version, **kwargs)
     if len(docs)==1:
         return docs[0]
     return docs
-

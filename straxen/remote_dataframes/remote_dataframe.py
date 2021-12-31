@@ -4,7 +4,7 @@ import strax
 import pandas as pd
 
 from typing import Any, Type, Union
-from .schema import BaseSchema
+from .schema import BaseSchema, InsertionError
 
 export, __all__ = strax.exporter()
 
@@ -14,14 +14,17 @@ class RemoteDataframe:
     db: Any
     
     def __init__(self, schema, db):
-        if isinstance(db, str) and db.startswith('mongodb'):
-            db = pymongo.MongoClient(db)
-        if isinstance(db, str) and db.endswith('.csv'):
-            db = pd.read_csv(db)
-        if isinstance(db, str) and db.endswith('.pkl'):
-            db = pd.read_pickle(db)
-        if isinstance(db, str) and db.endswith('.pq'):
-            db = pd.read_parquet(db)
+        if isinstance(db, str):
+            if db.startswith('mongodb'):
+                db = pymongo.MongoClient(db)
+            elif db.endswith('.csv'):
+                db = pd.read_csv(db)
+            elif db.endswith('.pkl'):
+                db = pd.read_pickle(db)
+            elif db.endswith('.pq'):
+                db = pd.read_parquet(db)
+            else:
+                raise TypeError("Unsupported database type")
         self.schema = schema
         self.db = db
     
@@ -37,14 +40,17 @@ class RemoteDataframe:
     def at(self):
         return AtIndexer(self)
 
-    def get(self, *args, **kwargs):
-        docs = self.schema.index.query_db(self.db, *args, **kwargs)
-        return docs
-            
-    def get_df(self, *args, **kwargs):
-        docs = self.get(*args, **kwargs)
-        df = pd.DataFrame(docs, columns=list(self.schema.all_fields()))
-        idx = [c for c in self.schema.index.query_fields if c in df.columns]
+    def sel_records(self,  *args, **kwargs):
+        return self.schema.index.query_db(self.db, *args, **kwargs)
+
+    def sel_record(self, *args, **kwargs):
+        return self.sel_records(*args, **kwargs)[0]        
+
+    def sel(self, *args, **kwargs):
+        docs = self.sel_records(*args, **kwargs)
+        index_fields = self.schema.index_names()
+        df = pd.DataFrame(docs, columns=self.schema.all_fields())
+        idx = [c for c in index_fields if c in df.columns]
         return df.sort_values(idx).set_index(idx)
 
     def set(self, *args, **kwargs):
@@ -58,11 +64,22 @@ class RemoteDataframe:
             return RemoteSeries(self, index[0])[index[1:]]
         raise KeyError(f'{index} is not a dataframe column.')
 
-    def extend(self, df: pd.DataFrame):
-        records = df.reset_index().to_dict(orient='records')
+    def insert(self, records: Union[pd.DataFrame,list]):
+        if isinstance(records, pd.DataFrame):
+            records = records.reset_index().to_dict(orient='records')
+        succeeded = []
+        failed = []
+        errors = []
         for record in records:
             doc = self.schema(**record)
-            doc.save(self.db, **records)
+            try:
+                doc.save(self.db, **record)
+                succeeded.append(doc.dict())
+            except InsertionError as e:
+                failed.append(doc.dict())
+                errors.append(str(e))
+
+        return succeeded, failed, errors
 
     def __dir__(self):
         return self.columns + super().__dir__()
@@ -72,6 +89,8 @@ class RemoteDataframe:
             return self[name]
         raise AttributeError(name)
 
+    def __repr__(self) -> str:
+        return f"RemoteDataFrame(index={self.schema.index_names()}, columns={self.schema.columns()})"
 
 class RemoteSeries:
     obj: RemoteDataframe
@@ -84,29 +103,57 @@ class RemoteSeries:
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index,)
-        return self.obj.get_df(*index)[self.column]
+        return self.obj.sel(*index)[self.column]
+
+    def sel(self, *args, **kwargs):
+        df = self.obj.sel(*args, **kwargs)
+        return df[self.column]
+
+    def sel_values(self,  *args, **kwargs):
+        docs = self.obj.sel_records(*args, **kwargs)
+        return [doc[self.column] for doc in docs]
+
+    def sel_value(self, *args, **kwargs):
+        return self.sel_values(*args, **kwargs)[0]
+
+    def set(self, *args, **kwargs):
+        raise InsertionError('Cannot set values on a RemoteSeries object,'
+                             'use the RemoteDataFrame.')
+
+    def __repr__(self) -> str:
+        return f"RemoteSeries(index={self.obj.schema.index_names()}, column={self.column})"
 
 class Indexer:
     def __init__(self, obj: RemoteDataframe):
         self.obj = obj
 
+
 class LocIndexer(Indexer):
 
     def __getitem__(self, index):
-        if not isinstance(index, tuple):
-            index = (index,)
-
-        index_fields = self.obj.schema.index_names()
-        nfields = len(index_fields)
-        if len(index)>nfields+1:
-            raise 
-        df = self.obj.get_df(*index)
-    
-        if len(index)==nfields+1:
-            columns = index[-1]
+        columns = None
+        
+        if isinstance(index, tuple) and len(index) == 2:
+            index, columns = index
             if not isinstance(columns, list):
                 columns = [columns]
+            if not all([c in self.obj.columns for c in columns]):
+                if not isinstance(index, tuple):
+                    index = (index,)
+                index = index + tuple(columns)
+                columns = None
+
+        elif isinstance(index, tuple) and len(index) == len(self.obj.columns)+1:
+            index, columns = index[:-1], index[-1]
+
+        if not isinstance(index, tuple):
+            index = (index,)
+        
+        df = self.obj.sel(*index)
+    
+        if columns is not None:
             df = df[columns]
+
         return df
 
     def __setitem__(self, key, value):
@@ -116,15 +163,21 @@ class LocIndexer(Indexer):
             value = {'value': value}
         self.obj.set(*key, **value)
 
+
 class AtIndexer(Indexer):
 
-    def __getitem__(self, index):
+    def __getitem__(self, key):
+        
+        if not (isinstance(key, tuple) and len(key)==2):
+            raise KeyError('ill-defined location. Specify '
+                           '.at[index,column] where index can be a tuple.')
+        
+        index, column = key
+        
         if not isinstance(index, tuple):
             index = (index,)
-        if len(index) != len(self.obj.schema.index_names()) + 1:
-            raise KeyError('Under defined index.')
-        docs = self.obj.get(*index[:-1])
-        docs = [doc[index[-1]] for doc in docs]
+
+        docs = self.obj[column].sel_values(*index)
         if len(docs)==1:
             return docs[0]
         return docs

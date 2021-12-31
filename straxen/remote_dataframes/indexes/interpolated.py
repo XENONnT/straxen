@@ -1,17 +1,22 @@
 
 from typing import Callable, Union
-
+import strax
 import datetime
 import pymongo
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 
-from .index import Index
+from .index import BaseIndex
 from ..utils import singledispatchmethod, singledispatch
+
+export, __all__ = strax.exporter()
 
 
 def nn_interpolate(x, xs, ys):
+    if isinstance(x, (datetime.datetime, pd.Timestamp)):
+        xs = [x.timestamp() for x in xs]
+        x = x.timestamp()
     idx = np.argmin(np.abs(x-np.array(xs)))
     return ys[idx]
 
@@ -36,7 +41,8 @@ def interpolate_datetime(x, xs, ys, kind='linear'):
         return interpolate_number(x, xs, ys, kind=kind)
     return nn_interpolate(x,xs,ys)
 
-class InterpolatedIndex(Index):
+@export
+class BaseInterpolatedIndex(BaseIndex):
     kind: str
     neighbours: int
     inclusive: bool
@@ -49,12 +55,6 @@ class InterpolatedIndex(Index):
         self.neighbours = neighbours
         self.inclusive = inclusive
         self.extrapolate = extrapolate
-
-    def validate(self, value):
-        if self.coerce is not None:
-            value = self.coerce(value)
-        if not isinstance(value, self.type):
-            raise TypeError(f'{self.name} must be of type {self.type}')
 
     def can_extrapolate(self, index):
         if callable(self.extrapolate):
@@ -83,7 +83,21 @@ class InterpolatedIndex(Index):
         
         return []
             
-
     @singledispatchmethod
     def build_query(self, db, value):
         raise TypeError(f"{type(db)} backend not supported.")
+
+
+@export
+class TimeInterpolatedIndex(BaseInterpolatedIndex):
+    type = datetime.datetime
+
+
+@export
+class IntegerInterpolatedIndex(BaseInterpolatedIndex):
+    type = int
+
+
+@export
+class FloatInterpolatedIndex(BaseInterpolatedIndex):
+    type = float

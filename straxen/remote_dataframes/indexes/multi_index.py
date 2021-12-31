@@ -1,11 +1,15 @@
 
 
+import strax
 import toolz
-from .index import Index
+from .index import BaseIndex
 from ..utils import singledispatchmethod
 
+export, __all__ = strax.exporter()
 
-class MultiIndex(Index):
+
+@export
+class MultiIndex(BaseIndex):
     indexes: list
 
     def __init__(self, *args, schema=None, **kwargs) -> None:
@@ -51,6 +55,12 @@ class MultiIndex(Index):
         index.update(kwargs)
         return {idx.name: idx.infer_index_value(**index) for idx in self.indexes}
     
+    def index_to_storage_doc(self, index):
+        doc = {}
+        for idx in self.indexes:
+            doc.update(idx.index_to_storage_doc(index))
+        return doc
+
     def build_query(self, db, value):
         return [index.build_query(db, value) for index in self.indexes]
 

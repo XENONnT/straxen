@@ -6,10 +6,7 @@ is being applied to a pymongo object.
 
 import pymongo
 import strax
-from .. import Index
-from .. import IntervalIndex
-from .. import InterpolatedIndex
-from .. import BaseSchema
+from .. import BaseIndex, BaseIntervalIndex, BaseInterpolatedIndex, BaseSchema
 
 
 export, __all__ = strax.exporter()
@@ -36,7 +33,7 @@ def _save_mongo_database(self, db, doc):
     return self._insert(db[self.name], doc)
 
     
-@Index.apply_query.register(pymongo.collection.Collection)
+@BaseIndex.apply_query.register(pymongo.collection.Collection)
 def apply_mongo_query(self, db, query):
     '''apply one or more mongo queries as
     an aggregation
@@ -51,33 +48,46 @@ def apply_mongo_query(self, db, query):
             agg.append(q)
     return list(db.aggregate(agg))
 
-@Index.apply_query.register(pymongo.database.Database)
+@BaseIndex.apply_query.register(pymongo.database.Database)
 def apply_mongo_query(self, db, query):
     '''If a database was passed to this operation
     its applied to a collection instead
     '''
     return self.apply_query(db[self.schema.name], query)
 
-@Index.build_query.register(pymongo.common.BaseObject)
+@BaseIndex.build_query.register(pymongo.common.BaseObject)
 def build_mongo_query(self, db, value):
     '''Simple index matches on equality
     if this index was omited, match all.
     '''
-    if value is None:
-        return [{
-            '$project': {"_id": 0,},
-            }]
-    if isinstance(value, list):
+    # if value is None:
+    #     value = None
+        # return [{
+        #     '$project': {"_id": 0,},
+        #     }]
+
+    if isinstance(value, slice):
+        start = value.start
+        stop = value.stop
+        value = {}
+        if start is not None:
+            value['$gte'] = start
+        if stop is not None:
+            value['$lt'] = stop
+        if not value:
+            value = None
+
+    elif isinstance(value, list):
         value = {'$in': value}
     return [{
-            '$match': {self.name: value},
+            '$match': {self.name: value} if value is not None else {},
             },
             {
             '$project': {"_id": 0,},
             },
             ]
 
-@InterpolatedIndex.build_query.register(pymongo.common.BaseObject)
+@BaseInterpolatedIndex.build_query.register(pymongo.common.BaseObject)
 def build_interpolation_query(self, db, values):
     '''For interpolation we match the values directly before and after
     the value of interest
@@ -86,6 +96,7 @@ def build_interpolation_query(self, db, values):
         return [{
             '$project': {"_id": 0},
         }]
+        
     if not isinstance(values, list):
         values = [values]
     
@@ -110,7 +121,7 @@ def build_interpolation_query(self, db, values):
         ]        
 
 
-@IntervalIndex.build_query.register(pymongo.common.BaseObject)
+@BaseIntervalIndex.build_query.register(pymongo.common.BaseObject)
 def build_interval_query(self, db, intervals):
     '''Query overlaping documents with given interval, supports multiple 
     intervals as well as zero length intervals (left==right)
@@ -180,7 +191,7 @@ def mongo_closest_query(name, value):
     return [
         {
             '$addFields': {
-                '_after': {'$gt': [f'${name}', value]},
+                '_after': {'$gte': [f'${name}', value]},
                 '_diff': {'$abs': {'$subtract': [value, f'${name}']}},        
                 }
         },

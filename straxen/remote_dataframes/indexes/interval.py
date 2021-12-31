@@ -1,13 +1,19 @@
+import strax
+from datetime import datetime
 import pandas as pd
 from pandas.core.algorithms import isin
 from pandas.core.indexes import interval
 import pymongo
 
-from .index import Index
+from .index import BaseIndex
 from ..utils import singledispatchmethod
 
 
-class IntervalIndex(Index):
+export, __all__ = strax.exporter()
+
+@export
+class BaseIntervalIndex(BaseIndex):
+
     left_name: str = 'left'
     right_name: str = 'right'
     closed: str = 'left'
@@ -26,15 +32,6 @@ class IntervalIndex(Index):
     @property
     def store_fields(self):
         return (self.left_name, self.right_name)
-
-    def validate(self, value):
-        if isinstance(value, list):
-            return [self.validate(val) for val in value]
-        
-        if self.coerce is not None:
-            value = self.coerce(value)
-        if not isinstance(value, self.type):
-            raise TypeError(f'{self.name} must be of type {self.type}')
 
     def to_interval(self, value):
         if isinstance(value, list):
@@ -65,6 +62,32 @@ class IntervalIndex(Index):
         else:
             return self.to_interval(kwargs)
 
+    def index_to_storage_doc(self, index):
+        left, right = index[self.name]
+        return {
+            self.name: index[self.name],
+            self.left_name: left,
+            self.right_name: right,
+            }
+
+    def reduce(self, docs, value):
+        if value is None:
+            return docs
+
+        for doc in docs:
+            doc[self.name] = self.infer_index_value(**doc)
+        return docs
+
     @singledispatchmethod
     def build_query(self, db, value):
         raise TypeError(f"{type(db)} backend not supported.")
+
+
+@export
+class TimeIntervalIndex(BaseIntervalIndex):
+    type = datetime
+
+
+@export
+class IntergerIntervalIntex(BaseIntervalIndex):
+    type = int

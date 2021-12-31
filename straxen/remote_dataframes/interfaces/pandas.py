@@ -2,15 +2,15 @@ import strax
 
 import pandas as pd
 
-from .. import Index
-from .. import IntervalIndex
-from .. import InterpolatedIndex
+from .. import BaseIndex
+from .. import BaseIntervalIndex
+from .. import BaseInterpolatedIndex
 
 export, __all__ = strax.exporter()
 
 
-@Index.build_query.register(pd.core.generic.NDFrame)
-def build_pandas_query(self, db, value):
+@BaseIndex.build_query.register(pd.core.generic.NDFrame)
+def build_pandas_query(self, db, values):
     '''Simple index matches on equality
     if this index was omited, match all.
     these arguments are meant to be used for the df.query()
@@ -28,12 +28,39 @@ def build_pandas_query(self, db, value):
       which will select all values with version=1
 
     '''
-    if value is None:
-        return ''
-    
-    return f'{self.name}==@{self.name}', {self.name: value}
+    if not isinstance(values, list):
+        values = [values]
+    values  = [v for v in values if v is not None]
+    queries = []
+    kwargs = {}
 
-@Index.apply_query.register(pd.DataFrame)
+    # if the column we are matching on is in the index, reset index
+    if self.name in db.index.names:
+        db = db.reset_index()
+
+    # we only need the column we are matching on
+    for i, value in enumerate(values):
+
+        if isinstance(value, slice):
+            start, stop = value.start, value.stop
+        
+            conditions = []
+            if start is not None:
+                conditions.append(f'{self.name}>=@start_{i}')
+                kwargs[f'start_{i}'] = start
+
+            if stop is not None:
+                conditions.append(f'{self.name}<@stop_{i}')
+                kwargs[f'stop_{i}'] = stop
+            query = " and ".join(conditions)
+            queries.append(f"({query})")
+        else:
+            query = f'{self.name}==@{self.name}_{i}'
+            kwargs[f'{self.name}_{i}'] = value
+
+    return " or ".join(queries), kwargs
+
+@BaseIndex.apply_query.register(pd.DataFrame)
 def apply_dataframe(self, db, queries):
     ''' Apply one or more queries to a dataframe
     if a query is a tuple of size 2 its assumed that the first
@@ -56,7 +83,7 @@ def apply_dataframe(self, db, queries):
     docs = db.to_dict(orient='records')
     return docs
 
-@Index.apply_query.register(pd.Series)
+@BaseIndex.apply_query.register(pd.Series)
 def apply_series(self, db, query):
     '''Series dont support the .query() api
     so convert to a databrame and apply query.
@@ -64,7 +91,7 @@ def apply_series(self, db, query):
     return self.apply_query(db, query.to_frame())
 
 
-@InterpolatedIndex.build_query.register(pd.core.generic.NDFrame)
+@BaseInterpolatedIndex.build_query.register(pd.core.generic.NDFrame)
 def build_pandas_query(self, db, values):
     '''Interpolated index selects the rows before and after
     the requested value if they exist.
@@ -108,7 +135,7 @@ def build_pandas_query(self, db, values):
     return " or ".join(queries), kwargs
 
 
-@IntervalIndex.build_query.register(pd.core.generic.NDFrame)
+@BaseIntervalIndex.build_query.register(pd.core.generic.NDFrame)
 def build_pandas_query(self, db, intervals):
     '''Query by overlap, if multiple overlaps are 
     given, joing them with an or logic
