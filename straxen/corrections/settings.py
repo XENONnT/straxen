@@ -1,7 +1,7 @@
 
-from .clock import Clock
+from .clock import SimpleClock
 
 class CorrectionsSettings:
-    clock = Clock()
+    clock = SimpleClock()
 
 corrections_settings = CorrectionsSettings()
