@@ -6,8 +6,8 @@ is being applied to a pymongo object.
 
 import pymongo
 import strax
-from .. import BaseIndex, BaseIntervalIndex, BaseInterpolatedIndex, BaseSchema
-
+from ..indexes import BaseIndex, BaseIntervalIndex, BaseInterpolatedIndex
+from ..schema import BaseSchema
 
 export, __all__ = strax.exporter()
 
@@ -25,6 +25,7 @@ def _save_mongo_collection(self, db, doc):
     '''
     return db.find_one_and_replace(doc, doc, upsert=True)
 
+
 @BaseSchema._insert.register(pymongo.database.Database)
 def _save_mongo_database(self, db, doc):
     '''If a mongo database was passed to the insert operation
@@ -32,7 +33,20 @@ def _save_mongo_database(self, db, doc):
     '''
     return self._insert(db[self.name], doc)
 
-    
+
+@BaseIndex.head.register(pymongo.collection.Collection)
+def collection_head(self, db, n):
+    return list(db.find(projection={'_id': 0}).limit(n))
+
+
+@BaseIndex.head.register(pymongo.database.Database)
+def database_head(self, db, n):
+    '''If a mongo database was passed to the head operation
+    the correct collection needs to be passed instead.
+    '''
+    return self.head(db[self.schema.name], n)
+
+
 @BaseIndex.apply_query.register(pymongo.collection.Collection)
 def apply_mongo_query(self, db, query):
     '''apply one or more mongo queries as
@@ -48,6 +62,7 @@ def apply_mongo_query(self, db, query):
             agg.append(q)
     return list(db.aggregate(agg))
 
+
 @BaseIndex.apply_query.register(pymongo.database.Database)
 def apply_mongo_query(self, db, query):
     '''If a database was passed to this operation
@@ -55,17 +70,12 @@ def apply_mongo_query(self, db, query):
     '''
     return self.apply_query(db[self.schema.name], query)
 
+
 @BaseIndex.build_query.register(pymongo.common.BaseObject)
 def build_mongo_query(self, db, value):
     '''Simple index matches on equality
     if this index was omited, match all.
     '''
-    # if value is None:
-    #     value = None
-        # return [{
-        #     '$project': {"_id": 0,},
-        #     }]
-
     if isinstance(value, slice):
         start = value.start
         stop = value.stop
@@ -79,6 +89,7 @@ def build_mongo_query(self, db, value):
 
     elif isinstance(value, list):
         value = {'$in': value}
+
     return [{
             '$match': {self.name: value} if value is not None else {},
             },
@@ -86,6 +97,7 @@ def build_mongo_query(self, db, value):
             '$project': {"_id": 0,},
             },
             ]
+
 
 @BaseInterpolatedIndex.build_query.register(pymongo.common.BaseObject)
 def build_interpolation_query(self, db, values):
@@ -96,7 +108,7 @@ def build_interpolation_query(self, db, values):
         return [{
             '$project': {"_id": 0},
         }]
-        
+
     if not isinstance(values, list):
         values = [values]
     
@@ -150,6 +162,7 @@ def build_interval_query(self, db, intervals):
         },
     ]
 
+
 def mongo_overlap_query(index, interval):
     '''Builds a single overlap query
     Intervals with one side equal to null are treated as extending to infinity in
@@ -186,6 +199,7 @@ def mongo_overlap_query(index, interval):
             }
     else:
         return {}
+
 
 def mongo_closest_query(name, value):
     return [

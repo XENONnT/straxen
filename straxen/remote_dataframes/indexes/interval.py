@@ -1,11 +1,7 @@
 import strax
-from datetime import datetime
 import pandas as pd
-from pandas.core.algorithms import isin
-from pandas.core.indexes import interval
-import pymongo
 
-from .index import BaseIndex
+from .index import *
 from ..utils import singledispatchmethod
 
 
@@ -84,10 +80,10 @@ class BaseIntervalIndex(BaseIndex):
 
 
 @export
-class TimeIntervalIndex(BaseIntervalIndex):
-    type = datetime
+class TimeIntervalIndex(BaseIntervalIndex, DatetimeIndex):
+    pass
 
 
 @export
-class IntergerIntervalIntex(BaseIntervalIndex):
-    type = int
+class IntegerIntervalIntex(BaseIntervalIndex, IntegerIndex):
+    pass

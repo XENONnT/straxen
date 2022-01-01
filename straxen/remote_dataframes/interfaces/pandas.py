@@ -9,6 +9,12 @@ from .. import BaseInterpolatedIndex
 export, __all__ = strax.exporter()
 
 
+@BaseIndex.head.register(pd.DataFrame)
+@BaseIndex.head.register(pd.Series)
+def collection_head(self, db, n):
+    return db.head(n)
+
+
 @BaseIndex.build_query.register(pd.core.generic.NDFrame)
 def build_pandas_query(self, db, values):
     '''Simple index matches on equality

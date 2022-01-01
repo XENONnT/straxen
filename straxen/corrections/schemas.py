@@ -1,11 +1,8 @@
 
-from typing import Any, ClassVar
-import pytz
 import time
 import strax
 import numbers
 import straxen
-import utilix
 import datetime
 
 import pandas as pd
@@ -13,11 +10,6 @@ from collections import Counter
 from .settings import corrections_settings
 
 export, __all__ = strax.exporter()
-
-# editing will not be allowed for for time periods
-# this many seconds into the future 
-EDITING_BUFFER = 12*3600 
-
 
 
 @export

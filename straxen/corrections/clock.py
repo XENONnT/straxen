@@ -2,7 +2,7 @@ import time
 import pandas as pd
 
 
-class Clock:
+class SimpleClock:
     utc: bool
     cutoff_offset: float
 

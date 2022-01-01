@@ -1,10 +1,12 @@
 
+import re
 import pymongo
 import strax
 import pandas as pd
 
 from typing import Any, Type, Union
 from .schema import BaseSchema, InsertionError
+from .utils import singledispatchmethod
 
 export, __all__ = strax.exporter()
 
@@ -44,7 +46,17 @@ class RemoteDataframe:
         return self.schema.index.query_db(self.db, *args, **kwargs)
 
     def sel_record(self, *args, **kwargs):
-        return self.sel_records(*args, **kwargs)[0]        
+        records = self.sel_records(*args, **kwargs)
+        if records:
+            return records[0]       
+        raise KeyError('Selection returned no records.')
+
+    def head(self, n=10):
+        docs = self.schema.index.head(self.db, n)
+        index_fields = self.schema.index_names()
+        df = pd.DataFrame(docs, columns=self.schema.all_fields())
+        idx = [c for c in index_fields if c in df.columns]
+        return df.sort_values(idx).set_index(idx)
 
     def sel(self, *args, **kwargs):
         docs = self.sel_records(*args, **kwargs)
@@ -114,7 +126,10 @@ class RemoteSeries:
         return [doc[self.column] for doc in docs]
 
     def sel_value(self, *args, **kwargs):
-        return self.sel_values(*args, **kwargs)[0]
+        values = self.sel_values(*args, **kwargs)
+        if values:
+            return values[0]
+        raise KeyError('Selection returned no values.')
 
     def set(self, *args, **kwargs):
         raise InsertionError('Cannot set values on a RemoteSeries object,'
@@ -122,6 +137,7 @@ class RemoteSeries:
 
     def __repr__(self) -> str:
         return f"RemoteSeries(index={self.obj.schema.index_names()}, column={self.column})"
+
 
 class Indexer:
     def __init__(self, obj: RemoteDataframe):
@@ -173,11 +189,17 @@ class AtIndexer(Indexer):
                            '.at[index,column] where index can be a tuple.')
         
         index, column = key
+
+        if column not in self.obj.columns:
+            raise KeyError(f'{column} not found. Valid columns are: {self.obj.columns}')
         
         if not isinstance(index, tuple):
             index = (index,)
 
-        docs = self.obj[column].sel_values(*index)
-        if len(docs)==1:
-            return docs[0]
-        return docs
+        if any([isinstance(idx, (slice, list, type(None))) for idx in index]):
+            raise KeyError(f'{index} is not unique index.')
+
+        if len(index)<len(self.obj.schema.index_names()):
+            KeyError(f'{index} is an under defined index.')
+
+        return self.obj[column].sel_value(*index)

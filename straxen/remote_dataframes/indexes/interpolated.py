@@ -2,12 +2,11 @@
 from typing import Callable, Union
 import strax
 import datetime
-import pymongo
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 
-from .index import BaseIndex
+from .index import *
 from ..utils import singledispatchmethod, singledispatch
 
 export, __all__ = strax.exporter()
@@ -89,15 +88,14 @@ class BaseInterpolatedIndex(BaseIndex):
 
 
 @export
-class TimeInterpolatedIndex(BaseInterpolatedIndex):
-    type = datetime.datetime
+class TimeInterpolatedIndex(BaseInterpolatedIndex, DatetimeIndex):
+    pass
+
+@export
+class IntegerInterpolatedIndex(BaseInterpolatedIndex, IntegerIndex):
+    pass
 
 
 @export
-class IntegerInterpolatedIndex(BaseInterpolatedIndex):
-    type = int
-
-
-@export
-class FloatInterpolatedIndex(BaseInterpolatedIndex):
-    type = float
+class FloatInterpolatedIndex(BaseInterpolatedIndex, FloatIndex):
+    pass

@@ -1,8 +1,7 @@
 import re
 import pymongo
 import strax
-from straxen.remote_dataframes.utils import singledispatchmethod
-import utilix
+from .utils import singledispatchmethod
 
 import datetime
 
@@ -61,7 +60,10 @@ class BaseSchema(BaseModel):
         else:
             cls.index = MultiIndex(**indexes)
         cls.index.__set_name__(cls, 'index')
-    
+
+    def __hash__(self):  # make hashable BaseModel subclass
+        return hash((type(self),) + tuple(self.dict().values()))
+
     @classmethod
     def columns(cls):
         return list(cls.schema()['properties'])
@@ -125,4 +127,16 @@ class BaseSchema(BaseModel):
     def _insert(self, db, doc):
         raise TypeError(f'Inserts are not supported \
                         for {type(db)} data stores.')
-        
+
+    @classmethod
+    def builds(cls):
+        from hypothesis import strategies as st
+
+        @st.composite
+        def strategy(draw, index_strategy, data_strategy):
+            index = draw(index_strategy)
+            data = draw(data_strategy)
+            return index, data
+
+        return strategy(cls.index.builds(), st.builds(cls))
+    

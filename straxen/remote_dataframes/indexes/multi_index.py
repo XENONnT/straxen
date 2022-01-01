@@ -3,7 +3,6 @@
 import strax
 import toolz
 from .index import BaseIndex
-from ..utils import singledispatchmethod
 
 export, __all__ = strax.exporter()
 
@@ -101,3 +100,12 @@ class MultiIndex(BaseIndex):
 
     def __repr__(self):
         return f"MultiIndex({self.indexes})"
+
+    def builds(self):
+        from hypothesis import strategies as st
+
+        @st.composite
+        def strategy(draw, *index_strategies):
+            return tuple(map(draw, index_strategies))
+
+        return strategy(*[idx.builds() for idx in self.indexes])
