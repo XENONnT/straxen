@@ -1,4 +1,4 @@
-
+import pytz
 import strax
 import datetime
 import numbers
@@ -173,10 +173,14 @@ class DatetimeIndex(BaseIndex):
         self.utc = utc
         self.unit = unit
 
-    def _coerce(self, value):
+    def coerce(self, value):
         unit = self.unit if isinstance(value, numbers.Number) else None
-        return pd.to_datetime(value, utc=self.utc, unit=unit).to_pydatetime()
+        return pd.to_datetime(value, utc=self.utc, unit=unit).to_pydatetime().replace(tzinfo=pytz.utc)
 
     def builds(self):
         from hypothesis import strategies as st
-        return st.datetimes()
+        from hypothesis.extra.pytz import timezones
+
+        return st.datetimes(min_value=pd.Timestamp.min,
+                            max_value=pd.Timestamp.max,
+                            timezones=timezones(), )

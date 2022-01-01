@@ -14,7 +14,7 @@ from typing import ClassVar, Type, Union
 from .indexes import BaseIndex, MultiIndex
 
 export, __all__ = strax.exporter()
-
+@export
 class InsertionError(Exception):
     pass
 

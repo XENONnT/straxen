@@ -9,7 +9,7 @@ import pandas as pd
 
 
 export, __all__ = strax.exporter()
-__all__ += ['corrections_db']
+__all__ += ['correction_dfs']
 
 @export
 class CorrectionDataframes:
@@ -84,12 +84,10 @@ def extract_time(kwargs):
     else:
         return None
 
-corrections_db = CorrectionDataframes.default()
+correction_dfs = CorrectionDataframes.default()
 
 @export
 def cmt2(name, version=0, **kwargs):
     dtime = extract_time(kwargs)
-    docs = corrections_db[name].sel(time=dtime, version=version, **kwargs)
-    if len(docs)==1:
-        return docs[0]
-    return docs
+    return correction_dfs[name].sel(time=dtime, version=version, **kwargs)
+

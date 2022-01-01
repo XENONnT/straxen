@@ -4,25 +4,28 @@ import unittest
 import straxen
 import os
 import pymongo
-from hypothesis import example, given, strategies as st
+from hypothesis import settings, given, strategies as st
+
+
+
+def mongo_uri_not_set():
+    return 'TEST_MONGO_URI' not in os.environ
 
 
 class SimpleCorrection(straxen.BaseCorrectionSchema):
     name = 'simple_correction'
     index = straxen.IntegerIndex(name='version')
-    value: pydantic.confloat(gt=0, lt=1e6)
+    value: pydantic.confloat(gt=0, lt=2**32-1)
     
-class SomeTimeIntervalCorrection(straxen.TimeIntervalCorrection):
-    name = 'time_interval_correction'
-    value: int
 
 class SomeSampledCorrection(straxen.TimeSampledCorrection):
     name = 'sampled_correction'
-    value: int
+    value: pydantic.confloat(lt=2**32-1)
 
 
-def mongo_uri_not_set():
-    return 'TEST_MONGO_URI' not in os.environ
+class SomeTimeIntervalCorrection(straxen.TimeIntervalCorrection):
+    name = 'time_interval_correction'
+    value: pydantic.confloat(lt=2**32-1)
 
 
 class TestCorrectionDataframes(unittest.TestCase):
@@ -50,10 +53,55 @@ class TestCorrectionDataframes(unittest.TestCase):
     
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     @given(SimpleCorrection.builds())
-    def test_insert_simple(self, record):
+    def test_simple_correction(self, record):
         idx, doc = record
         rdf = self.dfs.simple_correction
         rdf.loc[idx] = doc
         self.assertEqual(rdf.at[idx, 'value'], doc.value)
+        alt_doc = doc.copy()
+        alt_doc.value += 1
+        with self.assertRaises(IndexError):
+            rdf.loc[idx] = alt_doc
+
+        rdf.loc[idx+1] = alt_doc
+        self.assertEqual(rdf.at[idx+1, 'value'], alt_doc.value)
         rdf.db.drop_collection(rdf.name)
     
+    @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
+    @given(st.lists(SomeSampledCorrection.builds(), min_size=2, unique=True))
+    @settings(deadline=None)
+    def test_sampled_correctoin(self, records):
+
+        rdf = self.dfs.sampled_correction
+        rdf.db.drop_collection(rdf.name)
+
+        # we must sort by time before inserting
+        # since values are interpolated in time 
+        records.sort(key=lambda x: x[0][1])
+
+        for idx, doc in records:
+            v,dt = idx
+            while v<1:
+                v += 1
+            rdf.loc[(v,dt)] = doc
+        
+        df = rdf.loc[:]
+
+        self.assertEqual(len(df), len(records))
+
+
+        # test version 0
+        rdf.db.drop_collection(rdf.name)
+        cutoff = straxen.corrections_settings.clock.cutoff_datetime(buffer=3600)
+
+        after_cutoff = list(filter(lambda x: x[0][1]>cutoff, records))
+
+        for idx, doc in after_cutoff:
+            _, dt = idx
+            rdf.loc[(0,dt)] = doc
+
+        df = rdf.loc[:]
+
+        
+
+

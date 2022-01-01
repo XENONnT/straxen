@@ -14,6 +14,6 @@ class SimpleClock:
         return pd.to_datetime(time.time(),
                             unit='s', utc=self.utc)
 
-    def cutoff_datetime(self):
-        return pd.to_datetime(time.time()+self.cutoff_offset,
+    def cutoff_datetime(self, buffer=0.):
+        return pd.to_datetime(time.time()+self.cutoff_offset+buffer,
                             unit='s', utc=self.utc)

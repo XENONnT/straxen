@@ -68,16 +68,22 @@ class BaseInterpolatedIndex(BaseIndex):
             return [d for val in value for d in self.reduce(docs, val)]
         
         xs = [d[self.name] for d in docs]
-        new_document = dict(nn_interpolate(value, xs, docs))
+
+        # just covert all datetimes to timestamps to avoid complexity
+        # FIXME: maybe properly handle timezones instead
+        xs = [x.timestamp() if isinstance(x, datetime.datetime) else x for x in xs]
+        x = value.timestamp() if isinstance(value, datetime.datetime) else value
+
+        new_document = dict(nn_interpolate(x, xs, docs))
         new_document[self.name] = value
-        if len(xs)>1 and max(xs)>=value>=min(xs):
+        
+        if len(xs)>1 and max(xs)>=x>=min(xs):
             for yname in docs[0]:
                 ys = [d[yname] for d in docs]
-                new_document[yname] = interpolater(value, 
-                                                xs, ys, kind=self.kind)
+                new_document[yname] = interpolater(x, xs, ys, kind=self.kind)
             return [new_document]
 
-        if self.can_extrapolate(new_document):
+        if x>max(xs) and self.can_extrapolate(new_document):
             return [new_document]
         
         return []
@@ -88,14 +94,15 @@ class BaseInterpolatedIndex(BaseIndex):
 
 
 @export
-class TimeInterpolatedIndex(BaseInterpolatedIndex, DatetimeIndex):
-    pass
-
-@export
-class IntegerInterpolatedIndex(BaseInterpolatedIndex, IntegerIndex):
+class TimeInterpolatedIndex(DatetimeIndex, BaseInterpolatedIndex):
     pass
 
 
 @export
-class FloatInterpolatedIndex(BaseInterpolatedIndex, FloatIndex):
+class IntegerInterpolatedIndex(IntegerIndex, BaseInterpolatedIndex):
+    pass
+
+
+@export
+class FloatInterpolatedIndex(FloatIndex,BaseInterpolatedIndex):
     pass

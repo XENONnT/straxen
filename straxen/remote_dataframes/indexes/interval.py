@@ -80,10 +80,10 @@ class BaseIntervalIndex(BaseIndex):
 
 
 @export
-class TimeIntervalIndex(BaseIntervalIndex, DatetimeIndex):
+class TimeIntervalIndex(DatetimeIndex, BaseIntervalIndex):
     pass
 
 
 @export
-class IntegerIntervalIntex(BaseIntervalIndex, IntegerIndex):
+class IntegerIntervalIntex(IntegerIndex, BaseIntervalIndex):
     pass
