@@ -13,7 +13,7 @@ gitpython==3.1.18
 holoviews==1.14.5
 ipywidgets==7.6.4
 keras==2.7.0                                    # Tensorflow depencency
-hypothesis==6.31.6
+hypothesis==6.34.1
 jupyter-client==7.1.0                           # for ipywidgets
 matplotlib==3.5.1
 multihist==0.6.4
