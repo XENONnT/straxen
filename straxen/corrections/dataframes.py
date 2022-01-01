@@ -20,39 +20,39 @@ class CorrectionDataframes:
     
     @classmethod
     def default(cls, *args, **kwargs):
-        return cls.local_mongo(*args, **kwargs)
-    
+        return cls.from_mongodb(*args, **kwargs)
+
     @classmethod
-    def local_mongo(cls, dbname='cmt2'):
+    def from_mongodb(cls, url='localhost', dbname='cmt2', **kwargs):
         import pymongo
-        db = pymongo.MongoClient()[dbname]
+        db = pymongo.MongoClient(url, **kwargs)[dbname]
         return cls(db)
 
     @property
-    def corrections(self):
-        return dict(straxen.BaseCorrectionSchema._CORRECTIONS)
+    def schemas(self):
+        return dict(straxen.BaseCorrectionSchema._SCHEMAS)
     
     @property
     def correction_names(self):
-        return list(self.corrections)
+        return list(self.schemas)
 
     def get_df(self, name):
-        correction = self.corrections[name]
+        correction = self.schemas[name]
         return straxen.RemoteDataframe(correction, self.db)
 
     def __getitem__(self, key):
-        if isinstance(key, tuple) and key[0] in self.corrections:
+        if isinstance(key, tuple) and key[0] in self.schemas:
             return self.get_df(key[0])[key[1:]]
         
-        if key in self.corrections:
+        if key in self.schemas:
             return self.get_df(key)
         raise KeyError(key)
         
     def __dir__(self):
-        return super().__dir__() + list(self.corrections)
+        return super().__dir__() + list(self.schemas)
     
     def __getattr__(self, name):            
-        if name in self.corrections:
+        if name in self.schemas:
             return self.get_df(name)
         raise AttributeError(name)
 
@@ -84,7 +84,7 @@ def extract_time(kwargs):
     else:
         return None
 
-corrections_db = CorrectionDataframes.local_mongo()
+corrections_db = CorrectionDataframes.default()
 
 @export
 def cmt2(name, version=0, **kwargs):

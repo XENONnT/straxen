@@ -15,16 +15,16 @@ export, __all__ = strax.exporter()
 @export
 class BaseCorrectionSchema(straxen.BaseSchema):
 
-    _CORRECTIONS = {}
+    _SCHEMAS = {}
 
     index = straxen.IntegerIndex(name='version')
 
     def __init_subclass__(cls) -> None:
                 
-        if cls.name in BaseCorrectionSchema._CORRECTIONS:
+        if cls.name in BaseCorrectionSchema._SCHEMAS:
             raise TypeError(f'A correction with the name {cls.name} already exists.')
         if cls.name:
-            cls._CORRECTIONS[cls.name] = cls
+            cls._SCHEMAS[cls.name] = cls
 
         super().__init_subclass__()
         

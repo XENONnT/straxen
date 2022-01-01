@@ -136,7 +136,7 @@ class IntegerIndex(BaseIndex):
     type = int
     posdef: bool
 
-    def __init__(self, posdef=True,**kwargs):
+    def __init__(self, posdef=True, **kwargs):
         super().__init__(**kwargs)
         self.posdef = posdef 
 
@@ -149,7 +149,8 @@ class IntegerIndex(BaseIndex):
 
     def builds(self):
         from hypothesis import strategies as st
-        return st.integers(min_value=0)
+        min_value = 0 if self.posdef else None
+        return st.integers(min_value=min_value, max_value=2**32-1)
 
 @export
 class FloatIndex(BaseIndex):

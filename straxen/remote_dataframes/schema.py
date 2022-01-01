@@ -96,8 +96,8 @@ class BaseSchema(BaseModel):
 
     def pre_update(self, db, old, **index):
         if old != self:
-            message = f'Values already set for {index} are different\
-                        than the values you are trying to set.'
+            message = (f'Values already set for {index} are different'
+                        'than the values you are trying to set.')
             raise IndexError(message)
 
     def save(self, db, *args, **kwargs):
@@ -125,8 +125,8 @@ class BaseSchema(BaseModel):
 
     @singledispatchmethod
     def _insert(self, db, doc):
-        raise TypeError(f'Inserts are not supported \
-                        for {type(db)} data stores.')
+        raise TypeError('Inserts are not supported'
+                        f'for {type(db)} data stores.')
 
     @classmethod
     def builds(cls):

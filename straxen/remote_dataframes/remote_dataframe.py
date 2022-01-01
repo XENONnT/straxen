@@ -31,6 +31,10 @@ class RemoteDataframe:
         self.db = db
     
     @property
+    def name(self):
+        return self.schema.name
+
+    @property
     def columns(self):
         return self.schema.columns()
 
@@ -102,7 +106,9 @@ class RemoteDataframe:
         raise AttributeError(name)
 
     def __repr__(self) -> str:
-        return f"RemoteDataFrame(index={self.schema.index_names()}, columns={self.schema.columns()})"
+        return (f"RemoteDataFrame(name={self.name},"
+               f"index={self.schema.index_names()},"
+               f"columns={self.schema.columns()})")
 
 class RemoteSeries:
     obj: RemoteDataframe
@@ -136,7 +142,8 @@ class RemoteSeries:
                              'use the RemoteDataFrame.')
 
     def __repr__(self) -> str:
-        return f"RemoteSeries(index={self.obj.schema.index_names()}, column={self.column})"
+        return (f"RemoteSeries(index={self.obj.schema.index_names()},"
+                f"column={self.column})")
 
 
 class Indexer:
@@ -175,8 +182,13 @@ class LocIndexer(Indexer):
     def __setitem__(self, key, value):
         if not isinstance(key, tuple):
             key = (key,)
+        
+        if isinstance(value, self.obj.schema):
+            value  = value.dict()
+
         if not isinstance(value, dict):
             value = {'value': value}
+
         self.obj.set(*key, **value)
 
 
