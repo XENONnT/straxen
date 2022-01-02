@@ -7,11 +7,25 @@ import straxen
 import inspect
 from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
-from functools import lru_cache
-
 from strax.config import OMITTED
+import os
+import tempfile
+import tarfile
 
 export, __all__ = strax.exporter()
+
+_CACHES = {}
+
+
+@export
+def clear_config_caches():
+    for cache in _CACHES.values():
+        cache.clear()
+
+
+@export
+def config_cache_size_mb():
+    return straxen.total_size(_CACHES)//1e6
 
 
 def parse_val(val):
@@ -47,8 +61,13 @@ class URLConfig(strax.Config):
             self.final_type = self.type
             self.type = OMITTED  # do not enforce type on the URL
         if cache:
-            maxsize = cache if isinstance(cache, int) else None
-            self.dispatch = lru_cache(maxsize)(self.dispatch)
+            cache_len = 100 if cache is True else int(cache) 
+            cache = straxen.CacheDict(cache_len=cache_len)
+            _CACHES[id(self)] = cache
+
+    @property
+    def cache(self):
+        return _CACHES.get(id(self), {})
 
     @classmethod
     def register(cls, protocol, func=None):
@@ -99,14 +118,15 @@ class URLConfig(strax.Config):
 
         # filter kwargs to pass only the kwargs
         #  accepted by the method.
-        kwargs = self.filter_kwargs(meth, kwargs)
+        kwargs = straxen.filter_kwargs(meth, kwargs)
 
         return meth(arg, *args, **kwargs)
 
-    def split_url_kwargs(self, url):
+    @classmethod
+    def split_url_kwargs(cls, url):
         """split a url into path and kwargs
         """
-        path, _, _ = url.partition(self.QUERY_SEP)
+        path, _, _ = url.partition(cls.QUERY_SEP)
         kwargs = {}
         for k, v in parse_qs(urlparse(url).query).items():
             # values of query arguments are evaluated as lists
@@ -120,18 +140,6 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
-    @staticmethod
-    def filter_kwargs(func, kwargs):
-        """Filter out keyword arguments that
-            are not in the call signature of func
-            and return filtered kwargs dictionary
-        """
-        params = inspect.signature(func).parameters
-        if any([str(p).startswith('**') for p in params.values()]):
-            # if func accepts wildcard kwargs, return all
-            return kwargs
-        return {k: v for k, v in kwargs.items() if k in params}
-
     def fetch_attribute(self, plugin, value):
         if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
             # kwarg is referring to a plugin attribute, lets fetch it
@@ -144,9 +152,9 @@ class URLConfig(strax.Config):
         return value
 
     def fetch(self, plugin):
-        '''override the Config.fetch method
-           this is called when the attribute is accessed 
-        '''
+        """override the Config.fetch method
+        this is called when the attribute is accessed
+        """
         # first fetch the user-set value 
         # from the config dictionary
         url = super().fetch(plugin)
@@ -168,7 +176,18 @@ class URLConfig(strax.Config):
         kwargs = {k: self.fetch_attribute(plugin, v)
                   for k, v in url_kwargs.items()}
 
-        return self.dispatch(url, **kwargs)
+        # construct a deterministic hash key
+        key = strax.deterministic_hash((url, kwargs))
+
+        # fetch from cache if exists
+        value = self.cache.get(key, None)
+
+        # not in cache, lets fetch it
+        if value is None:
+            value = self.dispatch(url, **kwargs)
+            self.cache[key] = value
+
+        return value
 
     @classmethod
     def protocol_descr(cls):
@@ -189,26 +208,37 @@ class URLConfig(strax.Config):
 
 
 @URLConfig.register('cmt')
-def get_correction(name: str, run_id: str=None, version: str='ONLINE',
-                   detector: str='nt', **kwargs):
-    '''Get value for name from CMT
-    '''
+def get_correction(name: str,
+                   run_id: str = None,
+                   version: str = 'ONLINE',
+                   detector: str = 'nt',
+                   **kwargs):
+    """Get value for name from CMT"""
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector=='nt'))
+    return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
 
 @URLConfig.register('resource')
-def get_resource(name: str, fmt: str='text', **kwargs):
-    '''Fetch a straxen resource
-    '''
+def get_resource(name: str,
+                 fmt: str = 'text',
+                 **kwargs):
+    """
+    Fetch a straxen resource
+
+    Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    passed directly to straxen.get_resource.
+    """
+    if fmt == 'abs_path':
+        downloader = straxen.MongoDownloader()
+        return downloader.download_single(name)
     return straxen.get_resource(name, fmt=fmt)
 
 
 @URLConfig.register('fsspec')
 def read_file(path: str, **kwargs):
-    '''Support fetching files from arbitrary filesystems
-    '''
+    """Support fetching files from arbitrary filesystems
+    """
     with fsspec.open(path, **kwargs) as f:
         content = f.read()
     return content
@@ -216,15 +246,15 @@ def read_file(path: str, **kwargs):
 
 @URLConfig.register('json')
 def read_json(content: str, **kwargs):
-    ''' Load json string as a python object
-    '''
+    """Load json string as a python object
+    """
     return json.loads(content)
 
 
 @URLConfig.register('take')
 def get_key(container: Container, take=None, **kwargs):
-    ''' return a single element of a container
-    '''
+    """ return a single element of a container
+    """
     if take is None:
         return container
     if not isinstance(take, list):
@@ -240,6 +270,33 @@ def get_key(container: Container, take=None, **kwargs):
 
 @URLConfig.register('format')
 def format_arg(arg: str, **kwargs):
-    ''' apply pythons builtin format function to a string
-    '''
+    """apply pythons builtin format function to a string"""
     return arg.format(**kwargs)
+
+
+@URLConfig.register('itp_map')
+def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
+    """Make an InterpolatingMap"""
+    return straxen.InterpolatingMap(some_map, method=method, **kwargs)
+
+
+@URLConfig.register('bodega')
+def load_value(name: str, bodega_version=None):
+    """Load a number from BODEGA file"""
+    if bodega_version is None:
+        raise ValueError('Provide version see e.g. tests/test_url_config.py')
+    nt_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
+    return nt_numbers[name][bodega_version]["value"]
+
+
+@URLConfig.register('tf')
+def open_neural_net(model_path: str, **kwargs):
+    # Nested import to reduce loading time of import straxen and it not
+    # base requirement
+    import tensorflow as tf
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f'No file at {model_path}')
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tar = tarfile.open(model_path, mode="r:gz")
+        tar.extractall(path=tmpdirname)
+        return tf.keras.models.load_model(tmpdirname)

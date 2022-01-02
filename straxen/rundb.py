@@ -57,7 +57,6 @@ class RunDB(strax.StorageFrontend):
         :param new_data_path: Path where new files are to be written.
             Defaults to None: do not write new data
             New files will be registered in the runs db!
-            TODO: register under hostname alias (e.g. 'dali')
         :param reader_ini_name_is_mode: If True, will overwrite the
             'mode' field with 'reader.ini.name'.
         :param rucio_path: What is the base path where Rucio is mounted
@@ -135,8 +134,6 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    # TODO remove the meta.lineage since this doc
-                    #  entry is deprecated.
                     '$and': [{'$or': [
                         {'meta.lineage': key.lineage},
                         {'did':
@@ -209,7 +206,6 @@ class RunDB(strax.StorageFrontend):
                         'host': self.hostname,
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
-                        # TODO: duplication with metadata stuff elsewhere?
                         'meta': {'lineage': key.lineage}
                     }}})
 
@@ -218,7 +214,6 @@ class RunDB(strax.StorageFrontend):
         datum = doc['data'][0]
 
         if datum['host'] == 'rucio-catalogue':
-            # TODO this is due to a bad query in _data_query. We aren't rucio.
             raise strax.DataNotAvailable
 
         if write and not self._can_overwrite(key):

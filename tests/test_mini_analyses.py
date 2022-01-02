@@ -32,6 +32,10 @@ class TestMiniAnalyses(unittest.TestCase):
     checking if plots et cetera make sense, just if the code is not
     broken (e.g. because for changes in dependencies like matplotlib or
     bokeh)
+
+    NB! If this tests fails locally (but not on github-CI), please do:
+    `rm strax_test_data`
+    You might be an old version of test data.
     """
     # They were added on 25/10/2021 and may be outdated by now
     _expected_test_results = {
@@ -101,11 +105,18 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def test_event_display_simple(self):
         plot_all_positions = straxen.utilix_is_configured()
-        self.st.event_display_simple(nt_test_run_id,
-                                     time_within=self.first_event,
-                                     xenon1t=False,
-                                     plot_all_positions=plot_all_positions,
-                                     )
+        with self.assertRaises(NotImplementedError):
+            # old way of calling the simple display
+            self.st.event_display_simple(nt_test_run_id,
+                                         time_within=self.first_event,
+                                         )
+        # New, correct way of calling the simple display
+        self.st.event_display(nt_test_run_id,
+                              time_within=self.first_event,
+                              xenon1t=False,
+                              plot_all_positions=plot_all_positions,
+                              simple_layout=True,
+                              )
 
     def test_single_event_plot(self):
         plot_all_positions = straxen.utilix_is_configured()
@@ -127,6 +138,7 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_plot_peaks_aft_histogram(self):
         self.st.plot_peaks_aft_histogram(nt_test_run_id)
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_event_scatter(self):
         self.st.event_scatter(nt_test_run_id)
 
@@ -346,6 +358,12 @@ class TestMiniAnalyses(unittest.TestCase):
         self.assertTrue(os.path.exists(save_as))
         os.remove(save_as)
         self.assertFalse(os.path.exists(save_as))
+        # Also test if we can write it to the wiki
+        straxen.bokeh_to_wiki(fig)
+        straxen.bokeh_to_wiki(fig, save_as)
+        self.assertTrue(os.path.exists(save_as))
+        os.remove(save_as)
+        self.assertFalse(os.path.exists(save_as))
 
     @unittest.skipIf(not straxen.utilix_is_configured(),
                      "No db access, cannot test!")
@@ -386,14 +404,21 @@ class TestMiniAnalyses(unittest.TestCase):
                      "No db access, cannot test!")
     def test_nv_event_display(self):
         """
-        Test NV event display for a time range without data (should fail)
+        Test NV event display for a single event.
         """
-        self.st.make(nt_test_run_id, 'events_nv')
-        ev_nv = self.st.get_array(nt_test_run_id, 'event_positions_nv')
-        self.assertFalse(ev_nv, "this test assumes NV events are empty")
+        events_nv = self.st.get_array(nt_test_run_id, 'events_nv')
+        warning = ("Do 'rm ./strax_test_data' since your *_nv test "
+                   "data in that folder is messing up this test.")
+        self.assertTrue(len(events_nv), warning)
+        self.st.make(nt_test_run_id, 'event_positions_nv')
+        self.st.plot_nveto_event_display(nt_test_run_id,
+                                         time_within=events_nv[0],
+                                         )
         with self.assertRaises(ValueError):
+            # If there is no data, we should raise a ValueError
             self.st.plot_nveto_event_display(nt_test_run_id,
-                                             time_within=self.first_peak)
+                                             time_range=[-1000,-900],
+                                             )
 
 
 def test_plots():

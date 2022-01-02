@@ -5,6 +5,8 @@ from copy import deepcopy
 from .rucio import HAVE_ADMIX
 import os
 
+from straxen.common import pax_file
+
 common_opts = dict(
     register_all=[
         straxen.double_scatter,
@@ -51,11 +53,7 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     # Event level parameters
-    s2_xy_correction_map=('s2_xy_map', "ONLINE", True),
     fdc_map=('fdc_map', "ONLINE", True),
-    s1_xyz_correction_map=("s1_xyz_map", "ONLINE", True),
-    g1=0.1426,
-    g2=11.55,
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -63,7 +61,7 @@ xnt_simulation_config = deepcopy(xnt_common_config)
 xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
                              gain_model_nv=("adc_nv", True),
                              gain_model_mv=("adc_mv", True),
-                             elife_conf=('elife_constant', 1e6),
+                             elife=1e6,
                              )
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
@@ -258,7 +256,7 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife_conf'),
+                            electron_lifetime_liquid='elife'),
                 **kwargs):
     """
     The most generic context that allows for setting full divergent
@@ -339,6 +337,8 @@ def xenonnt_simulation(
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
     cmt_options = straxen.get_corrections.get_cmt_options(st)
+    # prune to just get the strax options
+    cmt_options = {key: val['strax_option'] for key, val in cmt_options.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
@@ -401,7 +401,6 @@ def xenonnt_simulation(
 # XENON1T
 ##
 
-
 x1t_context_config = {
     **common_opts,
     **dict(
@@ -453,16 +452,22 @@ x1t_common_config = dict(
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
-    s1_max_rise_time=60,
     s1_max_rise_time_post100=150,
     s1_min_coincidence=3,
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
-    elife_conf=('elife_xenon1t', 'v1', False),
+    elife=1e6,
     electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
     max_drift_length=96.9,
     electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
+    se_gain=28.2,
+    avg_se_gain=28.2,
+    rel_extraction_eff=1.0,
+    s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',  # noqa
+    s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
+    g1=0.1426,
+    g2=11.55/(1 - 0.63),
 )
 
 
@@ -484,8 +489,13 @@ def demo():
     st.set_config(dict(
         hev_gain_model=('1T_to_pe_placeholder', False),
         gain_model=('1T_to_pe_placeholder', False),
-        elife_conf=('elife_constant', 1e6),
+        elife=1e6,
         electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
+        se_gain=28.2,
+        avg_se_gain=28.2,
+        rel_extraction_eff=1.0,
+        s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+        s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
         ))
     return st
 
