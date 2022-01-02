@@ -75,8 +75,7 @@ class MultiIndex(BaseIndex):
             if not others:
                 continue
             reduced_documents = []
-            for idx_values,docs in toolz.groupby(others, documents).items():
-                idx = dict(zip(others, idx_values))
+            for _,docs in toolz.groupby(others, documents).items():
                 value = index_values[index.name]
                 reduced  = index.reduce(docs, value)
                 reduced_documents.extend(reduced)
@@ -94,18 +93,19 @@ class MultiIndex(BaseIndex):
     def query_db(self, db, *args, **kwargs):
         index_values = self.infer_index(*args, **kwargs)
         query = self.build_query(db, index_values)
-        documents = self.apply_query(db, query)
-        documents = self.reduce(documents, index_values)
-        return documents
+        docs = self.apply_query(db, query)
+        docs = [dict(doc, **self.infer_index(**doc)) for doc in docs]
+        docs = self.reduce(docs, index_values)
+        return docs
 
     def __repr__(self):
         return f"MultiIndex({self.indexes})"
 
-    def builds(self):
+    def builds(self, **kwargs):
         from hypothesis import strategies as st
 
         @st.composite
         def strategy(draw, *index_strategies):
             return tuple(map(draw, index_strategies))
 
-        return strategy(*[idx.builds() for idx in self.indexes])
+        return strategy(*[idx.builds(**kwargs.get(idx.name, {})) for idx in self.indexes])

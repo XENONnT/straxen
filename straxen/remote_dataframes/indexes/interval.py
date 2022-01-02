@@ -8,7 +8,7 @@ from ..utils import singledispatchmethod
 export, __all__ = strax.exporter()
 
 @export
-class BaseIntervalIndex(BaseIndex):
+class IntervalIndexMixin:
 
     left_name: str = 'left'
     right_name: str = 'right'
@@ -78,12 +78,18 @@ class BaseIntervalIndex(BaseIndex):
     def build_query(self, db, value):
         raise TypeError(f"{type(db)} backend not supported.")
 
+    def builds(self, **kwargs):
+        from hypothesis import strategies as st
+        strategy = super().builds(**kwargs)
+
+        return st.tuples(strategy, strategy).filter(lambda x: x[0]<x[1])
+
 
 @export
-class TimeIntervalIndex(DatetimeIndex, BaseIntervalIndex):
+class TimeIntervalIndex(IntervalIndexMixin, DatetimeIndex):
     pass
 
 
 @export
-class IntegerIntervalIntex(IntegerIndex, BaseIntervalIndex):
+class IntegerIntervalIntex(IntervalIndexMixin, IntegerIndex):
     pass

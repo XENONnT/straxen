@@ -7,6 +7,8 @@ import datetime
 
 import pandas as pd
 from collections import Counter
+
+from straxen.remote_dataframes.schema import InsertionError
 from .settings import corrections_settings
 
 export, __all__ = strax.exporter()
@@ -40,7 +42,7 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
         cutoff = corrections_settings.clock.cutoff_datetime()
 
         if index['version']==0 and begin<cutoff:
-            raise ValueError(f'Can only insert online intervals begining after {cutoff}.')
+            raise InsertionError(f'Can only insert online intervals begining after {cutoff}.')
 
     @classmethod
     def example_df(cls, size=5, start=time.time()-1e5, stop=time.time()+1e5):
@@ -77,10 +79,11 @@ class TimeSampledCorrection(BaseCorrectionSchema):
         cutoff = corrections_settings.clock.cutoff_datetime()
         utc = corrections_settings.clock.utc
         ts = pd.to_datetime(index['time'], utc=utc)
+
         if index['version']==0:
             if ts<cutoff:
-                raise ValueError(f'Can only insert online values for times at one hour in the future.')
-            now = pd.to_datetime(time.time()-10, unit='s', utc=utc)
+                raise InsertionError(f'Can only insert online values for time after {cutoff}.')
+            now = corrections_settings.clock.current_datetime()
             now_index = dict(index, time=now)
             now_values = self.query_db(db, **now_index)
 

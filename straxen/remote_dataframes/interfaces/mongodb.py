@@ -6,7 +6,7 @@ is being applied to a pymongo object.
 
 import pymongo
 import strax
-from ..indexes import BaseIndex, BaseIntervalIndex, BaseInterpolatedIndex
+from ..indexes import BaseIndex, IntervalIndexMixin, InterpolatedIndexMixin
 from ..schema import BaseSchema
 
 export, __all__ = strax.exporter()
@@ -99,7 +99,7 @@ def build_mongo_query(self, db, value):
             ]
 
 
-@BaseInterpolatedIndex.build_query.register(pymongo.common.BaseObject)
+@InterpolatedIndexMixin.build_query.register(pymongo.common.BaseObject)
 def build_interpolation_query(self, db, values):
     '''For interpolation we match the values directly before and after
     the value of interest
@@ -133,7 +133,7 @@ def build_interpolation_query(self, db, values):
         ]        
 
 
-@BaseIntervalIndex.build_query.register(pymongo.common.BaseObject)
+@IntervalIndexMixin.build_query.register(pymongo.common.BaseObject)
 def build_interval_query(self, db, intervals):
     '''Query overlaping documents with given interval, supports multiple 
     intervals as well as zero length intervals (left==right)

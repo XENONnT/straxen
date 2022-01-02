@@ -96,7 +96,7 @@ class BaseSchema(BaseModel):
 
     def pre_update(self, db, old, **index):
         if old != self:
-            message = (f'Values already set for {index} are different'
+            message = (f'Values already set for {index} are different '
                         'than the values you are trying to set.')
             raise IndexError(message)
 
@@ -129,7 +129,7 @@ class BaseSchema(BaseModel):
                         f'for {type(db)} data stores.')
 
     @classmethod
-    def builds(cls):
+    def builds(cls, **kwargs):
         from hypothesis import strategies as st
 
         @st.composite
@@ -138,5 +138,5 @@ class BaseSchema(BaseModel):
             data = draw(data_strategy)
             return index, data
 
-        return strategy(cls.index.builds(), st.builds(cls))
+        return strategy(cls.index.builds(**kwargs), st.builds(cls))
     

@@ -84,11 +84,11 @@ class BaseIndex:
         if hasattr(self, '_coerce'):
             return self._coerce(value)
 
-
     def query_db(self, db, *args, **kwargs):
         value = self.infer_index(*args, **kwargs)[self.name]
         query = self.build_query(db, value)
         docs = self.apply_query(db, query)
+        docs = [dict(doc, **self.infer_index(**doc)) for doc in docs]
         docs = self.reduce(docs, value)
         return docs
 
@@ -127,7 +127,7 @@ class StringIndex(BaseIndex):
     def _coerce(self, value):
         return str(value)
 
-    def builds(self):
+    def builds(self, **kwargs):
         from hypothesis import strategies as st
         from string import printable
         return st.text(printable, min_size=1)
@@ -147,10 +147,11 @@ class IntegerIndex(BaseIndex):
             value = max(0, value)
         return value
 
-    def builds(self):
+    def builds(self, max_value=1000, **kwargs):
         from hypothesis import strategies as st
         min_value = 0 if self.posdef else None
-        return st.integers(min_value=min_value, max_value=2**32-1)
+        min_value = kwargs.get('min_value', min_value)
+        return st.integers(min_value=min_value, max_value=max_value)
 
 @export
 class FloatIndex(BaseIndex):
@@ -159,9 +160,9 @@ class FloatIndex(BaseIndex):
     def _coerce(self, value):
         return float(value)
 
-    def builds(self):
+    def builds(self, **kwargs):
         from hypothesis import strategies as st
-        return st.floats()
+        return st.floats(**kwargs)
 
 @export
 class DatetimeIndex(BaseIndex):
@@ -174,13 +175,20 @@ class DatetimeIndex(BaseIndex):
         self.unit = unit
 
     def coerce(self, value):
+        if isinstance(value, datetime.datetime):
+            if value.tzinfo is not None and value.tzinfo.utcoffset(value) is not None:
+                value = value.astimezone(pytz.utc)
+            else:
+                value = value.replace(tzinfo=pytz.utc)
+            return value
         unit = self.unit if isinstance(value, numbers.Number) else None
-        return pd.to_datetime(value, utc=self.utc, unit=unit).to_pydatetime().replace(tzinfo=pytz.utc)
+        value = pd.to_datetime(value, utc=self.utc, unit=unit).to_pydatetime()
+        return self.coerce(value)
 
-    def builds(self):
+    def builds(self, **kwargs):
         from hypothesis import strategies as st
         from hypothesis.extra.pytz import timezones
 
-        return st.datetimes(min_value=pd.Timestamp.min,
-                            max_value=pd.Timestamp.max,
-                            timezones=timezones(), )
+        return st.datetimes(min_value=kwargs.get('min_value', pd.Timestamp.min),
+                            max_value=kwargs.get('max_value', pd.Timestamp.max),
+                            timezones=timezones())

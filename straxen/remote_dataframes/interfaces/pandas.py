@@ -3,8 +3,8 @@ import strax
 import pandas as pd
 
 from .. import BaseIndex
-from .. import BaseIntervalIndex
-from .. import BaseInterpolatedIndex
+from .. import IntervalIndexMixin
+from .. import InterpolatedIndexMixin
 
 export, __all__ = strax.exporter()
 
@@ -97,7 +97,7 @@ def apply_series(self, db, query):
     return self.apply_query(db, query.to_frame())
 
 
-@BaseInterpolatedIndex.build_query.register(pd.core.generic.NDFrame)
+@InterpolatedIndexMixin.build_query.register(pd.core.generic.NDFrame)
 def build_pandas_query(self, db, values):
     '''Interpolated index selects the rows before and after
     the requested value if they exist.
@@ -141,7 +141,7 @@ def build_pandas_query(self, db, values):
     return " or ".join(queries), kwargs
 
 
-@BaseIntervalIndex.build_query.register(pd.core.generic.NDFrame)
+@IntervalIndexMixin.build_query.register(pd.core.generic.NDFrame)
 def build_pandas_query(self, db, intervals):
     '''Query by overlap, if multiple overlaps are 
     given, joing them with an or logic
