@@ -7,6 +7,7 @@ import straxen
 import os
 import pymongo
 import datetime
+import numpy as np
 from hypothesis import settings, given, assume, strategies as st
 from straxen.remote_dataframes.schema import InsertionError
 
@@ -59,7 +60,11 @@ class TestCorrectionDataframes(unittest.TestCase):
     @given(SimpleCorrection.builds())
     def test_simple_correction(self, record):
         idx, doc = record
+        
         rdf = self.dfs[SimpleCorrection.name]
+        
+        rdf.db.drop_collection(rdf.name)
+
         rdf.loc[idx] = doc
         self.assertEqual(rdf.at[idx, 'value'], doc.value)
         alt_doc = doc.copy()
@@ -69,13 +74,13 @@ class TestCorrectionDataframes(unittest.TestCase):
 
         rdf.loc[idx+1] = alt_doc
         self.assertEqual(rdf.at[idx+1, 'value'], alt_doc.value)
-        rdf.db.drop_collection(rdf.name)
+        
     
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     @given(st.lists(SomeSampledCorrection.builds(version={'min_value':1, 'max_value':1}),
                     min_size=3, unique_by=lambda x: x[0]))
     @settings(deadline=None)
-    def test_sampled_correction_version_1(self, records):
+    def test_sampled_correction_version1(self, records):
         assume(all([r[0][0]==1] for r in records))
         
         records = sorted(records, key=lambda x: x[0][1])
@@ -91,39 +96,36 @@ class TestCorrectionDataframes(unittest.TestCase):
         # since values are interpolated in time 
         
         for idx, doc in records:
-            # v, dt = idx
-            # dt = dt
             rdf.loc[idx] = doc
 
         for (idx1, doc1), (idx2, doc2) in zip(records[:-1], records[1:]):
-            
-            if doc1.value <1e-2 or doc2.value<1e-2:
-                continue
-            
-            if abs(doc2.value - doc1.value)<1e-2:
-                continue
-            
-            half_deltat = (idx2[1] - idx1[1])/2
-            
-            if half_deltat < datetime.timedelta(seconds=10):
-                continue
 
-            dt = (idx1[1] + half_deltat)
+            dt = idx1[1] + (idx2[1] - idx1[1])/2
             val = rdf.at[(1, dt), 'value']
-
+            if abs(val) == float('nan'):
+                continue
             half_value = (doc2.value+doc1.value)/2
             # require better than 1% accuracy
-            thresh = max(1e-2*doc1.value, 1e-2*doc2.value)
-            diff = abs(half_value- val)
+            thresh = max(1e-2*abs(doc1.value), 1e-2*abs(doc2.value))
+       
+            diff = abs(half_value - val)
+
+            if diff == float('inf'):
+                continue
+
+            if np.isnan(diff):
+                continue
 
             self.assertLessEqual(diff, thresh)
             
+        df = rdf.loc[:]
+
 
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     @given(st.lists(SomeSampledCorrection.builds(version={'min_value':0, 'max_value':0}),
             min_size=5, unique_by=lambda x: x[0]))
     @settings(deadline=None)
-    def test_sampled_correction_version_0(self, records):
+    def test_sampled_correction_version0(self, records):
         assume(all([r[0][0]==0] for r in records))
 
         rdf = self.dfs[SomeSampledCorrection.name]
@@ -133,10 +135,6 @@ class TestCorrectionDataframes(unittest.TestCase):
         # since values are interpolated in time 
         records = sorted(records, key=lambda x: x[0][1])
 
-        cutoff = straxen.corrections_settings.clock.cutoff_datetime(buffer=3600)
-        now = straxen.corrections_settings.clock.current_datetime()
-
-        # after_cutoff = list(filter(lambda x: x[0][1]>cutoff and not x[0][0], records))
         for idx, doc in records:
             cutoff = straxen.corrections_settings.clock.cutoff_datetime(buffer=1)
             if idx[1]>cutoff:
@@ -147,25 +145,23 @@ class TestCorrectionDataframes(unittest.TestCase):
         df = rdf.loc[:]
 
         
-    # @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
-    # @given(st.lists(SomeTimeIntervalCorrection.builds(),
-    #                 min_size=1, unique_by=lambda x: x[0]))
-    # @settings(deadline=None)
-    # def test_interval_correctoin(self, records):
+    @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
+    @given(st.lists(SomeTimeIntervalCorrection.builds(version={'min_value':1, 'max_value':1}),
+                    min_size=2, unique_by=lambda x: (x[0][0], x[0][1][0])))
+    @settings(deadline=None)
+    def test_interval_correctoin_version1(self, records):
 
-    #     rdf = self.dfs[SomeTimeIntervalCorrection.name]
-    #     rdf.db.drop_collection(rdf.name)
+        rdf = self.dfs[SomeTimeIntervalCorrection.name]
+        rdf.db.drop_collection(rdf.name)
 
-    #     # we must sort by time before inserting
-    #     # since values are interpolated in time 
-    #     records.sort(key=lambda x: x[0][1])
+        # we must sort by time before inserting
+        # since values are interpolated in time 
+        records = sorted(records, key=lambda x: x[0][1][0])
 
-        
-
-    #     prev = records[0][0][1][1]
-
-    #     for idx, doc in records:
-    #         version, (left, right) = idx
-    #         if prev<=left:
-    #             rdf.loc[idx] = doc
-    #             prev = right
+        for (idx1, doc1), (idx2, _) in zip(records[:-1], records[1:]):
+            version = idx1[0]
+            interval = (idx1[1][0], idx2[1][0])
+            idx = (version, interval)
+            rdf.loc[idx] = doc1
+            dt = interval[0] + (interval[1] - interval[0])/2
+            self.assertEqual(rdf.at[(version, dt), 'value'], doc1.value)

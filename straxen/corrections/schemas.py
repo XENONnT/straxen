@@ -36,13 +36,21 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
     index = straxen.TimeIntervalIndex(name='time',
                                 left_name='begin', right_name='end')
         
-    def pre_insert(self, db, **index):
+    def pre_update(self, db, index, old_index, old_doc):
+        super().pre_update(db, index, old_index, old_doc)
+        if old_index['time'][1] is not None:
+            raise IndexError(f'Overlap with existing interval.')
+
+        if index['time'][0] != old_index['time'][0]:
+            raise IndexError(f'Can only change endtime of existing interval. '
+                                 f'start time must be {old_index["time"][0]}')
+
         utc = corrections_settings.clock.utc
-        begin = pd.to_datetime(index['time'][0], utc=utc)
         cutoff = corrections_settings.clock.cutoff_datetime()
 
-        if index['version']==0 and begin<cutoff:
-            raise InsertionError(f'Can only insert online intervals begining after {cutoff}.')
+        if index['time'][1]<cutoff:
+            raise IndexError(f'You can only set online interval end to after {cutoff}. '
+                                 'Values before this time may have already been used for processing.')
 
     @classmethod
     def example_df(cls, size=5, start=time.time()-1e5, stop=time.time()+1e5):
@@ -75,7 +83,7 @@ def can_extrapolate(doc):
 class TimeSampledCorrection(BaseCorrectionSchema):
     index = straxen.TimeInterpolatedIndex(name='time', extrapolate=can_extrapolate)
 
-    def pre_insert(self, db, **index):
+    def pre_insert(self, db, index):
         cutoff = corrections_settings.clock.cutoff_datetime()
         utc = corrections_settings.clock.utc
         ts = pd.to_datetime(index['time'], utc=utc)

@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 @BaseIndex.head.register(pd.DataFrame)
 @BaseIndex.head.register(pd.Series)
 def collection_head(self, db, n):
-    return db.head(n)
+    return db.head(n).reset_index().to_dict(orient='records')
 
 
 @BaseIndex.build_query.register(pd.core.generic.NDFrame)

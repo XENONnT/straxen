@@ -91,11 +91,11 @@ class BaseSchema(BaseModel):
     def query_db(cls, db, *args, **kwargs):
         return cls.index.query_db(db, *args, **kwargs)
 
-    def pre_insert(self, db, **index):
+    def pre_insert(self, db, index):
         pass
 
-    def pre_update(self, db, old, **index):
-        if old != self:
+    def pre_update(self, db, index, old_index, old_doc):
+        if old_doc != self:
             message = (f'Values already set for {index} are different '
                         'than the values you are trying to set.')
             raise IndexError(message)
@@ -114,10 +114,11 @@ class BaseSchema(BaseModel):
         index = self.index.infer_index(*args, **kwargs)
             
         if existing:
-            old = self.__class__(**existing[0])
-            self.pre_update(db, old, **index)
+            old_doc = self.__class__(**existing[0])
+            old_index = self.index.infer_index(**existing[0])
+            self.pre_update(db, index, old_index, old_doc)
         else:
-            self.pre_insert(db, **index)
+            self.pre_insert(db, index)
         doc = self.dict()
         index_fields = self.index.index_to_storage_doc(index)
         doc.update(index_fields)

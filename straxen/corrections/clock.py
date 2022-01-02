@@ -1,6 +1,6 @@
 import time
-import pandas as pd
-
+import pytz
+import datetime
 
 class SimpleClock:
     utc: bool
@@ -11,9 +11,10 @@ class SimpleClock:
         self.cutoff_offset = cutoff_offset
 
     def current_datetime(self):
-        return pd.to_datetime(time.time(),
-                            unit='s', utc=self.utc)
+        if self.utc:
+            return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+        return datetime.datetime.now()
 
     def cutoff_datetime(self, buffer=0.):
-        return pd.to_datetime(time.time()+self.cutoff_offset+buffer,
-                            unit='s', utc=self.utc)
+        offset = datetime.timedelta(seconds=self.cutoff_offset+buffer)
+        return self.current_datetime() + offset
