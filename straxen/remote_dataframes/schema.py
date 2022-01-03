@@ -32,6 +32,9 @@ def camel_to_snake(name):
 
 @export
 class BaseSchema(BaseModel):
+    '''Base class for defining a schema for storing and querying
+    data from supported backends
+    '''
     name: ClassVar = ''
     index: ClassVar
     value: Union[str,int,float]
@@ -89,18 +92,31 @@ class BaseSchema(BaseModel):
 
     @classmethod
     def query_db(cls, db, *args, **kwargs):
+        ''' query a db and return the results
+        '''
         return cls.index.query_db(db, *args, **kwargs)
 
     def pre_insert(self, db, index):
+        '''This function is called prior to an
+        insert operation, i.e. setting values for
+        an index that has not yet been set.
+        '''
         pass
 
     def pre_update(self, db, index, old_index, old_doc):
+        '''This function is called prior to an
+        update operation, i.e. setting values for
+        an index that already been set.
+        '''
         if old_doc != self:
             message = (f'Values already set for {index} are different '
                         'than the values you are trying to set.')
             raise IndexError(message)
 
     def save(self, db, *args, **kwargs):
+        '''save current values to a database
+        the index is infered from args and kwargs
+        '''
         kwargs.update(self.dict())
         existing = self.index.query_db(db, *args, **kwargs)
         if len(existing)>1:
@@ -120,17 +136,24 @@ class BaseSchema(BaseModel):
         else:
             self.pre_insert(db, index)
         doc = self.dict()
-        index_fields = self.index.index_to_storage_doc(index)
-        doc.update(index_fields)
-        return self._insert(db, doc)
+        index = self.index.index_to_storage_doc(index)
+        doc.update(index)
+        index = {k:v for k,v in index.items() if v is not None}
+        return self._insert(db, index, doc)
 
     @singledispatchmethod
-    def _insert(self, db, doc):
+    def _insert(self, db, index, doc):
+        '''This is the backend dependent function
+        that is called to perform the actual insert
+        '''
         raise TypeError('Inserts are not supported'
                         f'for {type(db)} data stores.')
 
     @classmethod
     def builds(cls, **kwargs):
+        '''Build a test strategy for this schema
+        returns a composite strategy with a index and data strategy
+        '''
         from hypothesis import strategies as st
 
         @st.composite

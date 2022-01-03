@@ -6,10 +6,10 @@ The framework was development to solve a number of issues that came up using the
 
 
     - Rigid indexing - all corrections are indexed by time only, requiring individual corrections for each PMT in the case of the pmt gains. This also limits the corrections database to only store time-dependent values, requiring other solutions for storing corrections without a time dependence.
-    -  Shared indexing - all versions of a single correction share the same time index, requiring special values (null) as a hack to have independent intervals of validity for each version. This complicates updating interpolated values like the pmt gains.
+    - Shared indexing - all versions of a single correction share the same time index, requiring special values (null) as a hack to have independent intervals of validity for each version. This complicates updating interpolated values like the pmt gains.
     - Inefficient use of MongoDB - the database is used as an object store for storing pandas dataframes, requiring the upload of the entire dataframe (for all times/versions) when updating a correction.
     - Hardcoded corrections - adding a new correction requires adding a new global version and releasing a new straxen version.
-    -  Single value storage - Each correction can only hold a single value, this prevent adding extra data fields (eg errors) and metadata fields (eg analyst name, creating date, description etc ) requiring a separate git repo just to store the metadata.
+    - Single value storage - Each correction can only hold a single value, this prevent adding extra data fields (eg errors) and metadata fields (eg analyst name, creating date, description etc ) requiring a separate git repo just to store the metadata.
     - Global versions as strings - global versions are stored as json strings in a dedicated collection, no time dependence and adding new corrections requires a new global version. global versions have special status in CMT requiring extra code just to manage this collection. 
 
 Remote Dataframes
@@ -96,20 +96,24 @@ Alternatively we can use the ``RemoteDataframe`` class to access/store documents
 
     rdf = straxen.RemoteDataframe(ExampleSchema, db)
 
-**Accessing Documents**
+**Reading specific rows**
 
-Values can be accessed using pandas-like indexing ``df.loc[idx]``, ``df.at[idx, column]``, ``df[column].loc[idx]`` or with the xarray-like ``.sel(index_name=idx)`` method
+Rows can be accessed by calling the dataframe with the rows index values, using pandas-like indexing ``df.loc[idx]``, ``df.at[idx, column]``, ``df[column].loc[idx]`` or with the xarray style ``df.sel(index_name=idx)`` method
 
 .. code-block:: python
 
-    # These methods return a pandas dataframe
-    rdf.loc[experiment,detector, version]
-    # or
-    df = rdf.sel(experiment=experiment, detector=detector, version=version)
-    # or
+    # These methods will al return an identical pandas dataframe
+    df = rdf(experiment=experiment, detector=detector, version=version)
+
     df = rdf.loc[experiment,detector, version]
-    # or
+    
+    df = rdf.sel(experiment=experiment, detector=detector, version=version)
+    
+    df = rdf.loc[experiment,detector, version]
+    
+    # Access a specific column to get a series back
     df = rdf['value'].loc[experiment,detector, version]
+    df = rdf.value.loc[experiment,detector, version]
 
     # pandas-style scalar lookup returns a scalar
     value = rdf.at[(experiment,detector, version), 'value']

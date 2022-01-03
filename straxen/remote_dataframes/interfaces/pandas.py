@@ -1,3 +1,13 @@
+"""
+Interface to pandas dataframe.
+These functions are dispatched when an operation
+is being applied to a dataframe object.
+Uses the query interface instead of directly indexing the dataframe
+to allow for advanced usage such as building the query locally
+and applying it remotely to a dataframe on a server or saving the query
+as text and applying it periodically etc.
+"""
+
 import strax
 
 import pandas as pd
