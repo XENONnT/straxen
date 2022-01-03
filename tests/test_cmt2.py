@@ -180,11 +180,16 @@ class TestCorrectionDataframes(unittest.TestCase):
         records = sorted(records, key=lambda x: x[0][1][0])
 
         for (idx1, doc1), (idx2, _) in zip(records[:-1], records[1:]):
+    
             version = idx1[0]
             interval = (idx1[1][0], idx2[1][0])
+            assume((interval[1] - interval[0])>datetime.timedelta(seconds=10))
+
             idx = (version, interval)
             rdf.loc[idx] = doc1
             dt = interval[0] + (interval[1] - interval[0])/2
+            if dt in interval:
+                continue
             self.assertEqual(rdf.at[(version, dt), 'value'], doc1.value)
         
         df = rdf.sel()

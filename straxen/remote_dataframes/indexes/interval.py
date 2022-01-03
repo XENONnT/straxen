@@ -81,7 +81,7 @@ class IntervalIndexMixin:
         from hypothesis import strategies as st
         strategy = super().builds(**kwargs)
 
-        return st.tuples(strategy, strategy).map(lambda x: tuple(sorted(x)))
+        return st.lists(strategy, min_size=2, max_size=2, unique=True).map(sorted).map(tuple)
 
 
 @export
