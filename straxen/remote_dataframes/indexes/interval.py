@@ -7,15 +7,16 @@ from ..utils import singledispatchmethod
 
 export, __all__ = strax.exporter()
 
+
 @export
 class IntervalIndexMixin:
 
     left_name: str = 'left'
     right_name: str = 'right'
     closed: str = 'left'
-        
+
     def __init__(self, left_name=None,
-                 right_name=None, 
+                 right_name=None,
                  closed=None, **kwargs):
         super().__init__(**kwargs)
         if left_name is not None:
@@ -36,9 +37,11 @@ class IntervalIndexMixin:
         if isinstance(value, tuple):
             left, right = value
         elif isinstance(value, slice):
-            left, right = value.start, value.stop 
+            left, right = value.start, value.stop
         elif isinstance(value, pd.Interval):
             left, right = value.left, value.right
+        elif isinstance(value, dict) and self.name in value:
+            left, right = value[self.name]
         elif isinstance(value, dict):
             left = value.get(self.left_name, None)
             right = value.get(self.right_name, None)
@@ -52,7 +55,7 @@ class IntervalIndexMixin:
         ways they may have passed them to the query function
         e.g tuple, slice,Interval, dict, single value or as explicit kwargs
         '''
-
+        
         if self.name in kwargs:
             return self.to_interval(kwargs[self.name])
         else:
@@ -61,15 +64,11 @@ class IntervalIndexMixin:
     def index_to_storage_doc(self, index):
         left, right = index[self.name]
         return {
-            self.name: index[self.name],
             self.left_name: left,
             self.right_name: right,
-            }
+        }
 
     def reduce(self, docs, value):
-        if value is None:
-            return docs
-
         for doc in docs:
             doc[self.name] = self.infer_index_value(**doc)
         return docs
@@ -82,7 +81,7 @@ class IntervalIndexMixin:
         from hypothesis import strategies as st
         strategy = super().builds(**kwargs)
 
-        return st.tuples(strategy, strategy).filter(lambda x: x[0]<x[1])
+        return st.tuples(strategy, strategy).map(lambda x: tuple(sorted(x)))
 
 
 @export

@@ -30,6 +30,10 @@ class BaseIndex:
             self.name = name
 
     @property
+    def indexes(self):
+        return [self]
+
+    @property
     def query_fields(self):
         return (self.name, )
         
@@ -131,6 +135,8 @@ class StringIndex(BaseIndex):
         from hypothesis import strategies as st
         from string import printable
         return st.text(printable, min_size=1)
+
+
 @export
 class IntegerIndex(BaseIndex):
     type = int
@@ -189,6 +195,6 @@ class DatetimeIndex(BaseIndex):
         from hypothesis import strategies as st
         from hypothesis.extra.pytz import timezones
 
-        return st.datetimes(min_value=kwargs.get('min_value', pd.Timestamp.min),
-                            max_value=kwargs.get('max_value', pd.Timestamp.max),
+        return st.datetimes(min_value=kwargs.get('min_value', pd.Timestamp.min+datetime.timedelta(days=365)),
+                            max_value=kwargs.get('max_value', pd.Timestamp.max-datetime.timedelta(days=365)),
                             timezones=timezones())

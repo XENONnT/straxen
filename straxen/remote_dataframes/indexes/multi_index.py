@@ -9,16 +9,17 @@ export, __all__ = strax.exporter()
 
 @export
 class MultiIndex(BaseIndex):
-    indexes: list
+    _indexes: list
 
     def __init__(self, *args, schema=None, **kwargs) -> None:
-        self.indexes = list(args)
+        indexes = list(args)
         for k,v in kwargs.items():
             v.name = k
-            self.indexes.append(v)
-        for i, index in enumerate(self.indexes):
+            indexes.append(v)
+        for i, index in enumerate(indexes):
             if index.name  in ['', 'index']:
                 index.name = f'index_{i}'
+        self._indexes = indexes
 
         if schema is not None:
             self.schema = schema
@@ -27,6 +28,10 @@ class MultiIndex(BaseIndex):
         self.schema = owner
         for v in self.indexes:
             v.schema = owner
+    
+    @property
+    def indexes(self):
+        return getattr(self, '_indexes', [])[:]
 
     @property
     def name(self):

@@ -160,8 +160,13 @@ def build_interval_query(self, db, intervals):
     '''
     if not isinstance(intervals, list):
         intervals = [intervals]
+    
     queries = []
     for interval in intervals:
+        if interval is None:
+            continue
+        if isinstance(interval, tuple) and all([i is None for i in interval]):
+            continue
         query = mongo_overlap_query(self, interval)
         if query:
             queries.append(query)

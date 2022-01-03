@@ -8,6 +8,7 @@ import os
 import pymongo
 import datetime
 import numpy as np
+import pandas as pd
 from hypothesis import settings, given, assume, strategies as st
 from straxen.remote_dataframes.schema import InsertionError
 
@@ -15,6 +16,18 @@ from straxen.remote_dataframes.schema import InsertionError
 
 def mongo_uri_not_set():
     return 'TEST_MONGO_URI' not in os.environ
+
+
+@st.composite
+def non_overlapping_interval_lists(draw, elements=st.datetimes(), min_size=2):
+    elem = draw(st.lists(elements, unique=True, min_size=min_size*2).map(sorted))
+    return list(zip(elem[:-1:2], elem[1::2]))
+
+
+@st.composite
+def non_overlapping_interval_ranges(draw, elements=st.datetimes(), min_size=2):
+    elem = draw(st.lists(elements, unique=True, min_size=min_size).map(sorted))
+    return list(zip(elem[:-1], elem[1:]))
 
 
 class SimpleCorrection(straxen.BaseCorrectionSchema):
@@ -74,7 +87,13 @@ class TestCorrectionDataframes(unittest.TestCase):
 
         rdf.loc[idx+1] = alt_doc
         self.assertEqual(rdf.at[idx+1, 'value'], alt_doc.value)
+        self.assertNotEqual(rdf.at[idx, 'value'], alt_doc.value)
         
+        df = rdf.sel()
+        self.assertIsInstance(df, pd.DataFrame)
+
+        df = rdf.sel(version=idx)
+        self.assertIsInstance(df, pd.DataFrame)
     
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     @given(st.lists(SomeSampledCorrection.builds(version={'min_value':1, 'max_value':1}),
@@ -119,6 +138,7 @@ class TestCorrectionDataframes(unittest.TestCase):
             self.assertLessEqual(diff, thresh)
             
         df = rdf.loc[:]
+        self.assertIsInstance(df, pd.DataFrame)
 
 
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
@@ -143,13 +163,14 @@ class TestCorrectionDataframes(unittest.TestCase):
                 with self.assertRaises(InsertionError):
                     rdf.loc[idx] = doc
         df = rdf.loc[:]
+        self.assertIsInstance(df, pd.DataFrame)
 
         
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     @given(st.lists(SomeTimeIntervalCorrection.builds(version={'min_value':1, 'max_value':1}),
                     min_size=2, unique_by=lambda x: (x[0][0], x[0][1][0])))
     @settings(deadline=None)
-    def test_interval_correctoin_version1(self, records):
+    def test_interval_correction_version1(self, records):
 
         rdf = self.dfs[SomeTimeIntervalCorrection.name]
         rdf.db.drop_collection(rdf.name)
@@ -165,3 +186,6 @@ class TestCorrectionDataframes(unittest.TestCase):
             rdf.loc[idx] = doc1
             dt = interval[0] + (interval[1] - interval[0])/2
             self.assertEqual(rdf.at[(version, dt), 'value'], doc1.value)
+        
+        df = rdf.sel()
+        self.assertIsInstance(df, pd.DataFrame)
