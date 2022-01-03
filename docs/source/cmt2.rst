@@ -103,7 +103,6 @@ Rows can be accessed by calling the dataframe with the rows index values, using 
 .. code-block:: python
 
     # These methods will al return an identical pandas dataframe
-    df = rdf(experiment=experiment, detector=detector, version=version)
 
     df = rdf.loc[experiment,detector, version]
     
@@ -117,6 +116,8 @@ Rows can be accessed by calling the dataframe with the rows index values, using 
 
     # pandas-style scalar lookup returns a scalar
     value = rdf.at[(experiment,detector, version), 'value']
+    # or call the dataframe with the column as argyment and index values as keyword arguments
+    value = rdf('value', experiment=experiment, detector=detector, version=version)
 
 **Slicing**
 

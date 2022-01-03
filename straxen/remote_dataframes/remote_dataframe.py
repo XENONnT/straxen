@@ -23,8 +23,9 @@ class RemoteDataframe:
     schema: Type[BaseSchema]
     db: Any
 
-    def __call__(self, *args: Index, **kwargs: Index) -> pd.DataFrame:
-        return self.sel(*args, **kwargs)
+    def __call__(self, column: str, **index: Index) -> pd.DataFrame:
+        index = tuple(index.get(k, None) for k in self.index)
+        return self.at[index, column]
 
     def __init__(self, schema: Type[BaseSchema], db: Any) -> None:
         if isinstance(db, str):
@@ -44,10 +45,14 @@ class RemoteDataframe:
     @property
     def name(self):
         return self.schema.name
-
+    
     @property
     def columns(self):
         return self.schema.columns()
+
+    @property
+    def index(self):
+        return self.schema.index_names()
 
     @property
     def loc(self):
