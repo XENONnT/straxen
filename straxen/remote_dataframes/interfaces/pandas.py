@@ -62,16 +62,17 @@ def build_pandas_query(self, db, values):
         
             conditions = []
             if start is not None:
-                conditions.append(f'{self.name}>=@start_{i}')
+                conditions.append(f'({self.name}>=@start_{i})')
                 kwargs[f'start_{i}'] = start
 
             if stop is not None:
-                conditions.append(f'{self.name}<@stop_{i}')
+                conditions.append(f'({self.name}<@stop_{i})')
                 kwargs[f'stop_{i}'] = stop
             query = " and ".join(conditions)
             queries.append(f"({query})")
         else:
-            query = f'{self.name}==@{self.name}_{i}'
+            query = f'({self.name}==@{self.name}_{i})'
+            queries.append(query)
             kwargs[f'{self.name}_{i}'] = value
 
     return " or ".join(queries), kwargs
@@ -87,8 +88,7 @@ def apply_dataframe(self, db, queries):
         queries = [queries]
     for q in queries:
         if isinstance(q, tuple) and len(q)==2:
-            kwargs = q[1]
-            q = q[0]
+            q, kwargs = q
         else:
             kwargs = {}
         if not q:
@@ -170,10 +170,10 @@ def build_pandas_query(self, db, intervals):
     
         conditions = []
         if left is not None:
-            condition = f'{self.right_name}{gt_op}@{self.left_name}_{idx}'
+            condition = f'({self.right_name}{gt_op}@{self.left_name}_{idx})'
             conditions.append(condition)
         if right is not None:
-            condition = f'{self.left_name}{lt_op}@{self.right_name}_{idx}'
+            condition = f'({self.left_name}{lt_op}@{self.right_name}_{idx})'
             conditions.append(condition)
 
         query = " and ".join(conditions)
