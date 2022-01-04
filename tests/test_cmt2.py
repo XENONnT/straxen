@@ -192,5 +192,12 @@ class TestCorrectionDataframes(unittest.TestCase):
                 continue
             self.assertEqual(rdf.at[(version, dt), 'value'], doc1.value)
         
-        df = rdf.sel()
-        self.assertIsInstance(df, pd.DataFrame)
+        df1 = rdf.sel()
+        self.assertIsInstance(df1, pd.DataFrame)
+
+        pandas_rdf = straxen.RemoteDataframe(SomeTimeIntervalCorrection, df1)
+
+        df2 = pandas_rdf.sel()
+        pd.testing.assert_frame_equal(df1, df2)
+
+        self.assertEqual(rdf.at[(version, dt), 'value'], pandas_rdf.at[(version, dt), 'value'])

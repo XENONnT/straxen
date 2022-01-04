@@ -11,7 +11,7 @@ as text and applying it periodically etc.
 import strax
 
 import pandas as pd
-
+from datetime import datetime
 from .. import BaseIndex
 from .. import IntervalIndexMixin
 from .. import InterpolatedIndexMixin
@@ -44,6 +44,10 @@ def build_pandas_query(self, db, values):
       which will select all values with version=1
 
     '''
+
+    if values is None:
+        return f'({self.name} != [])', {}
+
     if not isinstance(values, list):
         values = [values]
     values  = [v for v in values if v is not None]
@@ -59,7 +63,10 @@ def build_pandas_query(self, db, values):
 
         if isinstance(value, slice):
             start, stop = value.start, value.stop
-        
+            if isinstance(start, datetime):
+                start = pd.to_datetime(start, utc=True).replace(tzinfo=None)
+            if isinstance(stop, datetime):
+                stop = pd.to_datetime(stop, utc=True).replace(tzinfo=None)
             conditions = []
             if start is not None:
                 conditions.append(f'({self.name}>=@start_{i})')
@@ -73,6 +80,8 @@ def build_pandas_query(self, db, values):
         else:
             query = f'({self.name}==@{self.name}_{i})'
             queries.append(query)
+            if isinstance(value, datetime):
+                value = pd.to_datetime(value, utc=True).replace(tzinfo=None)
             kwargs[f'{self.name}_{i}'] = value
 
     return " or ".join(queries), kwargs
@@ -112,6 +121,9 @@ def build_pandas_query(self, db, values):
     '''Interpolated index selects the rows before and after
     the requested value if they exist.
     '''
+
+    if values is None:
+        return f'({self.name} != [])', {}
     
     if not isinstance(values, list):
         values = [values]
@@ -126,6 +138,8 @@ def build_pandas_query(self, db, values):
     # we only need the column we are matching on
     idx_column = db[self.name]
     for i, value in enumerate(values):
+        if isinstance(value, datetime):
+            value = pd.to_datetime(value, utc=True).replace(tzinfo=None)
 
         # select all values before requested values
         before = idx_column[idx_column<=value]
@@ -156,6 +170,9 @@ def build_pandas_query(self, db, intervals):
     '''Query by overlap, if multiple overlaps are 
     given, joing them with an or logic
     '''
+    if intervals is None:
+        return f'({self.name} != [])', {}
+
     if not isinstance(intervals, list):
         intervals = [intervals]
 
@@ -167,6 +184,10 @@ def build_pandas_query(self, db, intervals):
 
     for idx,interval in enumerate(intervals):
         left, right = self.to_interval(interval)
+        if isinstance(left, datetime):
+            left = pd.to_datetime(left, utc=True).replace(tzinfo=None)
+        if isinstance(right, datetime):
+            right = pd.to_datetime(right, utc=True).replace(tzinfo=None)
     
         conditions = []
         if left is not None:
@@ -176,7 +197,11 @@ def build_pandas_query(self, db, intervals):
             condition = f'({self.left_name}{lt_op}@{self.right_name}_{idx})'
             conditions.append(condition)
 
-        query = " and ".join(conditions)
+        if conditions:
+            query = " and ".join(conditions)
+        else:
+            query = f'{self.name} != []'
+
         query = f"({query})"
         queries.append(query)
 
