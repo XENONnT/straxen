@@ -20,7 +20,7 @@ class CorrectionDataframes:
     
     @classmethod
     def default(cls, **kwargs):
-        return cls.from_utilix(**kwargs)
+        return cls.from_mongodb(**kwargs)
 
     @classmethod
     def from_mongodb(cls, url='localhost', dbname='cmt2', **kwargs):
