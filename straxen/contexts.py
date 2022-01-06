@@ -17,6 +17,7 @@ common_opts = dict(
         straxen.PulseProcessing,
         straxen.Peaklets,
         straxen.PeakletClassification,
+        straxen.BayesPeakletClassification,
         straxen.MergedS2s,
         straxen.Peaks,
         straxen.PeakBasics,
