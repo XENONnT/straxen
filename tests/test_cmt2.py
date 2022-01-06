@@ -9,6 +9,8 @@ import pymongo
 import datetime
 import numpy as np
 import pandas as pd
+from itertools import product
+
 from hypothesis import settings, given, assume, strategies as st
 from straxen.remote_dataframes.schema import InsertionError
 
@@ -29,6 +31,16 @@ def non_overlapping_interval_ranges(draw, elements=st.datetimes(), min_size=2):
     elem = draw(st.lists(elements, unique=True, min_size=min_size).map(sorted))
     return list(zip(elem[:-1], elem[1:]))
 
+
+@st.composite
+def schema_dframes(draw, *, schema: straxen.BaseSchema):
+    index = {idx.name: idx.builds() for idx in schema.index.indexes}
+
+    index_lists = [draw(st.lists(idx, unique=True, min_size=2)) for idx in index.values()]
+    index_values = sorted(product(*index_lists))
+    index = pd.MultiIndex.from_tuples(index_values, names=list(index))
+    column_values = draw(st.lists(st.builds(schema).map(lambda x: x.dict()), min_size=len(index_values), max_size=len(index_values)))
+    return pd.DataFrame(column_values, index=index)
 
 class SimpleCorrection(straxen.BaseCorrectionSchema):
     name = 'simple_correction'

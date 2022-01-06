@@ -19,13 +19,19 @@ class CorrectionDataframes:
         self.db = db
     
     @classmethod
-    def default(cls, *args, **kwargs):
-        return cls.from_mongodb(*args, **kwargs)
+    def default(cls, **kwargs):
+        return cls.from_utilix(**kwargs)
 
     @classmethod
     def from_mongodb(cls, url='localhost', dbname='cmt2', **kwargs):
         import pymongo
         db = pymongo.MongoClient(url, **kwargs)[dbname]
+        return cls(db)
+
+    @classmethod
+    def from_utilix(cls, experiment='xent', dbname='cmt2'):
+        coll = utilix.rundb._collection(collection='dummy', experiment=experiment, database=dbname)
+        db = coll.database
         return cls(db)
 
     @property
