@@ -27,10 +27,10 @@ class RemoteDataframe:
         index = tuple(index.get(k, None) for k in self.index)
         return self.at[index, column]
 
-    def __init__(self, schema: Type[BaseSchema], db: Any) -> None:
+    def __init__(self, schema: Type[BaseSchema], db: Any, **kwargs) -> None:
         if isinstance(db, str):
             if db.startswith('mongodb'):
-                db = pymongo.MongoClient(db)
+                db = pymongo.MongoClient(db, **kwargs)
             elif db.endswith('.csv'):
                 db = pd.read_csv(db)
             elif db.endswith('.pkl'):
@@ -41,7 +41,13 @@ class RemoteDataframe:
                 raise TypeError("Unsupported database type")
         self.schema = schema
         self.db = db
-    
+
+    @classmethod
+    def from_mongodb(cls, schema, url, dbname='remote_dataframes', **kwargs):
+        import pymongo
+        db = pymongo.MongoClient(url, **kwargs)[dbname]
+        return cls(schema, db)
+
     @property
     def name(self):
         return self.schema.name
