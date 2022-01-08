@@ -118,8 +118,8 @@ class BayesPeakletClassification(strax.Plugin):
 
         class_assignments = np.zeros(len(peaklets))
         # Probabilities to classes.
-        C_S1 = lnposterior_normed[:, 1] < self.s2_prob_threshold
-        C_S2 = lnposterior_normed[:, 1] > self.s2_prob_threshold
+        C_S1 = s2_prob < self.s2_prob_threshold
+        C_S2 = s2_prob >= self.s2_prob_threshold
 
         class_assignments[C_S1] = 1
         class_assignments[C_S2] = 2
