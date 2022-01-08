@@ -29,7 +29,7 @@ class BayesPeakletClassification(strax.Plugin):
 
     # Descriptor configs
     s2_prob_threshold = straxen.URLConfig(
-        default=0,
+        default=np.log(0.5), #0.5 decision split
         help='S2 prob value threshold, above this value type=2'
     )
     num_nodes = straxen.URLConfig(
