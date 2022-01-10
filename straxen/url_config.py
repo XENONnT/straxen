@@ -34,6 +34,8 @@ def parse_val(val):
         val = literal_eval(val)
     except ValueError:
         pass
+    except SyntaxError:
+        pass
     return val
 
 
