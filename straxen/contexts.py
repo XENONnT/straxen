@@ -256,7 +256,8 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife'),
+                            electron_lifetime_liquid='elife'  # see issue#864
+                ),
                 **kwargs):
     """
     The most generic context that allows for setting full divergent
@@ -336,22 +337,41 @@ def xenonnt_simulation(
         cmt_run_id_proc = cmt_id
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
-    cmt_options = straxen.get_corrections.get_cmt_options(st)
+    cmt_options_full = straxen.get_corrections.get_cmt_options(st)
+
     # prune to just get the strax options
-    cmt_options = {key: val['strax_option'] for key, val in cmt_options.items()}
+    cmt_options = { key: val['strax_option'] 
+                    for key, val in cmt_options_full.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
                         ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
     fax_config_override_from_cmt = dict()
     for fax_field, cmt_field in _config_overlap.items():
+        value = cmt_options[cmt_field]
+
+        # URL configs need to be converted to the expected format
+        if isinstance(value, str):
+            opt_cfg = cmt_options_full[cmt_field]
+            version = straxen.URLConfig.kwarg_from_url(value, 'version')
+            # We now allow the cmt name to be different from the config name
+            # WFSim expects the cmt name
+            value = (opt_cfg['correction'], version, True)
+
         fax_config_override_from_cmt[fax_field] = ('cmt_run_id', cmt_run_id_sim,
-                                                   *cmt_options[cmt_field])
+                                                   *value)
     st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
 
     # and all other parameters for processing
     for option in cmt_options:
-        st.config[option] = ('cmt_run_id', cmt_run_id_proc, *cmt_options[option])
+        value = cmt_options[option]
+        if isinstance(value, str):
+            # for URL configs we can just replace the run_id keyword argument
+            # This will become the proper way to override the run_id for cmt configs
+            st.config[option] = straxen.URLConfig.format_url_kwargs(value, run_id=cmt_run_id_proc)
+        else:
+            # FIXME: Remove once all cmt configs are URLConfigs
+            st.config[option] = ('cmt_run_id', cmt_run_id_proc, *value)
 
     # Done with "default" usage, now to overwrites from file
     #
@@ -360,11 +380,20 @@ def xenonnt_simulation(
         fax_config = straxen.get_resource(fax_config, fmt='json')
         for fax_field, cmt_field in _config_overlap.items():
             if overwrite_from_fax_file_proc:
-                st.config[cmt_field] = ( cmt_options[cmt_field][0] + '_constant',
+                if isinstance(cmt_options[cmt_field], str):
+                    # URLConfigs can just be set to a constant
+                    st.config[cmt_field] = fax_config[fax_field]
+                else:
+                    # FIXME: Remove once all cmt configs are URLConfigs
+                    st.config[cmt_field] = ( cmt_options[cmt_field][0] + '_constant',
                                          fax_config[fax_field])
             if overwrite_from_fax_file_sim:
+                # CMT name allowed to be different from the config name
+                # WFSim needs the cmt name
+                cmt_name = cmt_options_full[cmt_field]['correction']
+
                 st.config['fax_config_override_from_cmt'][fax_field] = (
-                         cmt_options[cmt_field][0] + '_constant', fax_config[fax_field])
+                         cmt_name + '_constant', fax_config[fax_field])
 
     # And as the last step - manual overrrides, since they have the highest priority
     # User customized for simulation
@@ -377,21 +406,27 @@ def xenonnt_simulation(
                              f'CMT to fax config!')
         for fax_key, cmt_key in _config_overlap.items():
             if cmt_key == option:
-                _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
+                cmt_name = cmt_options_full[option]['correction']
                 st.config['fax_config_override_from_cmt'][fax_key] = (
-                                            cmt_options[option][_name_index] + '_constant',
+                                            cmt_name + '_constant',
                                             cmt_option_overwrite_sim[option])
-                del _name_index
             del(fax_key, cmt_key)
     # User customized for simulation
     for option in cmt_option_overwrite_proc:
         if option not in cmt_options:
             raise ValueError(f'Overwrite option {option} is not using CMT by default '
                              'you should just use set config')
-        _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
-        st.config[option] = (cmt_options[option][_name_index] + '_constant', 
-                             cmt_option_overwrite_proc[option])
-        del _name_index
+        
+        if isinstance(cmt_options[option], str):
+            # URLConfig options can just be set to constants, no hacks needed
+            # But for now lets keep things consistent for people
+            st.config[option] = cmt_option_overwrite_proc[option]
+        else:
+            # CMT name allowed to be different from the config name
+            # WFSim needs the cmt name
+            cmt_name = cmt_options_full[option]['correction']
+            st.config[option] = (cmt_name + '_constant', 
+                                cmt_option_overwrite_proc[option])
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
 
