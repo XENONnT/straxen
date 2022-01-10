@@ -243,6 +243,11 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
+    @classmethod
+    def kwarg_from_url(cls, url: str, key: str):
+        path, kwargs = cls.split_url_kwargs(url)
+        return kwargs.get(key, None)
+        
     @staticmethod
     def evaluate(value, **namespace):
         '''Fetch an attribute from namespace
