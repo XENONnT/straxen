@@ -64,6 +64,9 @@ class SCInterfaceTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.sc.find_pmt_names(pmts=12, current=False, hv=False)
 
+    def test_token_expires(self):
+        self.sc.token_expires_in()
+
     def test_query_sc_values(self):
         """
         Unity test for the SCADAInterface. Query a fixed range and check if 
