@@ -1,5 +1,5 @@
 import warnings
-
+import pytz
 import numpy as np
 import straxen
 import unittest
@@ -66,6 +66,20 @@ class SCInterfaceTest(unittest.TestCase):
 
     def test_token_expires(self):
         self.sc.token_expires_in()
+
+    def test_convert_timezone(self):
+        parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
+        df = self.sc.get_scada_values(parameters,
+                                      start=self.start,
+                                      end=self.end,
+                                      every_nth_value=1,
+                                      query_type_lab=False, )
+
+        df_strax = straxen.convert_time_zone(df, tz='strax')
+        assert df_strax.index.dtype.type is np.int64
+
+        df_etc = straxen.convert_time_zone(df, tz='Etc/GMT+0')
+        assert df_etc.index.dtype.tz is pytz.timezone('Etc/GMT+0')
 
     def test_query_sc_values(self):
         """
