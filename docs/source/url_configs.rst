@@ -102,11 +102,11 @@ Notice how all the details on how to fetch the model file and convert it to a py
 The details of where the model object is taken from can be determined by setting the model key of the context config
 The URL is the object being hashed, so it is important to only use pure URLs i.e the same URL should always refer to the same resource.
 
-The URL is evaluated recursively:
-  1) **tf://** - Loads a TF model from a path 
-  2) **resource://** - Loads a xenon resource by name (can also load web URLs), in this case returns a path to the file.
-  3) **cmt://** - Loads value from CMT, in this case it loads the name of the resource encoding the keras model.
-  4) **?version=ONLINE&run_id=plugin.run_id&fmt=abs_path** - Query is parsed and substituted (plugin.* are replaced with plugin attributes as evaluated at runtime) the values are then passed as keyword arguments to any protocols that include them in their signature. Everythin after the rightmost `?` character is considered the keyword arguments for the protocols.
+The URL is evaluated recursively in the following order:
+  1) **?version=ONLINE&run_id=plugin.run_id&fmt=abs_path** - Query is parsed and substituted (plugin.* are replaced with plugin attributes as evaluated at runtime) the values are then passed as keyword arguments to any protocols that include them in their signature. Everythin after the rightmost `?` character is considered the keyword arguments for the protocols.
+  2) **cmt://** - Loads value from CMT, in this case it loads the name of the resource encoding the keras model.
+  3) **resource://** - Loads a xenon resource by name (can also load web URLs), in this case returns a path to the file.
+  4) **tf://** - Loads a TF model from a path
 
 **Important** The URL arguments are sorted before they are passed to the plugin so that hashing is not sensitive to the order of the arguments.
 This is important to remember when performing tests.
