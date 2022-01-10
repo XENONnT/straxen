@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import straxen
 import unittest
@@ -13,6 +15,54 @@ class SCInterfaceTest(unittest.TestCase):
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
         self.start += 10**6
         self.end = self.start + 5*10**9
+
+    def test_wrong_querries(self):
+        parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
+
+        with self.assertRaises(ValueError):
+            # Runid but no context
+            df = self.sc.get_scada_values(parameters,
+                                          run_id='1',
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+        with self.assertRaises(ValueError):
+            # No time range specified
+            df = self.sc.get_scada_values(parameters,
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+        with self.assertRaises(ValueError):
+            # Start larger end
+            df = self.sc.get_scada_values(parameters,
+                                          start=2,
+                                          end=1,
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+        with self.assertRaises(ValueError):
+            # Start and/or end not in ns unix time
+            df = self.sc.get_scada_values(parameters,
+                                          start=1,
+                                          end=2,
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+    def test_pmt_names(self):
+        """
+        Tests different query options for pmt list.
+        """
+        pmts_dict = self.sc.find_pmt_names(pmts=12, current=True)
+        assert 'PMT12_HV' in pmts_dict.keys()
+        assert 'PMT12_I' in pmts_dict.keys()
+        assert pmts_dict['PMT12_HV'] == 'XE1T.CTPC.BOARD04.CHAN003.VMON'
+
+        pmts_dict = self.sc.find_pmt_names(pmts=(12, 13))
+        assert 'PMT12_HV' in pmts_dict.keys()
+        assert 'PMT13_HV' in pmts_dict.keys()
+
+        with self.assertRaises(ValueError):
+            self.sc.find_pmt_names(pmts=12, current=False, hv=False)
 
     def test_query_sc_values(self):
         """
