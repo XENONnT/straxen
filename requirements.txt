@@ -1,4 +1,4 @@
-numpy~=1.19.5
+numpy
 packaging
 pymongo<4.0.0
 strax>=1.1.2
