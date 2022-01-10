@@ -140,6 +140,29 @@ class URLConfig(strax.Config):
                 kwargs[k] = list(map(parse_val, v))
         return path, kwargs
 
+    @classmethod
+    def kwarg_from_url(cls, url: str, key: str):
+        path, kwargs = cls.split_url_kwargs(url)
+        return kwargs.get(key, None)
+        
+    @classmethod
+    def format_url_kwargs(cls, url, **kwargs):
+        '''Add keyword arguments to a URL.
+        Sorts all arguments by key for hash consistency
+        '''
+        url, extra_kwargs = cls.split_url_kwargs(url)
+        kwargs = dict(extra_kwargs, **kwargs)
+        arg_list = []
+        for k, v in sorted(kwargs.items()):
+            if isinstance(v, list):
+                # lists are passed as multiple arguments with the same key
+                arg_list.extend([f"{k}={vi}" for vi in v])
+            else:
+                arg_list.append(f"{k}={v}")
+        arg_str = "&".join(arg_list)
+        arg_str = cls.QUERY_SEP + arg_str if arg_str else ''
+        return url + arg_str
+
     def fetch_attribute(self, plugin, value):
         if isinstance(value, str) and value.startswith(self.PLUGIN_ATTR_PREFIX):
             # kwarg is referring to a plugin attribute, lets fetch it

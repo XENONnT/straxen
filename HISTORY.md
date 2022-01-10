@@ -1,3 +1,34 @@
+1.2.4 / 2022-01-10
+------------------
+fixes/tests:
+ - Fixes for WFSim <-> CMT (#865)
+ - Tests for WFSim contexts (#855)
+
+notes:
+ - First 1.2.X version compatible with WFSim
+
+1.2.3 / 2022-01-10
+------------------
+- Bump numpy (#876)
+
+notes:
+ - Incompatible with WFSim
+
+1.2.2 / 2022-01-10
+------------------
+tests:
+ - Test for Mongo-down/uploader (#859)
+ - Test for rucio-documents in the rundb (#858)
+ - Test for bokeh_utils (#857)
+ - Tests for common.py fix #741 (#856)
+
+bugfix:
+ - Bump peaklets version (#873)
+
+notes:
+ - Lineage change for `peaklets` (#875)
+
+
 1.2.1 / 2021-12-27
 ------------------
 fixes/tests:
@@ -7,8 +38,11 @@ fixes/tests:
  - Pymongo requirement should be <4.0 (#852)
  
 notes:
+ - Bug for `peaklets-uhfusstvab` due to (#875)
  - No lineage changes
- 
+ - Incompatible with WFSim
+
+
 1.2.0 / 2021-12-21
 -------------------
 major:
@@ -54,8 +88,11 @@ fixes/tests:
 * Patch peaks merging (#767)
 
 notes:
+ - Bug for `peaklets-uhfusstvab` due to (#875)
  - plugins changed (new lineage) everything >= 'peaklet_classification'
  - offline CMT versions don't work in this release
+ - Incompatible with WFSim
+
 
 1.1.3 / 2021-11-19
 -------------------
