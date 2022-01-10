@@ -1,4 +1,5 @@
-numpy<1.22
+numba>=0.50.0
+numpy
 packaging
 pymongo<4.0.0
 strax>=1.1.2
@@ -9,7 +10,6 @@ utilix>=0.5.3
 bokeh>=2.2.3
 multihist>=0.6.3
 immutabledict
-numba>=0.50.0
 requests
 commentjson
 matplotlib
