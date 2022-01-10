@@ -14,7 +14,8 @@ holoviews==1.14.5
 hypothesis==6.34.1
 ipywidgets==7.6.4
 jupyter-client==7.1.0                           # for ipywidgets
-keras==2.7.0                                    # Tensorflow depencency
+keras==2.7.0; python_version<="3.9"             # Tensorflow dependency
+keras==2.8.0rc0; python_version=="3.10"         # Tensorflow dependency
 matplotlib==3.5.1
 multihist==0.6.4
 npshmex==0.2.1                                  # Strax dependency
