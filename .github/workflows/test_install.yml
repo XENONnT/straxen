@@ -29,7 +29,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
       - name: pre-install requirements
-        run: pip install -r requitements.txt
+        run: pip install -r requirements.txt
       - name: Install straxen
         run: python setup.py install
       - name: Test import
