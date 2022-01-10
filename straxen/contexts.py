@@ -337,6 +337,8 @@ def xenonnt_simulation(
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
     cmt_options = straxen.get_corrections.get_cmt_options(st)
+    # prune to just get the strax options
+    cmt_options = {key: val['strax_option'] for key, val in cmt_options.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
@@ -450,7 +452,6 @@ x1t_common_config = dict(
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
-    s1_max_rise_time=60,
     s1_max_rise_time_post100=150,
     s1_min_coincidence=3,
     # Events*
@@ -463,7 +464,7 @@ x1t_common_config = dict(
     se_gain=28.2,
     avg_se_gain=28.2,
     rel_extraction_eff=1.0,
-    s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+    s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',  # noqa
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
     g1=0.1426,
     g2=11.55/(1 - 0.63),
