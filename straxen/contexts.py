@@ -246,7 +246,7 @@ def xenonnt_simulation(
                 wfsim_registry='RawRecordsFromFaxNT',
                 cmt_run_id_sim=None,
                 cmt_run_id_proc=None,
-                cmt_version='global_v5',
+                cmt_version='global_ONLINE',
                 fax_config='fax_config_nt_design.json',
                 overwrite_from_fax_file_sim=False,
                 overwrite_from_fax_file_proc=False,
@@ -256,7 +256,7 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife'  # see issue#864
+                            electron_lifetime_liquid='elife',
                 ),
                 **kwargs):
     """
@@ -268,7 +268,7 @@ def xenonnt_simulation(
     refer to detector simulation parameters.
 
     Arguments having _proc in their name refer to detector parameters that
-    are used for processing of simulations as done to the real datector
+    are used for processing of simulations as done to the real detector
     data. This means starting from already existing raw_records and finishing
     with higher level data, such as peaks, events etc.
 
@@ -290,7 +290,7 @@ def xenonnt_simulation(
         parameters for truth/raw_records from from fax_config file istead of CMT
     :param overwrite_from_fax_file_proc:  If true sets detector processing
         parameters after raw_records(peaklets/events/etc) from from fax_config
-        file istead of CMT
+        file instead of CMT
     :param cmt_option_overwrite_sim: Dictionary to overwrite CMT settings for
         the detector simulation part.
     :param cmt_option_overwrite_proc: Dictionary to overwrite CMT settings for
@@ -340,8 +340,8 @@ def xenonnt_simulation(
     cmt_options_full = straxen.get_corrections.get_cmt_options(st)
 
     # prune to just get the strax options
-    cmt_options = { key: val['strax_option'] 
-                    for key, val in cmt_options_full.items()}
+    cmt_options = {key: val['strax_option']
+                   for key, val in cmt_options_full.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
@@ -385,8 +385,8 @@ def xenonnt_simulation(
                     st.config[cmt_field] = fax_config[fax_field]
                 else:
                     # FIXME: Remove once all cmt configs are URLConfigs
-                    st.config[cmt_field] = ( cmt_options[cmt_field][0] + '_constant',
-                                         fax_config[fax_field])
+                    st.config[cmt_field] = (cmt_options[cmt_field][0] + '_constant',
+                                            fax_config[fax_field])
             if overwrite_from_fax_file_sim:
                 # CMT name allowed to be different from the config name
                 # WFSim needs the cmt name
@@ -426,7 +426,7 @@ def xenonnt_simulation(
             # WFSim needs the cmt name
             cmt_name = cmt_options_full[option]['correction']
             st.config[option] = (cmt_name + '_constant', 
-                                cmt_option_overwrite_proc[option])
+                                 cmt_option_overwrite_proc[option])
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
 
