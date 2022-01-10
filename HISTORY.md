@@ -1,7 +1,18 @@
+1.2.4 / 2022-01-10
+------------------
+fixes/tests:
+ - Fixes for WFSim <-> CMT (#865)
+ - Tests for WFSim contexts (#855)
+
+notes:
+ - First 1.2.X version compatible with WFSim
+
 1.2.3 / 2022-01-10
 ------------------
 - Bump numpy (#876)
 
+notes:
+ - Incompatible with WFSim
 
 1.2.2 / 2022-01-10
 ------------------
@@ -29,7 +40,9 @@ fixes/tests:
 notes:
  - Bug for `peaklets-uhfusstvab` due to (#875)
  - No lineage changes
- 
+ - Incompatible with WFSim
+
+
 1.2.0 / 2021-12-21
 -------------------
 major:
@@ -78,6 +91,8 @@ notes:
  - Bug for `peaklets-uhfusstvab` due to (#875)
  - plugins changed (new lineage) everything >= 'peaklet_classification'
  - offline CMT versions don't work in this release
+ - Incompatible with WFSim
+
 
 1.1.3 / 2021-11-19
 -------------------
