@@ -22,6 +22,7 @@ on:
     branches:
       - master
       - stable
+      - development
 
 jobs:
   update:
@@ -110,7 +111,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # We need to check if we had access to the secrets, otherwise coveralls
+          # We need to check if we have access to the secrets, otherwise coveralls
           # will yield a low coverage because of the lack of interfacing with the
           # database.
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
