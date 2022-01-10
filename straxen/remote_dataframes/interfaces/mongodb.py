@@ -38,6 +38,15 @@ def _save_mongo_database(self, db, index, doc):
  
     return self._insert(db[self.name], index, doc)
 
+@BaseIndex.ensure_index.register(pymongo.collection.Collection)
+def ensure_collection_index(self, db):
+    db.create_index([(name, pymongo.ASCENDING) for name in self.store_fields],
+                    background=True)
+
+@BaseIndex.ensure_index.register(pymongo.database.Database)
+def ensure_databse_index(self, db):
+    db = db[self.schema.name]
+    self.ensure_index(db)
 
 @BaseIndex.head.register(pymongo.collection.Collection)
 def collection_head(self, db, n):

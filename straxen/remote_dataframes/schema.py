@@ -37,9 +37,11 @@ class BaseSchema(BaseModel):
     '''
     name: ClassVar = ''
     index: ClassVar
-    value: Union[str,int,float]
+    # value: Union[str,int,float]
     
     def __init_subclass__(cls) -> None:
+        if 'name' not in cls.__dict__:
+            cls.name = camel_to_snake(cls.__name__)
         #FIXME: maybe move this logic into the Index class?
         # Index can be a descriptor that does a dynamic lookup and
         # concatentation of all indexes in parent classes to return
@@ -95,6 +97,10 @@ class BaseSchema(BaseModel):
         ''' query a db and return the results
         '''
         return cls.index.query_db(db, *args, **kwargs)
+
+    @classmethod
+    def ensure_index(cls, db):
+        return cls.index.ensure_index(db)
 
     def pre_insert(self, db, index):
         '''This function is called prior to an

@@ -87,6 +87,10 @@ class MultiIndex(BaseIndex):
             documents = reduced_documents
         return documents
 
+    def ensure_index(self, db):
+        for idx in self.indexes:
+            idx.ensure_index(db)
+            
     def build_query(self, db, index_values):
         query = []
         for index in self.indexes:

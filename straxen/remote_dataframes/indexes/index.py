@@ -105,12 +105,16 @@ class BaseIndex:
                        f' for {type(db)} datastores')
 
     @singledispatchmethod
+    def ensure_index(self, db):
+        TypeError(f"Ensure index not supported on {type(db)} backend.")
+
+    @singledispatchmethod
     def build_query(self, db, value):
-        raise TypeError(f"{type(db)} backend not supported.")
+        raise TypeError(f"build_query not supported on {type(db)} backend.")
 
     @singledispatchmethod
     def apply_query(self, db, query):
-        raise TypeError(f"{type(db)} backend not supported.")
+        raise TypeError(f"apply_query not supported on {type(db)} backend.")
 
     @apply_query.register(list)
     def apply_list(self, db, query):
