@@ -9,10 +9,10 @@ dask==2021.12.0
 datashader==0.13.0
 dill==0.3.4                                     # Strax dependency
 flake8==4.0.1
-gitpython==3.1.18
-holoviews==1.14.5
+gitpython==3.1.26
+holoviews==1.14.7
 hypothesis==6.34.1
-ipywidgets==7.6.4
+ipywidgets==7.6.5
 jupyter-client==7.1.0                           # for ipywidgets
 keras==2.7.0; python_version<="3.9"             # Tensorflow dependency
 keras==2.8.0rc0; python_version=="3.10"         # Tensorflow dependency
@@ -25,7 +25,7 @@ numexpr==2.8.1
 numpy==1.20.3; python_version<="3.9"
 numpy==1.21.5; python_version=="3.10"
 packaging==21.3
-pandas==1.3.2; python_version<="3.9"
+pandas==1.3.5; python_version<="3.9"
 pandas==1.3.5; python_version=="3.10"
 panel==0.12.6                                   # Bokeh dependency
 psutil==5.9.0                                   # Strax dependency
@@ -37,8 +37,8 @@ scipy==1.7.3                                    # Strax dependency
 tensorflow==2.7.0; python_version<="3.9"
 tensorflow==2.8.0rc0; python_version=="3.10"
 tqdm==4.62.2
-typing_extensions==3.10.0                       # Tensorflow/bokeh depencency
+typing_extensions==4.0.1                        # Tensorflow/bokeh depencency
 utilix==0.6.5
 wfsim==0.5.12; python_version<="3.9"            # nestpy doesn't work in py3.10
 xarray==0.20.2
-zstd==1.5.0.4                                   # Strax dependency
+zstd==1.5.1.0                                   # Strax dependency
