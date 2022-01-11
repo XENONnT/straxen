@@ -119,7 +119,7 @@ jobs:
 
       - name: Test package python 3.10
         # This is running a normal test
-        if: matrix.test == 'pytest_no_database' || matrix.test == 'pytest'  && matrix.python-version != '3.10'
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
         env:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
         run: |
