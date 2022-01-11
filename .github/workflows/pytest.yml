@@ -66,10 +66,6 @@ jobs:
         run: |
           bash .github/scripts/filter_strax_from_requirements.sh
 
-      - name: Remove wfsim from reqs for python 3.10
-        if: matrix.python-version == '3.10'
-        run: cat extra_requirements/requirements-tests.txt | grep -v wfsim >> extra_requirements/requirements-tests.txt
-
       - name: Install requirements
         run: pip install -r extra_requirements/requirements-tests.txt
 
