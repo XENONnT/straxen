@@ -5,6 +5,7 @@ import strax
 import straxen
 export, __all__ = strax.exporter()
 
+# Figure out URLConfig for below options.
 @export
 @strax.takes_config(
     strax.Option('bayes_cpt_config', default='/home/ahiguera-mx/test2/rap-ml-group/peak_classification/conditional_probabilities.npy',     
@@ -22,9 +23,9 @@ class BayesPeakletClassification(strax.Plugin):
     parallel = True
     __version__ = '0.0.1'
     dtype = (strax.peak_interval_dtype
-             + [('type', np.int8, 'Bayes peak classification type')]
-             + [('s1_prob', np.float32, 'S1 probability')]
-             + [('s2_prob', np.float32, 'S2 probability')]
+             + [('type_bayes', np.int8, 'Bayes peak classification type')]
+             + [('s1_prob', np.float32, 'S1 ln probability')]
+             + [('s2_prob', np.float32, 'S2 ln probability')]
             )
 
     # Descriptor configs
@@ -125,7 +126,7 @@ class BayesPeakletClassification(strax.Plugin):
         class_assignments[C_S2] = 2
         bayes_ptype = class_assignments
 
-        return dict(type=bayes_ptype,
+        return dict(type_bayes=bayes_ptype,
                     time=peaklets['time'],
                     dt=peaklets['dt'],
                     channel=-1,
