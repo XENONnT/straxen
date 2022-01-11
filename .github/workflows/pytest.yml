@@ -2,11 +2,11 @@
 # We run three types of tests:
 #  - Pytest -> these are the "normal" tests and should be run for all
 #    python versions
-#  - Coveralls -> this is to see if we are coverering all our lines of
+#  - Coveralls -> this is to see if we are covering all our lines of
 #    code with our tests. The results get uploaded to
 #    coveralls.io/github/XENONnT/straxen
 #  - pytest_no_database -> we want to make sure we can run the tests even
-#    if we don't have access to our datebase since this will e.g. happen
+#    if we don't have access to our database since this will e.g. happen
 #    when someone is pushing a PR from their own fork as we don't
 #    propagate our secrets there.
 
@@ -47,6 +47,7 @@ jobs:
             test: pytest_no_database
           - python-version: "3.10"
             test: pytest_no_database
+
     steps:
       # Setup and installation
       - name: Checkout repo
@@ -58,13 +59,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
-
-      - name: Remove strax from reqs.
-        if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
-        env:
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
-        run: |
-          bash .github/scripts/filter_strax_from_requirements.sh
 
       - name: Install requirements
         run: pip install -r extra_requirements/requirements-tests.txt
@@ -79,8 +73,8 @@ jobs:
         with:
           mongodb-version: 4.2
 
-      # Secrets and required files
       - name: patch utilix file
+        # Secrets and required files
         # Patch this file if we want to have access to the database
         if:  matrix.test != 'pytest_no_database'
         run: bash .github/scripts/create_readonly_utilix_config.sh
@@ -108,7 +102,7 @@ jobs:
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
-      - name: Test package
+      - name: Test package python 3.7 - 3.9
         # This is running a normal test
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && matrix.python-version != '3.10'
         env:
@@ -118,7 +112,7 @@ jobs:
           pytest -rsxv --durations 0
 
       - name: Test package python 3.10
-        # This is running a normal test
+        # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
         env:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
@@ -142,6 +136,5 @@ jobs:
           coverage run --source=straxen setup.py test -v
           coveralls --service=github
 
-      # Done
       - name: goodbye
         run: echo "tests done, bye bye"
