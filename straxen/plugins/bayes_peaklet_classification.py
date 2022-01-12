@@ -24,14 +24,14 @@ class BayesPeakletClassification(strax.Plugin):
     __version__ = '0.0.1'
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')]
-             # + [('s1_prob', np.float32, 'S1 ln probability')]
-             # + [('s2_prob', np.float32, 'S2 ln probability')]
+             + [('s1_prob', np.float32, 'S1 ln probability')]
+             + [('s2_prob', np.float32, 'S2 ln probability')]
             )
 
     # Descriptor configs
     s2_prob_threshold = straxen.URLConfig(
         default=np.log(0.5), #0.5 decision split
-        help='S2 prob value threshold, above this value type=2'
+        help='S2 log prob value threshold, above this value type=2'
     )
     num_nodes = straxen.URLConfig(
         default=50,
@@ -131,6 +131,6 @@ class BayesPeakletClassification(strax.Plugin):
                     dt=peaklets['dt'],
                     channel=-1,
                     length=peaklets['length'],
-                    # s1_prob=s1_prob,
-                    # s2_prob=s2_prob
+                    s1_prob=s1_prob,
+                    s2_prob=s2_prob
                     )
