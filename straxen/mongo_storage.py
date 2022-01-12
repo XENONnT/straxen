@@ -79,7 +79,8 @@ class GridFsInterface:
             # Check the user input is fine for what we want to do.
             if not isinstance(collection, pymongo_collection):
                 raise ValueError('Provide PyMongo collection (see docstring)!')
-            assert file_database is None, "Already provided a collection!"
+            if file_database is not None:
+                raise ValueError("Already provided a collection!")
 
         # Set collection and make sure it can at least do a 'find' operation
         self.collection = collection
@@ -247,6 +248,7 @@ class MongoUploader(GridFsInterface):
         :param abs_path: str, the absolute path of the file 
         """
         doc = self.document_format(config)
+        doc['md5'] = self.compute_md5(abs_path)
         if not os.path.exists(abs_path):
             raise CouldNotLoadError(f'{abs_path} does not exits')
 
@@ -351,11 +353,8 @@ class MongoDownloader(GridFsInterface):
 
     def download_all(self):
         """Download all the files that are stored in the mongo collection"""
-        raise NotImplementedError('This feature is disabled for now')
-        # Disable the inspection of `Unreachable code`
-        # pylint: disable=unreachable
         for config in self.list_files():
-            self.download_single(config)
+            print(config, self.download_single(config))
 
     @staticmethod
     def _check_store_files_at(cache_folder_alternatives):

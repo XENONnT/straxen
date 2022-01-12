@@ -192,6 +192,7 @@ def logticks(tmin, tmax=None, tick_at=None):
 
 @export
 def quiet_tight_layout():
+    warnings.warn('Don\'t use quiet_tight_layout it will be removed in a future release')
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         plt.tight_layout()

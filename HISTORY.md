@@ -1,3 +1,130 @@
+1.2.4 / 2022-01-10
+------------------
+fixes/tests:
+ - Fixes for WFSim <-> CMT (#865)
+ - Tests for WFSim contexts (#855)
+
+notes:
+ - First 1.2.X version compatible with WFSim
+
+1.2.3 / 2022-01-10
+------------------
+- Bump numpy (#876)
+
+notes:
+ - Incompatible with WFSim
+
+1.2.2 / 2022-01-10
+------------------
+tests:
+ - Test for Mongo-down/uploader (#859)
+ - Test for rucio-documents in the rundb (#858)
+ - Test for bokeh_utils (#857)
+ - Tests for common.py fix #741 (#856)
+
+bugfix:
+ - Bump peaklets version (#873)
+
+notes:
+ - Lineage change for `peaklets` (#875)
+
+
+1.2.1 / 2021-12-27
+------------------
+fixes/tests:
+ - Add cmt tests and fix bug in apply_cmt_version (#860)
+ - Pin documentation requirements (#862)
+ - Add read the docs config (#861)
+ - Pymongo requirement should be <4.0 (#852)
+ 
+notes:
+ - Bug for `peaklets-uhfusstvab` due to (#875)
+ - No lineage changes
+ - Incompatible with WFSim
+
+
+1.2.0 / 2021-12-21
+-------------------
+major:
+
+* Update CorrectedAreas (instead of EnergyEstimates) (#817)
+* S2 pattern fit (#780)
+* Exclude S1 as triggering peak (#779) 
+* Two manual boundaries (updated 11/24/2021) (#775) 
+* Add main peaks' shadow for event shadow (#770)
+* Events synchronize (#761)
+* Implement peak-level shadow and event-level shadow refactor (#753) 
+* use channel tight coincidence level (#745)
+
+minor / patches:
+
+* Normalized line endings (#833)
+* Fix codefactor issues (#832)
+* Another try at codefactor (#831) 
+* URLConfig take protocol for nested keys (#826)
+* Rename tight coincidence (#825) 
+* Move URLConfig cache to global dictionary (#822)
+* Remove codefactor (#818) 
+* Performance update for binomial test (#783) 
+* URLConfig not in strax (#781)
+* Add refactor event building cut (#778) 
+* whipe online monitor data (#777)
+* Cache dependencies (#772) 
+* Update definition array_valued (#757) 
+
+fixes/tests:
+
+* Add test for filter_kwargs (#837)
+* Fix nv testing data (#830)  
+* Unittest for DAQreader (#828) 
+* Fix broken matplotlib/minianalyses (#815)
+* Itp test (#813)
+* Loose packaging requirement (#810) 
+* can we disable codefactor please (#809) 
+* Fix #781 (#808) 
+* Matplotlib changed requirements (#805) 
+* Pin pymongo (#801) 
+* Bump wfsim tests (#773) 
+* Patch peaks merging (#767)
+
+notes:
+ - Bug for `peaklets-uhfusstvab` due to (#875)
+ - plugins changed (new lineage) everything >= 'peaklet_classification'
+ - offline CMT versions don't work in this release
+ - Incompatible with WFSim
+
+
+1.1.3 / 2021-11-19
+-------------------
+minor / patches:
+- Add URL based configs (#758)
+- Add perpendicular wires handling info and function (#756)
+- Add a few special cases event_info_double (#740)
+- Process afterpulses on ebs (#727)
+- Add zenodo (#742)
+- Set check_broken=False for RucioFrontend.find (#749)
+- Explicitly set infer_dtype=False for all Options (#750)
+- Use alt z for alternative s1 binomial test (#724)
+
+fixes/tests:
+- update docs (#743)
+- Remove RuntimeError in RucioFrontend (#719)
+- cleanup bootstrax logic for target determination (#768)
+- Test installation without extra requirements (#725)
+- Adding code comments for corrected z position (#763)
+- Reactivate scada test (#764)
+- Added resource exception for Scada (#755)
+- test_widgets is broken? (#726)
+- Track bokeh (#759)
+- Fix keras requirement (#748)
+- Update requirements-tests.txt (#739)
+- Fix deprecation warning (#723)
+- Update test_misc.py (90f2fc30141704158a0e297ea05679515a62b397)
+
+notes:
+ - plugins changed (new lineage) are `event_info_double` and `event_pattern_fit`
+
+
 1.1.2 / 2021-10-27
 -------------------
 minor / patches:
@@ -19,6 +146,13 @@ fixes/tests:
 - test nv with nv data (#709)
 - Add small test for wfsim (#716)
 
+notes:
+ - plugins changed (new lineage) are:
+   - `afterpulses`
+   - `online_monitor_nv`
+   - `online_monitor_mv`
+   - `event_pattern_fit`
+   - `corrected_areas`
 
 1.1.1 / 2021-10-19
 -------------------

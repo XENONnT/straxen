@@ -1,4 +1,5 @@
 import tempfile
+import unittest
 import strax
 import straxen
 from straxen.test_utils import nt_test_run_id, DummyRawRecords, testing_config_1T, test_run_id_1T
@@ -163,4 +164,4 @@ def test_nT(ncores=1):
 
 def test_nT_mutlticore():
     print('nT multicore')
-    test_nT(2)
+    test_nT(3)

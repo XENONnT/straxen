@@ -1,6 +1,6 @@
+import importlib
 import strax
 import straxen
-from straxen.contexts import *
 from utilix import DB
 import datetime
 
@@ -10,20 +10,20 @@ db = DB()
 # needs to be maintained for each straxen release
 context_list = ['xenonnt_led',
                 'xenonnt_online',
-               ]
+                ]
 
 
 # returns the list of dtype, hashes for a given strax context
 def get_hashes(st):
     return set([(d, st.key_for('0', d).lineage_hash)
-                        for p in st._plugin_class_registry.values()
-                        for d in p.provides])
+                for p in st._plugin_class_registry.values()
+                for d in p.provides])
 
 
 def main():
     for context in context_list:
-        # get these from straxen.contexts.*
-        st = eval("%s()" % context)
+        context_module = importlib.import_module('straxen.contexts')
+        st = getattr(context_module, context)()
         hashes = get_hashes(st)
         hash_dict = {dtype: h for dtype, h in hashes}
 

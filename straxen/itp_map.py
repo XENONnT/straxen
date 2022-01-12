@@ -6,7 +6,7 @@ import re
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
-
+import straxen
 import strax
 export, __all__ = strax.exporter()
 
@@ -147,7 +147,10 @@ class InterpolatingMap:
         for map_name in self.map_names:
             # Specify dtype float to set Nones to nan
             map_data = np.array(self.data[map_name], dtype=np.float)
-            array_valued = len(map_data.shape) == self.dimensions + 1
+            if len(self.coordinate_system) == len(map_data):
+                array_valued = len(map_data.shape) == 2
+            else:
+                array_valued = len(map_data.shape) == self.dimensions + 1
 
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
@@ -185,6 +188,7 @@ class InterpolatingMap:
         assert dimensions == 2, 'RectBivariateSpline interpolate maps of dimension 2'
         assert not array_valued, 'RectBivariateSpline does not support interpolating array values'
         map_data = map_data.reshape(*grid_shape)
+        kwargs = straxen.filter_kwargs(RectBivariateSpline, kwargs)
         rbs = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs)
 
         def arg_formated_rbs(positions):
@@ -206,14 +210,18 @@ class InterpolatingMap:
             map_data = map_data.reshape(*grid_shape)
 
         config = dict(bounds_error=False, fill_value=None)
+        kwargs = straxen.filter_kwargs(RegularGridInterpolator, kwargs)
         config.update(kwargs)
+        
         return RegularGridInterpolator(tuple(grid), map_data, **config)
 
     @staticmethod
     def _weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs):
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
-
+        else:
+            map_data = map_data.flatten()
+        kwargs = straxen.filter_kwargs(InterpolateAndExtrapolate, kwargs)
         return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
 
     def scale_coordinates(self, scaling_factor, map_name='map'):
@@ -235,7 +243,10 @@ class InterpolatingMap:
             alt_csys[i] = [gc * k for (gc, k) in zip(gp, self._sf)]
 
         map_data = np.array(self.data[map_name])
-        array_valued = len(map_data.shape) == self.dimensions + 1
+        if len(self.coordinate_system) == len(map_data):
+            array_valued = len(map_data.shape) == 2
+        else:
+            array_valued = len(map_data.shape) == self.dimensions + 1
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
         itp_fun = InterpolateAndExtrapolate(points=np.array(alt_csys),

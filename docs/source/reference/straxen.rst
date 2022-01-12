@@ -109,6 +109,14 @@ straxen.mongo\_storage module
    :undoc-members:
    :show-inheritance:
 
+straxen.numbafied\_scipy module
+-------------------------------
+
+.. automodule:: straxen.numbafied_scipy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.online\_monitor module
 ------------------------------
 
@@ -141,10 +149,26 @@ straxen.scada module
    :undoc-members:
    :show-inheritance:
 
+straxen.test\_utils module
+--------------------------
+
+.. automodule:: straxen.test_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.units module
 --------------------
 
 .. automodule:: straxen.units
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.url\_config module
+--------------------------
+
+.. automodule:: straxen.url_config
    :members:
    :undoc-members:
    :show-inheritance:

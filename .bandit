@@ -1,5 +1,6 @@
 [bandit]
-skips: B303
+skips: B101, B303
 
 # Disabled:
+# B101, Use of assert detected. The enclosed code will be removed when compiling to optimised byte code
 # B303, Use of insecure MD2, MD4, MD5, or SHA1 hash function.

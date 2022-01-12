@@ -1,6 +1,7 @@
 # XENON secrets: run database passwords, S3 keys, etc.
 # Though these are readonly, they should not be committed to a public repo.
 xenon_secrets.py
+.xenon_config
 
 # Jupyter
 .ipynb_checkpoints
@@ -11,6 +12,9 @@ xenon_secrets.py
 *.npy
 *.blosc
 *.h5
+*.pdf
+live_data
+daq_test_data
 strax_data
 strax_test_data
 from_fake_daq

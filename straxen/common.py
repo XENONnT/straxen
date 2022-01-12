@@ -2,14 +2,13 @@ import ast
 import configparser
 import gzip
 import inspect
+import typing as ty
 import commentjson
 import json
 import os
 import os.path as osp
 import pickle
 import dill
-import socket
-import sys
 import urllib.request
 import tqdm
 import numpy as np
@@ -24,7 +23,7 @@ export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
             'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E',
             'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius', 'cryostat_outer_radius',
-            'INFINITY_64BIT_SIGNED']
+            'perp_wire_angle', 'perp_wire_x_rot_pos', 'INFINITY_64BIT_SIGNED']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
@@ -43,6 +42,9 @@ n_mveto_pmts = 84
 
 tpc_pmt_radius = 7.62 / 2  # cm
 
+perp_wire_angle = np.deg2rad(30)
+perp_wire_x_rot_pos = 13.06  #[cm]
+
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
 # it's needed in analyses
@@ -53,6 +55,30 @@ LAST_MISCABLED_RUN = 8796
 TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
 
 INFINITY_64BIT_SIGNED = 9223372036854775807
+
+
+@export
+def rotate_perp_wires(x_obs: np.ndarray,
+                      y_obs: np.ndarray,
+                      angle_extra: ty.Union[float, int] = 0):
+    """
+    Returns x and y in the rotated plane where the perpendicular wires
+    area vertically aligned (parallel to the y-axis). Accepts addition to the
+    rotation angle with `angle_extra` [deg]
+
+    :param x_obs: array of x coordinates
+    :param y_obs: array of y coordinates
+    :param angle_extra: extra rotation in [deg]
+    :return: x_rotated, y_rotated
+    """
+    if len(x_obs) != len(y_obs):
+        raise ValueError('x and y are not of the same length')
+    angle_extra_rad = np.deg2rad(angle_extra)
+    x_rot = (np.cos(perp_wire_angle + angle_extra_rad) * x_obs
+             - np.sin(perp_wire_angle + angle_extra_rad) * y_obs)
+    y_rot = (np.sin(perp_wire_angle + angle_extra_rad) * x_obs
+             + np.cos(perp_wire_angle + angle_extra_rad) * y_obs)
+    return x_rot, y_rot
 
 
 @export
@@ -93,9 +119,10 @@ def open_resource(file_name: str, fmt='text'):
     :param fmt: format of the file
     :return: opened file
     """
-    if file_name in _resource_cache:
+    cached_name = _cache_name(file_name, fmt)
+    if cached_name in _resource_cache:
         # Retrieve from in-memory cache
-        return _resource_cache[file_name]
+        return _resource_cache[cached_name]
     # File resource
     if fmt in ['npy', 'npy_pickle']:
         result = np.load(file_name, allow_pickle=fmt == 'npy_pickle')
@@ -135,7 +162,7 @@ def open_resource(file_name: str, fmt='text'):
         raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
-    _resource_cache[file_name] = result
+    _resource_cache[cached_name] = result
 
     return result
 
@@ -160,8 +187,9 @@ def get_resource(x: str, fmt='text'):
         specified format
     """
     # 1. load from memory
-    if x in _resource_cache:
-        return _resource_cache[x]
+    cached_name = _cache_name(x, fmt)
+    if cached_name in _resource_cache:
+        return _resource_cache[cached_name]
     # 2. load from file
     elif os.path.exists(x):
         return open_resource(x, fmt=fmt)
@@ -177,6 +205,11 @@ def get_resource(x: str, fmt='text'):
     raise FileNotFoundError(
         f'Cannot open {x} because it is either not stored or we '
         f'cannot download it from anywhere.')
+
+
+def _cache_name(name: str, fmt: str)->str:
+    """Return a name under which to store the requested name with the given format in the _cache"""
+    return f'{fmt}::{name}'
 
 
 # Legacy loader for public URL files
@@ -287,14 +320,9 @@ def pre_apply_function(data, run_id, target, function_name='pre_apply_function')
     return data
 
 
-def _overwrite_testing_function_file(function_file):
-    warn('Use straxen.test_utils._overwrite_testing_function_file')
-    return straxen._overwrite_testing_function_file(function_file)
-
-
 @export
 def check_loading_allowed(data, run_id, target,
-                          max_in_disallowed = 1,
+                          max_in_disallowed=1,
                           disallowed=('event_positions',
                                       'corrected_areas',
                                       'energy_estimates')
@@ -347,16 +375,6 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     remap = get_resource(
         aux_repo + '/ecb6da7bd4deb98cd0a4e83b3da81c1e67505b16/remapped_channels_since_20200729_17.20UTC.csv',
         fmt='csv')
-
-    def wr_tqdm(x):
-        """Wrap input x with tqdm"""
-        if _tqdm:
-            try:
-                return tqdm.tqdm_notebook(x)
-            except (AttributeError, ModuleNotFoundError, ImportError):
-                # ok, sorry lets not wrap but return x
-                pass
-        return x
 
     def convert_channel(_data, replace=('channel', 'max_pmt')):
         """
@@ -437,7 +455,7 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
             return channel_data
         # Create a buffer to overright
         buffer = channel_data.copy()
-        for k in wr_tqdm(get_dtypes(channel_data)):
+        for k in strax.utils.tqdm(get_dtypes(channel_data), disable=not _tqdm):
             if np.iterable(channel_data[k][0]) and len(channel_data[k][0]) == n_chs:
                 if verbose:
                     print(f'convert_channel_like::\tupdate {k}')

@@ -50,6 +50,9 @@ def mini_analysis(requires=tuple(),
 
             # Say magic words to enable holoviews
             if hv_bokeh:
+                # Generally using globals is not great, but it would be
+                # the same as doing a slow import on the top of this file
+                # pylint: disable=global-statement
                 global _hv_bokeh_initialized
                 if not _hv_bokeh_initialized:
                     import holoviews

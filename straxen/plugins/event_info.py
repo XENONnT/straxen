@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 @strax.takes_config(
     strax.Option(
         name='event_info_function',
-        default='pre_apply_function',
+        default='pre_apply_function', infer_type=False,
         help="Function that must be applied to all event_info data. Do not change.",
     )
 )

@@ -50,13 +50,11 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="Directory where readers put data"),
 
     # DAQReader settings
-    strax.Option('safe_break_in_pulses', default=1000, track=False,
+    strax.Option('safe_break_in_pulses', default=1000, track=False, infer_type=False,
                  help="Time (ns) between pulses indicating a safe break "
                       "in the datastream -- gaps of this size cannot be "
                       "interior to peaklets."),
-    strax.Option('erase', default=False, track=False,
-                 help="Delete reader data after processing"),
-    strax.Option('channel_map', track=False, type=immutabledict,
+    strax.Option('channel_map', track=False, type=immutabledict, infer_type=False,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."))
 class DAQReader(strax.Plugin):
@@ -242,7 +240,7 @@ class DAQReader(strax.Plugin):
                     # We still have to break somewhere, but this can involve
                     # throwing away data.
                     # Let's do it at the end of the chunk
-                    # TODO: find a better time, e.g. a longish-but-not-quite
+                    # Maybe find a better time, e.g. a longish-but-not-quite
                     # satisfactory gap
                     break_time = end - min_gap
 
@@ -270,9 +268,6 @@ class DAQReader(strax.Plugin):
                                             self._artificial_dead_time(
                                                 start=dead_time_start,
                                                 end=break_time, dt=self.dt_max)]))
-
-        if self.config['erase']:
-            shutil.rmtree(path)
         return result, break_time
 
     def _artificial_dead_time(self, start, end, dt):

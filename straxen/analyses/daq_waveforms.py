@@ -1,10 +1,11 @@
-import pandas
+import typing
+
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas
+import pymongo
 import straxen
 import utilix
-import pymongo
-import typing
-import matplotlib.pyplot as plt
 
 
 @straxen.mini_analysis()
