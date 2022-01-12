@@ -21,7 +21,7 @@ class EventwBayesClass(strax.Plugin):
 
     def compute(self, peaklets, events):
 
-        result = np.zeros(len(events), dtype=self.dtype)
+        result = np.empty(len(events), dtype=self.dtype) ### caution here zeros means 1 remember this is ln(Pr), so do not initiate with zeros
         s1 = np.zeros(len(events), strax.time_fields) 
         s1['time'] = events['s1_time']
         s1['endtime'] = events['s1_endtime']
@@ -29,8 +29,8 @@ class EventwBayesClass(strax.Plugin):
         # -1 if no contained, see https://github.com/AxFoundation/strax/blob/109a9da0194dcf5b99992e16ba1bf598874c7e7c/strax/processing/general.py#L105
         mask = fci >= 0
         fci = fci[mask]
-        result[fci]['s1_s1prob'] = peaklets[fci]['s1_prob']
-        result[fci]['s1_s2prob'] = peaklets[fci]['s2_prob']
+        result[fci]['s1_s1prob'] = peaklets[mask]['s1_prob']
+        result[fci]['s1_s2prob'] = peaklets[mask]['s2_prob']
         result['time'] = events['time']
         result['endtime'] = events['endtime']
    
