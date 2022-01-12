@@ -19,6 +19,9 @@ from .peak_processing import *
 from .position_reconstruction import *
 from . import position_reconstruction
 
+from .event_w_bayes_class import *
+from . import event_w_bayes_class
+
 from . import event_area_per_channel
 from .event_area_per_channel import *
 
