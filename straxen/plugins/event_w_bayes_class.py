@@ -37,8 +37,8 @@ class EventwBayesClass(strax.Plugin):
             # -1 if no contained, see https://github.com/AxFoundation/strax/blob/109a9da0194dcf5b99992e16ba1bf598874c7e7c/strax/processing/general.py#L105
             mask = fci >= 0
             fci = fci[mask]
-            result[fci][f'{name}_s1prob'] = peaklets[mask]['s1_prob']
-            result[fci][f'{name}_s2prob'] = peaklets[mask]['s2_prob']
+            result[f'{name}_s1prob'][fci] = peaklets[mask]['s1_prob']
+            result[f'{name}_s2prob'][fci] = peaklets[mask]['s2_prob']
             result['time'] = events['time']
             result['endtime'] = events['endtime']
 
