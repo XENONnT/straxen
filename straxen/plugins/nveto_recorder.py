@@ -55,7 +55,10 @@ class nVETORecorder(strax.Plugin):
     parallel = 'process'
 
     rechunk_on_save = True
-    save_when = strax.SaveWhen.TARGET
+    save_when = {'raw_records_coin_nv': strax.SaveWhen.TARGET,
+                 'lone_raw_records_nv': strax.SaveWhen.EXPLICIT,
+                 'lone_raw_record_statistics_nv': strax.SaveWhen.ALWAYS,
+                 }
     compressor = 'zstd'
 
     depends_on = 'raw_records_nv'
