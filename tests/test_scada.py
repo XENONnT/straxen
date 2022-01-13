@@ -107,6 +107,13 @@ class SCInterfaceTest(unittest.TestCase):
                                       query_type_lab=False,)
         assert np.all(np.isclose(df[:4], 2.079859)), 'First four values deviate from queried values.'
         assert np.all(np.isclose(df[4:], 2.117820)), 'Last two values deviate from queried values.'
+        print('Testing interpolation option:')
+        self.sc.get_scada_values(parameters,
+                                 start=self.start,
+                                 end=self.end,
+                                 fill_gaps='interpolation',
+                                 every_nth_value=1,
+                                 query_type_lab=False,)
 
         print('Testing down sampling and averaging option:')
         parameters = {'SomeParameter': 'XE1T.CRY_TE101_TCRYOBOTT_AI.PI'}

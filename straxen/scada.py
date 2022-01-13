@@ -150,12 +150,12 @@ class SCADAInterface:
             self._get_token()
 
         # Now loop over specified parameters and get the values for those.
-        iterator = enumerate(parameters.items())
-        if self._use_progress_bar:
-            # wrap using progress bar
-            iterator = tqdm(iterator, total=len(parameters), desc='Load parameters')
-
-        for ind, (k, p) in iterator:
+        for ind, (k, p) in tqdm(
+                enumerate(parameters.items()),
+                total=len(parameters),
+                desc='Load parameters',
+                disable=not self._use_progress_bar,
+                ):
             try:
                 temp_df = self._query_single_parameter(start, end,
                                                        k, p,
@@ -172,7 +172,7 @@ class SCADAInterface:
                                          f' {p} does not match the previous timestamps.')
             except ValueError as e:
                 warnings.warn(f'Was not able to load parameters for "{k}". The reason was: "{e}".'
-                               f'Continue without {k}.')
+                              f'Continue without {k}.')
                 temp_df = pd.DataFrame(columns=(k,))
             
             if ind:
