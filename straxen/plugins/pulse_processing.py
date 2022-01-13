@@ -121,7 +121,7 @@ class PulseProcessing(strax.Plugin):
     overlap with any other pulse), or mean values of baseline and
     baseline rms channel.
     """
-    __version__ = '0.2.3'
+    __version__ = '0.2.4'
 
     parallel = 'process'
     rechunk_on_save = immutabledict(

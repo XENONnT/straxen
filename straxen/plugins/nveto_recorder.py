@@ -51,7 +51,7 @@ class nVETORecorder(strax.Plugin):
     properties for monitoring purposes. Depending on the setting also
     a fixed number of the lone_records per channel are stored.
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
     parallel = 'process'
 
     rechunk_on_save = True
