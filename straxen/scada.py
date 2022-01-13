@@ -18,14 +18,11 @@ import warnings
 from configparser import NoOptionError
 import sys
 
-if any('jupyter' in arg for arg in sys.argv):
-    # In some cases we are not using any notebooks,
-    # Taken from 44952863 on stack overflow thanks!
-    from tqdm import tqdm_notebook as tqdm
-else:
-    from tqdm import tqdm
-
 export, __all__ = strax.exporter()
+
+
+# Fancy tqdm style in notebooks
+tqdm = strax.utils.tqdm
 
 
 @export
