@@ -18,14 +18,11 @@ import warnings
 from configparser import NoOptionError
 import sys
 
-if any('jupyter' in arg for arg in sys.argv):
-    # In some cases we are not using any notebooks,
-    # Taken from 44952863 on stack overflow thanks!
-    from tqdm import tqdm_notebook as tqdm
-else:
-    from tqdm import tqdm
-
 export, __all__ = strax.exporter()
+
+
+# Fancy tqdm style in notebooks
+tqdm = strax.utils.tqdm
 
 
 @export
@@ -153,12 +150,12 @@ class SCADAInterface:
             self._get_token()
 
         # Now loop over specified parameters and get the values for those.
-        iterator = enumerate(parameters.items())
-        if self._use_progress_bar:
-            # wrap using progress bar
-            iterator = tqdm(iterator, total=len(parameters), desc='Load parameters')
-
-        for ind, (k, p) in iterator:
+        for ind, (k, p) in tqdm(
+                enumerate(parameters.items()),
+                total=len(parameters),
+                desc='Load parameters',
+                disable=not self._use_progress_bar,
+                ):
             try:
                 temp_df = self._query_single_parameter(start, end,
                                                        k, p,
@@ -175,7 +172,7 @@ class SCADAInterface:
                                          f' {p} does not match the previous timestamps.')
             except ValueError as e:
                 warnings.warn(f'Was not able to load parameters for "{k}". The reason was: "{e}".'
-                               f'Continue without {k}.')
+                              f'Continue without {k}.')
                 temp_df = pd.DataFrame(columns=(k,))
             
             if ind:
