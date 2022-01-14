@@ -67,6 +67,7 @@ class BayesPeakletClassification(strax.Plugin):
         steps = np.arange(0, num_samples+1, step_size)
 
         data = peaklets['data'].copy()
+        dts = peaklets['dt'].copy()
         data[data < 0.0] = 0.0
         # can we do this faster?
         for i, p in enumerate(peaklets):
@@ -75,8 +76,10 @@ class BayesPeakletClassification(strax.Plugin):
             cumsum_steps = np.interp(np.linspace(0., 1., self.num_nodes, endpoint=False), xp, fp)
             cumsum_steps = np.append(cumsum_steps, fp[-1])
             quantiles[i, :] = cumsum_steps[1:] - cumsum_steps[:-1]
-            for j in range(self.num_nodes):
-                waveforms[i, j] = np.sum(data[i, steps[j]:steps[j+1]])/(p['dt']*step_size)
+        
+        for j in range(self.num_nodes):
+            waveforms[:, j] = np.sum(data[:, steps[j]:steps[j+1]],axis=1)
+        waveforms = waveforms/(dts*step_size)[:,np.newaxis]
 
         del data
         ###
