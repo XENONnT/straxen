@@ -51,14 +51,15 @@ class nVETORecorder(strax.Plugin):
     properties for monitoring purposes. Depending on the setting also
     a fixed number of the lone_records per channel are stored.
     """
-    __version__ = '0.0.8'
+    __version__ = '0.0.7'
     parallel = 'process'
 
     rechunk_on_save = True
-    save_when = {'raw_records_coin_nv': strax.SaveWhen.TARGET,
-                 'lone_raw_records_nv': strax.SaveWhen.EXPLICIT,
-                 'lone_raw_record_statistics_nv': strax.SaveWhen.ALWAYS,
-                 }
+    save_when = immutabledict(
+        raw_records_coin_nv=strax.SaveWhen.TARGET,
+        lone_raw_records_nv=strax.SaveWhen.TARGET,
+        lone_raw_record_statistics_nv=strax.SaveWhen.ALWAYS,
+    )
     compressor = 'zstd'
 
     depends_on = 'raw_records_nv'
