@@ -1,19 +1,8 @@
 import numpy as np
 from scipy.special import logsumexp
-
 import strax
 import straxen
-export, __all__ = strax.exporter()
 
-# Figure out URLConfig for below options.
-@export
-@strax.takes_config(
-    strax.Option('bayes_cpt_config', default='/home/ahiguera-mx/test2/rap-ml-group/peak_classification/conditional_probabilities.npy',     
-                 help="Bayes condition proability tables file"),
-    strax.Option('bayes_bins_config', default='/home/ahiguera-mx/test2/rap-ml-group/peak_classification/discrete_parameter_bins.npy',
-                 help="Bayes bins file"),
-
-)
 class BayesPeakletClassification(strax.Plugin):
     """
     Bayes Peaklet classification
@@ -29,6 +18,16 @@ class BayesPeakletClassification(strax.Plugin):
             )
 
     # Descriptor configs
+    bayes_cpt_config = straxen.URLConfig(
+            default='resource://'
+            '/data/xenonnt/wfsim/S1S2classification/models/conditional_probabilities_v0.npy?fmt=npy',
+        help='Bayes condition proability tables'
+    )
+    bayes_bins_config = straxen.URLConfig(
+            default='resource://'
+            '/data/xenonnt/wfsim/S1S2classification/models/discrete_parameter_bins_v0.npy?fmt=npy',
+        help='Bayes discrete bins'
+    )
     s2_prob_threshold = straxen.URLConfig(
         default=-27, #best-fit value from optimization of ROC curve
         help='S2 log prob value threshold, above this value type=2'
@@ -45,11 +44,9 @@ class BayesPeakletClassification(strax.Plugin):
     def setup(self):
 
         self.class_prior = np.array([1. / self.classes for j in range(self.classes)])
-        bins_model = self.config['bayes_bins_config']
-        cpt_model = self.config['bayes_cpt_config']
-        self.bins = np.load(bins_model)
-        self.cpt = np.load(cpt_model)
-
+        self.bins = self.bayes_bins_config 
+        self.cpt = self.bayes_cpt_config
+        
     def compute(self, peaklets):
 
         bayes_ptype = np.zeros(len(peaklets), dtype=np.int8)
