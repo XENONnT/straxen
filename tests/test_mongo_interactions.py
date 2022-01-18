@@ -105,7 +105,6 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
             raise FileNotFoundError(f'No non-failing {target} found in the online '
                                     f'monitor after {max_tries}. Looked for:\n'
                                     f'{st.key_for("0", target)}')
-        else:
-            warnings.warn(f'Did not find any data in {om.col_name}!')
-            return
+        warnings.warn(f'Did not find any data in {om.col_name}!')
+        return
     st.get_array(run_id, target, seconds_range=(0, 1), allow_incomplete=True)
