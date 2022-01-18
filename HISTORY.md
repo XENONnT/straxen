@@ -1,6 +1,14 @@
 1.2.5 / 2022-01-14
 ------------------
 fixes/tests:
+- Fix online monitor test (#882)
+
+notes:
+- No lineage changes
+
+1.2.5 / 2022-01-14
+------------------
+fixes/tests:
  - test with py3.10 (#878)
  - remove fixme error (e0e30d94ec8f5276c581da166787db72ba0eef4a)
  - bump numba (#880)
