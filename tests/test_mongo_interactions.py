@@ -8,6 +8,7 @@ import straxen
 import os
 import unittest
 from pymongo import ReadPreference
+import warnings
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
@@ -82,7 +83,7 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
                                                    'metadata': 1,
                                                    'lineage_hash': 1,
                                                    })
-        if some_run.get('lineage_hash', False):
+        if some_run is not None and some_run.get('lineage_hash', False):
             if some_run['lineage_hash'] != st.key_for("0", target).lineage_hash:
                 # We are doing a new release, therefore there is no
                 # matching data. This makes sense.
@@ -100,7 +101,11 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
             run_id = f'{some_run["number"]:06}'
             break
     else:
-        raise FileNotFoundError(f'No non-failing {target} found in the online '
-                                f'monitor after {max_tries}. Looked for:\n'
-                                f'{st.key_for("0", target)}')
+        if collection.find_one() is not None:
+            raise FileNotFoundError(f'No non-failing {target} found in the online '
+                                    f'monitor after {max_tries}. Looked for:\n'
+                                    f'{st.key_for("0", target)}')
+        else:
+            warnings.warn(f'Did not find any data in {om.col_name}!')
+            return
     st.get_array(run_id, target, seconds_range=(0, 1), allow_incomplete=True)
