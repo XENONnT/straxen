@@ -31,6 +31,7 @@ class RunDB(strax.StorageFrontend):
     }
 
     provide_run_metadata = True
+    progress_bar = False
 
     def __init__(self,
                  minimum_run_number=7157,
@@ -276,7 +277,9 @@ class RunDB(strax.StorageFrontend):
             projection=projection)
         for doc in strax.utils.tqdm(
                 cursor, desc='Fetching run info from MongoDB',
-                total=self.collection.count_documents(query)):
+                total=self.collection.count_documents(query),
+                disable=not self.progress_bar,
+        ):
             del doc['_id']
             if self.reader_ini_name_is_mode:
                 doc['mode'] = \
