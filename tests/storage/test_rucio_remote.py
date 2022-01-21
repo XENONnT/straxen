@@ -10,6 +10,7 @@ class TestRucioRemote(unittest.TestCase):
     """
     Test loading data from the rucio remote frontend
     """
+
     def setUp(self) -> None:
         self.run_id = '009104'
         self.staging_dir = './test_rucio_remote'
@@ -41,7 +42,7 @@ class TestRucioRemote(unittest.TestCase):
         st = self.get_context(download_heavy=True)
         rr = st.get_array(self.run_id, 'raw_records')
         assert len(rr)
-    
+
     def test_download_with_heavy_and_high_level(self):
         st = self.get_context(download_heavy=True)
         pc = st.get_array(self.run_id, 'pulse_counts')

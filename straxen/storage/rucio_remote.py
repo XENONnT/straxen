@@ -4,14 +4,14 @@ from warnings import warn
 import numpy as np
 import strax
 from utilix import xent_collection
-
+import typing as ty
 try:
     import admix
     from rucio.common.exception import DataIdentifierNotFound
+
     HAVE_ADMIX = True
 except ImportError:
     HAVE_ADMIX = False
-
 
 export, __all__ = strax.exporter()
 
@@ -106,7 +106,6 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 f"but that path is not writable by your user")
         if os.path.exists(staging_dir):
             if not os.access(staging_dir, os.W_OK):
-
                 raise PermissionError(mess)
         else:
             try:
@@ -183,24 +182,30 @@ class RucioSaver(strax.Saver):
     """
     TODO Saves data to rucio if you are the production user
     """
+
     def __init__(self, *args, **kwargs):
         raise NotImplementedError
 
 
 @export
-def parse_rucio_did(did):
-    """Parses a Rucio DID and returns a tuple of (number:int, dtype:str, hash: str)"""
+def parse_rucio_did(did: str) -> ty.List[int, str, str]:
+    """Parses a Rucio DID and returns a tuple of
+    (number:int, dtype:str, hash: str)"""
     scope, name = did.split(':')
     number = int(scope.split('_')[1])
     dtype, hsh = name.split('-')
     return number, dtype, hsh
 
 
-def did_to_dirname(did):
-    """Takes a Rucio dataset DID and returns a dirname like used by strax.FileSystemBackend"""
+def did_to_dirname(did: str):
+    """
+    Takes a Rucio dataset DID and returns a dirname like used by
+    strax.FileSystemBackend
+    """
     # make sure it's a DATASET did, not e.g. a FILE
     if len(did.split('-')) != 2:
-        raise RuntimeError(f"The DID {did} does not seem to be a dataset DID. Is it possible you passed a file DID?")
+        raise RuntimeError(f"The DID {did} does not seem to be a dataset DID. "
+                           f"Is it possible you passed a file DID?")
     dirname = did.replace(':', '-').replace('xnt_', '')
     return dirname
 
@@ -214,5 +219,6 @@ def key_to_rucio_did(key: strax.DataKey) -> str:
 @export
 class RucioFrontend(RucioRemoteFrontend):
     def __init__(self, *args, **kwargs):
-        warn('RucioFrontend is depricated, use RucioRemoteFrontend instead', DeprecationWarning)
+        warn('RucioFrontend is deprecated, use RucioRemoteFrontend instead',
+             DeprecationWarning)
         super().__init__(*args, **kwargs)
