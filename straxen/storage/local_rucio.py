@@ -6,8 +6,7 @@ import re
 import socket
 import strax
 from bson import json_util
-
-from .rucio import key_to_rucio_did, parse_did
+from .rucio import key_to_rucio_did, parse_rucio_did
 
 export, __all__ = strax.exporter()
 
@@ -132,7 +131,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
 
     def get_metadata(self, did: str, **kwargs):
         scope, name = did.split(':')
-        number, dtype, hsh = parse_did(did)
+        number, dtype, hsh = parse_rucio_did(did)
         metadata_json = f'{dtype}-{hsh}-metadata.json'
         metadata_did = f'{scope}:{metadata_json}'
 

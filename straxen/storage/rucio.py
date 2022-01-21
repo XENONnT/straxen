@@ -145,7 +145,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         chunk_file = chunk_info['filename']
         chunk_path = os.path.abspath(os.path.join(base_dir, chunk_file))
         if not os.path.exists(chunk_path):
-            number, datatype, hsh = parse_did(dset_did)
+            number, datatype, hsh = parse_rucio_did(dset_did)
             if datatype in self.heavy_types and not self.download_heavy:
                 error_msg = ("For space reasons we don't want to have everyone "
                              "downloading raw data. If you know what you're "
@@ -188,8 +188,8 @@ class RucioSaver(strax.Saver):
     def __init__(self, *args, **kwargs):
         raise NotImplementedError
 
-
-def parse_did(did):
+@export
+def parse_rucio_did(did):
     """Parses a Rucio DID and returns a tuple of (number:int, dtype:str, hash: str)"""
     scope, name = did.split(':')
     number = int(scope.split('_')[1])
@@ -206,6 +206,7 @@ def did_to_dirname(did):
     return dirname
 
 
+@export
 def key_to_rucio_did(key: strax.DataKey) -> str:
     """Convert a strax.datakey to a rucio did field in rundoc"""
     return f'xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}'

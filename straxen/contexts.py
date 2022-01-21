@@ -5,6 +5,7 @@ from copy import deepcopy
 from straxen import HAVE_ADMIX
 import os
 import warnings
+import typing as ty
 
 from straxen.common import pax_file
 
@@ -268,7 +269,7 @@ def _parse_xenonnt_online_kwargs(argument_mapping, **kwargs):
             value = kwargs.pop(correct_kwarg)
         parsed_kwargs[correct_kwarg] = value
     list_of_kwargs = [parsed_kwargs[k[0]] for k in argument_mapping]
-    return *list_of_kwargs, kwargs
+    return list_of_kwargs, kwargs
 
 
 def xenonnt_led(**kwargs):

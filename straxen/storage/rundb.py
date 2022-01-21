@@ -2,10 +2,11 @@ import os
 import re
 import typing
 import socket
-from tqdm import tqdm
 from copy import deepcopy
 import strax
-from .rucio import key_to_rucio_did, RucioLocalBackend
+from .rucio import key_to_rucio_did
+from .local_rucio import RucioLocalBackend
+from straxen import uconfig
 import warnings
 
 try:
@@ -13,7 +14,6 @@ try:
 except (RuntimeError, FileNotFoundError):
     # We might be on a travis job
     pass
-from straxen import uconfig
 
 export, __all__ = strax.exporter()
 
