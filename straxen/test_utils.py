@@ -110,6 +110,9 @@ def _is_on_pytest():
 def nt_test_context(target_context='xenonnt_online',
                     deregister=('peak_veto_tags', 'events_tagged'),
                     **kwargs):
+    if not straxen.utilix_is_configured(warning_message=False):
+        kwargs.setdefault('_database_init', False)
+
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config({'diagnose_sorting': True})
     st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
