@@ -6,7 +6,7 @@ import re
 import socket
 import strax
 from bson import json_util
-from .rucio import key_to_rucio_did, parse_rucio_did
+from .rucio_remote import key_to_rucio_did, parse_rucio_did
 
 export, __all__ = strax.exporter()
 

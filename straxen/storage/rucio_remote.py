@@ -1,7 +1,5 @@
 import json
 import os
-import re
-import socket
 from warnings import warn
 import numpy as np
 import strax

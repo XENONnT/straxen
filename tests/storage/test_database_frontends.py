@@ -159,7 +159,7 @@ class TestRunDBFrontend(unittest.TestCase):
         key = self.st.key_for(rucio_id, target)
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
-        did = straxen.rucio.key_to_rucio_did(key)
+        did = straxen.key_to_rucio_did(key)
         rd['data'] = [{'host': 'rucio-catalogue',
                        'location': 'UC_DALI_USERDISK',
                        'status': 'transferred',

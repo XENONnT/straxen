@@ -4,8 +4,8 @@ import typing
 import socket
 from copy import deepcopy
 import strax
-from .rucio import key_to_rucio_did
-from .local_rucio import RucioLocalBackend
+from .rucio_remote import key_to_rucio_did
+from .rucio_local import RucioLocalBackend
 from straxen import uconfig
 import warnings
 

@@ -60,7 +60,7 @@ class TestBasics(unittest.TestCase):
         shouldn't find any data.
         """
         try:
-            rucio = straxen.RucioRemoteBackend()
+            rucio = straxen.RucioRemoteFrontend()
         except ImportError:
             pass
         else:
