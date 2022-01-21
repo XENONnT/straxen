@@ -49,7 +49,8 @@ jobs:
         run: |
               docker pull opensciencegrid/osgvo-xenon:latest
               docker images
-              docker run -v $PWD:/home --env HOME=/home --env pytest -vs
+              docker run --help
+              docker run -v $PWD:/home --env HOME=/home --env testing:latest pytest -vs
 #       - name: Install requirements
 #         run: pip install -r extra_requirements/requirements-tests.txt
 
