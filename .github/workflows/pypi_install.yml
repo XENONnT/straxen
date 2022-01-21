@@ -16,14 +16,18 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
+
       - name: Checkout repo
         uses: actions/checkout@v2
+
       - name: Install dependencies
         run: pip install wheel
+
       - name: Build package
         run: python setup.py sdist bdist_wheel
-      # Do the publish
+
       - name: Publish a Python distribution to PyPI
+        # Do the publishing
         # Might want to add but does not work on workflow_dispatch :
         # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master

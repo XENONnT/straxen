@@ -25,8 +25,8 @@ jobs:
     - name: Install python dependencies
       run: pip install -r extra_requirements/requirements-tests.txt
     - name: Install straxen
-      run: bash .github/scripts/install_straxen.sh
-    # writes a utilix configuration file. Uses the secret functionality of GitHub.
+      run: python setup.py develop
+    # writes an utilix configuration file. Uses the secret functionality of GitHub.
     - name: Write utilix config
       run: |
            bash .github/scripts/create-utilix-config.sh
