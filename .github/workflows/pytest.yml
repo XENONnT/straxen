@@ -131,7 +131,7 @@ jobs:
           # database.
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
 
-        if: matrix.test == 'coveralls' && env.HAVE_ACCESS_TO_SECTETS != null
+        if: matrix.test == 'coveralls'
         run: |
           coverage run --source=straxen setup.py test -v
           coveralls --service=github
