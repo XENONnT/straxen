@@ -236,11 +236,16 @@ class SR1Cuts(strax.MergeOnlyPlugin):
 class FiducialEvents(strax.Plugin):
     depends_on = ['event_info', 'cut_fiducial_cylinder_1t']
     data_kind = 'fiducial_events'
+    __version__ = '0.0.1'
 
     def infer_dtype(self):
         dtype = [self.deps[d].dtype_for(d) for d in self.depends_on]
-        dtype.sort()
-        return strax.merged_dtype(dtype)
+        dtype = strax.merged_dtype(dtype)
+        return dtype
 
     def compute(self, events):
-        return events[events['cut_fiducial_cylinder_1t']]
+        fiducial_events = events[events['cut_fiducial_cylinder_1t']]
+        result = np.zeros(len(fiducial_events), dtype=self.dtype)
+        # Cast the fiducual events dtype into the expected format
+        strax.copy_to_buffer(fiducial_events, result, '_fiducial_copy')
+        return result

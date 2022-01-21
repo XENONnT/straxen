@@ -1,3 +1,39 @@
+1.2.6 / 2022-01-18
+------------------
+fixes/tests:
+- Fix online monitor test (#882)
+
+notes:
+- No lineage changes
+
+1.2.5 / 2022-01-14
+------------------
+fixes/tests:
+ - test with py3.10 (#878)
+ - remove fixme error (e0e30d94ec8f5276c581da166787db72ba0eef4a)
+ - bump numba (#880)
+ - Tests for scada interface (#877)
+
+notes:
+ - No lineage changes
+
+1.2.4 / 2022-01-10
+------------------
+fixes/tests:
+ - Fixes for WFSim <-> CMT (#865)
+ - Tests for WFSim contexts (#855)
+
+notes:
+ - First 1.2.X version compatible with WFSim
+ - No lineage changes
+
+1.2.3 / 2022-01-10
+------------------
+- Bump numpy (#876)
+
+notes:
+ - Incompatible with WFSim
+
 1.2.2 / 2022-01-10
 ------------------
 tests:
@@ -24,7 +60,9 @@ fixes/tests:
 notes:
  - Bug for `peaklets-uhfusstvab` due to (#875)
  - No lineage changes
- 
+ - Incompatible with WFSim
+
+
 1.2.0 / 2021-12-21
 -------------------
 major:
@@ -73,6 +111,8 @@ notes:
  - Bug for `peaklets-uhfusstvab` due to (#875)
  - plugins changed (new lineage) everything >= 'peaklet_classification'
  - offline CMT versions don't work in this release
+ - Incompatible with WFSim
+
 
 1.1.3 / 2021-11-19
 -------------------
