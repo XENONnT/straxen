@@ -6,7 +6,7 @@ from copy import deepcopy
 import strax
 from .rucio_remote import key_to_rucio_did
 from .rucio_local import RucioLocalBackend
-from straxen import uconfig
+
 import warnings
 
 try:
@@ -14,6 +14,7 @@ try:
 except (RuntimeError, FileNotFoundError):
     # We might be on a travis job
     pass
+from straxen import uconfig
 
 export, __all__ = strax.exporter()
 
