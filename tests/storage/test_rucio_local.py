@@ -23,12 +23,12 @@ class TestRucioLocal(unittest.TestCase):
         shutil.rmtree(self.rucio_path)
 
     def test_find(self):
-        rucio_local = straxen.RucioLocalFrontend(rucio_dir = self.rucio_path)
+        rucio_local = straxen.RucioLocalFrontend(path=self.rucio_path)
         find_result = rucio_local.find(self.test_keys[0])
         assert len(find_result) and find_result[0] == 'RucioLocalBackend', find_result
 
     def test_find_several(self):
-        rucio_local = straxen.RucioLocalFrontend(rucio_dir=self.rucio_path)
+        rucio_local = straxen.RucioLocalFrontend(path=self.rucio_path)
         find_several_results = rucio_local.find_several(self.test_keys)
         assert find_several_results, find_several_results
         for find_result in find_several_results:
@@ -36,7 +36,7 @@ class TestRucioLocal(unittest.TestCase):
 
     def test_find_fuzzy(self):
         changed_keys = []
-        rucio_local = straxen.RucioLocalFrontend(rucio_dir=self.rucio_path)
+        rucio_local = straxen.RucioLocalFrontend(path=self.rucio_path)
         for key in self.test_keys:
             changed_key = strax.DataKey(
                 run_id=key.run_id,

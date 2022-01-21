@@ -30,14 +30,14 @@ class RucioLocalFrontend(strax.StorageFrontend):
                   'SDSC_USERDISK': r'.sdsc.'
                   }
 
-    def __init__(self, rucio_dir=None, *args, **kwargs):
+    def __init__(self, path=None, *args, **kwargs):
         kwargs.setdefault('readonly', True)
         super().__init__(*args, **kwargs)
-        if rucio_dir is None:
+        if path is None:
             local_rse = self.determine_rse()
             self.path = self.local_prefixes[local_rse]
         else:
-            self.path = rucio_dir
+            self.path = path
         self.backends = [RucioLocalBackend(self.path)]
 
     def determine_rse(self):

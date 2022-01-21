@@ -136,7 +136,7 @@ jobs:
         run: |
           coverage run --source=straxen setup.py test -v
           rm ~/.xenon_config
-          coverage run --source=straxen setup.py test -v --append
+          coverage run --append --source=straxen setup.py test -v
           coveralls --service=github
       - name: goodbye
         run: echo "tests done, bye bye"
