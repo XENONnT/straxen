@@ -45,6 +45,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
+      - uses: addnab/docker-run-action@v3
+        with:
+          image: opensciencegrid/osgvo-xenon:latest
+          options: -v ${{ github.workspace }}:/work -e ABC=123
+          run: |
+            echo "Running Script"
+            which pytest
+            pytest
       - name: Download docker
         run: |
               docker pull opensciencegrid/osgvo-xenon:latest
