@@ -221,7 +221,6 @@ def xenonnt_online(output_folder: str = './strax_data',
     # Add the rucio frontend if we are able to
     if include_rucio_remote and HAVE_ADMIX:
         rucio_frontend = straxen.RucioRemoteFrontend(
-            include_remote=include_rucio_remote,
             staging_dir=os.path.join(output_folder, 'rucio'),
             download_heavy=download_heavy,
         )
