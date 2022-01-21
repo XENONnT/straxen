@@ -1,5 +1,5 @@
-from . import online_monitor
-from .online_monitor import *
+from . import online_monitor_frontend
+from .online_monitor_frontend import *
 
 from . import rucio_remote
 from .rucio_remote import *
