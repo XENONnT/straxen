@@ -186,6 +186,7 @@ class RucioSaver(strax.Saver):
     def __init__(self, *args, **kwargs):
         raise NotImplementedError
 
+
 @export
 def parse_rucio_did(did):
     """Parses a Rucio DID and returns a tuple of (number:int, dtype:str, hash: str)"""

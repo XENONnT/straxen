@@ -132,10 +132,12 @@ jobs:
           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
 
         if: matrix.test == 'coveralls'
-        # Run twice, once without and once with db access
         run: |
           coverage run --source=straxen setup.py test -v
+
+          # Run twice, once without and once with db access
           rm ~/.xenon_config
+          bash .github/scripts/create_pre_apply_function.sh $HOME
           coverage run --append --source=straxen setup.py test -v
           coveralls --service=github
       - name: goodbye
