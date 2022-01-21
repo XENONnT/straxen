@@ -191,8 +191,6 @@ class TestRunDBFrontend(unittest.TestCase):
             # on the rucio folder
             self.rundb_sf.find(key)
 
-    def test_super_runs(self):
-
 
 def _rundoc_format(run_id):
     start = datetime.datetime.fromtimestamp(0) + datetime.timedelta(days=int(run_id))
