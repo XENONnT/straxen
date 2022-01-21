@@ -3,6 +3,7 @@ import unittest
 import strax
 import socket
 
+
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class TestBasics(unittest.TestCase):
     @classmethod
@@ -31,18 +32,16 @@ class TestBasics(unittest.TestCase):
 
     def test_load_context_defaults(self):
         """Don't fail immediately if we start a context due to Rucio"""
-        st = straxen.contexts.xenonnt_online(_minimum_run_number=10_000,
-                                             _maximum_run_number=10_010,
+        st = straxen.contexts.xenonnt_online(minimum_run_number=10_000,
+                                             maximum_run_number=10_010,
                                              )
         st.select_runs()
 
     def test_find_local(self):
         """Make sure that we don't find the non existing data"""
         rucio = straxen.RucioLocalFrontend()
-        self.assertRaises(strax.DataNotAvailable,
-                          rucio.find,
-                          self.test_keys[0]
-                          )
+        with self.assertRaises(strax.DataNotAvailable):
+            rucio.find(self.test_keys[0])
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_find_several_local(self):
@@ -61,7 +60,7 @@ class TestBasics(unittest.TestCase):
         shouldn't find any data.
         """
         try:
-            rucio = straxen.RucioLocalFrontend()
+            rucio = straxen.RucioRemoteBackend()
         except ImportError:
             pass
         else:
@@ -70,7 +69,7 @@ class TestBasics(unittest.TestCase):
             assert found == [False for _ in self.test_keys]
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-    def test_find_local(self):
+    def test_find_local_rundb(self):
         """Make sure that we don't find the non existing data"""
         run_db = straxen.RunDB(rucio_path='./rucio_test')
         with self.assertRaises(strax.DataNotAvailable):
