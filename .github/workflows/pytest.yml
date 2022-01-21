@@ -51,7 +51,8 @@ jobs:
           options: -v ${{ github.workspace }}:/work -e ABC=123
           run: |
             echo "Running Script"
-            which pytest
+            which python
+            python -c "import straxen ; print(straxen); straxen.print_versions()"
             pytest
       - name: Download docker
         run: |
