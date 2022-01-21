@@ -65,17 +65,30 @@ class TestRucioLocal(unittest.TestCase):
         os.makedirs(self.rucio_path, exist_ok=True)
         for key in self.test_keys:
             did = straxen.key_to_rucio_did(key)
-            md_did = f'{did}-metadata.json'
-            path = straxen.storage.rucio_local.rucio_path(self.rucio_path, md_did)
-            os.makedirs(os.path.split(path)[0], exist_ok=True)
-            self.write_md(path, {'writing_ended': 1,
-                                 'chunks': [],
-                                 "lineage_hash": key.lineage_hash,
-                                 "lineage": key.lineage,
-                                 })
+            metadata = {
+                'writing_ended': 1,
+                'chunks': [{"filename": f"{key.data_type}-{key.lineage_hash}-000000",
+                            },
+                           ],
+                "lineage_hash": key.lineage_hash,
+                "lineage": key.lineage,
+            }
+            self.write_md(self.rucio_path, did, metadata)
+            self.write_chunks(self.rucio_path, did, [c['filename'] for c in metadata['chunks']])
 
     @staticmethod
-    def write_md(path, content: dict):
-        with open(path, mode='w') as f:
+    def write_md(rucio_path, did, content: dict):
+        md_did = f'{did}-metadata.json'
+        md_path = straxen.storage.rucio_local.rucio_path(rucio_path, md_did)
+        os.makedirs(os.path.split(md_path)[0], exist_ok=True)
+        with open(md_path, mode='w') as f:
             f.write(json.dumps(content, default=json_util.default))
 
+    @staticmethod
+    def write_chunks(rucio_path, did, file_names):
+        for file_name in file_names:
+            file_did = did.split(':')[0] + ":" + file_name
+            chunk_path = straxen.storage.rucio_local.rucio_path(rucio_path, file_did)
+            os.makedirs(os.path.split(chunk_path)[0], exist_ok=True)
+            with open(chunk_path, mode='w') as f:
+                f.write(file_name)
