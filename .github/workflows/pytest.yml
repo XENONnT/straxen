@@ -61,9 +61,8 @@ jobs:
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
       - name: Download docker
         run: |
-            docker pull opensciencegrid/osgvo-xenon:latest
-            docker images
-        
+              docker pull opensciencegrid/osgvo-xenon:latest
+              docker images
 #       - name: Install requirements
 #         run: pip install -r extra_requirements/requirements-tests.txt
 
@@ -139,6 +138,5 @@ jobs:
 #         run: |
 #           coverage run --source=straxen setup.py test -v
 #           coveralls --service=github
-
       - name: goodbye
         run: echo "tests done, bye bye"
