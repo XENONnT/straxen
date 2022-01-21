@@ -5,7 +5,6 @@ import strax
 import shutil
 
 
-@unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
 class TestRucioRemote(unittest.TestCase):
     """
     Test loading data from the rucio remote frontend
@@ -32,22 +31,32 @@ class TestRucioRemote(unittest.TestCase):
         if os.path.exists(self.staging_dir):
             shutil.rmtree(self.staging_dir)
 
+    @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_no_heavy(self):
         st = self.get_context(download_heavy=False)
         with self.assertRaises(strax.DataNotAvailable):
             rr = st.get_array(self.run_id, 'raw_records')
             assert False, len(rr)
 
+    @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_with_heavy(self):
         st = self.get_context(download_heavy=True)
         rr = st.get_array(self.run_id, 'raw_records')
         assert len(rr)
 
+    @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_with_heavy_and_high_level(self):
         st = self.get_context(download_heavy=True)
         pc = st.get_array(self.run_id, 'pulse_counts')
         assert len(pc)
 
+    @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def check_empty_context(self, context):
         for sf in context.storage:
             assert not context._is_stored_in_sf(self.run_id, 'raw_records', sf), sf
+
+    def test_did_to_dirname(self):
+        did = 'xnt_038697:raw_records_aqmon-rfzvpzj4mf'
+        assert 'xnt_' not in straxen.rucio_remote.did_to_dirname(did)
+        with self.assertRaises(RuntimeError):
+            straxen.rucio_remote.did_to_dirname('a-b-c')
