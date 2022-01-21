@@ -227,7 +227,7 @@ class RunDB(strax.StorageFrontend):
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
         if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
-        if not len(keys):
+        if not keys:
             return []
         if not len(set([k.lineage_hash for k in keys])) == 1:
             raise ValueError("find_several keys must have same lineage")
@@ -246,10 +246,18 @@ class RunDB(strax.StorageFrontend):
         projection.update({
             k: True
             for k in f'name number'.split()})
+        results_dict = self._parse_documents(
+            self.collection.find(
+                {**run_query, **dq},
+                projection=projection),
+        )
 
+        return [results_dict.get(k.run_id, False)
+                for k in keys]
+
+    def _parse_documents(self, find: iter):
         results_dict = dict()
-        for doc in self.collection.find(
-                {**run_query, **dq}, projection=projection):
+        for doc in find:
             # If you get a key error here there might be something off with the
             # projection
             datum = doc['data'][0]
@@ -258,12 +266,11 @@ class RunDB(strax.StorageFrontend):
                 dk = doc['name']
             else:
                 dk = f'{doc["number"]:06}'
-            try:
-                results_dict[dk] = datum['protocol'], datum['location']
-            except KeyError as e:
-                raise KeyError(f'Queries failed\n{run_query}\n{dq}\n{doc}') from e
-        return [results_dict.get(k.run_id, False)
-                for k in keys]
+            for required_field in ('protocol', 'location'):
+                if required_field not in datum:
+                    raise ValueError(f'Missing field {required_field} in {datum} from {doc}')
+            results_dict[dk] = datum['protocol'], datum['location']
+        return results_dict
 
     def _scan_runs(self, store_fields):
         query = self.number_query()
