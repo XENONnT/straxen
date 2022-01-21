@@ -2,7 +2,7 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
-from .rucio import HAVE_ADMIX
+from straxen import HAVE_ADMIX
 import os
 
 from straxen.common import pax_file

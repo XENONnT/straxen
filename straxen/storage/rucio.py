@@ -20,6 +20,7 @@ except ImportError:
 
 export, __all__ = strax.exporter()
 
+__all__ += ['HAVE_ADMIX']
 
 class TooMuchDataError(Exception):
     pass
