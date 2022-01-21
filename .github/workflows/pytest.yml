@@ -59,82 +59,86 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
-
-      - name: Install requirements
-        run: pip install -r extra_requirements/requirements-tests.txt
-
-      - name: Install strax
+      - name: Download docker
         run: |
-            git clone https://github.com/AxFoundation/strax ../strax
-            pip install -e ../strax
+            docker pull opensciencegrid/osgvo-xenon:latest
+            docker images
+        
+#       - name: Install requirements
+#         run: pip install -r extra_requirements/requirements-tests.txt
 
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
-        with:
-          mongodb-version: 4.2
+#       - name: Install strax
+#         run: |
+#             git clone https://github.com/AxFoundation/strax ../strax
+#             pip install -e ../strax
 
-      - name: patch utilix file
-        # Secrets and required files
-        # Patch this file if we want to have access to the database
-        if:  matrix.test != 'pytest_no_database'
-        run: bash .github/scripts/create_readonly_utilix_config.sh
-        env:
-          # RunDB
-          RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
-          RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
-          RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
-          PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
-          PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
-          PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
-          PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
-          # SCADA
-          SCADA_URL: ${{ secrets.SCADA_URL }}
-          SCADA_VALUE_URL: ${{ secrets.SCADA_VALUE_URL }}
-          SCADA_USER: ${{ secrets.SCADA_USER }}
-          SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
-          SCADA_PWD: ${{ secrets.SCADA_PWD }}
+#       - name: Start MongoDB
+#         uses: supercharge/mongodb-github-action@1.7.0
+#         with:
+#           mongodb-version: 4.2
 
-      - name: Create pre-apply function file
-        # In case we do not have database. We need to make a local file for
-        # The pre_apply_function (see #559).
-        env:
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
-        if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
-        run: bash .github/scripts/create_pre_apply_function.sh $HOME
+#       - name: patch utilix file
+#         # Secrets and required files
+#         # Patch this file if we want to have access to the database
+#         if:  matrix.test != 'pytest_no_database'
+#         run: bash .github/scripts/create_readonly_utilix_config.sh
+#         env:
+#           # RunDB
+#           RUNDB_API_URL: ${{ secrets.RUNDB_API_URL }}
+#           RUNDB_API_USER_READONLY: ${{ secrets.RUNDB_API_USER_READONLY }}
+#           RUNDB_API_PASSWORD_READONLY: ${{ secrets.RUNDB_API_PASSWORD_READONLY}}
+#           PYMONGO_URL: ${{ secrets.PYMONGO_URL }}
+#           PYMONGO_USER: ${{ secrets.PYMONGO_USER }}
+#           PYMONGO_PASSWORD: ${{ secrets.PYMONGO_PASSWORD }}
+#           PYMONGO_DATABASE: ${{ secrets.PYMONGO_DATABASE }}
+#           # SCADA
+#           SCADA_URL: ${{ secrets.SCADA_URL }}
+#           SCADA_VALUE_URL: ${{ secrets.SCADA_VALUE_URL }}
+#           SCADA_USER: ${{ secrets.SCADA_USER }}
+#           SCADA_LOGIN_URL: ${{ secrets.SCADA_LOGIN_URL }}
+#           SCADA_PWD: ${{ secrets.SCADA_PWD }}
 
-      - name: Test package python 3.7 - 3.9
-        # This is running a normal test
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && matrix.python-version != '3.10'
-        env:
-          ALLOW_WFSIM_TEST: 1
-          TEST_MONGO_URI:  'mongodb://localhost:27017/'
-        run: |
-          pytest -rsxv --durations 0
+#       - name: Create pre-apply function file
+#         # In case we do not have database. We need to make a local file for
+#         # The pre_apply_function (see #559).
+#         env:
+#           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+#         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
+#         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
-      - name: Test package python 3.10
-        # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
-        env:
-          TEST_MONGO_URI:  'mongodb://localhost:27017/'
-        run: |
-          pytest -rsxv --durations 0
+#       - name: Test package python 3.7 - 3.9
+#         # This is running a normal test
+#         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && matrix.python-version != '3.10'
+#         env:
+#           ALLOW_WFSIM_TEST: 1
+#           TEST_MONGO_URI:  'mongodb://localhost:27017/'
+#         run: |
+#           pytest -rsxv --durations 0
 
-      - name: Coveralls
-        # Make the coverage report and upload
-        env:
-          TEST_MONGO_URI:  'mongodb://localhost:27017/'
-          ALLOW_WFSIM_TEST: 1
-          NUMBA_DISABLE_JIT: 1
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # We need to check if we have access to the secrets, otherwise coveralls
-          # will yield a low coverage because of the lack of interfacing with the
-          # database.
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+#       - name: Test package python 3.10
+#         # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
+#         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
+#         env:
+#           TEST_MONGO_URI:  'mongodb://localhost:27017/'
+#         run: |
+#           pytest -rsxv --durations 0
 
-        if: matrix.test == 'coveralls'
-        run: |
-          coverage run --source=straxen setup.py test -v
-          coveralls --service=github
+#       - name: Coveralls
+#         # Make the coverage report and upload
+#         env:
+#           TEST_MONGO_URI:  'mongodb://localhost:27017/'
+#           ALLOW_WFSIM_TEST: 1
+#           NUMBA_DISABLE_JIT: 1
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           # We need to check if we have access to the secrets, otherwise coveralls
+#           # will yield a low coverage because of the lack of interfacing with the
+#           # database.
+#           HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+
+#         if: matrix.test == 'coveralls'
+#         run: |
+#           coverage run --source=straxen setup.py test -v
+#           coveralls --service=github
 
       - name: goodbye
         run: echo "tests done, bye bye"
