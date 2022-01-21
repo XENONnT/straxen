@@ -151,6 +151,13 @@ class TestRunDBFrontend(unittest.TestCase):
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
         with self.assertRaises(strax.DataNotAvailable):
             self.rundb_sf.find(self.st.key_for('_super-run', self.all_targets[0]))
+        with self.assertRaises(strax.DataNotAvailable):
+            self.rundb_sf._find(self.st.key_for('_super-run',self.all_targets[0]),
+                                write=False,
+                                allow_incomplete=False,
+                                fuzzy_for = [],
+                                fuzzy_for_options=[],
+                                )
 
     def test_rucio_format(self):
         """Test that document retrieval works for rucio files in the RunDB"""
@@ -183,6 +190,8 @@ class TestRunDBFrontend(unittest.TestCase):
             # not available error as we did not actually save any data
             # on the rucio folder
             self.rundb_sf.find(key)
+
+    def test_super_runs(self):
 
 
 def _rundoc_format(run_id):

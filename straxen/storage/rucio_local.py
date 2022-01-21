@@ -4,6 +4,8 @@ import json
 import os
 import re
 import socket
+import warnings
+
 import strax
 from bson import json_util
 from .rucio_remote import key_to_rucio_did, parse_rucio_did
@@ -35,7 +37,7 @@ class RucioLocalFrontend(strax.StorageFrontend):
             local_rse = self.determine_rse()
             self.path = self.local_prefixes[local_rse]
         else:
-            self.path = rucio_path
+            self.path = rucio_dir
         self.backends = [RucioLocalBackend(self.path)]
 
     def determine_rse(self):
@@ -104,7 +106,7 @@ class RucioLocalFrontend(strax.StorageFrontend):
                      fuzzy_for_options: tuple,
                      ) -> tuple:
         pattern = os.path.join(
-            self.get_rse_prefix(self.local_rse),
+            self.path,
             f'xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')
         mds = glob.glob(pattern)
         for md in mds:
@@ -116,7 +118,7 @@ class RucioLocalFrontend(strax.StorageFrontend):
                              fuzzy_for_options):
                 fuzzy_lineage_hash = md_dict['lineage_hash']
                 did = f'xnt_{key.run_id}:{key.data_type}-{fuzzy_lineage_hash}'
-                self.log.warning(f'Was asked for {key} returning {md}')
+                warnings.warn(f'Was asked for {key} returning {md}', UserWarning)
                 if self._all_chunk_stored(md_dict, did):
                     return self.backends[0].__class__.__name__, did
 
@@ -136,7 +138,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
         metadata_did = f'{scope}:{metadata_json}'
 
         metadata_path = rucio_path(self.rucio_dir, metadata_did)
-        folder = os.path.join('/', *metadata_path.split('/')[:-1])
+        folder = os.path.split(metadata_path)[0]
         if not os.path.exists(folder):
             raise strax.DataNotAvailable(f"No folder for metadata at {metadata_path}")
         if not os.path.exists(metadata_path):
