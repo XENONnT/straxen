@@ -12,6 +12,7 @@ class TestRucioLocal(unittest.TestCase):
     """
     Test the behavoir of how the Rucio Local frontend should behave
     """
+
     def setUp(self) -> None:
         self.test_keys = [
             strax.DataKey(run_id=run_id,

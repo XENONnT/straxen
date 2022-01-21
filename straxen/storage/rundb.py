@@ -153,7 +153,7 @@ class RunDB(strax.StorageFrontend):
         if key.run_id.startswith('_'):
             # Superruns are currently not supprorted..
             raise strax.DataNotAvailable
-        
+
         if fuzzy_for or fuzzy_for_options:
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
@@ -239,7 +239,8 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys if not key.run_id.startswith('_')]}}
+            run_query = {f'{self.runid_field}': {
+                '$in': [int(key.run_id) for key in keys if not key.run_id.startswith('_')]}}
         dq = self._data_query(keys[0])
 
         # dict.copy is sometimes not sufficient for nested dictionary
@@ -298,7 +299,7 @@ class RunDB(strax.StorageFrontend):
         if run_id.startswith('_'):
             # Superruns are currently not supported..
             raise strax.DataNotAvailable
-        
+
         if self.runid_field == 'name':
             run_id = str(run_id)
         else:
