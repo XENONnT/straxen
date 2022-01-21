@@ -6,3 +6,6 @@ from .rucio import *
 
 from . import rundb
 from .rundb import *
+
+from . import mongo_storage
+from .mongo_storage import *
