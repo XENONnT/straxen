@@ -29,7 +29,7 @@ class BayesPeakletClassification(strax.Plugin):
         help='Bayes discrete bins'
     )
     s2_prob_threshold = straxen.URLConfig(
-        default=-27, #best-fit value from optimization of ROC curve
+        default=np.log(0.5), #best-fit value from optimization of ROC curve
         help='S2 log prob value threshold, above this value type=2'
     )
     num_nodes = straxen.URLConfig(
