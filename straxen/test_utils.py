@@ -107,12 +107,14 @@ def _is_on_pytest():
     return 'PYTEST_CURRENT_TEST' in os_environ
 
 
-class MockDAQReader(straxen.DAQReader):
-    """
-    Dummy version of the DAQ reader to make sure that all the testing
-    data produced here will have a different lineage
-    """
-    __version__ = "MOCKTESTDATA"
+def _get_fake_daq_reader():
+    class DAQReader(straxen.DAQReader):
+        """
+        Dummy version of the DAQ reader to make sure that all the testing
+        data produced here will have a different lineage
+        """
+        __version__ = "MOCKTESTDATA"
+    return DAQReader
 
 
 def nt_test_context(target_context='xenonnt_online',
@@ -123,7 +125,7 @@ def nt_test_context(target_context='xenonnt_online',
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config({'diagnose_sorting': True})
-    st.register(MockDAQReader)
+    st.register(_get_fake_daq_reader())
     st.storage = [strax.DataDirectory('./strax_test_data')]
     download_test_data('https://raw.githubusercontent.com/XENONnT/'
                        'strax_auxiliary_files/'
