@@ -58,7 +58,8 @@ jobs:
       - name: Download docker
         run: |
               which python
-              python -c "try: import straxen; straxen.print_versions(); except: pass"
+              python -c "import straxen ; print(straxen)"
+              python -c "import straxen; straxen.print_versions()"
 #       - name: Download docker
 #         run: |
 #               docker pull opensciencegrid/osgvo-xenon:latest
