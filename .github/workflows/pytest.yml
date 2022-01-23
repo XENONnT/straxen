@@ -33,7 +33,7 @@ jobs:
       fail-fast: False
       matrix:
         python-version: [3.8]
-        test: ['coveralls']
+        test: ['coveralls', 'bla']
 
     steps:
       # Setup and installation
@@ -55,23 +55,31 @@ jobs:
 #             which python
 #             python -c "import straxen ; print(straxen); straxen.print_versions()"
 #             pytest
-      - name: Download docker
-        run: |
-              which python
-              python -c "import straxen ; print(straxen)"
-              python -c "import straxen; straxen.print_versions()"
 #       - name: Download docker
 #         run: |
-#               docker pull opensciencegrid/osgvo-xenon:latest
 #               which python
-#               # python -c "import straxen ; print(straxen); straxen.print_versions()"
-#               docker-compose up
-#               which python
-#               docker run "which python"
-#               docker run 'python -c "import straxen ; print(straxen); straxen.print_versions()"'
-#               docker images
-#               docker run --help
-#               docker run -v $PWD:/home --env HOME=/home --env testing:latest pytest -vs
+#               python -c "import straxen ; print(straxen)"
+#               python -c "import straxen; straxen.print_versions()"
+      - name: Download docker
+        if: matrix.test != 'bla'
+        run: |
+              docker pull opensciencegrid/osgvo-xenon:latest
+              which python
+              # python -c "import straxen ; print(straxen); straxen.print_versions()"
+              #docker-compose build
+              which python
+              docker run --help
+              docker run "which python"
+              docker run 'python -c "import straxen ; print(straxen); straxen.print_versions()"'
+              docker images
+              docker run --help
+              docker run -v $PWD:/home --env HOME=/home --env testing:latest pytest -vs
+      - name: Run tests
+        run: |
+            docker pull opensciencegrid/osgvo-xenon:latest
+            docker run -v osgvo-xenon:latest which python
+            docker run -v osgvo-xenon:latest python -c "import straxen ; print(straxen); straxen.print_versions()"
+          
 #       - name: Install requirements
 #         run: pip install -r extra_requirements/requirements-tests.txt
 
