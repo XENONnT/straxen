@@ -2,7 +2,6 @@ import warnings
 
 import numba
 import numpy as np
-
 import strax
 import straxen
 
@@ -95,12 +94,17 @@ def raw_records_matrix(context, run_id, raw_records, time_range,
                                   **kwargs)
 
 
-@numba.njit
 def _records_to_matrix(records, t0, window, n_channels, dt=10):
+    if np.any(records['amplitude_bit_shift'] > 0):
+        warnings.warn('Ignoring amplitude bitshift!')
+    return _records_to_matrix_inner(records, t0, window, n_channels, dt)
+
+
+@numba.njit
+def _records_to_matrix_inner(records, t0, window, n_channels, dt=10):
     n_samples = (window // dt) + 1
     # Use 32-bit integers, so downsampling saturated samples doesn't
     # cause wraparounds
-    # TODO: amplitude bit shift!
     y = np.zeros((n_samples, n_channels),
                  dtype=np.int32)
 
@@ -130,7 +134,8 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
         if dt > r['dt']:
             # Downsample
             duration = samples_per_record * r['dt']
-            assert duration % dt == 0, "Cannot downsample fractionally"
+            if duration % dt != 0:
+                raise ValueError("Cannot downsample fractionally")
             # .astype here keeps numba happy ... ??
             w = w.reshape(duration // dt, -1).sum(axis=1).astype(np.int32)
 

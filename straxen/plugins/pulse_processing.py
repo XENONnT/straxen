@@ -13,7 +13,7 @@ __all__ += ['NO_PULSE_COUNTS']
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
-    'hit_min_amplitude', track=True,
+    'hit_min_amplitude', track=True, infer_type=False,
     default=('hit_thresholds_tpc', 'ONLINE', True),
     help='Minimum hit amplitude in ADC counts above baseline. '
             'Specify as a tuple of length n_tpc_pmts, or a number,'
@@ -26,7 +26,7 @@ HITFINDER_OPTIONS = tuple([
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
     'hit_min_amplitude_he',
-    default=('hit_thresholds_he', 'ONLINE', True), track=True,
+    default=('hit_thresholds_he', 'ONLINE', True), track=True, infer_type=False,
     help='Minimum hit amplitude in ADC counts above baseline. '
             'Specify as a tuple of length n_tpc_pmts, or a number,'
             'or a string like "pmt_commissioning_initial" which means calling'
@@ -41,50 +41,50 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
 @export
 @strax.takes_config(
     strax.Option('hev_gain_model',
-                 default=('disabled', None),
+                 default=('disabled', None), infer_type=False,
                  help='PMT gain model used in the software high-energy veto.'
                       'Specify as (model_type, model_config)'),
     strax.Option(
         'baseline_samples',
-        default=40,
+        default=40, infer_type=False,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     # Tail veto options
     strax.Option(
         'tail_veto_threshold',
-        default=0,
+        default=0, infer_type=False,
         help=("Minimum peakarea in PE to trigger tail veto."
               "Set to None, 0 or False to disable veto.")),
     strax.Option(
         'tail_veto_duration',
-        default=int(3e6),
+        default=int(3e6), infer_type=False,
         help="Time in ns to veto after large peaks"),
     strax.Option(
         'tail_veto_resolution',
-        default=int(1e3),
+        default=int(1e3), infer_type=False,
         help="Time resolution in ns for pass-veto waveform summation"),
     strax.Option(
         'tail_veto_pass_fraction',
-        default=0.05,
+        default=0.05, infer_type=False,
         help="Pass veto if maximum amplitude above max * fraction"),
     strax.Option(
         'tail_veto_pass_extend',
-        default=3,
+        default=3, infer_type=False,
         help="Extend pass veto by this many samples (tail_veto_resolution!)"),
     strax.Option(
         'max_veto_value',
-        default=None,
+        default=None, infer_type=False,
         help="Optionally pass a HE peak that exceeds this absolute area. "
              "(if performing a hard veto, can keep a few statistics.)"),
 
     # PMT pulse processing options
     strax.Option(
         'pmt_pulse_filter',
-        default=None,
+        default=None, infer_type=False,
         help='Linear filter to apply to pulses, will be normalized.'),
     strax.Option(
         'save_outside_hits',
-        default=(3, 20),
+        default=(3, 20), infer_type=False,
         help='Save (left, right) samples besides hits; cut the rest'),
 
     strax.Option(
@@ -93,12 +93,12 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
 
     strax.Option(
         'check_raw_record_overlaps',
-        default=True, track=False,
+        default=True, track=False, infer_type=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
     strax.Option(
         'allow_sloppy_chunking',
-        default=False, track=False,
+        default=False, track=False, infer_type=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
 
@@ -185,7 +185,6 @@ class PulseProcessing(strax.Plugin):
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
-        # TODO: better to throw an error if something is nonzero
         strax.zero_out_of_bounds(r)
 
         strax.baseline(r,
@@ -242,7 +241,7 @@ class PulseProcessing(strax.Plugin):
     
 @export
 @strax.takes_config(
-    strax.Option('n_he_pmts', track=False, default=752,
+    strax.Option('n_he_pmts', track=False, default=752, infer_type=False,
                  help="Maximum channel of the he channels"),
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),

@@ -54,6 +54,7 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
 
     reference/datastructure_1T
 
+
 .. toctree::
     :maxdepth: 2
     :caption: scripts
@@ -63,10 +64,18 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
 
 .. toctree::
     :maxdepth: 2
-    :caption: Auxilliary tools
+    :caption: Auxiliary tools
 
     scada_interface
     tutorials/ScadaInterfaceExample.ipynb
+
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Context and minianalyses
+
+    reference/context
+
 
 .. toctree::
     :maxdepth: 1

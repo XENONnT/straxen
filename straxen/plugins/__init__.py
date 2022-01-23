@@ -59,6 +59,3 @@ from .acqmon_processing import *
 
 from . import online_monitor
 from .online_monitor import *
-
-from . import event_shadow
-from .event_shadow import *

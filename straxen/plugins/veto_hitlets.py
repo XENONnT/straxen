@@ -1,4 +1,3 @@
-import numba
 import numpy as np
 from immutabledict import immutabledict
 
@@ -6,52 +5,39 @@ import strax
 import straxen
 
 from straxen.get_corrections import is_cmt_option
+from straxen.plugins.veto_pulse_processing import MV_PREAMBLE, NV_HIT_OPTIONS
 
 export, __all__ = strax.exporter()
-
-MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
 
 
 @export
 @strax.takes_config(
-    strax.Option(
-        'save_outside_hits_nv',
-        default=(3, 15), track=True,
-        help='Save (left, right) samples besides hits; cut the rest'),
-    strax.Option(
-        'hit_min_amplitude_nv',
-        default=('hit_thresholds_nv', 'ONLINE', True), track=True,
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_nveto_pmts, or a number, '
-             'or a string like "pmt_commissioning_initial" which means calling '
-             'hitfinder_thresholds.py, '
-             'or a tuple like (correction=str, version=str, nT=boolean), '
-             'which means we are using cmt.'),
+    *NV_HIT_OPTIONS,
     strax.Option(
         'min_split_nv',
-        default=0.063, track=True,
+        default=0.063, track=True, infer_type=False,
         help='Minimum height difference pe/sample between local minimum and maximum, '
              'that a pulse get split.'),
     strax.Option(
         'min_split_ratio_nv',
-        default=0.75, track=True,
+        default=0.75, track=True, infer_type=False,
         help='Min ratio between local maximum and minimum to split pulse (zero to switch this '
              'off).'),
     strax.Option(
         'entropy_template_nv',
-        default='flat', track=True,
+        default='flat', track=True, infer_type=False,
         help='Template data is compared with in conditional entropy. Can be either "flat" or an '
              'template array.'),
     strax.Option(
         'entropy_square_data_nv',
-        default=False, track=True,
+        default=False, track=True, infer_type=False,
         help='Parameter which decides if data is first squared before normalized and compared to '
              'the template.'),
     strax.Option('channel_map', track=False, type=immutabledict,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."),
     strax.Option('gain_model_nv',
-                 default=("to_pe_model_nv", "ONLINE", True),
+                 default=("to_pe_model_nv", "ONLINE", True), infer_type=False,
                  help='PMT gain model. Specify as (model_type, model_config, nT = True)'),
 )
 class nVETOHitlets(strax.Plugin):
@@ -81,7 +67,6 @@ class nVETOHitlets(strax.Plugin):
 
     provides = 'hitlets_nv'
     data_kind = 'hitlets_nv'
-    ends_with = '_nv'
 
     dtype = strax.hitlet_dtype()
 
@@ -164,11 +149,11 @@ def remove_switched_off_channels(hits, to_pe):
 @strax.takes_config(
     strax.Option(
         'save_outside_hits_mv',
-        default=(2, 5), track=True,
+        default=(2, 5), track=True, infer_type=False,
         child_option=True, parent_option_name='save_outside_hits_nv',
         help='Save (left, right) samples besides hits; cut the rest'),
     strax.Option(
-        'hit_min_amplitude_mv',
+        'hit_min_amplitude_mv', infer_type=False,
         default=('hit_thresholds_mv', 'ONLINE', True), track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_mveto_pmts, or a number, '
@@ -178,30 +163,30 @@ def remove_switched_off_channels(hits, to_pe):
              'which means we are using cmt.'),
     strax.Option(
         'min_split_mv',
-        default=100, track=True,
+        default=100, track=True, infer_type=False,
         child_option=True, parent_option_name='min_split_nv',
         help='Minimum height difference pe/sample between local minimum and maximum, '
              'that a pulse get split.'),
     strax.Option(
         'min_split_ratio_mv',
-        default=0, track=True,
+        default=0, track=True, infer_type=False,
         child_option=True, parent_option_name='min_split_ratio_nv',
         help='Min ratio between local maximum and minimum to split pulse (zero to switch this '
              'off).'),
     strax.Option(
         'entropy_template_mv',
-        default='flat', track=True,
+        default='flat', track=True, infer_type=False,
         child_option=True, parent_option_name='entropy_template_nv',
         help='Template data is compared with in conditional entropy. Can be either "flat" or a '
              'template array.'),
     strax.Option(
         'entropy_square_data_mv',
-        default=False, track=True,
+        default=False, track=True, infer_type=False,
         child_option=True, parent_option_name='entropy_square_data_nv',
         help='Parameter which decides if data is first squared before normalized and compared to '
              'the template.'),
     strax.Option('gain_model_mv',
-                 default=("to_pe_model_mv", "ONLINE", True),
+                 default=("to_pe_model_mv", "ONLINE", True), infer_type=False,
                  child_option=True, parent_option_name='gain_model_nv',
                  help='PMT gain model. Specify as (model_type, model_config)'),
 )

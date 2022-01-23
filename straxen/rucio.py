@@ -64,12 +64,6 @@ class RucioFrontend(strax.StorageFrontend):
                                      f"I'm not sure what to do with that.")
                 local_rse = rse
 
-        # if there is no local host and we don't want to include the
-        # remote ones, we can't do anything
-        if local_rse is None and not include_remote:
-            raise RuntimeError(f"Could not find a local RSE for hostname {hostname}, "
-                               f"and include_remote is False.")
-
         self.local_rse = local_rse
         self.include_remote = include_remote
 
@@ -127,6 +121,13 @@ class RucioFrontend(strax.StorageFrontend):
                 return matches_to
 
         raise strax.DataNotAvailable
+
+    def find(self, key: strax.DataKey,
+             write=False,
+             check_broken=False,
+             allow_incomplete=False,
+             fuzzy_for=tuple(), fuzzy_for_options=tuple()):
+        return super().find(key, write, check_broken, allow_incomplete, fuzzy_for, fuzzy_for_options)
 
     def get_rse_prefix(self, rse):
         if HAVE_ADMIX:

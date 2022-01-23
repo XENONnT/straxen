@@ -57,7 +57,6 @@ class RunDB(strax.StorageFrontend):
         :param new_data_path: Path where new files are to be written.
             Defaults to None: do not write new data
             New files will be registered in the runs db!
-            TODO: register under hostname alias (e.g. 'dali')
         :param reader_ini_name_is_mode: If True, will overwrite the
             'mode' field with 'reader.ini.name'.
         :param rucio_path: What is the base path where Rucio is mounted
@@ -135,8 +134,6 @@ class RunDB(strax.StorageFrontend):
             'data': {
                 '$elemMatch': {
                     'type': key.data_type,
-                    # TODO remove the meta.lineage since this doc
-                    #  entry is deprecated.
                     '$and': [{'$or': [
                         {'meta.lineage': key.lineage},
                         {'did':
@@ -181,7 +178,8 @@ class RunDB(strax.StorageFrontend):
             if doc is not None:
                 datum = doc['data'][0]
                 error_message = f'Expected {rucio_key} got data on {datum["location"]}'
-                assert datum.get('did', '') == rucio_key, error_message
+                if datum.get('did', '') != rucio_key:
+                    raise RuntimeError(error_message)
                 backend_name = 'RucioLocalBackend'
                 backend_key = key_to_rucio_did(key)
                 return backend_name, backend_key
@@ -208,7 +206,6 @@ class RunDB(strax.StorageFrontend):
                         'host': self.hostname,
                         'type': key.data_type,
                         'protocol': strax.FileSytemBackend.__name__,
-                        # TODO: duplication with metadata stuff elsewhere?
                         'meta': {'lineage': key.lineage}
                     }}})
 
@@ -217,7 +214,6 @@ class RunDB(strax.StorageFrontend):
         datum = doc['data'][0]
 
         if datum['host'] == 'rucio-catalogue':
-            # TODO this is due to a bad query in _data_query. We aren't rucio.
             raise strax.DataNotAvailable
 
         if write and not self._can_overwrite(key):
@@ -278,7 +274,7 @@ class RunDB(strax.StorageFrontend):
             projection=projection)
         for doc in strax.utils.tqdm(
                 cursor, desc='Fetching run info from MongoDB',
-                total=cursor.count()):
+                total=self.collection.count_documents(query)):
             del doc['_id']
             if self.reader_ini_name_is_mode:
                 doc['mode'] = \

@@ -1,10 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
+from datetime import datetime
+
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import numpy as np
+import pytz
 import strax
 import straxen
-from datetime import datetime
-import pytz
 
 export, __all__ = strax.exporter()
 
@@ -38,56 +39,6 @@ EVENT_DISPLAY_DEFAULT_INFO = (('time', '{v} ns'),
 # Don't be smart with the arguments, since it is a minianalyses we
 # need to have all the arguments
 @straxen.mini_analysis(requires=('event_info',))
-def event_display_simple(context,
-                         run_id,
-                         events,
-                         to_pe,
-                         records_matrix=True,
-                         s2_fuzz=50,
-                         s1_fuzz=0,
-                         max_peaks=500,
-                         xenon1t=False,
-                         display_peak_info=PEAK_DISPLAY_DEFAULT_INFO,
-                         display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
-                         s1_hp_kwargs=None,
-                         s2_hp_kwargs=None,
-                         event_time_limit=None,
-                         plot_all_positions=True,
-                         ):
-    """
-    {event_docs}
-    {event_returns}
-    """
-    fig = plt.figure(figsize=(12, 8), facecolor="white")
-    grid = plt.GridSpec(2, 3, hspace=0.5)
-    axes = dict()
-    axes["ax_s1"] = fig.add_subplot(grid[0, 0])
-    axes["ax_s2"] = fig.add_subplot(grid[0, 1])
-    axes["ax_s2_hp_t"] = fig.add_subplot(grid[0, 2])
-    axes["ax_ev"] = fig.add_subplot(grid[1, :])
-
-    return _event_display(context,
-                          run_id,
-                          events,
-                          to_pe,
-                          axes=axes,
-                          records_matrix=records_matrix,
-                          s2_fuzz=s2_fuzz,
-                          s1_fuzz=s1_fuzz,
-                          max_peaks=max_peaks,
-                          xenon1t=xenon1t,
-                          display_peak_info=display_peak_info,
-                          display_event_info=display_event_info,
-                          s1_hp_kwargs=s1_hp_kwargs,
-                          s2_hp_kwargs=s2_hp_kwargs,
-                          event_time_limit=event_time_limit,
-                          plot_all_positions=plot_all_positions,
-                          )
-
-
-# Don't be smart with the arguments, since it is a minianalyses we
-# need to have all the arguments
-@straxen.mini_analysis(requires=('event_info',))
 def event_display(context,
                   run_id,
                   events,
@@ -97,12 +48,13 @@ def event_display(context,
                   s1_fuzz=0,
                   max_peaks=500,
                   xenon1t=False,
-                  display_peak_info=PEAK_DISPLAY_DEFAULT_INFO,
-                  display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
                   s1_hp_kwargs=None,
                   s2_hp_kwargs=None,
                   event_time_limit=None,
                   plot_all_positions=True,
+                  display_peak_info=PEAK_DISPLAY_DEFAULT_INFO,
+                  display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
+                  simple_layout=False,
                   ):
     """
     {event_docs}
@@ -118,45 +70,10 @@ def event_display(context,
     # Convert string to int to allow plots to be enlarged for extra panel
     _rr_resize_int = int(bool(records_matrix))
 
-    fig = plt.figure(figsize=(25, 21 if _rr_resize_int else 16),
-                     facecolor='white')
-    grid = plt.GridSpec((2 + _rr_resize_int), 1, hspace=0.1 + 0.1 * _rr_resize_int,
-                        height_ratios=[1.5, 0.5, 0.5][:2 + _rr_resize_int]
-                        )
-
-    # S1, S2, hitpatterns
-    gss_0 = gridspec.GridSpecFromSubplotSpec(2, 4, subplot_spec=grid[0], wspace=0.25, hspace=0.4)
-    ax_s1 = fig.add_subplot(gss_0[0])
-    ax_s2 = fig.add_subplot(gss_0[1])
-    ax_s1_hp_t = fig.add_subplot(gss_0[2])
-    ax_s1_hp_b = fig.add_subplot(gss_0[3])
-    ax_s2_hp_t = fig.add_subplot(gss_0[6])
-    ax_s2_hp_b = fig.add_subplot(gss_0[7])
-
-    # Peak & event info
-    ax_event_info = fig.add_subplot(gss_0[4])
-    ax_peak_info = fig.add_subplot(gss_0[5])
-
-    # All peaks in event
-    gss_1 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[1])
-    ax_ev = fig.add_subplot(gss_1[0])
-    ax_rec = None
-
-    # (raw)records matrix (optional)
-    if records_matrix and ax_rec is not None:
-        gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
-        ax_rec = fig.add_subplot(gss_2[0])
-    axes = dict(
-        ax_s1=ax_s1,
-        ax_s2=ax_s2,
-        ax_s1_hp_t=ax_s1_hp_t,
-        ax_s1_hp_b=ax_s1_hp_b,
-        ax_event_info=ax_event_info,
-        ax_peak_info=ax_peak_info,
-        ax_s2_hp_t=ax_s2_hp_t,
-        ax_s2_hp_b=ax_s2_hp_b,
-        ax_ev=ax_ev,
-        ax_rec=ax_rec)
+    if simple_layout:
+        axes = _event_display_simple_layout()
+    else:
+        axes = _event_display_full_layout(_rr_resize_int, records_matrix)
 
     return _event_display(context,
                           run_id,
@@ -202,9 +119,6 @@ def _event_display(context,
     if len(events) != 1:
         raise ValueError(f'Found {len(events)} only request one')
     event = events[0]
-
-    if not context.is_stored(run_id, 'peaklets'):
-        raise strax.DataNotAvailable(f'peaklets not available for {run_id}')
 
     if axes is None:
         raise ValueError(f'No axes provided')
@@ -366,6 +280,72 @@ def _event_display(context,
             ax_rec)
 
 
+@straxen.mini_analysis(requires=('event_info',))
+def event_display_simple(context, run_id, events, **kwargs):
+    raise NotImplementedError('Pass st.event_display(.., simple_layout=True)')
+
+
+def _event_display_simple_layout() -> dict:
+    """Setup a simple gidspec for the event display"""
+    fig = plt.figure(figsize=(12, 8), facecolor="white")
+    grid = plt.GridSpec(2, 3, hspace=0.5)
+    axes = dict()
+    axes["ax_s1"] = fig.add_subplot(grid[0, 0])
+    axes["ax_s2"] = fig.add_subplot(grid[0, 1])
+    axes["ax_s2_hp_t"] = fig.add_subplot(grid[0, 2])
+    axes["ax_ev"] = fig.add_subplot(grid[1, :])
+    return axes
+
+
+def _event_display_full_layout(_rr_resize_int, records_matrix) -> dict:
+    """Setup the full gidspec for the event display"""
+    fig = plt.figure(figsize=(25, 21 if _rr_resize_int else 16),
+                     facecolor='white')
+    grid = plt.GridSpec((2 + _rr_resize_int),
+                        1,
+                        hspace=0.1 + 0.1 * _rr_resize_int,
+                        height_ratios=[1.5, 0.5, 0.5][:2 + _rr_resize_int]
+                        )
+
+    # S1, S2, hitpatterns
+    gss_0 = gridspec.GridSpecFromSubplotSpec(2, 4,
+                                             subplot_spec=grid[0],
+                                             wspace=0.25,
+                                             hspace=0.4)
+    ax_s1 = fig.add_subplot(gss_0[0])
+    ax_s2 = fig.add_subplot(gss_0[1])
+    ax_s1_hp_t = fig.add_subplot(gss_0[2])
+    ax_s1_hp_b = fig.add_subplot(gss_0[3])
+    ax_s2_hp_t = fig.add_subplot(gss_0[6])
+    ax_s2_hp_b = fig.add_subplot(gss_0[7])
+
+    # Peak & event info
+    ax_event_info = fig.add_subplot(gss_0[4])
+    ax_peak_info = fig.add_subplot(gss_0[5])
+
+    # All peaks in event
+    gss_1 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[1])
+    ax_ev = fig.add_subplot(gss_1[0])
+    ax_rec = None
+
+    # (raw)records matrix (optional)
+    if records_matrix:
+        gss_2 = gridspec.GridSpecFromSubplotSpec(1, 1, subplot_spec=grid[2])
+        ax_rec = fig.add_subplot(gss_2[0])
+    axes = dict(
+        ax_s1=ax_s1,
+        ax_s2=ax_s2,
+        ax_s1_hp_t=ax_s1_hp_t,
+        ax_s1_hp_b=ax_s1_hp_b,
+        ax_event_info=ax_event_info,
+        ax_peak_info=ax_peak_info,
+        ax_s2_hp_t=ax_s2_hp_t,
+        ax_s2_hp_b=ax_s2_hp_b,
+        ax_ev=ax_ev,
+        ax_rec=ax_rec)
+    return axes
+
+
 @export
 def plot_single_event(context: strax.Context,
                       run_id,
@@ -399,7 +379,7 @@ def plot_single_event(context: strax.Context,
 def _scatter_rec(_event,
                  recs=None,
                  scatter_kwargs=None,
-                ):
+                 ):
     """Convenient wrapper to show posrec of three algorithms for xenonnt"""
     if recs is None:
         recs = ('mlp', 'cnn', 'gcn')
