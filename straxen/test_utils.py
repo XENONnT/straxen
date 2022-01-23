@@ -107,6 +107,14 @@ def _is_on_pytest():
     return 'PYTEST_CURRENT_TEST' in os_environ
 
 
+class MockDAQReader(straxen.DAQReader):
+    """
+    Dummy version of the DAQ reader to make sure that all the testing
+    data produced here will have a different lineage
+    """
+    __version__ = "MOCKTESTDATA"
+
+
 def nt_test_context(target_context='xenonnt_online',
                     deregister=('peak_veto_tags', 'events_tagged'),
                     **kwargs):
@@ -115,9 +123,13 @@ def nt_test_context(target_context='xenonnt_online',
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config({'diagnose_sorting': True})
-    st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
+    st.register(MockDAQReader)
     st.storage = [strax.DataDirectory('./strax_test_data')]
-    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f0d177401e11408b273564f0e29df77528e83d26/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
+    download_test_data('https://raw.githubusercontent.com/XENONnT/'
+                       'strax_auxiliary_files/'
+                       'f0d177401e11408b273564f0e29df77528e83d26/'
+                       'strax_files/'
+                       '012882-raw_records-z7q2d2ye2t.tar')
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
