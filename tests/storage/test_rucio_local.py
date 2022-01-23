@@ -145,3 +145,23 @@ class TestBasics(unittest.TestCase):
         run_db = straxen.RunDB(rucio_path='./rucio_test')
         with self.assertRaises(strax.DataNotAvailable):
             run_db.find(self.test_keys[0])
+
+    def test_determine_rse(self):
+        class DummyLocalRucio(straxen.RucioLocalFrontend):
+            local_prefixes = {'any': './any'}
+            local_rses = {}
+
+        dummy_class = DummyLocalRucio(path='./')
+        assert dummy_class.determine_rse() is None
+
+        update = {'any': socket.getfqdn()}
+        dummy_class.local_rses = update
+        assert dummy_class.determine_rse() == 'any'
+
+        # now the init should also work
+        DummyLocalRucio.local_rses = update
+        assert DummyLocalRucio().path == './any'
+
+        with self.assertRaises(ValueError):
+            dummy_class.local_rses.update({'some other!': socket.getfqdn()})
+            dummy_class.determine_rse()
