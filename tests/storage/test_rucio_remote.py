@@ -35,28 +35,42 @@ class TestRucioRemote(unittest.TestCase):
     def test_download_no_heavy(self):
         st = self.get_context(download_heavy=False)
         with self.assertRaises(strax.DataNotAvailable):
-            rr = st.get_array(self.run_id, 'raw_records')
+            rr = self.try_load(st, 'raw_records')
             assert False, len(rr)
 
     @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_with_heavy(self):
         st = self.get_context(download_heavy=True)
-        rr = st.get_array(self.run_id, 'raw_records')
+        rr = self.try_load(st, 'raw_records')
         assert len(rr)
 
     @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_with_heavy_and_high_level(self):
         st = self.get_context(download_heavy=True)
-        pc = st.get_array(self.run_id, 'pulse_counts')
+        pc = self.try_load(st, 'pulse_counts')
         assert len(pc)
 
-    @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
-    def check_empty_context(self, context):
-        for sf in context.storage:
-            assert not context._is_stored_in_sf(self.run_id, 'raw_records', sf), sf
-
     def test_did_to_dirname(self):
+        """Simple formatting test of straxen.rucio_remote.did_to_dirname"""
         did = 'xnt_038697:raw_records_aqmon-rfzvpzj4mf'
         assert 'xnt_' not in straxen.rucio_remote.did_to_dirname(did)
         with self.assertRaises(RuntimeError):
             straxen.rucio_remote.did_to_dirname('a-b-c')
+
+    def try_load(self, st: strax.Context, target: str):
+        try:
+            rr = st.get_array(self.run_id, target)
+        except strax.DataNotAvailable as data_error:
+            message = (f'Could not find '
+                       f'{st.key_for(self.run_id, target)} '
+                       f'with the following frontends\n')
+            for sf in st.storage:
+                message += f'\t{sf}\n'
+            raise strax.DataNotAvailable(message) from data_error
+        return rr
+
+    def check_empty_context(self, context):
+        for sf in context.storage:
+            assert not context._is_stored_in_sf(self.run_id, 'raw_records', sf), sf
+
+
