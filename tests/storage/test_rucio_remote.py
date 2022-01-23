@@ -72,5 +72,3 @@ class TestRucioRemote(unittest.TestCase):
     def check_empty_context(self, context):
         for sf in context.storage:
             assert not context._is_stored_in_sf(self.run_id, 'raw_records', sf), sf
-
-
