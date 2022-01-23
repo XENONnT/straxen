@@ -133,12 +133,12 @@ jobs:
 
         if: matrix.test == 'coveralls'
         run: |
-          coverage run --source=straxen setup.py test -v
+          coverage run --source=straxen --omit=/straxen/storage/rucio_remote.py setup.py test -v
 
           # Run twice, once without and once with db access
           rm ~/.xenon_config
           bash .github/scripts/create_pre_apply_function.sh $HOME
-          coverage run --append --source=straxen setup.py test -v
+          coverage run --append --source=straxen --omit=/straxen/storage/rucio_remote.py setup.py test -v
           coveralls --service=github
       - name: goodbye
         run: echo "tests done, bye bye"
