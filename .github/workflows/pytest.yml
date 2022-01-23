@@ -26,6 +26,7 @@ on:
 
 jobs:
   update:
+    container: opensciencegrid/osgvo-xenon:latest
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
@@ -39,12 +40,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: Setup python
-        uses: actions/setup-python@v2.3.0
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          cache-dependency-path: 'extra_requirements/requirements-tests.txt'
+#       - name: Setup python
+#         uses: actions/setup-python@v2.3.0
+#         with:
+#           python-version: ${{ matrix.python-version }}
+#           cache: 'pip'
+#           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
 #       - uses: addnab/docker-run-action@v3
 #         with:
 #           image: opensciencegrid/osgvo-xenon:latest
@@ -56,16 +57,20 @@ jobs:
 #             pytest
       - name: Download docker
         run: |
-              docker pull opensciencegrid/osgvo-xenon:latest
               which python
-              # python -c "import straxen ; print(straxen); straxen.print_versions()"
-              docker-compose up
-              which python
-              docker run "which python"
-              docker run 'python -c "import straxen ; print(straxen); straxen.print_versions()"'
-              docker images
-              docker run --help
-              docker run -v $PWD:/home --env HOME=/home --env testing:latest pytest -vs
+              python -c "try: import straxen; straxen.print_versions(); except: pass"
+#       - name: Download docker
+#         run: |
+#               docker pull opensciencegrid/osgvo-xenon:latest
+#               which python
+#               # python -c "import straxen ; print(straxen); straxen.print_versions()"
+#               docker-compose up
+#               which python
+#               docker run "which python"
+#               docker run 'python -c "import straxen ; print(straxen); straxen.print_versions()"'
+#               docker images
+#               docker run --help
+#               docker run -v $PWD:/home --env HOME=/home --env testing:latest pytest -vs
 #       - name: Install requirements
 #         run: pip install -r extra_requirements/requirements-tests.txt
 
