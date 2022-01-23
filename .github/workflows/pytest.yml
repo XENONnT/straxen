@@ -58,10 +58,11 @@ jobs:
         run: |
               docker pull opensciencegrid/osgvo-xenon:latest
               which python
-              python -c "import straxen ; print(straxen); straxen.print_versions()"
+              # python -c "import straxen ; print(straxen); straxen.print_versions()"
               docker-compose up
               which python
-              python -c "import straxen ; print(straxen); straxen.print_versions()"
+              docker run "which python"
+              docker run 'python -c "import straxen ; print(straxen); straxen.print_versions()"'
               docker images
               docker run --help
               docker run -v $PWD:/home --env HOME=/home --env testing:latest pytest -vs
