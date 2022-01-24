@@ -27,6 +27,7 @@ common_opts = dict(
         straxen.EventPositions,
         straxen.CorrectedAreas,
         straxen.EnergyEstimates,
+        straxen.EventwBayesClass,
     ],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
