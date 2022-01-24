@@ -29,6 +29,7 @@ class EventwBayesClass(strax.Plugin):
         s2 = np.zeros(len(events), strax.time_fields)
 
         # For S1 and S2, match to peak posteriors
+        # To do: alt_s1 and alt_s2
         for peaks, name in zip([s1, s2],
                               ['s1', 's2']):
             peaks['time'] = events[f'{name}_time']
@@ -41,5 +42,11 @@ class EventwBayesClass(strax.Plugin):
             result[f'{name}_s2prob'][fci] = peaklets[mask]['s2_prob']
             result['time'] = events['time']
             result['endtime'] = events['endtime']
-
+       
+        # events can be made out of one peak, this is to enusure user should not look at prob 
+        no_s1 = np.where(events['s1_index']==-1)
+        if no_s1:
+            result[f's1_s1prob'][no_s1] = np.nan
+            result[f's1_s2prob'][no_s1] = np.nan
+ 
         return result

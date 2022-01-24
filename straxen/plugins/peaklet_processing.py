@@ -96,7 +96,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.6.0'
+    __version__ = '0.6.1'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
