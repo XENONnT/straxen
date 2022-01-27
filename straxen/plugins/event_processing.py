@@ -133,6 +133,15 @@ class Events(strax.OverlapWindowPlugin):
         default=2, infer_type=False,
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
              "in the peaklet classification"),
+    strax.Option(
+        name='electron_drift_velocity', infer_type=False,
+        default=("electron_drift_velocity", "ONLINE", True),
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',),
+    strax.Option(
+        name='max_drift_length',
+        default=straxen.tpc_z, infer_type=False,
+        help='Total length of the TPC from the bottom of gate to the '
+             'top of cathode wires [cm]',),
 )
 class EventBasics(strax.Plugin):
     """
@@ -142,7 +151,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.2.1'
+    __version__ = '1.2.2'
 
     depends_on = ('events',
                   'peak_basics',
@@ -206,6 +215,12 @@ class EventBasics(strax.Plugin):
             ('tight_coincidence', np.int16, 'Channel within tight range of mean'),
             ('n_saturated_channels',      np.int16, 'Total number of saturated channels'),
         )
+
+    def setup(self):
+        electron_drift_velocity = get_correction_from_cmt(
+            self.run_id,
+            self.config['electron_drift_velocity'])
+        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -305,7 +320,7 @@ class EventBasics(strax.Plugin):
     def fill_result_i(self, event, peaks):
         """For a single event with the result_buffer"""
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
-        largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2)
+        largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
 
         if self.config['force_main_before_alt']:
             s2_order = np.argsort(largest_s2s['time'])
@@ -323,6 +338,7 @@ class EventBasics(strax.Plugin):
             s1_before_time=s1_latest_time,
             s1_min_coincidence=self.config['event_s1_min_coincidence'])
 
+        s2_idx, largest_s2s = self.set_alt_s2_properties(largest_s1s, s2_idx, largest_s2s, self.drift_time_max)
         self.set_sx_index(event, s1_idx, s2_idx)
         self.set_event_properties(event, largest_s1s, largest_s2s, peaks)
 
@@ -340,6 +356,31 @@ class EventBasics(strax.Plugin):
                                                    largest_index,
                                                    field_names,
                                                    peak_properties_to_save)
+
+    @staticmethod
+    @numba.njit
+    def set_alt_s2_properties(largest_s1s, s2_idx, largest_s2s, drift_time_max):
+        """Require alt_s2 happens between main S1 and maximum drift time"""
+        if len(largest_s1s) > 0 and len(largest_s2s) > 1:
+            # If there is a valid s1-s2 pair and has a second s2, then check alt s2 validity
+            alt_s2_idx, largest_alt_s2s = s2_idx[1:], largest_s2s[1:]
+            alt_s2_after_s1 = largest_alt_s2s['center_time'] > largest_s1s[0]['center_time']
+            alt_s2_before_max_drift_time = (largest_alt_s2s['center_time'] - largest_s1s[0]['center_time']) < 1.1 * drift_time_max
+            mask = alt_s2_after_s1 & alt_s2_before_max_drift_time
+
+            if (~mask).all():
+                # If no other s2 survives, drop the alt s2 field
+                s2_idx = s2_idx[0:1]
+                largest_s2s = largest_s2s[0:1]
+            else:
+                # Take the first valid largest other s2 as alt s2
+                new_alt_s2_index = np.arange(0, len(largest_alt_s2s))[mask][0] + 1
+                s2_idx[1], s2_idx[new_alt_s2_index] = s2_idx[new_alt_s2_index], s2_idx[1]
+                largest_s2s[1], largest_s2s[new_alt_s2_index] = largest_s2s[new_alt_s2_index], largest_s2s[1]
+                s2_idx = s2_idx[0:2]
+                largest_s2s = largest_s2s[0:2]
+
+        return s2_idx, largest_s2s
 
     @staticmethod
     @numba.njit
