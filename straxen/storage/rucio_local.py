@@ -131,7 +131,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
         super().__init__(*args, **kwargs)
         self.rucio_dir = rucio_dir
 
-    def get_metadata(self, did: str, **kwargs):
+    def _get_metadata(self, did: str, **kwargs):
         scope, name = did.split(':')
         number, dtype, hsh = parse_rucio_did(did)
         metadata_json = f'{dtype}-{hsh}-metadata.json'
