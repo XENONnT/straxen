@@ -1,3 +1,3 @@
 from .schemas import *
-from .dataframes import *
+from .frames import *
 from .settings import corrections_settings

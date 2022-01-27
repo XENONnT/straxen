@@ -16,7 +16,7 @@ Index = Union[int,float,datetime,str,slice,NoneType,List]
 
 
 @export
-class RemoteDataframe:
+class RemoteFrame:
     '''Implement basic indexing features similar to a pandas dataframe
     but operates on an arbitrary storage backend
     '''
@@ -146,10 +146,10 @@ class RemoteDataframe:
                f"columns={self.schema.columns()})")
 
 class RemoteSeries:
-    obj: RemoteDataframe
+    obj: RemoteFrame
     column: str
 
-    def __init__(self, obj: RemoteDataframe, column: str) -> None:
+    def __init__(self, obj: RemoteFrame, column: str) -> None:
         self.obj = obj
         self.column = column
 
@@ -182,7 +182,7 @@ class RemoteSeries:
 
 
 class Indexer:
-    def __init__(self, obj: RemoteDataframe):
+    def __init__(self, obj: RemoteFrame):
         self.obj = obj
 
 

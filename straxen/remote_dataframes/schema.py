@@ -89,8 +89,8 @@ class BaseSchema(BaseModel):
 
     @classmethod
     def db_client(cls, db):
-        from .remote_dataframe import RemoteDataframe
-        return RemoteDataframe(cls, db)
+        from .remote_frame import RemoteFrame
+        return RemoteFrame(cls, db)
 
     @classmethod
     def query_db(cls, db, *args, **kwargs):

@@ -75,7 +75,7 @@ class TestCorrectionDataframes(unittest.TestCase):
             return
         uri = os.environ.get('TEST_MONGO_URI')
         db_name = 'test_cmt2'
-        self.dfs = straxen.CorrectionDataframes.from_mongodb(url=uri, dbname=db_name)
+        self.dfs = straxen.CorrectionFrames.from_mongodb(url=uri, dbname=db_name)
 
     @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
     def tearDown(self):
@@ -207,7 +207,7 @@ class TestCorrectionDataframes(unittest.TestCase):
         df1 = rdf.sel()
         self.assertIsInstance(df1, pd.DataFrame)
 
-        pandas_rdf = straxen.RemoteDataframe(SomeTimeIntervalCorrection, df1)
+        pandas_rdf = straxen.RemoteFrame(SomeTimeIntervalCorrection, df1)
 
         df2 = pandas_rdf.sel()
         pd.testing.assert_frame_equal(df1, df2)

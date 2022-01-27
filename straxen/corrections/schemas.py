@@ -16,6 +16,7 @@ export, __all__ = strax.exporter()
 
 @export
 class BaseCorrectionSchema(straxen.BaseSchema):
+    name = ''
 
     _SCHEMAS = {}
 
@@ -33,6 +34,7 @@ class BaseCorrectionSchema(straxen.BaseSchema):
 
 @export
 class TimeIntervalCorrection(BaseCorrectionSchema):
+    name = ''
     index = straxen.TimeIntervalIndex(name='time',
                                 left_name='begin', right_name='end')
         
@@ -81,6 +83,7 @@ def can_extrapolate(doc):
 
 @export
 class TimeSampledCorrection(BaseCorrectionSchema):
+    name = ''
     index = straxen.TimeInterpolatedIndex(name='time', extrapolate=can_extrapolate)
 
     def pre_insert(self, db, index):

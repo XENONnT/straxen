@@ -98,15 +98,19 @@ def build_mongo_query(self, db, value):
         #  $gt/$lt operators
         start = value.start
         stop = value.stop
-        value = {}
-        if start is not None:
-            value['$gte'] = start
-        if stop is not None:
-            value['$lt'] = stop
-        if not value:
-            value = None
-
-    elif isinstance(value, list):
+        step = value.step
+        if step is None:
+            value = {}
+            if start is not None:
+                value['$gte'] = start
+            if stop is not None:
+                value['$lt'] = stop
+            if not value:
+                value = None
+        else:
+            value = list(range(start, stop, step))
+        
+    if isinstance(value, list):
         # support querying multiple values
         # in the same request
         value = {'$in': value}

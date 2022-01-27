@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 __all__ += ['correction_dfs']
 
 @export
-class CorrectionDataframes:
+class CorrectionFrames:
     db: Any
 
     def __init__(self, db):
@@ -44,7 +44,7 @@ class CorrectionDataframes:
 
     def get_df(self, name):
         correction = self.schemas[name]
-        return straxen.RemoteDataframe(correction, self.db)
+        return straxen.RemoteFrame(correction, self.db)
 
     def __getitem__(self, key):
         if isinstance(key, tuple) and key[0] in self.schemas:
@@ -90,7 +90,7 @@ def extract_time(kwargs):
     else:
         return None
 
-correction_dfs = CorrectionDataframes.default()
+correction_dfs = CorrectionFrames.default()
 
 @export
 def cmt2(name, version=0, **kwargs):
