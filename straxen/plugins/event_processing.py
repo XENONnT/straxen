@@ -365,7 +365,7 @@ class EventBasics(strax.Plugin):
             # If there is a valid s1-s2 pair and has a second s2, then check alt s2 validity
             alt_s2_idx, largest_alt_s2s = s2_idx[1:], largest_s2s[1:]
             alt_s2_after_s1 = largest_alt_s2s['center_time'] > largest_s1s[0]['center_time']
-            alt_s2_before_max_drift_time = (largest_alt_s2s['center_time'] - largest_s1s[0]['center_time']) < 1.1 * drift_time_max
+            alt_s2_before_max_drift_time = (largest_alt_s2s['center_time'] - largest_s1s[0]['center_time']) < 1.01 * drift_time_max
             mask = alt_s2_after_s1 & alt_s2_before_max_drift_time
 
             if (~mask).all():
