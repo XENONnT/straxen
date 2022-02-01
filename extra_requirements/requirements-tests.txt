@@ -37,7 +37,7 @@ tensorflow==2.7.0; python_version<="3.9"
 tensorflow==2.8.0rc0; python_version=="3.10"
 tqdm==4.62.2
 typing_extensions==4.0.1                        # Tensorflow/bokeh dependency
-utilix==0.6.5
+utilix==0.6.6
 wfsim==0.5.12; python_version<="3.9"            # nestpy doesn't work in py3.10
 xarray==0.20.2
 zstd==1.5.1.0                                   # Strax dependency
