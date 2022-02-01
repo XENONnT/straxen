@@ -21,7 +21,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='1.2.3',
+                 version='1.2.6',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
@@ -30,8 +30,8 @@ setuptools.setup(name='straxen',
                  setup_requires=['pytest-runner'],
                  install_requires=requires,
                  tests_require=requires + tests_requires,
-                 # Not testing py3.6 #616
-                 python_requires=">=3.6",
+                 # Not testing py3.6 or py3.7 #616
+                 python_requires=">=3.8",
                  extras_require={
                      'docs': doc_requirements,
                      'microstrax': ['hug'],
@@ -52,10 +52,9 @@ setuptools.setup(name='straxen',
                      'Development Status :: 5 - Production/Stable',
                      'License :: OSI Approved :: BSD License',
                      'Natural Language :: English',
-                     'Programming Language :: Python :: 3.6',
-                     'Programming Language :: Python :: 3.7',
                      'Programming Language :: Python :: 3.8',
                      'Programming Language :: Python :: 3.9',
+                     'Programming Language :: Python :: 3.10',
                      'Intended Audience :: Science/Research',
                      'Programming Language :: Python :: Implementation :: CPython',
                      'Topic :: Scientific/Engineering :: Physics',
