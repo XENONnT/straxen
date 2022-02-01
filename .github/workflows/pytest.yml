@@ -109,7 +109,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
-          coverage run --source=straxen -m --durations 0
+          coverage run --source=straxen -m pytest --durations 0
 
       - name: Test package python 3.10
         # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
