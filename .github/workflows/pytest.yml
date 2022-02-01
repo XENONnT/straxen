@@ -124,7 +124,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.test == 'coveralls' && (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
         run: |
-            coveralls --service=github
             coverage run --source=straxen -m pytest -v
+            coveralls --service=github
       - name: goodbye
         run: echo "tests done, bye bye"
