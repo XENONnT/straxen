@@ -28,6 +28,8 @@ jobs:
   update:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
+    env:
+      HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
     strategy:
       fail-fast: False
       matrix:
@@ -97,8 +99,6 @@ jobs:
       - name: Create pre-apply function file
         # In case we do not have database. We need to make a local file for
         # The pre_apply_function (see #559).
-        env:
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
@@ -109,7 +109,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
         run: |
-          pytest -rsxv --durations 0
+          coverage run --source=straxen -m --durations 0
 
       - name: Test package python 3.10
         # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
@@ -117,7 +117,7 @@ jobs:
         env:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
         run: |
-          pytest -rsxv --durations 0
+          coverage run --source=straxen -m pytest -rsxv --durations 0
 
       - name: Coveralls
         # Make the coverage report and upload
@@ -125,15 +125,14 @@ jobs:
           TEST_MONGO_URI:  'mongodb://localhost:27017/'
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # We need to check if we have access to the secrets, otherwise coveralls
-          # will yield a low coverage because of the lack of interfacing with the
-          # database.
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
 
         if: matrix.test == 'coveralls'
         run: |
-          coverage run --source=straxen setup.py test -v
+          coverage run --source=straxen -m pytest -v
+      - name: upload coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
           coveralls --service=github
 
       - name: goodbye
