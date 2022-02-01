@@ -16,7 +16,7 @@ name: Test package
 on:
   workflow_dispatch:
   release:
-    types: [created]
+    types: [ created ]
   pull_request:
   push:
     branches:
@@ -28,11 +28,13 @@ jobs:
   update:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
+    env:
+      HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
     strategy:
       fail-fast: False
       matrix:
-        python-version: [3.8, 3.9, "3.10"]
-        test: ['coveralls', 'pytest', 'pytest_no_database']
+        python-version: [ 3.8, 3.9, "3.10" ]
+        test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
         # Only run coverage / no_database on py3.8
         exclude:
           - python-version: 3.9
@@ -61,8 +63,8 @@ jobs:
 
       - name: Install strax
         run: |
-            git clone https://github.com/AxFoundation/strax ../strax
-            pip install -e ../strax
+          git clone https://github.com/AxFoundation/strax ../strax
+          pip install -e ../strax
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
@@ -72,7 +74,7 @@ jobs:
       - name: patch utilix file
         # Secrets and required files
         # Patch this file if we want to have access to the database
-        if:  matrix.test != 'pytest_no_database'
+        if: matrix.test != 'pytest_no_database'
         run: bash .github/scripts/create_readonly_utilix_config.sh
         env:
           # RunDB
@@ -93,8 +95,6 @@ jobs:
       - name: Create pre-apply function file
         # In case we do not have database. We need to make a local file for
         # The pre_apply_function (see #559).
-        env:
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
@@ -103,34 +103,28 @@ jobs:
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && matrix.python-version != '3.10'
         env:
           ALLOW_WFSIM_TEST: 1
-          TEST_MONGO_URI:  'mongodb://localhost:27017/'
+          TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
-          pytest -rsxv --durations 0
-
+          coverage run --source=straxen -m pytest --durations 0
+          coverage report
       - name: Test package python 3.10
         # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
         env:
-          TEST_MONGO_URI:  'mongodb://localhost:27017/'
+          TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
-          pytest -rsxv --durations 0
-
+          coverage run --source=straxen -m pytest -rsxv --durations 0
+          coverage report
       - name: Coveralls
         # Make the coverage report and upload
         env:
-          TEST_MONGO_URI:  'mongodb://localhost:27017/'
+          TEST_MONGO_URI: 'mongodb://localhost:27017/'
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # We need to check if we have access to the secrets, otherwise coveralls
-          # will yield a low coverage because of the lack of interfacing with the
-          # database.
-          HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
-
-        if: matrix.test == 'coveralls'
+        if: matrix.test == 'coveralls' && (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
         run: |
-          coverage run --source=straxen setup.py test -v
-          coveralls --service=github
-
+            coverage run --source=straxen -m pytest -v
+            coveralls --service=github
       - name: goodbye
         run: echo "tests done, bye bye"
