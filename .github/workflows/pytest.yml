@@ -106,7 +106,7 @@ jobs:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
           coverage run --source=straxen -m pytest --durations 0
-
+          coverage report
       - name: Test package python 3.10
         # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
@@ -114,22 +114,17 @@ jobs:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
           coverage run --source=straxen -m pytest -rsxv --durations 0
-
+          coverage report
       - name: Coveralls
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
-
-        if: matrix.test == 'coveralls'
-        run: coverage run --source=straxen -m pytest -v
-
-      - name: upload coverage
-        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
-        run: coveralls --service=github
-
+        if: matrix.test == 'coveralls' && (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+        run: |
+            coveralls --service=github
+            coverage run --source=straxen -m pytest -v
       - name: goodbye
         run: echo "tests done, bye bye"
