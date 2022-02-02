@@ -10,12 +10,10 @@ import os.path as osp
 import pickle
 import dill
 import urllib.request
-import tqdm
 import numpy as np
 import pandas as pd
 from re import match
 import numba
-from warnings import warn
 import strax
 import straxen
 
