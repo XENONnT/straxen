@@ -18,6 +18,9 @@ updates:
     schedule:
       # Check for updates to requirements every week
       interval: "monthly"
-    open-pull-requests-limit: 15
+    # Raise pull requests for version updates
+    # to pip against the `develop` branch
+    target-branch: "development"
+    open-pull-requests-limit: 50
     assignees:
       - jorana
