@@ -122,7 +122,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.test == 'coveralls' && (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+        if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]')
         run: |
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
           coverage run --source=straxen --omit=./straxen/storage/rucio_remote.py setup.py test -v
