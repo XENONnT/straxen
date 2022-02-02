@@ -151,6 +151,13 @@ class TestRunDBFrontend(unittest.TestCase):
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
         with self.assertRaises(strax.DataNotAvailable):
             self.rundb_sf.find(self.st.key_for('_super-run', self.all_targets[0]))
+        with self.assertRaises(strax.DataNotAvailable):
+            self.rundb_sf._find(self.st.key_for('_super-run',self.all_targets[0]),
+                                write=False,
+                                allow_incomplete=False,
+                                fuzzy_for = [],
+                                fuzzy_for_options=[],
+                                )
 
     def test_rucio_format(self):
         """Test that document retrieval works for rucio files in the RunDB"""
@@ -159,7 +166,7 @@ class TestRunDBFrontend(unittest.TestCase):
         key = self.st.key_for(rucio_id, target)
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
-        did = straxen.rucio.key_to_rucio_did(key)
+        did = straxen.key_to_rucio_did(key)
         rd['data'] = [{'host': 'rucio-catalogue',
                        'location': 'UC_DALI_USERDISK',
                        'status': 'transferred',
