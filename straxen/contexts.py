@@ -6,6 +6,7 @@ from straxen import HAVE_ADMIX
 import os
 import warnings
 import typing as ty
+from pandas.util._decorators import deprecate_kwarg
 
 from straxen.common import pax_file
 
@@ -113,6 +114,10 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
     return st
 
 
+@deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
+@deprecate_kwarg('_maximum_run_number', 'maximum_run_number')
+@deprecate_kwarg('_include_rucio_remote', 'include_rucio_remote')
+@deprecate_kwarg('_add_online_monitor_frontend', 'include_online_monitor')
 def xenonnt_online(output_folder: str = './strax_data',
                    we_are_the_daq: bool = False,
                    minimum_run_number: int = 7157,
@@ -150,7 +155,7 @@ def xenonnt_online(output_folder: str = './strax_data',
     :param include_online_monitor: add the online monitor storage frontend.
     :param include_rucio_local: add the rucio local storage frontend.
         This is only needed if one wants to do a fuzzy search in the
-        data the runs databsase is out of sync with rucio
+        data the runs database is out of sync with rucio
     :param download_heavy: bool, whether or not to allow downloads of
         heavy data (raw_records*, less the aqmon)
 
@@ -166,20 +171,6 @@ def xenonnt_online(output_folder: str = './strax_data',
     :param kwargs: dict, context options
     :return: strax.Context
     """
-    # We changed some args to this context. Let's DepricationWarn about it
-    parsed_args, kwargs = _parse_xenonnt_online_kwargs(
-        argument_mapping=(['minimum_run_number', '_minimum_run_number'],
-                          ['maximum_run_number', '_maximum_run_number'],
-                          ['include_rucio_remote', '_include_rucio_remote'],
-                          ['include_online_monitor', '_add_online_monitor_frontend'],
-                          ),
-        minimum_run_number=minimum_run_number,
-        maximum_run_number=maximum_run_number,
-        include_rucio_remote=include_rucio_remote,
-        include_online_monitor=include_online_monitor,
-        **kwargs)
-    minimum_run_number, maximum_run_number, include_rucio_remote, include_online_monitor = parsed_args  # noqa
-
     context_options = {
         **straxen.contexts.xnt_common_opts,
         **kwargs}

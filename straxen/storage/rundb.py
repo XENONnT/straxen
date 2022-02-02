@@ -257,9 +257,9 @@ class RunDB(strax.StorageFrontend):
         return [results_dict.get(k.run_id, False)
                 for k in keys]
 
-    def _parse_documents(self, find: iter):
+    def _parse_documents(self, documents: iter):
         results_dict = dict()
-        for doc in find:
+        for doc in documents:
             # If you get a key error here there might be something off with the
             # projection
             datum = doc['data'][0]
