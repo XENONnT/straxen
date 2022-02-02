@@ -2,10 +2,11 @@ import os
 import re
 import typing
 import socket
-from tqdm import tqdm
 from copy import deepcopy
 import strax
-from .rucio import key_to_rucio_did, RucioLocalBackend
+from .rucio_remote import key_to_rucio_did
+from .rucio_local import RucioLocalBackend
+
 import warnings
 
 try:
@@ -23,12 +24,15 @@ class RunDB(strax.StorageFrontend):
     """
     Frontend that searches RunDB MongoDB for data.
     """
+
+    storage_type = strax.StorageType.LOCAL
     # Dict of alias used in rundb: regex on hostname
     hosts = {
         'dali': r'^dali.*rcc.*',
     }
 
     provide_run_metadata = True
+    progress_bar = False
 
     def __init__(self,
                  minimum_run_number=7157,
@@ -149,7 +153,7 @@ class RunDB(strax.StorageFrontend):
         if key.run_id.startswith('_'):
             # Superruns are currently not supprorted..
             raise strax.DataNotAvailable
-        
+
         if fuzzy_for or fuzzy_for_options:
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
@@ -224,7 +228,7 @@ class RunDB(strax.StorageFrontend):
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
         if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
-        if not len(keys):
+        if not keys:
             return []
         if not len(set([k.lineage_hash for k in keys])) == 1:
             raise ValueError("find_several keys must have same lineage")
@@ -235,7 +239,8 @@ class RunDB(strax.StorageFrontend):
         if self.runid_field == 'name':
             run_query = {'name': {'$in': [key.run_id for key in keys]}}
         else:
-            run_query = {f'{self.runid_field}': {'$in': [int(key.run_id) for key in keys if not key.run_id.startswith('_')]}}
+            run_query = {f'{self.runid_field}': {
+                '$in': [int(key.run_id) for key in keys if not key.run_id.startswith('_')]}}
         dq = self._data_query(keys[0])
 
         # dict.copy is sometimes not sufficient for nested dictionary
@@ -243,10 +248,18 @@ class RunDB(strax.StorageFrontend):
         projection.update({
             k: True
             for k in f'name number'.split()})
+        results_dict = self._parse_documents(
+            self.collection.find(
+                {**run_query, **dq},
+                projection=projection),
+        )
 
+        return [results_dict.get(k.run_id, False)
+                for k in keys]
+
+    def _parse_documents(self, documents: iter):
         results_dict = dict()
-        for doc in self.collection.find(
-                {**run_query, **dq}, projection=projection):
+        for doc in documents:
             # If you get a key error here there might be something off with the
             # projection
             datum = doc['data'][0]
@@ -255,12 +268,11 @@ class RunDB(strax.StorageFrontend):
                 dk = doc['name']
             else:
                 dk = f'{doc["number"]:06}'
-            try:
-                results_dict[dk] = datum['protocol'], datum['location']
-            except KeyError as e:
-                raise KeyError(f'Queries failed\n{run_query}\n{dq}\n{doc}') from e
-        return [results_dict.get(k.run_id, False)
-                for k in keys]
+            for required_field in ('protocol', 'location'):
+                if required_field not in datum:
+                    raise ValueError(f'Missing field {required_field} in {datum} from {doc}')
+            results_dict[dk] = datum['protocol'], datum['location']
+        return results_dict
 
     def _scan_runs(self, store_fields):
         query = self.number_query()
@@ -274,7 +286,9 @@ class RunDB(strax.StorageFrontend):
             projection=projection)
         for doc in strax.utils.tqdm(
                 cursor, desc='Fetching run info from MongoDB',
-                total=self.collection.count_documents(query)):
+                total=self.collection.count_documents(query),
+                disable=not self.progress_bar,
+        ):
             del doc['_id']
             if self.reader_ini_name_is_mode:
                 doc['mode'] = \
@@ -285,7 +299,7 @@ class RunDB(strax.StorageFrontend):
         if run_id.startswith('_'):
             # Superruns are currently not supported..
             raise strax.DataNotAvailable
-        
+
         if self.runid_field == 'name':
             run_id = str(run_id)
         else:
