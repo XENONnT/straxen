@@ -2,8 +2,11 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
-from .rucio import HAVE_ADMIX
+from straxen import HAVE_ADMIX
 import os
+import warnings
+import typing as ty
+from pandas.util._decorators import deprecate_kwarg
 
 from straxen.common import pax_file
 
@@ -111,19 +114,31 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
     return st
 
 
-def xenonnt_online(output_folder='./strax_data',
-                   we_are_the_daq=False,
-                   download_heavy=False,
-                   _minimum_run_number=7157,
-                   _maximum_run_number=None,
-                   _database_init=True,
-                   _forbid_creation_of=None,
-                   _include_rucio_remote=False,
-                   _rucio_path='/dali/lgrandi/rucio/',
-                   _raw_path='/dali/lgrandi/xenonnt/raw',
-                   _processed_path='/dali/lgrandi/xenonnt/processed',
-                   _add_online_monitor_frontend=False,
-                   _context_config_overwrite=None,
+@deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
+@deprecate_kwarg('_maximum_run_number', 'maximum_run_number')
+@deprecate_kwarg('_include_rucio_remote', 'include_rucio_remote')
+@deprecate_kwarg('_add_online_monitor_frontend', 'include_online_monitor')
+def xenonnt_online(output_folder: str = './strax_data',
+                   we_are_the_daq: bool = False,
+                   minimum_run_number: int = 7157,
+                   maximum_run_number: ty.Optional[int] = None,
+
+                   # Frontends
+                   include_rucio_remote: bool = False,
+                   include_online_monitor: bool = False,
+                   include_rucio_local: bool = False,
+
+                   # Frontend options
+                   download_heavy: bool = False,
+                   _rucio_path: str = '/dali/lgrandi/rucio/',
+                   _rucio_local_path: ty.Optional[str] = None,
+                   _raw_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/raw',
+                   _processed_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/processed',
+
+                   # Testing options
+                   _context_config_overwrite: ty.Optional[dict] = None,
+                   _database_init: bool = True,
+                   _forbid_creation_of: ty.Optional[dict] = None,
                    **kwargs):
     """
     XENONnT online processing and analysis
@@ -131,21 +146,28 @@ def xenonnt_online(output_folder='./strax_data',
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
     :param we_are_the_daq: bool, if we have admin access to upload data
-    :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less the aqmon)
-    :param _minimum_run_number: int, lowest number to consider
-    :param _maximum_run_number: Highest number to consider. When None
+    :param minimum_run_number: int, lowest number to consider
+    :param maximum_run_number: Highest number to consider. When None
         (the default) consider all runs that are higher than the
         minimum_run_number.
-    :param _database_init: bool, start the database (for testing)
-    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
-        being written (raw_records* is always forbidden).
-    :param _include_rucio_remote: allow remote downloads in the context
+    :param include_rucio_remote: add the rucio remote frontend to the
+        context
+    :param include_online_monitor: add the online monitor storage frontend.
+    :param include_rucio_local: add the rucio local storage frontend.
+        This is only needed if one wants to do a fuzzy search in the
+        data the runs database is out of sync with rucio
+    :param download_heavy: bool, whether or not to allow downloads of
+        heavy data (raw_records*, less the aqmon)
+
     :param _rucio_path: str, path of rucio
+    :param _rucio_local_path: str, path of local RSE of rucio. Only use
+        for testing!
     :param _raw_path: str, common path of the raw-data
     :param _processed_path: str. common path of output data
     :param _context_config_overwrite: dict, overwrite config
-    :param _add_online_monitor_frontend: bool, should we add the online
-        monitor storage frontend.
+    :param _database_init: bool, start the database (for testing)
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
+        being written (raw_records* is always forbidden).
     :param kwargs: dict, context options
     :return: strax.Context
     """
@@ -156,13 +178,15 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulseProcessing])
+    st.register([straxen.DAQReader,
+                 straxen.LEDCalibration,
+                 straxen.LEDAfterpulseProcessing])
 
     st.storage = [
         straxen.RunDB(
             readonly=not we_are_the_daq,
-            minimum_run_number=_minimum_run_number,
-            maximum_run_number=_maximum_run_number,
+            minimum_run_number=minimum_run_number,
+            maximum_run_number=maximum_run_number,
             runid_field='number',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
@@ -186,16 +210,19 @@ def xenonnt_online(output_folder='./strax_data',
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
     # Add the rucio frontend if we are able to
-    if HAVE_ADMIX:
-        rucio_frontend = straxen.rucio.RucioFrontend(
-            include_remote=_include_rucio_remote,
+    if include_rucio_remote and HAVE_ADMIX:
+        rucio_frontend = straxen.RucioRemoteFrontend(
             staging_dir=os.path.join(output_folder, 'rucio'),
             download_heavy=download_heavy,
         )
         st.storage += [rucio_frontend]
 
+    if include_rucio_local:
+        rucio_local_frontend = straxen.RucioLocalFrontend(path=_rucio_local_path)
+        st.storage += [rucio_local_frontend]
+
     # Only the online monitor backend for the DAQ
-    if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
+    if _database_init and (include_online_monitor or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
@@ -214,9 +241,25 @@ def xenonnt_online(output_folder='./strax_data',
                                                    straxen.check_loading_allowed,
                                                    )})
     if _context_config_overwrite is not None:
+        warnings.warn(f'_context_config_overwrite is deprecated, please pass to context as kwargs',
+                      DeprecationWarning)
         st.set_context_config(_context_config_overwrite)
 
     return st
+
+
+def _parse_xenonnt_online_kwargs(argument_mapping, **kwargs):
+    parsed_kwargs = {}
+    for correct_kwarg, old_kwarg in argument_mapping:
+        if old_kwarg in kwargs:
+            value = kwargs.pop(old_kwarg)
+            warnings.warn(f'Use {correct_kwarg} instead of {old_kwarg}',
+                          DeprecationWarning)
+        else:
+            value = kwargs.pop(correct_kwarg)
+        parsed_kwargs[correct_kwarg] = value
+    list_of_kwargs = [parsed_kwargs[k[0]] for k in argument_mapping]
+    return list_of_kwargs, kwargs
 
 
 def xenonnt_led(**kwargs):
@@ -231,7 +274,7 @@ def xenonnt_led(**kwargs):
         config=st.config,
         storage=st.storage,
         **st.context_config)
-    st.register([straxen.DAQReader, 
+    st.register([straxen.DAQReader,
                  straxen.LEDCalibration,
                  straxen.nVETORecorder,
                  straxen.nVETOPulseProcessing,
@@ -246,7 +289,7 @@ def xenonnt_simulation(
                 wfsim_registry='RawRecordsFromFaxNT',
                 cmt_run_id_sim=None,
                 cmt_run_id_proc=None,
-                cmt_version='global_v5',
+                cmt_version='global_ONLINE',
                 fax_config='fax_config_nt_design.json',
                 overwrite_from_fax_file_sim=False,
                 overwrite_from_fax_file_proc=False,
@@ -256,7 +299,8 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife'),
+                            electron_lifetime_liquid='elife',
+                ),
                 **kwargs):
     """
     The most generic context that allows for setting full divergent
@@ -267,7 +311,7 @@ def xenonnt_simulation(
     refer to detector simulation parameters.
 
     Arguments having _proc in their name refer to detector parameters that
-    are used for processing of simulations as done to the real datector
+    are used for processing of simulations as done to the real detector
     data. This means starting from already existing raw_records and finishing
     with higher level data, such as peaks, events etc.
 
@@ -289,7 +333,7 @@ def xenonnt_simulation(
         parameters for truth/raw_records from from fax_config file istead of CMT
     :param overwrite_from_fax_file_proc:  If true sets detector processing
         parameters after raw_records(peaklets/events/etc) from from fax_config
-        file istead of CMT
+        file instead of CMT
     :param cmt_option_overwrite_sim: Dictionary to overwrite CMT settings for
         the detector simulation part.
     :param cmt_option_overwrite_proc: Dictionary to overwrite CMT settings for
@@ -336,20 +380,41 @@ def xenonnt_simulation(
         cmt_run_id_proc = cmt_id
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
-    cmt_options = straxen.get_corrections.get_cmt_options(st)
+    cmt_options_full = straxen.get_corrections.get_cmt_options(st)
+
+    # prune to just get the strax options
+    cmt_options = {key: val['strax_option']
+                   for key, val in cmt_options_full.items()}
 
     # First, fix gain model for simulation
     st.set_config({'gain_model_mc': 
                         ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
     fax_config_override_from_cmt = dict()
     for fax_field, cmt_field in _config_overlap.items():
+        value = cmt_options[cmt_field]
+
+        # URL configs need to be converted to the expected format
+        if isinstance(value, str):
+            opt_cfg = cmt_options_full[cmt_field]
+            version = straxen.URLConfig.kwarg_from_url(value, 'version')
+            # We now allow the cmt name to be different from the config name
+            # WFSim expects the cmt name
+            value = (opt_cfg['correction'], version, True)
+
         fax_config_override_from_cmt[fax_field] = ('cmt_run_id', cmt_run_id_sim,
-                                                   *cmt_options[cmt_field])
+                                                   *value)
     st.set_config({'fax_config_override_from_cmt': fax_config_override_from_cmt})
 
     # and all other parameters for processing
     for option in cmt_options:
-        st.config[option] = ('cmt_run_id', cmt_run_id_proc, *cmt_options[option])
+        value = cmt_options[option]
+        if isinstance(value, str):
+            # for URL configs we can just replace the run_id keyword argument
+            # This will become the proper way to override the run_id for cmt configs
+            st.config[option] = straxen.URLConfig.format_url_kwargs(value, run_id=cmt_run_id_proc)
+        else:
+            # FIXME: Remove once all cmt configs are URLConfigs
+            st.config[option] = ('cmt_run_id', cmt_run_id_proc, *value)
 
     # Done with "default" usage, now to overwrites from file
     #
@@ -358,11 +423,20 @@ def xenonnt_simulation(
         fax_config = straxen.get_resource(fax_config, fmt='json')
         for fax_field, cmt_field in _config_overlap.items():
             if overwrite_from_fax_file_proc:
-                st.config[cmt_field] = ( cmt_options[cmt_field][0] + '_constant',
-                                         fax_config[fax_field])
+                if isinstance(cmt_options[cmt_field], str):
+                    # URLConfigs can just be set to a constant
+                    st.config[cmt_field] = fax_config[fax_field]
+                else:
+                    # FIXME: Remove once all cmt configs are URLConfigs
+                    st.config[cmt_field] = (cmt_options[cmt_field][0] + '_constant',
+                                            fax_config[fax_field])
             if overwrite_from_fax_file_sim:
+                # CMT name allowed to be different from the config name
+                # WFSim needs the cmt name
+                cmt_name = cmt_options_full[cmt_field]['correction']
+
                 st.config['fax_config_override_from_cmt'][fax_field] = (
-                         cmt_options[cmt_field][0] + '_constant', fax_config[fax_field])
+                         cmt_name + '_constant', fax_config[fax_field])
 
     # And as the last step - manual overrrides, since they have the highest priority
     # User customized for simulation
@@ -375,21 +449,27 @@ def xenonnt_simulation(
                              f'CMT to fax config!')
         for fax_key, cmt_key in _config_overlap.items():
             if cmt_key == option:
-                _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
+                cmt_name = cmt_options_full[option]['correction']
                 st.config['fax_config_override_from_cmt'][fax_key] = (
-                                            cmt_options[option][_name_index] + '_constant',
+                                            cmt_name + '_constant',
                                             cmt_option_overwrite_sim[option])
-                del _name_index
             del(fax_key, cmt_key)
     # User customized for simulation
     for option in cmt_option_overwrite_proc:
         if option not in cmt_options:
             raise ValueError(f'Overwrite option {option} is not using CMT by default '
                              'you should just use set config')
-        _name_index = 2 if 'cmt_run_id' in cmt_options[option] else 0
-        st.config[option] = (cmt_options[option][_name_index] + '_constant', 
-                             cmt_option_overwrite_proc[option])
-        del _name_index
+        
+        if isinstance(cmt_options[option], str):
+            # URLConfig options can just be set to constants, no hacks needed
+            # But for now lets keep things consistent for people
+            st.config[option] = cmt_option_overwrite_proc[option]
+        else:
+            # CMT name allowed to be different from the config name
+            # WFSim needs the cmt name
+            cmt_name = cmt_options_full[option]['correction']
+            st.config[option] = (cmt_name + '_constant', 
+                                 cmt_option_overwrite_proc[option])
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
 
@@ -450,7 +530,6 @@ x1t_common_config = dict(
     # Peaks
     # Smaller right extension since we applied the filter
     peak_right_extension=30,
-    s1_max_rise_time=60,
     s1_max_rise_time_post100=150,
     s1_min_coincidence=3,
     # Events*
@@ -463,7 +542,7 @@ x1t_common_config = dict(
     se_gain=28.2,
     avg_se_gain=28.2,
     rel_extraction_eff=1.0,
-    s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
+    s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',  # noqa
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
     g1=0.1426,
     g2=11.55/(1 - 0.63),

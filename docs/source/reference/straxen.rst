@@ -165,6 +165,14 @@ straxen.units module
    :undoc-members:
    :show-inheritance:
 
+straxen.url\_config module
+--------------------------
+
+.. automodule:: straxen.url_config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
