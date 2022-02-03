@@ -112,7 +112,9 @@ jobs:
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
+          ALLOW_WFSIM_TEST: 1
         run: |
+          pip install nestpy
           coverage run --source=straxen -m pytest -rsxv --durations 0
           coverage report
       - name: Coveralls
