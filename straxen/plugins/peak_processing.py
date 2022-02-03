@@ -404,7 +404,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 s2_dtype.append(((x + ' of previous s2 peak casting ' + r + ' largest shadow [cm]', sa + 'pre_' + x + '_s2'), np.float32))
                 s2_reordered_dtype.append(((x + ' of previous reordered s2 peak casting ' + r + ' largest shadow [cm]', sa + 'pre_' + x + '_s2_re'), np.float32))
             s2_corr_dtype.append((('previous ' + r + ' largest s2 shadow with position correlation [PE/ns]', sa + 'shadow_s2_corr'), np.float32))
-            s2_corr_dtype.append((('previous ' + r + ' largest s2 shadow position correlation CDF', sa + 'shadow_s2_prob'), np.float32))
+            s2_corr_dtype.append((('previous ' + r + ' largest s2 shadow position correlation PDF', sa + 'shadow_s2_prob'), np.float32))
         dt_dtype = []
         sum_dtype = []
         for si, s in zip(['s1', 's2', 'reordered s2'], ['_s1', '_s2', '_s2_re']):

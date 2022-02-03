@@ -833,7 +833,7 @@ class EventShadow(strax.Plugin):
             dtype.append((('distance to the s2 peak with ' + r + ' largest shadow [cm]', sa + 'shadow_distance'), np.float32))
             dtype.append((('distance to the reordered s2 peak with ' + r + ' largest shadow [cm]', sa + 'shadow_distance_re'), np.float32))
             dtype.append((('previous ' + r + ' largest s2 shadow with position correlation PDF [PE/ns]', sa + 'shadow_s2_corr'), np.float32))
-            dtype.append((('previous ' + r + ' largest s2 shadow position correlation CDF', sa + 'shadow_s2_prob'), np.float32))
+            dtype.append((('previous ' + r + ' largest s2 shadow position correlation PDF', sa + 'shadow_s2_prob'), np.float32))
         dtype.append((('index of the peak defining the event shadow', 'shadow_index'), np.int32))
         for s in ['s1', 's2']:
             for p, si in zip(['s1', 's2', 's2_re'], ['s1', 's2', 'reordered s2']):
