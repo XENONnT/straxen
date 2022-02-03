@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        python-version: ["3.10" ]
+        python-version: [3.8, 3.9, "3.10" ]
         test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
         # Only run coverage / no_database on py3.8
         exclude:
@@ -60,7 +60,6 @@ jobs:
 
       - name: Install requirements
         run: |
-           pip install git+https://github.com/JoranAngevaare/nestpy.git
            pip install -r extra_requirements/requirements-tests.txt
 
       - name: Install strax
@@ -102,21 +101,12 @@ jobs:
 
       - name: Test package python 3.7 - 3.9
         # This is running a normal test
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && matrix.python-version != '3.10'
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
         env:
           ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
           coverage run --source=straxen -m pytest --durations 0
-          coverage report
-      - name: Test package python 3.10
-        # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
-        env:
-          TEST_MONGO_URI: 'mongodb://localhost:27017/'
-          ALLOW_WFSIM_TEST: 1
-        run: |
-          coverage run --source=straxen -m pytest -rsxv --durations 0
           coverage report
       - name: Coveralls
         # Make the coverage report and upload
