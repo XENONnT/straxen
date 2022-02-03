@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        python-version: [ 3.8, 3.9, "3.10" ]
+        python-version: ["3.10" ]
         test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
         # Only run coverage / no_database on py3.8
         exclude:
@@ -59,7 +59,9 @@ jobs:
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
 
       - name: Install requirements
-        run: pip install -r extra_requirements/requirements-tests.txt
+        run: |
+           pip install nestpy
+           pip install -r extra_requirements/requirements-tests.txt
 
       - name: Install strax
         run: |
@@ -114,7 +116,6 @@ jobs:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
           ALLOW_WFSIM_TEST: 1
         run: |
-          pip install nestpy
           coverage run --source=straxen -m pytest -rsxv --durations 0
           coverage report
       - name: Coveralls
