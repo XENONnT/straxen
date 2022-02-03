@@ -99,7 +99,7 @@ jobs:
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
-      - name: Test package python 3.7 - 3.9
+      - name: Test package
         # This is running a normal test
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
         env:
