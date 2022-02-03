@@ -96,7 +96,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '0.6.1'
+    __version__ = '0.6.0'
 
     def infer_dtype(self):
         return dict(peaklets=strax.peak_dtype(
@@ -672,15 +672,21 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.4.1'
 
+    __version__ = '0.4.2'
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
                                                      self.config['gain_model'])
-
+     
     def infer_dtype(self):
-        return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
-
+        dtype =  strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
+        dtype += [('s1_prob', np.float32, 'S1 ln probability')]
+        dtype += [('s2_prob', np.float32, 'S2 ln probability')]
+        # shamless hack  
+        order = [0, 1, 2, 3, 4, 16, 17, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        dtype = [dtype[i] for i in order]
+        return dtype
+   
     def get_window_size(self):
         return 5 * (int(self.config['s2_merge_gap_thresholds'][0][1])
                     + self.config['s2_merge_max_duration'])
@@ -717,6 +723,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_buffer=int(self.config['s2_merge_max_duration']//np.gcd.reduce(peaklets['dt'])),
             )
             merged_s2s['type'] = 2
+            merged_s2s['s2_prob'] = 0 # remember this is ln prob so 0 means 100%
+            merged_s2s['s1_prob'] = -1.*np.inf
             
             # Updated time and length of lone_hits and sort again:
             lh = np.copy(lone_hits)
@@ -861,10 +869,17 @@ class Peaks(strax.Plugin):
     parallel = True
     save_when = strax.SaveWhen.EXPLICIT
 
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
 
     def infer_dtype(self):
-        return self.deps['peaklets'].dtype_for('peaklets')
+        dtype =  strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
+        dtype += [('s1_prob', np.float32, 'S1 ln probability')]
+        dtype += [('s2_prob', np.float32, 'S2 ln probability')]
+        # shamless hack  
+        order = [0, 1, 2, 3, 4, 16, 17, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        dtype = [dtype[i] for i in order]
+ 
+        return dtype
 
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above

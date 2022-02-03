@@ -16,7 +16,7 @@ common_opts = dict(
     register=[
         straxen.PulseProcessing,
         straxen.Peaklets,
-        straxen.PeakletClassification,
+        #straxen.PeakletClassification,
         straxen.BayesPeakletClassification,
         straxen.MergedS2s,
         straxen.Peaks,
