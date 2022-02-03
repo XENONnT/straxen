@@ -60,7 +60,7 @@ jobs:
 
       - name: Install requirements
         run: |
-           pip install nestpy
+           pip install git+https://github.com/JoranAngevaare/nestpy.git
            pip install -r extra_requirements/requirements-tests.txt
 
       - name: Install strax
