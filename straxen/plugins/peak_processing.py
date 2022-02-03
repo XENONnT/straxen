@@ -4,6 +4,7 @@ import tempfile
 import numpy as np
 import numba
 from enum import IntEnum
+from scipy.stats import halfcauchy
 
 import strax
 import straxen
