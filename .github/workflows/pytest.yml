@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        python-version: [3.8, 3.9, "3.10" ]
+        python-version: [ 3.8, 3.9, "3.10" ]
         test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
         # Only run coverage / no_database on py3.8
         exclude:
