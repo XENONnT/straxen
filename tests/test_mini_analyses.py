@@ -183,7 +183,7 @@ class TestMiniAnalyses(unittest.TestCase):
         f = getattr(self.st, function_name)
         f(nt_test_run_id, time_within=self.first_peak)
 
-    @unittest.skipIf(is_py310(), 'holoviews incompatible with py3.10')
+#     @unittest.skipIf(is_py310(), 'holoviews incompatible with py3.10')
     def test_waveform_display(self):
         """test st.waveform_display for one peak"""
         self._st_attr_for_one_peak('waveform_display')
@@ -323,7 +323,7 @@ class TestMiniAnalyses(unittest.TestCase):
             straxen.analyses.event_display._scatter_rec(_event=None,
                                                         recs=list(range(10)))
 
-    @unittest.skipIf(is_py310(), 'holoviews incompatible with py3.10')
+#     @unittest.skipIf(is_py310(), 'holoviews incompatible with py3.10')
     def test_interactive_display(self):
         """Run and save interactive display"""
         fig = self.st.event_display_interactive(nt_test_run_id,
