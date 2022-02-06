@@ -907,12 +907,11 @@ class EventShadow(strax.Plugin):
 class EventAmbience(strax.Plugin):
     """
     This plugin can calculate ambience at event level.
-    The lonehits, s0, s1, s2 before an event is its s1 peak's property.
-    The s2 near of an event is its first s2 peak's s2_near.
+    The event-level ambience is its first peak peak's ambience, same logic to EventShadow.
     References:
-        * v0.0.2 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.0.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.2'
+    __version__ = '0.0.1'
     depends_on = ('event_basics', 'peaks', 'peak_basics', 'peak_ambience')
     provides = 'event_ambience'
     save_when = strax.SaveWhen.EXPLICIT
@@ -924,8 +923,13 @@ class EventAmbience(strax.Plugin):
     def infer_dtype(self):
         dtype = []
         for si in self.origindtype:
-            dtype.append((('Number of ' + ' '.join(si.split('_')) + ' an event', 'n_' + si), np.int16))
-        dtype.append(('s1_n_hits', np.int32))
+            for s in ['', '_s1', '_s2']:
+                if '' == s:
+                    sig = 'event'
+                else:
+                    sig = s.split('_')[1]
+                dtype.append((('Number of ' + ' '.join(si.split('_')) + ' an ' + sig, 'n_' + si + s), np.int16))
+        dtype.append(('s1_n_hits', np.int32)) 
         dtype += strax.time_fields
         return dtype
 
@@ -939,14 +943,11 @@ class EventAmbience(strax.Plugin):
         res = np.zeros(len(events), self.dtype)
 
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
-            indices = [event['s1_index'], np.argwhere(peaks['type'][sp[0]:sp[-1]] == 2)[0] if (peaks['type'][sp[0]:sp[-1]] == 2).sum() > 0 else -1]
-            for si in self.origindtype:
-                if 'before' in si:
-                    idx = indices[0]
-                if 'near' in si:
-                    idx = indices[1]
+            indices = [event['s1_index'], event['s2_index'], np.argwhere(peaks['type'][sp[0]:sp[-1]] == 2)[0] if (peaks['type'][sp[0]:sp[-1]] == 2).sum() > 0 else -1]
+            for idx, key in zip(indices, ['_s1', '_s2', '']):
                 if idx >= 0:
-                    res['n_' + si][event_i] = peaks['n_' + si][sp[0]:sp[-1]][idx]
+                    for si in self.origindtype:
+                        res['n_' + si + key][event_i] = peaks['n_' + si][sp[0]:sp[-1]][idx]
         res['time'] = events['time']
         res['endtime'] = strax.endtime(events)
         return res
