@@ -129,6 +129,9 @@ class Events(strax.OverlapWindowPlugin):
         help="Make the alternate S1 (and likewise S2) the main S1 if "
              "occurs before the main S1."),
     strax.Option(
+        name='force_alt_s2_in_max_drift_time', default=True, infer_type=False,
+        help="Make sure alt_s2 is in max drift time starting from main S1"),
+    strax.Option(
         name='event_s1_min_coincidence',
         default=2, infer_type=False,
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
@@ -320,12 +323,8 @@ class EventBasics(strax.Plugin):
     def fill_result_i(self, event, peaks):
         """For a single event with the result_buffer"""
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
+        # number_of_peaks=0 selects all available s2 and sort by area
         largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
-
-        if self.config['force_main_before_alt']:
-            s2_order = np.argsort(largest_s2s['time'])
-            largest_s2s = largest_s2s[s2_order]
-            s2_idx = s2_idx[s2_order]
 
         if not self.config['allow_posts2_s1s'] and len(largest_s2s):
             s1_latest_time = largest_s2s[0]['time']
@@ -338,11 +337,18 @@ class EventBasics(strax.Plugin):
             s1_before_time=s1_latest_time,
             s1_min_coincidence=self.config['event_s1_min_coincidence'])
 
-        s2_idx, largest_s2s = self.set_alt_s2_properties(largest_s1s,
-                                                         s2_idx,
-                                                         largest_s2s,
-                                                         self.drift_time_max,
-                                                         )
+        if self.config['force_alt_s2_in_max_drift_time']:
+            s2_idx, largest_s2s = self.set_alt_s2_properties(largest_s1s,
+                                                             s2_idx,
+                                                             largest_s2s,
+                                                             self.drift_time_max,
+                                                             )
+
+        if self.config['force_main_before_alt']:
+            s2_order = np.argsort(largest_s2s['time'])
+            largest_s2s = largest_s2s[s2_order]
+            s2_idx = s2_idx[s2_order]
+
         self.set_sx_index(event, s1_idx, s2_idx)
         self.set_event_properties(event, largest_s1s, largest_s2s, peaks)
 
@@ -380,6 +386,9 @@ class EventBasics(strax.Plugin):
             else:
                 # Take the first valid largest other s2 as alt s2
                 new_alt_s2_index = np.arange(0, len(largest_alt_s2s))[mask][0] + 1
+                print(s2_idx[0:2])
+                print(largest_s2s[0:2])
+
                 s2_idx[1], s2_idx[new_alt_s2_index] = s2_idx[new_alt_s2_index], s2_idx[1]
                 largest_s2s[1], largest_s2s[new_alt_s2_index] = largest_s2s[new_alt_s2_index], largest_s2s[1]
                 s2_idx = s2_idx[0:2]
