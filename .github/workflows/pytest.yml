@@ -59,7 +59,8 @@ jobs:
           cache-dependency-path: 'extra_requirements/requirements-tests.txt'
 
       - name: Install requirements
-        run: pip install -r extra_requirements/requirements-tests.txt
+        run: |
+           pip install -r extra_requirements/requirements-tests.txt
 
       - name: Install strax
         run: |
@@ -98,22 +99,14 @@ jobs:
         if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
-      - name: Test package python 3.7 - 3.9
+      - name: Test package
         # This is running a normal test
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && matrix.python-version != '3.10'
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
         env:
           ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
           coverage run --source=straxen -m pytest --durations 0
-          coverage report
-      - name: Test package python 3.10
-        # We cannot test with WFSim (yet) so we run this test separately without ALLOW_WFSIM_TEST
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')  && matrix.python-version == '3.10'
-        env:
-          TEST_MONGO_URI: 'mongodb://localhost:27017/'
-        run: |
-          coverage run --source=straxen -m pytest -rsxv --durations 0
           coverage report
       - name: Coveralls
         # Make the coverage report and upload
@@ -122,7 +115,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.test == 'coveralls' && (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+        if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]')
         run: |
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
           coverage run --source=straxen --omit=./straxen/storage/rucio_remote.py setup.py test -v
