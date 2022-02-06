@@ -378,7 +378,6 @@ class EventBasics(strax.Plugin):
             alt_s2_before_max_drift_time = (largest_alt_s2s['center_time']
                                             - largest_s1s[0]['center_time']) < 1.01 * drift_time_max
             mask = alt_s2_after_s1 & alt_s2_before_max_drift_time
-
             if (~mask).all():
                 # If no other s2 survives, drop the alt s2 field
                 s2_idx = s2_idx[0:1]
@@ -389,7 +388,6 @@ class EventBasics(strax.Plugin):
                 # Only take the first and the valid largest alt_S2
                 s2_idx = np.take(s2_idx, (0, new_alt_s2_index))
                 largest_s2s = np.take(largest_s2s, (0, new_alt_s2_index))
-
         return s2_idx, largest_s2s
 
     @staticmethod
