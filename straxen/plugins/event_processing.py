@@ -907,7 +907,7 @@ class EventShadow(strax.Plugin):
 class EventAmbience(strax.Plugin):
     """
     This plugin can calculate ambience at event level.
-    The event-level ambience is its first peak peak's ambience, same logic to EventShadow.
+    Save Ambience of the main S1 peak, main S2 peaak and the first S2 peak in the event.
     References:
         * v0.0.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
