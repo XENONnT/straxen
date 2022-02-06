@@ -386,13 +386,9 @@ class EventBasics(strax.Plugin):
             else:
                 # Take the first valid largest other s2 as alt s2
                 new_alt_s2_index = np.arange(0, len(largest_alt_s2s))[mask][0] + 1
-                print(s2_idx[0:2])
-                print(largest_s2s[0:2])
-
-                s2_idx[1], s2_idx[new_alt_s2_index] = s2_idx[new_alt_s2_index], s2_idx[1]
-                largest_s2s[1], largest_s2s[new_alt_s2_index] = largest_s2s[new_alt_s2_index], largest_s2s[1]
-                s2_idx = s2_idx[0:2]
-                largest_s2s = largest_s2s[0:2]
+                # Only take the first and the valid largest alt_S2
+                s2_idx = np.take(s2_idx, (0, new_alt_s2_index))
+                largest_s2s = np.take(largest_s2s, (0, new_alt_s2_index))
 
         return s2_idx, largest_s2s
 
