@@ -53,7 +53,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
