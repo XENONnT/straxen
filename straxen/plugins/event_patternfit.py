@@ -19,7 +19,7 @@ export, __all__ = strax.exporter()
     strax.Option('s2_tf_model', help='S2 (x, y) optical data-driven model', infer_type=False,
                  default='XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'),
     strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.', infer_type=False,
-                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_31Oct2021.json'),
+                 default='s1_aft_dd_xyz_XENONnT_kr-83m_08Feb2022.json'),
     strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
                  default=1.2, infer_type=False,),
     strax.Option('gain_model', infer_type=False,
