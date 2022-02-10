@@ -216,3 +216,120 @@ class VetoProximity(strax.OverlapWindowPlugin):
         result['time'] = events['time']
         result['endtime'] = events['endtime']
         return result
+
+
+DIGITIZER_DELAY_CHANGE_RUNID = '021286'
+TO_BE_EXCPECTED_MAX_DELAY = 11e3
+
+@strax.takes_config(
+    strax.Option('tpc_internal_delay', default=[4817, 10137], type=int, track=True,
+                 help=('Internal delay between aqmon and regular TPC channels ins [ns]'
+                       'before/after run: 21286')
+                 ),
+    strax.Option('adc_threshold_nim_signal', default=500, type=int, track=True,
+                 help='Threshold in [adc] to search for the NIM signal'
+                 ),
+)
+class DetectorSynchronization(strax.Plugin):
+    """
+    Plugin which computes the synchronization delay betwenn TPC and
+    vetos.
+
+    Reference:
+        * xenon:xenonnt:dsg:mveto:sync_monitor
+    """
+    __version__ = '0.0.1'
+    depends_on = ('raw_records_aqmon',
+                  'raw_records_aqmon_nv',
+                  'raw_records_aux_mv')
+    provides = 'detector_time_offsets'
+    data_kind = 'detector_time_offsets'
+
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_fields
+        dtype += [((('Time offset for nV to synchornize with TPC'), 'time_offset_nv'), np.int64),
+                  ((('Time offset for mV to synchornize with TPC'), 'time_offset_mv'), np.int64)
+                  ]
+        return dtype
+
+    def compute(self, raw_records_aqmon,
+                raw_records_aqmon_nv,
+                raw_records_aux_mv,
+                start, end):
+        rr_tpc = raw_records_aqmon
+        rr_nv = raw_records_aqmon_nv
+        rr_mv = raw_records_aux_mv
+
+        extra_offset = 0
+        _mask_tpc = (rr_tpc['channel'] == 798)
+        if not np.any(_mask_tpc):
+            # For some runs in the beginning no signal has been acquired here.
+            # In that case we have to add the internal DAQ delay as an extra offset later.
+            _mask_tpc = (rr_tpc['channel'] == 801)
+            extra_offset = self.config['tpc_internal_delay'][self.run_id >= DIGITIZER_DELAY_CHANGE_RUNID]
+
+        hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.config['adc_threshold_nim_signal'])
+
+        _mask_mveto = (rr_mv['channel'] == 1084)
+        hits_mv = self.get_nim_edge(rr_mv[_mask_mveto], self.config['adc_threshold_nim_signal'])
+
+        _mask_nveto = rr_nv['channel'] == 813
+        hits_nv = self.get_nim_edge(rr_nv[_mask_nveto], self.config['adc_threshold_nim_signal'])
+        if not len(hits_nv):
+            # During SR0 sync signal was not recorded properly for the
+            # neutron-veto, hence take waveform itself as "hits".
+            _mask_nveto &= rr_nv['record_i'] == 0
+            hits_nv = rr_nv[_mask_nveto]
+
+        offsets_mv = self.estimate_delay(hits_tpc, hits_mv)
+        offsets_nv = self.estimate_delay(hits_tpc, hits_nv)
+        assert len(offsets_mv) == len(offsets_nv), 'Unequal number of sync signals!'
+
+        result = np.zeros(len(offsets_mv), dtype=self.dtype)
+        result['time'] = hits_tpc['time']
+        result['endtime'] = strax.endtime(hits_tpc)
+        result['time_offset_nv'] = offsets_nv + extra_offset
+        result['time_offset_mv'] = offsets_mv + extra_offset
+
+        return result
+
+    @staticmethod
+    def get_nim_edge(raw_records, threshold=500):
+        records = strax.raw_to_records(raw_records)
+        strax.baseline(records)
+        hits = strax.find_hits(records, min_amplitude=threshold)
+        return hits
+
+    def estimate_delay(self, hits_det0, hits_det1):
+        """
+        Function to estimate the average offset between two hits.
+        """
+        err_value = -10000000000
+        coinc_time = TO_BE_EXCPECTED_MAX_DELAY
+
+        offsets = []
+        count_valid = 0
+        prev_time = 0
+        for i in range(len(hits_det0)):
+            offset = self.find_offset_nearest(hits_det1['time'], hits_det0['time'][i])
+            time_to_prev = hits_det0['time'][i] - prev_time
+
+            # Additional check to avoid spurious signals
+            if (abs(offset) < coinc_time) & (time_to_prev > 1e10):
+                offsets.append(offset)
+                count_valid += 1
+                prev_time = hits_det0['time'][i]
+            else:
+                # Add err_value in case offset is not valid
+                offsets.append(err_value)
+
+        return np.array(offsets)
+
+    @staticmethod
+    def find_offset_nearest(array, value):
+        if not len(array):
+            return -TO_BE_EXCPECTED_MAX_DELAY
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return value-array[idx]
