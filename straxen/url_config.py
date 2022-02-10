@@ -29,7 +29,11 @@ def config_cache_size_mb():
     return straxen.total_size(_CACHES)//1e6
 
 
-def parse_val(val):
+def parse_val(val: str):
+    '''Attempt to parse a string value as
+    a python literal, falls back to returning just
+    the original string if cant be parsed.
+    '''
     try:
         val = literal_eval(val)
     except ValueError:
