@@ -234,8 +234,13 @@ class URLConfig(strax.Config):
 
         meth_arg = arg
         if isinstance(meth_arg, tuple):
+            # the argument is a sub-tree that needs to
+            # be evaluated before being passed to the preprocessor
+
+            # Apply any keyword argument overrides from sub-preprocessors
             meth_kwargs = dict(kwargs, **meth_arg[2])
 
+            # Evaluate the sub-tree
             meth_arg = cls.eval(*meth_arg[:2], meth_kwargs)
             
         # Just to be on the safe side
