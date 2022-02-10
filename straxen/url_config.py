@@ -29,7 +29,11 @@ def config_cache_size_mb():
     return straxen.total_size(_CACHES)//1e6
 
 
-def parse_val(val):
+def parse_val(val: str):
+    """Attempt to parse a string value as
+    a python literal, falls back to returning just
+    the original string if cant be parsed.
+    """
     try:
         val = literal_eval(val)
     except ValueError:
@@ -158,13 +162,14 @@ class URLConfig(strax.Config):
 
     @classmethod
     def eval(cls, protocol: str,
-                        arg: Union[str,tuple] = None,
-                        kwargs: dict = None):
+                  arg: Union[str,tuple] = None,
+                  kwargs: dict = None):
         '''Recusively dispatch protocols by name with argument arg and keyword arguments kwargs
            and return the value. If protocol does not exist, returnes arg
         :param protocol: name of the protocol or a URL
-        :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs)
-                    tuple, in which case sub-protocol will be evaluated and passed to protocol
+        :param arg: argument to pass to protocol, can be another (sub-protocol,
+            arg, kwargs) tuple, in which case sub-protocol will be evaluated
+            and passed to protocol
         :param kwargs: keyword arguments to be passed to the protocol
         :return: (Any) The return value of the protocol on these arguments
         '''
@@ -193,16 +198,16 @@ class URLConfig(strax.Config):
                             arg: Union[str,tuple] = None,
                             kwargs: dict = None):
 
-        '''Evaluate protocl, argument and kwarg overrides from any registered preprocessors.
+        '''Evaluate protocol, argument and kwarg overrides from any registered preprocessors.
         Preprocessors are called on the ast at plugin initialization,
         prior to config hashing. The results of this evaluation are used 
         to override the config URL given in the context config.
 
         :param protocol: name of the protocol or a URL
-        :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs)
-                    tuple, in which case any sub-preprocessors will be applied if they exist
-                    and sub-protocol will be evaluated and passed to the preprocessor
-                    of `protocol` if it exists
+        :param arg: argument to pass to protocol, can be another (sub-protocol,
+            arg, kwargs) tuple, in which case any sub-preprocessors will be
+            applied if they exist and sub-protocol will be evaluated and passed
+             to the preprocessor of `protocol` if it exists
         :param kwargs: keyword arguments to be passed to the protocol
         :return: The modified abstract syntax tree
         '''
@@ -299,9 +304,9 @@ class URLConfig(strax.Config):
 
     @classmethod
     def format_url_kwargs(cls, url, **kwargs):
-        '''Add keyword arguments to a URL.
+        """Add keyword arguments to a URL.
         Sorts all arguments by key for hash consistency
-        '''
+        """
         url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs = dict(extra_kwargs, **kwargs)
         arg_list = []
@@ -316,9 +321,12 @@ class URLConfig(strax.Config):
         return url + arg_str
 
     @classmethod
-    def ast_to_url(cls, protocol: Union[str,tuple], arg: Union[str,tuple] = None, kwargs: dict=None):
-        '''Convert a protocol abstract syntax tree to a valid URL 
-        '''
+    def ast_to_url(cls,
+                   protocol: Union[str, tuple],
+                   arg: Union[str, tuple] = None,
+                   kwargs: dict = None):
+        """Convert a protocol abstract syntax tree to a valid URL 
+        """
 
         if isinstance(protocol, tuple):
             protocol, arg, kwargs = protocol
@@ -350,8 +358,8 @@ class URLConfig(strax.Config):
 
     @classmethod
     def url_to_ast(cls, url, **kwargs):
-        '''Convert a URL to a protocol abstract syntax tree
-        '''
+        """Convert a URL to a protocol abstract syntax tree
+        """
         if not isinstance(url, str):
             raise TypeError(f'URL must be a string, got {type(url)}')
 
@@ -383,12 +391,11 @@ class URLConfig(strax.Config):
         
         return protocol, arg, kwargs
 
-
     def fetch(self, plugin):
-        '''override the Config.fetch method
+        """override the Config.fetch method
            this is called when the attribute is accessed
            from withing the Plugin instance
-        '''
+        """
         # first fetch the user-set value
 
         # from the config dictionary
@@ -430,12 +437,12 @@ class URLConfig(strax.Config):
     def validate(self, config,
                  run_id=None,   # TODO: will soon be removed
                  run_defaults=None, set_defaults=True):
-        '''This method is called by the context on plugin intialization
-            at this stage, the run_id and context config are already known but the
-            config values are not yet set on the plugin. Therefore its the perfect 
-            place to run any preprocessors on the config values to make any needed changes
-            before the configs are hashed.
-        '''
+        """This method is called by the context on plugin initialization
+        at this stage, the run_id and context config are already known but the
+        config values are not yet set on the plugin. Therefore its the perfect
+        place to run any preprocessors on the config values to make any needed
+        changes before the configs are hashed.
+        """
         super().validate(config, run_id, run_defaults, set_defaults)
 
         url = config[self.name]
@@ -473,15 +480,15 @@ class URLConfig(strax.Config):
 
     @classmethod
     def are_equal(cls, first, second):
-        '''Return whether two URLs are equivalent (have equal ASTs)
-        '''
+        """Return whether two URLs are equivalent (have equal ASTs)
+        """
         return cls.url_to_ast(first) == cls.url_to_ast(second)
 
     @classmethod
     def protocol_descr(cls):
-        '''Return a dataframe with descriptions
+        """Return a dataframe with descriptions
         and call signature of all registered protocols
-        '''
+        """
         rows = []
         for k, v in cls._LOOKUP.items():
             row = {
@@ -512,8 +519,8 @@ def get_correction(name: str,
 
 @URLConfig.register('resource')
 def xenon_resource(name: str,
-                 fmt: str = 'text',
-                 **kwargs):
+                   fmt: str = 'text',
+                   **kwargs):
     """
     Fetch a straxen resource
 

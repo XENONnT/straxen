@@ -56,6 +56,12 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 666)
 
+    def test_leading_zero_int(self):
+        self.st.set_config({'test_config': 'format://{value}?value=0666'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, '0666')
+        self.assertIsInstance(p.test_config, str)
+
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_cmt_protocol(self):
         self.st.set_config({'test_config': 'cmt://elife?version=v1&run_id=plugin.run_id'})
@@ -166,8 +172,8 @@ class TestURLConfig(unittest.TestCase):
         pickle.dumps(p)
 
     def test_cache_size(self):
-        '''test the cache helper functions
-        '''
+        """test the cache helper functions
+        """
         # make sure the value has a detectable size
         self.st.set_config({'cached_config': 'large-array://dfg'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
@@ -193,7 +199,6 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(filtered1, dict(a=1, b=2))
         func1(**filtered1)
 
-
         # test function that accepts wildcard kwargs
         def func2(**kwargs):
             return
@@ -202,8 +207,8 @@ class TestURLConfig(unittest.TestCase):
         func2(**filtered2)
 
     def test_ast_equality(self):
-        '''test whether ast-based URL comparison works
-        '''
+        """test whether ast-based URL comparison works
+        """
         url1 = 'format://{a}{b}{c}?a=1&b=2'
         url2 = 'format://{a}{b}{c}?b=2&a=1'
         assert straxen.URLConfig.are_equal(url1, url2)
