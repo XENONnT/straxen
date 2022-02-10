@@ -229,6 +229,9 @@ TO_BE_EXCPECTED_MAX_DELAY = 11e3
     strax.Option('adc_threshold_nim_signal', default=500, type=int, track=True,
                  help='Threshold in [adc] to search for the NIM signal'
                  ),
+    strax.Option('epsilon_offset', default=0, type=(int, float), track=True,
+                 help='Measured missing offset for nveto in [ns]'
+                 ),
 )
 class DetectorSynchronization(strax.Plugin):
     """
@@ -276,10 +279,12 @@ class DetectorSynchronization(strax.Plugin):
 
         _mask_nveto = rr_nv['channel'] == 813
         hits_nv = self.get_nim_edge(rr_nv[_mask_nveto], self.config['adc_threshold_nim_signal'])
+        nveto_extra_offset = 0
         if not len(hits_nv):
             # During SR0 sync signal was not recorded properly for the
             # neutron-veto, hence take waveform itself as "hits".
             _mask_nveto &= rr_nv['record_i'] == 0
+            nveto_extra_offset = self.config['epsilon_offset']
             hits_nv = rr_nv[_mask_nveto]
 
         offsets_mv = self.estimate_delay(hits_tpc, hits_mv)
@@ -289,7 +294,7 @@ class DetectorSynchronization(strax.Plugin):
         result = np.zeros(len(offsets_mv), dtype=self.dtype)
         result['time'] = hits_tpc['time']
         result['endtime'] = strax.endtime(hits_tpc)
-        result['time_offset_nv'] = offsets_nv + extra_offset
+        result['time_offset_nv'] = offsets_nv + extra_offset + nveto_extra_offset
         result['time_offset_mv'] = offsets_mv + extra_offset
 
         return result
