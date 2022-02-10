@@ -58,6 +58,7 @@ class URLConfig(strax.Config):
     _PREPROCESSORS = {}
     SCHEME_SEP = '://'
     QUERY_SEP = '?'
+    NAMESPACE_SEP = '.'
 
     def __init__(self, cache=0, **kwargs):
         """
@@ -74,15 +75,31 @@ class URLConfig(strax.Config):
             # do not enforce type on the URL
             self.type = OMITTED
         if cache:
+            # Create a cache dict for this instance 
             cache_len = 100 if cache is True else int(cache)
             cache = straxen.CacheDict(cache_len=cache_len)
             _CACHES[id(self)] = cache
 
     @property
     def cache(self):
+        '''Retrieves the cache dict associated with
+        this instance. We avoid saving the cache to
+        the instance because the contents may not be
+        picklable.
+        '''
         return _CACHES.get(id(self), {})
 
     def __set_name__(self, owner, name):
+        '''This method is part of the descriptor protocol
+        it is called when a URLConfig instance is being
+        assigned to a class e.g.
+        class SomePlugin(strax.Plugin):
+            cfg = straxen.URLConfig()
+        
+        After instantiation of the URLConfig instance
+        the __set_name__ method is called with 
+        owner=SomePlugin, name='cfg'
+        '''
         super().__set_name__(owner, name)
         self._PLUGIN_CLASS = owner
 
@@ -140,10 +157,11 @@ class URLConfig(strax.Config):
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
-    def dispatch_protocol(cls, protocol: str,
+    def eval(cls, protocol: str,
                         arg: Union[str,tuple] = None,
                         kwargs: dict = None):
-        '''dispatch protocol with argument and kwargs
+        '''Recusively dispatch protocols by name with argument arg and keyword arguments kwargs
+           and return the value. If protocol does not exist, returnes arg
         :param protocol: name of the protocol or a URL
         :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs)
                     tuple, in which case sub-protocol will be evaluated and passed to protocol
@@ -163,7 +181,7 @@ class URLConfig(strax.Config):
         meth = cls._LOOKUP[protocol]
 
         if isinstance(arg, tuple):
-            arg = cls.dispatch_protocol(*arg)
+            arg = cls.eval(*arg)
         
         # Just to be on the safe side
         kwargs = straxen.filter_kwargs(meth, kwargs)
@@ -171,11 +189,15 @@ class URLConfig(strax.Config):
         return meth(arg, **kwargs)
 
     @classmethod
-    def dispatch_preprocessor(cls, protocol: str,
+    def eval_preprocessors(cls, protocol: str,
                             arg: Union[str,tuple] = None,
                             kwargs: dict = None):
 
-        '''dispatch protocol preprocessors
+        '''Evaluate protocl, argument and kwarg overrides from any registered preprocessors.
+        Preprocessors are called on the ast at plugin initialization,
+        prior to config hashing. The results of this evaluation are used 
+        to override the config URL given in the context config.
+
         :param protocol: name of the protocol or a URL
         :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs)
                     tuple, in which case any sub-preprocessors will be applied if they exist
@@ -193,7 +215,7 @@ class URLConfig(strax.Config):
         if isinstance(arg, tuple) and protocol in cls._LOOKUP:
             # since this is a valid protocol with a sub-protocol, it may have 
             # a preprocessor registered for its sub-protocol
-            arg = cls.dispatch_preprocessor(*arg)
+            arg = cls.eval_preprocessors(*arg)
         
         if protocol not in cls._PREPROCESSORS:
             # no preprocessor registered for this protocol
@@ -209,7 +231,7 @@ class URLConfig(strax.Config):
         if isinstance(meth_arg, tuple):
             meth_kwargs = dict(kwargs, **meth_arg[2])
 
-            meth_arg = cls.dispatch_protocol(*meth_arg[:2], meth_kwargs)
+            meth_arg = cls.eval(*meth_arg[:2], meth_kwargs)
             
         # Just to be on the safe side
         kwargs = straxen.filter_kwargs(meth, kwargs)
@@ -250,13 +272,19 @@ class URLConfig(strax.Config):
         path, kwargs = cls.split_url_kwargs(url)
         return kwargs.get(key, None)
         
-    @staticmethod
-    def evaluate(value, **namespace):
-        '''Fetch an attribute from namespace
+    @classmethod
+    def lookup_value(cls, value, **namespace):
+        '''Optionally fetch an attribute from namespace
+        if value is a string with cls.NAMESPACE_SEP in
+        it, the string is split and the first part is used
+        to lookup an object in namespace and the second part
+        is used to lookup the value in the object.
+        If the value is not a string or the target object is
+        not in the namesapce, the value is returned as is.
         '''
 
         if isinstance(value, list):
-            return [URLConfig.evaluate(v, **namespace) for v in value]
+            return [cls.lookup_value(v, **namespace) for v in value]
 
         if isinstance(value, str) and '.' in value:
             name, _, key = value.partition('.')
@@ -381,7 +409,7 @@ class URLConfig(strax.Config):
         url, kwargs = self.split_url_kwargs(url)
         
         # resolve any referenced to plugin attributes
-        kwargs = {k: self.evaluate(v, config=plugin.config, plugin=plugin)
+        kwargs = {k: self.lookup_value(v, config=plugin.config, plugin=plugin)
                   for k, v in kwargs.items()}
 
         protocol, arg, kwargs = self.url_to_ast(url, **kwargs)
@@ -394,7 +422,7 @@ class URLConfig(strax.Config):
 
         # not in cache, lets fetch it
         if value is None:
-            value = self.dispatch_protocol(protocol, arg, kwargs)
+            value = self.eval(protocol, arg, kwargs)
             self.cache[key] = value
 
         return value
@@ -432,9 +460,9 @@ class URLConfig(strax.Config):
 
         # fetch any kwargs that reference other configs
         original_kwargs = kwargs
-        kwargs = {k: self.evaluate(v, config=config, plugin=plugin) for k,v in kwargs.items()}
+        kwargs = {k: self.lookup_value(v, config=config, plugin=plugin) for k,v in kwargs.items()}
         # dispatch any protocol preprocessors
-        protocol, arg, kwargs = self.dispatch_preprocessor(protocol, arg, kwargs)
+        protocol, arg, kwargs = self.eval_preprocessors(protocol, arg, kwargs)
 
         # update with any overrides from preprocessors
         original_kwargs.update(kwargs)
