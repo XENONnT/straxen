@@ -118,7 +118,7 @@ def _get_fake_daq_reader():
 
 
 def nt_test_context(target_context='xenonnt_online',
-                    deregister=('peak_veto_tags', 'events_tagged'),
+                    deregister=[],
                     **kwargs):
     if not straxen.utilix_is_configured(warning_message=False):
         kwargs.setdefault('_database_init', False)
