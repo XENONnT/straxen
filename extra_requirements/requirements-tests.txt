@@ -18,7 +18,7 @@ jupyter-client==7.1.2                           # for ipywidgets
 keras==2.8.0                                    # Tensorflow dependency
 matplotlib==3.5.1
 multihist==0.6.5
-nestpy==1.5.0; python_version<="3.9"            # WFSim dependency
+nestpy==1.5.1; python_version<="3.9"            # WFSim dependency
 git+https://github.com/NESTCollaboration/nestpy.git; python_version=="3.10"  # WFSim dependency
 npshmex==0.2.1                                  # Strax dependency
 numba==0.55.1
