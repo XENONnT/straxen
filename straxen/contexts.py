@@ -246,20 +246,6 @@ def xenonnt_online(output_folder: str = './strax_data',
     return st
 
 
-def _parse_xenonnt_online_kwargs(argument_mapping, **kwargs):
-    parsed_kwargs = {}
-    for correct_kwarg, old_kwarg in argument_mapping:
-        if old_kwarg in kwargs:
-            value = kwargs.pop(old_kwarg)
-            warnings.warn(f'Use {correct_kwarg} instead of {old_kwarg}',
-                          DeprecationWarning)
-        else:
-            value = kwargs.pop(correct_kwarg)
-        parsed_kwargs[correct_kwarg] = value
-    list_of_kwargs = [parsed_kwargs[k[0]] for k in argument_mapping]
-    return list_of_kwargs, kwargs
-
-
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
     st.set_context_config(
