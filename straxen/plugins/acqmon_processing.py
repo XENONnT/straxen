@@ -219,7 +219,9 @@ class VetoProximity(strax.OverlapWindowPlugin):
 
 
 DIGITIZER_DELAY_CHANGE_RUNID = '021286'
-TO_BE_EXCPECTED_MAX_DELAY = 11e3
+TO_BE_EXPECTED_MAX_DELAY = 11e3  # ns
+TO_BE_EXPECTED_MIN_CLOCK_DISTANCE = 9.9e9  # ns
+TO_BE_EXPECTED_MAX_CLOCK_DISTANCE = 10.1e9  # ns
 
 @strax.takes_config(
     strax.Option('tpc_internal_delay', default=[4817, 10137], type=int, track=True,
@@ -235,7 +237,7 @@ TO_BE_EXCPECTED_MAX_DELAY = 11e3
 )
 class DetectorSynchronization(strax.Plugin):
     """
-    Plugin which computes the synchronization delay betwenn TPC and
+    Plugin which computes the synchronization delay between TPC and
     vetos.
 
     Reference:
@@ -251,8 +253,10 @@ class DetectorSynchronization(strax.Plugin):
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
-        dtype += [((('Time offset for nV to synchornize with TPC'), 'time_offset_nv'), np.int64),
-                  ((('Time offset for mV to synchornize with TPC'), 'time_offset_mv'), np.int64)
+        dtype += [((('Time offset for nV to synchornize with TPC in [ns]'),
+                    'time_offset_nv'), np.int64),
+                  ((('Time offset for mV to synchornize with TPC in [ns]'),
+                    'time_offset_mv'), np.int64)
                   ]
         return dtype
 
@@ -270,7 +274,8 @@ class DetectorSynchronization(strax.Plugin):
             # For some runs in the beginning no signal has been acquired here.
             # In that case we have to add the internal DAQ delay as an extra offset later.
             _mask_tpc = (rr_tpc['channel'] == 801)
-            extra_offset = self.config['tpc_internal_delay'][self.run_id >= DIGITIZER_DELAY_CHANGE_RUNID]
+            _uses_new_delay = int(self.run_id) >= int(DIGITIZER_DELAY_CHANGE_RUNID)
+            extra_offset = self.config['tpc_internal_delay'][_uses_new_delay]
 
         hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.config['adc_threshold_nim_signal'])
 
@@ -311,19 +316,18 @@ class DetectorSynchronization(strax.Plugin):
         Function to estimate the average offset between two hits.
         """
         err_value = -10000000000
-        coinc_time = TO_BE_EXCPECTED_MAX_DELAY
 
         offsets = []
-        count_valid = 0
         prev_time = 0
         for i in range(len(hits_det0)):
             offset = self.find_offset_nearest(hits_det1['time'], hits_det0['time'][i])
             time_to_prev = hits_det0['time'][i] - prev_time
 
             # Additional check to avoid spurious signals
-            if (abs(offset) < coinc_time) & (time_to_prev > 1e10):
+            _correct_distance_to_prev_lock = time_to_prev >= TO_BE_EXPECTED_MIN_CLOCK_DISTANCE
+            _correct_distance_to_prev_lock = time_to_prev < TO_BE_EXPECTED_MAX_CLOCK_DISTANCE
+            if (abs(offset) < TO_BE_EXPECTED_MAX_DELAY) & _correct_distance_to_prev_lock:
                 offsets.append(offset)
-                count_valid += 1
                 prev_time = hits_det0['time'][i]
             else:
                 # Add err_value in case offset is not valid
@@ -334,7 +338,7 @@ class DetectorSynchronization(strax.Plugin):
     @staticmethod
     def find_offset_nearest(array, value):
         if not len(array):
-            return -TO_BE_EXCPECTED_MAX_DELAY
+            return -TO_BE_EXPECTED_MAX_DELAY
         array = np.asarray(array)
         idx = (np.abs(array - value)).argmin()
         return value-array[idx]
