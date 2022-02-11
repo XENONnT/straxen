@@ -147,6 +147,35 @@ def nt_test_context(target_context='xenonnt_online',
     return st
 
 
+def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
+    """
+    Hypothesis stragtegy which creates unqiue time intervals.
+
+    :param size: Number of intervals desired. Can be less if non-unique
+        intervals are found.
+    :param time_range: Time range in which intervals should be.
+    :param allow_zero_length: If true allow zero length intervals.
+    """
+    from hypothesis import strategies
+    strat = strategies.lists(elements=strategies.integers(*time_range),
+                             min_size=size * 2,
+                             max_size=size * 2
+                             ).map(lambda x: _convert_to_interval(x, allow_zero_length))
+    return strat
+
+
+def _convert_to_interval(time_stamps, allow_zero_length):
+    time_stamps = np.sort(time_stamps)
+    intervals = np.zeros(len(time_stamps) // 2, strax.time_dt_fields)
+    intervals['dt'] = 1
+    intervals['time'] = time_stamps[::2]
+    intervals['length'] = time_stamps[1::2] - time_stamps[::2]
+
+    if not allow_zero_length:
+        intervals = intervals[intervals['length'] > 0]
+    return np.unique(intervals)
+
+
 @strax.takes_config(
     strax.Option('secret_time_offset', default=0, track=False),
     strax.Option('recs_per_chunk', default=10, track=False),
