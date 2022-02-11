@@ -2,6 +2,7 @@ import strax
 import straxen
 import numba
 import numpy as np
+from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
 
@@ -218,13 +219,12 @@ class VetoProximity(strax.OverlapWindowPlugin):
         return result
 
 
-DIGITIZER_DELAY_CHANGE_RUNID = '021286'
 TO_BE_EXPECTED_MAX_DELAY = 11e3  # ns
 TO_BE_EXPECTED_MIN_CLOCK_DISTANCE = 9.9e9  # ns
 TO_BE_EXPECTED_MAX_CLOCK_DISTANCE = 10.1e9  # ns
 
 @strax.takes_config(
-    strax.Option('tpc_internal_delay', default=[4817, 10137], type=int, track=True,
+    strax.Option('tpc_internal_delay', type=immutabledict, track=True,
                  help=('Internal delay between aqmon and regular TPC channels ins [ns]'
                        'before/after run: 21286')
                  ),
@@ -274,8 +274,7 @@ class DetectorSynchronization(strax.Plugin):
             # For some runs in the beginning no signal has been acquired here.
             # In that case we have to add the internal DAQ delay as an extra offset later.
             _mask_tpc = (rr_tpc['channel'] == 801)
-            _uses_new_delay = int(self.run_id) >= int(DIGITIZER_DELAY_CHANGE_RUNID)
-            extra_offset = self.config['tpc_internal_delay'][_uses_new_delay]
+            extra_offset = self.get_delay()
 
         hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.config['adc_threshold_nim_signal'])
 
@@ -303,6 +302,13 @@ class DetectorSynchronization(strax.Plugin):
         result['time_offset_mv'] = offsets_mv + extra_offset
 
         return result
+
+    def get_delay(self):
+        delay = 0
+        for run_id, _delay in self.config['tpc_internal_delay']:
+            if int(self.run_id) >= run_id:
+                delay = _delay
+        return delay
 
     @staticmethod
     def get_nim_edge(raw_records, threshold=500):
