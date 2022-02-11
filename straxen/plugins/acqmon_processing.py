@@ -325,16 +325,20 @@ class DetectorSynchronization(strax.Plugin):
 
         offsets = []
         prev_time = 0
-        for i in range(len(hits_det0)):
-            offset = self.find_offset_nearest(hits_det1['time'], hits_det0['time'][i])
-            time_to_prev = hits_det0['time'][i] - prev_time
+        for ind in range(len(hits_det0)):
+            offset = self.find_offset_nearest(hits_det1['time'], hits_det0['time'][ind])
+            if ind:
+                # Cannot compute time to prev for first event
+                time_to_prev = hits_det0['time'][ind] - prev_time
+            else:
+                time_to_prev = 10e9
 
             # Additional check to avoid spurious signals
             _correct_distance_to_prev_lock = time_to_prev >= TO_BE_EXPECTED_MIN_CLOCK_DISTANCE
             _correct_distance_to_prev_lock = time_to_prev < TO_BE_EXPECTED_MAX_CLOCK_DISTANCE
             if (abs(offset) < TO_BE_EXPECTED_MAX_DELAY) & _correct_distance_to_prev_lock:
                 offsets.append(offset)
-                prev_time = hits_det0['time'][i]
+                prev_time = hits_det0['time'][ind]
             else:
                 # Add err_value in case offset is not valid
                 offsets.append(err_value)
