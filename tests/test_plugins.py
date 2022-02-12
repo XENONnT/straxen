@@ -2,7 +2,7 @@ import tempfile
 import strax
 import straxen
 from straxen.test_utils import nt_test_run_id, DummyRawRecords, testing_config_1T, test_run_id_1T
-
+from immutabledict import immutabledict
 
 def _run_plugins(st,
                  make_all=False,
@@ -48,8 +48,10 @@ def _run_plugins(st,
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
         for p in all_datatypes - set(_forbidden_plugins):
-            should_be_stored = (st._plugin_class_registry[p].save_when ==
-                                strax.SaveWhen.ALWAYS)
+            savewhen = st._plugin_class_registry[p].save_when
+            if isinstance(savewhen, (dict, immutabledict));
+                savewhen = savewhen[p]
+            should_be_stored = savewhen == strax.SaveWhen.ALWAYS
             if should_be_stored:
                 is_stored = st.is_stored(run_id, p)
                 assert is_stored, f"{p} did not save correctly!"
