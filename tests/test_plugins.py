@@ -4,6 +4,7 @@ import straxen
 from straxen.test_utils import nt_test_run_id, DummyRawRecords, testing_config_1T, test_run_id_1T
 from immutabledict import immutabledict
 
+
 def _run_plugins(st,
                  make_all=False,
                  run_id=nt_test_run_id,
@@ -49,7 +50,7 @@ def _run_plugins(st,
         all_datatypes = set(st._plugin_class_registry.keys())
         for p in all_datatypes - set(_forbidden_plugins):
             savewhen = st._plugin_class_registry[p].save_when
-            if isinstance(savewhen, (dict, immutabledict));
+            if isinstance(savewhen, (dict, immutabledict)):
                 savewhen = savewhen[p]
             should_be_stored = savewhen == strax.SaveWhen.ALWAYS
             if should_be_stored:
