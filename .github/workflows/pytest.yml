@@ -35,10 +35,8 @@ jobs:
       matrix:
         python-version: [ 3.8, 3.9, "3.10" ]
         test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
-        # Only run coverage / no_database on py3.8
+        # Only run on py3.8. Py3.10 is quite slow, so no coveralls
         exclude:
-          - python-version: 3.9
-            test: coveralls
           - python-version: "3.10"
             test: coveralls
           - python-version: 3.9
@@ -121,7 +119,9 @@ jobs:
           coverage run --source=straxen --omit=./straxen/storage/rucio_remote.py setup.py test -v
 
           # Run twice, once without and once with db access
-          rm ~/.xenon_config
+          if test -f ~/.xenon_config; then
+            rm ~/.xenon_config
+          fi
           bash .github/scripts/create_pre_apply_function.sh $HOME
           coverage run --append --source=straxen --omit=./straxen/storage/rucio_remote.py setup.py test -v
           coveralls --service=github

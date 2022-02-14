@@ -146,7 +146,7 @@ class InterpolatingMap:
 
         for map_name in self.map_names:
             # Specify dtype float to set Nones to nan
-            map_data = np.array(self.data[map_name], dtype=np.float)
+            map_data = np.array(self.data[map_name], dtype=np.float64)
             if len(self.coordinate_system) == len(map_data):
                 array_valued = len(map_data.shape) == 2
             else:
