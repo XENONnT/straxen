@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 
 def records_needed(pulse_length, samples_per_record):
     """Return records needed to store pulse_length samples"""
-    return np.ceil(pulse_length / samples_per_record).astype(np.int)
+    return np.ceil(pulse_length / samples_per_record).astype(np.int64)
 
 
 @export

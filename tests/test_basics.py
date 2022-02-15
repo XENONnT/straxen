@@ -85,8 +85,8 @@ class TestBasics(unittest.TestCase):
     def test_extract_latest_comment_nt(self, **opt):
         """Run the test for nt (but only 2000 runs"""
         self._extract_latest_comment(context='xenonnt_online',
-                                     _minimum_run_number=10_000,
-                                     _maximum_run_number=12_000,
+                                     minimum_run_number=10_000,
+                                     maximum_run_number=12_000,
                                      **opt)
 
     def test_extract_latest_comment_demo(self):
