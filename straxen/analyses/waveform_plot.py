@@ -222,12 +222,12 @@ def seconds_range_xaxis(seconds_range, t0=None):
     # Format the labels
     # I am not very proud of this code...
     def chop(x):
-        return np.floor(x).astype(np.int)
+        return np.floor(x).astype(np.int64)
 
     if t0 is None:
-        xticks_ns = np.round(xticks * int(1e9)).astype(np.int)
+        xticks_ns = np.round(xticks * int(1e9)).astype(np.int64)
     else:
-        xticks_ns = np.round((xticks - xticks[0]) * int(1e9)).astype(np.int)
+        xticks_ns = np.round((xticks - xticks[0]) * int(1e9)).astype(np.int64)
     sec = chop(xticks_ns // int(1e9))
     ms = chop((xticks_ns % int(1e9)) // int(1e6))
     us = chop((xticks_ns % int(1e6)) // int(1e3))

@@ -51,9 +51,6 @@ from .veto_hitlets import *
 from . import veto_events
 from .veto_events import *
 
-from . import veto_veto_regions
-from .veto_veto_regions import *
-
 from . import acqmon_processing
 from .acqmon_processing import *
 
