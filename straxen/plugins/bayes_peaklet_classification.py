@@ -16,15 +16,10 @@ class BayesPeakletClassification(strax.Plugin):
             )
 
     # Descriptor configs
-    bayes_cpt_config = straxen.URLConfig(
+    bayes_config_file = straxen.URLConfig(
             default='resource://'
-            '/data/xenonnt/wfsim/S1S2classification/models/conditional_probabilities_wglobalv6.npy?fmt=npy',
-        help='Bayes condition proability tables'
-    )
-    bayes_bins_config = straxen.URLConfig(
-            default='resource://'
-            '/data/xenonnt/wfsim/S1S2classification/models/discrete_parameter_bins_wglobalv6.npy?fmt=npy',
-        help='Bayes discrete bins'
+            '/data/xenonnt/wfsim/S1S2classification/models/conditional_probabilities_and_bins_v1_w_global_v6.npz?fmt=npy',
+        help='Bayes config files, conditional probabilities and Bayes discrete bins'
     )
     s2_prob_threshold = straxen.URLConfig(
         default=np.log(0.5), #best-fit value from optimization of ROC curve
@@ -42,8 +37,8 @@ class BayesPeakletClassification(strax.Plugin):
     def setup(self):
 
         self.class_prior = np.array([1. / self.classes for j in range(self.classes)])
-        self.bins = self.bayes_bins_config 
-        self.cpt = self.bayes_cpt_config
+        self.bins = self.bayes_config_file['bins'] 
+        self.cpt = self.bayes_config_file['cprob']
         
     def compute(self, peaklets):
 

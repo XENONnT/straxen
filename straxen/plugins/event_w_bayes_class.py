@@ -45,7 +45,7 @@ class EventwBayesClass(strax.Plugin):
         # events can be made out of one peak, this is to enusure user should not look at the other prob
         no_s1 = np.where(events['s1_index']==-1)
         if no_s1:
-            result[f's1_s1prob'][no_s1] = np.nan
-            result[f's1_s2prob'][no_s1] = np.nan
+            result[f's1_s1_ln_prob'][no_s1] = np.nan
+            result[f's1_s2_ln_prob'][no_s1] = np.nan
         
         return result
