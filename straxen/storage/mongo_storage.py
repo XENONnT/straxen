@@ -12,6 +12,7 @@ from pymongo.collection import Collection as pymongo_collection
 import utilix
 from straxen import uconfig
 
+
 export, __all__ = exporter()
 
 
@@ -336,7 +337,8 @@ class MongoDownloader(GridFsInterface):
 
                 with open(temp_path, 'wb') as stored_file:
                     # This is were we do the actual downloading!
-                    warn(f'Downloading {config_name} to {destination_path}')
+                    warn(f'Downloading {config_name} to {destination_path}',
+                         DownloadWarning)
                     stored_file.write(fs_object.read())
 
                 if not os.path.exists(destination_path):
@@ -381,6 +383,10 @@ class MongoDownloader(GridFsInterface):
         raise PermissionError(
             f'Cannot write to any of the cache_folder_alternatives: '
             f'{cache_folder_alternatives}')
+
+
+class DownloadWarning(UserWarning):
+    pass
 
 
 class CouldNotLoadError(Exception):
