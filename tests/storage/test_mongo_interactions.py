@@ -70,6 +70,10 @@ def test_online_monitor(target='online_peak_monitor', max_tries=3):
     straxen.get_mongo_uri()
     om = _patch_om_init(target)
     st.storage = [om]
+    k=st.key_for('0', 'online_peak_monitor')
+    from pprint import pprint
+    pprint(k.lineage)
+    assert False, (k, k.lineage)
     max_run = None
     for i in range(max_tries):
         query = {'provides_meta': True, 'data_type': target}
