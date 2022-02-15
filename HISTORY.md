@@ -1,3 +1,19 @@
+1.2.7 / 2022-02-03
+------------------
+- (rucio)storage reorganization (#866)
+- URLConfig documentation (#863)
+- Fix leading zeros error (#889)
+- Delete update context collection (#883)
+- update github actions (#884)
+- update print versions (#888)
+- deprecate old python versions (#906)
+- fix coveralls report (#905)
+- merges from development branch (#910)
+
+Notes:
+ - no lineage changes
+
+
 1.2.6 / 2022-01-18
 ------------------
 fixes/tests:

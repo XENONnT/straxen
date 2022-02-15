@@ -328,7 +328,7 @@ def software_he_veto(records, to_pe, chunk_end,
     veto_res = int(veto_res)
     if veto_res > np.iinfo(np.int16).max:
         raise ValueError("Veto resolution does not fit 16-bit int")
-    veto_length = np.ceil(veto_length / veto_res).astype(np.int) * veto_res
+    veto_length = np.ceil(veto_length / veto_res).astype(np.int64) * veto_res
     veto_n = int(veto_length / veto_res) + 1
 
     # 1. Find large peaks in the data.

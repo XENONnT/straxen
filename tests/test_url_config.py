@@ -50,6 +50,13 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 666)
 
+    def test_leading_zero_int(self):
+        self.st.set_config({'test_config': 'format://{value}?value=0666'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, '0666')
+        self.assertIsInstance(p.test_config, str)
+
+
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_cmt_protocol(self):
         self.st.set_config({'test_config': 'cmt://elife?version=v1&run_id=plugin.run_id'})
