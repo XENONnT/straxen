@@ -33,11 +33,6 @@ NV_HIT_OPTIONS = (
         default=('baseline_samples_nv', 'ONLINE', True), track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
-    strax.Option(
-        'min_samples_alt_baseline_nv',
-        default=None, track=True, infer_type=False,
-        help='Min. length of pulse before alternative baselineing via '
-             'pulse median is applied.'),
 )
 class nVETOPulseProcessing(strax.Plugin):
     """
@@ -96,12 +91,6 @@ class nVETOPulseProcessing(strax.Plugin):
                        baseline_samples=self.baseline_samples,
                        flip=True)
 
-        if self.config['min_samples_alt_baseline_nv']:
-            m = r['pulse_length'] > self.config['min_samples_alt_baseline_nv']
-            if np.any(m):
-                # Correcting baseline after PMT saturated signals
-                r[m] = median_baseline(r[m])
-
         strax.integrate(r)
 
         strax.zero_out_of_bounds(r)
@@ -113,43 +102,6 @@ class nVETOPulseProcessing(strax.Plugin):
         strax.zero_out_of_bounds(r)
 
         return r
-
-
-def median_baseline(records):
-    """
-    Function which computes the baseline according the pulse's median.
-
-    :param records: Records
-    """
-    # Count number of pulses
-    npulses = np.sum(records['record_i'] == 0)
-    fail_counter = 0
-
-    if npulses == 1:
-        # This case is simple
-        records = _correct_baseline(records)
-    else:
-        # Now the more complicated case in which we have multiple pulses
-        # First we have to group our record fragments into their
-        # pulses. Hence get record links and group indicies:
-        _, nextr = strax.record_links(records)
-        pulse_i = []
-        # Loop over the begining of every pulse and get all next indicies.
-        for i in np.where(records['record_i'] == 0)[0]:
-            inds = [i]
-            ind = nextr[i]
-            # Always look for next index as long there are some
-            while ind != -1:
-                inds += [ind]
-                ind = nextr[ind]
-                fail_counter += 1
-                assert fail_counter < 5000, 'Stuck in while-loop pulse is longer than 5000 fragments?!?'
-
-            pulse_i.append(inds)
-
-        for pi in pulse_i:
-            records[pi] = _correct_baseline(records[pi])
-    return records
 
 
 @numba.njit
