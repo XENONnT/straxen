@@ -144,4 +144,4 @@ def test_nv_for_dummy_rr():
     # test alt baselining too
     st2=st.new_context()
     st2.set_config({'min_samples_alt_baseline_nv': 5})
-    st.make(straxen.test_utils.nt_test_run_id, 'records_nv')
+    st2.make(straxen.test_utils.nt_test_run_id, 'records_nv')
