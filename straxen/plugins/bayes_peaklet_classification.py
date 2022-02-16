@@ -39,7 +39,7 @@ class BayesPeakletClassification(strax.Plugin):
         self.class_prior = np.array([1. / self.classes for j in range(self.classes)])
         self.bins = self.bayes_config_file['bins'] 
         self.cpt = self.bayes_config_file['cprob']
-        
+       
     def compute(self, peaklets):
 
         s1_ln_prob = np.zeros(len(peaklets), dtype=np.float32)
@@ -108,12 +108,12 @@ class BayesPeakletClassification(strax.Plugin):
 
         s1_ln_prob = lnposterior_normed[:, 0]
         s2_ln_prob = lnposterior_normed[:, 1]
-
-        class_assignments = np.zeros(len(peaklets))
+        '''
         # Probabilities to classes.
         # If doing peak classification, assign classes
         # At the moment we are only looking at the posterior probability 
-        '''
+        
+        class_assignments = np.zeros(len(peaklets))
         C_S1 = s2_ln_prob < self.s2_prob_threshold
         C_S2 = s2_ln_prob >= self.s2_prob_threshold
 
