@@ -1,13 +1,16 @@
-utilix>=0.4.0
-# git+git://github.com/AxFoundation/strax
-# tensorflow>=2.3.0  # Optional, to (re)do posrec
-# holoviews          # Optional, to enable wf display
 # datashader         # Optional, to enable wf display
+# holoviews          # Optional, to enable wf display
+# tensorflow>=2.3.0  # Optional, to (re)do posrec
 bokeh>=2.2.3
-multihist>=0.6.3
-matplotlib
-packaging
+commentjson
+gitpython
 immutabledict
+matplotlib
+multihist>=0.6.3
 numba>=0.50.0
-strax>=0.13.4
+numpy
+packaging
+pymongo<4.0.0
 requests
+strax>=1.1.7
+utilix>=0.5.3

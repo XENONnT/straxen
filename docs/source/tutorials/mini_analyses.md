@@ -2,6 +2,8 @@ Mini-analyses
 ==============
 Straxen includes some "canned" mini-analyses that you can invoke easily from any context. These usually make a single plot, though they could also return information. Just pass them a run_id and/or some time selection options:
 
+.. code-block:: python
+
     st = strax.contexts.demo()
     st.waveform_display(run_id, seconds_range=(0, 0.1))
 
@@ -16,6 +18,8 @@ A mini-analysis is just a function. It can do anything, such as making plots or 
 - It's required data is automatically loaded using that context if the user does not pass it.
 
 To declare a function a mini-analysis, just decorate it with `@straxen.mini_analysis`. Here's an example:
+
+.. code-block:: python
 
     @straxen.mini_analysis(requires=[
         'records',
@@ -39,10 +43,12 @@ Besides the data kinds (`records` and `peaks` in the example above), a mini-anal
 Your analysis will always get these arguments (if you add them to your function), even if the user does not pass them. For time_range, you will get the absolute time in ns even if the user uses one of the other time arguments (such as seconds_range). If no time_range is passed by the user, you will get the time range of the full run. If run metadata is not available, this will be estimated from the data that is passed in / loaded (and if that is empty, you will get (NaN, Nan)).
 
 If your analysis takes any other arguments, they must be keyword arguments. For example, `plot_pmt_pattern` takes an extra `array` argument:
-```
-@straxen.mini_analysis(requires=('records',))
-def plot_pmt_pattern(*, records, to_pe, array='bottom'):
-```
+
+.. code-block:: python
+
+    @straxen.mini_analysis(requires=('records',))
+    def plot_pmt_pattern(*, records, to_pe, array='bottom'):
+
 
 Mini-analysis or plugin?
 --------------------------

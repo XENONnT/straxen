@@ -1,4 +1,515 @@
-0.14.5 / 2020-01-29
+1.2.8 / 2022-02-16
+------------------
+Patch
+- Remove veto tagging plugins from straxen (#918)
+- Extend save when (#879)
+
+Testing
+- nestpy testing on py3.10 (#911)
+- Simplify requirements (#913)
+- Remove OM test that is collection status dependent (#921)
+- Remove data after testing (#923)
+
+Notes:
+- Removed nveto/mveto tagging plugins (#918)
+- Changed saving behavior of `pulse_counts` (#879)
+
+
+1.2.7 / 2022-02-03
+------------------
+- (rucio)storage reorganization (#866)
+- URLConfig documentation (#863)
+- Fix leading zeros error (#889)
+- Delete update context collection (#883)
+- update github actions (#884)
+- update print versions (#888)
+- deprecate old python versions (#906)
+- fix coveralls report (#905)
+- merges from development branch (#910)
+
+Notes:
+ - no lineage changes
+
+
+1.2.6 / 2022-01-18
+------------------
+fixes/tests:
+- Fix online monitor test (#882)
+
+notes:
+- No lineage changes
+
+1.2.5 / 2022-01-14
+------------------
+fixes/tests:
+ - test with py3.10 (#878)
+ - remove fixme error (e0e30d94ec8f5276c581da166787db72ba0eef4a)
+ - bump numba (#880)
+ - Tests for scada interface (#877)
+
+notes:
+ - No lineage changes
+
+1.2.4 / 2022-01-10
+------------------
+fixes/tests:
+ - Fixes for WFSim <-> CMT (#865)
+ - Tests for WFSim contexts (#855)
+
+notes:
+ - First 1.2.X version compatible with WFSim
+ - No lineage changes
+
+1.2.3 / 2022-01-10
+------------------
+- Bump numpy (#876)
+
+notes:
+ - Incompatible with WFSim
+
+1.2.2 / 2022-01-10
+------------------
+tests:
+ - Test for Mongo-down/uploader (#859)
+ - Test for rucio-documents in the rundb (#858)
+ - Test for bokeh_utils (#857)
+ - Tests for common.py fix #741 (#856)
+
+bugfix:
+ - Bump peaklets version (#873)
+
+notes:
+ - Lineage change for `peaklets` (#875)
+
+
+1.2.1 / 2021-12-27
+------------------
+fixes/tests:
+ - Add cmt tests and fix bug in apply_cmt_version (#860)
+ - Pin documentation requirements (#862)
+ - Add read the docs config (#861)
+ - Pymongo requirement should be <4.0 (#852)
+ 
+notes:
+ - Bug for `peaklets-uhfusstvab` due to (#875)
+ - No lineage changes
+ - Incompatible with WFSim
+
+
+1.2.0 / 2021-12-21
+-------------------
+major:
+
+* Update CorrectedAreas (instead of EnergyEstimates) (#817)
+* S2 pattern fit (#780)
+* Exclude S1 as triggering peak (#779) 
+* Two manual boundaries (updated 11/24/2021) (#775) 
+* Add main peaks' shadow for event shadow (#770)
+* Events synchronize (#761)
+* Implement peak-level shadow and event-level shadow refactor (#753) 
+* use channel tight coincidence level (#745)
+
+minor / patches:
+
+* Normalized line endings (#833)
+* Fix codefactor issues (#832)
+* Another try at codefactor (#831) 
+* URLConfig take protocol for nested keys (#826)
+* Rename tight coincidence (#825) 
+* Move URLConfig cache to global dictionary (#822)
+* Remove codefactor (#818) 
+* Performance update for binomial test (#783) 
+* URLConfig not in strax (#781)
+* Add refactor event building cut (#778) 
+* whipe online monitor data (#777)
+* Cache dependencies (#772) 
+* Update definition array_valued (#757) 
+
+fixes/tests:
+
+* Add test for filter_kwargs (#837)
+* Fix nv testing data (#830)  
+* Unittest for DAQreader (#828) 
+* Fix broken matplotlib/minianalyses (#815)
+* Itp test (#813)
+* Loose packaging requirement (#810) 
+* can we disable codefactor please (#809) 
+* Fix #781 (#808) 
+* Matplotlib changed requirements (#805) 
+* Pin pymongo (#801) 
+* Bump wfsim tests (#773) 
+* Patch peaks merging (#767)
+
+notes:
+ - Bug for `peaklets-uhfusstvab` due to (#875)
+ - plugins changed (new lineage) everything >= 'peaklet_classification'
+ - offline CMT versions don't work in this release
+ - Incompatible with WFSim
+
+
+1.1.3 / 2021-11-19
+-------------------
+minor / patches:
+- Add URL based configs (#758)
+- Add perpendicular wires handling info and function (#756)
+- Add a few special cases event_info_double (#740)
+- Process afterpulses on ebs (#727)
+- Add zenodo (#742)
+- Set check_broken=False for RucioFrontend.find (#749)
+- Explicitly set infer_dtype=False for all Options (#750)
+- Use alt z for alternative s1 binomial test (#724)
+
+fixes/tests:
+- update docs (#743)
+- Remove RuntimeError in RucioFrontend (#719)
+- cleanup bootstrax logic for target determination (#768)
+- Test installation without extra requirements (#725)
+- Adding code comments for corrected z position (#763)
+- Reactivate scada test (#764)
+- Added resource exception for Scada (#755)
+- test_widgets is broken? (#726)
+- Track bokeh (#759)
+- Fix keras requirement (#748)
+- Update requirements-tests.txt (#739)
+- Fix deprecation warning (#723)
+- Update test_misc.py (90f2fc30141704158a0e297ea05679515a62b397)
+
+notes:
+ - plugins changed (new lineage) are `event_info_double` and `event_pattern_fit`
+
+
+1.1.2 / 2021-10-27
+-------------------
+minor / patches:
+- Plugin for afterpulse processing (#549)
+- Veto online monitor (#707)
+- Refactor straxen tests (#703)
+- WFSim registry as argument for simulations context (#713)
+- Update S1 AFT map in event pattern fit (#697)
+- Refactor s2 correction (#704) 
+
+fixes/tests:
+- Set default drift time as nan (#700)
+- Revert auto inclusion of rucio remote #688 (#701)
+- fix bug in CMT (#710)
+- Fix one year querries (#711)
+- Test new numba (#702)
+- Unify CMT call in contexts (#717)
+- Small codefactor patch (#714)
+- test nv with nv data (#709)
+- Add small test for wfsim (#716)
+
+notes:
+ - plugins changed (new lineage) are:
+   - `afterpulses`
+   - `online_monitor_nv`
+   - `online_monitor_mv`
+   - `event_pattern_fit`
+   - `corrected_areas`
+
+1.1.1 / 2021-10-19
+-------------------
+ - Fix to test for RunDB frontend when no test DB is sourced (6da2233)
+
+
+1.1.0 / 2021-10-18
+-------------------
+major / minor:
+
+- Previous S2 Shadow Plugin draft (#664)
+- Use admix in straxen (#688)
+- Add posdiff plugin (#669)
+- updated S2 corrected area (#686)
+- Version bump of hitlets (#690)
+- Add n saturated channels (#691)
+- add small tool to extract run comments from database (#692)
+- Update online_monitor_nv to v0.0.3 (#696)
+
+
+patches and fixes:
+ 
+- Use read by index and check for NaNs (#661)
+- Add small feature for printing versions of git (#665)
+- Fix minianalyses from apply_selection (#666)
+- fix some warnings from testing (#667)
+- Add source to runs table (#673)
+- Pbar patch for rundb query (#685)
+- Implement SDSC as a local RSE for Expanse (#687)
+- Skips superruns in rucio frontend (#689)
+- Warn about non-loadable loggers (#693)
+- Add RunDb read/write-test (#695)
+- Fix bug in rucio frontend (#699)
+
+
+
+1.0.0 / 2021-09-01
+-------------------
+major / minor:
+    
+- merge s2 without s1 (#645)
+- First nVeto monitor plugin (#634)
+- Peak event veto tagging (#618)
+- Fix peaklet area bias (#601)
+- Add lone hit information to merged S2s. (#623)
+    
+
+patches and fixes:
+    
+- Fix n_hits of peaks (#646) 
+- Update requirements for strax (#644)
+- Modifications of nT simulation context (#602)
+- Straxer for other packages (#595)
+- [Bug fix] alt_s{i}_delay computation (#598)
+- Bump version refactor code for cleanliness. (#597)
+- Increase buffer size (#604)
+- Stop testing py3.6 (#621)
+- Remove online event monitor (#620)
+- Add matplotlib to test requirements (#626)
+- Fix rundb select runs with superruns (#627)
+- Change EventInfo to save when explicit (#628)
+- Update test data (#631)
+- Allow database to not be initialized (#636)
+- new plot_pmts (#637)
+- Speed up event pattern fit (#625)
+- kwargs for saver (#639)
+- Add a plugin for external trigger run on nVeto calibration (#630)
+- Fix veto event positions (#641)
+- Use rucio from straxen & nest RucioRemote imports (#592)
+
+
+0.19.3 / 2021-07-16
+-------------------
+- Rewrite EventBasics, set event level S1 tight coincidence (#569)
+- New nt sim context & update get correction from CMT implementation (#555)
+- Superruns (documentation) (#554, #594)
+
+bootstrax / live processing
+- Allow sub-mbs datarates and old runs (#572)
+- increase input_timeout buffer daq reader (#593)
+- Error logging bootstrax (#584)
+- remove the id from the traceback (#585)
+
+patches and fixes
+- Reactivate scada tests (#583)
+- Don't add test that you don't run - WFSim (#574)
+- Fixing veto intervals time (#587)
+- Patch scada interface (#588)
+- reduce codefactor (#590)
+
+0.19.2 / 2021-06-27
+-------------------
+- do not interpolate corrections if is an array (#570)
+
+0.19.1 / 2021-06-24
+-------------------
+- Fix merged S2s upgrade #548 (#566, a2f5062, #568)
+- Disable rucio frontend as default temporarily (#567)
+
+0.19.0 / 2021-06-23 (bugged)
+----------------------------
+minor changes
+- S1/S2 event patternfit and S1 AFT test (#499)
+- Change tight_coincidence (#564)
+- Fixing saturation correction bugs (#541)
+- Rewrite merge s2 (#548)
+- Compute width again after saturation correction (#542, #552)
+- Add rucio frontend (#472, #553)
+- Redo hit_thresholds (#543)
+- Standardize CMT options as (correction, version, nT=boolean) (#457, #532)
+
+patches and fixes:
+- z coordinate update (#535)
+- Fix example command (#547)
+- Don't import holoviews and ipywidgets (#551)
+- pre_apply_function from $HOME only in pytest (#559)
+- Rundb should not crash on fuzzy (#561)
+- Remove travis for testing from straxen (#557)
+- Fix missing info in bootstrax docs, fix #546 (#558)
+- Add scada interface to docs (#560)
+- Tweaks for new release 0.19.0 (#562)
+
+
+0.18.6-0.18.8 / 2021-06-03
+-------------------
+- Patches installation for pypi (#529, e880420, fce6d87)
+
+
+0.18.5 / 2021-06-03
+---------------------
+- Allow variable event duration (#494, #528)
+- Veto Proximity Plugin (#296)
+- Apply database function prior to returning the data (#497)
+- Max-size for rechunkable raw-records (#495)
+- Itp map patch (#471)
+- Bin updates (#502)
+- Split requirement files, set autoupdate dependabot (#504)
+- Fix failing tests (#503)
+- Reduce review dog verbosity (#498)
+- Reduce plugin testing time (#500)
+- Patch remap cabled (#501)
+- Fix veto veto regions (#493)
+
+
+0.18.4 / 2021-05-20
+---------------------
+- Documentation and package maintenance (#481)
+- Veto plugins (#465)
+- Changed nveto splitting thresholds. (#490)
+- Remove old unused contexts (#485)
+- Use_per_run_defaults explicitly for 1T (#484)
+- Set event_info_double as endpoint for kr (#480)
+- Fix difference between datetime and date (#473)
+- Fix _find for rucio to include transferred. Set kwarg defaults (#483)
+- Fix AFT close but not quite 1 (#477)
+- Fix online_monitor (#486)
+- Activated overlapping check for mveto again. (#489)
+
+
+0.18.3 / 2021-05-06
+---------------------
+- Update classifiers for pipy (#464)
+- Fix for scan runs query (0cc47f2 )
+
+
+0.18.2 / 2021-05-04
+---------------------
+- Nveto event display (#444)
+- do check for overlaps in NV (#458)
+- Refactor veto plugins (#463)
+- Remove zero gain hits (#468)
+- Time widget misc2 (#449)
+- Added changes for user credentials (#392)
+- Scada allowed, fix (#469)
+- Added support of dill for resource files (#459)
+- Reduce Pep8 gitHub bot verbosity (#466, #467)
+- fix 1T sim context to have working dep. trees (#461)
+- Reduced test complexity (#462)
+- test python 3.9 (#407)
+- fix keyerror for uploading data in selectruns (#455)
+
+
+0.18.1 / 2021-04-23
+---------------------
+- Allow faster NV/MV by bootstrax (#440)
+- Change records default processor (#441)
+- Require data to be transferred to dali to load (#445)
+- Wrap correction functions for mc optional config (#443)
+- Use did for finding several runs (#451, 59afa35)
+- Mveto events (#447)
+
+
+0.18.0 / 2021-04-16
+---------------------
+- Clustering and classification update (#436)
+- Documentation: add 1T, fix #31, compact config display (#434)
+- Implement nT S1 correction (#430)
+- Use CMT to get electron drift velocity (#437)
+- Set max-runnumber (#433)
+- Update update-context-collection.py (#438)
+- Raise notimplemented error for peak_min_pmts > 2 (#432)
+- Update apply_function_to_data (#431)
+- use strax.apply_selection in om (#435)
+
+
+0.17.0 / 2021-04-09
+--------------------
+- Extend event_basics and remove event_posrec_many (#420)
+- Add nveto event tests (#425)
+- Update veto_pulse_processing.py (#427)
+- add option abbreviate event_display (#418)
+- fix logic linked mode (#426)
+- fix test to use tempdir (#423)
+- Added output_notebook to data selector. (#421)
+- bootstrax, fix abandonning (#422)
+
+
+0.16.0 / 2021-04-02
+--------------------
+- add get_correction_from_cmt to corrections_services.py (#404, #409)
+- Updated on the nveto plugins and new event plugins (#416, #389)
+- New EventPositions for XENONnT (#396)
+- Check for overlapping raw_records in nT sims (#413)
+- Get n_veto gains from CMT (#406)
+- Bug fix: Added fixed minimal length for temp_hitlets. #415
+- use dependabot for actions (#414)
+- Event display update, record matrix and dynamic data selector (#401)
+- Remove duplicate call to 1T sim config (#411)
+- Fix abandonning (#412)
+
+0.15.9 / 2021-03-24
+--------------------
+- Use multiple targets for better online support (#397)
+- Use code style commentator (#399, #405)
+- Add daq-plots to minianalysies (#394)
+- Check for raw-record overlaps veto systems (#390)
+- Infer-target update (#395)
+- Prevent abandonment of done runs (#398)
+- Upload compressor from metadata to rundoc (#410)
+- Cleanup ajax (#402)
+- Context cleanup (#403)
+- Change default nT fax config (#391)
+
+
+0.15.8 / 2021-03-02
+--------------------
+- Update daq-tagging for abandoned runs (#374)
+- Remove nones and replace with nans for itp map (#388)
+- Check for raw-record overlaps (#387)
+
+
+0.15.7 / 2021-02-26
+--------------------
+- Fix for commentjson-package for zipped json (#386)
+
+
+0.15.6 / 2021-02-26
+--------------------
+- Scada updates (#378, #383)
+- Correct S2(x,y) with CMT (#382)
+- Correct elife with CMT (#385)
+- Replace json with commentjson (#384)
+
+
+0.15.5 / 2021-02-22
+--------------------
+- Patch version 0.15.3 (b5433bd)
+
+
+0.15.3 / 2021-02-22
+--------------------
+- Test with database (#360)
+- Fix issue #371 - alt s2 in event_posrec_many (#372)
+- Update issue templates (#375)
+- Link data structure to github page (#377)
+- Fixes/improvements for 'plot_pulses' (#379)
+- Remove unused code block (#380)
+
+
+0.15.2 / 2021-02-17
+--------------------
+- GCN and CNN version bump for CMT bugfix (#367)
+- Veto compression updates (#365)
+- Simulation context fixed gains (363)
+
+
+0.15.1 / 2021-02-11
+--------------------
+- Change event extensions (#364)
+
+
+0.15.0 / 2021-02-09
+--------------------
+- Datarate dependent compressor (#358)
+- Reduce n-files/run (#343)
+- PulseProcessing save_when = strax.SaveWhen.TARGET (#352)
+- Online events monitor (#349)
+- Changed nveto baseline length (#362)
+- Use DAQ logger (#354)
+- Small hit pattern plotting bugfix (#357)
+- Allow dynamic copy of dtype (#361)
+
+
+0.14.5 / 2021-01-29
 --------------------
 - Function for version printing (#344)
 - Extending the event window (#345)
@@ -6,7 +517,7 @@
 - Update create-utilix-config.sh (#348)
 
 
-0.14.4 / 2020-01-22
+0.14.4 / 2021-01-22
 --------------------
 - Nveto changes (#319)
 - travis test at pinned environments (#335)
@@ -15,12 +526,12 @@
 - Listen to utilix, remove depricated function from straxen #340
 
 
-0.14.3 / 2020-01-15
+0.14.3 / 2021-01-15
 --------------------
 - EventBasics dtype should be ordered (8665256)
 
 
-0.14.2 / 2020-01-15
+0.14.2 / 2021-01-15
 --------------------
 - Add MLP, CNN and GCN position reconstruction (#323, #331, #332)
 - Matplotlib event display (#326)
@@ -29,7 +540,7 @@
 - Scada-interface updates (#321,  #324)
 
 
-0.14.1 / 2020-01-04
+0.14.1 / 2021-01-04
 --------------------
 - bootstrax updates (39685a7, d0c3537, 874646a, df6e13f, 33d9da1, 2dfce7e)
 

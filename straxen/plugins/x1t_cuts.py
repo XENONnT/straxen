@@ -198,9 +198,9 @@ class S1MaxPMT(strax.LoopPlugin):
     """Removes events where the largest hit in S1 is too large
     port from lax.sciencerun0.py"""
     depends_on = ('events', 'event_basics', 'peak_basics')
-    dtype = [('cut_s1_max_pmt', np.bool, 'S1 max PMT cut')] + strax.time_fields
+    dtype = [('cut_s1_max_pmt', np.bool_, 'S1 max PMT cut')] + strax.time_fields
     provides = 'cut_s1_max_pmt'
-    __version__ = 1.2
+    __version__ = 1.3
 
     def compute_loop(self, event, peaks):
         ret = dict(cut_s1_max_pmt=True)
@@ -236,10 +236,16 @@ class SR1Cuts(strax.MergeOnlyPlugin):
 class FiducialEvents(strax.Plugin):
     depends_on = ['event_info', 'cut_fiducial_cylinder_1t']
     data_kind = 'fiducial_events'
+    __version__ = '0.0.1'
 
     def infer_dtype(self):
-        return strax.merged_dtype([self.deps[d].dtype_for(d)
-                                   for d in self.depends_on])
+        dtype = [self.deps[d].dtype_for(d) for d in self.depends_on]
+        dtype = strax.merged_dtype(dtype)
+        return dtype
 
     def compute(self, events):
-        return events[events['cut_fiducial_cylinder_1t']]
+        fiducial_events = events[events['cut_fiducial_cylinder_1t']]
+        result = np.zeros(len(fiducial_events), dtype=self.dtype)
+        # Cast the fiducual events dtype into the expected format
+        strax.copy_to_buffer(fiducial_events, result, '_fiducial_copy')
+        return result

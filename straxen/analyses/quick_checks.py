@@ -1,8 +1,8 @@
-import numpy as np
-from multihist import Hist1d, Histdd
 import matplotlib.pyplot as plt
-
+import numpy as np
 import straxen
+from multihist import Hist1d, Histdd
+from matplotlib.colors import LogNorm
 
 
 @straxen.mini_analysis(requires=('peak_basics',))
@@ -43,18 +43,18 @@ def plot_peaks_aft_histogram(
         plt.xlabel("Area [PE]")
         plt.ylabel("Range 50% area [ns]")
         labels = [
-            (12, 8, "AP?", 'white'),
-            (3, 150, "1PE\npileup", 'gray'),
+                     (12, 8, "AP?", 'white'),
+                     (3, 150, "1PE\npileup", 'gray'),
 
-            (30, 200, "1e", 'gray'),
-            (100, 1000, "n-e", 'w'),
-            (2000, 2e4, "Train", 'gray'),
+                     (30, 200, "1e", 'gray'),
+                     (100, 1000, "n-e", 'w'),
+                     (2000, 2e4, "Train", 'gray'),
 
-            (1200, 50, "S1", 'w'),
-            (45e3, 60, "αS1", 'w'),
+                     (1200, 50, "S1", 'w'),
+                     (45e3, 60, "αS1", 'w'),
 
-            (2e5, 800, "S2", 'w'),
-        ] + list(extra_labels)
+                     (2e5, 800, "S2", 'w'),
+                 ] + list(extra_labels)
 
         for x, w, text, color in labels:
             plt.text(x, w, text, color=color,
@@ -63,8 +63,7 @@ def plot_peaks_aft_histogram(
 
     plt.sca(axes[0])
     (mh / livetime_sec).sum(axis=2).plot(
-        log_scale=True,
-        vmin=rate_range[0], vmax=rate_range[1],
+        norm=LogNorm(vmin=rate_range[0], vmax=rate_range[1]),
         colorbar_kwargs=dict(extend='both'),
         cblabel='Peaks / (bin * s)')
     std_axes()
@@ -73,7 +72,8 @@ def plot_peaks_aft_histogram(
     mh.average(axis=2).plot(
         vmin=aft_range[0], vmax=aft_range[1],
         colorbar_kwargs=dict(extend='max'),
-        cmap=plt.cm.jet, cblabel='Mean area fraction top')
+        cmap=plt.cm.jet,
+        cblabel='Mean area fraction top')
 
     std_axes()
     plt.tight_layout()
@@ -138,8 +138,8 @@ def event_scatter(context, run_id, events,
     x = np.geomspace(*el_lim, num=1000)
     e_label = 1.2e-3
     for e_const, label in [
-            (0.1, ''), (1, '1\nkeV'), (10, '10\nkeV'),
-            (100, '100\nkeV'), (1e3, '1\nMeV'), (1e4, '')]:
+        (0.1, ''), (1, '1\nkeV'), (10, '10\nkeV'),
+        (100, '100\nkeV'), (1e3, '1\nMeV'), (1e4, '')]:
         plt.plot(x, e_const - x, c='k', alpha=0.2)
         plt.text(e_const - e_label, e_label, label,
                  bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'),
@@ -159,6 +159,7 @@ def event_scatter(context, run_id, events,
         plt.colorbar(label=color_dim,
                      extend=extend,
                      ax=[ax, ax3])
+
 
 @straxen.mini_analysis(requires=('event_info',))
 def plot_energy_spectrum(
@@ -195,8 +196,8 @@ def plot_energy_spectrum(
         if exposure_kg_sec is not None:
             unit = 'kg_day_kev'
         else:
-            unit = 'events'       
-    
+            unit = 'events'
+
     h = Hist1d(events['e_ces'],
                bins=(np.geomspace if geomspace else np.linspace)(
                    min_energy, max_energy, n_bins))
@@ -204,6 +205,8 @@ def plot_energy_spectrum(
     if unit == 'events':
         scale, ylabel = 1, 'Events per bin'
     else:
+        if exposure_kg_sec is None:
+            raise ValueError('you did not specify exposure_kg_sec')
         exposure_kg_day = exposure_kg_sec / (3600 * 24)
         if unit == 'kg_day_kev':
             scale = exposure_kg_day
@@ -217,13 +220,13 @@ def plot_energy_spectrum(
         else:
             raise ValueError(f"Invalid unit {unit}")
         scale *= h.bin_volumes()
-    
+
     h.plot(errors=errors,
            error_style='band',
            color=color,
            label=label,
            linewidth=1,
-           scale_histogram_by=1/scale,
+           scale_histogram_by=1 / scale,
            error_alpha=error_alpha)
     plt.yscale('log')
     if geomspace:

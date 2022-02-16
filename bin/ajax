@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.3.0'
+__version__ = '0.3.2'
 
 import argparse
 from datetime import datetime, timedelta
@@ -41,8 +41,6 @@ ajax_thresholds = {
     # Remove do not remove successfully processed runs if they have finished less than
     # this many seconds ago to e.g. allow for saving et cetera
     'wait_after_processing': 12 * 3600,  # s
-    # Remove the raw records of the neutron veto after this many seconds
-    'remove_raw_records_nv': 365.25 * 24 * 3600,  # s
     # Remove high level plugins if the run is this old
     # TODO
     #  change the value to a different one
@@ -52,7 +50,6 @@ ajax_thresholds = {
     'nap_time': 3600,  # s
     # Short nap time
     'short_nap': 5,  # s
-
 }
 
 # The low level data is taken care of by admix so we don't have to delete this. All other
@@ -86,7 +83,6 @@ def main_ajax():
               'high_level_data': clean_high_level_data,
               'non_latest': clean_non_latest,
               'unregistered': clean_unregistered,
-              'raw_records_nv': clean_raw_records_nv,
               'abandoned': clean_abandoned,
               'old_hash': clean_old_hash,
               'database': clean_database}
@@ -109,16 +105,12 @@ def main_ajax():
             if hostname == eb_can_clean_ceph:
                 clean_ceph()
                 clean_abandoned(delete_live=True)
-                # clean_database(delete_live=True)
 
                 # Don't do clean_unregistered by default (only if specified
                 # as specific argument on host "eb_can_clean_ceph") as
                 # someone might be storing some test data in the /live_data
                 # folder. That is bad practise though
                 # clean_unregistered(delete_live=True)
-
-            # Not yet implemented functions
-            # clean_raw_records_nv()
 
             clean_abandoned()
             clean_non_latest()
@@ -155,7 +147,7 @@ def clean_ceph():
     """
     set_state('clean_ceph')
     if not hostname == eb_can_clean_ceph:
-        log.info(f'clean_ceph::\tfor cleaning ceph, go to {eb_can_clean_ceph}')
+        log.info(f'for cleaning ceph, go to {eb_can_clean_ceph}')
         return
 
     rd = run_coll.find_one({'bootstrax.state': 'done',
@@ -169,10 +161,10 @@ def clean_ceph():
         return
     else:
         run_number = rd['number']
-        log.info(f'clean_ceph::\tremove data associated to run {run_number}')
+        log.info(f'remove data associated to run {run_number}')
         remove_run_from_host(run_number, delete_live=True, force=args.force,
                              reason='clean ceph')
-        log.info(f'clean_ceph::\tfinished for {run_number}, take a'
+        log.info(f'finished for {run_number}, take a'
                  f' {ajax_thresholds["short_nap"]} s nap')
         time.sleep(ajax_thresholds['short_nap'])
 
@@ -220,15 +212,15 @@ def clean_high_level_data():
                     continue
                 loc = ddoc['location']
                 if 'raw_records' in ddoc['type']:
-                    raise ValueError('clean_high_level_data::\t'
+                    raise ValueError(''
                                      'your regex syntax fails!')
                 elif os.path.exists(loc):
-                    log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    log.info(f'delete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute,
                                 reason='high level data')
                 else:
                     loc = loc + '_temp'
-                    log.info(f'clean_high_level_data::\tdelete data at {loc}')
+                    log.info(f'delete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute,
                                 reason='high level data')
 
@@ -276,44 +268,6 @@ def clean_non_latest():
                     log.info(f'clean_non_latest::\tdelete data at {loc}')
                     delete_data(rd, loc, ddoc['type'], test=not args.execute,
                                 reason='non latest')
-
-
-def check_sn_trigger():
-    """
-    Get the information of a supernova trigger from some place. If occurred we should
-    crash immediately to prevent data loss
-    """
-    raise NotImplementedError("Don't have SN checks yet")
-    # Check some database for supernova triggers
-    super_nova = False
-    # super_nova = bool(run_db['sn_trigger'].count_documents({'time':{'$exists':True}}))
-    if super_nova:
-        # Just brute force quit, no exception catching nonsense
-        sys.exit(-1)
-
-
-def clean_raw_records_nv():
-    """Based on the runsDB, remove the raw_records_nv if they are old"""
-    set_state('clean_raw_records_nv')
-    raise NotImplementedError("NV integration not yet part of AJAX")
-
-    check_sn_trigger()
-    rd = run_coll.find_one({'bootstrax.state': 'done',
-                            'status': 'transferred',
-                            'data.type': 'raw_records_nv',
-                            'data.host': hostname,
-                            'start':
-                                {'$lt': now(-ajax_thresholds["remove_raw_records_nv"])}})
-    if not rd:
-        return
-    for ddoc in rd['data']:
-        if ddoc.get('type', '') == 'raw_records_nv':
-            break
-    if ddoc.get('type', '') == 'raw_records_nv':
-        log.info(f'clean_raw_records_nv::\tNOT implemented but could have done something '
-                 f'with {ddoc["location"]}')
-
-    pass
 
 
 def clean_unregistered(delete_live=False):
@@ -843,10 +797,6 @@ def set_state(state):
 
 if __name__ == '__main__':
     print(f'---\n ajax version {__version__}\n---')
-    logging.basicConfig(level=logging.INFO,
-                        format='%(relativeCreated)6d %(threadName)s %(name)s %(message)s')
-    log = logging.getLogger()
-    hostname = socket.getfqdn()
 
     parser = argparse.ArgumentParser(
         description="XENONnT cleaning manager")
@@ -860,15 +810,16 @@ if __name__ == '__main__':
     parser.add_argument('--execute', action='store_true',
                         help="Execute the deletion commands. If not specified, ajax "
                              "assumes you want to test")
+    parser.add_argument('--logging', default='DEBUG',
+                        help="logging level (DEBUG/INFO/WARNING)")
 
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--number', type=int, metavar='NUMBER',
                          help="Process a single run, regardless of its status.")
     actions.add_argument('--clean', type=str, help=
-    'Run ajax in any of the following modes: clean [ceph, raw_records_nv, '  # noqa
+    'Run ajax in any of the following modes: clean [ceph, '  # noqa
     'unregistered, abandoned, high_level_data, all]\n'
     '"ceph": Remove successfully processed runs and abandoned runs from /live_data\n'
-    '"raw_records_nv": (re)move raw_records_nv if older than threshold\n'
     '"unregistered": remove all data from this host that is not registered in the rundb\n'
     '"abandoned": remove all the data associated to abandoned runs\n'
     '"high_level_data": remove all high level data on this host\n'
@@ -876,14 +827,25 @@ if __name__ == '__main__':
     '"database": check if all the entries that the database claims are actually here \n'
     '"old_hash": remove high level data if the hash doesnt equal the latest for this datatype \n'
     '"all": Clean everything that AJAX can get its hands on: unregistered data, high level '
-    'data, old raw_records_nv')
+    'data')
 
     args = parser.parse_args()
+    hostname = socket.getfqdn()
 
-    if args.clean == 'raw_records_nv':
-        log.info(f'main::\tDelete neutron veto data from {hostname} older than '
-                 f'{ajax_thresholds["remove_raw_records_nv"]} s')
-        raise NotImplementedError("I don't know what to do with the raw_records of the NV")
+    if not hasattr(logging, args.logging):
+        raise AttributeError(f'Set --logging to a logging level like DEBUG or INFO')
+    logging_level = getattr(logging, args.logging)
+    try:
+        import daqnt
+        log_name = 'ajax_' + hostname + ('' if args.execute else '_TESTING')
+        log = daqnt.get_daq_logger('main', log_name, level=logging_level)
+    except ModuleNotFoundError:
+        logging.basicConfig(
+            level=logging_level,
+            format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
+            datefmt='%m-%d %H:%M')
+        log = logging.getLogger()
+
     if args.delete_live:
         if not args.number:
             raise ValueError("Specify which number with --number")
@@ -914,7 +876,7 @@ if __name__ == '__main__':
     non_registered_folder = '/data/xenonnt_unregistered/'
     for f in (output_folder, non_registered_folder):
         if os.access(f, os.W_OK) is not True:
-            log_warning(f'main::\tNo writing access to {f}', property='fatal')
+            log_warning(f'main::\tNo writing access to {f}', priority='fatal')
             raise IOError(f'main::\tNo writing access to {f}')
 
     # Runs database

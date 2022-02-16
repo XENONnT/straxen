@@ -1,45 +1,44 @@
-import straxen
-import strax
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import strax
+import straxen
 
 
 @straxen.mini_analysis(requires=('raw_records',), warn_beyond_sec=5)
-def plot_pulses_tpc(context, raw_records, run_id, time_range,
+def plot_pulses_tpc(context, raw_records, run_id, time_range=None,
                     plot_hits=False, plot_median=False,
                     max_plots=20, store_pdf=False, path=''):
     plot_pulses(context, raw_records, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path)
-    
+
+
 @straxen.mini_analysis(requires=('raw_records_mv',), warn_beyond_sec=5)
-def plot_pulses_mv(context, raw_records_mv, run_id, time_range,
-                    plot_hits=False, plot_median=False,
-                    max_plots=20, store_pdf=False, path=''):
+def plot_pulses_mv(context, raw_records_mv, run_id, time_range=None,
+                   plot_hits=False, plot_median=False,
+                   max_plots=20, store_pdf=False, path=''):
     plot_pulses(context, raw_records_mv, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path, detector_ending='_mv')
 
 
 @straxen.mini_analysis(requires=('raw_records_nv',), warn_beyond_sec=5)
-def plot_pulses_nv(context, raw_records_nv, run_id, time_range,
+def plot_pulses_nv(context, raw_records_nv, run_id, time_range=None,
                    plot_hits=False, plot_median=False,
                    max_plots=20, store_pdf=False, path=''):
     plot_pulses(context, raw_records_nv, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path, detector_ending='_nv')
-    
+
 
 def plot_pulses(context, raw_records, run_id, time_range,
                 plot_hits=False, plot_median=False,
-                max_plots=20, store_pdf=False, path='', 
+                max_plots=20, store_pdf=False, path='',
                 detector_ending=''):
     """
     Plots nveto pulses for a list of records.
-
     :param context: Context to be used.
     :param plot_hits: If True plot hit boundaries including the left
         and right extension as orange shaded regions.
@@ -56,21 +55,35 @@ def plot_pulses(context, raw_records, run_id, time_range,
         string for TPC '_nv' for neutron-veto and '_mv' muon-veto. 
     """
     # Register records plugin to get settings
-    p = context.get_single_plugin(run_id, 'records'+detector_ending)
+    p = context.get_single_plugin(run_id, 'records' + detector_ending)
 
     # Compute strax baseline and baseline_rms:
     records = strax.raw_to_records(raw_records)
     records = strax.sort_by_time(records)
     strax.zero_out_of_bounds(records)
+
+    baseline_key = [key for key in p.config.keys() if 'baseline_samples' in key][0]
+
+    if isinstance(p.config[baseline_key], int):
+        baseline_samples = p.config[baseline_key]
+    else:
+        baseline_samples = straxen.get_correction_from_cmt(
+            run_id, p.config[baseline_key])
+
     strax.baseline(records,
-                   baseline_samples=p.config['baseline_samples'+detector_ending],
+                   baseline_samples=baseline_samples,
                    flip=True)
 
     nfigs = 1
+    if store_pdf and time_range is None:
+        raise ValueError(f'Specify time range!')
     if store_pdf:
-        fname = f'pulses_{run_id}_{time_range["time"]}_{time_range["time"]}.pdf'
+        from matplotlib.backends.backend_pdf import PdfPages
+        fname = f'pulses_{run_id}_{time_range[0]}_{time_range[1]}.pdf'
         fname = os.path.join(path, fname)
         pdf = PdfPages(fname)
+
+    hits = None  # needed for delete if false
 
     for inds in _yield_pulse_indices(raw_records):
         # Grouped our pulse so now plot:
@@ -86,13 +99,21 @@ def plot_pulses(context, raw_records, run_id, time_range,
         baseline = r_pulse[0]['baseline']
         baseline_rms = r_pulse[0]['baseline_rms']
         axes.axhline(baseline, ls='solid',
-                     color='k', label=f'Strax Bas. +/-RMS:\n ({baseline:.2f}+/-{baseline_rms:.2f}) ADC')
+                     color='k',
+                     label=f'Strax Bas. +/-RMS:\n ({baseline:.2f}+/-{baseline_rms:.2f}) ADC')
         xlim = axes.get_xlim()
         axes.fill_between(xlim,
                           [baseline + baseline_rms] * 2,
                           [baseline - baseline_rms] * 2,
                           color='gray', alpha=0.4
                           )
+
+        # check type of p.hit_thresholds
+        if isinstance(p.hit_thresholds, int):
+            thr = p.hit_thresholds
+        elif isinstance(p.hit_thresholds, np.ndarray):
+            thr = p.hit_thresholds[rr_pulse['channel']][0]
+
         if plot_median:
             # Plot median if asked.
             # Have to make pulse again:
@@ -103,25 +124,24 @@ def plot_pulses(context, raw_records, run_id, time_range,
                          color='k',
                          label=f'Median Bas.: {median:.0f} ADC')
 
-            axes.axhline(median - p.config['hit_min_amplitude_nv'],
+            axes.axhline(median - thr,
                          ls='dotted', color='orange'
                          )
 
-        hits = None  # needed for delet if false
         if plot_hits:
-            if detector_ending:
-                min_amplitude = p.config['hit_min_amplitude'+detector_ending]
-            else:
-                min_amplitude = straxen.hit_min_amplitude(p.config['hit_min_amplitude'])
-                min_amplitude = min_amplitude[rr_pulse[0]['channel']]
-            
+            min_amplitude = thr
+
             axes.axhline(baseline - min_amplitude,
                          color='orange', label='Hitfinder threshold')
 
             hits = strax.find_hits(r_pulse,
                                    min_amplitude=min_amplitude
                                    )
-            le, re = p.config['save_outside_hits'+detector_ending]
+            if detector_ending != '_he':
+                # We don't have 'save_outside_hits_he' at all!
+                le, re = p.config['save_outside_hits' + detector_ending]
+            else:
+                le, re = p.config['save_outside_hits']
             start = (hits['time'] - r_pulse[0]['time']) / r_pulse[0]['dt'] - le
             end = (strax.endtime(hits) - r_pulse[0]['time']) / r_pulse[0]['dt'] + re
 
@@ -138,7 +158,7 @@ def plot_pulses(context, raw_records, run_id, time_range,
             pdf.savefig(fig)
 
         nfigs += 1
-        if nfigs > max_plots:
+        if max_plots is not None and nfigs > max_plots:
             break
 
     if store_pdf:
@@ -149,11 +169,9 @@ def plot_pulses(context, raw_records, run_id, time_range,
 def _yield_pulse_indices(records):
     """
     Function which yields indices of records which are within a pulse.
-
     Note:
         Only finds fragments of the pulse if record_i == 0 is within list
         of records.
-
     :yields: indices of fragments to make the corresponding pulse.
     """
     # Get record links and find start indicies:

@@ -50,13 +50,11 @@ class ArtificialDeadtimeInserted(UserWarning):
                  help="Directory where readers put data"),
 
     # DAQReader settings
-    strax.Option('safe_break_in_pulses', default=1000, track=False,
+    strax.Option('safe_break_in_pulses', default=1000, track=False, infer_type=False,
                  help="Time (ns) between pulses indicating a safe break "
                       "in the datastream -- gaps of this size cannot be "
                       "interior to peaklets."),
-    strax.Option('erase', default=False, track=False,
-                 help="Delete reader data after processing"),
-    strax.Option('channel_map', track=False, type=immutabledict,
+    strax.Option('channel_map', track=False, type=immutabledict, infer_type=False,
                  help="immutabledict mapping subdetector to (min, max) "
                       "channel number."))
 class DAQReader(strax.Plugin):
@@ -89,10 +87,20 @@ class DAQReader(strax.Plugin):
     data_kind = immutabledict(zip(provides, provides))
     depends_on = tuple()
     parallel = 'process'
-    rechunk_on_save = False
+    chunk_target_size_mb = 50
+    rechunk_on_save = immutabledict(
+        raw_records=False,
+        raw_records_he=False,
+        raw_records_aqmon=True,
+        raw_records_nv=False,
+        raw_records_aqmon_nv=True,
+        raw_records_aux_mv=True,
+        raw_records_mv=False,
+    )
     compressor = 'lz4'
     __version__ = '0.0.0'
-
+    input_timeout = 300
+    
     def infer_dtype(self):
         return {
             d: strax.raw_record_dtype(
@@ -232,7 +240,7 @@ class DAQReader(strax.Plugin):
                     # We still have to break somewhere, but this can involve
                     # throwing away data.
                     # Let's do it at the end of the chunk
-                    # TODO: find a better time, e.g. a longish-but-not-quite
+                    # Maybe find a better time, e.g. a longish-but-not-quite
                     # satisfactory gap
                     break_time = end - min_gap
 
@@ -260,9 +268,6 @@ class DAQReader(strax.Plugin):
                                             self._artificial_dead_time(
                                                 start=dead_time_start,
                                                 end=break_time, dt=self.dt_max)]))
-
-        if self.config['erase']:
-            shutil.rmtree(path)
         return result, break_time
 
     def _artificial_dead_time(self, start, end, dt):

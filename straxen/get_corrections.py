@@ -1,111 +1,215 @@
 import numpy as np
 import strax
 import straxen
-from warnings import warn
+import typing as ty
+from functools import wraps
+from straxen.corrections_services import corrections_w_file
+from straxen.corrections_services import single_value_corrections
+from straxen.corrections_services import arrays_corrections
+
 
 export, __all__ = strax.exporter()
 __all__ += ['FIXED_TO_PE']
 
 
+def correction_options(get_correction_function):
+    """
+    A wrapper function for functions here in the get_corrections module
+    Search for special options like ["cmt_run_id", "prefix", "suffix"] and apply arg shuffling accordingly
+    Example confs:
+        ('cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
+        ('suffix', suffix, 'cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
+
+    :param get_correction_function: A function here in the get_corrections module
+    :returns: The function wrapped with the option search
+    """
+    @wraps(get_correction_function)
+    def correction_options_wrapped(run_id, conf, *arg):
+        if isinstance(conf, tuple):
+            set_prefix = ['prefix', False, None]
+            set_suffix = ['suffix', False, None]
+            set_cmt_run_id = ['cmt_run_id', False, None]
+
+            for tag in [set_cmt_run_id, set_prefix, set_suffix]:
+                if tag[0] in conf:
+                    i_tag = conf.index(tag[0])
+                    tag[:] = [tag[0], True, conf[i_tag + 1]]
+                    conf = [item for i, item in enumerate(conf) if i not in [i_tag, i_tag + 1]]
+
+            if len(conf) == 1:
+                conf = conf[0]
+            else:
+                if set_prefix[1]:
+                    conf[0] = set_prefix[2] + '_' + conf[0]
+                if set_suffix[1]:
+                    conf[0] = conf[0] + '_' + set_suffix[2]
+                if set_cmt_run_id[1]:
+                    run_id = set_cmt_run_id[2]
+
+                conf = tuple(conf)
+
+        # Else use the get corrections as they are
+        return get_correction_function(run_id, conf, *arg)
+
+    return correction_options_wrapped
+
+
 @export
-def get_to_pe(run_id, gain_model, n_pmts):
-    if not isinstance(gain_model, tuple):
-        raise ValueError(f"gain_model must be a tuple")
-    if not len(gain_model) == 2:
-        raise ValueError(f"gain_model must have two elements: "
-                         f"the model type and its specific configuration")
-    model_type, model_conf = gain_model
+@correction_options
+def get_correction_from_cmt(run_id, conf):
+    """
+    Get correction from CMT general format is
+    conf = ('correction_name', 'version', True)
+    where True means looking at nT runs, e.g. 
+    get_correction_from_cmt(run_id, conf[:2])
+    special cases:
+    version can be replaced by constant int, float or array
+    when user specify value(s)
+    :param run_id: run id from runDB
+    :param conf: configuration 
+    :return: correction value(s)
+    """
+ 
+    if isinstance(conf, str):
+        # Legacy support for pax files
+        return conf
 
-    if model_type == 'disabled':
-        # Somebody messed up
-        raise RuntimeError("Attempt to use a disabled gain model")
-    if model_type == 'CMT_model':
-        if not isinstance(model_conf, tuple) or len(model_conf) != 2:
-            # Raise a value error if the condition is not met. We should have:
-            # ("CMT_model", -> To specify that we want to use the online
-            #                  corrections management tool
-            #   (
-            #   "to_pe_model", -> This is to specify that we want  the gains
-            #   "v1", -> The version of the correction 'v1' is the online version
-            #   )
-            raise ValueError('CMT gain model should be similar to:'
-                             '("CMT_model", ("to_pe_model", "v1"). Instead got:'
-                             f'{model_conf}')
-        # is this the best way to do this?
-        is_nt = n_pmts == straxen.n_tpc_pmts or n_pmts == straxen.n_nveto_pmts or n_pmts == straxen.n_mveto_pmts
+    elif isinstance(conf, tuple) and len(conf) == 2:
+        model_conf, cte_value = conf[:2]
 
-        corrections = straxen.CorrectionsManagementServices(is_nt=is_nt)
-        to_pe = corrections.get_corrections_config(run_id, model_conf)
-
-        return to_pe
-
-    elif model_type == 'to_pe_per_run':
-        warn("to_pe_per_run will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
-        # Load a npy file specifying a run_id -> to_pe array
-        to_pe_file = model_conf
-        x = straxen.get_resource(to_pe_file, fmt='npy')
-        run_index = np.where(x['run_id'] == int(run_id))[0]
-        if not len(run_index):
-            # Gains not known: using placeholders
-            run_index = [-1]
-        to_pe = x[run_index[0]]['to_pe']
-
-    elif model_type == 'to_pe_constant':
+        # special case constant to_pe values 
         if model_conf in FIXED_TO_PE:
-            return FIXED_TO_PE[model_conf]
+            correction = FIXED_TO_PE[model_conf]
+            return correction
 
-        try:
-            # Uniform gain, specified as a to_pe factor
-            to_pe = np.ones(n_pmts, dtype=np.float32) * model_conf
-        except np.core._exceptions.UFuncTypeError as e:
-            raise(str(e) +
-                  f'\nTried multiplying by {model_conf}. Insert a number instead.')
+        # special case constant single value or list of values.
+        elif 'constant' in model_conf:
+            if not isinstance(cte_value, (float, int, str, list)):
+                raise ValueError(f"User specify a model type {model_conf} "
+                                 "and should provide a number or list of numbers. Got: "
+                                 f"{type(cte_value)}")
+            correction = cte_value
+            return correction
+
+    elif isinstance(conf, tuple) and len(conf) == 3:
+        model_conf, global_version, is_nt = conf[:3]
+        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+        correction = cmt.get_corrections_config(run_id, conf[:2])
+        if correction.size == 0:
+            raise ValueError(f"Could not find a value for {model_conf} "
+                             f"please check it is implemented in CMT. ")
+
+        if model_conf in corrections_w_file: # file's name (maps, NN, etc) 
+            correction = ' '.join(map(str, correction))
+            return correction
+
+        elif model_conf in single_value_corrections:
+            if 'samples' in model_conf: # int baseline samples, etc
+                return int(correction)
+            else:
+                return float(correction) # float elife, drift velocity, etc
+        
+        elif model_conf in arrays_corrections:
+            np_correction = correction.reshape(correction.size)
+            np_correction = np_correction.astype(np.int16)  # not sure if straxen can handle dtype:object therefore specify dtype
+            return np_correction
+        
+        return correction
+    
     else:
-        raise NotImplementedError(f"Gain model type {model_type} not implemented")
+        raise ValueError("Wrong configuration. "
+                         "Please use the following format: "
+                         "(config->str, model_config->str or number, is_nT->bool) "
+                         f"User specify {conf} please modify")
 
-    if len(to_pe) != n_pmts:
-       raise ValueError(
-            f"Gain model {gain_model} resulted in a to_pe "
-            f"of length {len(to_pe)}, but n_pmts is {n_pmts}!")
-    return to_pe
+
+@export
+def get_cmt_resource(run_id, conf, fmt=''):
+    """
+    Get resource with CMT correction file name
+    """
+    return straxen.get_resource(get_correction_from_cmt(run_id, conf), fmt=fmt)
+
+
+@export
+def is_cmt_option(config):
+    """
+    Check if the input configuration is cmt style.
+    """
+    return _is_cmt_option(None, config)
+
+
+@correction_options
+def _is_cmt_option(run_id, config):
+    # Compatibilty with URLConfig
+    if isinstance(config, str) and "cmt://" in config:
+        return True
+    is_cmt = (isinstance(config, tuple)
+              and len(config)==3
+              and isinstance(config[0], str)
+              and isinstance(config[1], (str, int, float))
+              and isinstance(config[2], bool))
+    
+    return is_cmt
+
+
+def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]:
+    """
+    Function which loops over all plugin configs and returns dictionary
+    with option name as key and a nested dict of CMT correction name and strax option as values.
+
+    :param context: Context with registered plugins.
+    """
+
+    cmt_options = {}
+    runid_test_str = 'norunids!'
+
+    for data_type, plugin in context._plugin_class_registry.items():
+        for option_key, option in plugin.takes_config.items():
+            if option_key in cmt_options:
+                # let's not do work twice if needed by > 1 plugin
+                continue
+
+            if (option_key in context.config and
+                    is_cmt_option(context.config[option_key])):
+                opt = context.config[option_key]
+            elif is_cmt_option(option.default):
+                opt = option.default
+            else:
+                continue
+
+            # check if it's a URLConfig
+            if isinstance(opt, str) and 'cmt://' in opt:
+                before_cmt, cmt, after_cmt = opt.partition('cmt://')
+                p = context.get_single_plugin(runid_test_str, data_type)
+                p.config[option_key] = after_cmt
+                correction_name = getattr(p, option_key)
+                # make sure the correction name does not depend on runid
+                if runid_test_str in correction_name:
+                    raise RuntimeError("Correction names should not depend on runids! "
+                                       f"Please check your option for {option_key}")
+
+                # if there is no other protocol being called before cmt,
+                # we will get a string back including the query part
+                if option.QUERY_SEP in correction_name:
+                    correction_name, _ = option.split_url_kwargs(correction_name)
+                cmt_options[option_key] = {'correction': correction_name,
+                                           'strax_option': opt,
+                                           }
+
+            else:
+                cmt_options[option_key] = {'correction': opt[0],
+                                           'strax_option': opt,
+                                           }
+    return cmt_options
 
 
 FIXED_TO_PE = {
-    # just some dummy placeholder for nT gains
-    'gain_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
+    'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
+    '1T_to_pe_placeholder' : np.array([0.007, 0., 0., 0.008, 0.004, 0.008, 0.004, 0.008, 0.007, 0.005, 0.007, 0.006, 0., 0.006, 0.008, 0.007, 0.006, 0.009,0.007, 0.007, 0.007, 0.012, 0.004, 0.008, 0.005, 0.008, 0., 0., 0.007, 0.007, 0.004, 0., 0.004, 0.007, 0., 0.005,0.007, 0.007, 0.005, 0.005, 0.008, 0.006, 0.005, 0.007, 0.006, 0.007, 0.008, 0.005, 0.008, 0.008, 0.005, 0.005, 0.007, 0.008, 0.005, 0.009, 0.004, 0.005, 0.01 , 0.008, 0.006, 0.016, 0., 0.005, 0.005, 0., 0.01, 0.008, 0.004, 0.006, 0.005, 0., 0.008, 0., 0.004, 0.004, 0.006, 0.005, 0.012, 0., 0.005,0.004, 0.004, 0.008, 0.007, 0.012, 0., 0., 0., 0.007, 0.007, 0., 0.005, 0.008, 0.006, 0.004, 0.004, 0.006, 0.008,0.008, 0.008, 0.006, 0., 0.007, 0.005, 0.005, 0.005, 0.007,0.004, 0.008, 0.007, 0.008, 0.008, 0.006, 0.006, 0.01, 0.005,0.008, 0., 0.012, 0.007, 0.004, 0.008, 0.007, 0.007, 0.008,0.003, 0.004, 0.007, 0.006, 0., 0.005, 0.004, 0.005, 0., 0., 0.004, 0., 0.004, 0., 0.004, 0., 0.011, 0.005,0.006, 0.005, 0.004, 0.004, 0., 0.007, 0., 0.004, 0., 0.005, 0.006, 0.007, 0.005, 0.008, 0.004, 0.006, 0.008, 0.007,0., 0.008, 0.008, 0.007, 0.007, 0., 0.008, 0.004, 0.004,0.005, 0.004, 0.007, 0.008, 0.004, 0.006, 0.006, 0., 0.007,0.004, 0.004, 0.005, 0., 0.008, 0.004, 0.004, 0.004, 0.008,0.008, 0., 0.006, 0.005, 0.004, 0.005, 0.008, 0.008, 0.008,0., 0.005, 0.008, 0., 0.008, 0., 0.004, 0.012, 0., 0.005, 0.007, 0.009, 0.005, 0.004, 0.004, 0., 0., 0.004,0.004, 0.011, 0.004, 0.004, 0.007, 0.004, 0.005, 0.004, 0.005,0.007, 0.004, 0.006, 0.006, 0.004, 0.008, 0.005, 0.007, 0.007,0., 0.004, 0.007, 0.008, 0.004, 0., 0.007, 0.004, 0.004, 0.004, 0., 0.004, 0.005, 0.004]),
     # Gains which will preserve all areas in adc counts.
     # Useful for debugging and tests.
     'adc_tpc': np.ones(straxen.n_tpc_pmts),
     'adc_mv': np.ones(straxen.n_mveto_pmts),
     'adc_nv': np.ones(straxen.n_nveto_pmts)
 }
-
-
-@export
-def get_elife(run_id, elife_conf):
-    if isinstance(elife_conf, tuple) and len(elife_conf) == 3:
-        # We want to use corrections management
-        is_nt = elife_conf[-1]
-        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
-
-        e = cmt.get_corrections_config(run_id, elife_conf[:2])
-
-    elif isinstance(elife_conf, str):
-        warn("get_elife will be replaced by CorrectionsManagementSevices",
-             DeprecationWarning, 2)
-        # Let's remove these functions and only rely on the CMT in the future
-        x = straxen.get_resource(elife_conf, fmt='npy')
-        run_index = np.where(x['run_id'] == int(run_id))[0]
-        if not len(run_index):
-            # Gains not known: using placeholders
-            e = 623e3
-        else:
-            e = x[run_index[0]]['e_life']
-    else:
-        raise ValueError(
-            'Wrong elife model. Either specify a string (url) or the '
-            'Corrections Management Tools format: '
-            '(model_type->str, model_config->str, is_nT->bool)'
-            '')
-    return e

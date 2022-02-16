@@ -1,6 +1,32 @@
 import bokeh.plotting as bklt
+from bokeh.embed import file_html
+from bokeh.resources import CDN
 import numpy as np
 import strax
+
+export, __all__ = strax.exporter()
+
+
+@export
+def bokeh_to_wiki(fig, outputfile=None):
+    """
+    Function which converts bokeh HTML code to a wiki readable code.
+
+    :param fig: Figure to be conerted
+    :param outputfile: String of absolute file path. If specified output
+        is writen to the file. Else output is print to the notebook and
+        can be simply copied into the wiki.
+    """
+    # convert plot to wiki format:
+    html = file_html(fig, CDN)
+    html = '\n'.join((['<html>'] + html.split('\n')[6:]))
+
+    if outputfile:
+        with open(outputfile, mode='w') as file:
+            file.write(html)
+    else:
+        print(html)
+
 
 def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_sample=True):
     """
@@ -36,6 +62,7 @@ def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_
                                          'ys': y_p,
                                          'x': peaks['x'],  # XY-Pos in PMZ Hitpattern
                                          'y': peaks['y'],
+                                         'dt': peaks['dt'],
                                          'time': peaks['time'],
                                          'center_time': peaks['center_time'],
                                          'endtime': strax.endtime(peaks),
@@ -67,11 +94,24 @@ def _patches_x_y(peak, keep_amplitude_per_sample=False):
     else:
         dt_a = peak['dt']
 
-    x = [0] + list(np.arange(peak['length'])) + [peak['length']]
-    x = np.array(x) * peak['dt'] + peak['time']
-    y = [0] + list(peak['data'][:peak['length']]) + [0]
-    y = np.array(y) / dt_a
-    return x, y
+    x = np.arange(peak["length"])
+    xx = np.zeros(2 * len(x), dtype=x.dtype)
+    mx = 0.5 * (x[1::] + x[:-1])
+    xx[1:-1:2] = mx
+    xx[2::2] = mx
+    xx[0] = 1.5 * x[0] - 0.5 * x[1]
+    xx[-1] = 1.5 * x[-1] - 0.5 * x[-2]
+    xx = np.array(xx) * peak['dt'] + peak['time']
+    y = peak['data'][:peak['length']]
+    yy = np.zeros(2 * len(x))
+    yy[0::2] = y
+    yy[1::2] = y
+    yy = np.array(yy) / dt_a
+
+    # baseline since we'll fill underneath
+    xx = np.concatenate([[xx[0]], xx, [xx[-1]]])
+    yy = np.concatenate([[0], yy, [0]])
+    return xx, yy
 
 
 def peak_tool_tip(peak_type):
@@ -90,6 +130,7 @@ def peak_tool_tip(peak_type):
                 }
 
     # Now ns/µs parameters for S1 and S2
+    tool_tip['dt'] = ("dt [ns/sample]", "@dt")
     tool_tip['time_dynamic'] = ("time [ns]", "$x")
     tool_tip['rel_center_time'] = ('center time [ns]', '@rel_center_time')
     tool_tip['range_50p_width'] = ('50% width [ns]', '@width_50')
@@ -101,16 +142,16 @@ def peak_tool_tip(peak_type):
     tool_tip["area"] = ('area [pe]', '@area')
     tool_tip["aft"] = ('AFT', '@aft')
     tool_tip["nhits"] = ('nhits', '@nhits')
-    
+
     if peak_type == 2:
         for k, i in tool_tip.items():
             if k not in ["time_static", "center_time", "endtime"]:
                 tool_tip[k] = (i[0].replace('[ns]', '[µs]'), i[1])
-    
+
     return tool_tip
 
 
-def default_fig(width=400, height=400, title=''):
+def default_fig(width=400, height=400, title='', **kwargs):
     """
     Helper function which returns a bokeh.plotting.figure instance
     with sizing_mode set to 'scale_both' and an aspect ratio set
@@ -120,6 +161,8 @@ def default_fig(width=400, height=400, title=''):
     :param height: PLot height in pixels.
     :param title: Title of the plot.
 
+    Also allows for additional kwargs accepted by bokeh.plotting.
+
     :returns: bokeh.plotting.figure  instance.
     """
     fig = bklt.figure(plot_width=width,
@@ -127,6 +170,7 @@ def default_fig(width=400, height=400, title=''):
                       sizing_mode='scale_both',
                       aspect_ratio=width / height,
                       title=title,
-                      tools="pan,box_zoom,reset"
+                      tools="pan,box_zoom,reset,save",
+                      **kwargs
                       )
     return fig

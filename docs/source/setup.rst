@@ -1,10 +1,10 @@
 Setting up straxen
 ===================
 
-To install straxen locally, follow these steps in a python 3.6, 3.7 or 3.8 environment:
+To install straxen locally, follow these steps in a python 3.7, 3.8 or 3.9 environment:
 
 1. `git clone https://github.com/XENONnT/straxen`
-2. **Optional**. If you are NOT on the UChicago Midway analysis center, copy the file `/project2/lgrandi/xenonnt/.xenon_config` to your `$HOME`-directory. Even with this step, you will have very limited access to XENON data.
+2. **Optional**. If you are NOT on the UChicago Midway analysis center please follow step 2. in this `wiki note (restricted) <https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:guide:straxen_installation>`_.
 3. `pip install -e ./straxen`
 
 The basic analysis tutorial will work outside midway even without step 2 -- we ship a tiny bit of test data with straxen for this purpose. Not much else will work, in particular, anything that requires the XENON runs database will fail.

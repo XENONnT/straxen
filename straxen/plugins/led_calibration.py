@@ -3,6 +3,7 @@ Dear nT analyser,
 if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
 '''
 import datetime
+from immutabledict import immutabledict
 import strax
 import numba
 import numpy as np
@@ -15,16 +16,16 @@ channel_list = [i for i in range(494)]
 @export
 @strax.takes_config(
     strax.Option('baseline_window',
-                 default=(0,40),
+                 default=(0,40), infer_type=False,
                  help="Window (samples) for baseline calculation."),
     strax.Option('led_window',
-                 default=(78, 116),
+                 default=(78, 116), infer_type=False,
                  help="Window (samples) where we expect the signal in LED calibration"),
     strax.Option('noise_window',
-                 default=(10, 48),
+                 default=(10, 48), infer_type=False,
                  help="Window (samples) to analysis the noise"),
     strax.Option('channel_list',
-                 default=(tuple(channel_list)),
+                 default=(tuple(channel_list)), infer_type=False,
                  help="List of PMTs. Defalt value: all the PMTs"))
 
 class LEDCalibration(strax.Plugin):
@@ -48,7 +49,7 @@ class LEDCalibration(strax.Plugin):
     compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = False
-    
+
     dtype = [('area', np.float32, 'Area averaged in integration windows'),
              ('amplitude_led', np.float32, 'Amplitude in LED window'),
              ('amplitude_noise', np.float32, 'Amplitude in off LED window'),
@@ -68,11 +69,7 @@ class LEDCalibration(strax.Plugin):
         del rr, raw_records
 
         temp = np.zeros(len(r), dtype=self.dtype)
-
-        temp['channel'] = r['channel']
-        temp['time']    = r['time']
-        temp['dt']      = r['dt']
-        temp['length']  = r['length']
+        strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
 
         on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'])
         temp['amplitude_led']   = on['amplitude']
@@ -100,23 +97,18 @@ def get_records(raw_records, baseline_window):
               (('Waveform data in raw ADC counts', 'data'), 'f4', (record_length,))]
 
     records = np.zeros(len(raw_records), dtype=_dtype)
+    strax.copy_to_buffer(raw_records, records, "_rr_to_r_led")
 
-    records['time']         = raw_records['time']
-    records['length']       = raw_records['length']
-    records['dt']           = raw_records['dt']
-    records['pulse_length'] = raw_records['pulse_length']
-    records['record_i']     = raw_records['record_i']
-    records['channel']      = raw_records['channel']
-    records['data']         = raw_records['data']
-
-    mask = np.where((records['record_i']==0)&(records['length']==160))[0]
+    mask = np.where((records['record_i'] == 0) & (records['length'] == 160))[0]
     records = records[mask]
     bl = records['data'][:, baseline_window[0]:baseline_window[1]].mean(axis=1)
     records['data'][:, :160] = -1. * (records['data'][:, :160].transpose() - bl[:]).transpose()
     return records
 
+
 _on_off_dtype = np.dtype([('channel', 'int16'),
                           ('amplitude', 'float32')])
+
 
 def get_amplitude(records, led_window, noise_window):
     """
@@ -150,3 +142,87 @@ def get_area(records, led_window):
     Area['area']    = Area['area']/float(len(end_pos))
         
     return Area
+
+
+@export
+@strax.takes_config(
+    strax.Option('channel_map', track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number."),
+)
+class nVetoExtTimings(strax.Plugin):
+    """
+    Plugin which computes the time difference `delta_time` from pulse timing 
+    of `hitlets_nv` to start time of `raw_records` which belong the `hitlets_nv`.
+    They are used as the external trigger timings.
+    """
+    depends_on = ('raw_records_nv', 'hitlets_nv')
+    provides = 'ext_timings_nv'
+    data_kind = 'hitlets_nv'
+
+    compressor = 'zstd'
+    __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        dtype = []
+        dtype += strax.time_dt_fields
+        dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),
+                  (('Index to which pulse (not record) the hitlet belongs to.', 'pulse_i'),
+                   np.int32),]
+        return dtype
+
+    def setup(self):
+        self.nv_pmt_start = self.config['channel_map']['nveto'][0]
+        self.nv_pmt_stop = self.config['channel_map']['nveto'][1] + 1
+
+    def compute(self, hitlets_nv, raw_records_nv):
+
+        rr_nv = raw_records_nv[raw_records_nv['record_i'] == 0]
+        pulses = np.zeros(len(rr_nv), dtype=self.pulse_dtype())
+        pulses['time'] = rr_nv['time']
+        pulses['endtime'] = rr_nv['time'] + rr_nv['pulse_length'] * rr_nv['dt']
+        pulses['channel'] = rr_nv['channel']
+
+        ext_timings_nv = np.zeros_like(hitlets_nv, dtype=self.dtype)
+        ext_timings_nv['time'] = hitlets_nv['time']
+        ext_timings_nv['length'] = hitlets_nv['length']
+        ext_timings_nv['dt'] = hitlets_nv['dt']
+        self.calc_delta_time(ext_timings_nv, pulses, hitlets_nv,
+                             self.nv_pmt_start, self.nv_pmt_stop)
+
+        return ext_timings_nv
+
+    @staticmethod
+    def pulse_dtype():
+        pulse_dtype = []
+        pulse_dtype += strax.time_fields
+        pulse_dtype += [(('PMT channel', 'channel'), np.int16)]
+        return pulse_dtype
+
+    @staticmethod
+    @numba.jit
+    def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
+        """
+        numpy access with fancy index returns copy, not view
+        This for-loop is required to substitute in one by one
+        """
+        hitlet_index = np.arange(len(hitlets_nv))
+        pulse_index = np.arange(len(pulses))
+        for ch in range(nv_pmt_start, nv_pmt_stop):
+            mask_hitlets_in_channel = hitlets_nv['channel'] == ch
+            hitlet_in_channel_index = hitlet_index[mask_hitlets_in_channel]
+            
+            mask_pulse_in_channel = pulses['channel'] == ch
+            pulse_in_channel_index = pulse_index[mask_pulse_in_channel]
+            
+            hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
+            pulses_in_channel = pulses[pulse_in_channel_index]
+            hit_in_pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
+            for h_i, p_i in zip(hitlet_in_channel_index, hit_in_pulse_index):
+                if p_i == -1:
+                    continue
+                res = ext_timings_nv_delta_time[h_i]
+                
+                res['delta_time'] = hitlets_nv[h_i]['time'] + hitlets_nv[h_i]['time_amplitude'] \
+                                    - pulses_in_channel[p_i]['time']
+                res['pulse_i'] = pulse_in_channel_index[p_i]

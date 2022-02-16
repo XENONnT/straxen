@@ -2,7 +2,6 @@ import warnings
 
 import numba
 import numpy as np
-
 import strax
 import straxen
 
@@ -44,7 +43,7 @@ def records_matrix(records, time_range, seconds_range, config, to_pe,
         with np.errstate(divide='ignore', invalid='ignore'):
             # Downsample. New dt must be
             #  a) multiple of old dt
-            dts = np.arange(0, record_duration + dt, dt).astype(np.int)
+            dts = np.arange(0, record_duration + dt, dt).astype(np.int64)
             #  b) divisor of record duration
             dts = dts[record_duration / dts % 1 == 0]
             #  c) total samples < max_samples
@@ -95,12 +94,17 @@ def raw_records_matrix(context, run_id, raw_records, time_range,
                                   **kwargs)
 
 
-@numba.njit
 def _records_to_matrix(records, t0, window, n_channels, dt=10):
-    n_samples = window // dt
+    if np.any(records['amplitude_bit_shift'] > 0):
+        warnings.warn('Ignoring amplitude bitshift!')
+    return _records_to_matrix_inner(records, t0, window, n_channels, dt)
+
+
+@numba.njit
+def _records_to_matrix_inner(records, t0, window, n_channels, dt=10):
+    n_samples = (window // dt) + 1
     # Use 32-bit integers, so downsampling saturated samples doesn't
     # cause wraparounds
-    # TODO: amplitude bit shift!
     y = np.zeros((n_samples, n_channels),
                  dtype=np.int32)
 
@@ -114,7 +118,12 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
 
         if dt >= samples_per_record * r['dt']:
             # Downsample to single sample -> store area
-            y[(r['time'] - t0) // dt, r['channel']] += r['area']
+            idx = (r['time'] - t0) // dt
+            if idx >= len(y):
+                print(len(y), idx)
+                raise IndexError('Despite n_samples = window // dt + 1, our '
+                                 'idx is too high?!')
+            y[idx, r['channel']] += r['area']
             continue
 
         # Assume out-of-bounds data has been zeroed, so we do not
@@ -125,7 +134,8 @@ def _records_to_matrix(records, t0, window, n_channels, dt=10):
         if dt > r['dt']:
             # Downsample
             duration = samples_per_record * r['dt']
-            assert duration % dt == 0, "Cannot downsample fractionally"
+            if duration % dt != 0:
+                raise ValueError("Cannot downsample fractionally")
             # .astype here keeps numba happy ... ??
             w = w.reshape(duration // dt, -1).sum(axis=1).astype(np.int32)
 

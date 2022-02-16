@@ -1,0 +1,12 @@
+# .coveragerc to control coverage.py
+[report]
+omit =
+        ./straxen/storage/rucio_remote.py
+        ./straxen/plugins/pax_interface.py
+
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    if __name__ == .__main__.:
+    raise
+
+ignore_errors = True

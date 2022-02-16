@@ -21,7 +21,7 @@ def test_channel_split(records):
     result_2 = channel_split_naive(records, channel_range)
 
     assert len(result) == len(result_2)
-    for i in range(len(result)):
+    for i, _ in enumerate(result):
         np.testing.assert_array_equal(
             np.unique(result[i]['channel']),
             np.unique(result_2[i]['channel']))

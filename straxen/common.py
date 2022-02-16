@@ -2,35 +2,34 @@ import ast
 import configparser
 import gzip
 import inspect
-import io
+import typing as ty
+import commentjson
 import json
 import os
 import os.path as osp
 import pickle
-import socket
-import sys
-import tarfile
+import dill
 import urllib.request
-import tqdm
 import numpy as np
 import pandas as pd
 from re import match
 import numba
-from warnings import warn
 import strax
 import straxen
 
 export, __all__ = strax.exporter()
 __all__ += ['straxen_dir', 'first_sr1_run', 'tpc_r', 'tpc_z', 'aux_repo',
-            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E', 
-            'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius']
+            'n_tpc_pmts', 'n_top_pmts', 'n_hard_aqmon_start', 'ADC_TO_E',
+            'n_nveto_pmts', 'n_mveto_pmts', 'tpc_pmt_radius', 'cryostat_outer_radius',
+            'perp_wire_angle', 'perp_wire_x_rot_pos', 'INFINITY_64BIT_SIGNED']
 
 straxen_dir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 
 aux_repo = 'https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/'
 
-tpc_r = 66.4   # [CM], Not really radius, but apothem: from MC paper draft 1.0
+tpc_r = 66.4  # [CM], Not really radius, but apothem: from MC paper draft 1.0
+cryostat_outer_radius = 81.5  # [cm] radius of the outer cylinder wall.
 tpc_z = 148.6515  # [CM], distance between the bottom of gate and top of cathode wires
 n_tpc_pmts = 494
 n_top_pmts = 253
@@ -39,7 +38,10 @@ n_hard_aqmon_start = 800
 n_nveto_pmts = 120
 n_mveto_pmts = 84
 
-tpc_pmt_radius = 7.62/2  # cm
+tpc_pmt_radius = 7.62 / 2  # cm
+
+perp_wire_angle = np.deg2rad(30)
+perp_wire_x_rot_pos = 13.06  #[cm]
 
 # Convert from ADC * samples to electrons emitted by PMT
 # see pax.dsputils.adc_to_pe for calculation. Saving this number in straxen as
@@ -49,6 +51,32 @@ ADC_TO_E = 17142.81741
 # See https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
 LAST_MISCABLED_RUN = 8796
 TSTART_FIRST_CORRECTLY_CABLED_RUN = 1596036001000000000
+
+INFINITY_64BIT_SIGNED = 9223372036854775807
+
+
+@export
+def rotate_perp_wires(x_obs: np.ndarray,
+                      y_obs: np.ndarray,
+                      angle_extra: ty.Union[float, int] = 0):
+    """
+    Returns x and y in the rotated plane where the perpendicular wires
+    area vertically aligned (parallel to the y-axis). Accepts addition to the
+    rotation angle with `angle_extra` [deg]
+
+    :param x_obs: array of x coordinates
+    :param y_obs: array of y coordinates
+    :param angle_extra: extra rotation in [deg]
+    :return: x_rotated, y_rotated
+    """
+    if len(x_obs) != len(y_obs):
+        raise ValueError('x and y are not of the same length')
+    angle_extra_rad = np.deg2rad(angle_extra)
+    x_rot = (np.cos(perp_wire_angle + angle_extra_rad) * x_obs
+             - np.sin(perp_wire_angle + angle_extra_rad) * y_obs)
+    y_rot = (np.sin(perp_wire_angle + angle_extra_rad) * x_obs
+             + np.cos(perp_wire_angle + angle_extra_rad) * y_obs)
+    return x_rot, y_rot
 
 
 @export
@@ -66,7 +94,7 @@ def pmt_positions(xenon1t=False):
             dict(x=q['position']['x'],
                  y=q['position']['y'],
                  i=q['pmt_position'],
-                 array=q.get('array','other'))
+                 array=q.get('array', 'other'))
             for q in pmt_config[:248]])
     else:
         return resource_from_url(
@@ -89,9 +117,10 @@ def open_resource(file_name: str, fmt='text'):
     :param fmt: format of the file
     :return: opened file
     """
-    if file_name in _resource_cache:
+    cached_name = _cache_name(file_name, fmt)
+    if cached_name in _resource_cache:
         # Retrieve from in-memory cache
-        return _resource_cache[file_name]
+        return _resource_cache[cached_name]
     # File resource
     if fmt in ['npy', 'npy_pickle']:
         result = np.load(file_name, allow_pickle=fmt == 'npy_pickle')
@@ -103,20 +132,26 @@ def open_resource(file_name: str, fmt='text'):
             result = result_slurped
     elif fmt == 'pkl':
         with open(file_name, 'rb') as f:
-            result = pickle.load(f)
+            result = pickle.load(f)  # nosec
     elif fmt == 'pkl.gz':
         with gzip.open(file_name, 'rb') as f:
-            result = pickle.load(f)
+            result = pickle.load(f)  # nosec
+    elif fmt == 'dill':
+        with open(file_name, 'rb') as f:
+            result = dill.load(f)  # nosec
+    elif fmt == 'dill.gz':
+        with gzip.open(file_name, 'rb') as f:
+            result = dill.load(f)  # nosec
     elif fmt == 'json.gz':
         with gzip.open(file_name, 'rb') as f:
             result = json.load(f)
     elif fmt == 'json':
         with open(file_name, mode='r') as f:
-            result = json.load(f)
+            result = commentjson.load(f)
     elif fmt == 'binary':
         with open(file_name, mode='rb') as f:
             result = f.read()
-    elif fmt == 'text':
+    elif fmt in ['text', 'txt']:
         with open(file_name, mode='r') as f:
             result = f.read()
     elif fmt == 'csv':
@@ -125,7 +160,7 @@ def open_resource(file_name: str, fmt='text'):
         raise ValueError(f"Unsupported format {fmt}!")
 
     # Store in in-memory cache
-    _resource_cache[file_name] = result
+    _resource_cache[cached_name] = result
 
     return result
 
@@ -150,8 +185,9 @@ def get_resource(x: str, fmt='text'):
         specified format
     """
     # 1. load from memory
-    if x in _resource_cache:
-        return _resource_cache[x]
+    cached_name = _cache_name(x, fmt)
+    if cached_name in _resource_cache:
+        return _resource_cache[cached_name]
     # 2. load from file
     elif os.path.exists(x):
         return open_resource(x, fmt=fmt)
@@ -169,7 +205,12 @@ def get_resource(x: str, fmt='text'):
         f'cannot download it from anywhere.')
 
 
-# Deprecated placeholder for resource management system in the future?
+def _cache_name(name: str, fmt: str)->str:
+    """Return a name under which to store the requested name with the given format in the _cache"""
+    return f'{fmt}::{name}'
+
+
+# Legacy loader for public URL files
 def resource_from_url(html: str, fmt='text'):
     """
     Return contents of file or URL html
@@ -182,10 +223,6 @@ def resource_from_url(html: str, fmt='text'):
     your lamentations shall pass over the mountains, etc.
     :return: The file opened as specified per it's format
     """
-    warn("Loading files from a URL is deprecated, and will be replaced "
-         "by loading from the database. See:"
-         "https://github.com/XENONnT/straxen/pull/311",
-         DeprecationWarning)
 
     if '://' not in html:
         raise ValueError('Can only open urls!')
@@ -207,6 +244,7 @@ def resource_from_url(html: str, fmt='text'):
             break
     else:
         print(f'Did not find {cache_fn} in cache, downloading {html}')
+        # disable bandit
         result = urllib.request.urlopen(html).read()
         is_binary = fmt not in _text_formats
         if not is_binary:
@@ -218,14 +256,12 @@ def resource_from_url(html: str, fmt='text'):
         for cache_folder in cache_folders:
             if not osp.exists(cache_folder):
                 continue
+            if not os.access(cache_folder, os.W_OK):
+                continue
             cf = osp.join(cache_folder, cache_fn)
-            try:
-                with open(cf, mode=m) as f:
-                    f.write(result)
-            except Exception:
-                pass
-            else:
-                available_cf = cf
+            with open(cf, mode=m) as f:
+                f.write(result)
+            available_cf = cf
         if available_cf is None:
             raise RuntimeError(
                 f"Could not store {html} in on-disk cache,"
@@ -235,70 +271,6 @@ def resource_from_url(html: str, fmt='text'):
         # (so we only need one format-parsing logic)
         result = open_resource(available_cf, fmt=fmt)
     return result
-
-
-@export
-def get_secret(x):
-    """Return secret key x. In order of priority, we search:
-      * Environment variable: uppercase version of x
-      * xenon_secrets.py (if included with your straxen installation)
-      * A standard xenon_secrets.py located on the midway analysis hub
-        (if you are running on midway)
-    """
-    warn("xenon_secrets is deprecated, and will be replaced with utilix"
-         "configuration file instead. See https://github.com/XENONnT/utilix")
-    env_name = x.upper()
-    if env_name in os.environ:
-        return os.environ[env_name]
-
-    message = (f"Secret {x} requested, but there is no environment "
-               f"variable {env_name}, ")
-
-    # now try using utilix. We need to check that it is not None first!
-    # this will be main method in a future release
-    if straxen.uconfig is not None and straxen.uconfig.has_option('straxen', x):
-        try:
-            return straxen.uconfig.get('straxen', x)
-        except configparser.NoOptionError:
-            warn(f'straxen.uconfig does not have {x}')
-
-    # if that doesn't work, revert to xenon_secrets
-    try:
-        from . import xenon_secrets
-    except ImportError:
-        message += ("nor was there a valid xenon_secrets.py "
-                    "included with your straxen installation, ")
-
-        # If on midway, try loading a standard secrets file instead
-        if 'rcc' in socket.getfqdn():
-            path_to_secrets = '/project2/lgrandi/xenonnt/xenon_secrets.py'
-            if os.path.exists(path_to_secrets):
-                sys.path.append(osp.dirname(path_to_secrets))
-                import xenon_secrets
-                sys.path.pop()
-            else:
-                raise ValueError(
-                    message + ' nor could we load the secrets module from '
-                              f'{path_to_secrets}, even though you seem '
-                              'to be on the midway analysis hub.')
-
-        else:
-            raise ValueError(
-                message + 'nor are you on the midway analysis hub.')
-
-    if hasattr(xenon_secrets, x):
-        return getattr(xenon_secrets, x)
-    raise ValueError(message + " and the secret is not in xenon_secrets.py")
-
-
-@export
-def download_test_data():
-    """Downloads strax test data to strax_test_data in the current directory"""
-    blob = get_resource('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/11929e7595e178dd335d59727024847efde530fb/strax_test_data_straxv0.9.tar',
-                        fmt='binary')
-    f = io.BytesIO(blob)
-    tf = tarfile.open(fileobj=f)
-    tf.extractall()
 
 
 @export
@@ -318,6 +290,62 @@ def get_livetime_sec(context, run_id, things=None):
             return md['livetime']
         else:
             return (md['end'] - md['start']).total_seconds()
+
+
+@export
+def pre_apply_function(data, run_id, target, function_name='pre_apply_function'):
+    """
+    Prior to returning the data (from one chunk) see if any function(s) need to
+    be applied.
+
+    :param data: one chunk of data for the requested target(s)
+    :param run_id: Single run-id of of the chunk of data
+    :param target: one or more targets
+    :param function_name: the name of the function to be applied. The
+        function_name.py should be stored in the database.
+    :return: Data where the function is applied.
+    """
+    if function_name not in _resource_cache:
+        # only load the function once and put it in the resource cache
+        function_file = f'{function_name}.py'
+        function_file = straxen.test_utils._overwrite_testing_function_file(function_file)
+        function = get_resource(function_file, fmt='txt')
+        # pylint: disable=exec-used
+        exec(function)
+        # Cache the function to reduce reloading & eval operations
+        _resource_cache[function_name] = locals().get(function_name)
+    data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
+    return data
+
+
+@export
+def check_loading_allowed(data, run_id, target,
+                          max_in_disallowed=1,
+                          disallowed=('event_positions',
+                                      'corrected_areas',
+                                      'energy_estimates')
+                          ):
+    """
+    Check that the loading of the specified targets is not
+    disallowed
+
+    :param data: chunk of data
+    :param run_id: run_id of the run
+    :param target: list of targets requested by the user
+    :param max_in_disallowed: the max number of targets that are
+        in the disallowed list
+    :param disallowed: list of targets that are not allowed to be
+        loaded simultaneously by the user
+    :return: data
+    :raise: RuntimeError if more than max_in_disallowed targets
+        are requested
+    """
+    n_targets_in_disallowed = sum([t in disallowed for t in
+                                   strax.to_str_tuple(target)])
+    if n_targets_in_disallowed > max_in_disallowed:
+        raise RuntimeError(
+            f'Don\'t load {disallowed} separately, use "event_info" instead')
+    return data
 
 
 @export
@@ -346,16 +374,6 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
         aux_repo + '/ecb6da7bd4deb98cd0a4e83b3da81c1e67505b16/remapped_channels_since_20200729_17.20UTC.csv',
         fmt='csv')
 
-    def wr_tqdm(x):
-        """Wrap input x with tqdm"""
-        if _tqdm:
-            try:
-                return tqdm.tqdm_notebook(x)
-            except (AttributeError, ModuleNotFoundError, ImportError):
-                # ok, sorry lets not wrap but return x
-                pass
-        return x
-
     def convert_channel(_data, replace=('channel', 'max_pmt')):
         """
         Given an array, replace the 'channel' entry if we had to remap it according to the
@@ -374,6 +392,9 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
         for _rep in replace:
             if _rep not in data_keys:
                 # Apparently this data doesn't have the entry we want to replace
+                continue
+            if _rep == 'channel' and _dat['channel'].ndim != 1:
+                # Only convert channel if they are flat and not nested.
                 continue
             # Make a buffer we can overwrite and replace with an remapped array
             buff = np.array(_data[_rep])
@@ -432,7 +453,7 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
             return channel_data
         # Create a buffer to overright
         buffer = channel_data.copy()
-        for k in wr_tqdm(get_dtypes(channel_data)):
+        for k in strax.utils.tqdm(get_dtypes(channel_data), disable=not _tqdm):
             if np.iterable(channel_data[k][0]) and len(channel_data[k][0]) == n_chs:
                 if verbose:
                     print(f'convert_channel_like::\tupdate {k}')
@@ -463,13 +484,15 @@ def remap_channels(data, verbose=True, safe_copy=False, _tqdm=False, ):
     return _dat
 
 
-def remap_old(data, targets, works_on_target=''):
+@export
+def remap_old(data, targets, run_id, works_on_target=''):
     """
     If the data is of before the time sectors were re-cabled, apply a software remap
         otherwise just return the data is it is.
     :param data: numpy array of data with at least the field time. It is assumed the data
         is sorted by time
     :param targets: targets in the st.get_array to get
+    :param run_id: required positional argument of apply_function_to_data in strax
     :param works_on_target: regex match string to match any of the targets. By default set
         to '' such that any target in the targets would be remapped (which is what we want
         as channels are present in most data types). If one only wants records (no
@@ -484,10 +507,8 @@ def remap_old(data, targets, works_on_target=''):
         pass
     elif len(data):
         # select the old data and do the remapping for this
-        warn("Correcting data of runs with mis-cabled PMTs. \nSee: https://"
-             "xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap. "
-             "Don't use '' selection_str='channel == xx' '' (github.com/XENONnT/straxen/issues/239)")
         mask = data['time'] < TSTART_FIRST_CORRECTLY_CABLED_RUN
+        data = data.copy()
         data[mask] = remap_channels(data[mask])
     return data
 
@@ -526,6 +547,7 @@ def _swap_values_in_array(data_arr, buffer, items, replacements):
                 buffer[i] = replacements[k]
                 break
     return buffer
+
 
 ##
 # Old XENON1T Stuff

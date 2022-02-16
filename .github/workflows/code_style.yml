@@ -1,0 +1,25 @@
+name: Python style
+on:
+  pull_request:
+    types: [opened]
+jobs:
+  qa:
+    name: Quality check
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@master
+        with:
+          python-version: 3.8
+      - name: Change __all__ exports for pyflake
+        run: |
+             bash .github/scripts/pre_pyflakes.sh
+      - name: Wemake Python Stylguide
+        uses: wemake-services/wemake-python-styleguide@0.16.0
+        continue-on-error: true
+        with:
+          reporter: 'github-pr-review'
+        env:
+          NUMBA_DISABLE_JIT: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

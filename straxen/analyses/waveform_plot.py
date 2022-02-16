@@ -1,11 +1,11 @@
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import warnings
+import numpy as np
 import strax
 import straxen
 from mpl_toolkits.axes_grid1 import inset_locator
-from datetime import datetime
+
+from .daq_waveforms import group_by_daq
 from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
@@ -43,6 +43,7 @@ def plot_waveform(context,
 
     else:
         f, axes = plt.subplots(2, 1,
+                               constrained_layout=True,
                                figsize=figsize,
                                gridspec_kw={'height_ratios': [1, lower_panel_height]})
 
@@ -59,7 +60,6 @@ def plot_waveform(context,
                                     raw=deep == 'raw',
                                     single_figure=False)
 
-        straxen.quiet_tight_layout()
         plt.subplots_adjust(hspace=0)
 
 
@@ -128,8 +128,11 @@ def plot_records_matrix(context, run_id,
                         cbar_loc='upper right',
                         raw=False,
                         single_figure=True, figsize=(10, 4),
+                        group_by=None,
                         max_samples=DEFAULT_MAX_SAMPLES,
                         ignore_max_sample_warning=False,
+                        vmin=None,
+                        vmax=None,
                         **kwargs):
     if seconds_range is None:
         raise ValueError(
@@ -137,7 +140,7 @@ def plot_records_matrix(context, run_id,
             "to plot_records_matrix.")
 
     if single_figure:
-        plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize, constrained_layout=True)
 
     f = context.raw_records_matrix if raw else context.records_matrix
 
@@ -145,19 +148,43 @@ def plot_records_matrix(context, run_id,
                     max_samples=max_samples,
                     ignore_max_sample_warning=ignore_max_sample_warning,
                     **kwargs)
+    if group_by is not None:
+        ylabs, wvm_mask = group_by_daq(run_id, group_by)
+        wvm = wvm[:, wvm_mask]
+        plt.ylabel(group_by)
+    else:
+        plt.ylabel('Channel number')
+
+    # extract min and max from kwargs or set defaults
+    if vmin is None:
+        vmin = min(0.1 * wvm.max(), 1e-2)
+    if vmax is None:
+        vmax = wvm.max()
 
     plt.pcolormesh(
         ts, ys, wvm.T,
         norm=matplotlib.colors.LogNorm(
-            vmin=min(0.1 * wvm.max(), 1e-2),
-            vmax=wvm.max(),),
+            vmin=vmin,
+            vmax=vmax,
+        ),
         cmap=plt.cm.inferno)
     plt.xlim(*seconds_range)
 
     ax = plt.gca()
-    seconds_range_xaxis(seconds_range)
-    ax.invert_yaxis()
-    plt.ylabel("PMT Number")
+    if group_by is not None:
+        # Do some magic to convert all the labels to an integer that
+        # allows for remapping of the y labels to whatever is provided
+        # in the "ylabs", otherwise matplotlib shows nchannels different
+        # labels in the case of strings.
+        # Make a dict that converts the label to an int
+        int_labels = {h: i for i, h in enumerate(set(ylabs))}
+        mask = np.ones(len(ylabs), dtype=np.bool_)
+        # If the label (int) is different wrt. its neighbour, show it
+        mask[1:] = np.abs(np.diff([int_labels[y] for y in ylabs])) > 0
+        # Only label the selection
+        ax.set_yticks(np.arange(len(ylabs))[mask])
+        ax.set_yticklabels(ylabs[mask])
+    plt.xlabel('Time [s]')
 
     if cbar_loc is not None:
         # Create a white box to place the color bar in
@@ -165,7 +192,7 @@ def plot_records_matrix(context, run_id,
         bbox = inset_locator.inset_axes(ax,
                                         width="20%", height="22%",
                                         loc=cbar_loc)
-        [bbox.spines[k].set_visible(False) for k in bbox.spines]
+        _ = [bbox.spines[k].set_visible(False) for k in bbox.spines]
         bbox.patch.set_facecolor((1, 1, 1, 0.9))
         bbox.set_xticks([])
         bbox.set_yticks([])
@@ -182,9 +209,6 @@ def plot_records_matrix(context, run_id,
 
     plt.sca(ax)
 
-    if single_figure:
-        straxen.quiet_tight_layout()
-
 
 def seconds_range_xaxis(seconds_range, t0=None):
     """Make a pretty time axis given seconds_range"""
@@ -198,12 +222,12 @@ def seconds_range_xaxis(seconds_range, t0=None):
     # Format the labels
     # I am not very proud of this code...
     def chop(x):
-        return np.floor(x).astype(np.int)
+        return np.floor(x).astype(np.int64)
 
     if t0 is None:
-        xticks_ns = np.round(xticks * int(1e9)).astype(np.int)
+        xticks_ns = np.round(xticks * int(1e9)).astype(np.int64)
     else:
-        xticks_ns = np.round((xticks - xticks[0]) * int(1e9)).astype(np.int)
+        xticks_ns = np.round((xticks - xticks[0]) * int(1e9)).astype(np.int64)
     sec = chop(xticks_ns // int(1e9))
     ms = chop((xticks_ns % int(1e9)) // int(1e6))
     us = chop((xticks_ns % int(1e6)) // int(1e3))

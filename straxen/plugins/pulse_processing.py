@@ -5,25 +5,34 @@ import numpy as np
 import strax
 import straxen
 
+from straxen.get_corrections import is_cmt_option
+
 export, __all__ = strax.exporter()
 __all__ += ['NO_PULSE_COUNTS']
 
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_OPTIONS = tuple([
     strax.Option(
-        'hit_min_amplitude',
-        default='pmt_commissioning_initial',
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'See straxen.hit_min_amplitude for options.'
+    'hit_min_amplitude', track=True, infer_type=False,
+    default=('hit_thresholds_tpc', 'ONLINE', True),
+    help='Minimum hit amplitude in ADC counts above baseline. '
+            'Specify as a tuple of length n_tpc_pmts, or a number,'
+            'or a string like "pmt_commissioning_initial" which means calling'
+            'hitfinder_thresholds.py'
+            'or a tuple like (correction=str, version=str, nT=boolean),'
+            'which means we are using cmt.'
     )])
 
 HITFINDER_OPTIONS_he = tuple([
     strax.Option(
-        'hit_min_amplitude_he', track=True,
-        default="pmt_commissioning_initial_he",
-        child_option=True, parent_option_name='hit_min_amplitude',
-        help='Minimum hit amplitude in ADC counts above baseline for the high energy channels. '
-             'See straxen.hit_min_amplitude for options.'
+    'hit_min_amplitude_he',
+    default=('hit_thresholds_he', 'ONLINE', True), track=True, infer_type=False,
+    help='Minimum hit amplitude in ADC counts above baseline. '
+            'Specify as a tuple of length n_tpc_pmts, or a number,'
+            'or a string like "pmt_commissioning_initial" which means calling'
+            'hitfinder_thresholds.py'
+            'or a tuple like (correction=str, version=str, nT=boolean),'
+            'which means we are using cmt.'
     )])
 
 HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
@@ -32,50 +41,50 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
 @export
 @strax.takes_config(
     strax.Option('hev_gain_model',
-                 default=('disabled', None),
+                 default=('disabled', None), infer_type=False,
                  help='PMT gain model used in the software high-energy veto.'
                       'Specify as (model_type, model_config)'),
     strax.Option(
         'baseline_samples',
-        default=40,
+        default=40, infer_type=False,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline'),
     # Tail veto options
     strax.Option(
         'tail_veto_threshold',
-        default=0,
+        default=0, infer_type=False,
         help=("Minimum peakarea in PE to trigger tail veto."
               "Set to None, 0 or False to disable veto.")),
     strax.Option(
         'tail_veto_duration',
-        default=int(3e6),
+        default=int(3e6), infer_type=False,
         help="Time in ns to veto after large peaks"),
     strax.Option(
         'tail_veto_resolution',
-        default=int(1e3),
+        default=int(1e3), infer_type=False,
         help="Time resolution in ns for pass-veto waveform summation"),
     strax.Option(
         'tail_veto_pass_fraction',
-        default=0.05,
+        default=0.05, infer_type=False,
         help="Pass veto if maximum amplitude above max * fraction"),
     strax.Option(
         'tail_veto_pass_extend',
-        default=3,
+        default=3, infer_type=False,
         help="Extend pass veto by this many samples (tail_veto_resolution!)"),
     strax.Option(
         'max_veto_value',
-        default=None,
+        default=None, infer_type=False,
         help="Optionally pass a HE peak that exceeds this absolute area. "
              "(if performing a hard veto, can keep a few statistics.)"),
 
     # PMT pulse processing options
     strax.Option(
         'pmt_pulse_filter',
-        default=None,
+        default=None, infer_type=False,
         help='Linear filter to apply to pulses, will be normalized.'),
     strax.Option(
         'save_outside_hits',
-        default=(3, 20),
+        default=(3, 20), infer_type=False,
         help='Save (left, right) samples besides hits; cut the rest'),
 
     strax.Option(
@@ -84,12 +93,12 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
 
     strax.Option(
         'check_raw_record_overlaps',
-        default=True, track=False,
+        default=True, track=False, infer_type=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel'),
     strax.Option(
         'allow_sloppy_chunking',
-        default=False, track=False,
+        default=False, track=False, infer_type=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.')),
 
@@ -119,13 +128,17 @@ class PulseProcessing(strax.Plugin):
         records=False,
         veto_regions=True,
         pulse_counts=True)
-    compressor = 'lz4'
+    compressor = 'zstd'
 
     depends_on = 'raw_records'
 
     provides = ('records', 'veto_regions', 'pulse_counts')
     data_kind = {k: k for k in provides}
-    save_when = strax.SaveWhen.TARGET
+    save_when = immutabledict(
+        records=strax.SaveWhen.TARGET,
+        veto_regions=strax.SaveWhen.TARGET,
+        pulse_counts=strax.SaveWhen.ALWAYS,
+    )
 
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records
@@ -146,9 +159,20 @@ class PulseProcessing(strax.Plugin):
                 (self.config['hev_gain_model'][0] != 'disabled')
                 and self.config['tail_veto_threshold'])
         if self.hev_enabled:
-            self.to_pe = straxen.get_to_pe(self.run_id,
-                                           self.config['hev_gain_model'],
-                                           self.config['n_tpc_pmts'])
+            self.to_pe = straxen.get_correction_from_cmt(self.run_id,
+                                           self.config['hev_gain_model'])
+
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude']
         
     def compute(self, raw_records, start, end):
         if self.config['check_raw_record_overlaps']:
@@ -165,7 +189,6 @@ class PulseProcessing(strax.Plugin):
 
         # Do not trust in DAQ + strax.baseline to leave the
         # out-of-bounds samples to zero.
-        # TODO: better to throw an error if something is nonzero
         strax.zero_out_of_bounds(r)
 
         strax.baseline(r,
@@ -200,10 +223,7 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(
-                r,
-                min_amplitude=straxen.hit_min_amplitude(
-                    self.config['hit_min_amplitude']))
+            hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
 
             if self.config['pmt_pulse_filter']:
                 # Filter to concentrate the PMT pulses
@@ -225,7 +245,7 @@ class PulseProcessing(strax.Plugin):
     
 @export
 @strax.takes_config(
-    strax.Option('n_he_pmts', track=False, default=752,
+    strax.Option('n_he_pmts', track=False, default=752, infer_type=False,
                  help="Maximum channel of the he channels"),
     strax.Option('record_length', default=110, track=False, type=int,
                  help="Number of samples per raw_record"),
@@ -239,8 +259,9 @@ class PulseProcessingHighEnergy(PulseProcessing):
         records_he=False,
         pulse_counts_he=True)
     depends_on = 'raw_records_he'
-    compressor = 'lz4'
+    compressor = 'zstd'
     child_plugin = True
+    save_when = strax.SaveWhen.TARGET
 
     def infer_dtype(self):
         dtype = dict()
@@ -251,7 +272,18 @@ class PulseProcessingHighEnergy(PulseProcessing):
     def setup(self):
         self.hev_enabled = False
         self.config['n_tpc_pmts'] = self.config['n_he_pmts']
-        self.config['hit_min_amplitude'] = self.config['hit_min_amplitude_he']
+        
+        # Check config of `hit_min_amplitude` and define hit thresholds
+        # if cmt config
+        if is_cmt_option(self.config['hit_min_amplitude_he']):
+            self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
+                self.config['hit_min_amplitude_he'])
+        # if hitfinder_thresholds config
+        elif isinstance(self.config['hit_min_amplitude_he'], str):
+            self.hit_thresholds = straxen.hit_min_amplitude(
+                self.config['hit_min_amplitude_he'])
+        else: # int or array
+            self.hit_thresholds = self.config['hit_min_amplitude_he']
 
     def compute(self, raw_records_he, start, end):
         result = super().compute(raw_records_he, start, end)
@@ -300,7 +332,7 @@ def software_he_veto(records, to_pe, chunk_end,
     veto_res = int(veto_res)
     if veto_res > np.iinfo(np.int16).max:
         raise ValueError("Veto resolution does not fit 16-bit int")
-    veto_length = np.ceil(veto_length / veto_res).astype(np.int) * veto_res
+    veto_length = np.ceil(veto_length / veto_res).astype(np.int64) * veto_res
     veto_n = int(veto_length / veto_res) + 1
 
     # 1. Find large peaks in the data.

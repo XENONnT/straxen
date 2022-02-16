@@ -8,20 +8,26 @@ import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
 export, __all__ = strax.exporter()
-from .pulse_processing import  HE_PREAMBLE
+from .pulse_processing import HE_PREAMBLE
 
 
 @export
 @strax.takes_config(
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
-                 help="Number of top PMTs"))
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
+                 help="Number of top PMTs"),
+    strax.Option('check_peak_sum_area_rtol', default=None, track=False, infer_type=False,
+                 help="Check if the sum area and the sum of area per "
+                      "channel are the same. If None, don't do the "
+                      "check. To perform the check, set to the desired "
+                      " rtol value used e.g. '1e-4' (see np.isclose)."),
+)
 class PeakBasics(strax.Plugin):
     """
     Compute the basic peak-properties, thereby dropping structured
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.0.8"
+    __version__ = "0.1.0"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -40,6 +46,8 @@ class PeakBasics(strax.Plugin):
             'max_pmt'), np.int16),
         (('Area of signal in the largest-contributing PMT (PE)',
             'max_pmt_area'), np.float32),
+        (('Total number of saturated channels',
+          'n_saturated_channels'), np.int16),
         (('Width (in ns) of the central 50% area of the peak',
             'range_50p_area'), np.float32),
         (('Width (in ns) of the central 90% area of the peak',
@@ -55,6 +63,8 @@ class PeakBasics(strax.Plugin):
           'rise_time'), np.float32),
         (('Hits within tight range of mean',
           'tight_coincidence'), np.int16),
+        (('PMT channel within tight range of mean',
+          'tight_coincidence_channel'), np.int16),
         (('Classification of the peak(let)',
           'type'), np.int8)
     ]
@@ -71,15 +81,20 @@ class PeakBasics(strax.Plugin):
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)
         r['max_pmt_area'] = np.max(p['area_per_channel'], axis=1)
         r['tight_coincidence'] = p['tight_coincidence']
+        r['n_saturated_channels'] = p['n_saturated_channels']
 
         n_top = self.config['n_top_pmts']
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
+        # Recalculate to prevent numerical inaccuracy #442
+        area_total = p['area_per_channel'].sum(axis=1)
         # Negative-area peaks get NaN AFT
         m = p['area'] > 0
-        r['area_fraction_top'][m] = area_top[m]/p['area'][m]
+        r['area_fraction_top'][m] = area_top[m]/area_total[m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
-        
+
+        if self.config['check_peak_sum_area_rtol'] is not None:
+            self.check_area(area_total, p, self.config['check_peak_sum_area_rtol'])
         # Negative or zero-area peaks have centertime at startime
         r['center_time'] = p['time']
         r['center_time'][m] += self.compute_center_times(peaks[m])
@@ -96,11 +111,47 @@ class PeakBasics(strax.Plugin):
             result[p_i] = t / p['area']
         return result
 
+    @staticmethod
+    def check_area(area_per_channel_sum, peaks, rtol) -> None:
+        """
+        Check if the area of the sum-wf is the same as the total area
+            (if the area of the peak is positively defined).
+
+        :param area_per_channel_sum: the summation of the
+            peaks['area_per_channel'] which will be checked against the
+             values of peaks['area'].
+        :param peaks: array of peaks.
+        :param rtol: relative tolerance for difference between
+            area_per_channel_sum and peaks['area']. See np.isclose.
+        :raises: ValueError if the peak area and the area-per-channel
+            sum are not sufficiently close
+        """
+        positive_area = peaks['area'] > 0
+        if not np.sum(positive_area):
+            return
+
+        is_close = np.isclose(area_per_channel_sum[positive_area],
+                              peaks[positive_area]['area'],
+                              rtol=rtol,
+                             )
+
+        if not is_close.all():
+            for peak in peaks[positive_area][~is_close]:
+                print('bad area')
+                strax.print_record(peak)
+
+            p_i = np.where(~is_close)[0][0]
+            peak = peaks[positive_area][p_i]
+            area_fraction_off = 1 - area_per_channel_sum[positive_area][p_i] / peak['area']
+            message = (f'Area not calculated correctly, it\'s '
+                       f'{100*area_fraction_off} % off, time: {peak["time"]}')
+            raise ValueError(message)
+
 
 @export
 class PeakBasicsHighEnergy(PeakBasics):
     __doc__ = HE_PREAMBLE + PeakBasics.__doc__
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = 'peaks_he'
     provides = 'peak_basics_he'
     child_ends_with = '_he'
@@ -112,21 +163,21 @@ class PeakBasicsHighEnergy(PeakBasics):
 @export
 @strax.takes_config(
     strax.Option(
-        'nn_architecture',
+        'nn_architecture', infer_type=False,
         help='Path to JSON of neural net architecture',
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr0.json')),
             (first_sr1_run, straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json')]),   # noqa
     strax.Option(
-        'nn_weights',
+        'nn_weights', infer_type=False,
         help='Path to HDF5 of neural net weights',
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr0.h5')),
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10),
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts,
+                 default=10,  infer_type=False,),
+    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
                  help="Number of top PMTs")
 )
 class PeakPositions1T(strax.Plugin):
@@ -206,13 +257,13 @@ class PeakPositions1T(strax.Plugin):
 
 @export
 @strax.takes_config(
-    strax.Option('min_area_fraction', default=0.5,
+    strax.Option('min_area_fraction', default=0.5, infer_type=False,
                  help='The area of competing peaks must be at least '
                       'this fraction of that of the considered peak'),
-    strax.Option('nearby_window', default=int(1e7),
+    strax.Option('nearby_window', default=int(1e7), infer_type=False,
                  help='Peaks starting within this time window (on either side)'
                       'in ns count as nearby.'),
-    strax.Option('peak_max_proximity_time', default=int(1e8),
+    strax.Option('peak_max_proximity_time', default=int(1e8), infer_type=False,
                  help='Maximum value for proximity values such as '
                       't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
@@ -278,3 +329,100 @@ class PeakProximity(strax.OverlapWindowPlugin):
             n_tot[i] = n_left[i] + np.sum(areas[i + 1:right_i] > threshold)
 
         return n_left, n_tot
+
+@export
+@strax.takes_config(
+    strax.Option(name='pre_s2_area_threshold', default=1000,
+                 help='Only take S2s larger than this into account '
+                      'when calculating PeakShadow [PE]'),
+    strax.Option(name='deltatime_exponent', default=-1.0,
+                 help='The exponent of delta t when calculating shadow'),
+    strax.Option('time_window_backward', default=int(3e9),
+                 help='Search for S2s causing shadow in this time window [ns]'),
+    strax.Option(name='electron_drift_velocity',
+                 default=('electron_drift_velocity', 'ONLINE', True),
+                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'),
+    strax.Option(name='max_drift_length', default=straxen.tpc_z,
+                 help='Total length of the TPC from the bottom of gate to the '
+                      'top of cathode wires [cm]'),
+    strax.Option(name='exclude_drift_time', default=False,
+                 help='Subtract max drift time to avoid peak interference in '
+                      'a single event [ns]'))
+class PeakShadow(strax.OverlapWindowPlugin):
+    """
+    This plugin can find and calculate the previous S2 shadow at peak level,
+    with time window backward and previous S2 area as options.
+    It also gives the area and position information of these previous S2s.
+    """
+
+    __version__ = '0.1.0'
+    depends_on = ('peak_basics', 'peak_positions')
+    provides = 'peak_shadow'
+    save_when = strax.SaveWhen.EXPLICIT
+
+    def setup(self):
+        self.time_window_backward = self.config['time_window_backward']
+        if self.config['exclude_drift_time']:
+            electron_drift_velocity = straxen.get_correction_from_cmt(
+                self.run_id,
+                self.config['electron_drift_velocity'])
+            drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+            self.n_drift_time = drift_time_max
+        else:
+            self.n_drift_time = 0
+        self.s2_threshold = self.config['pre_s2_area_threshold']
+        self.exponent = self.config['deltatime_exponent']
+
+    def get_window_size(self):
+        return 3 * self.config['time_window_backward']
+
+    def infer_dtype(self):
+        dtype = [('shadow', np.float32, 'previous s2 shadow [PE/ns]'),
+                 ('pre_s2_area', np.float32, 'previous s2 area [PE]'),
+                 ('shadow_dt', np.int64, 'time difference to the previous s2 [ns]'),
+                 ('pre_s2_x', np.float32, 'x of previous s2 peak causing shadow [cm]'),
+                 ('pre_s2_y', np.float32, 'y of previous s2 peak causing shadow [cm]')]
+        dtype += strax.time_fields
+        return dtype
+
+    def compute(self, peaks):
+        roi_shadow = np.zeros(len(peaks), dtype=strax.time_fields)
+        roi_shadow['time'] = peaks['center_time'] - self.time_window_backward
+        roi_shadow['endtime'] = peaks['center_time'] - self.n_drift_time
+
+        mask_pre_s2 = peaks['area'] > self.s2_threshold
+        mask_pre_s2 &= peaks['type'] == 2
+        split_peaks = strax.touching_windows(peaks[mask_pre_s2], roi_shadow)
+        res = np.zeros(len(peaks), self.dtype)
+        res['pre_s2_x'] = np.nan
+        res['pre_s2_y'] = np.nan
+        if len(peaks):
+            self.compute_shadow(peaks, peaks[mask_pre_s2], split_peaks, self.exponent, res)
+
+        res['time'] = peaks['time']
+        res['endtime'] = strax.endtime(peaks)
+        return res
+
+    @staticmethod
+    @numba.njit
+    def compute_shadow(peaks, pre_s2_peaks, touching_windows, exponent, res):
+        """
+        For each peak in peaks, check if there is a shadow-casting S2 peak
+        and check if it casts the largest shadow
+        """
+        for p_i, p_a in enumerate(peaks):
+            # reset for every peak
+            new_shadow = 0
+            s2_indices = touching_windows[p_i]
+            for s2_idx in range(s2_indices[0], s2_indices[1]):
+                s2_a = pre_s2_peaks[s2_idx]
+                if p_a['center_time'] - s2_a['center_time'] <= 0:
+                    continue
+                new_shadow = s2_a['area'] * (
+                        p_a['center_time'] - s2_a['center_time'])**exponent
+                if new_shadow > res['shadow'][p_i]:
+                    res['shadow'][p_i] = new_shadow
+                    res['pre_s2_area'][p_i] = s2_a['area']
+                    res['shadow_dt'][p_i] = p_a['center_time'] - s2_a['center_time']
+                    res['pre_s2_x'][p_i] = s2_a['x']
+                    res['pre_s2_y'][p_i] = s2_a['y']

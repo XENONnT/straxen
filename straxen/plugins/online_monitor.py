@@ -1,6 +1,6 @@
 import strax
 import numpy as np
-import numexpr
+from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
 
@@ -17,11 +17,6 @@ export, __all__ = strax.exporter()
         type=tuple, default=((0, 5), (0, 5)),
         help='Boundaries of log-log histogram of area vs width'),
     strax.Option(
-        'area_vs_width_min_gap',
-        type=int, default=20,
-        help='Minimal gap between consecutive peaks to be considered for the '
-             '"area_vs_width_hist_clean" To turn off this cut, set to 0.'),
-    strax.Option(
         'area_vs_width_cut_string',
         type=str, default='',
         help='Selection (like selection_str) applied to data for '
@@ -33,22 +28,14 @@ export, __all__ = strax.exporter()
         type=tuple, default=(0, 1500),
         help='Boundaries area histogram of lone hits [ADC]'),
     strax.Option(
-        'online_monitor_nbins',
+        'online_peak_monitor_nbins',
         type=int, default=100,
         help='Number of bins of histogram of online monitor. Will be used '
              'for: '
              'lone_hits_area-histogram, '
              'area_fraction_top-histogram, '
-             'near_s1_hists, '),
-    strax.Option(
-        'near_s1_hists_cut_string',
-        type=str,
-        default='(n_channels > 20) & (n_channels < 400) & (area < 1000) & '
-                '(area > 5) & (rise_time < 100) & (type == 1)',
-        help='Selection (like selection_str) applied to data for '
-             '"near_s1_hists", cuts should be separated using "&"'
-             'For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)'
-             'Default is no selection (other than "area_vs_width_min_gap")'),
+             'online_se_gain estimate (histogram is not stored), '
+    ),
     strax.Option(
         'lone_hits_cut_string',
         type=str,
@@ -62,17 +49,13 @@ export, __all__ = strax.exporter()
         help='Minimal gap [ns] between consecutive lone-hits. To turn off '
              'this cut, set to 0.'),
     strax.Option(
-        'near_s1_hists_bounds',
-        type=tuple,
-        default=(0, 1000),
-        help='Bounds for the near s1-peaks in PE'),
-    strax.Option(
-        'near_s1_max_time_diff',
-        type=int, default=2_000,
-        help='Max gap between two peaks for the near-s1 area histogram [ns]'),
-    strax.Option(
         'n_tpc_pmts', type=int,
         help='Number of TPC PMTs'),
+    strax.Option(
+        'online_se_bounds',
+        type=tuple, default=(7, 70),
+        help='Window for online monitor [PE] to look for the SE gain, value'
+    )
 )
 class OnlinePeakMonitor(strax.Plugin):
     """
@@ -80,24 +63,23 @@ class OnlinePeakMonitor(strax.Plugin):
     this plugin should be small such as to not overload the runs-
     database.
 
-    This plugin takes 'peaks_basics' and 'lone_hits'. Although they are
+    This plugin takes 'peak_basics' and 'lone_hits'. Although they are
     not strictly related, they are aggregated into a single data_type
-    in order to minimize the number of documents in hte online monitor.
+    in order to minimize the number of documents in the online monitor.
 
     Produces 'online_peak_monitor' with info on the lone-hits and peaks
     """
     depends_on = ('peak_basics', 'lone_hits')
     provides = 'online_peak_monitor'
-    __version__ = '0.0.4'
-    # TODO make new datakind:
-    # data_kind = 'online_monitor'
+    data_kind = 'online_peak_monitor'
+    __version__ = '0.0.5'
     rechunk_on_save = False
 
     def infer_dtype(self):
         n_bins_area_width = self.config['area_vs_width_nbins']
         bounds_area_width = self.config['area_vs_width_bounds']
 
-        n_bins = self.config['online_monitor_nbins']
+        n_bins = self.config['online_peak_monitor_nbins']
 
         n_tpc_pmts = self.config['n_tpc_pmts']
         dtype = [
@@ -109,8 +91,6 @@ class OnlinePeakMonitor(strax.Plugin):
              (np.int64, (n_bins_area_width, n_bins_area_width))),
             (('Area vs width edges (log-space)', 'area_vs_width_bounds'),
              (np.float64, np.shape(bounds_area_width))),
-            (('Area vs width histogram with cuts (log-log)', 'area_vs_width_hist_clean'),
-             (np.int64, (n_bins_area_width, n_bins_area_width))),
             (('Lone hits areas histogram [ADC-counts]', 'lone_hits_area_hist'),
              (np.int64, n_bins)),
             (('Lone hits areas bounds [ADC-counts]', 'lone_hits_area_bounds'),
@@ -123,12 +103,8 @@ class OnlinePeakMonitor(strax.Plugin):
              (np.float64, 2)),
             (('Number of contributing channels histogram', 'n_channel_hist'),
              (np.int64, n_tpc_pmts)),
-            (('Number of contributing channels histogram bounds', 'n_channel_bounds'),
-             (np.float64, 2)),
-            (('Near S1 peaks area hist', 'near_s1_area_hist'),
-             (np.int64, n_bins)),
-            (('Near S1 peaks area hist bounds', 'near_s1_area_bounds'),
-             (np.float64, 2)),
+            (('Single electron gain', 'online_se_gain'),
+             np.float32),
         ]
         return dtype
 
@@ -138,7 +114,7 @@ class OnlinePeakMonitor(strax.Plugin):
         res['time'] = start
         res['endtime'] = end
         n_pmt = self.config['n_tpc_pmts']
-        n_bins = self.config['online_monitor_nbins']
+        n_bins = self.config['online_peak_monitor_nbins']
 
         # Bounds for histograms
         res['area_vs_width_bounds'] = self.config['area_vs_width_bounds']
@@ -148,41 +124,29 @@ class OnlinePeakMonitor(strax.Plugin):
         # Always cut out unphysical peaks
         sel = (peaks['area'] > 0) & (peaks['range_50p_area'] > 0)
         res['area_vs_width_hist'] = self.area_width_hist(peaks[sel])
-
-        # Experimental example of how to apply cuts here.
-        # Let's make a cut on the time between two peaks, if too short,
-        # ignore the peak.
-        timedelta = peaks[1:]['time'] - strax.endtime(peaks)[:-1]
-        timesel = timedelta > self.config['area_vs_width_min_gap']
-        # Last peak always has no tails
-        timesel = np.concatenate((timesel, [True]))
-        sel &= timesel
-
-        # Also apply the area_vs_width_cut_string like a selection_str
-        sel_str = self.config['area_vs_width_cut_string']
-        sel = self._config_as_selection_str(sel_str, peaks, pre_sel=sel)
-        res['area_vs_width_hist_clean'] = self.area_width_hist(peaks[sel])
-        # make a new selection don't re-use
         del sel
 
         # -- Lone hit properties --
         # Make a mask with the cuts.
-        # NB: LONE HITS AREA ARE IN ADC!
-        mask = self._config_as_selection_str(
-            self.config['lone_hits_cut_string'], lone_hits)
         # Now only take lone hits that are separated in time.
-        lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
-        # Hits on the left are far away? (assume first is because of chunk bound)
-        mask &= np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
-        # Hits on the right are far away? (assume last is because of chunk bound)
-        mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+        if len(lone_hits):
+            lh_timedelta = lone_hits[1:]['time'] - strax.endtime(lone_hits)[:-1]
+            # Hits on the left are far away? (assume first is because of chunk bound)
+            mask = np.hstack([True, lh_timedelta > self.config['lone_hits_min_gap']])
+            # Hits on the right are far away? (assume last is because of chunk bound)
+            mask &= np.hstack([lh_timedelta > self.config['lone_hits_min_gap'], True])
+        else:
+            mask = []
+        masked_lh = strax.apply_selection(lone_hits[mask],
+                                          selection_str=self.config['lone_hits_cut_string'])
 
         # Make histogram of ADC counts
-        lone_hit_areas, _ = np.histogram(lone_hits[mask]['area'],
+        # NB: LONE HITS AREA ARE IN ADC!
+        lone_hit_areas, _ = np.histogram(masked_lh['area'],
                                          bins=n_bins,
                                          range=self.config['lone_hits_area_bounds'])
 
-        lone_hit_channel_count, _ = np.histogram(lone_hits[mask]['channel'],
+        lone_hit_channel_count, _ = np.histogram(masked_lh['channel'],
                                                  bins=n_pmt,
                                                  range=[0, n_pmt])
         # Count number of lone-hits per PMT
@@ -197,52 +161,12 @@ class OnlinePeakMonitor(strax.Plugin):
         res['aft_hist'] = aft_hist
         res['aft_bounds'] = aft_b
 
-        # -- Number of contributing channels channels --
-        n_cont_b = [0, n_pmt]
-        n_cont_hist, _ = np.histogram(peaks['n_channels'], bins=n_pmt, range=n_cont_b)
-        res['n_channel_hist'] = n_cont_hist
-        res['n_channel_bounds'] = n_cont_b
-
-        # -- Experimental selection --
-        # We first apply a basic selection on the peaks to e.g. get S1s
-        mask = self._config_as_selection_str(self.config['near_s1_hists_cut_string'], peaks)
-        peaks_sel = peaks[mask]
-        # We select peaks where the peak before or the peak after it is within
-        # near_s1_max_time_diff ns. TODO: Do we want another hist for this?
-        time_diff = peaks_sel[1:]['time'] - strax.endtime(peaks_sel)[:-1]
-        is_close = time_diff < self.config['near_s1_max_time_diff']
-        time_mask = np.zeros(len(peaks_sel), dtype=np.bool_)
-        # Either the previous or the next peak can be close, take both into account
-        time_mask[:-1] = is_close
-        time_mask[1:] = time_mask[1:] | is_close
-
-        # Make the area hist
-        near_s1_bound = self.config['near_s1_hists_bounds']
-        near_s1_hist, _ = np.histogram(peaks_sel['area'][time_mask], bins=n_bins, range=near_s1_bound)
-        res['near_s1_area_hist'] = near_s1_hist
-        res['near_s1_area_bounds'] = near_s1_bound
-
-        # Cleanup
-        # del hist, clean_hist, lone_hit_areas, lone_hit_channel_count
+        # Estimate Single Electron (SE) gain
+        se_hist, se_bins = np.histogram(peaks['area'], bins=n_bins,
+                                        range=self.config['online_se_bounds'])
+        bin_centers = (se_bins[1:] + se_bins[:-1]) / 2
+        res['online_se_gain'] = bin_centers[np.argmax(se_hist)]
         return res
-
-    # TODO
-    #  somehow prevent overlap with strax.context.apply_selection
-    @staticmethod
-    def _config_as_selection_str(selection_string, data, pre_sel=None):
-        """Get mask for data base on the selection string"""
-        if pre_sel is None:
-            pre_sel = np.ones(len(data), dtype=np.bool_)
-
-        if selection_string != '':
-            if isinstance(selection_string, (list, tuple)):
-                selection_string = ' & '.join(f'({x})' for x in selection_string)
-
-            mask = numexpr.evaluate(selection_string, local_dict={
-                fn: data[fn]
-                for fn in data.dtype.names})
-            pre_sel &= mask
-        return pre_sel
 
     def area_width_hist(self, data):
         """Make area vs width 2D-hist"""
@@ -254,30 +178,125 @@ class OnlinePeakMonitor(strax.Plugin):
         return hist.T
 
 
-class OnlineMonitor(strax.LoopPlugin):
+@export
+@strax.takes_config(
+    strax.Option(
+        'channel_map', 
+        track=False, 
+        type=immutabledict,
+        help='immutabledict mapping subdetector to (min, max) '
+             'channel number.'),
+    strax.Option(
+        'events_area_bounds',
+        type=tuple, default=(-0.5, 130.5),
+        help='Boundaries area histogram of events_nv_area_per_chunk [PE]'),
+    strax.Option(
+        'events_area_nbins',
+        type=int, default=131,
+        help='Number of bins of histogram of events_nv_area_per_chunk, '
+             'defined value 1 PE/bin')
+)
+class OnlineMonitorNV(strax.Plugin):
     """
-    Loop over the online-monitor chunks, get the veto intervals that are within
-    each of these chunks. Compute the live-time within each of the chunks.
+    Plugin to write data of nVeto detector to the online-monitor. 
+    Data that is written by this plugin should be small (~MB/chunk) 
+    to not overload the runs-database.
+
+    This plugin takes 'hitlets_nv' and 'events_nv'. Although they are
+    not strictly related, they are aggregated into a single data_type
+    in order to minimize the number of documents in the online monitor.
+
+    Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
-    depends_on = ('online_peak_monitor', 'veto_intervals')
-    provides = 'online_monitor'
-    __version__ = '0.0.4'
+    depends_on = ('hitlets_nv', 'events_nv')
+    provides = 'online_monitor_nv'
+    data_kind = 'online_monitor_nv'
     rechunk_on_save = False
 
-    def infer_dtype(self):
-        dtype = strax.unpack_dtype(self.deps['online_peak_monitor'].dtype_for('online_peak_monitor'))
-        dtype += [(('Live time', 'live_time'),
-                   np.float64),]
-        return dtype
+    # Needed in case we make again an muVETO child.
+    ends_with = '_nv'
 
-    def compute_loop(self, peaks, veto_intervals):
-        res = {}
-        for d in peaks.dtype.names:
-            res[d] = peaks[d]
-        dt = strax.endtime(peaks) - peaks['time']
-        assert not np.iterable(dt) or len(dt) == 1
-        if dt > 0:
-            res['live_time'] = 1 - np.sum(veto_intervals['veto_interval'])/dt
-        else:
-            res['live_time'] = 1
+    __version__ = '0.0.4'
+
+    def infer_dtype(self):
+        self.channel_range = self.config['channel_map']['nveto']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+        return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
+
+    def compute(self, hitlets_nv, events_nv, start, end):
+        # General setup
+        res = np.zeros(1, dtype=self.dtype)
+        res['time'] = start
+        res['endtime'] = end
+
+        # Count number of hitlets_nv per PMT
+        hitlets_channel_count, _ = np.histogram(hitlets_nv['channel'],
+                                                bins=self.n_channel,
+                                                range=[self.channel_range[0],
+                                                       self.channel_range[1] + 1])
+        res[f'hitlets{self.ends_with}_per_channel'] = hitlets_channel_count
+
+        # Count number of events_nv with coincidence cut
+        res[f'events{self.ends_with}_per_chunk'] = len(events_nv)
+        sel = events_nv['n_contributing_pmt'] >= 4
+        res[f'events{self.ends_with}_4coinc_per_chunk'] = np.sum(sel)
+        sel = events_nv['n_contributing_pmt'] >= 5
+        res[f'events{self.ends_with}_5coinc_per_chunk'] = np.sum(sel)
+        sel = events_nv['n_contributing_pmt'] >= 8
+        res[f'events{self.ends_with}_8coinc_per_chunk'] = np.sum(sel)
+        sel = events_nv['n_contributing_pmt'] >= 10
+        res[f'events{self.ends_with}_10coinc_per_chunk'] = np.sum(sel)
+
+        # Get histogram of events_nv_area per chunk
+        events_area, bins_ = np.histogram(events_nv['area'],
+                                          bins=self.config['events_area_nbins'],
+                                          range=self.config['events_area_bounds'])
+        res[f'events{self.ends_with}_area_per_chunk'] = events_area
         return res
+
+
+def veto_monitor_dtype(veto_name: str = '_nv',
+                       n_pmts: int = 120,
+                       n_bins: int = 131) -> list:
+    dtype = []
+    dtype += strax.time_fields  # because mutable
+    dtype += [((f'hitlets{veto_name} per channel', f'hitlets{veto_name}_per_channel'), (np.int64, n_pmts)),
+              ((f'events{veto_name}_area per chunk', f'events{veto_name}_area_per_chunk'), np.int64, n_bins),
+              ((f'events{veto_name} per chunk', f'events{veto_name}_per_chunk'), np.int64),
+              ((f'events{veto_name} 4-coincidence per chunk', f'events{veto_name}_4coinc_per_chunk'), np.int64),
+              ((f'events{veto_name} 5-coincidence per chunk', f'events{veto_name}_5coinc_per_chunk'), np.int64),
+              ((f'events{veto_name} 8-coincidence per chunk', f'events{veto_name}_8coinc_per_chunk'), np.int64),
+              ((f'events{veto_name} 10-coincidence per chunk', f'events{veto_name}_10coinc_per_chunk'), np.int64)
+             ]
+    return dtype
+
+
+@export
+@strax.takes_config(
+    strax.Option(
+        'adc_to_pe_mv',
+        type=int, default=170.0,
+        help='conversion factor from ADC to PE for muon Veto')
+)
+class OnlineMonitorMV(OnlineMonitorNV):
+    __doc__ = OnlineMonitorNV.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
+    depends_on = ('hitlets_mv', 'events_mv')
+    provides = 'online_monitor_mv'
+    data_kind = 'online_monitor_mv'
+    rechunk_on_save = False
+
+    # Needed in case we make again an muVETO child.
+    ends_with = '_mv'
+    child_plugin = True
+
+    __version__ = '0.0.1'
+
+    def infer_dtype(self):
+        self.channel_range = self.config['channel_map']['mv']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
+        return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
+
+    def compute(self, hitlets_mv, events_mv, start, end):
+        events_mv = np.copy(events_mv)
+        events_mv['area'] *= 1./self.config['adc_to_pe_mv']
+        return super().compute(hitlets_mv, events_mv, start, end)

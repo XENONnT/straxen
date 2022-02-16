@@ -6,11 +6,11 @@ import datetime
 import logging
 import time
 import os
-import os.path as osp
-import platform
 import psutil
-import sys
 import json
+import importlib
+import sys
+from pprint import pprint
 
 
 def parse_args():
@@ -23,16 +23,31 @@ def parse_args():
         type=str,
         help="ID of the run to process; usually the run name.")
     parser.add_argument(
+        '--package',
+        default='straxen',
+        help="Where to load the context from (straxen/cutax/pema)")
+    parser.add_argument(
         '--context',
-        default='xenon1t_dali',
-        help="Name of straxen context to use")
+        default='xenonnt_online',
+        help="Name of context to use")
     parser.add_argument(
         '--target',
         default='event_info',
-        help='Target final data type to produce')
+        nargs='*',
+        help='Target final data type to produce. Can be a list for multicore mode.')
     parser.add_argument(
-        '--config_from_json', default='',
-        help='Use a json-file to load the config from')
+        '--context_kwargs',
+        type=json.loads,
+        help='Use a json-file to load the context with')
+    parser.add_argument(
+        '--register_from_file',
+        type=str,
+        help='do st.register_all from a specified file'
+    )
+    parser.add_argument(
+        '--config_kwargs',
+        type=json.loads,
+        help='Use a json-file to set the context to')
     parser.add_argument(
         '--from_scratch',
         action='store_true',
@@ -68,7 +83,7 @@ def parse_args():
     parser.add_argument(
         '--profile_to',
         default='',
-        help="Filename to output profile information to. If ommitted,"
+        help="Filename to output profile information to. If omitted,"
              "no profiling will occur.")
     parser.add_argument(
         '--profile_ram',
@@ -98,33 +113,36 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(args):
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
-
-    print(f"Starting processing of run {args.run_id} until {args.target}")
-    print(f"\tpython {platform.python_version()} at {sys.executable}")
-
-    # These imports take a bit longer, so it's nicer
-    # to do them after argparsing (so --help is fast)
+def setup_context(args):
+    # reimport to be safe
     import strax
-    print(f"\tstrax {strax.__version__} at {osp.dirname(strax.__file__)}")
     import straxen
-    print(f"\tstraxen {straxen.__version__} at {osp.dirname(straxen.__file__)}")
 
-    st = getattr(straxen.contexts, args.context)()
+    context_module = importlib.import_module(f'{args.package}.contexts')
+    st = getattr(context_module, args.context)()
+
+    if args.context_kwargs:
+        logging.info(f'set context kwargs {args.context_kwargs}')
+        st = getattr(context_module, args.context)(**args.context_kwargs)
+
+    if args.config_kwargs:
+        logging.info(f'set context options to {args.config_kwargs}')
+        st.set_config(to_dict_tuple(args.config_kwargs))
+
+    if args.register_from_file:
+        register_to_context(st, args.register_from_file)
+
     if args.diagnose_sorting:
         st.set_config(dict(diagnose_sorting=True))
-    if args.config_from_json != '':
-        conf = json_to_dict(args.config_from_json)
-        st.set_config(conf)
+
     st.context_config['allow_multiprocess'] = args.multiprocess
     st.context_config['allow_shm'] = args.shm
     st.context_config['allow_lazy'] = not (args.notlazy is True)
+
     if args.timeout is not None:
         st.context_config['timeout'] = args.timeout
     st.context_config['max_messages'] = args.max_messages
+
     if args.build_lowlevel:
         st.context_config['forbid_creation_of'] = tuple()
     else:
@@ -141,10 +159,14 @@ def main(args):
         for sf in st.storage:
             # Set all others to read only
             sf.readonly = True
-        # TODO
-        #  should we check that it doesn't exist already?
-        st.storage += [
-            strax.DataDirectory('./strax_data')]
+        for sf in st.storage:
+            if hasattr(sf, 'path'):
+                if sf.path == './strax_data':
+                    break
+        else:
+            st.storage += [
+                strax.DataDirectory('./strax_data')]
+
     if args.add_folder != '':
         for sf in st.storage:
             # Set all others to read only
@@ -155,6 +177,26 @@ def main(args):
     if st.is_stored(args.run_id, args.target):
         logging.info("This data is already available.")
         return 1
+    return st
+
+
+def main(args):
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
+
+    logging.info(f"Starting processing of run {args.run_id} until {args.target}")
+
+    # These imports take a bit longer, so it's nicer
+    # to do them after argparsing (so --help is fast)
+    import strax
+    import straxen
+    straxen.print_versions(tuple({'strax', 'straxen', args.package}))
+
+    st = setup_context(args)
+
+    # Reactivate after https://github.com/XENONnT/straxen/issues/586
+    # logging.debug(st.available_for_run(args.run_id))
 
     try:
         md = st.run_metadata(args.run_id)
@@ -178,7 +220,10 @@ def main(args):
         kwargs = dict(
             run_id=args.run_id,
             targets=args.target,
-            max_workers=int(args.workers))
+            max_workers=int(args.workers),
+            allow_multiple=len(strax.to_str_tuple(args.target)) > 1,
+            progress_bar=False,
+        )
 
         if args.profile_to:
             with strax.profile_threaded(args.profile_to):
@@ -214,15 +259,25 @@ def main(args):
         print(msg, flush=True)
 
     logging.info(f"\nStraxer is done! "
-          f"We took {time.time() - clock_start:.1f} seconds, "
-          f"peak RAM usage was around {peak_ram:.1f} MB.")
+                 f"We took {time.time() - clock_start:.1f} seconds, "
+                 f"peak RAM usage was around {peak_ram:.1f} MB.")
 
 
-def json_to_dict(path:str):
-    if not os.path.exists(path):
-        raise FileNotFoundError(f'{path} does not exist')
-    with open(path, mode='r') as f:
-        res = json.loads(f.read())
+def register_to_context(st, module: str):
+    if not os.path.exists(module):
+        raise FileNotFoundError(f'No such file {module}')
+    assert module.endswith('.py'), "only py files please!"
+    folder, file = os.path.split(module)
+    sys.path.append(folder)
+    to_register = importlib.import_module(os.path.splitext(file)[0])
+    st.register_all(to_register)
+    logging.info(f'Successfully registered {file}. Printing plugins')
+    pprint(st._plugin_class_registry)
+
+
+def to_dict_tuple(res: dict):
+    """Convert list configs to tuple configs"""
+    res = res.copy()
     for k, v in res.copy().items():
         if type(v) == list:
             # Remove lists to tuples

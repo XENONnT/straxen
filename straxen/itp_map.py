@@ -5,7 +5,8 @@ import re
 
 import numpy as np
 from scipy.spatial import cKDTree
-
+from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
+import straxen
 import strax
 export, __all__ = strax.exporter()
 
@@ -82,11 +83,19 @@ class InterpolatingMap:
         'map': 42,
         etc
 
-    """
-    data_field_names = ['timestamp', 'description', 'coordinate_system',
-                        'name', 'irregular']
+    Default method return inverse-distance weighted average of nearby 2 * dim points
+    Extra support includes RectBivariateSpline, RegularGridInterpolator in scipy
+    by pass keyword argument like
+        method='RectBivariateSpline'
 
-    def __init__(self, data):
+    The interpolators are called with
+        'positions' :  [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
+        'map_name'  :  key to switch to map interpolator other than the default 'map'
+    """
+    metadata_field_names = ['timestamp', 'description', 'coordinate_system',
+                            'name', 'irregular', 'compressed', 'quantized']
+
+    def __init__(self, data, method='WeightedNearestNeighbors', **kwargs):
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
         if isinstance(data, (str, bytes)):
@@ -95,7 +104,7 @@ class InterpolatingMap:
         self.data = data
 
         # Decompress / dequantize the map
-        # TODO: support multiple map names
+        # We should support multiple map names!
         if 'compressed' in self.data:
             compressor, dtype, shape = self.data['compressed']
             self.data['map'] = np.frombuffer(
@@ -106,51 +115,141 @@ class InterpolatingMap:
             self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
             del self.data['quantized']
 
-        cs = self.data['coordinate_system']
-        if not len(cs):
+        csys = self.data['coordinate_system']
+        if not len(csys):
             self.dimensions = 0
-        elif isinstance(cs[0], list) and isinstance(cs[0][0], str):
+        elif isinstance(csys[0][0], str):
             # Support for specifying coordinate system as a gridspec
             grid = [np.linspace(left, right, points)
-                    for _, (left, right, points) in cs]
-            cs = np.array(np.meshgrid(*grid, indexing='ij'))
-            cs = np.transpose(cs, np.roll(np.arange(len(grid)+1), -1))
-            cs = np.array(cs).reshape((-1, len(grid)))
+                    for _, (left, right, points) in csys]
+            csys = np.array(np.meshgrid(*grid, indexing='ij'))
+            axes = np.roll(np.arange(len(grid) + 1), -1)
+            csys = np.transpose(csys, axes)
+            csys = np.array(csys).reshape((-1, len(grid)))
             self.dimensions = len(grid)
         else:
-            self.dimensions = len(cs[0])
+            csys = np.array(csys)
+            self.dimensions = len(csys[0])
 
-        self.coordinate_system = cs
+        self.coordinate_system = csys
         self.interpolators = {}
         self.map_names = sorted([k for k in self.data.keys()
-                                 if k not in self.data_field_names])
+                                 if k not in self.metadata_field_names])
 
         log = logging.getLogger('InterpolatingMap')
-        log.debug('Map name: %s' % self.data['name'])
+        log.debug('Map name: %s' % self.data.get('name',
+                                                 "NO NAME?!"))
         log.debug('Map description:\n    ' +
-                       re.sub(r'\n', r'\n    ', self.data['description']))
+                  re.sub(r'\n', r'\n    ', self.data.get('description',
+                                                         "NO DESCRIPTION?!")))
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
-            map_data = np.array(self.data[map_name])
-            array_valued = len(map_data.shape) == self.dimensions + 1
+            # Specify dtype float to set Nones to nan
+            map_data = np.array(self.data[map_name], dtype=np.float64)
+            if len(self.coordinate_system) == len(map_data):
+                array_valued = len(map_data.shape) == 2
+            else:
+                array_valued = len(map_data.shape) == self.dimensions + 1
+
             if self.dimensions == 0:
                 # 0 D -- placeholder maps which take no arguments
                 # and always return a single value
                 def itp_fun(positions):
                     return np.array([map_data])
+
+            elif method == 'RectBivariateSpline':
+                itp_fun = self._rect_bivariate_spline(csys, map_data, array_valued, **kwargs)
+
+            elif method == 'RegularGridInterpolator':
+                itp_fun = self._regular_grid_interpolator(csys, map_data, array_valued, **kwargs)
+
+            elif method == 'WeightedNearestNeighbors':
+                itp_fun = self._weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs)
+
             else:
-                if array_valued:
-                    map_data = map_data.reshape((-1, map_data.shape[-1]))
-                itp_fun = InterpolateAndExtrapolate(points=np.array(cs),
-                                                    values=np.array(map_data),
-                                                    array_valued=array_valued)
+                raise ValueError(f'Interpolation method {method} is not supported')
 
             self.interpolators[map_name] = itp_fun
 
-    def __call__(self, positions, map_name='map'):
+    def __call__(self, *args, map_name='map'):
         """Returns the value of the map at the position given by coordinates
         :param positions: array (n_dim) or (n_points, n_dim) of positions
         :param map_name: Name of the map to use. Default is 'map'.
         """
-        return self.interpolators[map_name](positions)
+        return self.interpolators[map_name](*args)
+
+    @staticmethod
+    def _rect_bivariate_spline(csys, map_data, array_valued, **kwargs):
+        dimensions = len(csys[0])
+        grid = [np.unique(csys[:, i]) for i in range(dimensions)]
+        grid_shape = [len(g) for g in grid]
+
+        assert dimensions == 2, 'RectBivariateSpline interpolate maps of dimension 2'
+        assert not array_valued, 'RectBivariateSpline does not support interpolating array values'
+        map_data = map_data.reshape(*grid_shape)
+        kwargs = straxen.filter_kwargs(RectBivariateSpline, kwargs)
+        rbs = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs)
+
+        def arg_formated_rbs(positions):
+            if isinstance(positions, list):
+                positions = np.array(positions)
+            return rbs.ev(positions[:, 0], positions[:, 1])
+
+        return arg_formated_rbs
+
+    @staticmethod
+    def _regular_grid_interpolator(csys, map_data, array_valued, **kwargs):
+        dimensions = len(csys[0])
+        grid = [np.unique(csys[:, i]) for i in range(dimensions)]
+        grid_shape = [len(g) for g in grid]
+
+        if array_valued:
+            map_data = map_data.reshape((*grid_shape, map_data.shape[-1]))
+        else:
+            map_data = map_data.reshape(*grid_shape)
+
+        config = dict(bounds_error=False, fill_value=None)
+        kwargs = straxen.filter_kwargs(RegularGridInterpolator, kwargs)
+        config.update(kwargs)
+        
+        return RegularGridInterpolator(tuple(grid), map_data, **config)
+
+    @staticmethod
+    def _weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs):
+        if array_valued:
+            map_data = map_data.reshape((-1, map_data.shape[-1]))
+        else:
+            map_data = map_data.flatten()
+        kwargs = straxen.filter_kwargs(InterpolateAndExtrapolate, kwargs)
+        return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
+
+    def scale_coordinates(self, scaling_factor, map_name='map'):
+        """Scales the coordinate system by the specified factor
+        :params scaling_factor: array (n_dim) of scaling factors if different or single scalar.
+        """
+        if self.dimensions == 0:
+            return
+        if hasattr(scaling_factor, '__len__'):
+            assert (len(scaling_factor) == self.dimensions), \
+                f"Scaling factor array dimension {len(scaling_factor)} " \
+                f"does not match grid dimension {self.dimensions}"
+            self._sf = scaling_factor
+        if isinstance(scaling_factor, (int, float)):
+            self._sf = [scaling_factor] * self.dimensions
+
+        alt_csys = self.coordinate_system
+        for i, gp in enumerate(self.coordinate_system):
+            alt_csys[i] = [gc * k for (gc, k) in zip(gp, self._sf)]
+
+        map_data = np.array(self.data[map_name])
+        if len(self.coordinate_system) == len(map_data):
+            array_valued = len(map_data.shape) == 2
+        else:
+            array_valued = len(map_data.shape) == self.dimensions + 1
+        if array_valued:
+            map_data = map_data.reshape((-1, map_data.shape[-1]))
+        itp_fun = InterpolateAndExtrapolate(points=np.array(alt_csys),
+                                            values=np.array(map_data),
+                                            array_valued=array_valued)
+        self.interpolators[map_name] = itp_fun
