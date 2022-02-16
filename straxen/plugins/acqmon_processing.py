@@ -224,9 +224,9 @@ TO_BE_EXPECTED_MIN_CLOCK_DISTANCE = 9.9e9  # ns
 TO_BE_EXPECTED_MAX_CLOCK_DISTANCE = 10.1e9  # ns
 
 @strax.takes_config(
-    strax.Option('tpc_internal_delay', type=immutabledict, track=True,
+    strax.Option('tpc_internal_delay', type=immutabledict, track=False,
                  help=('Internal delay between aqmon and regular TPC channels ins [ns]'
-                       'before/after run: 21286')
+                       'Bump plugin version if changed!')
                  ),
     strax.Option('adc_threshold_nim_signal', default=500, type=int, track=True,
                  help='Threshold in [adc] to search for the NIM signal'
