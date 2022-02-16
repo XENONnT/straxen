@@ -116,14 +116,14 @@ jobs:
         if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]')
         run: |
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
-          coverage run --source=straxen --omit=./straxen/storage/rucio_remote.py setup.py test -v
+          coverage run --source=straxen -m pytest -v
 
           # Run twice, once without and once with db access
           if test -f ~/.xenon_config; then
             rm ~/.xenon_config
           fi
           bash .github/scripts/create_pre_apply_function.sh $HOME
-          coverage run --append --source=straxen --omit=./straxen/storage/rucio_remote.py setup.py test -v
+          coverage run --append --source=straxen -m pytest -v
           coveralls --service=github
       - name: goodbye
         run: echo "tests done, bye bye"
