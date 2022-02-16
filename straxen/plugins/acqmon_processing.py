@@ -2,12 +2,8 @@ import strax
 import straxen
 import numba
 import numpy as np
-<<<<<<< HEAD
-from immutabledict import immutabledict
 import os
 import csv
-=======
->>>>>>> master
 
 export, __all__ = strax.exporter()
 
