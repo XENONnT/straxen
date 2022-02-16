@@ -305,8 +305,8 @@ class DetectorSynchronization(strax.Plugin):
 
     def get_delay(self):
         delay = 0
-        for run_id, _delay in self.config['tpc_internal_delay']:
-            if int(self.run_id) >= run_id:
+        for run_id, _delay in self.config['tpc_internal_delay'].items():
+            if int(self.run_id) >= int(run_id):
                 delay = _delay
         return delay
 
