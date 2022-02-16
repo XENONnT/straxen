@@ -140,3 +140,8 @@ def test_nv_for_dummy_rr():
     st.context_config['forbid_creation_of'] = tuple()
     st.register(straxen.test_utils.DummyRawRecords)
     st.make(straxen.test_utils.nt_test_run_id, 'hitlets_nv')
+    
+    # test alt baselining too
+    st2=st2.new_context()
+    st2.set_config({'min_samples_alt_baseline_nv': 5})
+    st.make(straxen.test_utils.nt_test_run_id, 'records_nv')
