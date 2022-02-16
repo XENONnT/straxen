@@ -494,7 +494,10 @@ class nVETOEventsSync(strax.OverlapWindowPlugin):
     def compute(self, events_nv, detector_time_offsets):
         delay = detector_time_offsets[self.delay_field_name]
         delay = np.median(delay[delay > 0])
-
+        # Check if delay is >= 0 otherwise something went wrong with 
+        # the sync signal.
+        assert delay >= 0, f'Missing the GPS sync signal for run {self.run_id}.' 
+        
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
         events_sync_nv['time'] = events_nv['time']
         events_sync_nv['endtime'] = events_nv['endtime']
