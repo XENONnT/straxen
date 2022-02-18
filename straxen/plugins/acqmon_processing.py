@@ -4,6 +4,7 @@ import numba
 import numpy as np
 from enum import IntEnum
 from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
+
 export, __all__ = strax.exporter()
 
 __all__ += ['T_NO_VETO_FOUND']
@@ -38,7 +39,7 @@ class AqmonHits(strax.Plugin):
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
-            (50,   (AqmonChannels.SUM_WF,)),
+            (50, (AqmonChannels.SUM_WF,)),
             # Digital signals, can set a much higher threshold
             (1500, (
                 AqmonChannels.GPS_SYNC,
@@ -236,13 +237,12 @@ class VetoProximity(strax.OverlapWindowPlugin):
              'of an event, but this can also be the S1 or S2 start/endtime'
     )
 
-    veto_proximity_window=straxen.URLConfig(
+    veto_proximity_window = straxen.URLConfig(
         default=int(1e9),
         help='Maximum separation between veto stop and start pulses [ns]'
     )
 
     veto_names = ['busy', 'he', 'hev', 'straxen_deadtime']
-
 
     def infer_dtype(self):
         dtype = []
@@ -312,10 +312,10 @@ class VetoProximity(strax.OverlapWindowPlugin):
         # Find the next and previous vetos
         times_to_prev, times_to_next = self.abs_time_to_prev_next(event_window, selected_intervals)
         mask_prev = times_to_prev > 0
-        result_buffer[f'time_to_previous_{veto_name}'][mask_prev]=times_to_prev[mask_prev]
+        result_buffer[f'time_to_previous_{veto_name}'][mask_prev] = times_to_prev[mask_prev]
 
-        max_next = times_to_next>0
-        result_buffer[f'time_to_next_{veto_name}'][mask_prev]=times_to_next[max_next]
+        max_next = times_to_next > 0
+        result_buffer[f'time_to_next_{veto_name}'][mask_prev] = times_to_next[max_next]
         # for event_i, ev_wind in enumerate(event_window):
         #     # Two cases left, either vetos are before or after the event window
         #     interval_before = selected_intervals['endtime'] < ev_wind['time']
@@ -336,8 +336,8 @@ class VetoProximity(strax.OverlapWindowPlugin):
     @numba.njit
     @staticmethod
     def abs_time_to_prev_next(event_window, selected_intervals):
-        times_to_prev = np.ones(len(event_window))*-1
-        times_to_next = np.ones(len(event_window))*-1
+        times_to_prev = np.ones(len(event_window)) * -1
+        times_to_next = np.ones(len(event_window)) * -1
         for event_i, ev_wind in enumerate(event_window):
             # Two cases left, either vetos are before or after the event window
             interval_before = selected_intervals['endtime'] < ev_wind['time']
@@ -345,13 +345,13 @@ class VetoProximity(strax.OverlapWindowPlugin):
 
             if np.sum(interval_before):
                 prev_intervals = selected_intervals[interval_before]
-                time_to_prev = np.abs(ev_wind['time']-prev_intervals['endtime'])
+                time_to_prev = np.abs(ev_wind['time'] - prev_intervals['endtime'])
                 prev_idx = np.argmin(time_to_prev)
                 times_to_prev[event_i] = time_to_prev[prev_idx]
 
             if np.sum(interval_after):
                 next_intervals = selected_intervals[interval_after]
-                time_to_next = np.abs(next_intervals['endtime']-ev_wind['endtime'])
+                time_to_next = np.abs(next_intervals['endtime'] - ev_wind['endtime'])
                 next_idx = np.argmin(time_to_next)
                 times_to_next[event_i] = time_to_next[next_idx]
         return times_to_prev, times_to_next
