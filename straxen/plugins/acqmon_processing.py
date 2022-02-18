@@ -49,7 +49,8 @@ class AqmonHits(strax.Plugin):
                 AqmonChannels.HE_START,
                 AqmonChannels.BUSY_STOP,
                 AqmonChannels.BUSY_START,)),
-            # Fake signals
+            # Fake signals, 0 meaning that we won't find hits using
+            # strax but just look for starts and stops
             (0, (AqmonChannels.ARTIFICIAL_DEADTIME,)),
 
         ),
