@@ -3,10 +3,8 @@ import straxen
 import numba
 import numpy as np
 from enum import IntEnum
-try:
-    from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
-except:
-    from straxen import ARTIFICIAL_DEADTIME_CHANNEL
+from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
+
 
 export, __all__ = strax.exporter()
 
@@ -33,29 +31,30 @@ class AqmonChannels(IntEnum):
 
 @export
 class AqmonHits(strax.Plugin):
-    """ Find hits in acquisition monitor data. These hits could be
-        then used by other plugins for deadtime calculations,
-        GPS SYNC analysis, etc.
     """
-    save_when = strax.SaveWhen.NEVER
-    __version__ = '0.0.0_test8'
+    Find hits in acquisition monitor data. These hits could be
+    then used by other plugins for deadtime calculations,
+    GPS SYNC analysis, etc.
+    """
+    save_when = strax.SaveWhen.TARGET
+    __version__ = '1.0.0'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
-            (50, (AqmonChannels.SUM_WF,)),
+            (50, (int(AqmonChannels.SUM_WF),)),
             # Digital signals, can set a much higher threshold
             (1500, (
-                AqmonChannels.GPS_SYNC,
-                AqmonChannels.M_VETO_SYNC,
-                AqmonChannels.HEV_STOP,
-                AqmonChannels.HEV_START,
-                AqmonChannels.HE_STOP,
-                AqmonChannels.HE_START,
-                AqmonChannels.BUSY_STOP,
-                AqmonChannels.BUSY_START,)),
+                int(AqmonChannels.GPS_SYNC),
+                int(AqmonChannels.M_VETO_SYNC),
+                int(AqmonChannels.HEV_STOP),
+                int(AqmonChannels.HEV_START),
+                int(AqmonChannels.HE_STOP),
+                int(AqmonChannels.HE_START),
+                int(AqmonChannels.BUSY_STOP),
+                int(AqmonChannels.BUSY_START),)),
             # Fake signals, 0 meaning that we won't find hits using
             # strax but just look for starts and stops
-            (0, (AqmonChannels.ARTIFICIAL_DEADTIME,)),
+            (0, (int(AqmonChannels.ARTIFICIAL_DEADTIME),)),
 
         ),
         track=True,
@@ -226,7 +225,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     when a busy happens during an event.
     """
 
-    __version__ = '1.1.3_test2'
+    __version__ = '2.0.0'
     # Strictly speaking, we could depend on 'events', but then you couldn't
     # change the event_window_fields to e.g. s1_time and s2_endtime.
     depends_on = ('event_basics', 'veto_intervals')
@@ -257,10 +256,12 @@ class VetoProximity(strax.OverlapWindowPlugin):
                 ((f'Duration of event overlapping with "{name}"-veto [ns]',
                   f'veto_{name}_overlap'),
                  np.int64),
-                ((f'Time (absolute) to previous "{name}"-veto from "{start_field}" of event [ns]',
+                ((f'Time (absolute) to previous "{name}"-veto '
+                  f'from "{start_field}" of event [ns]',
                   f'time_to_previous_{name}'),
                  np.int64),
-                ((f'Time (absolute) to next "{name}"-veto from from "{stop_field}" of event [ns]',
+                ((f'Time (absolute) to next "{name}"-veto '
+                  f'from "{stop_field}" of event [ns]',
                   f'time_to_next_{name}'),
                  np.int64),
             ]
@@ -309,12 +310,13 @@ class VetoProximity(strax.OverlapWindowPlugin):
                 starts = np.clip(vetos_in_window['time'],
                                  event_window[event_i]['time'],
                                  event_window[event_i]['endtime'])
-                strops = np.clip(vetos_in_window['endtime'],
-                                 event_window[event_i]['time'],
-                                 event_window[event_i]['endtime'])
+                stops = np.clip(vetos_in_window['endtime'],
+                                event_window[event_i]['time'],
+                                event_window[event_i]['endtime'])
                 # Now sum over all the stops-starts that are clipped
                 # within the duration of the event
-                result_buffer[event_i][f'veto_{veto_name}_overlap'] = np.sum(strops - starts)
+                result_buffer[event_i][f'veto_{veto_name}_overlap'] = np.sum(stops -
+                                                                             starts)
 
         # Find the next and previous veto's
         times_to_prev, times_to_next = self.abs_time_to_prev_next(event_window, selected_intervals)
