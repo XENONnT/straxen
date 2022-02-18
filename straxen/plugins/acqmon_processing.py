@@ -2,6 +2,7 @@ import strax
 import straxen
 import numba
 import numpy as np
+from enum import IntEnum
 
 export, __all__ = strax.exporter()
 
@@ -13,34 +14,101 @@ T_NO_VETO_FOUND = int(3.6e+12)
 # More info about the acquisition monitor can be found here:
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenon1t:alexelykov:acquisition_monitor
 
+class AqmonChannels(IntEnum):
+    GPS_SYNC = 798
+    ARTIFICIAL_DEADTIME = straxen.ARTIFICIAL_DEADTIME_CHANNEL
+    SUM_WF = 800
+    M_VETO_SYNC = 801
+    HEV_STOP = 802
+    HEV_START = 803
+    HE_STOP = 804
+    HE_START = 805
+    BUSY_STOP = 806
+    BUSY_START = 807
+
 
 @export
-@strax.takes_config(strax.Option('hit_min_amplitude_aqmon', default=50, track=True, infer_type=False,
-                                 help='Minimum hit threshold in ADC*counts above baseline'),
-                    strax.Option('baseline_samples_aqmon', default=10, track=True, infer_type=False,
-                                 help='Number of samples to use at the start of the pulse to determine the baseline'))
 class AqmonHits(strax.Plugin):
-    """ Find hits in acquisition monitor data. These hits could be 
-        then used by other plugins for deadtime calculations, 
+    """ Find hits in acquisition monitor data. These hits could be
+        then used by other plugins for deadtime calculations,
         GPS SYNC analysis, etc.
     """
-    __version__ = '0.0.6'
+    save_when = strax.SaveWhen.NEVER
+    __version__ = '0.0.0_test4'
+    hit_min_amplitude_aqmon = straxen.URLConfig(
+        default=(
+            # Analogue signals
+            (50,   (AqmonChannels.SUM_WF,)),
+            # Digital signals, can set a much higher threshold
+            (1500, (
+                AqmonChannels.GPS_SYNC,
+                AqmonChannels.M_VETO_SYNC,
+                AqmonChannels.HEV_STOP,
+                AqmonChannels.HEV_START,
+                AqmonChannels.HE_STOP,
+                AqmonChannels.HE_START,
+                AqmonChannels.BUSY_STOP,
+                AqmonChannels.BUSY_START,)),
+            # Fake signals
+            (0, (AqmonChannels.ARTIFICIAL_DEADTIME,)),
 
-    depends_on = ('raw_records_aqmon')
-    provides = ('aqmon_hits')
-    data_kind = ('aqmon_hits')
+        ),
+        track=True,
+        help='Minimum hit threshold in ADC*counts above baseline. Specified '
+             'per channel in the format (threshold, (chx,chy),)',
+    )
+    baseline_samples_aqmon = straxen.URLConfig(
+        default=10,
+        track=True,
+        help='Number of samples to use at the start of the pulse to determine the baseline'
+    )
+
+    depends_on = 'raw_records_aqmon'
+    provides = 'aqmon_hits'
+    data_kind = 'aqmon_hits'
 
     dtype = strax.hit_dtype
 
-    save_when = strax.SaveWhen.TARGET
-
     def compute(self, raw_records_aqmon):
-        rec = strax.raw_to_records(raw_records_aqmon)
-        strax.sort_by_time(rec)
-        strax.zero_out_of_bounds(rec)
-        strax.baseline(rec, baseline_samples=self.config['baseline_samples_aqmon'], flip=True)
-        aqmon_hits = strax.find_hits(rec, min_amplitude=self.config['hit_min_amplitude_aqmon'])
+        allowed_channels = [channel for hit_and_channel_list
+                            in self.hit_min_amplitude_aqmon for
+                            channel in hit_and_channel_list[1]]
+
+        not_allowed_channels = (set(np.unique(raw_records_aqmon['channel']))
+                                - set(allowed_channels))
+        if not_allowed_channels:
+            raise ValueError(f'Unknown channel {not_allowed_channels} {allowed_channels}')
+        records = strax.raw_to_records(raw_records_aqmon)
+        strax.sort_by_time(records)
+        strax.zero_out_of_bounds(records)
+        strax.baseline(records, baseline_samples=self.baseline_samples_aqmon, flip=True)
+        aqmon_hits = self.find_aqmon_hits_per_channel(records)
         return aqmon_hits
+
+    def find_aqmon_hits_per_channel(self, records):
+        """Allow different thresholds to be applied to different channels"""
+        aqmon_hits = [
+            strax.find_hits(
+                records[np.in1d(records['channel'], channels)],
+                min_amplitude=hit_threshold
+            )
+            for hit_threshold, channels in self.hit_min_amplitude_aqmon
+        ]
+        artificial_deadtime = records[records['channel'] == AqmonChannels.ARTIFICIAL_DEADTIME]
+        if artificial_deadtime:
+            aqmon_hits += [self.get_deadtime_hits(artificial_deadtime)]
+        aqmon_hits = np.concatenate(aqmon_hits)
+        strax.sort_by_time(aqmon_hits)
+        return aqmon_hits
+
+    def get_deadtime_hits(self, artificial_deadtime):
+        """Actually, the artificial deadtime hits are already an interval"""
+        hits = np.zeros(len(artificial_deadtime), dtype=self.dtype)
+        hits['time'] = artificial_deadtime['time']
+        hits['dt'] = artificial_deadtime['dt']
+        hits['length'] = artificial_deadtime['length']
+        hits['channel'] = artificial_deadtime['channel']
+        return hits
 
 
 # ### Veto hardware ###:
@@ -66,11 +134,10 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     he_*    <= V1495 busy veto for high energy tpc channels
     hev_*   <= DDC10 hardware high energy veto
     """
-
-    __version__ = '0.1.6'
-    depends_on = ('aqmon_hits')
-    provides = ('veto_intervals')
-    data_kind = ('veto_intervals')
+    __version__ = '0.2.0'
+    depends_on = 'aqmon_hits'
+    provides = 'veto_intervals'
+    data_kind = 'veto_intervals'
 
     def infer_dtype(self):
         dtype = [(('veto interval [ns]', 'veto_interval'), np.int64),
@@ -80,44 +147,58 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     def setup(self):
         self.veto_names = ['busy_', 'he_', 'hev_']
-        self.channel_map = {name: ch + straxen.n_hard_aqmon_start for ch, name in
-                            enumerate(['sum_wf', 'm_veto_sync',
-                                       'hev_stop', 'hev_start',
-                                       'he_stop', 'he_start',
-                                       'busy_stop', 'busy_start'])}
+        self.channel_map = {aq_ch.name.lower(): int(aq_ch)
+                            for aq_ch in AqmonChannels}
 
     def get_window_size(self):
         # Give a very wide window
         return int(self.config['max_veto_window'] * 100)
 
     def compute(self, aqmon_hits, start, end):
-        hits = aqmon_hits
         result = np.zeros(len(aqmon_hits) * len(self.veto_names), self.dtype)
         vetos_seen = 0
 
         for name in self.veto_names:
-            veto_hits_start = channel_select_(hits, self.channel_map[name + 'start'])
-            veto_hits_stop = channel_select_(hits, self.channel_map[name + 'stop'])
+            veto_hits_start = channel_select_(aqmon_hits, self.channel_map[name + 'start'])
+            veto_hits_stop = channel_select_(aqmon_hits, self.channel_map[name + 'stop'])
 
             # Here we rely on the fact that for each start, there is a single stop that
             # follows it in time. If this is not true, our hardware does not work.
             if len(veto_hits_start):
+                prev_inx = 0
                 for t, time in enumerate(veto_hits_start['time']):
                     # Find the time of stop_j that is closest to time of start_i
-                    inx = np.searchsorted(veto_hits_stop['time'], time, side='right')
+                    inx = np.searchsorted(veto_hits_stop['time'][prev_inx:], time, side='right')
 
                     if inx == len(veto_hits_stop['time']):
                         continue
                     else:
-                        result['veto_interval'][vetos_seen] = veto_hits_stop['time'][inx] - time
+
                         result["time"][vetos_seen] = time
                         assert time < veto_hits_stop['time'][inx]
                         result["endtime"][vetos_seen] = veto_hits_stop['time'][inx]
                         result["veto_type"][vetos_seen] = name + 'veto'
                         vetos_seen += 1
+                    prev_inx = inx
+
+        # Straxen deadtime is special, it's a start and stop with no data
+        # but already an interval so easily used here
+        artificial_deadtime = aqmon_hits[(aqmon_hits['channel'] ==
+                                          AqmonChannels.ARTIFICIAL_DEADTIME)]
+        n_artificial = len(artificial_deadtime)
+
+        if n_artificial:
+            result[vetos_seen:n_artificial]['time'] = artificial_deadtime['time']
+            result[vetos_seen:n_artificial]['endtime'] = strax.endtime(artificial_deadtime)
+            result[vetos_seen:n_artificial]['veto_type'] = 'straxen_deadtime'
+            vetos_seen += n_artificial
+
         result = result[:vetos_seen]
-        result['time'] = np.clip(result['time'], start, end)
-        result['endtime'] = np.clip(strax.endtime(result), 0, end)
+        # Don't clip, if we have a hit on the boundary of the chun, we
+        # should let the OverlapWindowPlugin fix it
+        # result['time'] = np.clip(result['time'], start, end)
+        # result['endtime'] = np.clip(strax.endtime(result), 0, end)
+        result['veto_interval'] = result['endtime'] - result['time']
         sort = np.argsort(result['time'])
         result = result[sort]
         return result
@@ -145,12 +226,12 @@ class VetoProximity(strax.OverlapWindowPlugin):
         - hev_x:  high energy veto on/off signal
     """
 
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
     depends_on = ('event_basics', 'aqmon_hits')
-    provides = ('veto_proximity')
-    data_kind = ('events')
-    save_when = strax.SaveWhen.TARGET
-    veto_names = ['busy', 'he', 'hev']
+    provides = 'veto_proximity'
+    data_kind = 'events'
+    save_when = strax.SaveWhen.ALWAYS
+    veto_names = ['straxen_deadtime', 'busy', 'he', 'hev']
 
     def infer_dtype(self):
         dtype = []
