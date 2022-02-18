@@ -251,6 +251,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         return dtype
 
     def setup(self):
+        print('VetoProximity is outdated!')
         self.channel_map = {name: ch + straxen.n_hard_aqmon_start for ch, name in
                             enumerate(['sum_wf', 'm_veto_sync',
                                        'hev_stop', 'hev_start',
