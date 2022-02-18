@@ -231,12 +231,12 @@ class VetoProximity(strax.OverlapWindowPlugin):
         - hev_x:  high energy veto on/off signal
     """
 
-    __version__ = '0.1.3'
+    __version__ = '0.1.3_test'
     depends_on = ('event_basics', 'aqmon_hits')
     provides = 'veto_proximity'
     data_kind = 'events'
     save_when = strax.SaveWhen.ALWAYS
-    veto_names = ['straxen_deadtime', 'busy', 'he', 'hev']
+    veto_names = ['busy', 'he', 'hev']
 
     def infer_dtype(self):
         dtype = []
