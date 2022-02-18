@@ -3,7 +3,7 @@ import straxen
 import numba
 import numpy as np
 from enum import IntEnum
-
+from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 export, __all__ = strax.exporter()
 
 __all__ += ['T_NO_VETO_FOUND']
@@ -16,7 +16,7 @@ T_NO_VETO_FOUND = int(3.6e+12)
 
 class AqmonChannels(IntEnum):
     GPS_SYNC = 798
-    ARTIFICIAL_DEADTIME = straxen.ARTIFICIAL_DEADTIME_CHANNEL
+    ARTIFICIAL_DEADTIME = ARTIFICIAL_DEADTIME_CHANNEL
     SUM_WF = 800
     M_VETO_SYNC = 801
     HEV_STOP = 802
@@ -34,7 +34,7 @@ class AqmonHits(strax.Plugin):
         GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.NEVER
-    __version__ = '0.0.0_test5'
+    __version__ = '0.0.0_test6'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -97,14 +97,17 @@ class AqmonHits(strax.Plugin):
             if hit_threshold
         ]
         artificial_deadtime = records[records['channel'] == AqmonChannels.ARTIFICIAL_DEADTIME]
-        if artificial_deadtime:
+        if len(artificial_deadtime):
             aqmon_hits += [self.get_deadtime_hits(artificial_deadtime)]
         aqmon_hits = np.concatenate(aqmon_hits)
         strax.sort_by_time(aqmon_hits)
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
-        """Actually, the artificial deadtime hits are already an interval"""
+        """
+        Actually, the artificial deadtime hits are already an interval so
+        we only have to copy the appropriate hits
+        """
         hits = np.zeros(len(artificial_deadtime), dtype=self.dtype)
         hits['time'] = artificial_deadtime['time']
         hits['dt'] = artificial_deadtime['dt']
