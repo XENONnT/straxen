@@ -34,7 +34,7 @@ class AqmonHits(strax.Plugin):
         GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.NEVER
-    __version__ = '0.0.0_test4'
+    __version__ = '0.0.0_test5'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -93,6 +93,7 @@ class AqmonHits(strax.Plugin):
                 min_amplitude=hit_threshold
             )
             for hit_threshold, channels in self.hit_min_amplitude_aqmon
+            if hit_threshold
         ]
         artificial_deadtime = records[records['channel'] == AqmonChannels.ARTIFICIAL_DEADTIME]
         if artificial_deadtime:
