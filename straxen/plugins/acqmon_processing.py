@@ -1,10 +1,11 @@
-import strax
-import straxen
+from enum import IntEnum
+
 import numba
 import numpy as np
-from enum import IntEnum
-from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
+import strax
+import straxen
 
+from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 
 export, __all__ = strax.exporter()
 
@@ -141,7 +142,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         straxen_deadtime <= special case of deadtime introduced by the
             DAQReader-plugin
     """
-    __version__ = 'test_2'
+    __version__ = '1.0.0'
     depends_on = 'aqmon_hits'
     provides = 'veto_intervals'
     data_kind = 'veto_intervals'
@@ -293,7 +294,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         result_buffer[f'time_to_previous_{veto_name}'] = T_NO_VETO_FOUND
         result_buffer[f'time_to_next_{veto_name}'] = T_NO_VETO_FOUND
 
-        selected_intervals = veto_intervals[veto_intervals['veto_type']==f'{veto_name}_veto']
+        selected_intervals = veto_intervals[veto_intervals['veto_type'] == f'{veto_name}_veto']
         print(len(selected_intervals), veto_name)
         if not len(selected_intervals):
             return
