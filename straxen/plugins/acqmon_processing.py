@@ -295,7 +295,6 @@ class VetoProximity(strax.OverlapWindowPlugin):
         result_buffer[f'time_to_next_{veto_name}'] = T_NO_VETO_FOUND
 
         selected_intervals = veto_intervals[veto_intervals['veto_type'] == f'{veto_name}_veto']
-        print(len(selected_intervals), veto_name)
         if not len(selected_intervals):
             return
 
@@ -305,7 +304,6 @@ class VetoProximity(strax.OverlapWindowPlugin):
         # Figure out the vetos *during* an event
         for event_i, veto_window in enumerate(vetos_during_event):
             if veto_window[1] - veto_window[0]:
-                print(veto_window)
                 vetos_in_window = selected_intervals[veto_window[0]:
                                                      veto_window[1]].copy()
                 starts = np.clip(vetos_in_window['time'],
