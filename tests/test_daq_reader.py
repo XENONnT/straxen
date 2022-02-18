@@ -8,6 +8,7 @@ from straxen.plugins.daqreader import ArtificialDeadtimeInserted, \
                                       ARTIFICIAL_DEADTIME_CHANNEL
 from datetime import timezone, datetime
 from time import sleep
+import numpy as np
 
 
 class DummyDAQReader(DAQReader):
