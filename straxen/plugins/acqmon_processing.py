@@ -38,7 +38,7 @@ class AqmonHits(strax.Plugin):
         GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.NEVER
-    __version__ = '0.0.0_test7'
+    __version__ = '0.0.0_test8'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -133,20 +133,26 @@ class AqmonHits(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option('max_veto_window', default=int(5e8), track=True, type=int,
-                 help='Maximum separation between veto stop and start pulses [ns]'),
-)
 class VetoIntervals(strax.OverlapWindowPlugin):
-    """ Find pairs of veto start and veto stop signals and the veto duration between them
-    busy_*  <= V1495 busy veto for tpc channels
-    he_*    <= V1495 busy veto for high energy tpc channels
-    hev_*   <= DDC10 hardware high energy veto
+    """ Find pairs of veto start and veto stop signals and the veto
+    duration between them:
+        busy_*  <= V1495 busy veto for tpc channels
+        he_*    <= V1495 busy veto for high energy tpc channels
+        hev_*   <= DDC10 hardware high energy veto
+        straxen_deadtime <= special case of deadtime introduced by the
+            DAQReader-plugin
     """
-    __version__ = '0.2.0'
+    __version__ = 'test_2'
     depends_on = 'aqmon_hits'
     provides = 'veto_intervals'
     data_kind = 'veto_intervals'
+
+    max_veto_window = straxen.URLConfig(
+        default=int(10e9),
+        track=True,
+        type=int,
+        help='Maximum separation between veto stop and start pulses [ns]'
+    )
 
     def infer_dtype(self):
         dtype = [(('veto interval [ns]', 'veto_interval'), np.int64),
@@ -161,34 +167,32 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         # Give a very wide window
-        return int(self.config['max_veto_window'] * 100)
+        return int(self.config['max_veto_window'])
 
     def compute(self, aqmon_hits, start, end):
+        # Allocate a nice big buffer and throw away the part we don't need later
         result = np.zeros(len(aqmon_hits) * len(self.veto_names), self.dtype)
         vetos_seen = 0
 
-        for name in self.veto_names:
-            veto_hits_start = channel_select_(aqmon_hits, self.channel_map[name + 'start'])
-            veto_hits_stop = channel_select_(aqmon_hits, self.channel_map[name + 'stop'])
+        for veto_name in self.veto_names:
+            veto_hits_start = channel_select_(aqmon_hits, self.channel_map[veto_name + 'start'])
+            veto_hits_stop = channel_select_(aqmon_hits, self.channel_map[veto_name + 'stop'])
 
             # Here we rely on the fact that for each start, there is a single stop that
             # follows it in time. If this is not true, our hardware does not work.
             if len(veto_hits_start):
-                prev_inx = 0
                 for t, time in enumerate(veto_hits_start['time']):
                     # Find the time of stop_j that is closest to time of start_i
-                    inx = np.searchsorted(veto_hits_stop['time'][prev_inx:], time, side='right')
+                    inx = np.searchsorted(veto_hits_stop['time'], time, side='right')
 
                     if inx == len(veto_hits_stop['time']):
                         continue
                     else:
-
                         result["time"][vetos_seen] = time
                         assert time < veto_hits_stop['time'][inx]
                         result["endtime"][vetos_seen] = veto_hits_stop['time'][inx]
-                        result["veto_type"][vetos_seen] = name + 'veto'
+                        result["veto_type"][vetos_seen] = veto_name + 'veto'
                         vetos_seen += 1
-                    prev_inx = inx
 
         # Straxen deadtime is special, it's a start and stop with no data
         # but already an interval so easily used here
@@ -203,10 +207,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             vetos_seen += n_artificial
 
         result = result[:vetos_seen]
-        # Don't clip, if we have a hit on the boundary of the chun, we
-        # should let the OverlapWindowPlugin fix it
-        # result['time'] = np.clip(result['time'], start, end)
-        # result['endtime'] = np.clip(strax.endtime(result), 0, end)
         result['veto_interval'] = result['endtime'] - result['time']
         sort = np.argsort(result['time'])
         result = result[sort]
@@ -222,7 +222,8 @@ def channel_select_(rr, ch):
 @export
 class VetoProximity(strax.OverlapWindowPlugin):
     """
-    Find the closest next/previous veto start and end to each event center.
+    Find the closest next/previous veto start w.r.t. the event time or
+    when a busy happens during an event.
     """
 
     __version__ = '1.1.3_test2'
@@ -315,7 +316,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
                 # within the duration of the event
                 result_buffer[event_i][f'veto_{veto_name}_overlap'] = np.sum(strops - starts)
 
-        # Find the next and previous vetos
+        # Find the next and previous veto's
         times_to_prev, times_to_next = self.abs_time_to_prev_next(event_window, selected_intervals)
         mask_prev = times_to_prev > 0
         result_buffer[f'time_to_previous_{veto_name}'][mask_prev] = times_to_prev[mask_prev]
@@ -330,7 +331,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         times_to_prev = np.ones(len(event_window)) * -1
         times_to_next = np.ones(len(event_window)) * -1
         for event_i, ev_wind in enumerate(event_window):
-            # Two cases left, either vetos are before or after the event window
+            # Two cases left, either veto's are before or after the event window
             interval_before = selected_intervals['endtime'] < ev_wind['time']
             interval_after = selected_intervals['time'] > ev_wind['endtime']
 
