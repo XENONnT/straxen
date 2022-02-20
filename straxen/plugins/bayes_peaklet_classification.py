@@ -18,25 +18,21 @@ class BayesPeakletClassification(strax.Plugin):
     # Descriptor configs
     bayes_config_file = straxen.URLConfig(
             default='resource://'
-            '/data/xenonnt/wfsim/S1S2classification/models/conditional_probabilities_and_bins_v1_w_global_v6.npz?fmt=npy',
-        help='Bayes config files, conditional probabilities and Bayes discrete bins'
-    )
-    s2_prob_threshold = straxen.URLConfig(
-        default=np.log(0.5), #best-fit value from optimization of ROC curve
-        help='S2 log prob value threshold, above this value type=2'
+            'conditional_probabilities_and_bins_v1_w_global_v6.npz?fmt=npy',
+        help='Bayes configuration file, conditional probabilities and Bayes discrete bins'
     )
     num_nodes = straxen.URLConfig(
         default=50,
-        help='Number of nodes'
+        help='Number of attributes(features) per waveform and quantile'
     )
     classes = straxen.URLConfig(
         default=2,
-        help='Number of classes'
+        help='Number of label classes S1(1)/S2(2)'
     )
 
     def setup(self):
 
-        self.class_prior = np.array([1. / self.classes for j in range(self.classes)])
+        self.class_prior = np.ones(self.classes)/self.classes
         self.bins = self.bayes_config_file['bins'] 
         self.cpt = self.bayes_config_file['cprob']
        
@@ -108,20 +104,6 @@ class BayesPeakletClassification(strax.Plugin):
 
         s1_ln_prob = lnposterior_normed[:, 0]
         s2_ln_prob = lnposterior_normed[:, 1]
-        '''
-        # Probabilities to classes.
-        # If doing peak classification, assign classes
-        # At the moment we are only looking at the posterior probability 
-        
-        class_assignments = np.zeros(len(peaklets))
-        C_S1 = s2_ln_prob < self.s2_prob_threshold
-        C_S2 = s2_ln_prob >= self.s2_prob_threshold
-
-        class_assignments[C_S1] = 1
-        class_assignments[C_S2] = 2
-        bayes_ptype = np.zeros(len(peaklets), dtype=np.int8)
-        bayes_ptype = class_assignments
-        '''
 
         return dict(time=peaklets['time'],
                     dt=peaklets['dt'],
