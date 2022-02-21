@@ -41,7 +41,7 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.0.1'
+    __version__ = '1.1.0'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
