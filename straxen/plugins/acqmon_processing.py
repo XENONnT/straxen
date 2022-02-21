@@ -161,6 +161,14 @@ class VetoIntervals(strax.OverlapWindowPlugin):
              'sorted by endtime'
     )
 
+    def send_input_after(self):
+        """After how long buffering can we start sending the output"""
+        return 10e9
+
+    def min_gap_in_chunk(self):
+        """How long does the gap need to be minimally to the next chunk"""
+        return 10e9
+
     def infer_dtype(self):
         dtype = [(('veto interval [ns]', 'veto_interval'), np.int64),
                  (('veto signal type', 'veto_type'), np.str_('U20'))]
@@ -174,7 +182,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         # Give a very wide window
-        return int(self.config['max_veto_window'])
+        return self.max_veto_window
 
     def compute(self, aqmon_hits, start, end):
         # Allocate a nice big buffer and throw away the part we don't need later
@@ -224,7 +232,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             veto_hits_stop: np.ndarray,
             chunk_start: int,
             chunk_end: int,
-            veto_name: str
+            veto_name: str,
     ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """
         We might be missing one start or one stop at the end of the run,
@@ -233,25 +241,32 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         # Just for traceback info that we declare this here
         extra_start = []
         extra_stop = []
+        missing_a_final_stop = (
+                len(veto_hits_start)
+                and len(veto_hits_start)
+                and veto_hits_start[-1]['time'] > veto_hits_stop['time'][-1])
 
-        if len(veto_hits_start) - len(veto_hits_stop) == 1:
+        if missing_a_final_stop:
             # There is one *start* of the //end// of the run -> the
             # **stop** is missing (because it's outside of the run),
             # let's add one **stop** at the //end// of this chunk
             warnings.warn(f'Inserted one end for {self.run_id} at {chunk_end}')
             extra_stop = self.fake_hit(chunk_end)
             veto_hits_stop = np.concatenate([veto_hits_stop, extra_stop])
-        elif len(veto_hits_stop) - len(veto_hits_start) == 1:
+        if len(veto_hits_stop) - len(veto_hits_start) == 1:
             # There is one *stop* of the //beginning// of the run
             # -> the **start** is missing (because it's from before
             # starting the run), # let's add one **start** at the
             # //beginning// of this chunk
             warnings.warn(f'Inserted one start for {self.run_id} at {chunk_start}')
             extra_start = self.fake_hit(chunk_start)
-            veto_hits_stop = np.concatenate([extra_start, veto_hits_start])
+            veto_hits_start = np.concatenate([extra_start, veto_hits_start])
 
-        if len(veto_hits_start) != len(veto_hits_stop):
-            message = f'Got inconsistent number of {veto_name} starts/stops.'
+        something_is_wrong = len(veto_hits_start) != len(veto_hits_stop)
+        if something_is_wrong:
+            message = (f'Got inconsistent number of {veto_name} '
+                       f'starts ({len(veto_hits_start)}) / '
+                       f'stops ({len(veto_hits_stop)}).')
             if len(extra_start):
                 message += (' Despite the fact that we inserted one extra '
                             'start at the beginning of the run.')
