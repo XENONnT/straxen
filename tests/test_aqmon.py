@@ -170,13 +170,21 @@ class DummyEventBasics(strax.Plugin):
         assert self._events is not None, "run get_events_this_chunk first!"
         if chunk_i == 0:
             return self._events[chunk_i]['time'][0]
-        else:
-            return self._events[chunk_i - 1]['endtime'][-1]
+        return self._events[chunk_i - 1]['endtime'][-1]
+
+    def get_chunk_end(self, chunk_i):
+        assert self._events is not None, "run get_events_this_chunk first!"
+        if chunk_i == self.n_chunks:
+            return self.event_time_range[1]
+        return self._events[chunk_i]['endtime'][-1]
 
     def compute(self, chunk_i):
         events = self.get_events_this_chunk(chunk_i)
+        events_within = events['endtime'] < self.event_time_range[1]
+        events = events[events_within]
+
         return self.chunk(start=self.chunk_start(chunk_i),
-                          end=events['endtime'][-1],
+                          end=self.get_chunk_end(chunk_i),
                           data=events)
 
 
@@ -196,7 +204,7 @@ class TestAqmonProcessing(TestCase):
             TOTAL_SIGNALS = self.TOTAL_SIGNALS
 
         class DummyVi(straxen.acqmon_processing.VetoIntervals):
-            save_when = strax.SaveWhen.NEVER
+            save_when = strax.SaveWhen.ALWAYS
 
         class DummyVp(straxen.acqmon_processing.VetoProximity):
             save_when = strax.SaveWhen.NEVER
