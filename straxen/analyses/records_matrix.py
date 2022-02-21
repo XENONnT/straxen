@@ -43,7 +43,7 @@ def records_matrix(records, time_range, seconds_range, config, to_pe,
         with np.errstate(divide='ignore', invalid='ignore'):
             # Downsample. New dt must be
             #  a) multiple of old dt
-            dts = np.arange(0, record_duration + dt, dt).astype(np.int)
+            dts = np.arange(0, record_duration + dt, dt).astype(np.int64)
             #  b) divisor of record duration
             dts = dts[record_duration / dts % 1 == 0]
             #  c) total samples < max_samples
