@@ -747,11 +747,9 @@ class EnergyEstimates(strax.Plugin):
 )
 class EventShadow(strax.Plugin):
     """
-    This plugin can calculate shadow at event level.
-    It depends on peak-level shadow.
-    The event-level shadow is its first peak peak's shadow.
-    It also gives the position infomation of the previous peaks
-    and main peaks' shadow.
+    This plugin can calculate shadow for main S1 and S2 peaks and the event itself.
+    The event's shadow is its first S2 peak's shadow.
+    It also gives the position information of the previous peaks.
     References:
         * v0.1.0 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
