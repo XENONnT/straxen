@@ -569,7 +569,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -612,12 +612,21 @@ class CorrectedAreas(strax.Plugin):
         default=1.0,
         help='Relative extraction efficiency for this run (allows for time dependence)')
 
+    # relative light yield
+    # defaults to no correction
+    rel_light_yield = straxen.URLConfig(
+        default=1.0,
+        help='Relative light yield (allows for time dependence)'
+    )
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
 
         for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
+                      (f'{peak_type}cs1_wo_lycorr', np.float32,
+                       f'Corrected area of {peak_name} S1 [PE] before time-dep LY correction'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before elife correction '
                        f'(s2 xy correction + SEG/EE correction applied) [PE]'),
@@ -643,7 +652,8 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
 
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1_wo_lycorr"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_lycorr"] / self.rel_light_yield
 
         # s2 corrections
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
