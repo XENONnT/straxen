@@ -8,7 +8,6 @@ import straxen
 
 from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 
-
 export, __all__ = strax.exporter()
 
 
@@ -93,7 +92,7 @@ class AqmonHits(strax.Plugin):
 
     def find_aqmon_hits_per_channel(self, records):
         """Allow different thresholds to be applied to different channels"""
-        aqmon_thresholds = np.zeros(np.max(self.aqmon_channels)+1)
+        aqmon_thresholds = np.zeros(np.max(self.aqmon_channels) + 1)
         for hit_threshold, channels in self.hit_min_amplitude_aqmon:
             aqmon_thresholds[np.array(channels)] = hit_threshold
 
@@ -433,4 +432,3 @@ class VetoProximity(strax.OverlapWindowPlugin):
         for veto_name in self.veto_names:
             self.set_result_for_veto(result, event_window, veto_intervals, veto_name)
         return result
-
