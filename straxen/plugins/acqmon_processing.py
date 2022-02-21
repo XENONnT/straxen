@@ -1,3 +1,5 @@
+import typing
+import warnings
 from enum import IntEnum
 import numba
 import numpy as np
@@ -5,6 +7,7 @@ import strax
 import straxen
 
 from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
+
 
 export, __all__ = strax.exporter()
 
@@ -74,7 +77,8 @@ class AqmonHits(strax.Plugin):
         not_allowed_channels = (set(np.unique(raw_records_aqmon['channel']))
                                 - set(self.aqmon_channels))
         if not_allowed_channels:
-            raise ValueError(f'Unknown channel {not_allowed_channels}. Only know {self.aqmon_channels}')
+            raise ValueError(
+                f'Unknown channel {not_allowed_channels}. Only know {self.aqmon_channels}')
         records = strax.raw_to_records(raw_records_aqmon)
         strax.sort_by_time(records)
         strax.zero_out_of_bounds(records)
@@ -89,9 +93,9 @@ class AqmonHits(strax.Plugin):
 
     def find_aqmon_hits_per_channel(self, records):
         """Allow different thresholds to be applied to different channels"""
-        aqmon_thresholds = np.zeros(np.max(self.aqmon_channels))
+        aqmon_thresholds = np.zeros(np.max(self.aqmon_channels)+1)
         for hit_threshold, channels in self.hit_min_amplitude_aqmon:
-            aqmon_thresholds[channels] = hit_threshold
+            aqmon_thresholds[np.array(channels)] = hit_threshold
 
         # Split the artificial deadtime ones and do those separately if there are any
         is_artificial = records['channel'] == AqmonChannels.ARTIFICIAL_DEADTIME
@@ -139,7 +143,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         straxen_deadtime <= special case of deadtime introduced by the
             DAQReader-plugin
     """
-    __version__ = '1.0.0'
+    __version__ = '1.0.1'
     depends_on = 'aqmon_hits'
     provides = 'veto_intervals'
     data_kind = 'veto_intervals'
@@ -179,24 +183,23 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         vetos_seen = 0
 
         for veto_name in self.veto_names:
-            veto_hits_start = channel_select_(aqmon_hits, self.channel_map[veto_name + 'start'])
-            veto_hits_stop = channel_select_(aqmon_hits, self.channel_map[veto_name + 'stop'])
+            veto_hits_start = channel_select(aqmon_hits, self.channel_map[veto_name + 'start'])
+            veto_hits_stop = channel_select(aqmon_hits, self.channel_map[veto_name + 'stop'])
 
-            # Here we rely on the fact that for each start, there is a single stop that
-            # follows it in time. If this is not true, our hardware does not work.
-            if len(veto_hits_start):
-                for t, time in enumerate(veto_hits_start['time']):
-                    # Find the time of stop_j that is closest to time of start_i
-                    inx = np.searchsorted(veto_hits_stop['time'], time, side='right')
+            veto_hits_start, veto_hits_stop = self.handle_starts_and_stops_outside_of_run(
+                veto_hits_start=veto_hits_start,
+                veto_hits_stop=veto_hits_stop,
+                chunk_start=start,
+                chunk_end=end,
+                veto_name=veto_name,
+            )
+            n_vetos = len(veto_hits_start)
 
-                    if inx == len(veto_hits_stop['time']):
-                        continue
-                    else:
-                        result["time"][vetos_seen] = time
-                        assert time < veto_hits_stop['time'][inx]
-                        result["endtime"][vetos_seen] = veto_hits_stop['time'][inx]
-                        result["veto_type"][vetos_seen] = veto_name + 'veto'
-                        vetos_seen += 1
+            result["time"][vetos_seen:vetos_seen + n_vetos] = veto_hits_start['time']
+            result["endtime"][vetos_seen:vetos_seen + n_vetos] = veto_hits_stop['time']
+            result["veto_type"][vetos_seen:vetos_seen + n_vetos] = veto_name + 'veto'
+
+            vetos_seen += n_vetos
 
         # Straxen deadtime is special, it's a start and stop with no data
         # but already an interval so easily used here
@@ -216,9 +219,66 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         result = result[sort]
         return result
 
+    def handle_starts_and_stops_outside_of_run(
+            self,
+            veto_hits_start: np.ndarray,
+            veto_hits_stop: np.ndarray,
+            chunk_start: int,
+            chunk_end: int,
+            veto_name: str
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
+        """
+        We might be missing one start or one stop at the end of the run,
+        set it to the chunk endtime if this is the case
+        """
+        # Just for traceback info that we declare this here
+        extra_start = []
+        extra_stop = []
 
-@numba.njit
-def channel_select_(rr, ch):
+        if len(veto_hits_start) - len(veto_hits_stop) == 1:
+            # There is one *start* of the //end// of the run -> the
+            # **stop** is missing (because it's outside of the run),
+            # let's add one **stop** at the //end// of this chunk
+            warnings.warn(f'Inserted one end for {self.run_id} at {chunk_end}')
+            extra_stop = self.fake_hit(chunk_end)
+            veto_hits_stop = np.concatenate([veto_hits_stop, extra_stop])
+        elif len(veto_hits_stop) - len(veto_hits_start) == 1:
+            # There is one *stop* of the //beginning// of the run
+            # -> the **start** is missing (because it's from before
+            # starting the run), # let's add one **start** at the
+            # //beginning// of this chunk
+            warnings.warn(f'Inserted one start for {self.run_id} at {chunk_start}')
+            extra_start = self.fake_hit(chunk_start)
+            veto_hits_stop = np.concatenate([extra_start, veto_hits_start])
+
+        if len(veto_hits_start) != len(veto_hits_stop):
+            message = f'Got inconsistent number of {veto_name} starts/stops.'
+            if len(extra_start):
+                message += (' Despite the fact that we inserted one extra '
+                            'start at the beginning of the run.')
+            elif len(extra_stop):
+                message += (' Despite the fact that we inserted one extra '
+                            'stop at the end of the run.')
+            if len(extra_start) and len(extra_stop):
+                raise RuntimeError('Someone broke my code, this cannot happen?!')
+            raise ValueError(message)
+
+        if np.any(veto_hits_start['time'] > veto_hits_stop['time']):
+            raise ValueError('Found veto\'s starting before the previous stopped')
+
+        return veto_hits_start, veto_hits_stop
+
+    @staticmethod
+    def fake_hit(start, dt=1, length=1):
+        hit = np.zeros(1, strax.hit_dtype)
+        hit['time'] = start
+        hit['dt'] = dt
+        hit['length'] = length
+        return hit
+
+
+# Don't use @numba since numba doesn't like masking arrays, use numpy
+def channel_select(rr, ch):
     """Return data from start/stop veto channel in the acquisition monitor (AM)"""
     return rr[rr['channel'] == ch]
 
@@ -373,3 +433,4 @@ class VetoProximity(strax.OverlapWindowPlugin):
         for veto_name in self.veto_names:
             self.set_result_for_veto(result, event_window, veto_intervals, veto_name)
         return result
+
