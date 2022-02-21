@@ -34,7 +34,7 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.0.0'
+    __version__ = '1.0.1'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -71,14 +71,10 @@ class AqmonHits(strax.Plugin):
     dtype = strax.hit_dtype
 
     def compute(self, raw_records_aqmon):
-        allowed_channels = [channel for hit_and_channel_list
-                            in self.hit_min_amplitude_aqmon for
-                            channel in hit_and_channel_list[1]]
-
         not_allowed_channels = (set(np.unique(raw_records_aqmon['channel']))
-                                - set(allowed_channels))
+                                - set(self.aqmon_channels))
         if not_allowed_channels:
-            raise ValueError(f'Unknown channel {not_allowed_channels} {allowed_channels}')
+            raise ValueError(f'Unknown channel {not_allowed_channels}. Only know {self.aqmon_channels}')
         records = strax.raw_to_records(raw_records_aqmon)
         strax.sort_by_time(records)
         strax.zero_out_of_bounds(records)
@@ -86,21 +82,26 @@ class AqmonHits(strax.Plugin):
         aqmon_hits = self.find_aqmon_hits_per_channel(records)
         return aqmon_hits
 
+    @property
+    def aqmon_channels(self):
+        return [channel for hit_and_channel_list in self.hit_min_amplitude_aqmon
+                for channel in hit_and_channel_list[1]]
+
     def find_aqmon_hits_per_channel(self, records):
         """Allow different thresholds to be applied to different channels"""
-        aqmon_hits = [
-            strax.find_hits(
-                records[np.in1d(records['channel'], channels)],
-                min_amplitude=hit_threshold
-            )
-            for hit_threshold, channels in self.hit_min_amplitude_aqmon
-            if hit_threshold
-        ]
-        artificial_deadtime = records[records['channel'] == AqmonChannels.ARTIFICIAL_DEADTIME]
-        if len(artificial_deadtime):
-            aqmon_hits += [self.get_deadtime_hits(artificial_deadtime)]
-        aqmon_hits = np.concatenate(aqmon_hits)
-        strax.sort_by_time(aqmon_hits)
+        aqmon_thresholds = np.zeros(np.max(self.aqmon_channels))
+        for hit_threshold, channels in self.hit_min_amplitude_aqmon:
+            aqmon_thresholds[channels] = hit_threshold
+
+        # Split the artificial deadtime ones and do those separately if there are any
+        is_artificial = records['channel'] == AqmonChannels.ARTIFICIAL_DEADTIME
+        aqmon_hits = strax.find_hits(records[~is_artificial],
+                                     min_amplitude=aqmon_thresholds)
+
+        if np.sum(is_artificial):
+            aqmon_hits = np.concatenate([
+                aqmon_hits, self.get_deadtime_hits(records[is_artificial])])
+            strax.sort_by_time(aqmon_hits)
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
@@ -241,7 +242,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         default=('time', 'endtime'),
         help='Fields to determine where to look for overlaps for using '
              'this plugin in the events. The default uses start and endtime '
-             'of an event, but this can also be the S1 or S2 start/endtime'git 
+             'of an event, but this can also be the S1 or S2 start/endtime'
     )
 
     veto_proximity_window = straxen.URLConfig(
