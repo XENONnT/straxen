@@ -154,6 +154,20 @@ class SCInterfaceTest(unittest.TestCase):
         is_sorrect = np.all(df['SomeParameter'] // 1 == -96)
         assert is_sorrect, 'Not all values are correct for query type lab.'
 
+    
+    def test_long_query(self):
+        """Test which querries a bit more than 35000 values over a longer period.
+        Checks if additional values are querried correctly.
+        See also: xenon:xenon1t:slowcontrol:webservicenew
+        """
+        st = straxen.contexts.xenonnt_online()
+        self.sc.context = st
+        res = self.sc.get_scada_values(
+            parameters={'test': 'XE1T.CRY_PT101_PCHAMBER_AI.PI'},
+            run_id=['020000', '035000'],
+            every_nth_value=500,)
+        assert np.sum(res.test >= 0) > 35000
+
     @staticmethod
     def test_average_scada():
         t = np.arange(0, 100, 10)
