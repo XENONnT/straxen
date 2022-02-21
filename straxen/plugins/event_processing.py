@@ -625,7 +625,7 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
-                      (f'{peak_type}cs1_wo_lycorr', np.float32,
+                      (f'{peak_type}cs1_wo_timecorr', np.float32,
                        f'Corrected area of {peak_name} S1 [PE] before time-dep LY correction'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before elife correction '
@@ -652,8 +652,8 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
 
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1_wo_lycorr"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_lycorr"] / self.rel_light_yield
+            result[f"{peak_type}cs1_wo_timecorr"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
         # s2 corrections
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
