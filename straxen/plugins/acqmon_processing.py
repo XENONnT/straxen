@@ -146,7 +146,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         straxen_deadtime <= special case of deadtime introduced by the
             DAQReader-plugin
     """
-    __version__ = '1.0.1'
+    __version__ = '1.1.0'
     depends_on = 'aqmon_hits'
     provides = 'veto_intervals'
     data_kind = 'veto_intervals'
