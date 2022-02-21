@@ -18,12 +18,17 @@ class AqmonChannels(IntEnum):
     """Mapper of named aqmon channels to ints"""
     GPS_SYNC = 798
     ARTIFICIAL_DEADTIME = ARTIFICIAL_DEADTIME_CHANNEL
+    # Analogue sum waveform
     SUM_WF = 800
+    # GPS sync acquisition monitor
     GPS_SYNC_AM = 801
+    # HighEnergyVeto
     HEV_STOP = 802
     HEV_START = 803
-    HE_STOP = 804
-    HE_START = 805
+    # To avoid confusion with HEV, these are the high energy boards
+    BUSY_HE_STOP = 804
+    BUSY_HE_START = 805
+    # Low energy boards (main chain)
     BUSY_STOP = 806
     BUSY_START = 807
 
@@ -47,8 +52,8 @@ class AqmonHits(strax.Plugin):
                 int(AqmonChannels.GPS_SYNC_AM),
                 int(AqmonChannels.HEV_STOP),
                 int(AqmonChannels.HEV_START),
-                int(AqmonChannels.HE_STOP),
-                int(AqmonChannels.HE_START),
+                int(AqmonChannels.BUSY_HE_STOP),
+                int(AqmonChannels.BUSY_HE_START),
                 int(AqmonChannels.BUSY_STOP),
                 int(AqmonChannels.BUSY_START),)),
             # Fake signals, 0 meaning that we won't find hits using
@@ -137,7 +142,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     """ Find pairs of veto start and veto stop signals and the veto
     duration between them:
         busy_*  <= V1495 busy veto for tpc channels
-        he_*    <= V1495 busy veto for high energy tpc channels
+        busy_he_*    <= V1495 busy veto for high energy tpc channels
         hev_*   <= DDC10 hardware high energy veto
         straxen_deadtime <= special case of deadtime introduced by the
             DAQReader-plugin
@@ -176,7 +181,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         return dtype
 
     def setup(self):
-        self.veto_names = ['busy_', 'he_', 'hev_']
+        self.veto_names = ['busy_', 'busy_he_', 'hev_']
         self.channel_map = {aq_ch.name.lower(): int(aq_ch)
                             for aq_ch in AqmonChannels}
 
