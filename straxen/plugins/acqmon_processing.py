@@ -1,5 +1,4 @@
 import typing
-import warnings
 from enum import IntEnum
 import numba
 import numpy as np
@@ -251,7 +250,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             # There is one *start* of the //end// of the run -> the
             # **stop** is missing (because it's outside of the run),
             # let's add one **stop** at the //end// of this chunk
-            warnings.warn(f'Inserted one end for {self.run_id} at {chunk_end}')
             extra_stop = self.fake_hit(chunk_end)
             veto_hits_stop = np.concatenate([veto_hits_stop, extra_stop])
         if len(veto_hits_stop) - len(veto_hits_start) == 1:
@@ -259,7 +257,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             # -> the **start** is missing (because it's from before
             # starting the run), # let's add one **start** at the
             # //beginning// of this chunk
-            warnings.warn(f'Inserted one start for {self.run_id} at {chunk_start}')
             extra_start = self.fake_hit(chunk_start)
             veto_hits_start = np.concatenate([extra_start, veto_hits_start])
 
@@ -305,7 +302,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     when a busy happens during an event.
     """
 
-    __version__ = '2.0.0'
+    __version__ = '2.1.0'
     # Strictly speaking, we could depend on 'events', but then you couldn't
     # change the event_window_fields to e.g. s1_time and s2_endtime.
     depends_on = ('event_basics', 'veto_intervals')
@@ -332,7 +329,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
              'the closest event is this many ns removed from it.'
     )
 
-    veto_names = ['busy', 'he', 'hev', 'straxen_deadtime']
+    veto_names = ['busy', 'busy_he', 'hev', 'straxen_deadtime']
 
     def infer_dtype(self):
         dtype = []

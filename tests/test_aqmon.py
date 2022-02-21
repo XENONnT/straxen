@@ -1,9 +1,10 @@
 import os.path
-from unittest import TestCase
+from unittest import TestCase, skipIf
 import numpy as np
 import strax
 import straxen
 import shutil
+from straxen.test_utils import nt_test_run_id as test_run_id_nT
 
 
 class DummyAqmonHits(strax.Plugin):
@@ -134,7 +135,7 @@ class DummyEventBasics(strax.Plugin):
                                     help='Where to span the durations of chunks over'
                                     )
     events_per_chunk = strax.Config(default=20)
-    event_durations=strax.Config(
+    event_durations = strax.Config(
         default=(1000, 20_000),
         help='event durations (min, max) ns'
     )
@@ -142,7 +143,7 @@ class DummyEventBasics(strax.Plugin):
     save_when = strax.SaveWhen.ALWAYS
     provides = 'event_basics'
     data_kind = 'events'
-    dtype=strax.time_fields
+    dtype = strax.time_fields
     _events = None
 
     def source_finished(self):
@@ -153,13 +154,13 @@ class DummyEventBasics(strax.Plugin):
 
     def get_events_this_chunk(self, chunk_i):
         if self._events is None:
-            res=np.zeros(int(self.events_per_chunk*self.n_chunks), dtype=self.dtype)
-            times =  np.linspace(*self.event_time_range, len(res))
+            res = np.zeros(int(self.events_per_chunk * self.n_chunks), dtype=self.dtype)
+            times = np.linspace(*self.event_time_range, len(res))
             res['time'] = times
 
             endtimes = res['time'] + np.random.randint(*self.event_durations, size=len(res))
             # Don't allow overlapping events
-            endtimes[:-1] = np.clip(endtimes[:-1], 0, res['time'][1:]-1)
+            endtimes[:-1] = np.clip(endtimes[:-1], 0, res['time'][1:] - 1)
             res['endtime'] = endtimes
             self._events = np.split(res, self.n_chunks)
         return self._events[chunk_i]
@@ -170,7 +171,7 @@ class DummyEventBasics(strax.Plugin):
         if chunk_i == 0:
             return self._events[chunk_i]['time'][0]
         else:
-            return self._events[chunk_i-1]['endtime'][-1]
+            return self._events[chunk_i - 1]['endtime'][-1]
 
     def compute(self, chunk_i):
         events = self.get_events_this_chunk(chunk_i)
@@ -195,17 +196,17 @@ class TestAqmonProcessing(TestCase):
             TOTAL_SIGNALS = self.TOTAL_SIGNALS
 
         class DummyVi(straxen.acqmon_processing.VetoIntervals):
-            pass
+            save_when = strax.SaveWhen.NEVER
 
         class DummyVp(straxen.acqmon_processing.VetoProximity):
-            pass
+            save_when = strax.SaveWhen.NEVER
 
         st.register(DeadTimedDummyAqHits)
         st.register(DummyVi)
         st.register(DummyVp)
         st.register(DummyEventBasics)
         self.st = st
-        self.run = '999996'
+        self.run = test_run_id_nT
         self.assertFalse(np.sum(self.TOTAL_DEADTIME))
         self.assertFalse(st.is_stored(self.run, 'aqmon_hits'))
         self.assertFalse(st.is_stored(self.run, 'veto_intervals'))
@@ -236,11 +237,19 @@ class TestAqmonProcessing(TestCase):
         I'm not going to do something fancy here, just checking if we can run the code
         """
         veto_intervals = self.st.get_array(self.run, 'veto_intervals')
-        self.st.set_config(dict(event_time_range=[int(veto_intervals['time'][0]),
+        self.st.set_config(dict(event_time_range=[0,
                                                   int(veto_intervals['endtime'][-1])]))
         self.st.make(self.run, 'event_basics')
         for c in self.st.get_iter(self.run, 'veto_proximity'):
             print(c)
+        return self.st
+
+    @skipIf(not straxen.test_utils.is_installed('cutax'), 'cutax not installed')
+    def test_cut_daq_reader(self):
+        st = self.test_make_veto_proximity()
+        import cutax
+        st.register(cutax.cuts.DAQVeto)
+        st.make(self.run, 'cut_daq_veto')
 
     def tearDown(self) -> None:
         for sf in self.st.storage:
@@ -248,5 +257,3 @@ class TestAqmonProcessing(TestCase):
                 p = getattr(sf, 'path')
                 if os.path.exists(p):
                     shutil.rmtree(p)
-
-
