@@ -1,7 +1,9 @@
+import os.path
 from unittest import TestCase
 import numpy as np
 import strax
 import straxen
+import shutil
 
 
 class DummyAqmonHits(strax.Plugin):
@@ -20,7 +22,7 @@ class DummyAqmonHits(strax.Plugin):
     """
     vetos_per_chunk = strax.Config(
         # Strax does not like numpy, let's give it a list of integers
-        default=[int(n) for n in np.arange(2, 20)],
+        default=[int(n) for n in np.arange(1, 10)],
         help='The number of ON/OFF signals per chunk, preferably a '
              'combination of odd and even such that we have both '
              'unmatched ON/OFF singals'
@@ -125,11 +127,64 @@ class DummyAqmonHits(strax.Plugin):
                           data=res)
 
 
+class DummyEventBasics(strax.Plugin):
+    """Get evenly spaced random duration events that don't overlap"""
+    n_chunks = strax.Config(default=3)
+    event_time_range = strax.Config(default=(0, 3e6),
+                                    help='Where to span the durations of chunks over'
+                                    )
+    events_per_chunk = strax.Config(default=20)
+    event_durations=strax.Config(
+        default=(1000, 20_000),
+        help='event durations (min, max) ns'
+    )
+    depends_on = ()
+    save_when = strax.SaveWhen.ALWAYS
+    provides = 'event_basics'
+    data_kind = 'events'
+    dtype=strax.time_fields
+    _events = None
+
+    def source_finished(self):
+        return True
+
+    def is_ready(self, chunk_i):
+        return chunk_i < self.n_chunks
+
+    def get_events_this_chunk(self, chunk_i):
+        if self._events is None:
+            res=np.zeros(int(self.events_per_chunk*self.n_chunks), dtype=self.dtype)
+            times =  np.linspace(*self.event_time_range, len(res))
+            res['time'] = times
+
+            endtimes = res['time'] + np.random.randint(*self.event_durations, size=len(res))
+            # Don't allow overlapping events
+            endtimes[:-1] = np.clip(endtimes[:-1], 0, res['time'][1:]-1)
+            res['endtime'] = endtimes
+            self._events = np.split(res, self.n_chunks)
+        return self._events[chunk_i]
+
+    def chunk_start(self, chunk_i) -> int:
+        # Get the start time of the requested chunk
+        assert self._events is not None, "run get_events_this_chunk first!"
+        if chunk_i == 0:
+            return self._events[chunk_i]['time'][0]
+        else:
+            return self._events[chunk_i-1]['endtime'][-1]
+
+    def compute(self, chunk_i):
+        events = self.get_events_this_chunk(chunk_i)
+        return self.chunk(start=self.chunk_start(chunk_i),
+                          end=events['endtime'][-1],
+                          data=events)
+
+
 class TestAqmonProcessing(TestCase):
     def setUp(self) -> None:
         st = straxen.test_utils.nt_test_context().new_context()
         st.set_context_config({'free_options': list(st.config.keys())})
         st._plugin_class_registry = {}
+
         st.set_config(dict(veto_proximity_window=10 ** 99))
         self.TOTAL_DEADTIME = []
         self.TOTAL_SIGNALS = []
@@ -140,14 +195,15 @@ class TestAqmonProcessing(TestCase):
             TOTAL_SIGNALS = self.TOTAL_SIGNALS
 
         class DummyVi(straxen.acqmon_processing.VetoIntervals):
-            save_when = strax.SaveWhen.NEVER
+            pass
 
-        class DummyVp(straxen.acqmon_processing.VetoIntervals):
-            save_when = strax.SaveWhen.NEVER
+        class DummyVp(straxen.acqmon_processing.VetoProximity):
+            pass
 
         st.register(DeadTimedDummyAqHits)
         st.register(DummyVi)
         st.register(DummyVp)
+        st.register(DummyEventBasics)
         self.st = st
         self.run = '999996'
         self.assertFalse(np.sum(self.TOTAL_DEADTIME))
@@ -155,9 +211,12 @@ class TestAqmonProcessing(TestCase):
         self.assertFalse(st.is_stored(self.run, 'veto_intervals'))
 
     def test_dummy_plugin_works(self):
+        """The simplest plugin """
         self.st.make(self.run, 'aqmon_hits')
         self.assertGreater(np.sum(self.TOTAL_DEADTIME), 0)
         self.assertGreater(np.sum(self.TOTAL_SIGNALS), 0)
+        events = self.st.get_array(self.run, 'event_basics')
+        self.assertTrue(len(events))
 
     def test_veto_intervals(self, options=None):
         if options is not None:
@@ -171,3 +230,23 @@ class TestAqmonProcessing(TestCase):
 
     def test_veto_intervals_with_missing_on(self):
         self.test_veto_intervals(dict(start_with_channel_on=False))
+
+    def test_make_veto_proximity(self):
+        """
+        I'm not going to do something fancy here, just checking if we can run the code
+        """
+        veto_intervals = self.st.get_array(self.run, 'veto_intervals')
+        self.st.set_config(dict(event_time_range=[int(veto_intervals['time'][0]),
+                                                  int(veto_intervals['endtime'][-1])]))
+        self.st.make(self.run, 'event_basics')
+        for c in self.st.get_iter(self.run, 'veto_proximity'):
+            print(c)
+
+    def tearDown(self) -> None:
+        for sf in self.st.storage:
+            if not sf.readonly:
+                p = getattr(sf, 'path')
+                if os.path.exists(p):
+                    shutil.rmtree(p)
+
+

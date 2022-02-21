@@ -166,14 +166,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
              'sorted by endtime'
     )
 
-    def send_input_after(self):
-        """After how long buffering can we start sending the output"""
-        return 10e9
-
-    def min_gap_in_chunk(self):
-        """How long does the gap need to be minimally to the next chunk"""
-        return 10e9
-
     def infer_dtype(self):
         dtype = [(('veto interval [ns]', 'veto_interval'), np.int64),
                  (('veto signal type', 'veto_type'), np.str_('U20'))]
@@ -248,9 +240,13 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         extra_stop = []
         missing_a_final_stop = (
                 len(veto_hits_start)
-                and len(veto_hits_start)
+                and len(veto_hits_stop)
                 and veto_hits_start[-1]['time'] > veto_hits_stop['time'][-1])
-
+        missing_a_final_stop = (
+                missing_a_final_stop
+                or (len(veto_hits_start) and not len(veto_hits_stop)
+                    )
+        )
         if missing_a_final_stop:
             # There is one *start* of the //end// of the run -> the
             # **stop** is missing (because it's outside of the run),
@@ -325,7 +321,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     )
 
     veto_proximity_window = straxen.URLConfig(
-        default=int(120e9),
+        default=int(300e9),
         help='Maximum separation between veto stop and start pulses [ns]'
     )
     time_no_aqmon_veto_found = straxen.URLConfig(
