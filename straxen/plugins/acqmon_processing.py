@@ -1,5 +1,4 @@
 from enum import IntEnum
-
 import numba
 import numpy as np
 import strax
@@ -9,19 +8,16 @@ from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 
 export, __all__ = strax.exporter()
 
-__all__ += ['T_NO_VETO_FOUND']
-# Runs are usually 1 hour long, if veto is that far we don't really care
-T_NO_VETO_FOUND = int(3.6e+12)
-
 
 # More info about the acquisition monitor can be found here:
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenon1t:alexelykov:acquisition_monitor
 
 class AqmonChannels(IntEnum):
+    """Mapper of named aqmon channels to ints"""
     GPS_SYNC = 798
     ARTIFICIAL_DEADTIME = ARTIFICIAL_DEADTIME_CHANNEL
     SUM_WF = 800
-    M_VETO_SYNC = 801
+    GPS_SYNC_AM = 801
     HEV_STOP = 802
     HEV_START = 803
     HE_STOP = 804
@@ -46,7 +42,7 @@ class AqmonHits(strax.Plugin):
             # Digital signals, can set a much higher threshold
             (1500, (
                 int(AqmonChannels.GPS_SYNC),
-                int(AqmonChannels.M_VETO_SYNC),
+                int(AqmonChannels.GPS_SYNC_AM),
                 int(AqmonChannels.HEV_STOP),
                 int(AqmonChannels.HEV_START),
                 int(AqmonChannels.HE_STOP),
@@ -147,11 +143,18 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     provides = 'veto_intervals'
     data_kind = 'veto_intervals'
 
+    # This option is just showing where the OverlapWindowPlugin fails.
+    # We need to buffer the entire run in order not to run into chunking
+    # issues. A better solution would be using
+    #   github.com/AxFoundation/strax/pull/654
     max_veto_window = straxen.URLConfig(
-        default=int(10e9),
+        default=int(7.2e12),
         track=True,
         type=int,
-        help='Maximum separation between veto stop and start pulses [ns]'
+        help='Maximum separation between veto stop and start pulses [ns]. '
+             'Set to be >> than the max duration of the run to be able to '
+             'fully store one run into buffer since aqmon-hits are not '
+             'sorted by endtime'
     )
 
     def infer_dtype(self):
@@ -238,12 +241,19 @@ class VetoProximity(strax.OverlapWindowPlugin):
         default=('time', 'endtime'),
         help='Fields to determine where to look for overlaps for using '
              'this plugin in the events. The default uses start and endtime '
-             'of an event, but this can also be the S1 or S2 start/endtime'
+             'of an event, but this can also be the S1 or S2 start/endtime'git 
     )
 
     veto_proximity_window = straxen.URLConfig(
-        default=int(1e9),
+        default=int(120e9),
         help='Maximum separation between veto stop and start pulses [ns]'
+    )
+    time_no_aqmon_veto_found = straxen.URLConfig(
+        default=int(3.6e+12),
+        track=True,
+        type=int,
+        help='If we don\'t find a veto close to the event, say that '
+             'the closest event is this many ns removed from it.'
     )
 
     veto_names = ['busy', 'he', 'hev', 'straxen_deadtime']
@@ -291,8 +301,8 @@ class VetoProximity(strax.OverlapWindowPlugin):
         :return: Nothing, results are filled in place
         """
         # Set defaults to be some very long time
-        result_buffer[f'time_to_previous_{veto_name}'] = T_NO_VETO_FOUND
-        result_buffer[f'time_to_next_{veto_name}'] = T_NO_VETO_FOUND
+        result_buffer[f'time_to_previous_{veto_name}'] = self.time_no_aqmon_veto_found
+        result_buffer[f'time_to_next_{veto_name}'] = self.time_no_aqmon_veto_found
 
         selected_intervals = veto_intervals[veto_intervals['veto_type'] == f'{veto_name}_veto']
         if not len(selected_intervals):
