@@ -258,8 +258,11 @@ class CorrectionsManagementServices():
         """
 
         if self.is_nt:
+            if run_id == '26002':
+                run_id = int(run_id)
             # xenonnt use int
-            run_id = int(run_id)
+            # run_id = int(run_id)
+            pass
 
         rundoc = self.collection.find_one(
             {'number' if self.is_nt else 'name': run_id},

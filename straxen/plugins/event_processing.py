@@ -345,6 +345,10 @@ class EventBasics(strax.Plugin):
                                                              )
 
         if self.config['force_main_before_alt']:
+            # Select only the largest two S2s
+            # If force_alt_s2_in_max_drift_time is False, only the leading two S2s remain
+            # The selection is dummy if force_alt_s2_in_max_drift_time is True
+            largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
             s2_order = np.argsort(largest_s2s['time'])
             largest_s2s = largest_s2s[s2_order]
             s2_idx = s2_idx[s2_order]
