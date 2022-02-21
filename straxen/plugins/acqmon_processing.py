@@ -261,18 +261,14 @@ class VetoIntervals(strax.OverlapWindowPlugin):
             veto_hits_start = np.concatenate([extra_start, veto_hits_start])
 
         something_is_wrong = len(veto_hits_start) != len(veto_hits_stop)
+
+        message = (f'Got inconsistent number of {veto_name} starts '
+                   f'{len(veto_hits_start)}) / stops ({len(veto_hits_stop)}).')
+        if len(extra_start):
+            message += ' Despite the fact that we inserted one extra start at the beginning of the run.'  # noqa
+        elif len(extra_stop):
+            message += ' Despite the fact that we inserted one extra stop at the end of the run.'  # noqa
         if something_is_wrong:
-            message = (f'Got inconsistent number of {veto_name} '
-                       f'starts ({len(veto_hits_start)}) / '
-                       f'stops ({len(veto_hits_stop)}).')
-            if len(extra_start):
-                message += (' Despite the fact that we inserted one extra '
-                            'start at the beginning of the run.')
-            elif len(extra_stop):
-                message += (' Despite the fact that we inserted one extra '
-                            'stop at the end of the run.')
-            if len(extra_start) and len(extra_stop):
-                raise RuntimeError('Someone broke my code, this cannot happen?!')
             raise ValueError(message)
 
         if np.any(veto_hits_start['time'] > veto_hits_stop['time']):
