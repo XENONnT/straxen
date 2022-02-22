@@ -10,7 +10,7 @@ multihist>=0.6.3
 numba>=0.50.0
 numpy
 packaging
-pymongo<4.0.0
+pymongo
 requests
 strax>=1.1.7
 utilix>=0.5.3
