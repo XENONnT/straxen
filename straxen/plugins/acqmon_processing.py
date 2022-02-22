@@ -305,7 +305,6 @@ class VetoProximity(strax.OverlapWindowPlugin):
     depends_on = ('event_basics', 'veto_intervals')
     provides = 'veto_proximity'
     data_kind = 'events'
-    save_when = strax.SaveWhen.NEVER
 
     event_window_fields = straxen.URLConfig(
         default=('time', 'endtime'),
