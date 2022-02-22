@@ -466,7 +466,7 @@ class DetectorSynchronization(strax.Plugin):
         track=True,
         help='Internal delay between aqmon and regular TPC channels ins [ns]'
     )
-    adc_threshold_nim_signal= straxen.URLConfig(
+    adc_threshold_nim_signal = straxen.URLConfig(
         default=500,
         type=int,
         track=True,
