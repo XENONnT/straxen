@@ -1,3 +1,4 @@
+from re import X
 import strax
 import numpy as np
 import numba
@@ -749,11 +750,11 @@ class EventShadow(strax.Plugin):
     """
     This plugin can calculate shadow for main S1 and S2 peaks and the event itself.
     The event's shadow is its first S2 peak's shadow.
-    It also gives the position information of the previous peaks.
+    It also gives the position information of the primary peaks.
     References:
-        * v0.1.0 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
     data_kind = 'events'
@@ -761,145 +762,126 @@ class EventShadow(strax.Plugin):
 
     def infer_dtype(self):
         dtype = []
-        for sa, r in zip(['', 'alt_'], ['1st', '2nd']):
-            for s in ['s1', 's2']:
-                for p, si in zip(['s1', 's2', 's2_re'], ['s1', 's2', 'reordered s2']):
-                    dtype.append((('main ' + s + ' shadow from ' + si + ' casting ' + r + ' largest shadow [PE/ns]', s + '_' + sa + 'shadow_' + p), np.float32))
-                    dtype.append((('previous ' + si + ' area casting ' + r + ' largest shadow on ' + s + ' [PE]', s + '_' + sa + 'pre_area_' + p), np.float32))
-                    dtype.append((('time difference from ' + s + ' to the previous ' + si + ' casting ' + r + ' largest shadow [ns]', s + '_' + sa + 'shadow_dt_' + p), np.int64))
-            for p, si in zip(['s1', 's2', 's2_re'], ['s1', 's2', 'reordered s2']):
-                dtype.append((('event shadow from ' + si + ' casting ' + r + ' largest shadow [PE/ns]', sa + 'shadow_' + p), np.float32))
-                dtype.append((('previous ' + si + ' area casting ' + r + ' largest shadow  on the event [PE]', sa + 'pre_area_' + p), np.float32))
-                dtype.append((('time difference from the event to the previous ' + si + ' casting ' + r + ' largest shadow [ns]', sa + 'shadow_dt_' + p), np.int64))
-            for x in ['x', 'y']:
-                dtype.append(((x + ' of previous s2 peak casting ' + r + ' largest shadow [cm]', sa + 'pre_' + x + '_s2'), np.float32))
-                dtype.append(((x + ' of previous reordered s2 peak casting ' + r + ' largest shadow [cm]', sa + 'pre_' + x + '_s2_re'), np.float32))
-            dtype.append((('distance to the s2 peak with ' + r + ' largest shadow [cm]', sa + 'shadow_distance'), np.float32))
-            dtype.append((('distance to the reordered s2 peak with ' + r + ' largest shadow [cm]', sa + 'shadow_distance_re'), np.float32))
-            dtype.append((('previous ' + r + ' largest s2 shadow with position correlation PDF [PE/ns]', sa + 'shadow_s2_corr'), np.float32))
-            dtype.append((('previous ' + r + ' largest s2 shadow position correlation PDF', sa + 'shadow_s2_prob'), np.float32))
-        dtype.append((('index of the peak defining the event shadow', 'shadow_index'), np.int32))
-        for s in ['s1', 's2']:
-            for p, si in zip(['s1', 's2', 's2_re'], ['s1', 's2', 'reordered s2']):
-                dtype.append((('Nearest ' + si + ' delta t to ' + s, s + '_near_dt_' + p), np.int64))
-                dtype.append((('Sum of ' + si + ' shadow in time window casting on ' + s, s + '_shadow_sum_' + p), np.float32))
-        for p, si in zip(['s1', 's2', 's2_re'], ['s1', 's2', 'reordered s2']):
-            dtype.append((('Nearest ' + si + ' delta t to event', 'near_dt_' + p), np.int64))
-            dtype.append((('Sum of ' + si + ' shadow in time window casting on event', 'shadow_sum_' + p), np.float32))
+        for main_peak, main_peak_desc in zip(['s1_', ''], ['main s1', 'the 1st S2 peak']):
+            for key in ['s1_time', 's2_time', 's2_position']:
+                type_str = key.split('_')[0]
+                tp_desc = key.split('_')[1]
+                dtype.append(((f'{tp_desc} shadow casting from {type_str} to {main_peak_desc} [PE/ns]', f'{main_peak}shadow_{key}'), np.float32))
+                dtype.append(((f'area of primary {type_str} casting {tp_desc} shadow on {main_peak_desc} [PE]', f'{main_peak}pre_area_{key}'), np.float32))
+                dtype.append(((f'time difference from the primary {type_str} casting {tp_desc} shadow to {main_peak_desc} [ns]', f'{main_peak}shadow_dt_{key}'), np.int64))
+                if 'time' in key:
+                    dtype.append(((f'Time difference from the nearest primary {type_str} to {main_peak_desc} [ns]', f'{main_peak}nearest_dt_{type_str}'), np.int64))
+        for x in ['x', 'y']:
+            dtype.append(((f'{x} of primary s2 peak casting time shadow on the 1st S2 peak [cm]', f'pre_{x}_s2_time'), np.float32))
+            dtype.append(((f'{x} of primary s2 peak casting position shadow on the 1st S2 peak [cm]', f'pre_{x}_s2_position'), np.float32))
+        dtype.append((('primary s2 correlation PDF multiplier which provides largest position shadow', 'shadow_s2_position_pdf'), np.float32))
+        dtype.append((('index of the 1st S2 peak, which defines the event shadow', 'shadow_index'), np.int32))
         dtype += strax.time_fields
         return dtype
 
     def setup(self):
         self.time_window_backward = self.config['time_window_backward']
-        self.threshold = dict(s1=self.config['pre_s1_area_threshold'], s2=self.config['pre_s2_area_threshold'], s2_re=self.config['pre_s2_area_threshold'])
+        self.threshold = dict(s1_time=self.config['pre_s1_area_threshold'], s2_time=self.config['pre_s2_area_threshold'], s2_position=self.config['pre_s2_area_threshold'])
         self.exponent = self.config['deltatime_exponent']
 
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
-        res = np.zeros(len(events), self.dtype)
+        result = np.zeros(len(events), self.dtype)
 
-        res['shadow_index'] = -1
+        # 1. Initialization, shadow is set to be the lowest possible value
+        result['shadow_index'] = -1
+        for main_peak in ['s1_', '']:
+            for key in ['s1_time', 's2_time', 's2_position']:
+                result[f'{main_peak}pre_area_{key}'] = self.threshold[key]
+                result[f'{main_peak}shadow_dt_{key}'] = self.time_window_backward
+                if 'time' in key:
+                    type_str = key.split('_')[0]
+                    result[f'{main_peak}nearest_dt_{type_str}'] = self.time_window_backward
+                    result[f'{main_peak}shadow_{key}'] = result[f'{main_peak}pre_area_{key}'] * result[f'{main_peak}shadow_dt_{key}'] ** self.exponent
+                else:
+                    result[f'{main_peak}shadow_{key}'] = 0
+        for key in ['s2_time', 's2_position']:
+            for x in ['x', 'y']:
+                result[f'pre_{x}_{key}'] = np.nan
+        result['shadow_s2_position_pdf'] = np.nan
 
-        # Set default values
-        for sa in ['', 'alt_']:
-            for key in ['s1_', 's2_', '']:
-                for s, ty in zip(['s1', 's2', 's2_re'], ['s1', 's2', 's2_re']):
-                    res[key + sa + 'pre_area_' + s] = self.threshold[ty]
-                    res[key + sa + 'shadow_dt_' + s] = self.time_window_backward
-                    res[key + sa + 'shadow_' + s] = res[key + sa + 'pre_area_' + s] * res[key + sa + 'shadow_dt_' + s] ** self.exponent
-            for re in ['', '_re']:
-                for x in ['x', 'y']:
-                    res[sa + 'pre_' + x + '_s2' + re] = np.nan
-                res[sa + 'shadow_distance' + re] = np.nan
-            res[sa + 'shadow_s2_prob'] = np.nan
-            res[sa + 'shadow_s2_corr'] = np.nan
-        for key in ['s1_', 's2_', '']:
-            for s, ty in zip(['s1', 's2', 's2_re'], ['s1', 's2', 's2_re']):
-                res[key + 'near_dt_' + s] = self.time_window_backward
-                res[key + 'shadow_sum_' + s] = self.threshold[ty] * self.time_window_backward ** self.exponent
-
-        # Assign peaks features to events
+        # 2. Assign peaks features to main S1 and the 1st S2 peak in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
-            indices = [event['s1_index'], event['s2_index'], np.argwhere(sp['type'] == 2)[0] if (sp['type'] == 2).sum() > 0 else -1]
-            for idx, key in zip(indices, ['s1_', 's2_', '']):
+            first_s2_index = np.argwhere(sp['type'] == 2)[0] if (sp['type'] == 2).sum() > 0 else -1
+            # Indices of main S1, and the 1st S2 peak
+            indices = [event['s1_index'], first_s2_index]
+            for idx, main_peak in zip(indices, ['s1_', '']):
                 if idx >= 0:
-                    for s in ['s1', 's2', 's2_re']:
-                        for sa in ['', 'alt_']:
-                            res[key + sa + 'pre_area_' + s][event_i] = sp[sa + 'pre_area_' + s][idx]
-                            res[key + sa + 'shadow_' + s][event_i] = sp[sa + 'shadow_' + s][idx]
-                            res[key + sa + 'shadow_dt_' + s][event_i] = sp[sa + 'shadow_dt_' + s][idx]
-                        res[key + 'near_dt_' + s][event_i] = sp['near_dt_' + s][idx]
-                        res[key + 'shadow_sum_' + s][event_i] = sp['shadow_sum_' + s][idx]
-            if (sp['type'] == 2).sum() > 0:
-                res['shadow_index'][event_i] = indices[-1]
-                for sa in ['', 'alt_']:
-                    res[sa + 'shadow_s2_corr'][event_i] = sp[sa + 'shadow_s2_corr'][indices[-1]]
-                    res[sa + 'shadow_s2_prob'][event_i] = sp[sa + 'shadow_s2_prob'][indices[-1]]
+                    for key in ['s1_time', 's2_time', 's2_position']:
+                        result[f'{main_peak}pre_area_{key}'][event_i] = sp[f'pre_area_{key}'][idx]
+                        result[f'{main_peak}shadow_{key}'][event_i] = sp[f'shadow_{key}'][idx]
+                        result[f'{main_peak}shadow_dt_{key}'][event_i] = sp[f'shadow_dt_{key}'][idx]
+                    if 'time' in key:
+                        result[f'{main_peak}nearest_dt_{key}'][event_i] = sp[f'nearest_dt_{key}'][idx]
+            # If there are S2(s) in the event
+            if first_s2_index != -1:
+                result['shadow_index'][event_i] = indices[-1]
+                result['shadow_s2_position_pdf'][event_i] = sp['shadow_s2_position_pdf'][indices[-1]]
+                for key in ['s2_time', 's2_position']:
                     for x in ['x', 'y']:
-                        for re in ['', '_re']:
-                            res[sa + 'pre_' + x + '_s2' + re][event_i] = sp[sa + 'pre_' + x + '_s2' + re][indices[-1]]
-        for sa in ['', 'alt_']:
-            for re in ['', '_re']:
-                res[sa + 'shadow_distance' + re] = ((res[sa + 'pre_x_s2' + re] - events['s2_x'])**2 + 
-                                                   (res[sa + 'pre_y_s2' + re] - events['s2_y'])**2) ** 0.5
-        res['time'] = events['time']
-        res['endtime'] = strax.endtime(events)
-        return res
+                        result[f'pre_{x}_{key}'][event_i] = sp[f'pre_{x}_{key}'][indices[-1]]
+
+        # 3. Set time and endtime for events
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
+        return result
 
 
 @export
 class EventAmbience(strax.Plugin):
     """
     This plugin can calculate ambience at event level.
-    Save Ambience of the main S1 peak, main S2 peaak and the first S2 peak in the event.
+    Save Ambience of the main S1, main S2 and the first S2 peak in the event.
     References:
-        * v0.0.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.0.2 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.1'
-    depends_on = ('event_basics', 'peaks', 'peak_basics', 'peak_ambience')
+    __version__ = '0.0.2'
+    depends_on = ('event_basics', 'peak_basics', 'peak_ambience')
     provides = 'event_ambience'
     save_when = strax.SaveWhen.EXPLICIT
 
     @property
-    def origindtype(self):
-        return ['lonehit_before', 's0_before', 's1_before', 's2_before'] + ['s2_near']
+    def origin_dtype(self):
+        return ['lonehit_before', 's0_before', 's1_before', 's2_before', 's2_near']
 
     def infer_dtype(self):
         dtype = []
-        for si in self.origindtype:
-            for s in ['', '_s1', '_s2']:
-                if '' == s:
-                    sig = 'event'
-                else:
-                    sig = s.split('_')[1]
-                dtype.append((('Number of ' + ' '.join(si.split('_')) + ' an ' + sig, 'n_' + si + s), np.int16))
-        dtype.append(('s1_n_hits', np.int32)) 
+        for ambience in self.origin_dtype:
+            for main_peak, main_peak_desc in zip(['_s1', '_s2', ''], ['main s1', 'main s2', 'the 1st S2 peak']):
+                dtype.append((('Number of ' + ' '.join(ambience.split('_')) + f' {main_peak_desc}', f'n_{ambience}{main_peak}'), np.int16))
         dtype += strax.time_fields
         return dtype
 
     def compute(self, events, peaks):
-        res = self.compute_s1_s2(events, peaks)
-        res['s1_n_hits'] = self.s1_hits(events, peaks)
-        return res
+        split_peaks = strax.split_by_containment(peaks, events)
 
-    def compute_s1_s2(self, events, peaks):
-        split_peaks = strax.touching_windows(peaks, events)
-        res = np.zeros(len(events), self.dtype)
+        # 1. Initialization, ambience is set to be the lowest possible value
+        result = np.zeros(len(events), self.dtype)
 
+        # 2. Assign peaks features to main S1, main S2, and the 1st S2 peak in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
-            indices = [event['s1_index'], event['s2_index'], np.argwhere(peaks['type'][sp[0]:sp[-1]] == 2)[0] if (peaks['type'][sp[0]:sp[-1]] == 2).sum() > 0 else -1]
-            for idx, key in zip(indices, ['_s1', '_s2', '']):
+            first_s2_index = np.argwhere(sp['type'] == 2)[0] if (sp['type'] == 2).sum() > 0 else -1
+            # Indices of main S1, main S2, and the 1st S2 peak
+            indices = [event['s1_index'], event['s2_index'], first_s2_index]
+            for idx, main_peak in zip(indices, ['_s1', '_s2', '']):
                 if idx >= 0:
-                    for si in self.origindtype:
-                        res['n_' + si + key][event_i] = peaks['n_' + si][sp[0]:sp[-1]][idx]
-        res['time'] = events['time']
-        res['endtime'] = strax.endtime(events)
-        return res
+                    for ambience in self.origin_dtype:
+                        result[f'n_{ambience}{main_peak}'][event_i] = sp[f'n_{ambience}'][idx]
 
-    def s1_hits(self, events, peaks):
-        res = np.full(len(events), -1).astype(np.int32)
-        touching_windows = strax.touching_windows(peaks, events)
-        for event_i, (event, indices) in enumerate(zip(events, touching_windows)):
-            if event['s1_index'] != -1:
-                res[event_i] = peaks['n_hits'][indices[0]:indices[1]][event['s1_index']]
-        return res
+        # 3. Set time and endtime for events
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
+        return result
+
+    # def s1_hits(self, events, peaks):
+    #     result = np.full(len(events), -1).astype(np.int32)
+    #     touching_windows = strax.touching_windows(peaks, events)
+    #     for event_i, (event, indices) in enumerate(zip(events, touching_windows)):
+    #         if event['s1_index'] != -1:
+    #             result[event_i] = peaks['n_hits'][indices[0]:indices[1]][event['s1_index']]
+    #     return result

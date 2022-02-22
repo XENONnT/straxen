@@ -351,14 +351,13 @@ class PeakProximity(strax.OverlapWindowPlugin):
 )
 class PeakShadow(strax.OverlapWindowPlugin):
     """
-    This plugin can find and calculate the previous peak shadow at peak level,
-    with time window backward and previous peak area as options.
-    It also gives the area and position information of these previous peaks.
+    This plugin can find and calculate the time & position shadow from primary peaks
+    It also gives the area and (x,y) of the primary peaks.
     References:
-        * v0.1.0 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
 
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     data_kind = 'peaks'
@@ -366,7 +365,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
     def setup(self):
         self.time_window_backward = self.config['time_window_backward']
-        self.threshold = dict(s1=self.config['pre_s1_area_threshold'], s2=self.config['pre_s2_area_threshold'], s2_re=self.config['pre_s2_area_threshold'])
+        self.threshold = dict(s1_time=self.config['pre_s1_area_threshold'], s2_time=self.config['pre_s2_area_threshold'], s2_position=self.config['pre_s2_area_threshold'])
         self.exponent = self.config['deltatime_exponent']
         self.sigma = self.config['position_correlation_sigma']
         self.baseline = self.config['position_correlation_baseline']
@@ -375,126 +374,140 @@ class PeakShadow(strax.OverlapWindowPlugin):
         return 3 * self.config['time_window_backward']
 
     @property
-    def sdtype(self):
-        ddtype = []
-        for s in ['', 'alt_']:
-            ddtype += [(s + 'shadow', np.float32), (s + 'pre_area', np.float32), (s + 'shadow_dt', np.int64)]
-        ddtype += [('near_dt', np.int64), ('shadow_sum', np.float32)]
-        return ddtype
-
-    @property
-    def ddtype(self):
-        ddtype = []
-        for s in ['', 'alt_']:
-            for x in ['x', 'y']:
-                ddtype.append((s + 'pre_' + x, np.float32))
-        return ddtype
+    def shadtype(self):
+        # Shadow related features shared by primary S1 & S2
+        dtype = []
+        dtype += [('shadow', np.float32), ('pre_area', np.float32), ('shadow_dt', np.int64)]
+        dtype += [('pre_x', np.float32), ('pre_y', np.float32)]
+        dtype += [('nearest_dt', np.int64)]
+        return dtype
 
     def infer_dtype(self):
-        s1_dtype = []
-        s2_dtype = []
-        s2_reordered_dtype = []
-        s2_corr_dtype = []
-        for sa, r in zip(['', 'alt_'], ['1st', '2nd']):
-            for si, s, l in zip(['s1', 's2', 'reordered s2'], ['s1', 's2', 's2_re'], [s1_dtype, s2_dtype, s2_reordered_dtype]):
-                l.append((('previous ' + si + ' casted ' + r + ' largest shadow [PE/ns]', sa + 'shadow_' + s), np.float32))
-                l.append((('previous ' + si + ' area casting ' + r + ' largest shadow [PE]', sa + 'pre_area_' + s), np.float32))
-                l.append((('time difference to the previous ' + si + ' peak casting ' + r + ' largest shadow [ns]', sa + 'shadow_dt_' + s), np.int64))
-            for x in ['x', 'y']:
-                s2_dtype.append(((x + ' of previous s2 peak casting ' + r + ' largest shadow [cm]', sa + 'pre_' + x + '_s2'), np.float32))
-                s2_reordered_dtype.append(((x + ' of previous reordered s2 peak casting ' + r + ' largest shadow [cm]', sa + 'pre_' + x + '_s2_re'), np.float32))
-            s2_corr_dtype.append((('previous ' + r + ' largest s2 shadow with position correlation [PE/ns]', sa + 'shadow_s2_corr'), np.float32))
-            s2_corr_dtype.append((('previous ' + r + ' largest s2 shadow position correlation PDF', sa + 'shadow_s2_prob'), np.float32))
-        dt_dtype = []
-        sum_dtype = []
-        for si, s in zip(['s1', 's2', 'reordered s2'], ['_s1', '_s2', '_s2_re']):
-            dt_dtype.append((('Nearest ' + si + ' delta t', 'near_dt' + s), np.int64))
-            sum_dtype.append((('Sum of ' + si + ' shadow in time window', 'shadow_sum' + s), np.float32))
-        dtype = s1_dtype + s2_dtype + s2_reordered_dtype + s2_corr_dtype + dt_dtype + sum_dtype + strax.time_fields
+        s1_time_shadow_dtype = []
+        s2_time_shadow_dtype = []
+        s2_position_shadow_dtype = []
+        nearest_dtype = []
+        # primary S1 can only cast time shadow, primary S2 can cast both time & position shadow
+        for key, dtype in zip(['s1_time', 's2_time', 's2_position'], [s1_time_shadow_dtype, s2_time_shadow_dtype, s2_position_shadow_dtype]):
+            type_str = key.split('_')[0]
+            tp_desc = key.split('_')[1]
+            dtype.append(((f'primary {type_str} casted largest {tp_desc} shadow [PE/ns]', f'shadow_{key}'), np.float32))
+            dtype.append(((f'primary {type_str} area casting largest {tp_desc} shadow [PE]', f'pre_area_{key}'), np.float32))
+            dtype.append(((f'time difference to the primary {type_str} peak casting largest {tp_desc} shadow [ns]', f'shadow_dt_{key}'), np.int64))
+            # Only time shadow gives the nearest large peak
+            if 'time' in key:
+                dtype.append(((f'Time difference to the nearest {type_str}', f'nearest_dt_{type_str}'), np.int64))
+        # Only primary S2 peaks have (x,y)
+        for x in ['x', 'y']:
+            s2_time_shadow_dtype.append(((f'{x} of primary s2 peak casting largest time shadow [cm]', f'pre_{x}_s2_time'), np.float32))
+            s2_position_shadow_dtype.append(((f'{x} of primary s2 peak casting largest position shadow [cm]', f'pre_{x}_s2_position'), np.float32))
+        # Also record the PDF of HalfCauchy
+        s2_position_shadow_dtype.append(((f'primary s2 correlation PDF multiplier which provides largest position shadow', f'shadow_s2_position_pdf'), np.float32))
+
+        dtype = s1_time_shadow_dtype + s2_time_shadow_dtype + s2_position_shadow_dtype + nearest_dtype + strax.time_fields
+        return dtype
+
+    @property
+    def shadowdtype(self):
+        dtype = []
+        dtype += [('shadow', np.float32), ('pre_area', np.float32), ('shadow_dt', np.int64)]
+        dtype += [('pre_x', np.float32), ('pre_y', np.float32)]
+        dtype += [('nearest_dt', np.int64)]
         return dtype
 
     def compute(self, peaks):
-        return self.compute_s1_s2(peaks, peaks)
+        return self.compute_shadow(peaks, peaks)
 
-    def compute_s1_s2(self, peaks, current):
-        roi_shadow = np.zeros(len(current), dtype=strax.time_fields)
-        roi_shadow['time'] = current['center_time'] - self.time_window_backward
-        roi_shadow['endtime'] = current['center_time']
+    def compute_shadow(self, peaks, current_peak):
+        # 1. Define time window for each peak, we will find primary peaks within these time windows
+        roi_shadow = np.zeros(len(current_peak), dtype=strax.time_fields)
+        roi_shadow['time'] = current_peak['center_time'] - self.time_window_backward
+        roi_shadow['endtime'] = current_peak['center_time']
 
-        resdict = dict()
-        for stype, key, reorder in zip([2, 2, 1], ['s2_re', 's2', 's1'], [True, False, False]):
+        # 2. Calculate S2 position shadow, S2 time shadow, and S1 time shadow
+        result = np.zeros(len(current_peak), self.dtype)
+        for key, is_position in zip(['s2_position', 's2_time', 's1_time'], [True, False, False]):
+            type_str = key.split('_')[0]
+            stype = 2 if 's2' in key else 1
             mask_pre = (peaks['type'] == stype) & (peaks['area'] > self.threshold[key])
             split_peaks = strax.touching_windows(peaks[mask_pre], roi_shadow)
-            array = np.zeros(len(current), np.dtype(self.sdtype + self.ddtype))
-            for sa in ['', 'alt_']:
-                for x in ['x', 'y']:
-                    array[sa + 'pre_' + x] = np.nan
-                array[sa + 'shadow_dt'] = self.time_window_backward
-                array[sa + 'pre_area'] = self.threshold[key]
-                array[sa + 'shadow'] = array[sa + 'pre_area'] * array[sa + 'shadow_dt'] ** self.exponent
-            array['near_dt'] = self.time_window_backward
-            array['shadow_sum'] = 0
-            if len(current):
-                self.compute_shadow(current, peaks[mask_pre], split_peaks, self.exponent, array, reorder, self.getsigma(self.sigma, self.baseline, current['area']))
-            resdict[key] = array
-        res = np.zeros(len(current), self.dtype)
-        for key, names in zip(['s1', 's2', 's2_re'], 
-                              [np.dtype(self.sdtype).names, 
-                               np.dtype(self.sdtype + self.ddtype).names, 
-                               np.dtype(self.sdtype + self.ddtype).names]):
+            array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
+
+            # Initialization
+            for x in ['x', 'y']:
+                array[f'pre_{x}'] = np.nan
+            array['shadow_dt'] = self.time_window_backward
+            array['pre_area'] = self.threshold[key]
+            # Shadow is set to be the lowest possible value
+            if 'time' in key:
+                array['shadow'] = array['pre_area'] * array['shadow_dt'] ** self.exponent
+            else:
+                array['shadow'] = 0
+            array['nearest_dt'] = self.time_window_backward
+
+            # Calculating shadow, the Major of the plugin
+            if len(current_peak):
+                self.peaks_shadow(current_peak, peaks[mask_pre], split_peaks, self.exponent, array, is_position, self.getsigma(self.sigma, self.baseline, current_peak['area']))
+            
+            # Fill results
+            names = ['shadow', 'pre_area', 'shadow_dt']
+            if 's2' in key: # Only primary S2 peaks have (x,y)
+                names += ['pre_x', 'pre_y']
+            if 'time' in key: # Only time shadow gives the nearest large peak
+                names += ['nearest_dt']
             for name in names:
-                res[name + '_' + key] = resdict[key][name]
-        for sa in ['', 'alt_']:
-            distance = np.sqrt((res[sa + 'pre_x_s2_re'] - current['x']) ** 2 + (res[sa + 'pre_y_s2_re'] - current['y']) ** 2)
-            distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-            res[sa + 'shadow_s2_prob'] = halfcauchy.pdf(distance, scale=self.getsigma(self.sigma, self.baseline, current['area']))
-            res[sa + 'shadow_s2_corr'] = res[sa + 'shadow_s2_re'] * res[sa + 'shadow_s2_prob']
-        res['time'] = current['time']
-        res['endtime'] = strax.endtime(current)
-        return res
+                if name == 'nearest_dt':
+                    result[f'{name}_{type_str}'] = array[name]
+                else:
+                    result[f'{name}_{key}'] = array[name]
+
+        distance = np.sqrt((result[f'pre_x_s2_position'] - current_peak['x']) ** 2 + (result[f'pre_y_s2_position'] - current_peak['y']) ** 2)
+        # If distance is NaN, set largest distance
+        distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
+        # HalfCauchy PDF
+        result[f'shadow_s2_position_pdf'] = halfcauchy.pdf(distance, scale=self.getsigma(self.sigma, self.baseline, current_peak['area']))
+
+        # 6. Set time and endtime for peaks
+        result['time'] = current_peak['time']
+        result['endtime'] = strax.endtime(current_peak)
+        return result
 
     @staticmethod
     def getsigma(sigma, baseline, s2):
+        # The parameter of HalfCauchy, which is a function of S2 area
         return sigma / np.sqrt(s2) + baseline
 
     @staticmethod
     @numba.njit
-    def compute_shadow(peaks, pre_peaks, touching_windows, exponent, res, pos_corr, sigmas=None):
+    def peaks_shadow(peaks, pre_peaks, touching_windows, exponent, result, pos_corr, sigmas=None):
         """
         For each peak in peaks, check if there is a shadow-casting peak
-        and check if it casts the first or second largest shadow
+        and check if it casts the largest shadow
         """
         for p_i, (p_a, sigma) in enumerate(zip(peaks, sigmas)):
-            # reset for every peak
             indices = touching_windows[p_i]
-            shadow_ref_bk = 0
             for idx in range(indices[0], indices[1]):
                 s_a = pre_peaks[idx]
-                near_dt = p_a['center_time'] - s_a['center_time']
-                if near_dt <= 0:
+                nearest_dt = p_a['center_time'] - s_a['center_time']
+                if nearest_dt <= 0:
                     continue
-                new_shadow = s_a['area'] * near_dt**exponent
+                # First record the time difference to the nearest primary peak
+                if nearest_dt < result['nearest_dt'][p_i]:
+                    result['nearest_dt'][p_i] = nearest_dt
+                # Calculate time shadow
+                new_shadow = s_a['area'] * nearest_dt ** exponent
                 if pos_corr:
+                    # Calculate position shadow which is time shadow with a HalfCauchy PDF multiplier
                     distance = np.sqrt((p_a['x'] - s_a['x']) ** 2 + (p_a['y'] - s_a['y']) ** 2)
                     distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-                    shadow_ref = new_shadow * 2 / (np.pi * sigma * (1 + (distance / sigma) ** 2))
-                else:
-                    shadow_ref = new_shadow
-                res['shadow_sum'][p_i] += shadow_ref
-                if near_dt < res['near_dt'][p_i]:
-                    res['near_dt'][p_i] = near_dt
-                if shadow_ref > shadow_ref_bk:
-                    shadow_ref_bk = shadow_ref
-                    res['alt_pre_x'][p_i] = res['pre_x'][p_i]
-                    res['alt_pre_y'][p_i] = res['pre_y'][p_i]
-                    res['pre_x'][p_i] = s_a['x']
-                    res['pre_y'][p_i] = s_a['y']
-                    res['alt_shadow'][p_i] = res['shadow'][p_i]
-                    res['shadow'][p_i] = new_shadow
-                    res['alt_pre_area'][p_i] = res['pre_area'][p_i]
-                    res['pre_area'][p_i] = s_a['area']
-                    res['alt_shadow_dt'][p_i] = res['shadow_dt'][p_i]
-                    res['shadow_dt'][p_i] = p_a['center_time'] - s_a['center_time']
+                    new_shadow *= 2 / (np.pi * sigma * (1 + (distance / sigma) ** 2))
+                # Only the primary peak with largest shadow is recorded
+                if new_shadow > result['shadow'][p_i]:
+                    result['shadow'][p_i] = new_shadow
+                    result['pre_x'][p_i] = s_a['x']
+                    result['pre_y'][p_i] = s_a['y']
+                    result['pre_area'][p_i] = s_a['area']
+                    result['shadow_dt'][p_i] = p_a['center_time'] - s_a['center_time']
 
 
 @export
@@ -515,9 +528,9 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     Calculate Ambience features of peaks.
     Features are the number of lonehits, S0, S1, S2 in a time window before peaks. 
     References:
-        * v0.0.3 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.0.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
     depends_on = ('lone_hits', 'peak_basics', 'peak_positions')
     provides = 'peak_ambience'
     data_kind = 'peaks'
@@ -534,54 +547,70 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         return 3 * self.time_window_ambience
 
     @property
-    def origindtype(self):
-        return ['lonehit_before', 's0_before', 's1_before', 's2_before'] + ['s2_near']
+    def origin_dtype(self):
+        return ['lonehit_before', 's0_before', 's1_before', 's2_before', 's2_near']
 
     def infer_dtype(self):
         dtype = []
-        for s in self.origindtype:
-            dtype += [(('Number of ' + ' '.join(s.split('_')) + ' a peak', 'n_' + s), np.int16), (('Area sum of ' + ' '.join(s.split('_')) + ' a peak', 's_' + s), np.float32)]
+        for s in self.origin_dtype:
+            dtype += [(('Number of small ' + ' '.join(s.split('_')) + ' a peak', f'n_{s}'), np.int16), 
+                      (('Area sum of small ' + ' '.join(s.split('_')) + ' a peak', f's_{s}'), np.float32)]
         dtype += strax.time_fields
         return dtype
 
     def compute(self, lone_hits, peaks):
-        return self.compute_s1_s2(lone_hits, peaks, peaks)
+        return self.compute_ambience(lone_hits, peaks, peaks)
 
-    def compute_s1_s2(self, lone_hits, peaks, current):
-        res = np.zeros(len(current), self.dtype)
-        num_array = np.zeros(len(current), dtype=np.int16)
-        sum_array = np.zeros(len(current), dtype=np.float32)
-        roi = np.zeros(len(current), dtype=strax.time_fields)
-        roi['time'] = current['center_time'] - self.time_window_ambience
-        roi['endtime'] = current['center_time']
+    def compute_ambience(self, lone_hits, peaks, current_peak):
+        # 1. Initialization
+        result = np.zeros(len(current_peak), self.dtype)
+        num_array = np.zeros(len(current_peak), dtype=np.int16)
+        sum_array = np.zeros(len(current_peak), dtype=np.float32)
+
+        # 2. Define time window for each peak, we will find small peaks & lone hits within these time windows
+        roi = np.zeros(len(current_peak), dtype=strax.time_fields)
+        roi['time'] = current_peak['center_time'] - self.time_window_ambience
+        roi['endtime'] = current_peak['center_time']
+
+        # 3. Calculate number and area sum of lonehits before a peak
         touching_windows = strax.touching_windows(lone_hits, roi)
-        self.lonehits_ambience(current, lone_hits, touching_windows, num_array, sum_array, self.ambience_divide_time)
-        res['n_lonehit_before'] = num_array
-        res['s_lonehit_before'] = sum_array
+        # Calculating ambience
+        self.lonehits_ambience(current_peak, lone_hits, touching_windows, num_array, sum_array, self.ambience_divide_time)
+        result['n_lonehit_before'] = num_array
+        result['s_lonehit_before'] = sum_array
+
+        # 4. Calculate number and area sum of small S0, S1, S2 before a peak
         radius = -1
-        for stype, area, si in zip([0, 1, 2], self.ambience_area_parameters, ['s0_before', 's1_before', 's2_before']):
-            num_array = np.zeros(len(current), dtype=np.int16)
-            sum_array = np.zeros(len(current), dtype=np.float32)
+        for stype, area, type_str in zip([0, 1, 2], self.ambience_area_parameters, ['s0_before', 's1_before', 's2_before']):
+            num_array = np.zeros(len(current_peak), dtype=np.int16)
+            sum_array = np.zeros(len(current_peak), dtype=np.float32)
             mask_pre = (peaks['type'] == stype) & (peaks['area'] < area)
             touching_windows = strax.touching_windows(peaks[mask_pre], roi)
-            self.peaks_ambience(current, peaks[mask_pre], touching_windows, radius, num_array, sum_array, self.ambience_divide_time, self.ambience_divide_space)
-            res['n_' + si] = num_array
-            res['s_' + si] = sum_array
+            # Calculating ambience
+            self.peaks_ambience(current_peak, peaks[mask_pre], touching_windows, radius, num_array, sum_array, self.ambience_divide_time, self.ambience_divide_space)
+            result[f'n_{type_str}'] = num_array
+            result[f's_{type_str}'] = sum_array
+
+        # 5. Calculate number and area sum of small S2 near(in (x,y) space) a S2 peak
         radius = self.ambience_radius
-        num_array = np.zeros(len(current), dtype=np.int16)
-        sum_array = np.zeros(len(current), dtype=np.float32)
+        num_array = np.zeros(len(current_peak), dtype=np.int16)
+        sum_array = np.zeros(len(current_peak), dtype=np.float32)
         mask_pre = (peaks['type'] == 2) & (peaks['area'] < self.ambience_area_parameters[2])
         touching_windows = strax.touching_windows(peaks[mask_pre], roi)
-        self.peaks_ambience(current, peaks[mask_pre], touching_windows, radius, num_array, sum_array, self.ambience_divide_time, self.ambience_divide_space)
-        res['n_s2_near'] = num_array
-        res['s_s2_near'] = sum_array
-        res['time'] = current['time']
-        res['endtime'] = strax.endtime(current)
-        return res
+        # Calculating ambience
+        self.peaks_ambience(current_peak, peaks[mask_pre], touching_windows, radius, num_array, sum_array, self.ambience_divide_time, self.ambience_divide_space)
+        result['n_s2_near'] = num_array
+        result['s_s2_near'] = sum_array
+
+        # 6. Set time and endtime for peaks
+        result['time'] = current_peak['time']
+        result['endtime'] = strax.endtime(current_peak)
+        return result
 
     @staticmethod
     @numba.njit
     def lonehits_ambience(peaks, pre_hits, touching_windows, num_array, sum_array, ambience_divide_time):
+        # Function to find lonehits before a peak
         for p_i, p_a in enumerate(peaks):
             indices = touching_windows[p_i]
             for idx in range(indices[0], indices[1]):
@@ -590,6 +619,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                 if dt <= 0:
                     continue
                 num_array[p_i] += 1
+                # Sometimes we may interested in sum of area / dt
                 if ambience_divide_time:
                     sum_array[p_i] += s_a['area'] / dt
                 else:
@@ -598,6 +628,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     @staticmethod
     @numba.njit
     def peaks_ambience(peaks, pre_peaks, touching_windows, radius, num_array, sum_array, ambience_divide_time, ambience_divide_space):
+        # Function to find S0, S1, S2 before or near a peak
         for p_i, p_a in enumerate(peaks):
             indices = touching_windows[p_i]
             for idx in range(indices[0], indices[1]):
@@ -608,9 +639,11 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                     continue
                 if (dt != 0) and ((radius < 0) or (r <= radius)):
                     num_array[p_i] += 1
+                    # Sometimes we may interested in sum of area / dt
                     if ambience_divide_time:
                         sum_array[p_i] += s_a['area'] / dt
                     else:
                         sum_array[p_i] += s_a['area']
+                    # Sometimes we may interested in sum of area / r^2
                     if ambience_divide_space and radius > 0:
                         sum_array[p_i] /= r**2
