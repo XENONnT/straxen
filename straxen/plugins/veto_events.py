@@ -473,7 +473,7 @@ class nVETOEventsSync(strax.OverlapWindowPlugin):
 
     provides = 'events_sync_nv'
     save_when = strax.SaveWhen.EXPLICIT
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     def infer_dtype(self):
         dtype = []
