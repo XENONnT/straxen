@@ -41,6 +41,8 @@ xnt_common_config = dict(
     gain_model=("to_pe_model", "ONLINE", True),
     gain_model_nv=("to_pe_model_nv", "ONLINE", True),
     gain_model_mv=("to_pe_model_mv", "ONLINE", True),
+    tpc_internal_delay=immutabledict({'0': 4817,
+                                      '021286': 10137}),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!

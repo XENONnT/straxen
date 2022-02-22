@@ -152,6 +152,7 @@ def test_nT(ncores=1):
     st = straxen.test_utils.nt_test_context(
         _database_init=init_database,
         use_rucio=False,
+        deregister=('events_sync_nv', 'events_sync_mv')
     )
     _update_context(st, ncores, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
