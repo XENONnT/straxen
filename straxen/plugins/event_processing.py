@@ -338,17 +338,16 @@ class EventBasics(strax.Plugin):
             s1_min_coincidence=self.config['event_s1_min_coincidence'])
 
         if self.config['force_alt_s2_in_max_drift_time']:
-            s2_idx, largest_s2s = self.set_alt_s2_properties(largest_s1s,
-                                                             s2_idx,
-                                                             largest_s2s,
-                                                             self.drift_time_max,
-                                                             )
+            s2_idx, largest_s2s = self.find_main_alt_s2(largest_s1s,
+                                                        s2_idx,
+                                                        largest_s2s,
+                                                        self.drift_time_max,
+                                                        )
+        else:
+            # Select only the largest two S2s
+            largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
 
         if self.config['force_main_before_alt']:
-            # Select only the largest two S2s
-            # If force_alt_s2_in_max_drift_time is False, only the leading two S2s remain
-            # The selection is dummy if force_alt_s2_in_max_drift_time is True
-            largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
             s2_order = np.argsort(largest_s2s['time'])
             largest_s2s = largest_s2s[s2_order]
             s2_idx = s2_idx[s2_order]
@@ -373,25 +372,18 @@ class EventBasics(strax.Plugin):
 
     @staticmethod
     @numba.njit
-    def set_alt_s2_properties(largest_s1s, s2_idx, largest_s2s, drift_time_max):
+    def find_main_alt_s2(largest_s1s, s2_idx, largest_s2s, drift_time_max):
         """Require alt_s2 happens between main S1 and maximum drift time"""
         if len(largest_s1s) > 0 and len(largest_s2s) > 1:
             # If there is a valid s1-s2 pair and has a second s2, then check alt s2 validity
-            alt_s2_idx, largest_alt_s2s = s2_idx[1:], largest_s2s[1:]
-            alt_s2_after_s1 = largest_alt_s2s['center_time'] > largest_s1s[0]['center_time']
-            alt_s2_before_max_drift_time = (largest_alt_s2s['center_time']
-                                            - largest_s1s[0]['center_time']) < 1.01 * drift_time_max
-            mask = alt_s2_after_s1 & alt_s2_before_max_drift_time
-            if (~mask).all():
-                # If no other s2 survives, drop the alt s2 field
-                s2_idx = s2_idx[0:1]
-                largest_s2s = largest_s2s[0:1]
-            else:
-                # Take the first valid largest other s2 as alt s2
-                new_alt_s2_index = np.arange(0, len(largest_alt_s2s))[mask][0] + 1
-                # Only take the first and the valid largest alt_S2
-                s2_idx = np.take(s2_idx, (0, new_alt_s2_index))
-                largest_s2s = np.take(largest_s2s, (0, new_alt_s2_index))
+            s2_after_s1 = largest_s2s['center_time'] > largest_s1s[0]['center_time']
+            s2_before_max_drift_time = (largest_s2s['center_time']
+                                        - largest_s1s[0]['center_time']) < 1.01 * drift_time_max
+            mask = s2_after_s1 & s2_before_max_drift_time
+            # The selection avoids main_S2
+            mask[0] = True
+            # Take main and the largest valid alt_S2
+            s2_idx, largest_s2s = s2_idx[mask][:2], largest_s2s[mask][:2]
         return s2_idx, largest_s2s
 
     @staticmethod
