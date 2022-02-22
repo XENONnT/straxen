@@ -525,8 +525,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
 )
 class PeakAmbience(strax.OverlapWindowPlugin):
     """
-    Calculate Ambience features of peaks.
-    Features are the number of lonehits, S0, S1, S2 in a time window before peaks. 
+    Calculate Ambience of peaks.
+    Features are the number of lonehits, small S0, S1, S2 in a time window before peaks,
+    and the number of small S2 in circle near the S2 peak in a time window.
     References:
         * v0.0.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """

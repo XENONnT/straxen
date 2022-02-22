@@ -748,8 +748,8 @@ class EnergyEstimates(strax.Plugin):
 )
 class EventShadow(strax.Plugin):
     """
-    This plugin can calculate shadow for main S1 and S2 peaks and the event itself.
-    The event's shadow is its first S2 peak's shadow.
+    This plugin can calculate shadow for main S1 and the 1st S2 peak in events.
+    The event's shadow is its 1st S2 peak's shadow.
     It also gives the position information of the primary peaks.
     References:
         * v0.1.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
@@ -835,7 +835,6 @@ class EventShadow(strax.Plugin):
 @export
 class EventAmbience(strax.Plugin):
     """
-    This plugin can calculate ambience at event level.
     Save Ambience of the main S1, main S2 and the first S2 peak in the event.
     References:
         * v0.0.2 reference: xenon:xenonnt:ac:prediction:shadow_ambience
