@@ -473,7 +473,6 @@ class DetectorSynchronization(strax.Plugin):
         help='Threshold in [adc] to search for the NIM signal'
     )
     epsilon_offset = straxen.URLConfig(
-        'epsilon_offset',
         default=0,
         type=(int, float),
         track=True,
