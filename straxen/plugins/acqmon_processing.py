@@ -445,22 +445,6 @@ class VetoProximity(strax.OverlapWindowPlugin):
         return result
 
 
-TO_BE_EXPECTED_MAX_DELAY = 11e3  # ns
-TO_BE_EXPECTED_MIN_CLOCK_DISTANCE = 9.9e9  # ns
-TO_BE_EXPECTED_MAX_CLOCK_DISTANCE = 10.1e9  # ns
-
-@strax.takes_config(
-    strax.Option('tpc_internal_delay', type=immutabledict, track=False,
-                 help=('Internal delay between aqmon and regular TPC channels ins [ns]'
-                       'Bump plugin version if changed!')
-                 ),
-    strax.Option('adc_threshold_nim_signal', default=500, type=int, track=True,
-                 help='Threshold in [adc] to search for the NIM signal'
-                 ),
-    strax.Option('epsilon_offset', default=0, type=(int, float), track=True,
-                 help='Measured missing offset for nveto in [ns]'
-                 ),
-)
 class DetectorSynchronization(strax.Plugin):
     """
     Plugin which computes the synchronization delay between TPC and
@@ -476,17 +460,47 @@ class DetectorSynchronization(strax.Plugin):
     provides = 'detector_time_offsets'
     data_kind = 'detector_time_offsets'
 
+    tpc_internal_delay = straxen.URLConfig(
+        default={'0': 4817, '021286': 10137},
+        type=dict,
+        track=True,
+        help='Internal delay between aqmon and regular TPC channels ins [ns]'
+    )
+    adc_threshold_nim_signal= straxen.URLConfig(
+        default=500,
+        type=int,
+        track=True,
+        help='Threshold in [adc] to search for the NIM signal'
+    )
+    epsilon_offset = straxen.URLConfig(
+        'epsilon_offset',
+        default=0,
+        type=(int, float),
+        track=True,
+        help='Measured missing offset for nveto in [ns]'
+    )
+    sync_max_delay = strax.Config(
+        default=11e3,
+        help='max delay DetectorSynchronization [ns]')
+    sync_expected_min_clock_distance = straxen.URLConfig(
+        default=9.9e9,
+        help='min clock distance DetectorSynchronization [ns]')
+    sync_expected_max_clock_distance = straxen.URLConfig(
+        default=10.1e9,
+        help='max clock distance DetectorSynchronization [ns]')
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
-        dtype += [((('Time offset for nV to synchornize with TPC in [ns]'),
+        dtype += [(('Time offset for nV to synchronize with TPC in [ns]',
                     'time_offset_nv'), np.int64),
-                  ((('Time offset for mV to synchornize with TPC in [ns]'),
+                  (('Time offset for mV to synchronize with TPC in [ns]',
                     'time_offset_mv'), np.int64)
                   ]
         return dtype
 
-    def compute(self, raw_records_aqmon,
+    def compute(self,
+                raw_records_aqmon,
                 raw_records_aqmon_nv,
                 raw_records_aux_mv,
                 start, end):
@@ -495,11 +509,11 @@ class DetectorSynchronization(strax.Plugin):
         rr_mv = raw_records_aux_mv
 
         extra_offset = 0
-        _mask_tpc = (rr_tpc['channel'] == 798)
+        _mask_tpc = (rr_tpc['channel'] == AqmonChannels.GPS_SYNC)
         if not np.any(_mask_tpc):
             # For some runs in the beginning no signal has been acquired here.
             # In that case we have to add the internal DAQ delay as an extra offset later.
-            _mask_tpc = (rr_tpc['channel'] == 801)
+            _mask_tpc = (rr_tpc['channel'] == AqmonChannels.GPS_SYNC_AM)
             extra_offset = self.get_delay()
 
         hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.config['adc_threshold_nim_signal'])
@@ -560,9 +574,9 @@ class DetectorSynchronization(strax.Plugin):
                 time_to_prev = 10e9
 
             # Additional check to avoid spurious signals
-            _correct_distance_to_prev_lock = time_to_prev >= TO_BE_EXPECTED_MIN_CLOCK_DISTANCE
-            _correct_distance_to_prev_lock = time_to_prev < TO_BE_EXPECTED_MAX_CLOCK_DISTANCE
-            if (abs(offset) < TO_BE_EXPECTED_MAX_DELAY) & _correct_distance_to_prev_lock:
+            _correct_distance_to_prev_lock = time_to_prev >= self.sync_expected_min_clock_distance
+            _correct_distance_to_prev_lock = time_to_prev < self.sync_expected_max_clock_distance
+            if (abs(offset) < self.sync_max_delay) & _correct_distance_to_prev_lock:
                 offsets.append(offset)
                 prev_time = hits_det0['time'][ind]
             else:
@@ -571,10 +585,9 @@ class DetectorSynchronization(strax.Plugin):
 
         return np.array(offsets)
 
-    @staticmethod
-    def find_offset_nearest(array, value):
+    def find_offset_nearest(self, array, value):
         if not len(array):
-            return -TO_BE_EXPECTED_MAX_DELAY
+            return -self.sync_max_delay
         array = np.asarray(array)
         idx = (np.abs(array - value)).argmin()
         return value-array[idx]
