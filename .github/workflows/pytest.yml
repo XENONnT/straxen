@@ -58,6 +58,7 @@ jobs:
 
       - name: Install requirements
         run: |
+           pip install wheel
            pip install pymongo
            pip install -r extra_requirements/requirements-tests.txt
 
