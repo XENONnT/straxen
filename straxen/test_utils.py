@@ -124,7 +124,7 @@ def nt_test_context(target_context='xenonnt_online',
         kwargs.setdefault('_database_init', False)
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
-    st.set_config({'diagnose_sorting': True})
+    st.set_config({'diagnose_sorting': True, 'store_per_channel': True})
     st.register(_get_fake_daq_reader())
     st.storage = [strax.DataDirectory('./strax_test_data')]
     download_test_data('https://raw.githubusercontent.com/XENONnT/'
