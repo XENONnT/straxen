@@ -59,6 +59,7 @@ jobs:
       - name: Install requirements
         run: |
            pip install wheel
+           pip install numba numpy
            pip install git+https://github.com/NESTCollaboration/nestpy.git@v1.5.0
            pip install -r extra_requirements/requirements-tests.txt
 
