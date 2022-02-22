@@ -337,11 +337,11 @@ class VetoProximity(strax.OverlapWindowPlugin):
                 ((f'Duration of event overlapping with "{name}"-veto [ns]',
                   f'veto_{name}_overlap'),
                  np.int64),
-                ((f'Time (absolute) to previous "{name}"-veto '
+                ((f'Time (absolute value) to previous "{name}"-veto '
                   f'from "{start_field}" of event [ns]',
                   f'time_to_previous_{name}'),
                  np.int64),
-                ((f'Time (absolute) to next "{name}"-veto '
+                ((f'Time (absolute value) to next "{name}"-veto '
                   f'from "{stop_field}" of event [ns]',
                   f'time_to_next_{name}'),
                  np.int64),
