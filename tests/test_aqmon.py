@@ -22,8 +22,7 @@ class DummyAqmonHits(strax.Plugin):
     before the first OFF or all the time after the last ON as deadtime.
     """
     vetos_per_chunk = strax.Config(
-        # Strax does not like numpy, let's give it a list of integers
-        default=[int(n) for n in np.arange(1, 10)],
+        default=list(range(1, 10)),
         help='The number of ON/OFF signals per chunk, preferably a '
              'combination of odd and even such that we have both '
              'unmatched ON/OFF singals'
@@ -93,7 +92,7 @@ class DummyAqmonHits(strax.Plugin):
             self.TOTAL_DEADTIME += [np.sum(stops - starts[:len(stops)])]
 
         else:
-            # Previous chunk, we ended with an off, so now we start with an OFF
+            # Previous chunk, we ended with an ON, so now we start with an OFF
             res['channel'][1::2] = self.channel_on
             res['channel'][::2] = self.channel_off
             starts = res[1::2]['time']
@@ -191,6 +190,9 @@ class DummyEventBasics(strax.Plugin):
 class TestAqmonProcessing(TestCase):
     def setUp(self) -> None:
         st = straxen.test_utils.nt_test_context().new_context()
+        # I'm going to deregister all plugins, since I don't want to
+        # get a thousand warnings that some config is not used, make
+        # sure to mark all configs as "free options".
         st.set_context_config({'free_options': list(st.config.keys())})
         st._plugin_class_registry = {}
 

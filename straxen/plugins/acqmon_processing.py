@@ -321,8 +321,9 @@ class VetoProximity(strax.OverlapWindowPlugin):
         default=int(3.6e+12),
         track=True,
         type=int,
-        help='If we don\'t find a veto close to the event, say that '
-             'the closest event is this many ns removed from it.'
+        help='If no next/previous veto is found, we will fill the fields '
+             'time_to_previous_XX with this time. Set to a large number '
+             'such that one will never cut events that are < YY ns.'
     )
 
     veto_names = ['busy', 'busy_he', 'hev', 'straxen_deadtime']
