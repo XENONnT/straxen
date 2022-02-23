@@ -351,13 +351,14 @@ class PeakProximity(strax.OverlapWindowPlugin):
 )
 class PeakShadow(strax.OverlapWindowPlugin):
     """
-    This plugin can find and calculate the time & position shadow from primary peaks
-    It also gives the area and (x,y) of the primary peaks.
+    This plugin can find and calculate the time & position shadow
+    from previous peaks in time.
+    It also gives the area and (x,y) of the previous peaks.
     References:
-        * v0.1.1 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.2 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
 
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     data_kind = 'peaks'
@@ -375,9 +376,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
     @property
     def shadtype(self):
-        # Shadow related features shared by primary S1 & S2
+        # Shadow related features shared by previous S1 & S2
         dtype = []
-        dtype += [('shadow', np.float32), ('pre_area', np.float32), ('shadow_dt', np.int64)]
+        dtype += [('shadow', np.float32), ('pre_dt', np.int64)]
         dtype += [('pre_x', np.float32), ('pre_y', np.float32)]
         dtype += [('nearest_dt', np.int64)]
         return dtype
@@ -387,22 +388,22 @@ class PeakShadow(strax.OverlapWindowPlugin):
         s2_time_shadow_dtype = []
         s2_position_shadow_dtype = []
         nearest_dtype = []
-        # primary S1 can only cast time shadow, primary S2 can cast both time & position shadow
+        # We have time shadow(S2/dt) and position shadow(S2/dt*p(s))
+        # previous S1 can only cast time shadow, previous S2 can cast both time & position shadow
         for key, dtype in zip(['s1_time', 's2_time', 's2_position'], [s1_time_shadow_dtype, s2_time_shadow_dtype, s2_position_shadow_dtype]):
             type_str = key.split('_')[0]
             tp_desc = key.split('_')[1]
-            dtype.append(((f'primary {type_str} casted largest {tp_desc} shadow [PE/ns]', f'shadow_{key}'), np.float32))
-            dtype.append(((f'primary {type_str} area casting largest {tp_desc} shadow [PE]', f'pre_area_{key}'), np.float32))
-            dtype.append(((f'time difference to the primary {type_str} peak casting largest {tp_desc} shadow [ns]', f'shadow_dt_{key}'), np.int64))
+            dtype.append(((f'previous large {type_str} casted largest {tp_desc} shadow [PE/ns]', f'shadow_{key}'), np.float32))
+            dtype.append(((f'time difference to the previous large {type_str} peak casting largest {tp_desc} shadow [ns]', f'pre_dt_{key}'), np.int64))
+            # Only previous S2 peaks have (x,y)
+            if 's2' in key:
+                dtype.append(((f'x of previous large s2 peak casting largest {tp_desc} shadow [cm]', f'pre_x_{key}'), np.float32))
+                dtype.append(((f'y of previous large s2 peak casting largest {tp_desc} shadow [cm]', f'pre_y_{key}'), np.float32))
             # Only time shadow gives the nearest large peak
             if 'time' in key:
-                dtype.append(((f'Time difference to the nearest {type_str}', f'nearest_dt_{type_str}'), np.int64))
-        # Only primary S2 peaks have (x,y)
-        for x in ['x', 'y']:
-            s2_time_shadow_dtype.append(((f'{x} of primary s2 peak casting largest time shadow [cm]', f'pre_{x}_s2_time'), np.float32))
-            s2_position_shadow_dtype.append(((f'{x} of primary s2 peak casting largest position shadow [cm]', f'pre_{x}_s2_position'), np.float32))
-        # Also record the PDF of HalfCauchy
-        s2_position_shadow_dtype.append(((f'primary s2 correlation PDF multiplier which provides largest position shadow', f'shadow_s2_position_pdf'), np.float32))
+                dtype.append(((f'time difference to the nearest {type_str}', f'nearest_dt_{type_str}'), np.int64))
+        # Also record the PDF of HalfCauchy when calculating S2 position shadow
+        s2_position_shadow_dtype.append((('PDF describing correlation between previous large s2 and main S2', 'shadow_s2_position_pdf'), np.float32))
 
         dtype = s1_time_shadow_dtype + s2_time_shadow_dtype + s2_position_shadow_dtype + nearest_dtype + strax.time_fields
         return dtype
@@ -410,7 +411,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     @property
     def shadowdtype(self):
         dtype = []
-        dtype += [('shadow', np.float32), ('pre_area', np.float32), ('shadow_dt', np.int64)]
+        dtype += [('shadow', np.float32), ('pre_dt', np.int64)]
         dtype += [('pre_x', np.float32), ('pre_y', np.float32)]
         dtype += [('nearest_dt', np.int64)]
         return dtype
@@ -419,7 +420,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         return self.compute_shadow(peaks, peaks)
 
     def compute_shadow(self, peaks, current_peak):
-        # 1. Define time window for each peak, we will find primary peaks within these time windows
+        # 1. Define time window for each peak, we will find previous peaks within these time windows
         roi_shadow = np.zeros(len(current_peak), dtype=strax.time_fields)
         roi_shadow['time'] = current_peak['center_time'] - self.time_window_backward
         roi_shadow['endtime'] = current_peak['center_time']
@@ -434,24 +435,23 @@ class PeakShadow(strax.OverlapWindowPlugin):
             array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
 
             # Initialization
-            for x in ['x', 'y']:
-                array[f'pre_{x}'] = np.nan
-            array['shadow_dt'] = self.time_window_backward
-            array['pre_area'] = self.threshold[key]
+            array['pre_x'] = np.nan
+            array['pre_y'] = np.nan
+            array['pre_dt'] = self.time_window_backward
             # Shadow is set to be the lowest possible value
             if 'time' in key:
-                array['shadow'] = array['pre_area'] * array['shadow_dt'] ** self.exponent
+                array['shadow'] = self.threshold[key] * array['pre_dt'] ** self.exponent
             else:
                 array['shadow'] = 0
             array['nearest_dt'] = self.time_window_backward
 
-            # Calculating shadow, the Major of the plugin
+            # Calculating shadow, the Major of the plugin. Only record the previous peak casting the largest shadow
             if len(current_peak):
                 self.peaks_shadow(current_peak, peaks[mask_pre], split_peaks, self.exponent, array, is_position, self.getsigma(self.sigma, self.baseline, current_peak['area']))
             
             # Fill results
-            names = ['shadow', 'pre_area', 'shadow_dt']
-            if 's2' in key: # Only primary S2 peaks have (x,y)
+            names = ['shadow', 'pre_dt']
+            if 's2' in key: # Only previous S2 peaks have (x,y)
                 names += ['pre_x', 'pre_y']
             if 'time' in key: # Only time shadow gives the nearest large peak
                 names += ['nearest_dt']
@@ -464,8 +464,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
         distance = np.sqrt((result[f'pre_x_s2_position'] - current_peak['x']) ** 2 + (result[f'pre_y_s2_position'] - current_peak['y']) ** 2)
         # If distance is NaN, set largest distance
         distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-        # HalfCauchy PDF
-        result[f'shadow_s2_position_pdf'] = halfcauchy.pdf(distance, scale=self.getsigma(self.sigma, self.baseline, current_peak['area']))
+        # HalfCauchy PDF when calculating S2 position shadow
+        result['shadow_s2_position_pdf'] = halfcauchy.pdf(distance, scale=self.getsigma(self.sigma, self.baseline, current_peak['area']))
 
         # 6. Set time and endtime for peaks
         result['time'] = current_peak['time']
@@ -488,37 +488,36 @@ class PeakShadow(strax.OverlapWindowPlugin):
             indices = touching_windows[p_i]
             for idx in range(indices[0], indices[1]):
                 s_a = pre_peaks[idx]
-                nearest_dt = p_a['center_time'] - s_a['center_time']
-                if nearest_dt <= 0:
+                dt = p_a['center_time'] - s_a['center_time']
+                if dt <= 0:
                     continue
-                # First record the time difference to the nearest primary peak
-                if nearest_dt < result['nearest_dt'][p_i]:
-                    result['nearest_dt'][p_i] = nearest_dt
+                # First we record the time difference to the nearest previous peak
+                if dt < result['nearest_dt'][p_i]:
+                    result['nearest_dt'][p_i] = dt
                 # Calculate time shadow
-                new_shadow = s_a['area'] * nearest_dt ** exponent
+                new_shadow = s_a['area'] * dt ** exponent
                 if pos_corr:
                     # Calculate position shadow which is time shadow with a HalfCauchy PDF multiplier
                     distance = np.sqrt((p_a['x'] - s_a['x']) ** 2 + (p_a['y'] - s_a['y']) ** 2)
                     distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
                     new_shadow *= 2 / (np.pi * sigma * (1 + (distance / sigma) ** 2))
-                # Only the primary peak with largest shadow is recorded
+                # Only the previous peak with largest shadow is recorded
                 if new_shadow > result['shadow'][p_i]:
                     result['shadow'][p_i] = new_shadow
                     result['pre_x'][p_i] = s_a['x']
                     result['pre_y'][p_i] = s_a['y']
-                    result['pre_area'][p_i] = s_a['area']
-                    result['shadow_dt'][p_i] = p_a['center_time'] - s_a['center_time']
+                    result['pre_dt'][p_i] = p_a['center_time'] - s_a['center_time']
 
 
 @export
 @strax.takes_config(
-    strax.Option('ambience_divide_time', default=False,
+    strax.Option(name='ambience_divide_time', default=False,
                  help='Whether to divide area by time'),
-    strax.Option('ambience_divide_space', default=False,
+    strax.Option(name='ambience_divide_space', default=False,
                  help='Whether to divide area by space'),
     strax.Option(name='time_window_ambience', default=int(2e6),
                  help='Search for ambience in this time window [ns]'),
-    strax.Option('ambience_area_parameters', default=(5, 60, 60), type=(list, tuple),
+    strax.Option(name='ambience_area_parameters', default=(5, 60, 60), type=(list, tuple),
                  help='The upper limit of S0, S1, S2 area to be counted'),
     strax.Option(name='ambience_radius', default=6.7,
                  help='Search for ambience in this radius [cm]'),
@@ -549,13 +548,13 @@ class PeakAmbience(strax.OverlapWindowPlugin):
 
     @property
     def origin_dtype(self):
-        return ['lonehit_before', 's0_before', 's1_before', 's2_before', 's2_near']
+        return ['lh_before', 's0_before', 's1_before', 's2_before', 's2_near']
 
     def infer_dtype(self):
         dtype = []
-        for s in self.origin_dtype:
-            dtype += [(('Number of small ' + ' '.join(s.split('_')) + ' a peak', f'n_{s}'), np.int16), 
-                      (('Area sum of small ' + ' '.join(s.split('_')) + ' a peak', f's_{s}'), np.float32)]
+        for ambience in self.origin_dtype:
+            dtype += [(('Number of small ' + ' '.join(ambience.split('_')) + ' a peak', f'n_{ambience}'), np.int16), 
+                      (('Area sum of small ' + ' '.join(ambience.split('_')) + ' a peak', f's_{ambience}'), np.float32)]
         dtype += strax.time_fields
         return dtype
 
@@ -577,8 +576,8 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         touching_windows = strax.touching_windows(lone_hits, roi)
         # Calculating ambience
         self.lonehits_ambience(current_peak, lone_hits, touching_windows, num_array, sum_array, self.ambience_divide_time)
-        result['n_lonehit_before'] = num_array
-        result['s_lonehit_before'] = sum_array
+        result['n_lh_before'] = num_array
+        result['s_lh_before'] = sum_array
 
         # 4. Calculate number and area sum of small S0, S1, S2 before a peak
         radius = -1
