@@ -401,7 +401,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 dtype.append(((f'y of previous large s2 peak casting largest {tp_desc} shadow [cm]', f'pre_y_{key}'), np.float32))
             # Only time shadow gives the nearest large peak
             if 'time' in key:
-                dtype.append(((f'time difference to the nearest {type_str}', f'nearest_dt_{type_str}'), np.int64))
+                dtype.append(((f'time difference to the nearest previous large {type_str}', f'nearest_dt_{type_str}'), np.int64))
         # Also record the PDF of HalfCauchy when calculating S2 position shadow
         s2_position_shadow_dtype.append((('PDF describing correlation between previous large s2 and main S2', 'shadow_s2_position_pdf'), np.float32))
 

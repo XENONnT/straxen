@@ -774,7 +774,7 @@ class EventShadow(strax.Plugin):
                     dtype.append(((f'y of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', f'{main_peak}pre_y_{key}'), np.float32))
                 # Only time shadow gives the nearest large peak
                 if 'time' in key:
-                    dtype.append(((f'time difference from the nearest previous {type_str} to {main_peak_desc} [ns]', f'{main_peak}nearest_dt_{type_str}'), np.int64))
+                    dtype.append(((f'time difference from the nearest previous large {type_str} to {main_peak_desc} [ns]', f'{main_peak}nearest_dt_{type_str}'), np.int64))
             # Also record the PDF of HalfCauchy when calculating S2 position shadow
             dtype.append(((f'PDF describing correlation between previous s2 and {main_peak_desc}', f'{main_peak}shadow_s2_position_pdf'), np.float32))
         dtype += strax.time_fields
