@@ -6,10 +6,10 @@ import straxen
 import utilix
 
 import pandas as pd
-
+import rframe
 
 export, __all__ = strax.exporter()
-__all__ += ['correction_dfs']
+__all__ += ['cframes']
 
 @export
 class CorrectionFrames:
@@ -20,17 +20,19 @@ class CorrectionFrames:
     
     @classmethod
     def default(cls, **kwargs):
-        return cls.from_mongodb(**kwargs)
+        return cls.from_utilix(**kwargs)
 
     @classmethod
-    def from_mongodb(cls, url='localhost', dbname='cmt2', **kwargs):
+    def from_mongodb(cls, url='localhost', db='cmt2', **kwargs):
         import pymongo
-        db = pymongo.MongoClient(url, **kwargs)[dbname]
+        db = pymongo.MongoClient(url, **kwargs)[db]
         return cls(db)
 
     @classmethod
-    def from_utilix(cls, experiment='xent', dbname='cmt2'):
-        coll = utilix.rundb._collection(collection='dummy', experiment=experiment, database=dbname)
+    def from_utilix(cls, experiment='xent', db='cmt2'):
+        coll = utilix.rundb._collection(collection='dummy',
+                                        experiment=experiment,
+                                        database=db)
         db = coll.database
         return cls(db)
 
@@ -44,7 +46,7 @@ class CorrectionFrames:
 
     def get_df(self, name):
         correction = self.schemas[name]
-        return straxen.RemoteFrame(correction, self.db)
+        return rframe.RemoteFrame(correction, self.db[name])
 
     def __getitem__(self, key):
         if isinstance(key, tuple) and key[0] in self.schemas:
@@ -90,10 +92,12 @@ def extract_time(kwargs):
     else:
         return None
 
-correction_dfs = CorrectionFrames.default()
+
+cframes = CorrectionFrames.default()
+
 
 @export
 def cmt2(name, version=0, **kwargs):
     dtime = extract_time(kwargs)
-    return correction_dfs[name].sel(time=dtime, version=version, **kwargs)
+    return cframes[name].sel(time=dtime, version=version, **kwargs)
 

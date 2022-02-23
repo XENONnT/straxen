@@ -14,5 +14,4 @@ requests
 commentjson
 matplotlib
 gitpython
-pytoolz
-pydantic
+rframe>=0.1.3

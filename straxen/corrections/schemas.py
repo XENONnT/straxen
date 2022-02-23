@@ -1,110 +1,110 @@
 
 import time
+from typing import ClassVar, Literal, Union
+import pytz
 import strax
 import numbers
-import straxen
+import utilix
+import rframe
 import datetime
 
 import pandas as pd
 from collections import Counter
 
-from straxen.remote_dataframes.schema import InsertionError
+from rframe.schema import InsertionError
+import straxen
 from .settings import corrections_settings
 
 export, __all__ = strax.exporter()
 
 
 @export
-class BaseCorrectionSchema(straxen.BaseSchema):
-    name = ''
-
+class BaseCorrectionSchema(rframe.BaseSchema):
+    _name: ClassVar = ''
+    _DATABASE: ClassVar = 'cmt2'
     _SCHEMAS = {}
 
-    index = straxen.IntegerIndex(name='version')
-
+    version: str = rframe.Index()
+    
     def __init_subclass__(cls) -> None:
                 
-        if cls.name in BaseCorrectionSchema._SCHEMAS:
-            raise TypeError(f'A correction with the name {cls.name} already exists.')
-        if cls.name:
-            cls._SCHEMAS[cls.name] = cls
-
+        if cls._name in BaseCorrectionSchema._SCHEMAS:
+            raise TypeError(f'A correction with the name {cls._name} already exists.')
+        if cls._name:
+            cls._SCHEMAS[cls._name] = cls
+            
         super().__init_subclass__()
-        
+
+    @classmethod
+    def default_datasource(cls):
+        return utilix.xent_collection(collection=cls._name, database=cls._DATABASE)
+
+    def pre_update(self, db, new):
+        if not self.same_values(new):
+            index = ', '.join([f'{k}={v}' for k,v in self.index_labels.items()])
+            raise IndexError(f'Values already set for {index}')
 
 @export
 class TimeIntervalCorrection(BaseCorrectionSchema):
-    name = ''
-    index = straxen.TimeIntervalIndex(name='time',
-                                left_name='begin', right_name='end')
-        
-    def pre_update(self, db, index, old_index, old_doc):
-        super().pre_update(db, index, old_index, old_doc)
-        if old_index['time'][1] is not None:
+    _name = ''
+
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+
+    def pre_update(self, db, new):
+            
+        if self.time.right is not None:
             raise IndexError(f'Overlap with existing interval.')
-
-        if index['time'][0] != old_index['time'][0]:
+            
+        if self.time.left != new.time.left:
             raise IndexError(f'Can only change endtime of existing interval. '
-                                 f'start time must be {old_index["time"][0]}')
-
+                                 f'start time must be {self.time.left}')
+            
+        if not self.same_values(new):
+            raise IndexError(f'Existing interval has different values.')
+        
         utc = corrections_settings.clock.utc
         cutoff = corrections_settings.clock.cutoff_datetime()
-
-        if index['time'][1]<cutoff:
-            raise IndexError(f'You can only set online interval end to after {cutoff}. '
+        right = self.time.right
+        if utc:
+            right = right.replace(tzinfo=pytz.UTC)
+        if right<cutoff:
+            raise IndexError(f'You can only set interval to end after {cutoff}. '
                                  'Values before this time may have already been used for processing.')
 
-    @classmethod
-    def example_df(cls, size=5, start=time.time()-1e5, stop=time.time()+1e5):
-        from hypothesis.strategies import builds, lists
-        
-        time = make_datetime_interval_index(start, stop, size)
-        index_names = list(cls.index_names())
-        dfs = []
-        for v in range(size):
-            docs = lists(builds(cls), min_size=size, max_size=size).example()
-            docs = [d.dict() for d in docs]
-            df = pd.DataFrame(docs)
-            df['version'] = v
-            df['time'] = time
-            dfs.append(df.set_index(index_names))
-            
-        return pd.concat(dfs)
-    
+
 def can_extrapolate(doc):
     # only extrapolate online (version=0) values
-    if doc.get('version', 1):
+    if doc['version'] != 'ONLINE':
         return False
     now = corrections_settings.clock.current_datetime()
     utc = corrections_settings.clock.utc
-    ts = pd.to_datetime(doc.get('time', now), utc=utc)
+    ts = pd.to_datetime(doc['time'], utc=utc)
     return ts < now
 
 
 @export
 class TimeSampledCorrection(BaseCorrectionSchema):
-    name = ''
-    index = straxen.TimeInterpolatedIndex(name='time', extrapolate=can_extrapolate)
+    _name = ''
 
-    def pre_insert(self, db, index):
-        cutoff = corrections_settings.clock.cutoff_datetime()
-        utc = corrections_settings.clock.utc
-        ts = pd.to_datetime(index['time'], utc=utc)
+    time: datetime.datetime = rframe.InterpolatingIndex(extrapolate=can_extrapolate)
 
-        if index['version']==0:
-            if ts<cutoff:
+    def pre_insert(self, db):
+
+        if self.version == 'ONLINE':
+            cutoff = corrections_settings.clock.cutoff_datetime()
+            utc = corrections_settings.clock.utc
+            time = self.time
+            if utc:
+                time = time.replace(tzinfo=pytz.UTC)
+            if time<cutoff:
                 raise InsertionError(f'Can only insert online values for time after {cutoff}.')
-            now = corrections_settings.clock.current_datetime()
-            now_index = dict(index, time=now)
-            now_values = self.query_db(db, **now_index)
+            now_index = self.index_labels
+            now_index['time'] = corrections_settings.clock.current_datetime()
+            existing = self.find(db, **now_index)
+            if existing:
+                new_doc = existing[0]
+                new_doc.save(db)
 
-            # no documents exist yet, nothing to do
-            if not now_values:
-                return 
-            
-            # enforce existence of document with the current time, in case its being extrapolated.
-            now_doc = self.parse_obj(now_values[0])
-            now_doc.save(db, **now_index)
 
 def make_datetime_index(start, stop, step='1d'):
     if isinstance(start, numbers.Number):
@@ -122,3 +122,113 @@ def make_datetime_interval_index(start, stop, step='1d'):
     return pd.interval_range(start, stop, periods=step)
 
 
+@export
+class ResourceReference(TimeIntervalCorrection):
+    fmt: ClassVar = 'text'
+
+    value: str
+
+    def get_resource(self, **kwargs):
+        kwargs.setdefault('fmt', self.fmt)
+        return straxen.get_resource(self.value, **kwargs)
+
+@export
+class BaselineSamples(TimeIntervalCorrection):
+    _name = "baseline_samples"
+    detector: str = rframe.Index()
+    value: int
+
+@export
+class ElectronDriftVelocity(TimeIntervalCorrection):
+    _name = "electron_drift_velocities"
+    value: float
+
+@export
+class ElectronLifetime(TimeIntervalCorrection):
+    _name = "electron_lifetimes"
+    value: float
+
+@export
+class FdcMapName(ResourceReference):
+    _name = "fdc_map_names"
+    fmt = 'json.gz'
+
+    kind: Literal['cnn','gcn','mlp'] = rframe.Index() 
+    value: str
+
+
+@export
+class ModelName(ResourceReference):
+    _name = "model_names"
+    kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    value: str
+
+@export
+class HitThresholds(TimeIntervalCorrection):
+    _name = "hit_thresholds"
+    detector: str = rframe.Index()
+    pmt: int = rframe.Index()
+    value: int
+
+@export
+class RelExtractionEff(TimeIntervalCorrection):
+    _name = "rel_extraction_eff"
+    value: float
+
+
+@export
+class S1XyzMap(ResourceReference):
+    _name = "s1_xyz_map"
+    kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    value: str
+
+
+@export
+class S2XYMap(ResourceReference):
+    _name = "s2_xy_map"
+    kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    value: str
+@export
+class PmtGain(TimeSampledCorrection):
+    _name = 'pmt_gains'
+    
+    # Here we use a simple indexer (matches on exact value)
+    # to define the pmt field
+    # this will add the field to all documents and enable
+    # selections on the pmt number. Since this is a index field
+    # versioning will be indepentent for each pmt
+    pmt: int = rframe.Index()
+    detector: Literal['tpc', 'nveto','muveto'] = rframe.Index()
+    
+    value: float
+
+@export
+class Bodega(BaseCorrectionSchema):
+    '''Detector parameters'''
+    _name = 'bodega'
+    
+    field: str = rframe.Index()
+
+    value: float
+    uncertainty: float
+    definition: str
+    reference: str
+    date: datetime.datetime
+
+
+@export
+class FaxConfig(BaseCorrectionSchema):
+    '''fax configuration values
+    '''
+    _name = 'fax_configs'
+    class Config:
+        smart_union = True
+        
+    field: str = rframe.Index()
+    experiment: Literal['1t','nt','nt_design'] = rframe.Index(default='nt')
+    detector: Literal['tpc', 'muon_veto', 'neutron_veto'] = rframe.Index(default='tpc')
+    science_run: str = rframe.Index()
+    version: str = rframe.Index(default='nt')
+
+    value: Union[int,float,bool,str,list,dict]
+    resource: str
