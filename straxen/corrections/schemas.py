@@ -197,8 +197,9 @@ class PmtGain(TimeSampledCorrection):
     # this will add the field to all documents and enable
     # selections on the pmt number. Since this is a index field
     # versioning will be indepentent for each pmt
-    pmt: int = rframe.Index()
+    
     detector: Literal['tpc', 'nveto','muveto'] = rframe.Index()
+    pmt: int = rframe.Index()
     
     value: float
 
