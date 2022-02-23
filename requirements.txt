@@ -1,17 +1,22 @@
-numpy~=1.19.5
+# datashader         # Optional, to enable wf display
+# holoviews          # Optional, to enable wf display
+# tensorflow>=2.3.0  # Optional, to (re)do posrec
+bokeh>=2.2.3
+commentjson
+gitpython
+immutabledict
+matplotlib
+multihist>=0.6.3
+numba>=0.50.0
+numpy
 packaging
 pymongo<4.0.0
-strax>=1.1.2
-utilix>=0.5.3
-# tensorflow>=2.3.0  # Optional, to (re)do posrec
-# holoviews          # Optional, to enable wf display
-# datashader         # Optional, to enable wf display
-bokeh>=2.2.3
-multihist>=0.6.3
-immutabledict
-numba>=0.50.0
 requests
 commentjson
 matplotlib
 gitpython
-rframe>=0.1.3
+pytoolz
+pydantic
+strax>=1.1.2
+utilix>=0.5.3
+rframe>=0.1.4
