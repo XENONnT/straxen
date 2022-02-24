@@ -463,19 +463,17 @@ class muVETOEvents(nVETOEvents):
         return super().compute(hitlets_mv, start, end)
 
 
-@strax.takes_config(
-    strax.Option('hardware_delay_nv', default=0, type=int,
-                 help="Hardware delay to be added to the set electronics offset."),
-)
-class nVETOEventsSync(strax.Plugin):
+class nVETOEventsSync(strax.OverlapWindowPlugin):
     """
     Plugin which computes time stamps which are synchronized with the
     TPC. Uses delay set in the DAQ.
     """
-    depends_on = 'events_nv'
+    depends_on = ('events_nv', 'detector_time_offsets')
+    delay_field_name = 'time_offset_nv'
+
     provides = 'events_sync_nv'
     save_when = strax.SaveWhen.EXPLICIT
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     def infer_dtype(self):
         dtype = []
@@ -487,73 +485,38 @@ class nVETOEventsSync(strax.Plugin):
                   ]
         return dtype
 
-    def setup(self):
-        self.total_delay = get_delay(self.run_id)
-        self.total_delay += self.config['hardware_delay_nv']
+    def get_window_size(self):
+        # Ensure to have at least 12 offset-values from detector_time_offsets
+        # to compute average time delay. Otherwise we may get unlucky with
+        # our pacemaker (unlikely but could happen).
+        return 120*10**9
 
-    def compute(self, events_nv):
+    def compute(self, events_nv, detector_time_offsets):
+        delay = detector_time_offsets[self.delay_field_name]
+        delay = np.median(delay[delay > 0])
+        # Check if delay is >= 0 otherwise something went wrong with 
+        # the sync signal.
+        assert delay >= 0, f'Missing the GPS sync signal for run {self.run_id}.' 
+        
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
         events_sync_nv['time'] = events_nv['time']
         events_sync_nv['endtime'] = events_nv['endtime']
-        events_sync_nv['time_sync'] = events_nv['time'] + self.total_delay
-        events_sync_nv['endtime_sync'] = events_nv['endtime'] + self.total_delay
+        events_sync_nv['time_sync'] = events_nv['time'] + delay
+        events_sync_nv['endtime_sync'] = events_nv['endtime'] + delay
         return events_sync_nv
 
 
-def get_delay(run_id):
-    """
-    Function which returns the total delay between TPC and veto for a
-    given run_id. Returns nan if
-    """
-    try:
-        import utilix
-    except ModuleNotFoundError:
-        return np.nan
-
-    delay = np.nan
-    if straxen.utilix_is_configured():
-        run_db = utilix.DB()
-        run_meta = run_db.get_doc(run_id)
-        delay = _get_delay(run_meta)
-
-    return delay
-
-
-def _get_delay(run_meta):
-    """
-    Loops over registry entries for correct entries and computes delay.
-    """
-    delay_nveto = 0
-    delay_tpc = 0
-    for item in run_meta['daq_config']['registers']:
-        if (item['reg'] == '8034') and (item['board'] == 'tpc'):
-            delay_tpc = item['val']
-            delay_tpc = int('0x'+delay_tpc, 16)
-            delay_tpc = 2*delay_tpc*10
-        if (item['reg'] == '8170') and (item['board'] == 'neutron_veto'):
-            delay_nveto = item['val']
-            delay_nveto = int('0x'+delay_nveto, 16)
-            delay_nveto = 16*delay_nveto  # Delay is specified as multiple of 16 ns
-    delay = delay_tpc - delay_nveto
-    return delay
-
-
-@strax.takes_config(
-    strax.Option('hardware_delay_mv', default=0, type=int,
-                 help="Hardware delay to be added to the set electronics offset."),
-)
 class mVETOEventSync(nVETOEventsSync):
     """
     Plugin which computes synchronized timestamps for the muon-veto with
     respect to the TPC.
     """
-    depends_on = 'events_mv'
+    depends_on = ('events_mv', 'detector_time_offsets')
+    delay_field_name = 'time_offset_mv'
+
     provides = 'events_sync_mv'
     __version__ = '0.0.1'
     child_plugin = True
 
-    def setup(self):
-        self.total_delay = self.config['hardware_delay_mv']
-
-    def compute(self, events_mv):
-        return super().compute(events_mv)
+    def compute(self, events_mv, detector_time_offsets):
+        return super().compute(events_mv, detector_time_offsets)
