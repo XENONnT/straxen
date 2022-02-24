@@ -402,9 +402,8 @@ class SCADAInterface:
 
             times = (temp_df['timestampseconds'].values * 10**9).astype('<M8[ns]')
             result_dataframe.loc[times, parameter_name] = temp_df.loc[:, 'value'].values
-            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
+            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)*10**9
             start = endtime  # Next query should start at the last time seen.
-
             ntries += 1
             if not (len(temp_df) == 35000 and endtime != end // 10**9):
                 # Max query are 35000 values, if end is reached the
