@@ -8,6 +8,7 @@ from os import environ as os_environ
 from straxen import aux_repo, pax_file
 from pandas import DataFrame
 from immutabledict import immutabledict
+from importlib import import_module
 import numpy as np
 
 
@@ -99,6 +100,14 @@ def _overwrite_testing_function_file(function_file):
         function_file = testing_file
 
     return function_file
+
+
+def is_installed(module):
+    try:
+        import_module(module)
+        return True
+    except ModuleNotFoundError:
+        return False
 
 
 @export
