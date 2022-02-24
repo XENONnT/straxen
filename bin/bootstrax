@@ -295,35 +295,55 @@ def new_context(cores=args.cores,
 
 st = new_context()
 
-# DAQ database
-daq_db_name = 'daq'
-daq_uri = straxen.get_mongo_uri(header='rundb_admin',
-                                user_key='mongo_daq_username',
-                                pwd_key='mongo_daq_password',
-                                url_key='mongo_daq_url')
-daq_client = pymongo.MongoClient(daq_uri)
-daq_db = daq_client[daq_db_name]
+def get_dbs():
+    # DAQ database
+    daq_db_name = 'daq'
+    kwargs = dict(maxPoolSize=100,
+                  socketTimeoutMS=60_000,
+                  connectTimeoutMS=60_000)
+    daq_uri = straxen.get_mongo_uri(header='rundb_admin',
+                                    user_key='mongo_daq_username',
+                                    pwd_key='mongo_daq_password',
+                                    url_key='mongo_daq_url')
+    daq_client = pymongo.MongoClient(daq_uri, **kwargs)
+    daq_db = daq_client[daq_db_name]
+
+    # Runs database
+    run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
+
+    if args.production:
+         # We want admin access to start writing data!
+        mongo_url = uconfig.get('rundb_admin', 'mongo_rdb_url')
+        mongo_user = uconfig.get('rundb_admin', 'mongo_rdb_username')
+        mongo_password = uconfig.get('rundb_admin', 'mongo_rdb_password')
+        mongo_database = uconfig.get('rundb_admin', 'mongo_rdb_database')
+
+        mongo_kwargs = {'url': mongo_url,
+                        'user': mongo_user,
+                        'password': mongo_password,
+                        'database': mongo_database}
+        self.collection = utilix.rundb.xent_collection(**mongo_kwargs)
+        run_db = self.collection.database
+    else:
+        # Please note, this is a read only account on the rundb
+        run_uri = straxen.get_mongo_uri()
+        run_client = pymongo.MongoClient(run_uri, **kwargs)
+        run_db = run_client[run_dbname]
+    return daq_db, run_db
+
+daq_db, run_db = get_dbs()
 bs_coll = daq_db['eb_monitor']
 ag_stat_coll = daq_db['aggregate_status']
 log_coll = daq_db['log']
-
-# Runs database
-run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
 run_collname = 'runs'
-if args.production:
-    run_db = st.storage[0].client[run_dbname]
-else:
-    # Please note, this is a read only account on the rundb
-    run_uri = straxen.get_mongo_uri()
-    run_client = pymongo.MongoClient(run_uri)
-    run_db = run_client[run_dbname]
 run_coll = run_db[run_collname]
-run_db.command('ping')
+
+
 
 # Ping the databases to ensure the mongo connections are working
 if not args.undying:
-    run_db.command('ping')
-    daq_db.command('ping')
+    run_coll.find_one(projection={'_id':1})
+    bs_coll.find_one(projection={'_id':1})
 
 
 def main():
@@ -959,14 +979,17 @@ def clear_shm():
 def ping_dbs():
     while True:
         try:
-            run_db.command('ping')
-            daq_db.command('ping')
+            print(run_coll)
+            print(run_coll.find_one())
+            run_coll.find_one(projection={'_id':1})
+            bs_coll.find_one(projection={'_id':1})
             break
         except Exception as ping_error:
+            raise
             log.warning(
                 f'Failed to connect to Mongo. Ran into {ping_error}. Sleep '
-                f'for a minute.', priority='warning')
-            time.sleep(60)
+                f'for 1 s.')
+            time.sleep(1)
 
 
 def get_run(*, mongo_id=None, number=None, full_doc=False):
@@ -1177,12 +1200,14 @@ def consider_run(query, return_new_doc=True, test_counter=0):
     else:
         # Don't change the runs-database for test modes
         try:
+            print(query)
             rds = run_coll.find(
                 query,
                 projection=bootstrax_projection,
                 sort=[('start', pymongo.DESCENDING)])
-            return rds[test_counter]
+            return list(rds)[test_counter]
         except IndexError:
+            raise
             return None
 
 
@@ -1245,6 +1270,11 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
               run_start_time, samples_per_record, cores, max_messages, timeout,
               daq_chunk_duration, daq_overlap_chunk_duration, post_processing,
               records_compressor, debug=False):
+    daq_db, run_db = get_dbs()
+    bs_coll = daq_db['eb_monitor']
+    ag_stat_coll = daq_db['aggregate_status']
+    log_coll = daq_db['log']
+    run_coll = run_db[run_collname]
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
