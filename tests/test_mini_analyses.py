@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 import platform
 import numpy as np
@@ -61,6 +62,15 @@ class TestMiniAnalyses(unittest.TestCase):
         cls.st.make(nt_test_run_id, 'records')
         cls.first_peak = cls.st.get_array(nt_test_run_id, 'peak_basics')[0]
         cls.first_event = cls.st.get_array(nt_test_run_id, 'event_basics')[0]
+        
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """
+        Removes test data after tests are done.
+        """
+        path = os.path.abspath(cls.st.storage[-1].path)
+        for file in os.listdir(path):
+            shutil.rmtree(os.path.join(path, file))
 
     def tearDown(self):
         """After each test, clear a figure (if one was open)"""
@@ -183,7 +193,6 @@ class TestMiniAnalyses(unittest.TestCase):
         f = getattr(self.st, function_name)
         f(nt_test_run_id, time_within=self.first_peak)
 
-    @unittest.skipIf(is_py310(), 'holoviews incompatible with py3.10')
     def test_waveform_display(self):
         """test st.waveform_display for one peak"""
         self._st_attr_for_one_peak('waveform_display')
@@ -323,7 +332,6 @@ class TestMiniAnalyses(unittest.TestCase):
             straxen.analyses.event_display._scatter_rec(_event=None,
                                                         recs=list(range(10)))
 
-    @unittest.skipIf(is_py310(), 'holoviews incompatible with py3.10')
     def test_interactive_display(self):
         """Run and save interactive display"""
         fig = self.st.event_display_interactive(nt_test_run_id,
