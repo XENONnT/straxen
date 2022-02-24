@@ -20,7 +20,7 @@ export, __all__ = strax.exporter()
 
 @export
 class BaseCorrectionSchema(rframe.BaseSchema):
-    _name: ClassVar = ''
+    _NAME: ClassVar = ''
     _DATABASE: ClassVar = 'cmt2'
     _SCHEMAS = {}
 
@@ -28,16 +28,16 @@ class BaseCorrectionSchema(rframe.BaseSchema):
     
     def __init_subclass__(cls) -> None:
                 
-        if cls._name in BaseCorrectionSchema._SCHEMAS:
-            raise TypeError(f'A correction with the name {cls._name} already exists.')
-        if cls._name:
-            cls._SCHEMAS[cls._name] = cls
+        if cls._NAME in BaseCorrectionSchema._SCHEMAS:
+            raise TypeError(f'A correction with the name {cls._NAME} already exists.')
+        if cls._NAME:
+            cls._SCHEMAS[cls._NAME] = cls
             
         super().__init_subclass__()
 
     @classmethod
     def default_datasource(cls):
-        return utilix.xent_collection(collection=cls._name, database=cls._DATABASE)
+        return utilix.xent_collection(collection=cls._NAME, database=cls._DATABASE)
 
     def pre_update(self, db, new):
         if not self.same_values(new):
@@ -46,7 +46,7 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
 @export
 class TimeIntervalCorrection(BaseCorrectionSchema):
-    _name = ''
+    _NAME = ''
 
     time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
 
@@ -86,7 +86,7 @@ def can_extrapolate(doc):
 
 @export
 class TimeSampledCorrection(BaseCorrectionSchema):
-    _name = ''
+    _NAME = ''
 
     time: datetime.datetime = rframe.InterpolatingIndex(extrapolate=can_extrapolate)
 
@@ -125,7 +125,7 @@ def make_datetime_interval_index(start, stop, step='1d'):
 
 @export
 class CorrectionReference(TimeIntervalCorrection):
-    _name = 'global_versions'
+    _NAME = 'global_versions'
     
     version: str = rframe.Index()
     name: str = rframe.Index()
@@ -154,23 +154,23 @@ class ResourceReference(TimeIntervalCorrection):
 
 @export
 class BaselineSamples(TimeIntervalCorrection):
-    _name = "baseline_samples"
+    _NAME = "baseline_samples"
     detector: str = rframe.Index()
     value: int
 
 @export
 class ElectronDriftVelocity(TimeIntervalCorrection):
-    _name = "electron_drift_velocities"
+    _NAME = "electron_drift_velocities"
     value: float
 
 @export
 class ElectronLifetime(TimeIntervalCorrection):
-    _name = "electron_lifetimes"
+    _NAME = "electron_lifetimes"
     value: float
 
 @export
 class FdcMapName(ResourceReference):
-    _name = "fdc_map_names"
+    _NAME = "fdc_map_names"
     fmt = 'json.gz'
 
     kind: Literal['cnn','gcn','mlp'] = rframe.Index() 
@@ -179,38 +179,38 @@ class FdcMapName(ResourceReference):
 
 @export
 class ModelName(ResourceReference):
-    _name = "model_names"
+    _NAME = "model_names"
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
     value: str
 
 @export
 class HitThresholds(TimeIntervalCorrection):
-    _name = "hit_thresholds"
+    _NAME = "hit_thresholds"
     detector: str = rframe.Index()
     pmt: int = rframe.Index()
     value: int
 
 @export
 class RelExtractionEff(TimeIntervalCorrection):
-    _name = "rel_extraction_eff"
+    _NAME = "rel_extraction_eff"
     value: float
 
 
 @export
 class S1XyzMap(ResourceReference):
-    _name = "s1_xyz_map"
+    _NAME = "s1_xyz_map"
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
     value: str
 
 
 @export
 class S2XYMap(ResourceReference):
-    _name = "s2_xy_map"
+    _NAME = "s2_xy_map"
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
     value: str
 @export
 class PmtGain(TimeSampledCorrection):
-    _name = 'pmt_gains'
+    _NAME = 'pmt_gains'
     
     # Here we use a simple indexer (matches on exact value)
     # to define the pmt field
@@ -226,7 +226,7 @@ class PmtGain(TimeSampledCorrection):
 @export
 class Bodega(BaseCorrectionSchema):
     '''Detector parameters'''
-    _name = 'bodega'
+    _NAME = 'bodega'
     
     field: str = rframe.Index()
 
@@ -241,7 +241,7 @@ class Bodega(BaseCorrectionSchema):
 class FaxConfig(BaseCorrectionSchema):
     '''fax configuration values
     '''
-    _name = 'fax_configs'
+    _NAME = 'fax_configs'
     class Config:
         smart_union = True
         

@@ -35,19 +35,19 @@ def non_overlapping_interval_ranges(draw, elements=st.datetimes(), min_size=2):
     return list(zip(elem[:-1], elem[1:]))
 
 class SimpleCorrection(straxen.BaseCorrectionSchema):
-    _name = 'simple_correction'
+    _NAME = 'simple_correction'
 
     value: pydantic.confloat(gt=-2**31, lt=2**31)
     
 
 class SomeSampledCorrection(straxen.TimeSampledCorrection):
-    _name = 'sampled_correction'
+    _NAME = 'sampled_correction'
 
     value: pydantic.confloat(gt=-2**31, lt=2**31)
 
 
 class SomeTimeIntervalCorrection(straxen.TimeIntervalCorrection):
-    _name = 'time_interval_correction'
+    _NAME = 'time_interval_correction'
 
     value: pydantic.confloat(gt=-2**31, lt=2**31)
 
@@ -79,10 +79,10 @@ class TestCorrectionDataframes(unittest.TestCase):
     @given(st.builds(SimpleCorrection))
     def test_simple_correction(self, doc: SimpleCorrection):
         idx = doc.version
+        name = SimpleCorrection._NAME
+        rdf = self.dfs[name]
         
-        rdf = self.dfs[SimpleCorrection._name]
-        
-        self.dfs.db.drop_collection(rdf.name)
+        self.dfs.db.drop_collection(name)
 
         rdf.loc[idx] = doc
         self.assertEqual(rdf.at[idx, 'value'], doc.value)
@@ -115,8 +115,10 @@ class TestCorrectionDataframes(unittest.TestCase):
             # Require minimum 10 second spacing between samples
             # otherwise we get into trouble with rounding
             assume((doc2.time - doc1.time)>datetime.timedelta(seconds=10))
-        rdf = self.dfs[SomeSampledCorrection._name]
-        self.dfs.db.drop_collection(rdf.name)
+
+        name = SomeSampledCorrection._NAME
+        rdf = self.dfs[name]
+        self.dfs.db.drop_collection(name)
 
         # we must sort by time before inserting
         # since values are interpolated in time 
@@ -147,9 +149,9 @@ class TestCorrectionDataframes(unittest.TestCase):
                     min_size=3, unique_by=lambda x: (x.version, x.time)))
     @settings(deadline=None)
     def test_sampled_correction_online(self, docs: List[SomeSampledCorrection]):
-
-        rdf = self.dfs[SomeSampledCorrection._name]
-        self.dfs.db.drop_collection(rdf.name)
+        name = SomeSampledCorrection._NAME
+        rdf = self.dfs[name]
+        self.dfs.db.drop_collection(name)
 
         # we must sort by time before inserting
         # since values are interpolated in time 
@@ -181,8 +183,9 @@ class TestCorrectionDataframes(unittest.TestCase):
             )
     @settings(deadline=None)
     def test_interval_correction_v1(self, docs: List[SomeTimeIntervalCorrection]):
-        rdf = self.dfs[SomeTimeIntervalCorrection._name]
-        self.dfs.db.drop_collection(rdf.name)
+        name = SomeTimeIntervalCorrection._NAME
+        rdf = self.dfs[name]
+        self.dfs.db.drop_collection(name)
 
         # we must sort by time before inserting
         # since values are interpolated in time 
