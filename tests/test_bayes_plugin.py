@@ -32,5 +32,6 @@ class TestBayesPlugin(unittest.TestCase):
         """
         self.st.make(self.run_id, self.target)
         bayes = self.st.get_array(self.run_id, self.target)
-        prob = np.where(bayes['s1_ln_prob'] > 1.0)
-        assert len(prob) == 0, "ln prob gratter than one, impossible"
+        prob = np.where(bayes['s1_ln_prob'] > 0.0)
+        prob2 = np.where(bayes['s1_ln_prob'] < 0.0)
+        assert bayes[prob].size == 0, "ln prob gratter than zero, impossible"
