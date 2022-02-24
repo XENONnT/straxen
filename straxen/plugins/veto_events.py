@@ -42,7 +42,6 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         help='Minimum number of fully confined hitlets to define an event.'
     )
     channel_map = straxen.URLConfig(
-        default=3,
         track=False,
         type=immutabledict,
         help='immutabledict mapping subdetector to (min, max) channel number'
