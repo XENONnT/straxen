@@ -11,17 +11,6 @@ from immutabledict import immutabledict
 export, __all__ = strax.exporter()
 
 
-@strax.takes_config(
-    strax.Option('event_left_extension_nv', default=0, infer_type=False,
-                 help="Extends events this many ns to the left"),
-    strax.Option('event_resolving_time_nv', default=300, infer_type=False,
-                 help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_nv', default=3, infer_type=False,
-                 help="Minimum number of fully confined hitlets to define an event."),
-    strax.Option('channel_map', track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number."),
-)
 class nVETOEvents(strax.OverlapWindowPlugin):
     """
     Plugin which computes the boundaries of veto events.
@@ -31,8 +20,33 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     data_kind = 'events_nv'
     compressor = 'zstd'
 
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     events_seen = 0
+
+    event_left_extension_nv = straxen.URLConfig(
+        default=0,
+        track=True,
+        type=int,
+        help='Extends event window this many [ns] to the left.'
+    )
+    event_resolving_time_nv = straxen.URLConfig(
+        default=200,
+        track=True,
+        type=int,
+        help='Resolving time for window coincidence [ns].'
+    )
+    event_min_hits_nv = straxen.URLConfig(
+        default=3,
+        track=True,
+        type=int,
+        help='Minimum number of fully confined hitlets to define an event.'
+    )
+    channel_map = straxen.URLConfig(
+        default=3,
+        track=False,
+        type=immutabledict,
+        help='immutabledict mapping subdetector to (min, max) channel number'
+    )
 
     def infer_dtype(self):
         self.name_event_number = 'event_number_nv'
@@ -426,17 +440,6 @@ def first_hitlets(hitlets_per_event: np.ndarray,
     return res_hitlets_in_event, res_n_prompt
 
 
-@strax.takes_config(
-    strax.Option('event_left_extension_mv', default=0, infer_type=False,
-                 child_option=True, parent_option_name='event_left_extension_nv',
-                 help="Extends events this many ns to the left"),
-    strax.Option('event_resolving_time_mv', default=300, infer_type=False,
-                 child_option=True, parent_option_name='event_resolving_time_nv',
-                 help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_mv', default=3, infer_type=False,
-                 child_option=True, parent_option_name='event_min_hits_nv',
-                 help="Minimum number of fully confined hitlets to define an event."),
-)
 class muVETOEvents(nVETOEvents):
     """Plugin which computes the boundaries of veto events.
     """
@@ -449,6 +452,31 @@ class muVETOEvents(nVETOEvents):
 
     __version__ = '0.0.1'
     events_seen = 0
+
+    event_left_extension_mv = straxen.URLConfig(
+        default=0,
+        track=True,
+        type=int,
+        child_option=True,
+        parent_option_name='event_left_extension_nv',
+        help='Extends event window this many [ns] to the left.'
+    )
+    event_resolving_time_mv = straxen.URLConfig(
+        default=300,
+        track=True,
+        type=int,
+        child_option=True,
+        parent_option_name='event_resolving_time_nv',
+        help='Resolving time for window coincidence [ns].'
+    )
+    event_min_hits_mv = straxen.URLConfig(
+        default=3,
+        track=True,
+        type=int,
+        child_option=True,
+        parent_option_name='event_min_hits_nv',
+        help='Minimum number of fully confined hitlets to define an event.'
+    )
 
     def infer_dtype(self):
         self.name_event_number = 'event_number_mv'
