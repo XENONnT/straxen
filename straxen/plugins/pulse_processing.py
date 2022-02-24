@@ -134,7 +134,11 @@ class PulseProcessing(strax.Plugin):
 
     provides = ('records', 'veto_regions', 'pulse_counts')
     data_kind = {k: k for k in provides}
-    save_when = strax.SaveWhen.TARGET
+    save_when = immutabledict(
+        records=strax.SaveWhen.TARGET,
+        veto_regions=strax.SaveWhen.TARGET,
+        pulse_counts=strax.SaveWhen.ALWAYS,
+    )
 
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records

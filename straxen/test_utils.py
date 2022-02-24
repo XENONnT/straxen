@@ -8,6 +8,7 @@ from os import environ as os_environ
 from straxen import aux_repo, pax_file
 from pandas import DataFrame
 from immutabledict import immutabledict
+from importlib import import_module
 import numpy as np
 
 
@@ -101,6 +102,14 @@ def _overwrite_testing_function_file(function_file):
     return function_file
 
 
+def is_installed(module):
+    try:
+        import_module(module)
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
 @export
 def _is_on_pytest():
     """Check if we are on a pytest"""
@@ -124,7 +133,7 @@ def nt_test_context(target_context='xenonnt_online',
         kwargs.setdefault('_database_init', False)
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
-    st.set_config({'diagnose_sorting': True})
+    st.set_config({'diagnose_sorting': True, 'store_per_channel': True})
     st.register(_get_fake_daq_reader())
     st.storage = [strax.DataDirectory('./strax_test_data')]
     download_test_data('https://raw.githubusercontent.com/XENONnT/'

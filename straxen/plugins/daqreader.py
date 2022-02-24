@@ -1,6 +1,5 @@
 import glob
 import os
-import shutil
 import warnings
 from collections import Counter
 from immutabledict import immutabledict
