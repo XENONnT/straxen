@@ -52,14 +52,17 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
 
     def pre_update(self, db, new):
         cutoff = corrections_settings.clock.cutoff_datetime()
-        right = self.time.right
+        current_right = self.time.right
         utc = corrections_settings.clock.utc
 
-        if utc and right is not None:
-            right = right.replace(tzinfo=pytz.UTC)
+        if utc and current_right is not None:
+            current_right = current_right.replace(tzinfo=pytz.UTC)
 
-        if right is not None and right<cutoff:
-            raise IndexError(f'Overlap with existing interval.')
+        if new.right is None:
+            raise IndexError("Cannot set end date to None")
+        
+        if current_right is not None and current_right<cutoff:
+            raise IndexError(f'Can only modify an interval that ends after {cutoff}')
             
         if self.time.left != new.time.left:
             raise IndexError(f'Can only change endtime of existing interval. '
@@ -69,6 +72,7 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
             raise IndexError(f'Existing interval has different values.')
 
         new_right = new.time.right
+
         if new_right is not None and new_right<cutoff:
             raise IndexError(f'You can only set interval to end after {cutoff}. '
                                  'Values before this time may have already been used for processing.')
