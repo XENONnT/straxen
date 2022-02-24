@@ -1,3 +1,20 @@
+1.2.8 / 2022-02-16
+------------------
+Patch
+- Remove veto tagging plugins from straxen (#918)
+- Extend save when (#879)
+
+Testing
+- nestpy testing on py3.10 (#911)
+- Simplify requirements (#913)
+- Remove OM test that is collection status dependent (#921)
+- Remove data after testing (#923)
+
+Notes:
+- Removed nveto/mveto tagging plugins (#918)
+- Changed saving behavior of `pulse_counts` (#879)
+
+
 1.2.7 / 2022-02-03
 ------------------
 - (rucio)storage reorganization (#866)

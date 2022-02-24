@@ -2,6 +2,7 @@ import tempfile
 import strax
 import straxen
 from straxen.test_utils import nt_test_run_id, DummyRawRecords, testing_config_1T, test_run_id_1T
+from immutabledict import immutabledict
 
 
 def _run_plugins(st,
@@ -41,20 +42,21 @@ def _run_plugins(st,
             return
 
         end_targets = set(st._get_end_targets(st._plugin_class_registry))
-        for p in end_targets - set(_forbidden_plugins):
-            if 'raw' in p:
+        for data_type in end_targets - set(_forbidden_plugins):
+            if data_type in straxen.DAQReader.provides:
                 continue
-            st.make(run_id, p)
+            st.make(run_id, data_type)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
-        for p in all_datatypes - set(_forbidden_plugins):
-            should_be_stored = (st._plugin_class_registry[p].save_when ==
-                                strax.SaveWhen.ALWAYS)
+        for data_type in all_datatypes - set(_forbidden_plugins):
+            savewhen = st._plugin_class_registry[data_type].save_when
+            if isinstance(savewhen, (dict, immutabledict)):
+                savewhen = savewhen[data_type]
+            should_be_stored = savewhen == strax.SaveWhen.ALWAYS
             if should_be_stored:
-                is_stored = st.is_stored(run_id, p)
-                assert is_stored, f"{p} did not save correctly!"
+                is_stored = st.is_stored(run_id, data_type)
+                assert is_stored, f"{data_type} did not save correctly!"
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
-
 
 def _update_context(st, max_workers, nt=True):
     # Ignore strax-internal warnings
@@ -150,6 +152,7 @@ def test_nT(ncores=1):
     st = straxen.test_utils.nt_test_context(
         _database_init=init_database,
         use_rucio=False,
+        deregister=('events_sync_nv', 'events_sync_mv')
     )
     _update_context(st, ncores, nt=True)
     # Lets take an abandoned run where we actually have gains for in the CMT
