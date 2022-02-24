@@ -51,8 +51,14 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
     time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
 
     def pre_update(self, db, new):
-            
-        if self.time.right is not None:
+        cutoff = corrections_settings.clock.cutoff_datetime()
+        right = self.time.right
+        utc = corrections_settings.clock.utc
+
+        if utc and right is not None:
+            right = right.replace(tzinfo=pytz.UTC)
+
+        if right is not None and right<cutoff:
             raise IndexError(f'Overlap with existing interval.')
             
         if self.time.left != new.time.left:
@@ -61,13 +67,9 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
             
         if not self.same_values(new):
             raise IndexError(f'Existing interval has different values.')
-        
-        utc = corrections_settings.clock.utc
-        cutoff = corrections_settings.clock.cutoff_datetime()
-        right = self.time.right
-        if utc:
-            right = right.replace(tzinfo=pytz.UTC)
-        if right<cutoff:
+
+        new_right = new.time.right
+        if new_right is not None and new_right<cutoff:
             raise IndexError(f'You can only set interval to end after {cutoff}. '
                                  'Values before this time may have already been used for processing.')
 
@@ -120,6 +122,24 @@ def make_datetime_interval_index(start, stop, step='1d'):
     if isinstance(stop, numbers.Number):
         stop = pd.to_datetime(stop, unit='s', utc=True)
     return pd.interval_range(start, stop, periods=step)
+
+@export
+class CorrectionReference(TimeIntervalCorrection):
+    _name = 'global_versions'
+    
+    version: str = rframe.Index()
+    name: str = rframe.Index()
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+
+    correction: str
+    labels: dict
+
+    def get_corrections(self, datasource=None, **overrides):
+        labels = dict(self.labels, **overrides)
+        if self.correction not in BaseCorrectionSchema._SCHEMAS:
+            raise KeyError(f'Reference to undefined schema name {self.correction}')
+        schema = BaseCorrectionSchema._SCHEMAS[self.correction]
+        return schema.find(datasource, **labels)
 
 
 @export
