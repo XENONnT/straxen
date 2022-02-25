@@ -12,9 +12,6 @@ numpy
 packaging
 pymongo<4.0.0
 requests
-commentjson
-matplotlib
-gitpython
-strax>=1.1.2
+strax>=1.1.7
 utilix>=0.5.3
 rframe>=0.1.4
