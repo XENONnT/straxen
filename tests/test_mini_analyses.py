@@ -1,6 +1,7 @@
 import os
+import shutil
 import unittest
-
+import platform
 import numpy as np
 import pandas
 import strax
@@ -8,6 +9,10 @@ import straxen
 from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 
+
+def is_py310():
+    """Check python version"""
+    return platform.python_version_tuple()[:2] == ('3', '10')
 
 def test_pmt_pos_1t():
     """
@@ -57,6 +62,15 @@ class TestMiniAnalyses(unittest.TestCase):
         cls.st.make(nt_test_run_id, 'records')
         cls.first_peak = cls.st.get_array(nt_test_run_id, 'peak_basics')[0]
         cls.first_event = cls.st.get_array(nt_test_run_id, 'event_basics')[0]
+        
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """
+        Removes test data after tests are done.
+        """
+        path = os.path.abspath(cls.st.storage[-1].path)
+        for file in os.listdir(path):
+            shutil.rmtree(os.path.join(path, file))
 
     def tearDown(self):
         """After each test, clear a figure (if one was open)"""

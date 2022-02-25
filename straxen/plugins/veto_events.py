@@ -11,17 +11,6 @@ from immutabledict import immutabledict
 export, __all__ = strax.exporter()
 
 
-@strax.takes_config(
-    strax.Option('event_left_extension_nv', default=0, infer_type=False,
-                 help="Extends events this many ns to the left"),
-    strax.Option('event_resolving_time_nv', default=300, infer_type=False,
-                 help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_nv', default=3, infer_type=False,
-                 help="Minimum number of fully confined hitlets to define an event."),
-    strax.Option('channel_map', track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number."),
-)
 class nVETOEvents(strax.OverlapWindowPlugin):
     """
     Plugin which computes the boundaries of veto events.
@@ -31,8 +20,32 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     data_kind = 'events_nv'
     compressor = 'zstd'
 
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     events_seen = 0
+
+    event_left_extension_nv = straxen.URLConfig(
+        default=0,
+        track=True,
+        type=int,
+        help='Extends event window this many [ns] to the left.'
+    )
+    event_resolving_time_nv = straxen.URLConfig(
+        default=200,
+        track=True,
+        type=int,
+        help='Resolving time for window coincidence [ns].'
+    )
+    event_min_hits_nv = straxen.URLConfig(
+        default=3,
+        track=True,
+        type=int,
+        help='Minimum number of fully confined hitlets to define an event.'
+    )
+    channel_map = straxen.URLConfig(
+        track=False,
+        type=immutabledict,
+        help='immutabledict mapping subdetector to (min, max) channel number'
+    )
 
     def infer_dtype(self):
         self.name_event_number = 'event_number_nv'
@@ -426,17 +439,6 @@ def first_hitlets(hitlets_per_event: np.ndarray,
     return res_hitlets_in_event, res_n_prompt
 
 
-@strax.takes_config(
-    strax.Option('event_left_extension_mv', default=0, infer_type=False,
-                 child_option=True, parent_option_name='event_left_extension_nv',
-                 help="Extends events this many ns to the left"),
-    strax.Option('event_resolving_time_mv', default=300, infer_type=False,
-                 child_option=True, parent_option_name='event_resolving_time_nv',
-                 help="Resolving time for fixed window coincidence [ns]."),
-    strax.Option('event_min_hits_mv', default=3, infer_type=False,
-                 child_option=True, parent_option_name='event_min_hits_nv',
-                 help="Minimum number of fully confined hitlets to define an event."),
-)
 class muVETOEvents(nVETOEvents):
     """Plugin which computes the boundaries of veto events.
     """
@@ -449,6 +451,31 @@ class muVETOEvents(nVETOEvents):
 
     __version__ = '0.0.1'
     events_seen = 0
+
+    event_left_extension_mv = straxen.URLConfig(
+        default=0,
+        track=True,
+        type=int,
+        child_option=True,
+        parent_option_name='event_left_extension_nv',
+        help='Extends event window this many [ns] to the left.'
+    )
+    event_resolving_time_mv = straxen.URLConfig(
+        default=300,
+        track=True,
+        type=int,
+        child_option=True,
+        parent_option_name='event_resolving_time_nv',
+        help='Resolving time for window coincidence [ns].'
+    )
+    event_min_hits_mv = straxen.URLConfig(
+        default=3,
+        track=True,
+        type=int,
+        child_option=True,
+        parent_option_name='event_min_hits_nv',
+        help='Minimum number of fully confined hitlets to define an event.'
+    )
 
     def infer_dtype(self):
         self.name_event_number = 'event_number_mv'
@@ -463,19 +490,17 @@ class muVETOEvents(nVETOEvents):
         return super().compute(hitlets_mv, start, end)
 
 
-@strax.takes_config(
-    strax.Option('hardware_delay_nv', default=0, type=int,
-                 help="Hardware delay to be added to the set electronics offset."),
-)
-class nVETOEventsSync(strax.Plugin):
+class nVETOEventsSync(strax.OverlapWindowPlugin):
     """
     Plugin which computes time stamps which are synchronized with the
     TPC. Uses delay set in the DAQ.
     """
-    depends_on = 'events_nv'
+    depends_on = ('events_nv', 'detector_time_offsets')
+    delay_field_name = 'time_offset_nv'
+
     provides = 'events_sync_nv'
     save_when = strax.SaveWhen.EXPLICIT
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     def infer_dtype(self):
         dtype = []
@@ -487,73 +512,38 @@ class nVETOEventsSync(strax.Plugin):
                   ]
         return dtype
 
-    def setup(self):
-        self.total_delay = get_delay(self.run_id)
-        self.total_delay += self.config['hardware_delay_nv']
+    def get_window_size(self):
+        # Ensure to have at least 12 offset-values from detector_time_offsets
+        # to compute average time delay. Otherwise we may get unlucky with
+        # our pacemaker (unlikely but could happen).
+        return 120*10**9
 
-    def compute(self, events_nv):
+    def compute(self, events_nv, detector_time_offsets):
+        delay = detector_time_offsets[self.delay_field_name]
+        delay = np.median(delay[delay > 0])
+        # Check if delay is >= 0 otherwise something went wrong with 
+        # the sync signal.
+        assert delay >= 0, f'Missing the GPS sync signal for run {self.run_id}.' 
+        
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
         events_sync_nv['time'] = events_nv['time']
         events_sync_nv['endtime'] = events_nv['endtime']
-        events_sync_nv['time_sync'] = events_nv['time'] + self.total_delay
-        events_sync_nv['endtime_sync'] = events_nv['endtime'] + self.total_delay
+        events_sync_nv['time_sync'] = events_nv['time'] + delay
+        events_sync_nv['endtime_sync'] = events_nv['endtime'] + delay
         return events_sync_nv
 
 
-def get_delay(run_id):
-    """
-    Function which returns the total delay between TPC and veto for a
-    given run_id. Returns nan if
-    """
-    try:
-        import utilix
-    except ModuleNotFoundError:
-        return np.nan
-
-    delay = np.nan
-    if straxen.utilix_is_configured():
-        run_db = utilix.DB()
-        run_meta = run_db.get_doc(run_id)
-        delay = _get_delay(run_meta)
-
-    return delay
-
-
-def _get_delay(run_meta):
-    """
-    Loops over registry entries for correct entries and computes delay.
-    """
-    delay_nveto = 0
-    delay_tpc = 0
-    for item in run_meta['daq_config']['registers']:
-        if (item['reg'] == '8034') and (item['board'] == 'tpc'):
-            delay_tpc = item['val']
-            delay_tpc = int('0x'+delay_tpc, 16)
-            delay_tpc = 2*delay_tpc*10
-        if (item['reg'] == '8170') and (item['board'] == 'neutron_veto'):
-            delay_nveto = item['val']
-            delay_nveto = int('0x'+delay_nveto, 16)
-            delay_nveto = 16*delay_nveto  # Delay is specified as multiple of 16 ns
-    delay = delay_tpc - delay_nveto
-    return delay
-
-
-@strax.takes_config(
-    strax.Option('hardware_delay_mv', default=0, type=int,
-                 help="Hardware delay to be added to the set electronics offset."),
-)
 class mVETOEventSync(nVETOEventsSync):
     """
     Plugin which computes synchronized timestamps for the muon-veto with
     respect to the TPC.
     """
-    depends_on = 'events_mv'
+    depends_on = ('events_mv', 'detector_time_offsets')
+    delay_field_name = 'time_offset_mv'
+
     provides = 'events_sync_mv'
     __version__ = '0.0.1'
     child_plugin = True
 
-    def setup(self):
-        self.total_delay = self.config['hardware_delay_mv']
-
-    def compute(self, events_mv):
-        return super().compute(events_mv)
+    def compute(self, events_mv, detector_time_offsets):
+        return super().compute(events_mv, detector_time_offsets)

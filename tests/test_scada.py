@@ -1,3 +1,5 @@
+import warnings
+import pytz
 import numpy as np
 import straxen
 import unittest
@@ -13,6 +15,71 @@ class SCInterfaceTest(unittest.TestCase):
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
         self.start += 10**6
         self.end = self.start + 5*10**9
+
+    def test_wrong_querries(self):
+        parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
+
+        with self.assertRaises(ValueError):
+            # Runid but no context
+            df = self.sc.get_scada_values(parameters,
+                                          run_id='1',
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+        with self.assertRaises(ValueError):
+            # No time range specified
+            df = self.sc.get_scada_values(parameters,
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+        with self.assertRaises(ValueError):
+            # Start larger end
+            df = self.sc.get_scada_values(parameters,
+                                          start=2,
+                                          end=1,
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+        with self.assertRaises(ValueError):
+            # Start and/or end not in ns unix time
+            df = self.sc.get_scada_values(parameters,
+                                          start=1,
+                                          end=2,
+                                          every_nth_value=1,
+                                          query_type_lab=False, )
+
+    def test_pmt_names(self):
+        """
+        Tests different query options for pmt list.
+        """
+        pmts_dict = self.sc.find_pmt_names(pmts=12, current=True)
+        assert 'PMT12_HV' in pmts_dict.keys()
+        assert 'PMT12_I' in pmts_dict.keys()
+        assert pmts_dict['PMT12_HV'] == 'XE1T.CTPC.BOARD04.CHAN003.VMON'
+
+        pmts_dict = self.sc.find_pmt_names(pmts=(12, 13))
+        assert 'PMT12_HV' in pmts_dict.keys()
+        assert 'PMT13_HV' in pmts_dict.keys()
+
+        with self.assertRaises(ValueError):
+            self.sc.find_pmt_names(pmts=12, current=False, hv=False)
+
+    def test_token_expires(self):
+        self.sc.token_expires_in()
+
+    def test_convert_timezone(self):
+        parameters = {'SomeParameter': 'XE1T.CTPC.Board06.Chan011.VMon'}
+        df = self.sc.get_scada_values(parameters,
+                                      start=self.start,
+                                      end=self.end,
+                                      every_nth_value=1,
+                                      query_type_lab=False, )
+
+        df_strax = straxen.convert_time_zone(df, tz='strax')
+        assert df_strax.index.dtype.type is np.int64
+
+        df_etc = straxen.convert_time_zone(df, tz='Etc/GMT+0')
+        assert df_etc.index.dtype.tz is pytz.timezone('Etc/GMT+0')
 
     def test_query_sc_values(self):
         """
@@ -40,6 +107,13 @@ class SCInterfaceTest(unittest.TestCase):
                                       query_type_lab=False,)
         assert np.all(np.isclose(df[:4], 2.079859)), 'First four values deviate from queried values.'
         assert np.all(np.isclose(df[4:], 2.117820)), 'Last two values deviate from queried values.'
+        print('Testing interpolation option:')
+        self.sc.get_scada_values(parameters,
+                                 start=self.start,
+                                 end=self.end,
+                                 fill_gaps='interpolation',
+                                 every_nth_value=1,
+                                 query_type_lab=False,)
 
         print('Testing down sampling and averaging option:')
         parameters = {'SomeParameter': 'XE1T.CRY_TE101_TCRYOBOTT_AI.PI'}
@@ -79,6 +153,20 @@ class SCInterfaceTest(unittest.TestCase):
                                       query_type_lab=True,)
         is_sorrect = np.all(df['SomeParameter'] // 1 == -96)
         assert is_sorrect, 'Not all values are correct for query type lab.'
+
+    
+    def test_long_query(self):
+        """Test which querries a bit more than 35000 values over a longer period.
+        Checks if additional values are querried correctly.
+        See also: xenon:xenon1t:slowcontrol:webservicenew
+        """
+        st = straxen.contexts.xenonnt_online()
+        self.sc.context = st
+        res = self.sc.get_scada_values(
+            parameters={'test': 'XE1T.CRY_PT101_PCHAMBER_AI.PI'},
+            run_id=['020000', '035000'],
+            every_nth_value=500,)
+        assert np.sum(res.test >= 0) > 35000
 
     @staticmethod
     def test_average_scada():

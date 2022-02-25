@@ -1,3 +1,55 @@
+1.2.8 / 2022-02-16
+------------------
+Patch
+- Remove veto tagging plugins from straxen (#918)
+- Extend save when (#879)
+
+Testing
+- nestpy testing on py3.10 (#911)
+- Simplify requirements (#913)
+- Remove OM test that is collection status dependent (#921)
+- Remove data after testing (#923)
+
+Notes:
+- Removed nveto/mveto tagging plugins (#918)
+- Changed saving behavior of `pulse_counts` (#879)
+
+
+1.2.7 / 2022-02-03
+------------------
+- (rucio)storage reorganization (#866)
+- URLConfig documentation (#863)
+- Fix leading zeros error (#889)
+- Delete update context collection (#883)
+- update github actions (#884)
+- update print versions (#888)
+- deprecate old python versions (#906)
+- fix coveralls report (#905)
+- merges from development branch (#910)
+
+Notes:
+ - no lineage changes
+
+
+1.2.6 / 2022-01-18
+------------------
+fixes/tests:
+- Fix online monitor test (#882)
+
+notes:
+- No lineage changes
+
+1.2.5 / 2022-01-14
+------------------
+fixes/tests:
+ - test with py3.10 (#878)
+ - remove fixme error (e0e30d94ec8f5276c581da166787db72ba0eef4a)
+ - bump numba (#880)
+ - Tests for scada interface (#877)
+
+notes:
+ - No lineage changes
+
 1.2.4 / 2022-01-10
 ------------------
 fixes/tests:
@@ -6,6 +58,7 @@ fixes/tests:
 
 notes:
  - First 1.2.X version compatible with WFSim
+ - No lineage changes
 
 1.2.3 / 2022-01-10
 ------------------

@@ -18,14 +18,11 @@ import warnings
 from configparser import NoOptionError
 import sys
 
-if any('jupyter' in arg for arg in sys.argv):
-    # In some cases we are not using any notebooks,
-    # Taken from 44952863 on stack overflow thanks!
-    from tqdm import tqdm_notebook as tqdm
-else:
-    from tqdm import tqdm
-
 export, __all__ = strax.exporter()
+
+
+# Fancy tqdm style in notebooks
+tqdm = strax.utils.tqdm
 
 
 @export
@@ -153,12 +150,12 @@ class SCADAInterface:
             self._get_token()
 
         # Now loop over specified parameters and get the values for those.
-        iterator = enumerate(parameters.items())
-        if self._use_progress_bar:
-            # wrap using progress bar
-            iterator = tqdm(iterator, total=len(parameters), desc='Load parameters')
-
-        for ind, (k, p) in iterator:
+        for ind, (k, p) in tqdm(
+                enumerate(parameters.items()),
+                total=len(parameters),
+                desc='Load parameters',
+                disable=not self._use_progress_bar,
+                ):
             try:
                 temp_df = self._query_single_parameter(start, end,
                                                        k, p,
@@ -175,7 +172,7 @@ class SCADAInterface:
                                          f' {p} does not match the previous timestamps.')
             except ValueError as e:
                 warnings.warn(f'Was not able to load parameters for "{k}". The reason was: "{e}".'
-                               f'Continue without {k}.')
+                              f'Continue without {k}.')
                 temp_df = pd.DataFrame(columns=(k,))
             
             if ind:
@@ -405,9 +402,8 @@ class SCADAInterface:
 
             times = (temp_df['timestampseconds'].values * 10**9).astype('<M8[ns]')
             result_dataframe.loc[times, parameter_name] = temp_df.loc[:, 'value'].values
-            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)
+            endtime = temp_df['timestampseconds'].values[-1].astype(np.int64)*10**9
             start = endtime  # Next query should start at the last time seen.
-
             ntries += 1
             if not (len(temp_df) == 35000 and endtime != end // 10**9):
                 # Max query are 35000 values, if end is reached the
