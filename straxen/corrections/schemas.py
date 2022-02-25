@@ -37,7 +37,7 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
     @classmethod
     def default_datasource(cls):
-        return utilix.xent_collection(collection=cls._NAME, database=cls._DATABASE)
+        return corrections_settings.datasource(cls._NAME)
 
     def pre_update(self, db, new):
         if not self.same_values(new):
