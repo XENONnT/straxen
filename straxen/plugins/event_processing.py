@@ -773,9 +773,23 @@ class EventShadow(strax.Plugin):
         dtype += strax.time_fields
         return dtype
 
+    @staticmethod
+    def set_nan_defaults(result):
+        """
+        When constructing the dtype, take extra care to set values to
+        np.Nan / -1 (for ints) as 0 might have a meaning
+        """
+        for field in result.dtype.names:
+            if np.issubdtype(result.dtype[field], np.integer):
+                result[field][:] = -1
+            else:
+                result[field][:] = np.nan
+
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
         result = np.zeros(len(events), self.dtype)
+
+        self.set_nan_defaults(result)
 
         # 1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
