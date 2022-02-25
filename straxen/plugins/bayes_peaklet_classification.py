@@ -11,17 +11,17 @@ class BayesPeakletClassification(strax.Plugin):
     Returns the ln probability of a each event belonging to the S1 and S2 class.
     Uses conditional probabilities and data parameterization learned from wfsim data.
 
-    :param peaklets: peaklets
-    :param waveforms: peaklets waveforms in PE/ns
+    :param peaks: peaks
+    :param waveforms: peaks waveforms in PE/ns
     :param quantiles: quantiles in ns
     :returns: the ln probability of a each peaklet belonging to S1 and S2 class
     """
-    provides = 'peaklet_classification_bayes'
-    depends_on = ('peaklets',)
+    provides = 'peak_classification_bayes'
+    depends_on = ('peaks',)
     __version__ = '0.0.1'
-    dtype = (strax.peak_interval_dtype
-             + [('s1_ln_prob', np.float32, 'S1 ln probability')]
-             + [('s2_ln_prob', np.float32, 'S2 ln probability')]
+    dtype = (strax.time_fields
+             + [('ln_prob_s1', np.float32, 'S1 ln probability')]
+             + [('ln_prob_s2', np.float32, 'S2 ln probability')]
             )
 
     # Descriptor configs
@@ -30,63 +30,61 @@ class BayesPeakletClassification(strax.Plugin):
         'conditional_probabilities_and_bins_v1_w_global_v6.npz?fmt=npy',
         help='Bayes configuration file, conditional probabilities tables and Bayes discrete bins'
     )
-    num_nodes = straxen.URLConfig(
+    bayes_n_nodes = straxen.URLConfig(
         default=50,
         help='Number of attributes(features) per waveform and quantile'
     )
-    classes = straxen.URLConfig(
+    n_bayes_classes = straxen.URLConfig(
         default=2,
         help='Number of label classes S1(1)/S2(2)'
     )
 
     def setup(self):
 
-        self.class_prior = np.ones(self.classes)/self.classes
+        self.class_prior = np.ones(self.n_bayes_classes)/self.n_bayes_classes
         self.bins = self.bayes_config_file['bins']
         self.cpt = self.bayes_config_file['cprob']
 
-    def compute(self, peaklets):
+    def compute(self, peaks):
 
-        waveforms, quantiles = compute_wf_and_quantiles(peaklets, self.num_nodes)
+        waveforms, quantiles = compute_wf_and_quantiles(peaks, self.bayes_n_nodes)
 
-        s1_ln_prob, s2_ln_prob = compute_inference(self.bins, self.num_nodes, self.cpt,
-                                                   self.classes, self.class_prior,
+        ln_prob_s1, ln_prob_s2 = compute_inference(self.bins, self.bayes_n_nodes, self.cpt,
+                                                   self.n_bayes_classes, self.class_prior,
                                                    waveforms, quantiles)
 
-        return dict(time=peaklets['time'],
-                    dt=peaklets['dt'],
-                    channel=-1,
-                    length=peaklets['length'],
-                    s1_ln_prob=s1_ln_prob,
-                    s2_ln_prob=s2_ln_prob
+        return dict(time=peaks['time'],
+                    endtime=peaks['time'] + peaks['dt'] * peaks['length'],
+                    ln_prob_s1=ln_prob_s1,
+                    ln_prob_s2=ln_prob_s2
                     )
 
 
-def compute_wf_and_quantiles(peaklets: np.ndarray, num_nodes: int):
+def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     """
     Compute waveforms and quantiles for a given number of nodes(atributes)
-    :param peaklets:
-    :param num_nodes: number of nodes or atributes
+    :param peaks:
+    :param bayes_n_nodes: number of nodes or atributes
     :return: waveforms and quantiles
     """
-    waveforms = np.zeros((len(peaklets), num_nodes))
-    quantiles = np.zeros((len(peaklets), num_nodes))
+    waveforms = np.zeros((len(peaks), bayes_n_nodes))
+    quantiles = np.zeros((len(peaks), bayes_n_nodes))
 
-    num_samples = peaklets['data'].shape[1]
-    step_size = int(num_samples/num_nodes)
+    num_samples = peaks['data'].shape[1]
+    step_size = int(num_samples/bayes_n_nodes)
     steps = np.arange(0, num_samples+1, step_size)
 
-    data = peaklets['data'].copy()
-    dts = peaklets['dt'].copy()
+    data = peaks['data'].copy()
+    dts = peaks['dt'].copy()
     data[data < 0.0] = 0.0
-    for i, p in enumerate(peaklets):
+    for i, p in enumerate(peaks):
         sample_number = np.arange(0, num_samples+1, 1)*p['dt']
         frac_of_cumsum = np.append([0.0], np.cumsum(data[i, :]) / np.sum(data[i, :]))
-        cumsum_steps = np.interp(np.linspace(0., 1., num_nodes, endpoint=False), frac_of_cumsum, sample_number)
+        cumsum_steps = np.interp(np.linspace(0., 1., bayes_n_nodes, endpoint=False), frac_of_cumsum, sample_number)
         cumsum_steps = np.append(cumsum_steps, sample_number[-1])
         quantiles[i, :] = cumsum_steps[1:] - cumsum_steps[:-1]
 
-    for j in range(num_nodes):
+    for j in range(bayes_n_nodes):
         waveforms[:, j] = np.sum(data[:, steps[j]:steps[j+1]], axis=1)
     waveforms = waveforms/(dts*step_size)[:, np.newaxis]
 
@@ -94,14 +92,14 @@ def compute_wf_and_quantiles(peaklets: np.ndarray, num_nodes: int):
     return waveforms, quantiles
 
 
-def compute_inference(bins: int, num_nodes: int, cpt: np.ndarray, classes: int, class_prior: np.ndarray,
+def compute_inference(bins: int, bayes_n_nodes: int, cpt: np.ndarray, n_bayes_classes: int, class_prior: np.ndarray,
                       waveforms: np.ndarray, quantiles: np.ndarray):
     """
     Bin the waveforms and quantiles according to Bayes bins and compute inference
     :param bins: Bayes bins
-    :param num_nodes: number of nodes or atributes
+    :param bayes_n_nodes: number of nodes or atributes
     :param cpt: conditioanl probability tables
-    :param classes: number of classes
+    :param n_bayes_classes: number of classes
     :param class_prior: class_prior
     :param waveforms: waveforms
     :param quantiles: quantiles
@@ -124,14 +122,14 @@ def compute_inference(bins: int, num_nodes: int, cpt: np.ndarray, classes: int, 
     values_for_inference = np.append(waveform_values, quantile_values, axis=1)
 
     # Inference
-    distributions = [[] for i in range(num_nodes*2)]
-    for i in np.arange(0, num_nodes, 1):
+    distributions = [[] for i in range(bayes_n_nodes*2)]
+    for i in np.arange(0, bayes_n_nodes, 1):
         distributions[i] = np.asarray(cpt[i, :waveform_num_bin_edges-1, :])
-    for i in np.arange(num_nodes, num_nodes * 2, 1):
+    for i in np.arange(bayes_n_nodes, bayes_n_nodes * 2, 1):
         distributions[i] = np.asarray(cpt[i, :quantile_num_bin_edges-1, :])
 
-    lnposterior = np.zeros((len(waveforms), num_nodes*2, classes))
-    for i in range(num_nodes*2):
+    lnposterior = np.zeros((len(waveforms), bayes_n_nodes*2, n_bayes_classes))
+    for i in range(bayes_n_nodes*2):
         lnposterior[:, i, :] = np.log(distributions[i][values_for_inference[:, i], :])
 
     lnposterior_sumsamples = np.sum(lnposterior, axis=1)
