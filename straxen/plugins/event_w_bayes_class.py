@@ -35,8 +35,8 @@ class EventwBayesClass(strax.Plugin):
             mask = strax.touching_windows(peaks, container)
             result[f'{name}_ln_prob_s1'] = peaks['ln_prob_s1'][mask[:,0]]
             result[f'{name}_ln_prob_s2'] = peaks['ln_prob_s2'][mask[:,0]]
-            result['time'] =  peaks[mask[:,0]]['time']
-            result['endtime'] =  peaks[mask[:,0]]['endtime']
+        result['time'] =  events['time']
+        result['endtime'] =  events['endtime']
 
         # events can be made out of one peak, this is to enusure user should not look at prob
         for name in (['s1', 'alt_s1', 'alt_s2']):
