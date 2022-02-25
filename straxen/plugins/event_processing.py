@@ -663,7 +663,7 @@ class CorrectedAreas(strax.Plugin):
     # relative light yield
     # defaults to no correction
     rel_light_yield = straxen.URLConfig(
-        default=1.0,
+        default='cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id',
         help='Relative light yield (allows for time dependence)'
     )
 
