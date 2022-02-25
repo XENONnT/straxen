@@ -658,15 +658,15 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
-            s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
+            s2_position_shadows = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
             cs2_top_xycorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
-                                    self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
+                                    self.s2_xy_map(s2_position_shadows, map_name=s2_top_map_name))
             cs2_bottom_xycorr = (events[f'{peak_type}s2_area'] *
                                        (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                       self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
+                                       self.s2_xy_map(s2_position_shadows, map_name=s2_bottom_map_name))
 
             # Correct for SEgain and extraction efficiency
             seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
@@ -734,94 +734,67 @@ class EnergyEstimates(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option(name='pre_s1_area_threshold', default=1e3,
-                 help='Only take S1s larger than this into account '
-                      'when calculating PeakShadow [PE]'),
-    strax.Option(name='pre_s2_area_threshold', default=1e4,
-                 help='Only take S2s larger than this into account '
-                      'when calculating PeakShadow [PE]'),
-    strax.Option(name='deltatime_exponent', default=-1.0,
-                 help='The exponent of delta t when calculating shadow'),
-    strax.Option(name='time_window_backward', default=int(1e9),
-                 help='Search for peaks casting shadow in this time window [ns]')
-)
 class EventShadow(strax.Plugin):
     """
     This plugin can calculate shadow for main S1 and main S2 in events.
     It also gives the position information of the previous peaks.
     References:
-        * v0.1.2 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.3 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
-    data_kind = 'events'
     save_when = strax.SaveWhen.EXPLICIT
 
     def infer_dtype(self):
         dtype = []
         for main_peak, main_peak_desc in zip(['s1_', 's2_'], ['main S1', 'main S2']):
             # previous S1 can only cast time shadow, previous S2 can cast both time & position shadow
-            for key in ['s1_time', 's2_time', 's2_position']:
-                type_str = key.split('_')[0]
-                tp_desc = key.split('_')[1]
-                dtype.append(((f'largest {tp_desc} shadow casting from previous {type_str} to {main_peak_desc} [PE/ns]', f'{main_peak}shadow_{key}'), np.float32))
-                dtype.append(((f'time difference from the previous {type_str} casting largest {tp_desc} shadow to {main_peak_desc} [ns]', f'{main_peak}pre_dt_{key}'), np.int64))
+            for key in ['s1_time_shadow', 's2_time_shadow', 's2_position_shadow']:
+                type_str, tp_desc, _ = key.split('_')
+                dtype.append(((f'largest {tp_desc} shadow casting from previous {type_str} to {main_peak_desc} [PE/ns]', 
+                               f'{main_peak}shadow_{key}'), np.float32))
+                dtype.append(((f'time difference from the previous {type_str} casting largest {tp_desc} shadow to {main_peak_desc} [ns]', 
+                               f'{main_peak}dt_{key}'), np.int64))
                 # Only previous S2 peaks have (x,y)
                 if 's2' in key:
-                    dtype.append(((f'x of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', f'{main_peak}pre_x_{key}'), np.float32))
-                    dtype.append(((f'y of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', f'{main_peak}pre_y_{key}'), np.float32))
+                    dtype.append(((f'x of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', 
+                                   f'{main_peak}x_{key}'), np.float32))
+                    dtype.append(((f'y of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', 
+                                   f'{main_peak}y_{key}'), np.float32))
                 # Only time shadow gives the nearest large peak
                 if 'time' in key:
-                    dtype.append(((f'time difference from the nearest previous large {type_str} to {main_peak_desc} [ns]', f'{main_peak}nearest_dt_{type_str}'), np.int64))
+                    dtype.append(((f'time difference from the nearest previous large {type_str} to {main_peak_desc} [ns]', 
+                                   f'{main_peak}nearest_dt_{type_str}'), np.int64))
             # Also record the PDF of HalfCauchy when calculating S2 position shadow
-            dtype.append(((f'PDF describing correlation between previous s2 and {main_peak_desc}', f'{main_peak}shadow_s2_position_pdf'), np.float32))
+            dtype.append(((f'PDF describing correlation between previous s2 and {main_peak_desc}', 
+                           f'{main_peak}pdf_s2_position_shadow'), np.float32))
         dtype += strax.time_fields
         return dtype
-
-    def setup(self):
-        self.time_window_backward = self.config['time_window_backward']
-        self.threshold = dict(s1_time=self.config['pre_s1_area_threshold'], s2_time=self.config['pre_s2_area_threshold'], s2_position=self.config['pre_s2_area_threshold'])
-        self.exponent = self.config['deltatime_exponent']
 
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
         result = np.zeros(len(events), self.dtype)
 
-        # 1. Initialization, shadow is set to be the lowest possible value
-        for main_peak in ['s1_', 's2_']:
-            for key in ['s1_time', 's2_time', 's2_position']:
-                type_str = key.split('_')[0]
-                result[f'{main_peak}pre_dt_{key}'] = self.time_window_backward
-                if 's2' in key:
-                    result[f'{main_peak}pre_x_{key}'] = np.nan
-                    result[f'{main_peak}pre_y_{key}'] = np.nan
-                if 'time' in key:
-                    result[f'{main_peak}nearest_dt_{type_str}'] = self.time_window_backward
-                    result[f'{main_peak}shadow_{key}'] = self.threshold[key] * result[f'{main_peak}pre_dt_{key}'] ** self.exponent
-                else:
-                    result[f'{main_peak}shadow_{key}'] = 0
-            result[f'{main_peak}shadow_s2_position_pdf'] = np.nan
-
-        # 2. Assign peaks features to main S1 and main S2 in the event
+        # 1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
+            res_i = result[event_i]
             # Fetch the features of main S1 and main S2
             for idx, main_peak in zip([event['s1_index'], event['s2_index']], ['s1_', 's2_']):
                 if idx >= 0:
-                    for key in ['s1_time', 's2_time', 's2_position']:
+                    for key in ['s1_time_shadow', 's2_time_shadow', 's2_position_shadow']:
                         type_str = key.split('_')[0]
-                        result[f'{main_peak}shadow_{key}'][event_i] = sp[f'shadow_{key}'][idx]
-                        result[f'{main_peak}pre_dt_{key}'][event_i] = sp[f'pre_dt_{key}'][idx]
+                        res_i[f'{main_peak}shadow_{key}'] = sp[f'shadow_{key}'][idx]
+                        res_i[f'{main_peak}dt_{key}'] = sp[f'dt_{key}'][idx]
                     if 'time' in key:
-                        result[f'{main_peak}nearest_dt_{key}'][event_i] = sp[f'nearest_dt_{type_str}'][idx]
+                        res_i[f'{main_peak}nearest_dt_{key}'] = sp[f'nearest_dt_{type_str}'][idx]
                     if 's2' in key:
-                        result[f'{main_peak}pre_x_{key}'][event_i] = sp[f'pre_x_{key}'][idx]
-                        result[f'{main_peak}pre_y_{key}'][event_i] = sp[f'pre_y_{key}'][idx]
+                        res_i[f'{main_peak}x_{key}'] = sp[f'x_{key}'][idx]
+                        res_i[f'{main_peak}y_{key}'] = sp[f'y_{key}'][idx]
                     # Record the PDF of HalfCauchy
-                    result[f'{main_peak}shadow_s2_position_pdf'][event_i] = sp['shadow_s2_position_pdf'][idx]
+                    res_i[f'{main_peak}pdf_s2_position_shadow'] = sp['pdf_s2_position_shadow'][idx]
 
-        # 3. Set time and endtime for events
+        # 2. Set time and endtime for events
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
         return result
@@ -832,9 +805,9 @@ class EventAmbience(strax.Plugin):
     """
     Save Ambience of the main S1 and main S2 in the event.
     References:
-        * v0.0.3 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.0.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
     depends_on = ('event_basics', 'peak_basics', 'peak_ambience')
     provides = 'event_ambience'
     save_when = strax.SaveWhen.EXPLICIT
@@ -846,8 +819,10 @@ class EventAmbience(strax.Plugin):
     def infer_dtype(self):
         dtype = []
         for ambience in self.origin_dtype:
-            dtype.append((('Number of ' + ' '.join(ambience.split('_')) + f' main S1', f's1_n_{ambience}'), np.int16))
-            dtype.append((('Number of ' + ' '.join(ambience.split('_')) + f' main S2', f's2_n_{ambience}'), np.int16))
+            dtype.append(((f"Number of  {' '.join(ambience.split('_'))} main S1", 
+                           f's1_n_{ambience}'), np.int16))
+            dtype.append(((f"Number of  {' '.join(ambience.split('_'))} main S2", 
+                           f's2_n_{ambience}'), np.int16))
         dtype += strax.time_fields
         return dtype
 
