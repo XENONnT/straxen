@@ -151,8 +151,11 @@ class EventBasics(strax.Plugin):
     Computes the basic properties of the main/alternative S1/S2 within
     an event.
 
-    The main S2 and alternative S2 are given by the largest two S2-Peaks
-    within the event. By default this is also true for S1.
+    The main S1 and alternative S1 are given by the largest two S1-Peaks
+    within the event.
+    The main S2 is given by the largest S2-Peak within the event, while
+    alternative S2 is selected as the largest S2 other than main S2
+    in the time window [main S1 time, main S1 time + max drift time].
     """
     __version__ = '1.3.0'
 
