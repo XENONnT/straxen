@@ -29,7 +29,7 @@ class PeakBasics(strax.Plugin):
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.1.0"
+    __version__ = "0.1.1"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -43,6 +43,8 @@ class PeakBasics(strax.Plugin):
         (('Peak integral in PE',
             'area'), np.float32),
         (('Number of PMTs contributing to the peak',
+            'n_hits'), np.int32),
+        (('Number of hits contributing at least one sample to the peak',
             'n_channels'), np.int16),
         (('PMT number which contributes the most PE',
             'max_pmt'), np.int16),
@@ -78,6 +80,7 @@ class PeakBasics(strax.Plugin):
             r[q] = p[q]
         r['endtime'] = p['time'] + p['dt'] * p['length']
         r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
+        r['n_hits'] = p['n_hits']
         r['range_50p_area'] = p['width'][:, 5]
         r['range_90p_area'] = p['width'][:, 9]
         r['max_pmt'] = np.argmax(p['area_per_channel'], axis=1)

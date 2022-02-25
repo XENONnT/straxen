@@ -143,7 +143,7 @@ class EventBasics(strax.Plugin):
     The main S2 and alternative S2 are given by the largest two S2-Peaks
     within the event. By default this is also true for S1.
     """
-    __version__ = '1.2.1'
+    __version__ = '1.2.2'
 
     depends_on = ('events',
                   'peak_basics',
@@ -197,6 +197,7 @@ class EventBasics(strax.Plugin):
             ('endtime',           np.int64,   'end time since unix epoch [ns]'),
             ('area',              np.float32, 'area, uncorrected [PE]'),
             ('n_channels',        np.int16,   'count of contributing PMTs'),
+            ('n_hits',            np.int16,   'count of hits contributing at least one sample to the peak'),
             ('n_competing',       np.int32,   'number of competing peaks'),
             ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
             ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
