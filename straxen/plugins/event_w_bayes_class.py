@@ -28,11 +28,8 @@ class EventwBayesClass(strax.Plugin):
         result = np.empty(len(events), dtype=self.dtype) 
 
         for name in ['s1', 's2', 'alt_s1', 'alt_s2']:
-            container = np.zeros(len(events), strax.time_fields)
-            container['time'] = events[f'{name}_time']
-            container['endtime'] = events[f'{name}_endtime']
-
-            mask = strax.touching_windows(peaks, container)
+        # Select peaks based on their start time
+        mask = np.in1d(peaks['time'], events[f'{name}_time'])
             result[f'{name}_ln_prob_s1'] = peaks['ln_prob_s1'][mask[:,0]]
             result[f'{name}_ln_prob_s2'] = peaks['ln_prob_s2'][mask[:,0]]
         result['time'] =  events['time']
