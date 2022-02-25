@@ -298,9 +298,10 @@ _Under construction_
 
 {svg}
 """
-    with open(this_dir + f'/reference/data_kinds_nT.rst',
-              mode='w') as f:
+    p=this_dir + f'/reference/data_kinds_nT.rst'
+    with open(p, mode='w') as f:
         f.write(out.format(svg=svg))
+    print(p)
     os.remove(fn+'.svg')
 
 
