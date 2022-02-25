@@ -23,8 +23,8 @@ class CorrectionFrames:
         try:
             import admix
             return cls.from_utilix(**kwargs)
-        except ImportError:
-            return cls.from_mongodb()
+        except:
+            return cls.from_mongodb(**kwargs)
 
     @classmethod
     def from_mongodb(cls, url='localhost', db='cmt2', **kwargs):
