@@ -15,8 +15,6 @@ requests
 commentjson
 matplotlib
 gitpython
-pytoolz
-pydantic
 strax>=1.1.2
 utilix>=0.5.3
 rframe>=0.1.4
