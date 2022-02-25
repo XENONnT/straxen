@@ -11,7 +11,7 @@ class TestBayesPlugin(unittest.TestCase):
 
         st = straxen.test_utils.nt_test_context()
         st.register(straxen.BayesPeakletClassification)
-        self.target = 'peaklet_classification_bayes'
+        self.target = 'peak_classification_bayes'
         self.run_id = straxen.test_utils.nt_test_run_id
         self.st = st
 
@@ -30,8 +30,8 @@ class TestBayesPlugin(unittest.TestCase):
         """
         Test inference, ln prob <= 0
         """
+        self.st.make(self.run_id, 'peaks')
         self.st.make(self.run_id, self.target)
         bayes = self.st.get_array(self.run_id, self.target)
-        prob = np.where(bayes['s1_ln_prob'] > 0.0)
-        prob2 = np.where(bayes['s1_ln_prob'] < 0.0)
+        prob = np.where(bayes['ln_prob_s1'] > 0.0)
         assert bayes[prob].size == 0, "ln prob gratter than zero, impossible"
