@@ -11,7 +11,6 @@ import os
 import shutil
 import pandas as pd
 import graphviz
-import strax
 import straxen
 import numpy as np
 
@@ -109,33 +108,6 @@ def add_spaces(x):
     return y
 
 
-def skip(p, d, suffix, data_type):
-    """
-    Can we skip this plugin in our for loop (a bunch of if statements to check if we can
-        continue).
-    :param p: strax.plugin
-    :param d: dependency of the strax.plugin
-    :param suffix: any of the tree_suffices needed for the logic
-    :param data_type: data type (sting)
-    :return: bool if we can continue (do not include this one in the data-structure if
-        True)
-    """
-    if suffix not in p.data_kind_for(d):
-        # E.g. don't bother with raw_records_nv stuff for mv
-        return True
-    elif suffix == '' and np.any([s in p.data_kind_for(d) for s in tree_suffices if s != '']):
-        # E.g. don't bother with raw_records_nv stuff for tpc ('' is always in a string)
-        return True
-    elif 'raw_records' in p.data_kind_for(d):
-        if 'raw_records' in data_type:
-            # fine
-            pass
-        elif f'raw_records{suffix}' != p.data_kind_for(d) and 'aqmon' in p.data_kind_for(d):
-            # skip aqmon raw_records in dependency graph
-            return True
-    return False
-
-
 def get_plugins_deps(st):
     """
     For a given Strax.Context return the dependencies per plugin split by the known
@@ -144,14 +116,16 @@ def get_plugins_deps(st):
     :return: dict of default dicts containing the number of dependencies.
     """
     plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
-    for suffix in tree_suffices:
+    for det_suffix in tree_suffices:
         for pn, p in st._plugin_class_registry.items():
-            if suffix not in pn:
+            if det_suffix not in pn:
                 continue
-            elif suffix == '' and np.any([s in pn for s in tree_suffices if s != '']):
+            elif det_suffix == '' and np.any([s in pn for s in tree_suffices if s != '']):
                 continue
             plugins = st._get_plugins((pn,), run_id='0')
-            plugins_by_deps[suffix][len(plugins)].append(pn)
+            # Clear cache, otherwise we might be getting more than we asked for from the cache
+            st._fixed_plugin_cache = {}
+            plugins_by_deps[det_suffix][len(plugins)].append(pn)
     return plugins_by_deps
 
 
@@ -162,7 +136,7 @@ def get_context(is_nt):
     :return: straxen context that mimics the xenonnt_online context without the rundb init
     """
     if is_nt:
-        st = straxen.contexts.xenonnt_online(_database_init=False, use_rucio=False)
+        st = straxen.contexts.xenonnt_online(_database_init=False)
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
     else:
         st = straxen.contexts.xenon1t_dali()
@@ -172,10 +146,11 @@ def get_context(is_nt):
 
 
 def build_datastructure_doc(is_nt):
+    """Build a dependency tree for all plugins"""
     pd.set_option('display.max_colwidth', int(1e9))
 
     st = get_context(is_nt)
-    xT = 'nT' if is_nt else '1T'
+    one_tonne_or_n_tonne = 'nT' if is_nt else '1T'
     # Too lazy to write proper graph sorter
     # Make dictionary {total number of dependencies below -> list of plugins}
 
@@ -183,42 +158,38 @@ def build_datastructure_doc(is_nt):
 
     # Make graph for each suffix ('' referring to TPC)
     for suffix in tree_suffices:
-        title = titles[suffix].format(xT=xT)
-        out = page_header.format(title=title,
-                                 context='xenonnt_online' if is_nt else 'xenon1t_dali')
+        title = titles[suffix].format(xT=one_tonne_or_n_tonne)
+        out = page_header.format(
+            title=title,
+            context='xenonnt_online' if is_nt else 'xenon1t_dali')
         if not is_nt and suffix != '':
             # No NV/MV/HE for 1T
             continue
 
-        print(f'------------ {xT}{suffix} ------------')
-        os.makedirs(this_dir + f'/graphs{suffix}_{xT}', exist_ok=True)
+        print(f'------------ {one_tonne_or_n_tonne}{suffix} ------------')
+        os.makedirs(this_dir + f'/graphs{suffix}_{one_tonne_or_n_tonne}', exist_ok=True)
         for n_deps in list(reversed(sorted(list(plugins_by_deps[suffix].keys())))):
-            for data_type in plugins_by_deps[suffix][n_deps]:
-                plugins = st._get_plugins((data_type,), run_id='0')
+            for this_data_type in plugins_by_deps[suffix][n_deps]:
+                print(this_data_type, n_deps)
+                this_plugin = st._get_plugins(targets=(this_data_type,), run_id='0')[this_data_type]
 
                 # Create dependency graph
-                g = graphviz.Digraph(format='svg')
-                # g.attr('graph', autosize='false', size="25.7,8.3!")
-                for d, p in plugins.items():
-                    if skip(p, d, suffix, data_type):
-                        continue
-                    g.node(d,
-                           style='filled',
-                           href='#' + d.replace('_', '-'),
-                           fillcolor=kind_colors.get(p.data_kind_for(d), 'grey'))
-                    for dep in p.depends_on:
-                        g.edge(d, dep)
+                graph_tree = graphviz.Digraph(format='svg')
 
-                fn = this_dir + f'/graphs{suffix}_{xT}/' + data_type
-                g.render(fn)
+                # Add plugins and dependencies resursively
+                add_deps_to_graph_tree(graph_tree, this_plugin, this_data_type)
+
+                # Where to save this node
+                fn = this_dir + f'/graphs{suffix}_{one_tonne_or_n_tonne}/' + this_data_type
+                graph_tree.render(fn)
                 with open(f'{fn}.svg', mode='r') as f:
                     svg = add_spaces(f.readlines()[5:])
 
-                config_df = st.show_config(data_type).sort_values(by='option')
+                config_df = st.show_config(this_data_type).sort_values(by='option')
                 # Filter out the config options of lower level datatypes
                 config_mask = []
                 for ap_to in config_df['applies_to'].values:
-                    config_mask.append(any([data_type in a for a in ap_to]))
+                    config_mask.append(any([this_data_type in a for a in ap_to]))
                 keep_cols = ['option', 'default', 'current', 'help']
                 config_df = config_df[config_mask][keep_cols]
 
@@ -228,24 +199,50 @@ def build_datastructure_doc(is_nt):
                     if isinstance(x, str) and len(x) > 30 else x
                     for x in config_df['default'].values]
 
-                p = plugins[data_type]
-
                 out += template.format(
-                    p=p,
+                    p=this_plugin,
                     context='',
-                    module=str(p.__module__).replace('.', '/'),
+                    module=str(this_plugin.__module__).replace('.', '/'),
                     svg=svg,
-                    data_type=data_type,
+                    data_type=this_data_type,
                     columns=add_spaces(
-                        st.data_info(data_type).to_html(index=False)),
-                    kind=p.data_kind_for(data_type),
-                    docstring=p.__doc__ if p.__doc__ else '(no plugin description)',
-                    config_options=add_spaces(config_df.to_html(index=False)))
+                        st.data_info(this_data_type).to_html(index=False)),
+                    kind=this_plugin.data_kind_for(this_data_type),
+                    docstring=this_plugin.__doc__ if this_plugin.__doc__ else '(no plugin description)',
+                    config_options=add_spaces(config_df.to_html(index=False)),
+                )
 
-        with open(this_dir + f'/reference/datastructure{suffix}_{xT}.rst', mode='w') as f:
+        with open(this_dir + f'/reference/datastructure{suffix}_{one_tonne_or_n_tonne}.rst',
+                  mode='w') as f:
             f.write(out)
 
-        shutil.rmtree(this_dir + f'/graphs{suffix}_{xT}')
+        shutil.rmtree(this_dir + f'/graphs{suffix}_{one_tonne_or_n_tonne}')
+
+
+def add_deps_to_graph_tree(graph_tree, plugin, data_type, _seen=None):
+    """Recursively add nodes to graph base on plugin.deps"""
+    if _seen is None:
+        _seen = []
+    if data_type in _seen:
+        return graph_tree, _seen
+
+    # Add new one
+    graph_tree.node(data_type,
+                    style='filled',
+                    href='#' + data_type.replace('_', '-'),
+                    fillcolor=kind_colors.get(plugin.data_kind_for(data_type),
+                                              'grey'))
+    for dep in plugin.depends_on:
+        graph_tree.edge(data_type, dep)
+
+    # Add any of the lower plugins if we have to
+    for lower_data_type, lower_plugin in plugin.deps.items():
+        graph_tree, _seen = add_deps_to_graph_tree(graph_tree,
+                                                   lower_plugin,
+                                                   lower_data_type,
+                                                   _seen)
+    _seen.append(data_type)
+    return graph_tree, _seen
 
 
 try:
