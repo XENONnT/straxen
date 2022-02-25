@@ -18,7 +18,6 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s2_tf_model', help='S2 (x, y) optical data-driven model', infer_type=False,
                  default='XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'),
-                 default='s1_aft_dd_xyz_XENONnT_kr-83m_08Feb2022.json'),
     strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
                  default=1.2, infer_type=False,),
     strax.Option('gain_model', infer_type=False,
