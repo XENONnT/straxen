@@ -20,7 +20,11 @@ class CorrectionFrames:
     
     @classmethod
     def default(cls, **kwargs):
-        return cls.from_utilix(**kwargs)
+        try:
+            import admix
+            return cls.from_utilix(**kwargs)
+        except ImportError:
+            return cls.from_mongodb()
 
     @classmethod
     def from_mongodb(cls, url='localhost', db='cmt2', **kwargs):
@@ -84,20 +88,4 @@ def run_id_to_time(run_id):
     time = rundoc['start']
     return time.replace(tzinfo=pytz.utc)
 
-def extract_time(kwargs):
-    if 'time' in kwargs:
-        return pd.to_datetime(kwargs.pop('time'), utc=True)
-    if 'run_id' in kwargs:
-        return run_id_to_time(kwargs.pop('run_id'))
-    else:
-        return None
-
-
 cframes = CorrectionFrames.default()
-
-
-@export
-def cmt2(name, version=0, **kwargs):
-    dtime = extract_time(kwargs)
-    return cframes[name].sel(time=dtime, version=version, **kwargs)
-

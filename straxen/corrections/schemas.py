@@ -1,15 +1,12 @@
 
-import time
 from typing import ClassVar, Literal, Union
 import pytz
 import strax
 import numbers
-import utilix
 import rframe
 import datetime
 
 import pandas as pd
-from collections import Counter
 
 from rframe.schema import InsertionError
 import straxen
@@ -21,7 +18,6 @@ export, __all__ = strax.exporter()
 @export
 class BaseCorrectionSchema(rframe.BaseSchema):
     _NAME: ClassVar = ''
-    _DATABASE: ClassVar = 'cmt2'
     _SCHEMAS = {}
 
     version: str = rframe.Index()
