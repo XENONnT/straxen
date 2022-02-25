@@ -53,7 +53,11 @@ class EventPatternFit(strax.Plugin):
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
     __version__ = '0.1.2'
-
+    s1_aft_map = straxen.URLConfig( 
+           default='itp_map://resource://cmt://' 
+                   's1_aft_xyz_map' 
+                   '?version=ONLINE&run_id=plugin.run_id&fmt=json', 
+           cache=True) 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
                   'Modified Poisson likelihood value for main S2 in the event'),
