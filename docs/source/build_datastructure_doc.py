@@ -11,7 +11,9 @@ import os
 import shutil
 import pandas as pd
 import graphviz
+import strax
 import straxen
+from immutabledict import immutabledict
 import numpy as np
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -170,13 +172,12 @@ def build_datastructure_doc(is_nt):
         os.makedirs(this_dir + f'/graphs{suffix}_{one_tonne_or_n_tonne}', exist_ok=True)
         for n_deps in list(reversed(sorted(list(plugins_by_deps[suffix].keys())))):
             for this_data_type in plugins_by_deps[suffix][n_deps]:
-                print(this_data_type, n_deps)
                 this_plugin = st._get_plugins(targets=(this_data_type,), run_id='0')[this_data_type]
 
                 # Create dependency graph
                 graph_tree = graphviz.Digraph(format='svg')
 
-                # Add plugins and dependencies resursively
+                # Add plugins and dependencies recursively
                 add_deps_to_graph_tree(graph_tree, this_plugin, this_data_type)
 
                 # Where to save this node
@@ -245,10 +246,65 @@ def add_deps_to_graph_tree(graph_tree, plugin, data_type, _seen=None):
     return graph_tree, _seen
 
 
-try:
-    if __name__ == '__main__':
-        build_datastructure_doc(True)
-        build_datastructure_doc(False)
-except KeyError:
-    # Whatever
-    pass
+def write_data_kind_dep_tree():
+    """Work in progress to build a dependency tree of the datakinds"""
+    print('------------ data kinds ------------')
+    st = get_context(is_nt=True)
+
+    def get_plugin(pov):
+        return st._get_plugins((pov,), '0')[pov]
+    tree = defaultdict(set)
+
+    for p in st._plugin_class_registry.keys():
+        this_p = get_plugin(p)
+        this_datakind = this_p.data_kind
+
+        depends_on = []
+        for dep in strax.to_str_tuple(this_p.depends_on):
+            dep_kind = get_plugin(dep).data_kind
+            if isinstance(dep_kind, (dict, immutabledict)):
+                dep_kind = dep_kind[dep]
+            depends_on.append(dep_kind)
+        if isinstance(this_datakind, (dict, immutabledict)):
+            this_datakind = this_datakind[p]
+
+        for k in strax.to_str_tuple(this_datakind):
+            this_deps = tree[k] | set(depends_on)
+            tree[k] = this_deps
+
+    graph_tree = graphviz.Digraph(format='svg')
+    for t in tree.keys():
+        graph_tree.node(t,
+                        style='filled',
+                        href='#' + t.replace('_', '-'),
+                        fillcolor=kind_colors.get(t, 'grey')
+                        )
+
+        for d in tree[t]:
+            graph_tree.edge(t, d)
+
+    # Where to save this node
+    fn = 'data_kinds_nT'
+    graph_tree.render(fn)
+    with open(f'{fn}.svg', mode='r') as f:
+        svg = add_spaces(f.readlines()[5:])
+    out = """
+XENON nT data kinds
+====================
+
+_Under construction_
+
+.. raw:: html
+
+{svg}
+"""
+    with open(this_dir + f'/reference/data_kinds_nT.rst',
+              mode='w') as f:
+        f.write(out.format(svg=svg))
+    os.remove(fn+'.svg')
+
+
+if __name__ == '__main__':
+    build_datastructure_doc(True)
+    build_datastructure_doc(False)
+    write_data_kind_dep_tree()

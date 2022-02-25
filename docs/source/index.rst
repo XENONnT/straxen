@@ -13,31 +13,11 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
 
     setup
     tutorials/strax_demo.ipynb
-    tutorials/run_selection.ipynb
     tutorials/pulse_analysis.ipynb
     tutorials/Open_data.ipynb
     tutorials/SuperrunsExample.ipynb
     tutorials/mini_analyses
 
-
-.. toctree::
-    :maxdepth: 2
-    :caption: XENONnT Online monitor
-
-    online_monitor
-
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Configuration storage
-
-    config_storage
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Corrections management tool
-
-    cmt
 
 .. toctree::
     :maxdepth: 1
@@ -47,12 +27,19 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     reference/datastructure_he_nT
     reference/datastructure_nv_nT
     reference/datastructure_mv_nT
+    reference/data_kinds_nT
+
 
 .. toctree::
-    :maxdepth: 1
-    :caption: 1T Datastructure
+    :maxdepth: 2
+    :caption: Technical features & tools
 
-    reference/datastructure_1T
+    config_storage
+    online_monitor
+    cmt
+    url_configs
+    scada_interface
+    tutorials/ScadaInterfaceExample.ipynb
 
 
 .. toctree::
@@ -62,12 +49,7 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     scripts
     bootstrax
 
-.. toctree::
-    :maxdepth: 2
-    :caption: Auxiliary tools
 
-    scada_interface
-    tutorials/ScadaInterfaceExample.ipynb
 
 
 .. toctree::
@@ -75,6 +57,13 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     :caption: Context and minianalyses
 
     reference/context
+
+
+.. toctree::
+    :maxdepth: 1
+    :caption: 1T Datastructure
+
+    reference/datastructure_1T
 
 
 .. toctree::
