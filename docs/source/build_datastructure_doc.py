@@ -253,6 +253,7 @@ def write_data_kind_dep_tree():
 
     def get_plugin(pov):
         return st._get_plugins((pov,), '0')[pov]
+
     tree = defaultdict(set)
 
     for p in st._plugin_class_registry.keys():
@@ -298,11 +299,11 @@ _Under construction_
 
 {svg}
 """
-    p=this_dir + f'/reference/data_kinds_nT.rst'
+    p = this_dir + f'/reference/data_kinds_nT.rst'
     with open(p, mode='w') as f:
-        f.write(out.format(svg=svg))
+        f.write(out.format(svg=svg))cat
     print(p)
-    os.remove(fn+'.svg')
+    os.remove(fn + '.svg')
 
 
 if __name__ == '__main__':
