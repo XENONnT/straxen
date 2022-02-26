@@ -301,7 +301,7 @@ _Under construction_
 """
     p = this_dir + f'/reference/data_kinds_nT.rst'
     with open(p, mode='w') as f:
-        f.write(out.format(svg=svg))cat
+        f.write(out.format(svg=svg))
     print(p)
     os.remove(fn + '.svg')
 
