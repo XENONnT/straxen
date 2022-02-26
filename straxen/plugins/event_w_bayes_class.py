@@ -28,18 +28,15 @@ class EventwBayesClass(strax.Plugin):
         result = np.empty(len(events), dtype=self.dtype) 
 
         for name in ['s1', 's2', 'alt_s1', 'alt_s2']:
-        # Select peaks based on their start time
-        mask = np.in1d(peaks['time'], events[f'{name}_time'])
-            result[f'{name}_ln_prob_s1'] = peaks['ln_prob_s1'][mask[:,0]]
-            result[f'{name}_ln_prob_s2'] = peaks['ln_prob_s2'][mask[:,0]]
-        result['time'] =  events['time']
-        result['endtime'] =  events['endtime']
-
-        # events can be made out of one peak, this is to enusure user should not look at prob
-        for name in (['s1', 'alt_s1', 'alt_s2']):
-            no_s_peak = np.where(events[f'{name}_index'] == -1)
-            if no_s_peak:
-                result[f'{name}_ln_prob_s1'][no_s_peak] = np.nan
-                result[f'{name}_ln_prob_s2'][no_s_peak] = np.nan 
         
+            result[f'{name}_ln_prob_s1'] = np.nan
+            result[f'{name}_ln_prob_s2'] = np.nan
+            # Select peaks based on their start time
+            mask = np.in1d(peaks['time'], events[f'{name}_time'])
+            mask_ev = np.in1d(events[f'{name}_time'], peaks['time'])
+            result[f'{name}_ln_prob_s1'][mask_ev] = peaks['ln_prob_s1'][mask]
+            result[f'{name}_ln_prob_s2'][mask_ev] = peaks['ln_prob_s2'][mask]
+            result['time'] =  events['time']
+            result['endtime'] =  events['endtime']
+
         return result
