@@ -134,23 +134,39 @@ class CorrectionReference(TimeIntervalCorrection):
     correction: str
     labels: dict
 
-    def get_corrections(self, datasource=None, **overrides):
+    def load(self, datasource=None, **overrides):
         labels = dict(self.labels, **overrides)
         if self.correction not in BaseCorrectionSchema._SCHEMAS:
             raise KeyError(f'Reference to undefined schema name {self.correction}')
         schema = BaseCorrectionSchema._SCHEMAS[self.correction]
         return schema.find(datasource, **labels)
 
+    def as_url(self, **overrides):
+        labels = dict(self.labels, **overrides)
+        url = 'cmt://{self.correction}'
+        url = straxen.URLConfig.format_url_kwargs(url, **labels)
+        return url
+
+    def as_config(self, **overrides):
+        return {self.name: self.as_url(**overrides)}
 
 @export
-class ResourceReference(TimeIntervalCorrection):
+class ResourceReference(BaseCorrectionSchema):
     fmt: ClassVar = 'text'
 
     value: str
 
-    def get_resource(self, **kwargs):
+    def pre_insert(self, db):
+        self.load()
+        super().pre_insert(db)
+        
+    def load(self, **kwargs):
         kwargs.setdefault('fmt', self.fmt)
         return straxen.get_resource(self.value, **kwargs)
+
+    @property
+    def url(self):
+        return 'resource://{self.value}?fmt={self.fmt}'
 
 @export
 class BaselineSamples(TimeIntervalCorrection):
@@ -173,14 +189,20 @@ class FdcMapName(ResourceReference):
     _NAME = "fdc_map_names"
     fmt = 'json.gz'
 
-    kind: Literal['cnn','gcn','mlp'] = rframe.Index() 
+    kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+    
     value: str
 
 
 @export
-class ModelName(ResourceReference):
-    _NAME = "model_names"
+class TFModel(ResourceReference):
+    _NAME = "tf_models"
+    fmt = 'json'
+
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+
     value: str
 
 @export
@@ -188,26 +210,35 @@ class HitThresholds(TimeIntervalCorrection):
     _NAME = "hit_thresholds"
     detector: str = rframe.Index()
     pmt: int = rframe.Index()
+
     value: int
 
 @export
-class RelExtractionEff(TimeIntervalCorrection):
+class RelExtractionEff(TimeSampledCorrection):
     _NAME = "rel_extraction_eff"
     value: float
 
 
 @export
-class S1XyzMap(ResourceReference):
-    _NAME = "s1_xyz_map"
+class S1XYZMap(ResourceReference):
+    _NAME = "s1_xyz_maps"
+    
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+
     value: str
 
 
 @export
 class S2XYMap(ResourceReference):
-    _NAME = "s2_xy_map"
+    _NAME = "s2_xy_maps"
+
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+    
     value: str
+
+
 @export
 class PmtGain(TimeSampledCorrection):
     _NAME = 'pmt_gains'
