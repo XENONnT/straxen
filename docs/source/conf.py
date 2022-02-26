@@ -20,6 +20,7 @@
 # -- Project information -----------------------------------------------------
 import straxen
 import sys
+
 project = 'straxen'
 # pylint: disable=redefined-builtin
 copyright = '2018, straxen contributors and the XENON collaboration'
@@ -29,7 +30,6 @@ author = 'straxen contributors and the XENON collaboration'
 version = straxen.__version__
 # The full version, including alpha/beta/rc tags
 release = straxen.__version__
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -50,16 +50,15 @@ extensions = [
 # ADDED MANUALLY
 from unittest.mock import MagicMock
 
+
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
         return MagicMock()
 
+
 MOCK_MODULES = ['zstd', 'blosc']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-
-
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -70,7 +69,7 @@ templates_path = ['_templates']
 source_suffix = ['.rst', '.md']
 
 source_parsers = {
-   '.md': 'recommonmark.parser.CommonMarkParser',
+    '.md': 'recommonmark.parser.CommonMarkParser',
 }
 
 # The master toctree document.
@@ -90,7 +89,6 @@ exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
-
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -126,7 +124,6 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'straxendoc'
 
-
 # -- Options for LaTeX output ------------------------------------------------
 
 latex_elements = {
@@ -155,7 +152,6 @@ latex_documents = [
      'straxen contributors and the XENON collaboration', 'manual'),
 ]
 
-
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
@@ -164,7 +160,6 @@ man_pages = [
     (master_doc, 'straxen', 'straxen Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -176,7 +171,6 @@ texinfo_documents = [
      author, 'straxen', 'One line description of project.',
      'Miscellaneous'),
 ]
-
 
 # -- Extension configuration -------------------------------------------------
 
@@ -196,5 +190,6 @@ def setup(app):
     import build_datastructure_doc
     build_datastructure_doc.build_datastructure_doc(True)
     build_datastructure_doc.build_datastructure_doc(False)
+    build_datastructure_doc.write_data_kind_dep_tree()
     import build_context_doc
     build_context_doc.main()

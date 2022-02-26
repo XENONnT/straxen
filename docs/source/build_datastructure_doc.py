@@ -6,6 +6,7 @@ and configuration options that apply to each plugins.
 
 For extra credit, the SVGs are clickable.
 """
+import sys
 from collections import defaultdict
 import os
 import shutil
@@ -304,9 +305,10 @@ _Under construction_
         f.write(out.format(svg=svg))
     print(p)
     os.remove(fn + '.svg')
+    assert os.path.exists(p)
 
 
 if __name__ == '__main__':
+    write_data_kind_dep_tree()
     build_datastructure_doc(True)
     build_datastructure_doc(False)
-    write_data_kind_dep_tree()
