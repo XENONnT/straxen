@@ -655,9 +655,8 @@ class CorrectedAreas(strax.Plugin):
         help='Actual SE gain for a given run (allows for time dependence)')
 
     # relative extraction efficiency which can change with time and modeled by CMT.
-    # defaults to no correction
     rel_extraction_eff = straxen.URLConfig(
-        default=1.0,
+        default='cmt://rel_extraction_eff?version=ONLINE&run_id=plugin.run_id',
         help='Relative extraction efficiency for this run (allows for time dependence)')
 
     # relative light yield
