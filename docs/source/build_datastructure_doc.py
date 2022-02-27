@@ -97,6 +97,8 @@ nT data kinds
 .. raw:: html
 
 {svg}
+
+
 """
 
 titles = {'': 'Straxen {xT} datastructure',
@@ -330,7 +332,14 @@ def write_data_kind_dep_tree():
     svg = tree_to_svg(graph_tree, save_as='data_kinds_nT')
     output = data_kinds_header.format(svg=svg)
 
-    for data_kind, data_types in data_kinds.items():
+    # Sort by largest first
+    sorted_zipped_lists = sorted(zip(
+        [-len(d) for d in data_kinds.values()],
+        data_kinds.keys(),
+    ))
+
+    for _, data_kind in sorted_zipped_lists:
+        data_types = data_kinds[data_kind]
         graph_tree = graphviz.Digraph(format='svg')
         graph_tree.node(data_kind + '-data-kind',
                         style='filled',
@@ -346,15 +355,18 @@ def write_data_kind_dep_tree():
                             fillcolor=kind_colors.get(data_kind, 'grey'),
                             )
             graph_tree.edge(data_kind + '-data-kind', dtype)
-        output += f""""
-{data_kind}
+        output += f"""
+
+{data_kind}-data kind
 --------------------------------------------------------
-``{data_kind}`` includes the following data types:
+The ``{data_kind}``-data kind includes the following data types:
 {{data_types}}
 
 .. raw:: html
 
+
 {tree_to_svg(graph_tree, save_as=f"{data_kind}_kind")}        
+
 
         """
         extra = ''
