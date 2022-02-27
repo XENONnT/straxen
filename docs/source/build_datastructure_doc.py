@@ -6,7 +6,6 @@ and configuration options that apply to each plugins.
 
 For extra credit, the SVGs are clickable.
 """
-import sys
 from collections import defaultdict
 import os
 import shutil
@@ -74,6 +73,31 @@ because changing any of those options affect this data indirectly.
 ------------------
 """
 
+data_kinds_header = """
+XENON nT data kinds
+====================
+As explained in the 
+`demo <https://straxen.readthedocs.io/en/latest/tutorials/strax_demo.html>`_, 
+in straxen, we have **data types** and **data kinds**. The **data types** are 
+documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure_nT.html>`_
+page and are the type of data that one can load in straxen using 
+`st.get_array(<RUN_ID>, <DATA_TYPE>)` or `st.get_df(<RUN_ID>, <DATA_TYPE>)`.
+
+Additionally, each data type also has a data kind. Each data kinds has a group 
+of data types associated to it. All data of a given data type has the same number 
+of entities. As such, different data types can be loaded simultaneously if they 
+are of the same data kind. For example, `peak_basics` and `peak_positions` are 
+two data types but they contain information about the same data kind: `peaks`.
+
+XENON nT data kinds
+===================
+
+.. raw:: html
+
+{svg}
+"""
+
+
 titles = {'': 'Straxen {xT} datastructure',
           '_he': "Straxen {xT} datastructure for high energy channels",
           '_nv': "Straxen {xT} datastructure for neutron veto",
@@ -87,9 +111,12 @@ kind_colors = dict(
     hitlets='#0066ff',
     peaklets='#d9ff66',
     merged_s2s='#ccffcc',
+    lone_hits='	#CAFF70',
     records='#ffa500',
     raw_records='#ff4500',
-    raw_records_coin='#ff4500')
+    raw_records_aqmon='#ff4500',
+    raw_records_aux_mv='#ff4500',
+)
 
 suffices = ['_he', '_nv', "_mv"]
 for suffix in suffices:
@@ -120,15 +147,15 @@ def get_plugins_deps(st):
     """
     plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
     for det_suffix in tree_suffices:
-        for pn, p in st._plugin_class_registry.items():
-            if det_suffix not in pn:
+        for plugin_name, plugin_class in st._plugin_class_registry.items():
+            if det_suffix not in plugin_name:
                 continue
-            elif det_suffix == '' and np.any([s in pn for s in tree_suffices if s != '']):
+            elif det_suffix == '' and np.any([s in plugin_name for s in tree_suffices if s != '']):
                 continue
-            plugins = st._get_plugins((pn,), run_id='0')
+            plugins = st._get_plugins((plugin_name,), run_id='0')
             # Clear cache, otherwise we might be getting more than we asked for from the cache
             st._fixed_plugin_cache = {}
-            plugins_by_deps[det_suffix][len(plugins)].append(pn)
+            plugins_by_deps[det_suffix][len(plugins)].append(plugin_name)
     return plugins_by_deps
 
 
@@ -296,31 +323,8 @@ def write_data_kind_dep_tree():
         for d in tree[data_kind]:
             graph_tree.edge(data_kind, d)
 
-    out = """
-XENON nT data kinds
-====================
-As explained in the 
-`demo <https://straxen.readthedocs.io/en/latest/tutorials/strax_demo.html>`_, 
-in straxen, we have **data types** and **data kinds**. The **data types** are 
-documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure_nT.html>`_
-page and are the type of data that one can load in straxen using 
-`st.get_array(<RUN_ID>, <DATA_TYPE>)` or `st.get_df(<RUN_ID>, <DATA_TYPE>)`.
-
-Additionally, each data type also has a data kind. Each data kinds has a group 
-of data types associated to it. All data of a given data type has the same number 
-of entities. As such, different data types can be loaded simultaneously if they 
-are of the same data kind. For example, `peak_basics` and `peak_positions` are 
-two data types but they contain information about the same data kind: `peaks`.
-
-XENON nT data kinds
-===================
-
-.. raw:: html
-
-{svg}
-"""
     svg = tree_to_svg(graph_tree, save_as='data_kinds_nT')
-    output = out.format(svg=svg)
+    output = data_kinds_header.format(svg=svg)
 
     graph_tree = graphviz.Digraph(format='svg')
     for data_kind, data_types in tree.keys():
