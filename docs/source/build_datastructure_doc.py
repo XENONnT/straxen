@@ -247,6 +247,16 @@ def add_deps_to_graph_tree(graph_tree, plugin, data_type, _seen=None):
     return graph_tree, _seen
 
 
+def tree_to_svg(graph_tree, save_as='data_kinds_nT'):
+    # Where to save this node
+    graph_tree.render(save_as)
+    with open(f'{save_as}.svg', mode='r') as f:
+        svg = add_spaces(f.readlines()[5:])
+    os.remove(f'{save_as}.svg')
+    os.remove(save_as)
+    return svg
+
+
 def write_data_kind_dep_tree():
     """Work in progress to build a dependency tree of the datakinds"""
     print('------------ data kinds ------------')
@@ -275,36 +285,70 @@ def write_data_kind_dep_tree():
             tree[k] = this_deps
 
     graph_tree = graphviz.Digraph(format='svg')
-    for t in tree.keys():
-        graph_tree.node(t,
+    for data_kind in tree.keys():
+        graph_tree.node(data_kind,
                         style='filled',
-                        href='#' + t.replace('_', '-'),
-                        fillcolor=kind_colors.get(t, 'grey')
+                        href='#' + data_kind.replace('_', '-'),
+                        fillcolor=kind_colors.get(data_kind, 'grey'),
+                        shape='box3d',
                         )
 
-        for d in tree[t]:
-            graph_tree.edge(t, d)
+        for d in tree[data_kind]:
+            graph_tree.edge(data_kind, d)
 
-    # Where to save this node
-    fn = 'data_kinds_nT'
-    graph_tree.render(fn)
-    with open(f'{fn}.svg', mode='r') as f:
-        svg = add_spaces(f.readlines()[5:])
     out = """
 XENON nT data kinds
 ====================
+As explained in the 
+`demo <https://straxen.readthedocs.io/en/latest/tutorials/strax_demo.html>`_, 
+in straxen, we have **data types** and **data kinds**. The **data types** are 
+documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure_nT.html>`_
+page and are the type of data that one can load in straxen using 
+`st.get_array(<RUN_ID>, <DATA_TYPE>)` or `st.get_df(<RUN_ID>, <DATA_TYPE>)`.
 
-_Under construction_
+Additionally, each data type also has a data kind. Each data kinds has a group 
+of data types associated to it. All data of a given data type has the same number 
+of entities. As such, different data types can be loaded simultaneously if they 
+are of the same data kind. For example, `peak_basics` and `peak_positions` are 
+two data types but they contain information about the same data kind: `peaks`.
+
+XENON nT data kinds
+===================
 
 .. raw:: html
 
 {svg}
 """
+    svg = tree_to_svg(graph_tree, save_as='data_kinds_nT')
+    output = out.format(svg=svg)
+
+    graph_tree = graphviz.Digraph(format='svg')
+    for data_kind, data_types in tree.keys():
+        graph_tree.node(data_kind,
+                        style='filled',
+                        href='#' + data_kind.replace('_', '-'),
+                        fillcolor=kind_colors.get(data_kind, 'grey'),
+                        shape='box3d',
+                        )
+
+        for dtype in data_types:
+            graph_tree.node(dtype,
+                            style='filled',
+                            href='#' + data_kind.replace('_', '-'),
+                            fillcolor=kind_colors.get(data_kind, 'grey'),
+                            )
+            graph_tree.edge(data_kind, dtype)
+        output += f""""
+{data_kind}
+--------------------------------------------------------
+``{data_kind}`` includes the following data types:
+{data_types}
+{tree_to_svg(graph_tree, save_as=f"{data_kind}_kind")}        
+        """
     p = this_dir + f'/reference/data_kinds_nT.rst'
     with open(p, mode='w') as f:
-        f.write(out.format(svg=svg))
+        f.write(output)
     print(p)
-    os.remove(fn + '.svg')
     assert os.path.exists(p)
 
 
