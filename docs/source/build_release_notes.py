@@ -10,21 +10,22 @@ def convert_release_notes():
         notes = f.read()
     rst = convert(notes)
     with_ref = ''
-    for line in rst:
+    for line in rst.split('\n'):
+        # Get URL for PR
         if '#' in line:
-            pr_number = line.split('#')[0]
+            pr_number = line.split('#')[1]
             while len(pr_number):
                 try:
                     pr_number = int(pr_number)
+                    break
                 except ValueError:
                     # Too many tailing characters to be an int
-                    pr_number = pr_number[:-2]
+                    pr_number = pr_number[:-1]
             if pr_number:
                 line = line.replace(f'#{pr_number}',
                                     f'`#{pr_number} <https://github.com/AxFoundation/strax/pull/>`_'
                                     )
-
-        with_ref += line
+        with_ref += line + '\n'
     target = os.path.join(this_dir, 'reference', 'release_notes.rst')
     with open(target, 'w') as f:
         f.write(with_ref)
