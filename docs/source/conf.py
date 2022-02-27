@@ -193,3 +193,5 @@ def setup(app):
     build_datastructure_doc.write_data_kind_dep_tree()
     import build_context_doc
     build_context_doc.main()
+    from build_release_notes import convert_release_notes
+    convert_release_notes()

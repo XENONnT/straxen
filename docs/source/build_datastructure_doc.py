@@ -81,7 +81,7 @@ As explained in the
 in straxen, we have **data types** and **data kinds**. The **data types** are 
 documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure_nT.html>`_
 page and are the type of data that one can load in straxen using 
-`st.get_array(<RUN_ID>, <DATA_TYPE>)` or `st.get_df(<RUN_ID>, <DATA_TYPE>)`.
+``st.get_array(<RUN_ID>, <DATA_TYPE>)`` or ``st.get_df(<RUN_ID>, <DATA_TYPE>)``.
 
 Additionally, each data type also has a data kind. Each data kinds has a group 
 of data types associated to it. All data of a given data type has the same number 
@@ -89,14 +89,15 @@ of entities. As such, different data types can be loaded simultaneously if they
 are of the same data kind. For example, `peak_basics` and `peak_positions` are 
 two data types but they contain information about the same data kind: `peaks`.
 
-XENON nT data kinds
-===================
+When writing a plugin, the ``plugin.compute(<DATA KIND>)`` method takes the **data kind**.
+
+nT data kinds
+--------------------------------------------------------
 
 .. raw:: html
 
 {svg}
 """
-
 
 titles = {'': 'Straxen {xT} datastructure',
           '_he': "Straxen {xT} datastructure for high energy channels",
@@ -111,11 +112,13 @@ kind_colors = dict(
     hitlets='#0066ff',
     peaklets='#d9ff66',
     merged_s2s='#ccffcc',
-    lone_hits='	#CAFF70',
+    lone_hits='#CAFF70',
     records='#ffa500',
     raw_records='#ff4500',
     raw_records_aqmon='#ff4500',
     raw_records_aux_mv='#ff4500',
+    online_peak_monitor='deepskyblue',
+    online_monitor='deepskyblue',
 )
 
 suffices = ['_he', '_nv', "_mv"]
@@ -293,23 +296,24 @@ def write_data_kind_dep_tree():
         return st._get_plugins((pov,), '0')[pov]
 
     tree = defaultdict(set)
-
-    for p in st._plugin_class_registry.keys():
-        this_p = get_plugin(p)
-        this_datakind = this_p.data_kind
+    data_kinds = defaultdict(list)
+    for data_type in st._plugin_class_registry.keys():
+        this_plugin = get_plugin(data_type)
+        this_data_kind = this_plugin.data_kind
 
         depends_on = []
-        for dep in strax.to_str_tuple(this_p.depends_on):
+        for dep in strax.to_str_tuple(this_plugin.depends_on):
             dep_kind = get_plugin(dep).data_kind
             if isinstance(dep_kind, (dict, immutabledict)):
                 dep_kind = dep_kind[dep]
             depends_on.append(dep_kind)
-        if isinstance(this_datakind, (dict, immutabledict)):
-            this_datakind = this_datakind[p]
+        if isinstance(this_data_kind, (dict, immutabledict)):
+            this_data_kind = this_data_kind[data_type]
 
-        for k in strax.to_str_tuple(this_datakind):
+        for k in strax.to_str_tuple(this_data_kind):
             this_deps = tree[k] | set(depends_on)
             tree[k] = this_deps
+        data_kinds[this_data_kind].append(data_type)
 
     graph_tree = graphviz.Digraph(format='svg')
     for data_kind in tree.keys():
@@ -326,9 +330,9 @@ def write_data_kind_dep_tree():
     svg = tree_to_svg(graph_tree, save_as='data_kinds_nT')
     output = data_kinds_header.format(svg=svg)
 
-    graph_tree = graphviz.Digraph(format='svg')
-    for data_kind, data_types in tree.keys():
-        graph_tree.node(data_kind,
+    for data_kind, data_types in data_kinds.items():
+        graph_tree = graphviz.Digraph(format='svg')
+        graph_tree.node(data_kind + '-data-kind',
                         style='filled',
                         href='#' + data_kind.replace('_', '-'),
                         fillcolor=kind_colors.get(data_kind, 'grey'),
@@ -341,19 +345,26 @@ def write_data_kind_dep_tree():
                             href='#' + data_kind.replace('_', '-'),
                             fillcolor=kind_colors.get(data_kind, 'grey'),
                             )
-            graph_tree.edge(data_kind, dtype)
+            graph_tree.edge(data_kind + '-data-kind', dtype)
         output += f""""
 {data_kind}
 --------------------------------------------------------
 ``{data_kind}`` includes the following data types:
-{data_types}
+{{data_types}}
+
+.. raw:: html
+
 {tree_to_svg(graph_tree, save_as=f"{data_kind}_kind")}        
+
         """
-    p = this_dir + f'/reference/data_kinds_nT.rst'
-    with open(p, mode='w') as f:
+        extra = ''
+        for d in data_types:
+            extra += f'\n - ``{d}``'
+        output = output.format(data_types=extra)
+    data_type = this_dir + f'/reference/data_kinds_nT.rst'
+    with open(data_type, mode='w') as f:
         f.write(output)
-    print(p)
-    assert os.path.exists(p)
+    assert os.path.exists(data_type)
 
 
 if __name__ == '__main__':
