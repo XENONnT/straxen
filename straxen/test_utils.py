@@ -22,8 +22,8 @@ testing_config_1T = dict(
     hev_gain_model=('1T_to_pe_placeholder', False),
     gain_model=('1T_to_pe_placeholder', False),
     elife=1e6,
-    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
+    electron_drift_velocity=1e-4,
+    electron_drift_time_gate=1700,
 )
 
 # Let's make a dummy map for NVeto
