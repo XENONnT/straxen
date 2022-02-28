@@ -341,6 +341,7 @@ def write_data_kind_dep_tree():
     for _, data_kind in sorted_zipped_lists:
         data_types = data_kinds[data_kind]
         graph_tree = graphviz.Graph(format='svg')
+        graph_tree.attr(rankdir='LR')
         graph_tree.node(data_kind + '-data-kind',
                         style='filled',
                         href='#' + data_kind.replace('_', '-'),

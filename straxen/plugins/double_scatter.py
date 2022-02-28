@@ -40,7 +40,7 @@ class DistinctChannels(strax.LoopPlugin):
 @export
 class EventInfoDouble(strax.MergeOnlyPlugin):
     """Alternate version of event_info for Kr and other double scatter
-        analyses:
+    analyses:
       - Uses a different naming convention:
         s1 -> s1_a, alt_s1 -> s1_b, and similarly for s2s;
       - Adds s1_b_distinct_channels, which can be tricky to compute
