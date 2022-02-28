@@ -368,10 +368,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     def setup(self):
         self.time_window_backward = self.config['time_window_backward']
         if self.config['exclude_drift_time']:
-            electron_drift_velocity = straxen.get_correction_from_cmt(
-                self.run_id,
-                self.config['electron_drift_velocity'])
-            drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+            drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
             self.n_drift_time = drift_time_max
         else:
             self.n_drift_time = 0
