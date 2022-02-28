@@ -156,14 +156,6 @@ straxen.plugins.veto\_pulse\_processing module
    :undoc-members:
    :show-inheritance:
 
-straxen.plugins.veto\_veto\_regions module
-------------------------------------------
-
-.. automodule:: straxen.plugins.veto_veto_regions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 straxen.plugins.x1t\_cuts module
 --------------------------------
 
