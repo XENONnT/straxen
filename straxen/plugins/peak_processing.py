@@ -339,9 +339,6 @@ class PeakProximity(strax.OverlapWindowPlugin):
                  help='The exponent of delta t when calculating shadow'),
     strax.Option('time_window_backward', default=int(3e9),
                  help='Search for S2s causing shadow in this time window [ns]'),
-    strax.Option(name='electron_drift_velocity',
-                 default=('electron_drift_velocity', 'ONLINE', True),
-                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'),
     strax.Option(name='max_drift_length', default=straxen.tpc_z,
                  help='Total length of the TPC from the bottom of gate to the '
                       'top of cathode wires [cm]'),
@@ -359,6 +356,14 @@ class PeakShadow(strax.OverlapWindowPlugin):
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
+
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
 
     def setup(self):
         self.time_window_backward = self.config['time_window_backward']

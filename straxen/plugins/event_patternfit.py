@@ -36,12 +36,6 @@ export, __all__ = strax.exporter()
                  help='Store normalized LLH per channel for each peak'),
     strax.Option('max_r_pattern_fit', default=straxen.tpc_r, type=float,
                  help='Maximal radius of the peaks where llh calculation will be performed'),
-    strax.Option(name='electron_drift_velocity', infer_type=False,
-                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-                 default=("electron_drift_velocity", "ONLINE", True)),
-    strax.Option(name='electron_drift_time_gate', infer_type=False,
-                 help='Electron drift time from the gate in ns',
-                 default=("electron_drift_time_gate", "ONLINE", True)),
 )
 
 class EventPatternFit(strax.Plugin):
@@ -58,7 +52,22 @@ class EventPatternFit(strax.Plugin):
            default='itp_map://resource://cmt://' 
                    's1_aft_xyz_map' 
                    '?version=ONLINE&run_id=plugin.run_id&fmt=json', 
-           cache=True) 
+           cache=True)
+
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
+    electron_drift_time_gate = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_time_gate'
+                '?version=ONLINE&run_id=plugin.run_id',
+        help='Electron drift time from the gate in ns',
+        cache=True)
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -111,8 +120,6 @@ class EventPatternFit(strax.Plugin):
         return dtype
     
     def setup(self):
-        self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
-        self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
         self.mean_pe_photon = self.config['mean_pe_per_photon']
                     
         # Getting optical maps
