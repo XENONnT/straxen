@@ -309,7 +309,6 @@ def veto_event_positions_dtype() -> list:
 
 @numba.njit(cache=True, nogil=True)
 def compute_positions(event_angles: np.ndarray,
-                      events: np.ndarray,
                       contained_hitlets: numba.typed.typedlist.List,
                       pmt_pos: np.ndarray,
                       start_channel: int = 2000):
@@ -321,22 +320,22 @@ def compute_positions(event_angles: np.ndarray,
 
     :param event_angles: Result array of the veto_event_position dtype.
         The result is updated inplace.
-    :param events: Events for which the position should be computed.
     :param contained_hitlets: Hitlets contained in each event.
     :param pmt_pos: Position of the veto PMTs
     :param start_channel: Starting channel of the detector.
     """
-    for e_angles, e, hitlets in zip(event_angles, events, contained_hitlets):
-        if e['area']:
+    for e_angles, hitlets in zip(event_angles, contained_hitlets):
+        prompt_event_area = np.sum(hitlets['area'])
+        if prompt_event_area:
             ch = hitlets['channel'] - start_channel
             pos_x = pmt_pos['x'][ch]
             pos_y = pmt_pos['y'][ch]
             pos_z = pmt_pos['z'][ch]
 
-            e_angles['pos_x'] = np.sum(pos_x * hitlets['area'])/e['area']
-            e_angles['pos_y'] = np.sum(pos_y * hitlets['area'])/e['area']
-            e_angles['pos_z'] = np.sum(pos_z * hitlets['area'])/e['area']
-            w = hitlets['area'] / e['area']  # normalized weights
+            e_angles['pos_x'] = np.sum(pos_x * hitlets['area'])/prompt_event_area
+            e_angles['pos_y'] = np.sum(pos_y * hitlets['area'])/prompt_event_area
+            e_angles['pos_z'] = np.sum(pos_z * hitlets['area'])/prompt_event_area
+            w = hitlets['area'] / prompt_event_area  # normalized weights
             if len(hitlets) and np.sum(w) > 0:
                 e_angles['pos_x_spread'] = np.sqrt(
                     np.sum(w * (pos_x - e_angles['pos_x'])**2)/np.sum(w)
