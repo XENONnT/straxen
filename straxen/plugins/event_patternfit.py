@@ -52,11 +52,14 @@ class EventPatternFit(strax.Plugin):
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
     __version__ = '0.1.2'
+
+    # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig( 
            default='itp_map://resource://cmt://' 
                    's1_aft_xyz_map' 
                    '?version=ONLINE&run_id=plugin.run_id&fmt=json', 
            cache=True) 
+
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
                   'Modified Poisson likelihood value for main S2 in the event'),
@@ -111,12 +114,6 @@ class EventPatternFit(strax.Plugin):
         self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
         self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
         self.mean_pe_photon = self.config['mean_pe_per_photon']
-        
-        # Getting S1 AFT maps
-        self.s1_aft_map = straxen.InterpolatingMap(
-            straxen.get_resource(
-                self.config['s1_aft_map'],
-                fmt=self._infer_map_format(self.config['s1_aft_map'])))
                     
         # Getting optical maps
         self.s1_pattern_map = straxen.InterpolatingMap(
