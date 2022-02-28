@@ -8,7 +8,7 @@ import warnings
 import typing as ty
 from pandas.util._decorators import deprecate_kwarg
 
-from straxen.common import pax_file
+from straxen.common import pax_file, aux_repo
 
 common_opts = dict(
     register_all=[
@@ -528,6 +528,7 @@ x1t_common_config = dict(
     rel_extraction_eff=1.0,
     s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',  # noqa
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
+    s1_aft_xyz_map=f'itp_map://resource://{aux_repo + "023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json"}?fmt=json', # noqa
     g1=0.1426,
     g2=11.55/(1 - 0.63),
 )

@@ -52,7 +52,7 @@ _testing_config_nT = dict(
     s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
     electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    s1_aft_map=aux_repo + '023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
+    s1_aft_xyz_map=f'itp_map://resource://{aux_repo + "023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json"}?fmt=json', # noqa
     s2_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s2_xy_unity_patterns.json.gz',  # noqa
     s1_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s1_xyz_unity_patterns.json.gz',  # noqa
     electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
