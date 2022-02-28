@@ -1,21 +1,22 @@
 1.3.0 / 2022-02-26
 ------------------
+Minor:
+- Rewrite aqmon processing (#929)
+- Add plugin to compute time offsets per chunk (#917)
+- Change alt_s2 identification criterion (#890)
+
 Patch
+- Remove median baseline from nveto processing (#927)
 - Patch scada interface (#928)
+- Updated nveto resolving time to 200 ns. Change to URL configs (#933)
 
 Testing
 - Enable holoviews testing py3.10 (#914)
 - make coverage configuration (#926) 
 
 Notes:
-- Change alt_s2 identification criterion (#890) 
-- Add plugin to compute time offsets per chunk (#917) 
-- Remove median baseline from nveto processing (#927)
-- Rewrite aqmon processing (#929) 
-- Updated nveto resolving time to 200 ns. Change to URL configs (#933) 
 - The lineage of the aqmon processing changed
 - The lineages of the n/m-veto changed.
-
 
 
 1.2.8 / 2022-02-16
