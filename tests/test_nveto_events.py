@@ -224,7 +224,6 @@ def test_nveto_event_plugin(hitlets, area):
                             dtype=straxen.plugins.veto_events.veto_event_positions_dtype())
 
     straxen.plugins.veto_events.compute_positions(events_angle,
-                                                  events,
                                                   split_hitlets,
                                                   npmt_pos,
                                                   start_channel=2000)
