@@ -69,7 +69,7 @@ because changing any of those options affect this data indirectly.
 
 {config_options}
 
-------------------
+
 ------------------
 """
 
@@ -209,7 +209,6 @@ def build_datastructure_doc(is_nt):
 
                 # Create dependency graph
                 graph_tree = graphviz.Digraph(format='svg')
-
                 # Add plugins and dependencies recursively
                 add_deps_to_graph_tree(graph_tree, this_plugin, this_data_type)
 
@@ -318,6 +317,7 @@ def write_data_kind_dep_tree():
         data_kinds[this_data_kind].append(data_type)
 
     graph_tree = graphviz.Digraph(format='svg')
+    graph_tree.attr(rankdir='RL')
     for data_kind in tree.keys():
         graph_tree.node(data_kind,
                         style='filled',
