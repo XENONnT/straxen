@@ -543,9 +543,9 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     Features are the number of lonehits, small S0, S1, S2 in a time window before peaks,
     and the number of small S2 in circle near the S2 peak in a time window.
     References:
-        * v0.0.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.0.6 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.5'
+    __version__ = '0.0.6'
     depends_on = ('lone_hits', 'peak_basics', 'peak_positions')
     provides = 'peak_ambience'
     data_kind = 'peaks'
@@ -683,7 +683,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
             for idx in range(indices[0], indices[1]):
                 creating_hit = pre_hits[idx]
                 dt = suspicious_peak['center_time'] - creating_hit['time']
-                if dt <= 0:
+                if (dt <= 0) or (creating_hit['area'] <= 0):
                     continue
                 num_array[p_i] += 1
                 # Sometimes we may interested in sum of area / dt
