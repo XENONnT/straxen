@@ -44,9 +44,9 @@ class Events(strax.OverlapWindowPlugin):
     which satisfies certain conditions:
         1. The triggering peak must have a certain area.
         2. The triggering peak must have less than
-        "trigger_max_competing" peaks. (A competing peak must have a
-        certain area fraction of the triggering peak and must be in a
-        window close to the main peak)
+           "trigger_max_competing" peaks. (A competing peak must have a
+           certain area fraction of the triggering peak and must be in a
+           window close to the main peak)
 
     Note:
         The time range which defines an event gets chopped at the chunk
