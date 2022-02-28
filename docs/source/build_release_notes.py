@@ -1,6 +1,12 @@
 from m2r import convert
 import os
 
+header = """
+Release notes
+==============
+
+"""
+
 
 def convert_release_notes():
     """Convert the release notes to an RST page with links to PRs"""
@@ -27,8 +33,9 @@ def convert_release_notes():
                                     )
         with_ref += line + '\n'
     target = os.path.join(this_dir, 'reference', 'release_notes.rst')
+
     with open(target, 'w') as f:
-        f.write(with_ref)
+        f.write(header+with_ref)
 
 
 if __name__ == '__main__':

@@ -89,7 +89,7 @@ of entities. As such, different data types can be loaded simultaneously if they
 are of the same data kind. For example, `peak_basics` and `peak_positions` are 
 two data types but they contain information about the same data kind: `peaks`.
 
-When writing a plugin, the ``plugin.compute(<DATA KIND>)`` method takes the **data kind**.
+When writing a plugin, the ``plugin.compute(self, <DATA KIND>)`` method takes the **data kind**.
 
 nT data kinds
 --------------------------------------------------------
@@ -340,7 +340,7 @@ def write_data_kind_dep_tree():
 
     for _, data_kind in sorted_zipped_lists:
         data_types = data_kinds[data_kind]
-        graph_tree = graphviz.Digraph(format='svg')
+        graph_tree = graphviz.Graph(format='svg')
         graph_tree.node(data_kind + '-data-kind',
                         style='filled',
                         href='#' + data_kind.replace('_', '-'),
