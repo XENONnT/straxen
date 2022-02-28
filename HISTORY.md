@@ -15,7 +15,8 @@ Testing
 - make coverage configuration (#926) 
 
 Notes:
-- The lineage of the aqmon processing changed
+- The lineage of the aqmon processing-chain changed
+- The lineage of plugins > `event_basics` changed
 - The lineages of the n/m-veto changed.
 
 
