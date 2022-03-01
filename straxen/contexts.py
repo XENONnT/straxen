@@ -8,7 +8,7 @@ import warnings
 import typing as ty
 from pandas.util._decorators import deprecate_kwarg
 
-from straxen.common import pax_file
+from straxen.common import pax_file, aux_repo
 
 common_opts = dict(
     register_all=[
@@ -41,8 +41,6 @@ xnt_common_config = dict(
     gain_model=("to_pe_model", "ONLINE", True),
     gain_model_nv=("to_pe_model_nv", "ONLINE", True),
     gain_model_mv=("to_pe_model_mv", "ONLINE", True),
-    tpc_internal_delay=immutabledict({'0': 4817,
-                                      '021286': 10137}),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -522,14 +520,16 @@ x1t_common_config = dict(
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
     elife=1e6,
-    electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
+    electron_drift_velocity=1.3325e-4,
     max_drift_length=96.9,
-    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
+    electron_drift_time_gate=1700,
     se_gain=28.2,
     avg_se_gain=28.2,
     rel_extraction_eff=1.0,
+    rel_light_yield=1.0,
     s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',  # noqa
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
+    s1_aft_map=f'itp_map://resource://{aux_repo + "023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json"}?fmt=json', # noqa
     g1=0.1426,
     g2=11.55/(1 - 0.63),
 )
@@ -554,7 +554,7 @@ def demo():
         hev_gain_model=('1T_to_pe_placeholder', False),
         gain_model=('1T_to_pe_placeholder', False),
         elife=1e6,
-        electron_drift_velocity=("electron_drift_velocity_constant", 1.3325e-4),
+        electron_drift_velocity=1.3325e-4,
         se_gain=28.2,
         avg_se_gain=28.2,
         rel_extraction_eff=1.0,

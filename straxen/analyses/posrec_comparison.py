@@ -24,12 +24,13 @@ def load_corrected_positions(context, run_id, events,
     posrec_algos = strax.to_str_tuple(posrec_algos)
 
     if cmt_version is None:
-        fdc_config = None
-        try:
-            fdc_config = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
+        fdc_config = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
+        if isinstance(fdc_config, str) and 'cmt://' in fdc_config:
+            cmt_version = straxen.URLConfig.split_url_kwargs(fdc_config)
+        elif straxen.is_cmt_option(fdc_config):
             cmt_version = fdc_config[1]
-        except IndexError as e:
-            raise ValueError(f'CMT is not set? Your fdc config is {fdc_config}') from e
+        else:
+            raise ValueError('FDC map is not a CMT option, cannot infer cmt version.')
 
     if (
             isinstance(cmt_version, (tuple, list))
@@ -43,8 +44,7 @@ def load_corrected_positions(context, run_id, events,
 
     # Get drift from CMT
     ep = context.get_single_plugin(run_id, 'event_positions')
-    drift_conf = ep.config.get('electron_drift_velocity')
-    drift_speed = straxen.get_correction_from_cmt(run_id, drift_conf)
+    drift_speed = ep.electron_drift_velocity
     dtype = []
 
     for algo in posrec_algos:
