@@ -10,6 +10,9 @@ from .pulse_processing import *
 from . import peaklet_processing
 from .peaklet_processing import *
 
+from . import bayes_peaklet_classification
+from .bayes_peaklet_classification import *
+
 from . import peak_processing
 from .peak_processing import *
 
@@ -27,6 +30,9 @@ from .event_patternfit import *
 
 from . import event_processing
 from .event_processing import *
+
+from .event_w_bayes_class import *
+from . import event_w_bayes_class
 
 from . import afterpulse_processing
 from .afterpulse_processing import *
