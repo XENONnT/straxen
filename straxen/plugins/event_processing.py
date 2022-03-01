@@ -48,9 +48,9 @@ class Events(strax.OverlapWindowPlugin):
     which satisfies certain conditions:
         1. The triggering peak must have a certain area.
         2. The triggering peak must have less than
-        "trigger_max_competing" peaks. (A competing peak must have a
-        certain area fraction of the triggering peak and must be in a
-        window close to the main peak)
+           "trigger_max_competing" peaks. (A competing peak must have a
+           certain area fraction of the triggering peak and must be in a
+           window close to the main peak)
 
     Note:
         The time range which defines an event gets chopped at the chunk
@@ -617,7 +617,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -655,10 +655,16 @@ class CorrectedAreas(strax.Plugin):
         help='Actual SE gain for a given run (allows for time dependence)')
 
     # relative extraction efficiency which can change with time and modeled by CMT.
-    # defaults to no correction
     rel_extraction_eff = straxen.URLConfig(
-        default=1.0,
+        default='cmt://rel_extraction_eff?version=ONLINE&run_id=plugin.run_id',
         help='Relative extraction efficiency for this run (allows for time dependence)')
+
+    # relative light yield
+    # defaults to no correction
+    rel_light_yield = straxen.URLConfig(
+        default='cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id',
+        help='Relative light yield (allows for time dependence)'
+    )
 
     def infer_dtype(self):
         dtype = []
@@ -666,6 +672,8 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
+                      (f'{peak_type}cs1_wo_timecorr', np.float32,
+                       f'Corrected area of {peak_name} S1 [PE] before time-dep LY correction'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before elife correction '
                        f'(s2 xy correction + SEG/EE correction applied) [PE]'),
@@ -691,7 +699,8 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
 
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1_wo_timecorr"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
         # s2 corrections
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
