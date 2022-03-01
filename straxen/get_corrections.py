@@ -162,7 +162,7 @@ def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]
     """
 
     cmt_options = {}
-    runid_test_str = 'norunids!'
+    runid_test_str = '0000'
 
     for data_type, plugin in context._plugin_class_registry.items():
         for option_key, option in plugin.takes_config.items():
