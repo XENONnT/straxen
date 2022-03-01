@@ -140,4 +140,3 @@ def test_nv_for_dummy_rr():
     st.context_config['forbid_creation_of'] = tuple()
     st.register(straxen.test_utils.DummyRawRecords)
     st.make(straxen.test_utils.nt_test_run_id, 'hitlets_nv')
-    st.make(straxen.test_utils.nt_test_run_id, 'events_tagged')

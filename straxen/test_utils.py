@@ -8,6 +8,7 @@ from os import environ as os_environ
 from straxen import aux_repo, pax_file
 from pandas import DataFrame
 from immutabledict import immutabledict
+from importlib import import_module
 import numpy as np
 
 
@@ -62,6 +63,7 @@ _testing_config_nT = dict(
     avg_se_gain=1.0,
     se_gain=1.0,
     rel_extraction_eff=1.0,
+    rel_light_yield=1.0,
     g1=0.1,
     g2=10,
 )
@@ -101,20 +103,45 @@ def _overwrite_testing_function_file(function_file):
     return function_file
 
 
+def is_installed(module):
+    try:
+        import_module(module)
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
 @export
 def _is_on_pytest():
     """Check if we are on a pytest"""
     return 'PYTEST_CURRENT_TEST' in os_environ
 
 
+def _get_fake_daq_reader():
+    class DAQReader(straxen.DAQReader):
+        """
+        Dummy version of the DAQ reader to make sure that all the testing
+        data produced here will have a different lineage
+        """
+        __version__ = "MOCKTESTDATA"
+    return DAQReader
+
+
 def nt_test_context(target_context='xenonnt_online',
-                    deregister=('peak_veto_tags', 'events_tagged'),
+                    deregister=(),
                     **kwargs):
+    if not straxen.utilix_is_configured(warning_message=False):
+        kwargs.setdefault('_database_init', False)
+
     st = getattr(straxen.contexts, target_context)(**kwargs)
-    st.set_config({'diagnose_sorting': True})
-    st._plugin_class_registry['raw_records'].__version__ = "MOCKTESTDATA"  # noqa
+    st.set_config({'diagnose_sorting': True, 'store_per_channel': True})
+    st.register(_get_fake_daq_reader())
     st.storage = [strax.DataDirectory('./strax_test_data')]
-    download_test_data('https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/f0d177401e11408b273564f0e29df77528e83d26/strax_files/012882-raw_records-z7q2d2ye2t.tar')  # noqa
+    download_test_data('https://raw.githubusercontent.com/XENONnT/'
+                       'strax_auxiliary_files/'
+                       'f0d177401e11408b273564f0e29df77528e83d26/'
+                       'strax_files/'
+                       '012882-raw_records-z7q2d2ye2t.tar')
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
@@ -128,6 +155,35 @@ def nt_test_context(target_context='xenonnt_online',
     for plugin in to_remove:
         del st._plugin_class_registry[plugin]
     return st
+
+
+def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
+    """
+    Hypothesis stragtegy which creates unqiue time intervals.
+
+    :param size: Number of intervals desired. Can be less if non-unique
+        intervals are found.
+    :param time_range: Time range in which intervals should be.
+    :param allow_zero_length: If true allow zero length intervals.
+    """
+    from hypothesis import strategies
+    strat = strategies.lists(elements=strategies.integers(*time_range),
+                             min_size=size * 2,
+                             max_size=size * 2
+                             ).map(lambda x: _convert_to_interval(x, allow_zero_length))
+    return strat
+
+
+def _convert_to_interval(time_stamps, allow_zero_length):
+    time_stamps = np.sort(time_stamps)
+    intervals = np.zeros(len(time_stamps) // 2, strax.time_dt_fields)
+    intervals['dt'] = 1
+    intervals['time'] = time_stamps[::2]
+    intervals['length'] = time_stamps[1::2] - time_stamps[::2]
+
+    if not allow_zero_length:
+        intervals = intervals[intervals['length'] > 0]
+    return np.unique(intervals)
 
 
 @strax.takes_config(

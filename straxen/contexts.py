@@ -2,8 +2,11 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from copy import deepcopy
-from .rucio import HAVE_ADMIX
+from straxen import HAVE_ADMIX
 import os
+import warnings
+import typing as ty
+from pandas.util._decorators import deprecate_kwarg
 
 from straxen.common import pax_file
 
@@ -79,13 +82,11 @@ xnt_common_opts.update({
                                            straxen.PeakletsHighEnergy,
                                            straxen.PeakletClassificationHighEnergy,
                                            straxen.MergedS2sHighEnergy,
-                                           straxen.PeakVetoTagging,
                                            straxen.EventInfo,
                                            straxen.PeakShadow,
                                            straxen.EventShadow,
                                            ],
-    'register_all': common_opts['register_all'] + [straxen.veto_veto_regions,
-                                                   straxen.nveto_recorder,
+    'register_all': common_opts['register_all'] + [straxen.nveto_recorder,
                                                    straxen.veto_pulse_processing,
                                                    straxen.veto_hitlets,
                                                    straxen.veto_events,
@@ -111,19 +112,31 @@ def xenonnt(cmt_version='global_ONLINE', **kwargs):
     return st
 
 
-def xenonnt_online(output_folder='./strax_data',
-                   we_are_the_daq=False,
-                   download_heavy=False,
-                   _minimum_run_number=7157,
-                   _maximum_run_number=None,
-                   _database_init=True,
-                   _forbid_creation_of=None,
-                   _include_rucio_remote=False,
-                   _rucio_path='/dali/lgrandi/rucio/',
-                   _raw_path='/dali/lgrandi/xenonnt/raw',
-                   _processed_path='/dali/lgrandi/xenonnt/processed',
-                   _add_online_monitor_frontend=False,
-                   _context_config_overwrite=None,
+@deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
+@deprecate_kwarg('_maximum_run_number', 'maximum_run_number')
+@deprecate_kwarg('_include_rucio_remote', 'include_rucio_remote')
+@deprecate_kwarg('_add_online_monitor_frontend', 'include_online_monitor')
+def xenonnt_online(output_folder: str = './strax_data',
+                   we_are_the_daq: bool = False,
+                   minimum_run_number: int = 7157,
+                   maximum_run_number: ty.Optional[int] = None,
+
+                   # Frontends
+                   include_rucio_remote: bool = False,
+                   include_online_monitor: bool = False,
+                   include_rucio_local: bool = False,
+
+                   # Frontend options
+                   download_heavy: bool = False,
+                   _rucio_path: str = '/dali/lgrandi/rucio/',
+                   _rucio_local_path: ty.Optional[str] = None,
+                   _raw_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/raw',
+                   _processed_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/processed',
+
+                   # Testing options
+                   _context_config_overwrite: ty.Optional[dict] = None,
+                   _database_init: bool = True,
+                   _forbid_creation_of: ty.Optional[dict] = None,
                    **kwargs):
     """
     XENONnT online processing and analysis
@@ -131,21 +144,28 @@ def xenonnt_online(output_folder='./strax_data',
     :param output_folder: str, Path of the strax.DataDirectory where new
         data can be stored
     :param we_are_the_daq: bool, if we have admin access to upload data
-    :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less the aqmon)
-    :param _minimum_run_number: int, lowest number to consider
-    :param _maximum_run_number: Highest number to consider. When None
+    :param minimum_run_number: int, lowest number to consider
+    :param maximum_run_number: Highest number to consider. When None
         (the default) consider all runs that are higher than the
         minimum_run_number.
-    :param _database_init: bool, start the database (for testing)
-    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
-        being written (raw_records* is always forbidden).
-    :param _include_rucio_remote: allow remote downloads in the context
+    :param include_rucio_remote: add the rucio remote frontend to the
+        context
+    :param include_online_monitor: add the online monitor storage frontend.
+    :param include_rucio_local: add the rucio local storage frontend.
+        This is only needed if one wants to do a fuzzy search in the
+        data the runs database is out of sync with rucio
+    :param download_heavy: bool, whether or not to allow downloads of
+        heavy data (raw_records*, less the aqmon)
+
     :param _rucio_path: str, path of rucio
+    :param _rucio_local_path: str, path of local RSE of rucio. Only use
+        for testing!
     :param _raw_path: str, common path of the raw-data
     :param _processed_path: str. common path of output data
     :param _context_config_overwrite: dict, overwrite config
-    :param _add_online_monitor_frontend: bool, should we add the online
-        monitor storage frontend.
+    :param _database_init: bool, start the database (for testing)
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
+        being written (raw_records* is always forbidden).
     :param kwargs: dict, context options
     :return: strax.Context
     """
@@ -156,13 +176,15 @@ def xenonnt_online(output_folder='./strax_data',
     st = strax.Context(
         config=straxen.contexts.xnt_common_config,
         **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulseProcessing])
+    st.register([straxen.DAQReader,
+                 straxen.LEDCalibration,
+                 straxen.LEDAfterpulseProcessing])
 
     st.storage = [
         straxen.RunDB(
             readonly=not we_are_the_daq,
-            minimum_run_number=_minimum_run_number,
-            maximum_run_number=_maximum_run_number,
+            minimum_run_number=minimum_run_number,
+            maximum_run_number=maximum_run_number,
             runid_field='number',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
@@ -186,16 +208,19 @@ def xenonnt_online(output_folder='./strax_data',
             st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
     # Add the rucio frontend if we are able to
-    if HAVE_ADMIX:
-        rucio_frontend = straxen.rucio.RucioFrontend(
-            include_remote=_include_rucio_remote,
+    if include_rucio_remote and HAVE_ADMIX:
+        rucio_frontend = straxen.RucioRemoteFrontend(
             staging_dir=os.path.join(output_folder, 'rucio'),
             download_heavy=download_heavy,
         )
         st.storage += [rucio_frontend]
 
+    if include_rucio_local:
+        rucio_local_frontend = straxen.RucioLocalFrontend(path=_rucio_local_path)
+        st.storage += [rucio_local_frontend]
+
     # Only the online monitor backend for the DAQ
-    if _database_init and (_add_online_monitor_frontend or we_are_the_daq):
+    if _database_init and (include_online_monitor or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
             take_only=('veto_intervals',
@@ -214,6 +239,8 @@ def xenonnt_online(output_folder='./strax_data',
                                                    straxen.check_loading_allowed,
                                                    )})
     if _context_config_overwrite is not None:
+        warnings.warn(f'_context_config_overwrite is deprecated, please pass to context as kwargs',
+                      DeprecationWarning)
         st.set_context_config(_context_config_overwrite)
 
     return st
@@ -231,7 +258,7 @@ def xenonnt_led(**kwargs):
         config=st.config,
         storage=st.storage,
         **st.context_config)
-    st.register([straxen.DAQReader, 
+    st.register([straxen.DAQReader,
                  straxen.LEDCalibration,
                  straxen.nVETORecorder,
                  straxen.nVETOPulseProcessing,
@@ -499,6 +526,7 @@ x1t_common_config = dict(
     se_gain=28.2,
     avg_se_gain=28.2,
     rel_extraction_eff=1.0,
+    rel_light_yield=1.0,
     s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',  # noqa
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
     g1=0.1426,
