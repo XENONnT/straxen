@@ -26,9 +26,10 @@ class BayesPeakletClassification(strax.Plugin):
 
     # Descriptor configs
     bayes_config_file = straxen.URLConfig(
-        default='resource://'
-        'conditional_probabilities_and_bins_v1_w_global_v6.npz?fmt=npy',
-        help='Bayes configuration file, conditional probabilities tables and Bayes discrete bins'
+        default='resource://cmt://'
+                'bayes_model'
+                '?version=ONLINE&run_id=plugin.run_id&fmt=npy',
+        help='Bayes model, conditional probabilities tables and Bayes discrete bins'
     )
     bayes_n_nodes = straxen.URLConfig(
         default=50,
@@ -58,7 +59,6 @@ class BayesPeakletClassification(strax.Plugin):
                     ln_prob_s1=ln_prob_s1,
                     ln_prob_s2=ln_prob_s2
                     )
-
 
 def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     """
@@ -90,7 +90,6 @@ def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
 
     del data
     return waveforms, quantiles
-
 
 def compute_inference(bins: int, bayes_n_nodes: int, cpt: np.ndarray, n_bayes_classes: int, class_prior: np.ndarray,
                       waveforms: np.ndarray, quantiles: np.ndarray):
