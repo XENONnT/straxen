@@ -139,6 +139,7 @@ class TestSimContextNT(unittest.TestCase):
         kwargs.setdefault('cmt_version', 'global_ONLINE')
         return straxen.contexts.xenonnt_simulation(*args, **kwargs)
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_sim_context_main(self):
         st = self.context(cmt_run_id_sim='008000')
         st.search_field('time')
