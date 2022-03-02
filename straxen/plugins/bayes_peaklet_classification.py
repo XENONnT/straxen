@@ -10,6 +10,7 @@ class BayesPeakletClassification(strax.Plugin):
     Bayes Peaklet classification
     Returns the ln probability of a each event belonging to the S1 and S2 class.
     Uses conditional probabilities and data parameterization learned from wfsim data.
+    More info can be found here xenon:xenonnt:ahiguera:bayespeakclassification
 
     :param peaks: peaks
     :param waveforms: peaks waveforms in PE/ns
@@ -75,20 +76,24 @@ def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     steps = np.arange(0, num_samples+1, step_size)
 
     data = peaks['data'].copy()
-    dts = peaks['dt'].copy()
     data[data < 0.0] = 0.0
     for i, p in enumerate(peaks):
         sample_number = np.arange(0, num_samples+1, 1)*p['dt']
-        frac_of_cumsum = np.append([0.0], np.cumsum(data[i, :]) / np.sum(data[i, :]))
-        cumsum_steps = np.interp(np.linspace(0., 1., bayes_n_nodes, endpoint=False), frac_of_cumsum, sample_number)
-        cumsum_steps = np.append(cumsum_steps, sample_number[-1])
+        # create buffer to avoid np.append
+        frac_of_cumsum = np.empty(num_samples+1)
+        frac_of_cumsum[0] = 0.0
+        frac_of_cumsum[1:] = np.cumsum(data[i, :]) / np.sum(data[i, :])
+        # create buffer to avoid np.append
+        cumsum_steps = np.empty(bayes_n_nodes+1)
+        cumsum_steps[0:bayes_n_nodes] = np.interp(np.linspace(0., 1., bayes_n_nodes, endpoint=False), frac_of_cumsum, sample_number)
+        cumsum_steps[-1:] = sample_number[-1]
         quantiles[i, :] = cumsum_steps[1:] - cumsum_steps[:-1]
 
     for j in range(bayes_n_nodes):
         waveforms[:, j] = np.sum(data[:, steps[j]:steps[j+1]], axis=1)
-    waveforms = waveforms/(dts*step_size)[:, np.newaxis]
-
+    waveforms = waveforms/(peaks['dt']*step_size)[:, np.newaxis]
     del data
+    
     return waveforms, quantiles
 
 def compute_inference(bins: int, bayes_n_nodes: int, cpt: np.ndarray, n_bayes_classes: int, class_prior: np.ndarray,
