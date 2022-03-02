@@ -15,6 +15,7 @@ without mixing in details of how to load the configuration data which tends to c
 
 
 The main goals of the URLConfig:
+
 - More flexibility in switching between CMT, get_resource, and static configuration values.
 - Remove logic of how to fetch and construct configuration objects from the plugin to improve purity (computational logic only) and maintainability of the plugins.
 - Make unit testing easier by separating the logic that uses the configuration from the logic that fetches its current value.

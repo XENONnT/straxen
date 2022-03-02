@@ -72,8 +72,8 @@ FAKE_MERGED_S2_TYPE = -42
 class Peaklets(strax.Plugin):
     """
     Split records into:
-        -peaklets
-        -lone_hits
+     - peaklets
+     - lone_hits
 
     Peaklets are very aggressively split peaks such that we are able
     to find S1-S2s even if they are close to each other. (S2) Peaks

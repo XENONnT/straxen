@@ -26,10 +26,6 @@ export, __all__ = strax.exporter()
                  help='Extend events this many ns to the right from each '
                       'triggering peak.',
                  ),
-    strax.Option(name='electron_drift_velocity', infer_type=False,
-                 default=("electron_drift_velocity", "ONLINE", True),
-                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-                 ),
     strax.Option(name='max_drift_length',
                  default=straxen.tpc_z, type=(int, float),
                  help='Total length of the TPC from the bottom of gate to the '
@@ -48,9 +44,9 @@ class Events(strax.OverlapWindowPlugin):
     which satisfies certain conditions:
         1. The triggering peak must have a certain area.
         2. The triggering peak must have less than
-        "trigger_max_competing" peaks. (A competing peak must have a
-        certain area fraction of the triggering peak and must be in a
-        window close to the main peak)
+           "trigger_max_competing" peaks. (A competing peak must have a
+           certain area fraction of the triggering peak and must be in a
+           window close to the main peak)
 
     Note:
         The time range which defines an event gets chopped at the chunk
@@ -62,6 +58,14 @@ class Events(strax.OverlapWindowPlugin):
     __version__ = '0.1.0'
     save_when = strax.SaveWhen.NEVER
 
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
         ('time', np.int64, 'Event start time in ns since the unix epoch'),
@@ -70,10 +74,7 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     def setup(self):
-        electron_drift_velocity = get_correction_from_cmt(
-            self.run_id,
-            self.config['electron_drift_velocity'])
-        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
         self.left_extension = self.config['left_event_extension'] + self.drift_time_max
@@ -137,10 +138,6 @@ class Events(strax.OverlapWindowPlugin):
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
              "in the peaklet classification"),
     strax.Option(
-        name='electron_drift_velocity', infer_type=False,
-        default=("electron_drift_velocity", "ONLINE", True),
-        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',),
-    strax.Option(
         name='max_drift_length',
         default=straxen.tpc_z, infer_type=False,
         help='Total length of the TPC from the bottom of gate to the '
@@ -166,6 +163,14 @@ class EventBasics(strax.Plugin):
     provides = 'event_basics'
     data_kind = 'events'
     loop_over = 'events'
+
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
 
     def infer_dtype(self):
         # Basic event properties
@@ -223,10 +228,7 @@ class EventBasics(strax.Plugin):
         )
 
     def setup(self):
-        electron_drift_velocity = get_correction_from_cmt(
-            self.run_id,
-            self.config['electron_drift_velocity'])
-        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -476,16 +478,6 @@ class EventBasics(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
-        name='electron_drift_velocity', infer_type=False,
-        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=("electron_drift_velocity", "ONLINE", True)
-    ),
-    strax.Option(
-        name='electron_drift_time_gate', infer_type=False,
-        help='Electron drift time from the gate in ns',
-        default=("electron_drift_time_gate", "ONLINE", True)
-    ),
-    strax.Option(
         name='fdc_map', infer_type=False,
         help='3D field distortion correction map path',
         default_by_run=[
@@ -514,6 +506,21 @@ class EventPositions(strax.Plugin):
         help="default reconstruction algorithm that provides (x,y)"
     )
 
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
+    electron_drift_time_gate = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_time_gate'
+                '?version=ONLINE&run_id=plugin.run_id',
+        help='Electron drift time from the gate in ns',
+        cache=True)
+
     dtype = [
         ('x', np.float32,
          'Interaction x-position, field-distortion corrected (cm)'),
@@ -536,12 +543,6 @@ class EventPositions(strax.Plugin):
             ] + strax.time_fields
 
     def setup(self):
-
-        self.electron_drift_velocity = get_correction_from_cmt(
-            self.run_id, self.config['electron_drift_velocity'])
-        self.electron_drift_time_gate = get_correction_from_cmt(
-            self.run_id, self.config['electron_drift_time_gate'])
-        
         if isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
                 get_resource(self.config['fdc_map'], fmt='binary'))
@@ -617,7 +618,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -655,10 +656,16 @@ class CorrectedAreas(strax.Plugin):
         help='Actual SE gain for a given run (allows for time dependence)')
 
     # relative extraction efficiency which can change with time and modeled by CMT.
-    # defaults to no correction
     rel_extraction_eff = straxen.URLConfig(
-        default=1.0,
+        default='cmt://rel_extraction_eff?version=ONLINE&run_id=plugin.run_id',
         help='Relative extraction efficiency for this run (allows for time dependence)')
+
+    # relative light yield
+    # defaults to no correction
+    rel_light_yield = straxen.URLConfig(
+        default='cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id',
+        help='Relative light yield (allows for time dependence)'
+    )
 
     def infer_dtype(self):
         dtype = []
@@ -666,6 +673,8 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type, peak_name in zip(['', 'alt_'], ['main', 'alternate']):
             dtype += [(f'{peak_type}cs1', np.float32, f'Corrected area of {peak_name} S1 [PE]'),
+                      (f'{peak_type}cs1_wo_timecorr', np.float32,
+                       f'Corrected area of {peak_name} S1 [PE] before time-dep LY correction'),
                       (f'{peak_type}cs2_wo_elifecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before elife correction '
                        f'(s2 xy correction + SEG/EE correction applied) [PE]'),
@@ -691,7 +700,8 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events['x'], events['y'], events['z']]).T
 
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1_wo_timecorr"] = events[f'{peak_type}s1_area'] / self.s1_xyz_map(event_positions)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
         # s2 corrections
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two

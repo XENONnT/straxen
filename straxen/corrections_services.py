@@ -15,11 +15,11 @@ export, __all__ = strax.exporter()
 corrections_w_file = ['mlp_model', 'cnn_model', 'gcn_model',
                       's2_xy_map_mlp', 's2_xy_map_cnn', 's2_xy_map_gcn', 's2_xy_map',
                       's1_xyz_map_mlp', 's1_xyz_map_cnn', 's1_xyz_map_gcn',
-                      'fdc_map_mlp', 'fdc_map_cnn', 'fdc_map_gcn']
+                      'fdc_map_mlp', 'fdc_map_cnn', 'fdc_map_gcn', 's1_aft_xyz_map']
 
 single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
                             'electron_drift_velocity', 'electron_drift_time_gate',
-                            'se_gain', 'rel_extraction_eff']
+                            'se_gain', 'rel_extraction_eff', 'relative_light_yield']
 
 arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
                       'hit_thresholds_nv', 'hit_thresholds_mv']
