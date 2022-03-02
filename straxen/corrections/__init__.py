@@ -1,4 +1,11 @@
-from .schemas import *
+from .base_corrections import *
+from .bodega import *
+from .fax import *
+from .pmt_gains import *
+from .resource_references import *
+from .tf_models import *
+from .simple_corrections import *
+from .global_versions import *
 from .frames import *
 from .settings import corrections_settings
 
@@ -18,16 +25,7 @@ def find_one(name, **kwargs):
 
     return schema.find_one(**kwargs)
 
-
-def extract_time(kwargs):
-    if 'time' in kwargs:
-        return pd.to_datetime(kwargs.pop('time'), utc=True)
-    if 'run_id' in kwargs:
-        return run_id_to_time(kwargs.pop('run_id'))
-    else:
-        return None
-
-
+@straxen.URLConfig.register(BaseCorrectionSchema._PROTOCOL_PREFIX)
 def cmt2(name, version='ONLINE', **kwargs):
-    dtime = extract_time(kwargs)
+    dtime = corrections_settings.extract_time(kwargs)
     return find_one(name, time=dtime, version=version, **kwargs)

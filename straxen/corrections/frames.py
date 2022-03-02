@@ -4,9 +4,9 @@ import pytz
 import strax
 import straxen
 import utilix
-
 import pandas as pd
 import rframe
+from .settings import corrections_settings
 
 export, __all__ = strax.exporter()
 __all__ += ['cframes']
@@ -15,7 +15,7 @@ __all__ += ['cframes']
 class CorrectionFrames:
     db: Any
 
-    def __init__(self, db):
+    def __init__(self, db=None):
         self.db = db
     
     @classmethod
@@ -50,7 +50,11 @@ class CorrectionFrames:
 
     def get_df(self, name):
         correction = self.schemas[name]
-        return rframe.RemoteFrame(correction, self.db[name])
+        if self.db is None:
+            datasource = corrections_settings.datasource(name)
+        else:
+            datasource = self.db[name]
+        return rframe.RemoteFrame(correction, datasource)
 
     def __getitem__(self, key):
         if isinstance(key, tuple) and key[0] in self.schemas:
@@ -88,4 +92,4 @@ def run_id_to_time(run_id):
     time = rundoc['start']
     return time.replace(tzinfo=pytz.utc)
 
-cframes = CorrectionFrames.default()
+cframes = CorrectionFrames()
