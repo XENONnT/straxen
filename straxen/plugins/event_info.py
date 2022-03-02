@@ -23,12 +23,11 @@ class EventInfo(strax.MergeOnlyPlugin):
                   'event_positions',
                   'corrected_areas',
                   'energy_estimates',
-                  'event_w_bayes_class',  
                   # 'event_pattern_fit', <- this will be added soon
                   ]
     save_when = strax.SaveWhen.ALWAYS
     provides = 'event_info'
-    __version__ = '0.0.3'
+    __version__ = '0.0.2'
 
     def compute(self, **kwargs):
         event_info_function = self.config['event_info_function']
