@@ -164,7 +164,8 @@ class URLConfig(strax.Config):
     def eval(cls, protocol: str,
                   arg: Union[str,tuple] = None,
                   kwargs: dict = None):
-        '''Recusively dispatch protocols by name with argument arg and keyword arguments kwargs
+        '''Evaluate a URL/AST by recusively dispatching protocols by name 
+            with argument arg and keyword arguments kwargs
            and return the value. If protocol does not exist, returnes arg
         :param protocol: name of the protocol or a URL
         :param arg: argument to pass to protocol, can be another (sub-protocol,
@@ -173,15 +174,16 @@ class URLConfig(strax.Config):
         :param kwargs: keyword arguments to be passed to the protocol
         :return: (Any) The return value of the protocol on these arguments
         '''
+        
 
-        if arg is None:
+        if protocol is not None and arg is None:
             protocol, arg, kwargs = cls.url_to_ast(protocol)
-            
-        if kwargs is None:
-            kwargs = {}
 
         if protocol is None:
             return arg
+
+        if kwargs is None:
+            kwargs = {}
 
         meth = cls._LOOKUP[protocol]
 
@@ -199,7 +201,7 @@ class URLConfig(strax.Config):
                             kwargs: dict = None):
 
         '''Evaluate protocol, argument and kwarg overrides from any registered preprocessors.
-        Preprocessors are called on the ast at plugin initialization,
+        Preprocessors are called on the AST at plugin initialization,
         prior to config hashing. The results of this evaluation are used 
         to override the config URL given in the context config.
 
