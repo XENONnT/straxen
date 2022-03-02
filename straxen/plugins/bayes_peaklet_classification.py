@@ -79,9 +79,14 @@ def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     data[data < 0.0] = 0.0
     for i, p in enumerate(peaks):
         sample_number = np.arange(0, num_samples+1, 1)*p['dt']
-        frac_of_cumsum = np.append([0.0], np.cumsum(data[i, :]) / np.sum(data[i, :]))
-        cumsum_steps = np.interp(np.linspace(0., 1., bayes_n_nodes, endpoint=False), frac_of_cumsum, sample_number)
-        cumsum_steps = np.append(cumsum_steps, sample_number[-1])
+        # create buffer to avoid np.append
+        frac_of_cumsum = np.empty(num_samples+1)
+        frac_of_cumsum[0] = 0.0
+        frac_of_cumsum[1:] = np.cumsum(data[i, :]) / np.sum(data[i, :])
+        # create buffer to avoid np.append
+        cumsum_steps = np.empty(bayes_n_nodes+1)
+        cumsum_steps[0:bayes_n_nodes] = np.interp(np.linspace(0., 1., bayes_n_nodes, endpoint=False), frac_of_cumsum, sample_number)
+        cumsum_steps[-1:] = sample_number[-1]
         quantiles[i, :] = cumsum_steps[1:] - cumsum_steps[:-1]
 
     for j in range(bayes_n_nodes):
