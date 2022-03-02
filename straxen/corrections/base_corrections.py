@@ -9,7 +9,6 @@ import datetime
 import pandas as pd
 
 from rframe.schema import InsertionError
-import straxen
 from .settings import corrections_settings
 
 export, __all__ = strax.exporter()

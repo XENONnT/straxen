@@ -12,6 +12,7 @@ import os
 import tempfile
 import tarfile
 
+
 export, __all__ = strax.exporter()
 
 _CACHES = {}
@@ -329,3 +330,16 @@ def open_neural_net(model_path: str, **kwargs):
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
         return tf.keras.models.load_model(tmpdirname)
+
+
+@URLConfig.register('cmt2')
+def cmt2(name, version='ONLINE', **kwargs):
+    dtime = straxen.corrections_settings.extract_time(kwargs)
+    docs = straxen.find_corrections(name, time=dtime, version=version, **kwargs)
+    if not docs:
+        raise KeyError(f"No matching documents found for {name}.")
+    if hasattr(docs[0], 'value'):
+        docs = [d.value for d in docs]
+    if len(docs) == 1:
+        return docs[0]
+    return docs
