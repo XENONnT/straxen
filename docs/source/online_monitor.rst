@@ -17,7 +17,7 @@ and start developing live-displays!
 .. code-block:: python
 
     import straxen
-    st = straxen.contexts.xenonnt_online(_add_online_monitor_frontend=True)
+    st = straxen.contexts.xenonnt_online(include_online_monitor=True)
 
     # Allow unfinished runs to be loaded, even before the DAQ has finished processing this run!
     st.set_context_config({'allow_incomplete': True})
@@ -65,6 +65,8 @@ At the time of writing, these were:
   - ``online_peak_monitor``
   - ``event_basics``
   - ``veto_regions``
+  - ``online_monitor_nv``
+  - ``online_monitor_mv``
 
 For the most up-to-date information, one can check the registration in the
 ``straxen.contexts.xenonnt_online`` context:
@@ -84,7 +86,7 @@ a few bigger files which makes it much faster to load next time.
 .. code-block:: python
 
     import straxen
-    st = straxen.contexts.xenonnt_online(_add_online_monitor_frontend=True)
+    st = straxen.contexts.xenonnt_online(include_online_monitor=True)
     st.copy_to_frontend(latest_run_id, 'event_basics', rechunk=True)
 
 One can look now where this run is stored:
