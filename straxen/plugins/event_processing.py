@@ -27,10 +27,6 @@ export, __all__ = strax.exporter()
                  help='Extend events this many ns to the right from each '
                       'triggering peak.',
                  ),
-    strax.Option(name='electron_drift_velocity', infer_type=False,
-                 default=("electron_drift_velocity", "ONLINE", True),
-                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-                 ),
     strax.Option(name='max_drift_length',
                  default=straxen.tpc_z, type=(int, float),
                  help='Total length of the TPC from the bottom of gate to the '
@@ -63,6 +59,14 @@ class Events(strax.OverlapWindowPlugin):
     __version__ = '0.1.0'
     save_when = strax.SaveWhen.NEVER
 
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
         ('time', np.int64, 'Event start time in ns since the unix epoch'),
@@ -71,10 +75,7 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     def setup(self):
-        electron_drift_velocity = get_correction_from_cmt(
-            self.run_id,
-            self.config['electron_drift_velocity'])
-        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
         self.left_extension = self.config['left_event_extension'] + self.drift_time_max
@@ -138,10 +139,6 @@ class Events(strax.OverlapWindowPlugin):
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
              "in the peaklet classification"),
     strax.Option(
-        name='electron_drift_velocity', infer_type=False,
-        default=("electron_drift_velocity", "ONLINE", True),
-        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',),
-    strax.Option(
         name='max_drift_length',
         default=straxen.tpc_z, infer_type=False,
         help='Total length of the TPC from the bottom of gate to the '
@@ -167,6 +164,14 @@ class EventBasics(strax.Plugin):
     provides = 'event_basics'
     data_kind = 'events'
     loop_over = 'events'
+
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
 
     def infer_dtype(self):
         # Basic event properties
@@ -225,10 +230,7 @@ class EventBasics(strax.Plugin):
         )
 
     def setup(self):
-        electron_drift_velocity = get_correction_from_cmt(
-            self.run_id,
-            self.config['electron_drift_velocity'])
-        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -478,16 +480,6 @@ class EventBasics(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
-        name='electron_drift_velocity', infer_type=False,
-        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=("electron_drift_velocity", "ONLINE", True)
-    ),
-    strax.Option(
-        name='electron_drift_time_gate', infer_type=False,
-        help='Electron drift time from the gate in ns',
-        default=("electron_drift_time_gate", "ONLINE", True)
-    ),
-    strax.Option(
         name='fdc_map', infer_type=False,
         help='3D field distortion correction map path',
         default_by_run=[
@@ -516,6 +508,21 @@ class EventPositions(strax.Plugin):
         help="default reconstruction algorithm that provides (x,y)"
     )
 
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
+    electron_drift_time_gate = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_time_gate'
+                '?version=ONLINE&run_id=plugin.run_id',
+        help='Electron drift time from the gate in ns',
+        cache=True)
+
     dtype = [
         ('x', np.float32,
          'Interaction x-position, field-distortion corrected (cm)'),
@@ -538,12 +545,6 @@ class EventPositions(strax.Plugin):
             ] + strax.time_fields
 
     def setup(self):
-
-        self.electron_drift_velocity = get_correction_from_cmt(
-            self.run_id, self.config['electron_drift_velocity'])
-        self.electron_drift_time_gate = get_correction_from_cmt(
-            self.run_id, self.config['electron_drift_time_gate'])
-        
         if isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
                 get_resource(self.config['fdc_map'], fmt='binary'))
@@ -716,15 +717,15 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
-            s2_position_shadows = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
+            s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
             cs2_top_xycorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
-                                    self.s2_xy_map(s2_position_shadows, map_name=s2_top_map_name))
+                                    self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
             cs2_bottom_xycorr = (events[f'{peak_type}s2_area'] *
                                        (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                       self.s2_xy_map(s2_position_shadows, map_name=s2_bottom_map_name))
+                                       self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
 
             # Correct for SEgain and extraction efficiency
             seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff

@@ -442,7 +442,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
         # 2. Calculate S2 position shadow, S2 time shadow, and S1 time shadow
         result = np.zeros(len(current_peak), self.dtype)
-        for key, is_position in zip(['s2_position_shadow', 's2_time_shadow', 's1_time_shadow'], [True, False, False]):
+        for key in ['s2_position_shadow', 's2_time_shadow', 's1_time_shadow']:
+            is_position = 'position' in key
             type_str = key.split('_')[0]
             stype = 2 if 's2' in key else 1
             mask_pre = (peaks['type'] == stype) & (peaks['area'] > self.config['shadow_threshold'][key])
@@ -453,7 +454,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
             array['x'] = np.nan
             array['y'] = np.nan
             array['dt'] = self.config['shadow_time_window_backward']
-            # Shadow is set to be the lowest possible value
+            # The default value for shadow is set to be the lowest possible value
             if 'time' in key:
                 array['shadow'] = self.config['shadow_threshold'][key] * array['dt'] ** self.config['shadow_deltatime_exponent']
             else:
@@ -519,8 +520,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 if dt <= 0:
                     continue
                 # First we record the time difference to the nearest previous peak
-                if dt < result['nearest_dt'][p_i]:
-                    result['nearest_dt'][p_i] = dt
+                result['nearest_dt'][p_i] = min(result['nearest_dt'][p_i], dt)
                 # Calculate time shadow
                 new_shadow = casting_peak['area'] * dt ** exponent
                 if pos_corr:
@@ -562,14 +562,14 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         default=False,
         type=bool,
         track=True,
-        help='Whether to divide area by time'
+        help='Whether to divide area by time difference of ambience creating peak to current peak'
     )
 
     ambience_divide_r = straxen.URLConfig(
         default=False,
         type=bool,
         track=True,
-        help='Whether to divide area by radius'
+        help='Whether to divide area by radial distance of ambience creating peak to current peak'
     )
 
     ambient_radius = straxen.URLConfig(
@@ -623,11 +623,9 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         self.lonehits_ambience(current_peak, 
                                lone_hits, 
                                touching_windows, 
-                               num_array, 
-                               sum_array, 
+                               result['n_lh_before'],
+                               result['s_lh_before'],
                                self.config['ambience_divide_t'])
-        result['n_lh_before'] = num_array
-        result['s_lh_before'] = sum_array
 
         # 4. Calculate number and area sum of small S0, S1, S2 before a peak
         radius = -1
@@ -642,12 +640,10 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                                 peaks[mask_pre], 
                                 touching_windows, 
                                 radius, 
-                                num_array, 
-                                sum_array, 
+                                result[f'n_s{stype}_before'],
+                                result[f's_s{stype}_before'],
                                 self.config['ambience_divide_t'], 
                                 self.config['ambience_divide_r'])
-            result[f'n_s{stype}_before'] = num_array
-            result[f's_s{stype}_before'] = sum_array
 
         # 5. Calculate number and area sum of small S2 near(in (x,y) space) a S2 peak
         num_array = np.zeros(len(current_peak), dtype=np.int16)

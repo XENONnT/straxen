@@ -1,3 +1,19 @@
+1.4.0 / 2022-03-02
+------------------
+Minor:
+- Update corrected areas (#931) and Update event_processing.py (#937) 
+- Fix bug veto positions (#940)
+- S1 aft map & CMT tweaks (#916) and initialize plugin without setup() method (#953) 
+
+Patch
+- Documentation building (#934) 
+- Development (#951)
+
+Notes:
+- Lineage changed for events_positions_nv, corrected_areas and event_pattern_fit due to option changes
+- Lineage chanes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
+
+
 1.3.0 / 2022-02-26
 ------------------
 Minor:
