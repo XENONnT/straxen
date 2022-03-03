@@ -342,10 +342,10 @@ class PeakShadow(strax.OverlapWindowPlugin):
     from previous peaks in time.
     It also gives the area and (x,y) of the previous peaks.
     References:
-        * v0.1.3 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
 
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
@@ -543,9 +543,9 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     Features are the number of lonehits, small S0, S1, S2 in a time window before peaks,
     and the number of small S2 in circle near the S2 peak in a time window.
     References:
-        * v0.0.6 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.0.7 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.6'
+    __version__ = '0.0.7'
     depends_on = ('lone_hits', 'peak_basics', 'peak_positions')
     provides = 'peak_ambience'
     data_kind = 'peaks'
