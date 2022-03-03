@@ -181,11 +181,15 @@ def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]
             # check if it's a URLConfig
             if isinstance(opt, str) and 'cmt://' in opt:
                 before_cmt, cmt, after_cmt = opt.partition('cmt://')
-                p = context.get_single_plugin(runid_test_str, data_type)
+                p = context._get_plugins((data_type,), runid_test_str)[data_type]
+                context._set_plugin_config(p, runid_test_str, tolerant=False)
+                del p.run_id
+
                 p.config[option_key] = after_cmt
-                correction_name = getattr(p, option_key)
-                # make sure the correction name does not depend on runid
-                if runid_test_str in correction_name:
+                try:
+                    correction_name = getattr(p, option_key)
+                except AttributeError:
+                    # make sure the correction name does not depend on runid
                     raise RuntimeError("Correction names should not depend on runids! "
                                        f"Please check your option for {option_key}")
 
