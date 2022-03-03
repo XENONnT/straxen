@@ -609,8 +609,6 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     def compute_ambience(self, lone_hits, peaks, current_peak):
         # 1. Initialization
         result = np.zeros(len(current_peak), self.dtype)
-        num_array = np.zeros(len(current_peak), dtype=np.int16)
-        sum_array = np.zeros(len(current_peak), dtype=np.float32)
 
         # 2. Define time window for each peak, we will find small peaks & lone hits within these time windows
         roi = np.zeros(len(current_peak), dtype=strax.time_fields)
@@ -631,8 +629,6 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         radius = -1
         for stype, area in zip([0, 1, 2], 
                                          self.config['ambience_area_parameters']):
-            num_array = np.zeros(len(current_peak), dtype=np.int16)
-            sum_array = np.zeros(len(current_peak), dtype=np.float32)
             mask_pre = (peaks['type'] == stype) & (peaks['area'] < area)
             touching_windows = strax.touching_windows(peaks[mask_pre], roi)
             # Calculating ambience
@@ -640,26 +636,23 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                                 peaks[mask_pre], 
                                 touching_windows, 
                                 radius, 
-                                result[f'n_s{stype}_before'],
-                                result[f's_s{stype}_before'],
+                                result[f'n_s{stype}_before'], 
+                                result[f's_s{stype}_before'], 
                                 self.config['ambience_divide_t'], 
                                 self.config['ambience_divide_r'])
 
         # 5. Calculate number and area sum of small S2 near(in (x,y) space) a S2 peak
-        num_array = np.zeros(len(current_peak), dtype=np.int16)
-        sum_array = np.zeros(len(current_peak), dtype=np.float32)
         mask_pre = (peaks['type'] == 2) & (peaks['area'] < self.config['ambience_area_parameters'][2])
         touching_windows = strax.touching_windows(peaks[mask_pre], roi)
         # Calculating ambience
         self.peaks_ambience(current_peak, 
                             peaks[mask_pre], 
                             touching_windows, 
-                            self.config['ambient_radius'], num_array, 
-                            sum_array, 
+                            self.config['ambient_radius'], 
+                            result['n_s2_near'], 
+                            result['s_s2_near'], 
                             self.config['ambience_divide_t'], 
                             self.config['ambience_divide_r'])
-        result['n_s2_near'] = num_array
-        result['s_s2_near'] = sum_array
 
         # 6. Set time and endtime for peaks
         result['time'] = current_peak['time']
