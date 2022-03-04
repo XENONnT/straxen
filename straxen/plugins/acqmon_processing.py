@@ -20,8 +20,8 @@ T_NO_VETO_FOUND = int(3.6e+12)
                     strax.Option('baseline_samples_aqmon', default=10, track=True, infer_type=False,
                                  help='Number of samples to use at the start of the pulse to determine the baseline'))
 class AqmonHits(strax.Plugin):
-    """ Find hits in acquisition monitor data. These hits could be 
-        then used by other plugins for deadtime calculations, 
+    """ Find hits in acquisition monitor data. These hits could be
+        then used by other plugins for deadtime calculations,
         GPS SYNC analysis, etc.
     """
     __version__ = '0.0.6'
@@ -35,8 +35,11 @@ class AqmonHits(strax.Plugin):
     save_when = strax.SaveWhen.TARGET
 
     def compute(self, raw_records_aqmon):
+        if self.config['check_raw_record_aqmon_overlaps']:
+            straxen.check_overlaps(raw_records_aqmon, n_channels=808)
+
         rec = strax.raw_to_records(raw_records_aqmon)
-        strax.sort_by_time(rec)
+        rec = strax.sort_by_time(rec)
         strax.zero_out_of_bounds(rec)
         strax.baseline(rec, baseline_samples=self.config['baseline_samples_aqmon'], flip=True)
         aqmon_hits = strax.find_hits(rec, min_amplitude=self.config['hit_min_amplitude_aqmon'])
