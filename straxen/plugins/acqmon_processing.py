@@ -18,7 +18,10 @@ T_NO_VETO_FOUND = int(3.6e+12)
 @strax.takes_config(strax.Option('hit_min_amplitude_aqmon', default=50, track=True, infer_type=False,
                                  help='Minimum hit threshold in ADC*counts above baseline'),
                     strax.Option('baseline_samples_aqmon', default=10, track=True, infer_type=False,
-                                 help='Number of samples to use at the start of the pulse to determine the baseline'))
+                                 help='Number of samples to use at the start of the pulse to determine the baseline'),
+                    strax.Option('check_raw_record_aqmon_overlaps', default=True, track=False, infer_type=False,
+                                 help='Crash if any of the pulses in raw_records_aqmon overlap with others '
+                                      'in the same channel'))
 class AqmonHits(strax.Plugin):
     """ Find hits in acquisition monitor data. These hits could be
         then used by other plugins for deadtime calculations,
