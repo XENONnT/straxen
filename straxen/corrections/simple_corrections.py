@@ -24,7 +24,7 @@ class ElectronLifetime(TimeIntervalCorrection):
 
 
 @export
-class HitThresholds(TimeIntervalCorrection):
+class HitThreshold(TimeIntervalCorrection):
     _NAME = "hit_thresholds"
     detector: str = rframe.Index()
     pmt: int = rframe.Index()

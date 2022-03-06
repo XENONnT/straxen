@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 
 @export
 class FaxConfig(BaseCorrectionSchema):
-    '''fax configuration values
+    '''fax configuration values for WFSim
     '''
     _NAME = 'fax_configs'
     class Config:
@@ -26,4 +26,3 @@ class FaxConfig(BaseCorrectionSchema):
 
     value: Union[int,float,bool,str,list,dict]
     resource: str
-

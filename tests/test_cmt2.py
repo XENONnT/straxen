@@ -1,6 +1,7 @@
 
 from typing import List
 import pydantic
+import numbers
 import unittest
 import pytz
 import straxen
@@ -16,6 +17,22 @@ datetimes = st.datetimes(min_value=datetime.datetime(2000, 1, 1, 0, 0),
 
 def mongo_uri_not_set():
     return 'TEST_MONGO_URI' not in os.environ
+
+
+def make_datetime_index(start, stop, step='1d'):
+    if isinstance(start, numbers.Number):
+        start = pd.to_datetime(start, unit='s', utc=True)
+    if isinstance(stop, numbers.Number):
+        stop = pd.to_datetime(stop, unit='s', utc=True)
+    return pd.date_range(start, stop, freq=step)
+
+
+def make_datetime_interval_index(start, stop, step='1d'):
+    if isinstance(start, numbers.Number):
+        start = pd.to_datetime(start, unit='s', utc=True)
+    if isinstance(stop, numbers.Number):
+        stop = pd.to_datetime(stop, unit='s', utc=True)
+    return pd.interval_range(start, stop, periods=step)
 
 
 @st.composite

@@ -7,6 +7,7 @@ import datetime
 from typing import ClassVar
 
 from .base_corrections import BaseCorrectionSchema
+from .settings import corrections_settings
 
 export, __all__ = strax.exporter()
 
@@ -23,11 +24,12 @@ class CorrectionReference(TimeIntervalCorrection):
     '''
     _NAME = ''
 
-    name: str = rframe.Index()
+    alias: str = rframe.Index()
     version: str = rframe.Index()
     time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
 
     correction: str
+    attribute: str
     labels: dict
 
     def load(self, datasource=None, **overrides):
@@ -39,8 +41,8 @@ class CorrectionReference(TimeIntervalCorrection):
 
     @property
     def url_config(self):
-        url = f'{self._PROTOCOL_PREFIX}://{self.correction}'
-        url = straxen.URLConfig.format_url_kwargs(url, run_id='plugin.run_id', **self.labels)
+        url = f'{self.correction}://{self.attribute}'
+        url = straxen.URLConfig.format_url_kwargs(url, **self.labels)
         return url
 
     @property

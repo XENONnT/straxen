@@ -11,7 +11,10 @@ export, __all__ = strax.exporter()
 
 @export
 class Bodega(BaseCorrectionSchema):
-    '''Detector parameters'''
+    '''Detector parameters
+       A collection of non-time dependent detector
+       values.
+    '''
     _NAME = 'bodega'
     
     field: str = rframe.Index()
