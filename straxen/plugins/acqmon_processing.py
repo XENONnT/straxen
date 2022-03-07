@@ -41,7 +41,7 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.1.0'
+    __version__ = '1.1.1'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -121,7 +121,6 @@ class AqmonHits(strax.Plugin):
         if np.sum(is_artificial):
             aqmon_hits = np.concatenate([
                 aqmon_hits, self.get_deadtime_hits(records[is_artificial])])
-            strax.sort_by_time(aqmon_hits)
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
