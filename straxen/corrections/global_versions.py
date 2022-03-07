@@ -13,7 +13,12 @@ class GlobalVersion(CorrectionReference):
     _NAME = 'global_versions'
 
     @classmethod
-    def get_global_config(cls, version, datasource=None, names=None, extra_labels=None):
+    def get_global_config(cls, version,
+                        datasource=None,
+                        names=None,
+                        extra_labels=None):
+        '''Build a context config from the given global version.
+        '''
         if extra_labels is None:
             extra_labels = dict(run_id='plugin.run_id')
         refs = cls.find(datasource, version=version, alias=names)
