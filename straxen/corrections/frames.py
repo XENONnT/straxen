@@ -51,7 +51,7 @@ class CorrectionFrames:
     def get_df(self, name):
         correction = self.schemas[name]
         if self.db is None:
-            datasource = corrections_settings.datasource(name)
+            datasource = corrections_settings.get_datasource_for(name)
         else:
             datasource = self.db[name]
         return rframe.RemoteFrame(correction, datasource)

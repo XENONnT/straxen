@@ -4,7 +4,7 @@ import strax
 import straxen
 import rframe
 import datetime
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from .base_corrections import BaseCorrectionSchema
 from .settings import corrections_settings
@@ -66,3 +66,11 @@ class ResourceReference(BaseCorrectionSchema):
     @property
     def url_config(self):
         return f'resource://{self.value}?fmt={self.fmt}'
+
+
+class BaseMap(ResourceReference):
+    
+    kind: Literal['cnn','gcn','mlp'] = rframe.Index()
+    time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
+
+    value: str

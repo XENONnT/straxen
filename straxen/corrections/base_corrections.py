@@ -1,7 +1,9 @@
 
 import re
 from typing import ClassVar
+from pydantic import Field
 import pytz
+from pytz import timezone
 import strax
 import numbers
 import rframe
@@ -33,6 +35,12 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
     version: str = rframe.Index()
     
+    created_date: datetime.datetime = Field(
+        default_factory=datetime.datetime.utcnow
+    )   
+    comments: str = ''
+
+
     def __init_subclass__(cls) -> None:
 
         if '_NAME' not in cls.__dict__:
@@ -51,7 +59,7 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
     @classmethod
     def default_datasource(cls):
-        return corrections_settings.datasource(cls._NAME)
+        return corrections_settings.get_datasource_for(cls._NAME)
 
     @classmethod
     def url_protocol(cls, attr, **labels):
@@ -70,7 +78,6 @@ class BaseCorrectionSchema(rframe.BaseSchema):
         if not self.same_values(new):
             index = ', '.join([f'{k}={v}' for k,v in self.index_labels.items()])
             raise IndexError(f'Values already set for {index}')
-
 
 
 @export
@@ -190,6 +197,9 @@ def find_correction(name, **kwargs):
 
 @URLConfig.register('cmt2')
 def cmt2(name, version='ONLINE', **kwargs):
+    '''URLConfig protocol for fetching values from
+    correction documents.
+    '''
     dtime = corrections_settings.extract_time(kwargs)
     docs = find_corrections(name, time=dtime, version=version, **kwargs)
     if not docs:

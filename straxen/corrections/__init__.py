@@ -1,10 +1,22 @@
 from .base_corrections import *
+from .base_references import *
+
 from .bodega import *
 from .fax import *
 from .pmt_gains import *
-from .resource_references import *
-from .tf_models import *
-from .simple_corrections import *
 from .global_versions import *
+from .electron_drift import *
+from .electron_lifetime import *
+from .extraction_efficiency import *
+from .field_distortion import *
+from .field_simulation import *
+from .hit_thresholds import *
+from .lone_hits import *
+from .position_reconstruction import *
+from .s1_aft_xyz import *
+from .s1_xyz import *
+from .s2_xy import *
+from .se_gains import *
+
 from .frames import *
 from .settings import corrections_settings

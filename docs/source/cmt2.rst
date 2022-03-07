@@ -27,15 +27,13 @@ Currently supported data-backends:
 
     - MongoDB
     - Pandas dataframe
+    - Http client
 
 Currently implemented indexes:
 
-    - Integer
-    - String
-    - Float
-    - Datetime
-    - Interval Datetime/Integer 
-    - Sampled Datetime/Integer/Float  (interpolation between sampled points)
+    - Simple Index of type Integer/String/Float/Datetime, matches on exact values.
+    - Interval Index Datetime/Integer, matches on interval overlap.
+    - Sampled Index Datetime/Integer/Float, interpolation between sampled points, optional extrapolation.
 
 To define access a remote dataframe you need to first define its schema. Lets say we want to store a collection
 of versioned documents indexed by the experiment, detector and version
@@ -193,7 +191,7 @@ References
 -----------
 
 Some corrections are actually references, 
-in this case there will be a get_* method to fetch the object being reference.
+in this case there will be a .load() method to fetch the object being reference.
 
 Examples:
 
@@ -203,10 +201,91 @@ Examples:
     ref = straxen.CorrectionReference.find_one(correction='pmt_gains', version=..., time=...)
 
     # will fetch the corrections being references
-    pmt_gains = ref.get_corrections(time=..., pmt=...)
+    pmt_gains = ref.load()
 
     # will return a reference to a resource (a FDC map)
     ref = straxen.FdcMapName.find_one(version=..., time=..., kind=...)
 
     # will return the map being referenced.
-    fdc_map = ref.get_resource()
+    fdc_map = ref.load()
+
+
+The Corrections server
+----------------------
+There is also a corrections server that can be used as a datasource for corrections.
+To use it you will need an http client initializaed with the correction URL and an access token header.
+
+.. code-block:: python
+
+    import rframe
+    import straxen
+
+    datasource = rframe.BaseHttpClient(URL,
+                                       headers={"Authorization": "Bearer: TOKEN"})
+    
+    gain_docs = straxen.PmtGains.find(datasource, pmt=1, version='v3')
+
+
+the easiest way to use the server is from the xeauth package, just run `pip install xeauth`
+
+.. code-block:: python
+
+    import xeauth
+    import straxen
+
+    datasources = xeauth.cmt_login()
+    # The script will attempt to open a browser for authentication
+    # if the broswer does not open automatically, follow the link printed out.
+    # Once you are authenticated as a xenon member, an access token will be
+    # retrieved automatically.
+
+    gains_datasource = datasources.pmt_gains
+    # or
+    gains_datasource = datasources['pmt_gains']
+
+    gain_docs = straxen.PmtGains.find(gains_datasource, pmt=1, version='v3')
+
+
+Inserting Corrections
+---------------------
+
+New correction documents can be inserted into a datasource with the `doc.save(datasource)` method.
+Example:
+
+.. code-block:: python
+
+    import straxen
+
+    doc = straxen.PmtGains(pmt=1, version='v3', value=1, ...)
+    doc.save(datasource)
+
+If all the conditions for insertion are met, e.g. the values for the given index not already being set, the insertion will be successful.
+
+Of course you must have write access to the datasource for any insertion to succeed. The default datasources are all read-only.
+When using the server to write values you must request a token with write permissions:
+
+.. code-block:: python
+
+    import xeauth
+    import straxen
+
+    # If you have to correction roles defined (correction expert), you can request a token with
+    # extended scope i.e. write:all. This token will allow you to write to all correction collections
+    # If you do not have the proper permissions, you will just get back the default token scope of read:all
+    datasources = xeauth.cmt_login(scope='write:all')
+
+    datasource = datasources['pmt_gains']
+
+    doc = straxen.PmtGains(pmt=1, version='v3', value=1, ...)
+    doc.save(datasource)
+
+
+Overriding default datasources
+------------------------------
+You can change which datasource is used by default (for the current session) for a given correction in the correction_settings:
+
+.. code-block:: python
+
+    import straxen
+
+    straxen.corrections_settings.datasources['pmt_gains'] = MY_DEFAULT_DATASOURCE

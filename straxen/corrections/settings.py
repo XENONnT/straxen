@@ -16,15 +16,17 @@ class CorrectionsSettings:
 
     clock = SimpleClock()
 
-    _datasources = {}
+    datasources = {}
     
-    def datasource(self, name):
-        if name not in self._datasources:
-            collection = utilix.xent_collection(collection=name,
-                                                database=self.cmt_database)
-            self._datasources[name] = collection
-        return self._datasources[name]
+    def default_datasource(self, name):
+        return utilix.xent_collection(collection=name,
+                                    database=self.cmt_database)
 
+    def get_datasource_for(self, name):
+        if name in self.datasources:
+            return self.datasources[name]
+        return self.default_datasource(name)
+        
     def run_id_to_time(self, run_id):
         rundb = utilix.xent_collection()
         if isinstance(run_id, str):

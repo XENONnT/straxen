@@ -12,6 +12,8 @@ import pandas as pd
 from hypothesis import settings, given, assume, strategies as st
 from rframe.schema import InsertionError
 
+# enforce datetimes are in the a reasonable range
+# pandas nanosecond resolution has trouble with extreme dates
 datetimes = st.datetimes(min_value=datetime.datetime(2000, 1, 1, 0, 0),
                          max_value=datetime.datetime(2232, 1, 1, 0, 0))
 
@@ -49,18 +51,21 @@ def non_overlapping_interval_ranges(draw, elements=st.datetimes(), min_size=2):
 class SimpleCorrection(straxen.BaseCorrectionSchema):
     _NAME = 'simple_correction'
 
+    # enforce float is in the range that mongodb can handle
     value: pydantic.confloat(gt=-2**31, lt=2**31)
     
 
 class SomeSampledCorrection(straxen.TimeSampledCorrection):
     _NAME = 'sampled_correction'
 
+    # enforce float is in the range that mongodb can handle
     value: pydantic.confloat(gt=-2**31, lt=2**31)
 
 
 class SomeTimeIntervalCorrection(straxen.TimeIntervalCorrection):
     _NAME = 'time_interval_correction'
 
+    # enforce float is in the range that mongodb can handle
     value: pydantic.confloat(gt=-2**31, lt=2**31)
 
 
@@ -206,8 +211,7 @@ class TestCorrectionDataframes(unittest.TestCase):
         times = sorted([doc.time.left for doc in docs]) + [last]
 
         for doc,left,right in zip(docs, times[:-1], times[1:]):
-            assume(right < datetime.datetime(2232, 1, 1, 0, 0))
-            assume(left > datetime.datetime(1990, 1, 1, 0, 0))
+            # very small differences may be hard to test for correctness
             assume((right-left) > datetime.timedelta(seconds=10))
 
             doc.time.left = left
