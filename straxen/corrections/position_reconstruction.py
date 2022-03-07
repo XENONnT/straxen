@@ -16,13 +16,13 @@ import strax
 import rframe
 import datetime
 from typing import Literal
-from .base_references import ResourceReference
+from .base_references import BaseResourceReference
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PosRecModel(ResourceReference):
+class PosRecModel(BaseResourceReference):
     _NAME = "posrec_models"
     fmt = 'json'
 

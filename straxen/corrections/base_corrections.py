@@ -35,9 +35,7 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
     version: str = rframe.Index()
     
-    created_date: datetime.datetime = Field(
-        default_factory=datetime.datetime.utcnow
-    )   
+    created_date: datetime.datetime = datetime.datetime.utcnow()
     comments: str = ''
 
 
@@ -59,10 +57,15 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
     @classmethod
     def default_datasource(cls):
+        '''This method is called when a query method is
+         called and no datasource is passed.
+        '''
         return corrections_settings.get_datasource_for(cls._NAME)
 
     @classmethod
     def url_protocol(cls, attr, **labels):
+        '''This is meant to be used as the URLConfig protocol
+        '''
         values = [getattr(doc, attr)  for doc in cls.find(**labels)]
         if not values:
             raise KeyError(f'No documents found for {cls._NAME} with {labels}')
@@ -71,10 +74,19 @@ class BaseCorrectionSchema(rframe.BaseSchema):
         return values
 
     @property
-    def name(self):
+    def collection_name(self):
         return self._NAME
 
     def pre_update(self, db, new):
+        '''This method is called if the `new` document is
+        being saved and self was found to already exist in
+        the datasource. By default we check that all values
+        are the same. The reason this execption is needed is
+        because the found document may not actually exist in 
+        the datasource and may be interpolated, so we allow 
+        updating documents with identical values.
+        Otherwise we raise an error, preventing the update.
+        '''
         if not self.same_values(new):
             index = ', '.join([f'{k}={v}' for k,v in self.index_labels.items()])
             raise IndexError(f'Values already set for {index}')
@@ -101,6 +113,11 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
         return super().url_protocol(attr, **labels)
 
     def pre_update(self, db, new):
+        '''Since intervals can extend beyond the current time,
+        we want to allow changes to the end time shortening the interval
+        to a point in the future since these values have not yet
+        been used for processing.
+        '''
         cutoff = corrections_settings.clock.cutoff_datetime()
         current_right = self.time.right
         utc = corrections_settings.clock.utc
@@ -108,28 +125,36 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
         if utc and current_right is not None:
             current_right = current_right.replace(tzinfo=pytz.UTC)
 
+        # Changing the right side to None extends it to infinity,
+        # this may overlap with existing intervals so we disallow it 
         if new.right is None:
             raise IndexError("Cannot set end date to None")
         
+        # We only allow shortening intervals that extend beyong the cutoff time
         if current_right is not None and current_right<cutoff:
             raise IndexError(f'Can only modify an interval that ends after {cutoff}')
-            
+        
+        # Only allow changes to the right side of the interval
         if self.time.left != new.time.left:
             raise IndexError(f'Can only change endtime of existing interval. '
                                  f'start time must be {self.time.left}')
-            
+        
+        # Only allow changes to the interval, not the values
         if not self.same_values(new):
             raise IndexError(f'Existing interval has different values.')
 
+        # only allow shortening the interval to a time after the cutoff
+        # otherwise it would be possible to unset values already used
+        # for processing
         new_right = new.time.right
-
         if new_right is not None and new_right<cutoff:
             raise IndexError(f'You can only set interval to end after {cutoff}. '
                             'Values before this time may have already been used for processing.')
 
 
 def can_extrapolate(doc):
-    # only extrapolate online (version=0) values
+    # only extrapolate ONLINE versions
+    # and up until the current time.
     if doc['version'] != 'ONLINE':
         return False
     now = corrections_settings.clock.current_datetime()
@@ -163,7 +188,16 @@ class TimeSampledCorrection(BaseCorrectionSchema):
         return super().url_protocol(attr, **labels)
 
     def pre_insert(self, db):
-        # Inserting 
+        # Inserting ONLINE versions can affect the past
+        # since extrapolation until the current time is allowed
+        # extrapolation will just give the last value,
+        # verses interpolation which is calculated from the last
+        # value and also the newly inserted value.
+        # For this reason, when inserting ONLINE versions
+        # an additional document is inserted with the current time
+        # and values equal to the latest existing document.
+        # This sets all values from the latest document time until now
+        # permanently to the values that would have been used in processing.
         if self.version == 'ONLINE':
             cutoff = corrections_settings.clock.cutoff_datetime()
             utc = corrections_settings.clock.utc
@@ -173,6 +207,7 @@ class TimeSampledCorrection(BaseCorrectionSchema):
             if time<cutoff:
                 raise InsertionError(f'Can only insert online values for time after {cutoff}.')
             now_index = self.index_labels
+            cutoff 
             now_index['time'] = corrections_settings.clock.current_datetime()
             existing = self.find(db, **now_index)
             if existing:

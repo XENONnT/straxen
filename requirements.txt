@@ -14,4 +14,4 @@ pymongo<4.0.0
 requests
 strax>=1.1.7
 utilix>=0.5.3
-rframe>=0.1.5
+rframe>=0.1.7

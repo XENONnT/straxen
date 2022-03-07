@@ -66,12 +66,18 @@ class CorrectionReference(TimeIntervalCorrection):
         return {self.name: self.url_config}
 
 @export
-class ResourceReference(BaseCorrectionSchema):
+class BaseResourceReference(BaseCorrectionSchema):
+    _NAME = ''
+
     fmt: ClassVar = 'text'
 
     value: str
 
     def pre_insert(self, db):
+        '''require the existence of the resource
+        being referenced prior to inserting a new
+        document. This is to avoid typos etc.
+        '''
         self.load()
         super().pre_insert(db)
 
@@ -84,8 +90,9 @@ class ResourceReference(BaseCorrectionSchema):
         return f'resource://{self.value}?fmt={self.fmt}'
 
 
-class BaseMap(ResourceReference):
-    
+class BaseMap(BaseResourceReference):
+    _NAME = ''
+
     kind: Literal['cnn','gcn','mlp'] = rframe.Index()
     time: rframe.Interval[datetime.datetime] = rframe.IntervalIndex()
 
