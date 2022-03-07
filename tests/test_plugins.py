@@ -42,14 +42,11 @@ def _run_plugins(st,
                 st.make(run_id, data_type)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
-        assert 'pulse_counts' in all_datatypes
         for data_type in all_datatypes - set(_forbidden_plugins):
             savewhen = st._plugin_class_registry[data_type].save_when
             if isinstance(savewhen, (dict, immutabledict)):
                 savewhen = savewhen[data_type]
             should_be_stored = savewhen == strax.SaveWhen.ALWAYS
-            if data_type == 'pulse_counts':
-                assert should_be_stored
             if should_be_stored:
                 is_stored = st.is_stored(run_id, data_type)
                 assert is_stored, f"{data_type} did not save correctly!"
