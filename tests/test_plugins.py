@@ -54,7 +54,7 @@ def _run_plugins(st,
             if isinstance(savewhen, (dict, immutabledict)):
                 savewhen = savewhen[data_type]
             should_be_stored = savewhen == strax.SaveWhen.ALWAYS
-            if data_type == 'pulse_counts:
+            if data_type == 'pulse_counts':
               assert should_be_stored
             if should_be_stored:
                 is_stored = st.is_stored(run_id, data_type)
