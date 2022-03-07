@@ -91,7 +91,9 @@ class AqmonHits(strax.Plugin):
                 f'Unknown channel {not_allowed_channels}. Only know {self.aqmon_channels}')
 
         if self.check_raw_record_aqmon_overlaps:
-            straxen.check_overlaps(raw_records_aqmon, n_channels=808)
+            straxen.check_overlaps(raw_records_aqmon,
+                                   n_channels = max(AqmonChannels).value + 1
+            )
 
         records = strax.raw_to_records(raw_records_aqmon)
         strax.zero_out_of_bounds(records)
