@@ -87,6 +87,8 @@ xnt_common_opts.update({
                                            straxen.PeakShadow,
                                            straxen.EventShadow,
                                            straxen.EventwBayesClass,
+                                           straxen.PeakAmbience,
+                                           straxen.EventAmbience,
                                            ],
     'register_all': common_opts['register_all'] + [straxen.nveto_recorder,
                                                    straxen.veto_pulse_processing,

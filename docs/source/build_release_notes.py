@@ -29,7 +29,7 @@ def convert_release_notes():
                     pr_number = pr_number[:-1]
             if pr_number:
                 line = line.replace(f'#{pr_number}',
-                                    f'`#{pr_number} <https://github.com/AxFoundation/strax/pull/>`_'
+                                    f'`#{pr_number} <https://github.com/XENONnT/straxen/pull/{pr_number}>`_'
                                     )
         with_ref += line + '\n'
     target = os.path.join(this_dir, 'reference', 'release_notes.rst')

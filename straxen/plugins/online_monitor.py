@@ -272,12 +272,6 @@ def veto_monitor_dtype(veto_name: str = '_nv',
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        'adc_to_pe_mv',
-        type=int, default=170.0,
-        help='conversion factor from ADC to PE for muon Veto')
-)
 class OnlineMonitorMV(OnlineMonitorNV):
     __doc__ = OnlineMonitorNV.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
     depends_on = ('hitlets_mv', 'events_mv')
@@ -289,7 +283,7 @@ class OnlineMonitorMV(OnlineMonitorNV):
     ends_with = '_mv'
     child_plugin = True
 
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['mv']
@@ -298,5 +292,4 @@ class OnlineMonitorMV(OnlineMonitorNV):
 
     def compute(self, hitlets_mv, events_mv, start, end):
         events_mv = np.copy(events_mv)
-        events_mv['area'] *= 1./self.config['adc_to_pe_mv']
         return super().compute(hitlets_mv, events_mv, start, end)
