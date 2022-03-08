@@ -81,7 +81,7 @@ xnt_common_opts.update({
                                            straxen.PeaksHighEnergy,
                                            straxen.PeakletsHighEnergy,
                                            straxen.PeakletClassificationHighEnergy,
-                                           straxen.BayesPeakletClassification,
+                                           straxen.BayesPeakClassification,
                                            straxen.MergedS2sHighEnergy,
                                            straxen.EventInfo,
                                            straxen.PeakShadow,

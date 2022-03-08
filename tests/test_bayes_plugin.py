@@ -10,7 +10,7 @@ class TestBayesPlugin(unittest.TestCase):
     def setUp(self):
 
         st = straxen.test_utils.nt_test_context()
-        st.register(straxen.BayesPeakletClassification)
+        st.register(straxen.BayesPeakClassification)
         self.target = 'peak_classification_bayes'
         self.run_id = straxen.test_utils.nt_test_run_id
         self.st = st

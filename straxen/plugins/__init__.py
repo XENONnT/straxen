@@ -10,8 +10,8 @@ from .pulse_processing import *
 from . import peaklet_processing
 from .peaklet_processing import *
 
-from . import bayes_peaklet_classification
-from .bayes_peaklet_classification import *
+from . import bayes_peak_classification
+from .bayes_peak_classification import *
 
 from . import peak_processing
 from .peak_processing import *
