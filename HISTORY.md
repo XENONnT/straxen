@@ -1,21 +1,39 @@
+1.4.0 / 2022-03-02
+------------------
+Minor:
+- Update corrected areas (#931) and Update event_processing.py (#937) 
+- Fix bug veto positions (#940)
+- S1 aft map & CMT tweaks (#916) and initialize plugin without setup() method (#953) 
+
+Patch
+- Documentation building (#934) 
+- Development (#951)
+
+Notes:
+- Lineage changed for events_positions_nv, corrected_areas and event_pattern_fit due to option changes
+- Lineage chanes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
+
+
 1.3.0 / 2022-02-26
 ------------------
+Minor:
+- Rewrite aqmon processing (#929)
+- Add plugin to compute time offsets per chunk (#917)
+- Change alt_s2 identification criterion (#890)
+
 Patch
+- Remove median baseline from nveto processing (#927)
 - Patch scada interface (#928)
+- Updated nveto resolving time to 200 ns. Change to URL configs (#933)
 
 Testing
 - Enable holoviews testing py3.10 (#914)
 - make coverage configuration (#926) 
 
 Notes:
-- Change alt_s2 identification criterion (#890) 
-- Add plugin to compute time offsets per chunk (#917) 
-- Remove median baseline from nveto processing (#927)
-- Rewrite aqmon processing (#929) 
-- Updated nveto resolving time to 200 ns. Change to URL configs (#933) 
-- The lineage of the aqmon processing changed
+- The lineage of the aqmon processing-chain changed
+- The lineage of plugins > `event_basics` changed
 - The lineages of the n/m-veto changed.
-
 
 
 1.2.8 / 2022-02-16

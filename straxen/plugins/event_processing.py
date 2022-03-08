@@ -1,3 +1,4 @@
+from re import X
 import strax
 import numpy as np
 import numba
@@ -26,10 +27,6 @@ export, __all__ = strax.exporter()
                  help='Extend events this many ns to the right from each '
                       'triggering peak.',
                  ),
-    strax.Option(name='electron_drift_velocity', infer_type=False,
-                 default=("electron_drift_velocity", "ONLINE", True),
-                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-                 ),
     strax.Option(name='max_drift_length',
                  default=straxen.tpc_z, type=(int, float),
                  help='Total length of the TPC from the bottom of gate to the '
@@ -48,9 +45,9 @@ class Events(strax.OverlapWindowPlugin):
     which satisfies certain conditions:
         1. The triggering peak must have a certain area.
         2. The triggering peak must have less than
-        "trigger_max_competing" peaks. (A competing peak must have a
-        certain area fraction of the triggering peak and must be in a
-        window close to the main peak)
+           "trigger_max_competing" peaks. (A competing peak must have a
+           certain area fraction of the triggering peak and must be in a
+           window close to the main peak)
 
     Note:
         The time range which defines an event gets chopped at the chunk
@@ -62,6 +59,14 @@ class Events(strax.OverlapWindowPlugin):
     __version__ = '0.1.0'
     save_when = strax.SaveWhen.NEVER
 
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
     dtype = [
         ('event_number', np.int64, 'Event number in this dataset'),
         ('time', np.int64, 'Event start time in ns since the unix epoch'),
@@ -70,10 +75,7 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     def setup(self):
-        electron_drift_velocity = get_correction_from_cmt(
-            self.run_id,
-            self.config['electron_drift_velocity'])
-        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
         self.left_extension = self.config['left_event_extension'] + self.drift_time_max
@@ -137,10 +139,6 @@ class Events(strax.OverlapWindowPlugin):
         help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
              "in the peaklet classification"),
     strax.Option(
-        name='electron_drift_velocity', infer_type=False,
-        default=("electron_drift_velocity", "ONLINE", True),
-        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',),
-    strax.Option(
         name='max_drift_length',
         default=straxen.tpc_z, infer_type=False,
         help='Total length of the TPC from the bottom of gate to the '
@@ -157,7 +155,7 @@ class EventBasics(strax.Plugin):
     alternative S2 is selected as the largest S2 other than main S2
     in the time window [main S1 time, main S1 time + max drift time].
     """
-    __version__ = '1.3.0'
+    __version__ = '1.3.1'
 
     depends_on = ('events',
                   'peak_basics',
@@ -166,6 +164,14 @@ class EventBasics(strax.Plugin):
     provides = 'event_basics'
     data_kind = 'events'
     loop_over = 'events'
+
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
 
     def infer_dtype(self):
         # Basic event properties
@@ -211,6 +217,7 @@ class EventBasics(strax.Plugin):
             ('endtime',           np.int64,   'end time since unix epoch [ns]'),
             ('area',              np.float32, 'area, uncorrected [PE]'),
             ('n_channels',        np.int16,   'count of contributing PMTs'),
+            ('n_hits',            np.int16,   'count of hits contributing at least one sample to the peak'),
             ('n_competing',       np.int32,   'number of competing peaks'),
             ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
             ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
@@ -223,10 +230,7 @@ class EventBasics(strax.Plugin):
         )
 
     def setup(self):
-        electron_drift_velocity = get_correction_from_cmt(
-            self.run_id,
-            self.config['electron_drift_velocity'])
-        self.drift_time_max = int(self.config['max_drift_length'] / electron_drift_velocity)
+        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -476,16 +480,6 @@ class EventBasics(strax.Plugin):
 @export
 @strax.takes_config(
     strax.Option(
-        name='electron_drift_velocity', infer_type=False,
-        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-        default=("electron_drift_velocity", "ONLINE", True)
-    ),
-    strax.Option(
-        name='electron_drift_time_gate', infer_type=False,
-        help='Electron drift time from the gate in ns',
-        default=("electron_drift_time_gate", "ONLINE", True)
-    ),
-    strax.Option(
         name='fdc_map', infer_type=False,
         help='3D field distortion correction map path',
         default_by_run=[
@@ -514,6 +508,21 @@ class EventPositions(strax.Plugin):
         help="default reconstruction algorithm that provides (x,y)"
     )
 
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
+    electron_drift_time_gate = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_time_gate'
+                '?version=ONLINE&run_id=plugin.run_id',
+        help='Electron drift time from the gate in ns',
+        cache=True)
+
     dtype = [
         ('x', np.float32,
          'Interaction x-position, field-distortion corrected (cm)'),
@@ -536,12 +545,6 @@ class EventPositions(strax.Plugin):
             ] + strax.time_fields
 
     def setup(self):
-
-        self.electron_drift_velocity = get_correction_from_cmt(
-            self.run_id, self.config['electron_drift_velocity'])
-        self.electron_drift_time_gate = get_correction_from_cmt(
-            self.run_id, self.config['electron_drift_time_gate'])
-        
         if isinstance(self.config['fdc_map'], str):
             self.map = InterpolatingMap(
                 get_resource(self.config['fdc_map'], fmt='binary'))
@@ -792,56 +795,124 @@ class EnergyEstimates(strax.Plugin):
 @export
 class EventShadow(strax.Plugin):
     """
-    This plugin can calculate shadow at event level.
-    It depends on peak-level shadow.
-    The event-level shadow is its first S2 peak's shadow.
-    If no S2 peaks, the event shadow will be nan.
-    It also gives the position infomation of the previous S2s
-    and main peaks' shadow.
+    This plugin can calculate shadow for main S1 and main S2 in events.
+    It also gives the position information of the previous peaks.
+    References:
+        * v0.1.3 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.8'
+    __version__ = '0.1.3'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
     save_when = strax.SaveWhen.EXPLICIT
 
     def infer_dtype(self):
-        dtype = [('s1_shadow', np.float32, 'main s1 shadow [PE/ns]'),
-                 ('s2_shadow', np.float32, 'main s2 shadow [PE/ns]'),
-                 ('shadow', np.float32, 'shadow of event [PE/ns]'),
-                 ('pre_s2_area', np.float32, 'previous s2 area [PE]'),
-                 ('shadow_dt', np.int64, 'time difference to the previous s2 [ns]'),
-                 ('shadow_index', np.int32, 'max shadow peak index in event'),
-                 ('pre_s2_x', np.float32, 'x of previous s2 peak causing shadow [cm]'),
-                 ('pre_s2_y', np.float32, 'y of previous s2 peak causing shadow [cm]'),
-                 ('shadow_distance', np.float32, 'distance to the s2 peak with max shadow [cm]')]
+        dtype = []
+        for main_peak, main_peak_desc in zip(['s1_', 's2_'], ['main S1', 'main S2']):
+            # previous S1 can only cast time shadow, previous S2 can cast both time & position shadow
+            for key in ['s1_time_shadow', 's2_time_shadow', 's2_position_shadow']:
+                type_str, tp_desc, _ = key.split('_')
+                dtype.append(((f'largest {tp_desc} shadow casting from previous {type_str} to {main_peak_desc} [PE/ns]', 
+                               f'{main_peak}shadow_{key}'), np.float32))
+                dtype.append(((f'time difference from the previous {type_str} casting largest {tp_desc} shadow to {main_peak_desc} [ns]', 
+                               f'{main_peak}dt_{key}'), np.int64))
+                # Only previous S2 peaks have (x,y)
+                if 's2' in key:
+                    dtype.append(((f'x of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', 
+                                   f'{main_peak}x_{key}'), np.float32))
+                    dtype.append(((f'y of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]', 
+                                   f'{main_peak}y_{key}'), np.float32))
+                # Only time shadow gives the nearest large peak
+                if 'time' in key:
+                    dtype.append(((f'time difference from the nearest previous large {type_str} to {main_peak_desc} [ns]', 
+                                   f'{main_peak}nearest_dt_{type_str}'), np.int64))
+            # Also record the PDF of HalfCauchy when calculating S2 position shadow
+            dtype.append(((f'PDF describing correlation between previous s2 and {main_peak_desc}', 
+                           f'{main_peak}pdf_s2_position_shadow'), np.float32))
+        dtype += strax.time_fields
+        return dtype
+
+    @staticmethod
+    def set_nan_defaults(result):
+        """
+        When constructing the dtype, take extra care to set values to
+        np.Nan / -1 (for ints) as 0 might have a meaning
+        """
+        for field in result.dtype.names:
+            if np.issubdtype(result.dtype[field], np.integer):
+                result[field][:] = -1
+            else:
+                result[field][:] = np.nan
+
+    def compute(self, events, peaks):
+        split_peaks = strax.split_by_containment(peaks, events)
+        result = np.zeros(len(events), self.dtype)
+
+        self.set_nan_defaults(result)
+
+        # 1. Assign peaks features to main S1 and main S2 in the event
+        for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
+            res_i = result[event_i]
+            # Fetch the features of main S1 and main S2
+            for idx, main_peak in zip([event['s1_index'], event['s2_index']], ['s1_', 's2_']):
+                if idx >= 0:
+                    for key in ['s1_time_shadow', 's2_time_shadow', 's2_position_shadow']:
+                        type_str = key.split('_')[0]
+                        res_i[f'{main_peak}shadow_{key}'] = sp[f'shadow_{key}'][idx]
+                        res_i[f'{main_peak}dt_{key}'] = sp[f'dt_{key}'][idx]
+                    if 'time' in key:
+                        res_i[f'{main_peak}nearest_dt_{key}'] = sp[f'nearest_dt_{type_str}'][idx]
+                    if 's2' in key:
+                        res_i[f'{main_peak}x_{key}'] = sp[f'x_{key}'][idx]
+                        res_i[f'{main_peak}y_{key}'] = sp[f'y_{key}'][idx]
+                    # Record the PDF of HalfCauchy
+                    res_i[f'{main_peak}pdf_s2_position_shadow'] = sp['pdf_s2_position_shadow'][idx]
+
+        # 2. Set time and endtime for events
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
+        return result
+
+
+@export
+class EventAmbience(strax.Plugin):
+    """
+    Save Ambience of the main S1 and main S2 in the event.
+    References:
+        * v0.0.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+    """
+    __version__ = '0.0.4'
+    depends_on = ('event_basics', 'peak_basics', 'peak_ambience')
+    provides = 'event_ambience'
+    save_when = strax.SaveWhen.EXPLICIT
+
+    @property
+    def origin_dtype(self):
+        return ['lh_before', 's0_before', 's1_before', 's2_before', 's2_near']
+
+    def infer_dtype(self):
+        dtype = []
+        for ambience in self.origin_dtype:
+            dtype.append(((f"Number of  {' '.join(ambience.split('_'))} main S1", 
+                           f's1_n_{ambience}'), np.int16))
+            dtype.append(((f"Number of  {' '.join(ambience.split('_'))} main S2", 
+                           f's2_n_{ambience}'), np.int16))
         dtype += strax.time_fields
         return dtype
 
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
-        res = np.zeros(len(events), self.dtype)
 
-        res['shadow_index'] = -1
-        res['pre_s2_x'] = np.nan
-        res['pre_s2_y'] = np.nan
+        # 1. Initialization, ambience is set to be the lowest possible value
+        result = np.zeros(len(events), self.dtype)
 
+        # 2. Assign peaks features to main S1, main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
-            if event['s1_index'] >= 0:
-                res['s1_shadow'][event_i] = sp['shadow'][event['s1_index']]
-            if event['s2_index'] >= 0:
-                res['s2_shadow'][event_i] = sp['shadow'][event['s2_index']]
-            if (sp['type'] == 2).sum() > 0:
-                # Define event shadow as the first S2 peak shadow
-                first_s2_index = np.argwhere(sp['type'] == 2)[0]
-                res['shadow_index'][event_i] = first_s2_index
-                res['shadow'][event_i] = sp['shadow'][first_s2_index]
-                res['pre_s2_area'][event_i] = sp['pre_s2_area'][first_s2_index]
-                res['shadow_dt'][event_i] = sp['shadow_dt'][first_s2_index]
-                res['pre_s2_x'][event_i] = sp['pre_s2_x'][first_s2_index]
-                res['pre_s2_y'][event_i] = sp['pre_s2_y'][first_s2_index]
-        res['shadow_distance'] = ((res['pre_s2_x'] - events['s2_x'])**2 +
-                                  (res['pre_s2_y'] - events['s2_y'])**2
-                                  )**0.5
-        res['time'] = events['time']
-        res['endtime'] = strax.endtime(events)
-        return res
+            for idx, main_peak in zip([event['s1_index'], event['s2_index']], ['s1_', 's2_']):
+                if idx >= 0:
+                    for ambience in self.origin_dtype:
+                        result[f'{main_peak}n_{ambience}'][event_i] = sp[f'n_{ambience}'][idx]
+
+        # 3. Set time and endtime for events
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
+        return result
