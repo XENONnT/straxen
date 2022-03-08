@@ -1,3 +1,14 @@
+1.5.0 / 2022-03-08
+------------------
+- Update Shadow plugins and add Ambience plugins (#912)
+- Update online_monitor.py (#958)
+- fix ref to PR in docs (#957)
+
+Notes:
+ - Lineage changes for online_monitor_mv
+ - New plugins `peak_ambiance` and `event_ambiance` and changes in lineage of `event_shadow` and `peak_shadow`
+
+
 1.4.0 / 2022-03-02
 ------------------
 Minor:
@@ -11,7 +22,7 @@ Patch
 
 Notes:
 - Lineage changed for events_positions_nv, corrected_areas and event_pattern_fit due to option changes
-- Lineage chanes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
+- Lineage changes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
 
 
 1.3.0 / 2022-02-26
