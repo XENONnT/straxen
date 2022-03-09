@@ -66,6 +66,7 @@ _testing_config_nT = dict(
     rel_light_yield=1.0,
     g1=0.1,
     g2=10,
+    bayes_config_file=f'resource://{aux_repo +"2df37896923eb9ca3157befb6274cb697ac2f4f7/strax_files/dummy_bayes_model.npz"}?fmt=npy',
 )
 
 
