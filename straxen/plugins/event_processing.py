@@ -798,9 +798,9 @@ class EventShadow(strax.Plugin):
     This plugin can calculate shadow for main S1 and main S2 in events.
     It also gives the position information of the previous peaks.
     References:
-        * v0.1.3 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
     save_when = strax.SaveWhen.EXPLICIT
@@ -859,11 +859,11 @@ class EventShadow(strax.Plugin):
                         type_str = key.split('_')[0]
                         res_i[f'{main_peak}shadow_{key}'] = sp[f'shadow_{key}'][idx]
                         res_i[f'{main_peak}dt_{key}'] = sp[f'dt_{key}'][idx]
-                    if 'time' in key:
-                        res_i[f'{main_peak}nearest_dt_{key}'] = sp[f'nearest_dt_{type_str}'][idx]
-                    if 's2' in key:
-                        res_i[f'{main_peak}x_{key}'] = sp[f'x_{key}'][idx]
-                        res_i[f'{main_peak}y_{key}'] = sp[f'y_{key}'][idx]
+                        if 'time' in key:
+                            res_i[f'{main_peak}nearest_dt_{type_str}'] = sp[f'nearest_dt_{type_str}'][idx]
+                        if 's2' in key:
+                            res_i[f'{main_peak}x_{key}'] = sp[f'x_{key}'][idx]
+                            res_i[f'{main_peak}y_{key}'] = sp[f'y_{key}'][idx]
                     # Record the PDF of HalfCauchy
                     res_i[f'{main_peak}pdf_s2_position_shadow'] = sp['pdf_s2_position_shadow'][idx]
 
