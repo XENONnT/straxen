@@ -342,10 +342,10 @@ class PeakShadow(strax.OverlapWindowPlugin):
     from previous peaks in time.
     It also gives the area and (x,y) of the previous peaks.
     References:
-        * v0.1.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
 
-    __version__ = '0.1.4'
+    __version__ = '0.1.5'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
@@ -414,7 +414,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                                f'y_{key}'), np.float32))
             # Only time shadow gives the nearest large peak
             if 'time' in key:
-                dtype.append(((f'time difference to the nearest previous large {type_str}', 
+                dtype.append(((f'time difference to the nearest previous large {type_str} [ns]', 
                                f'nearest_dt_{type_str}'), np.int64))
         # Also record the PDF of HalfCauchy when calculating S2 position shadow
         s2_position_shadow_dtype.append((('PDF describing correlation to the previous large s2', 
