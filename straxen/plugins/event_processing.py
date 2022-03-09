@@ -648,7 +648,7 @@ class CorrectedAreas(strax.Plugin):
     # average SE gain for a given time period. default to the value of this run in ONLINE model
     # thus, by default, there will be no time-dependent correction according to se gain
     avg_se_gain = straxen.URLConfig(
-        default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
+        default='cmt://avg_se_gain?version=ONLINE&run_id=plugin.run_id',
         help='Nominal single electron (SE) gain in PE / electron extracted. '
              'Data will be corrected to this value')
 
