@@ -26,5 +26,5 @@ class ElectronDriftVelocity(TimeIntervalCorrection):
 
 @export
 class DriftTimeGate(TimeIntervalCorrection):
-    _NAME = "drift_time_gates"
+    _NAME = "electron_drift_time_gates"
     value: float

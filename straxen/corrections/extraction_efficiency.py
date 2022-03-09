@@ -21,7 +21,7 @@ export, __all__ = strax.exporter()
 
 @export
 class RelExtractionEff(TimeSampledCorrection):
-    _NAME = "rel_extraction_eff"
-    
+    _NAME = "rel_extraction_effs"
+
     value: float
 

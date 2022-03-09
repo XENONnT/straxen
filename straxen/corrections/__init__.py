@@ -5,6 +5,7 @@ from .bodega import *
 from .fax import *
 from .pmt_gains import *
 from .global_versions import *
+from .plugin_lineages import *
 from .electron_drift import *
 from .electron_lifetime import *
 from .extraction_efficiency import *
