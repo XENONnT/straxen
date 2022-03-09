@@ -1,3 +1,17 @@
+1.6.0 / 2022-03-09
+------------------
+Minor:
+- Patch corrected areas (#964)
+- Patch in EventShadow (#967)
+- Bump version of merged S2s (#919)
+- Add Bayes peak probability (#954)
+- fix hit sorting, add raw-record-aqm overlap check (#961)
+
+Notes:
+- Lineage changed for event_shadow, merged_s2s, corrected_area and aqmon_hits.
+- Added new data_types peak_classification_bayes and event_w_bayes_class
+
+
 1.5.0 / 2022-03-08
 ------------------
 - Update Shadow plugins and add Ambience plugins (#912)
