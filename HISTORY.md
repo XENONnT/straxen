@@ -1,3 +1,28 @@
+1.6.0 / 2022-03-09
+------------------
+Minor:
+- Patch corrected areas (#964)
+- Patch in EventShadow (#967)
+- Bump version of merged S2s (#919)
+- Add Bayes peak probability (#954)
+- fix hit sorting, add raw-record-aqm overlap check (#961)
+
+Notes:
+- Lineage changed for event_shadow, merged_s2s, corrected_area and aqmon_hits.
+- Added new data_types peak_classification_bayes and event_w_bayes_class
+
+
+1.5.0 / 2022-03-08
+------------------
+- Update Shadow plugins and add Ambience plugins (#912)
+- Update online_monitor.py (#958)
+- fix ref to PR in docs (#957)
+
+Notes:
+ - Lineage changes for online_monitor_mv
+ - New plugins `peak_ambiance` and `event_ambiance` and changes in lineage of `event_shadow` and `peak_shadow`
+
+
 1.4.0 / 2022-03-02
 ------------------
 Minor:
@@ -11,7 +36,7 @@ Patch
 
 Notes:
 - Lineage changed for events_positions_nv, corrected_areas and event_pattern_fit due to option changes
-- Lineage chanes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
+- Lineage changes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
 
 
 1.3.0 / 2022-02-26
