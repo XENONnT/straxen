@@ -266,8 +266,8 @@ def main(args):
             else:
                 clock_start = time.time()
             logging.info(msg)
-            logging.info(f"{targets} finished! "
-                         f"We took {time.time() - clock_start:.1f} seconds")
+        logging.info(f"{targets} finished! "
+                     f"We took {time.time() - clock_start:.1f} seconds")
     if args.multi_target:
         run_make(args.target)
     else:
