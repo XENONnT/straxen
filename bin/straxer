@@ -263,8 +263,7 @@ def main(args):
                 msg += f"ETA {clock_time_left:.2f} sec."
             else:
                 clock_start = time.time()
-
-            print(msg, flush=True)
+            logging.info(msg)
     if args.multi_target:
         run_make(args.target)
     else:
