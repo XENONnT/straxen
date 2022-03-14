@@ -196,7 +196,7 @@ def main(args):
     # to do them after argparsing (so --help is fast)
     import strax
     import straxen
-    straxen.print_versions(tuple({'strax', 'straxen', args.package}))
+    logging.info(straxen.print_versions(tuple({'strax', 'straxen', args.package}), return_string=True))
 
     st = setup_context(args)
 
