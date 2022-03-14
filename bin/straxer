@@ -221,13 +221,15 @@ def main(args):
     process = psutil.Process(os.getpid())
     peak_ram = 0
 
-    def run_make(target):
+    def run_make(targets):
         """For target or a list of targets, run st.make and print the progress"""
         nonlocal peak_ram
+        logging.info(f'Start processing {args.run_id}: {targets}')
+
         def get_results():
             kwargs = dict(
                 run_id=args.run_id,
-                targets=target,
+                targets=targets,
                 max_workers=int(args.workers),
                 allow_multiple=args.multi_target,
                 progress_bar=False,
@@ -249,13 +251,13 @@ def main(args):
                 continue
 
             # Compute detector/data time left
-            t = d.end / 1e9
-            dt = t - t_start
-            time_left = t_end - t
+            time_end = d.end / 1e9
+            dt = time_end - t_start
+            time_left = t_end - time_end
 
             msg = (f"Got {len(d)} items. "
-                f"Now {dt:.1f} sec / {100 * dt / run_duration:.1f}% into the run. "
-                f"Using {mem_mb:.1f} MB RAM. ")
+                   f"Now {dt:.1f} sec / {100 * dt / run_duration:.1f}% into the run. "
+                   f"Using {mem_mb:.1f} MB RAM. ")
             if clock_start is not None:
                 # Compute processing job clock time left
                 d_clock = time.time() - clock_start
@@ -264,14 +266,14 @@ def main(args):
             else:
                 clock_start = time.time()
             logging.info(msg)
+            logging.info(f"{targets} finished! "
+                         f"We took {time.time() - clock_start:.1f} seconds")
     if args.multi_target:
         run_make(args.target)
     else:
         for target in strax.to_str_tuple(args.target):
             run_make(target)
-    logging.info(f"\nStraxer is done! "
-                 f"We took {time.time() - clock_start:.1f} seconds, "
-                 f"peak RAM usage was around {peak_ram:.1f} MB.")
+    logging.info(f"Straxer is done! peak RAM usage was around {peak_ram:.1f} MB.")
 
 
 def register_to_context(st, module: str):
