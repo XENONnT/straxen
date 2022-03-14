@@ -77,6 +77,11 @@ def parse_args():
         action='store_true',
         help="Allow multiprocessing.")
     parser.add_argument(
+        '--multi_target',
+        action='store_true',
+        help='Allow st.make to be called with multiple targets at once '
+             '(otherwise loop over the target list)')
+    parser.add_argument(
         '--shm',
         action='store_true',
         help="Allow passing data via /dev/shm when multiprocessing.")
@@ -216,48 +221,55 @@ def main(args):
     process = psutil.Process(os.getpid())
     peak_ram = 0
 
-    def get_results():
-        kwargs = dict(
-            run_id=args.run_id,
-            targets=args.target,
-            max_workers=int(args.workers),
-            allow_multiple=len(strax.to_str_tuple(args.target)) > 1,
-            progress_bar=False,
-        )
+    def run_make(target):
+        """For target or a list of targets, run st.make and print the progress"""
+        nonlocal peak_ram
+        def get_results():
+            kwargs = dict(
+                run_id=args.run_id,
+                targets=target,
+                max_workers=int(args.workers),
+                allow_multiple=args.multi_target,
+                progress_bar=False,
+            )
 
-        if args.profile_to:
-            with strax.profile_threaded(args.profile_to):
+            if args.profile_to:
+                with strax.profile_threaded(args.profile_to):
+                    yield from st.get_iter(**kwargs)
+            else:
                 yield from st.get_iter(**kwargs)
-        else:
-            yield from st.get_iter(**kwargs)
 
-    clock_start = None
-    for i, d in enumerate(get_results()):
-        mem_mb = process.memory_info().rss / 1e6
-        peak_ram = max(mem_mb, peak_ram)
+        clock_start = None
+        for i, d in enumerate(get_results()):
+            mem_mb = process.memory_info().rss / 1e6
+            peak_ram = max(mem_mb, peak_ram)
 
-        if not len(d):
-            logging.info(f"Got chunk {i}, but it is empty! Using {mem_mb:.1f} MB RAM.")
-            continue
+            if not len(d):
+                logging.info(f"Got chunk {i}, but it is empty! Using {mem_mb:.1f} MB RAM.")
+                continue
 
-        # Compute detector/data time left
-        t = d.end / 1e9
-        dt = t - t_start
-        time_left = t_end - t
+            # Compute detector/data time left
+            t = d.end / 1e9
+            dt = t - t_start
+            time_left = t_end - t
 
-        msg = (f"Got {len(d)} items. "
-               f"Now {dt:.1f} sec / {100 * dt / run_duration:.1f}% into the run. "
-               f"Using {mem_mb:.1f} MB RAM. ")
-        if clock_start is not None:
-            # Compute processing job clock time left
-            d_clock = time.time() - clock_start
-            clock_time_left = time_left / (dt / d_clock)
-            msg += f"ETA {clock_time_left:.2f} sec."
-        else:
-            clock_start = time.time()
+            msg = (f"Got {len(d)} items. "
+                f"Now {dt:.1f} sec / {100 * dt / run_duration:.1f}% into the run. "
+                f"Using {mem_mb:.1f} MB RAM. ")
+            if clock_start is not None:
+                # Compute processing job clock time left
+                d_clock = time.time() - clock_start
+                clock_time_left = time_left / (dt / d_clock)
+                msg += f"ETA {clock_time_left:.2f} sec."
+            else:
+                clock_start = time.time()
 
-        print(msg, flush=True)
-
+            print(msg, flush=True)
+    if args.multi_target:
+        run_make(args.target)
+    else:
+        for target in strax.to_str_tuple(args.target):
+            run_make(target)
     logging.info(f"\nStraxer is done! "
                  f"We took {time.time() - clock_start:.1f} seconds, "
                  f"peak RAM usage was around {peak_ram:.1f} MB.")
