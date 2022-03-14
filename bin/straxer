@@ -175,7 +175,7 @@ def setup_context(args):
             st.storage += [strax.DataDirectory(args.add_folder)]
 
     if st.is_stored(args.run_id, args.target):
-        logging.warning("This data is already available.")
+        logging.warning("This data is already available. Straxer is done")
         sys.exit(0)
     return st
 
