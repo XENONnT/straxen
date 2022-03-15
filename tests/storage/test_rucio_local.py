@@ -174,7 +174,8 @@ class TestBasics(unittest.TestCase):
         Test that using a rucio-local frontend on a non-RSE listed site
         doesn't cause issues when registered
         """
-        rucio_local = straxen.RucioLocalFrontend()
+        with self.assertWarns(UserWarning):
+            rucio_local = straxen.RucioLocalFrontend()
         assert rucio_local.path is None
         with self.assertRaises(strax.DataNotAvailable):
             rucio_local.find(self.test_keys[0])
