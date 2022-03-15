@@ -198,11 +198,15 @@ def main(args):
     import straxen
     logging.info(straxen.print_versions(tuple({'strax', 'straxen', args.package}), return_string=True))
 
+    logging.info('Starting context')
     st = setup_context(args)
+    logging.info('Context started')
 
     # Reactivate after https://github.com/XENONnT/straxen/issues/586
-    # logging.debug(st.available_for_run(args.run_id))
+    logging.info(f'Cecking availabilty')
+    logging.info(f'Available\n{str(st.available_for_run(args.run_id))}')
 
+    logging.info('Infer start/end')
     try:
         md = st.run_metadata(args.run_id)
         t_start = md['start'].replace(tzinfo=datetime.timezone.utc).timestamp()
@@ -217,6 +221,7 @@ def main(args):
         t_start, t_end = st.estimate_run_start_and_end(args.run_id, t)
         t_start, t_end = t_start/1e9, t_end/1e9
     run_duration = t_end - t_start
+    logging.info(f'Infer start/end: run is {run_duration:.1f} s')
 
     process = psutil.Process(os.getpid())
     peak_ram = 0
@@ -224,7 +229,12 @@ def main(args):
     def run_make(targets):
         """For target or a list of targets, run st.make and print the progress"""
         nonlocal peak_ram
-        logging.info(f'Start processing {args.run_id}: {targets}')
+        if not args.multi_target:
+            logging.info(f'Checking if {targets} is stored')
+            if st.is_stored(args.run_id, targets):
+                logging.info(f'{args.run_id}:{targets} is stored')
+                return
+        logging.info(f'Start processing {args.run_id}:{targets}')
 
         def get_results():
             kwargs = dict(
@@ -267,13 +277,14 @@ def main(args):
                 clock_start = time.time()
             logging.info(msg)
         logging.info(f"{targets} finished! "
-                     f"We took {time.time() - clock_start:.1f} seconds")
+                     f"Took {time.time() - clock_start:.1f} s")
+    proc_start = time.time()
     if args.multi_target:
         run_make(args.target)
     else:
         for target in strax.to_str_tuple(args.target):
             run_make(target)
-    logging.info(f"Straxer is done! peak RAM usage was around {peak_ram:.1f} MB.")
+    logging.info(f"Straxer is done in {time.time()-proc_start :.1f} s! peak RAM usage was ~{peak_ram:.1f} MB.")
 
 
 def register_to_context(st, module: str):
