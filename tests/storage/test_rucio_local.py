@@ -170,13 +170,22 @@ class TestBasics(unittest.TestCase):
     @unittest.skipIf(socket.getfqdn() in straxen.RucioLocalFrontend.local_rses,
                      "Testing useless frontends only works on hosts where it's not supposed to work")
     def test_useless_frontend(self):
-        """Test that using a rucio-local frontend on a non-"""
+        """
+        Test that using a rucio-local frontend on a non-RSE listed site
+        doesn't cause issues when registered
+        """
         rucio_local = straxen.RucioLocalFrontend()
         assert rucio_local.path is None
         with self.assertRaises(strax.DataNotAvailable):
             rucio_local.find(self.test_keys[0])
         # Do a small test that we did not break everything by having a useless fontend
         st = straxen.test_utils.nt_test_context(minimum_run_number=10_000,
-                                                maximum_run_number=10_005)
-        st.storage.append(rucio_local)
+                                                maximum_run_number=10_005,
+                                                include_rucio_local=True,
+                                                keep_default_storage=True,
+                                                )
+        self.assertTrue(
+            str(rucio_local.__class__) in [str(sf.__class__) for sf in st.storage],
+            "Rucio local did not get registered??"
+        )
         st.select_runs()
