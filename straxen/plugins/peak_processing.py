@@ -342,10 +342,10 @@ class PeakShadow(strax.OverlapWindowPlugin):
     from previous peaks in time.
     It also gives the area and (x,y) of the previous peaks.
     References:
-        * v0.1.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+        * v0.1.6 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
 
-    __version__ = '0.1.5'
+    __version__ = '0.1.6'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
@@ -499,7 +499,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     @staticmethod
     def getsigma(sigma_and_baseline, s2):
         # The parameter of HalfCauchy, which is a function of S2 area
-        return sigma_and_baseline[0] / np.sqrt(s2) + sigma_and_baseline[1]
+        return sigma_and_baseline[0] / np.sqrt(np.where(s2 > 0, s2, np.nan)) + sigma_and_baseline[1]
 
     @staticmethod
     @numba.njit
