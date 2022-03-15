@@ -37,10 +37,6 @@ class RucioLocalFrontend(strax.StorageFrontend):
         if path is None:
             local_rse = self.determine_rse()
             if local_rse is None:
-                warnings.warn(
-                    f'{socket.getfqdn()} doesn\'t allow using a local RSE, '
-                    f'{self.__class__.__name__} will do nothing',
-                    UserWarning)
                 self.path = None
                 self.backends = []
                 return
