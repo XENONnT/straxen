@@ -404,7 +404,9 @@ def binom_pmf(k, n, p):
 def binom_cdf(k, n, p):
     if k >= n:
         return 1.0
-    return numba_betainc(n - k, k + 1, 1.0 - p)
+    cd = numba_betainc(n,  1, 1.0 - p)
+    norm = 1. - cd
+    return numba_betainc(n - k, k + 1, 1.0 - p)/norm - cd/norm
 
 
 @numba.njit
