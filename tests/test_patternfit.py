@@ -15,5 +15,3 @@ def test_patternfit_stats(aftobs, aft, s1tot):
     assert(binom_cdf(s1top, s1tot, aft) <=1.)
     assert(0. == binom_cdf(0., s1tot, aft))
     assert(1. == binom_cdf(s1tot, s1tot, aft))
-
-
