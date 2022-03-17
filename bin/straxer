@@ -196,6 +196,9 @@ def main(args):
     # to do them after argparsing (so --help is fast)
     import strax
     import straxen
+    import pandas as pd
+    # For showing data availability below
+    pd.options.display.max_rows = 999
     logging.info(straxen.print_versions(tuple({'strax', 'straxen', args.package}), return_string=True))
 
     logging.info('Starting context')
