@@ -348,7 +348,6 @@ class PeakShadow(strax.OverlapWindowPlugin):
     __version__ = '0.1.5'
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
-    save_when = strax.SaveWhen.EXPLICIT
 
     shadow_time_window_backward = straxen.URLConfig(
         default=int(1e9),
@@ -550,7 +549,6 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     depends_on = ('lone_hits', 'peak_basics', 'peak_positions')
     provides = 'peak_ambience'
     data_kind = 'peaks'
-    save_when = strax.SaveWhen.EXPLICIT
 
     ambience_time_window_backward = straxen.URLConfig(
         default=int(2e6),
