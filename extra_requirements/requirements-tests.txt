@@ -39,4 +39,4 @@ utilix==0.6.6
 wfsim==0.5.13                                   # nestpy doesn't work in py3.10
 xarray==0.21.1
 zstd==1.5.1.0                                   # Strax dependency
-rframe==0.1.8
+rframe==0.1.11
