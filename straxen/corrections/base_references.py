@@ -73,13 +73,13 @@ class BaseResourceReference(BaseCorrectionSchema):
 
     value: str
 
-    def pre_insert(self, db):
+    def pre_insert(self, datasource):
         '''require the existence of the resource
         being referenced prior to inserting a new
         document. This is to avoid typos etc.
         '''
         self.load()
-        super().pre_insert(db)
+        super().pre_insert(datasource)
 
     def load(self, **kwargs):
         kwargs.setdefault('fmt', self.fmt)

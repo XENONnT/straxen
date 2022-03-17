@@ -56,3 +56,6 @@ from .acqmon_processing import *
 
 from . import online_monitor
 from .online_monitor import *
+
+from . import cmt2_example
+from .cmt2_example import *

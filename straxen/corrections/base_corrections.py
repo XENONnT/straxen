@@ -9,6 +9,7 @@ import numbers
 import rframe
 import datetime
 import pandas as pd
+import numpy as np
 
 from rframe.schema import InsertionError
 from .settings import corrections_settings
@@ -41,8 +42,8 @@ class BaseCorrectionSchema(rframe.BaseSchema):
 
     def __init_subclass__(cls) -> None:
 
-        if '_NAME' not in cls.__dict__:
-            cls._NAME = camel_to_snake(cls.__name__)
+        # if '_NAME' not in cls.__dict__:
+        #     cls._NAME = camel_to_snake(cls.__name__)
 
         # if cls._NAME in BaseCorrectionSchema._SCHEMAS:
         #     raise TypeError(f'A correction with the name {cls._NAME} already exists.')
@@ -73,11 +74,11 @@ class BaseCorrectionSchema(rframe.BaseSchema):
             return values[0]
         return values
 
-    @property
-    def collection_name(self):
-        return self._NAME
+    @classmethod
+    def default_collection_name(cls):
+        return cls._NAME
 
-    def pre_update(self, db, new):
+    def pre_update(self, datasource, new):
         '''This method is called if the `new` document is
         being saved and self was found to already exist in
         the datasource. By default we check that all values
@@ -87,6 +88,7 @@ class BaseCorrectionSchema(rframe.BaseSchema):
         updating documents with identical values.
         Otherwise we raise an error, preventing the update.
         '''
+
         if not self.same_values(new):
             index = ', '.join([f'{k}={v}' for k,v in self.index_labels.items()])
             raise IndexError(f'Values already set for {index}')
@@ -112,55 +114,53 @@ class TimeIntervalCorrection(BaseCorrectionSchema):
         labels['time'] = corrections_settings.extract_time(labels)
         return super().url_protocol(attr, **labels)
 
-    def pre_update(self, db, new):
+    def pre_update(self, datasource, new):
         '''Since intervals can extend beyond the current time,
         we want to allow changes to the end time shortening the interval
         to a point in the future since these values have not yet
         been used for processing.
         '''
-        cutoff = corrections_settings.clock.cutoff_datetime()
+        current_left = self.time.left
         current_right = self.time.right
-        utc = corrections_settings.clock.utc
+        new_left = new.time.left
+        new_right = new.time.right
 
-        if utc and current_right is not None:
-            current_right = current_right.replace(tzinfo=pytz.UTC)
+        clock = corrections_settings.clock
+        cutoff = clock.cutoff_datetime(buffer=60)
 
-        # Changing the right side to None extends it to infinity,
-        # this may overlap with existing intervals so we disallow it 
-        if new.right is None:
-            raise IndexError("Cannot set end date to None")
-        
-        # We only allow shortening intervals that extend beyong the cutoff time
-        if current_right is not None and current_right<cutoff:
-            raise IndexError(f'Can only modify an interval that ends after {cutoff}')
-        
+        if clock.after_cutoff(current_left) and \
+           clock.after_cutoff(new_left):
+           # current and new interval are completely in the future
+           # all changes are allowed
+           return
+
+        if current_right > new_right:
+            # Interval if being shortened.
+            # We only allow shortening intervals that extend beyong the cutoff time
+            assert clock.after_cutoff(current_right), f'Can only shorten intervals \
+                                                        that ends after {cutoff}'
+
+            # The resulting interval must extend beyong the cutoff time
+            assert clock.after_cutoff(new_right), f'Can only shorten an interval \
+                                                    to end after {cutoff}'
+
         # Only allow changes to the right side of the interval
-        if self.time.left != new.time.left:
-            raise IndexError(f'Can only change endtime of existing interval. '
-                                 f'start time must be {self.time.left}')
+        assert current_left == new_left, f'Can only change endtime of existing interval. \
+                                           start time must be {self.time.left}'
         
         # Only allow changes to the interval, not the values
-        if not self.same_values(new):
-            raise IndexError(f'Existing interval has different values.')
-
-        # only allow shortening the interval to a time after the cutoff
-        # otherwise it would be possible to unset values already used
-        # for processing
-        new_right = new.time.right
-        if new_right is not None and new_right<cutoff:
-            raise IndexError(f'You can only set interval to end after {cutoff}. '
-                            'Values before this time may have already been used for processing.')
+        assert self.same_values(new), f'Values already set for {self.index_labels}.'
 
 
 def can_extrapolate(doc):
     # only extrapolate ONLINE versions
     # and up until the current time.
-    if doc['version'] != 'ONLINE':
-        return False
-    now = corrections_settings.clock.current_datetime()
-    utc = corrections_settings.clock.utc
-    ts = pd.to_datetime(doc['time'], utc=utc)
-    return ts < now
+    if doc['version'] == 'ONLINE':
+        ts = pd.to_datetime(doc['time']).to_pydatetime()
+        clock = corrections_settings.clock
+        return not clock.after_cutoff(ts)
+
+    return False
 
 
 @export
@@ -187,7 +187,7 @@ class TimeSampledCorrection(BaseCorrectionSchema):
         labels['time'] = corrections_settings.extract_time(labels)
         return super().url_protocol(attr, **labels)
 
-    def pre_insert(self, db):
+    def pre_insert(self, datasource):
         # Inserting ONLINE versions can affect the past
         # since extrapolation until the current time is allowed
         # extrapolation will just give the last value,
@@ -199,20 +199,30 @@ class TimeSampledCorrection(BaseCorrectionSchema):
         # This sets all values from the latest document time until now
         # permanently to the values that would have been used in processing.
         if self.version == 'ONLINE':
-            cutoff = corrections_settings.clock.cutoff_datetime()
-            utc = corrections_settings.clock.utc
-            time = self.time
-            if utc:
-                time = time.replace(tzinfo=pytz.UTC)
-            if time<cutoff:
-                raise InsertionError(f'Can only insert online values for time after {cutoff}.')
-            now_index = self.index_labels
-            cutoff 
-            now_index['time'] = corrections_settings.clock.current_datetime()
-            existing = self.find(db, **now_index)
+            clock = corrections_settings.clock
+            cutoff = clock.cutoff_datetime(buffer=60)
+   
+            assert clock.after_cutoff(self.time), f'Can only insert online \
+                                                    values after {cutoff}.'
+            
+            
+            new_index = self.index_labels
+            new_index['time'] = clock.cutoff_datetime(buffer=1)
+
+            existing = self.find(datasource, **new_index)
+            # If cutoff time is already set, the values may have been
+            # used already for processing. We add a sample at the
+            # cutoff time to force interpolation and extrapolation
+            # to match from the last existing sample until the cutoff.
             if existing:
                 new_doc = existing[0]
-                new_doc.save(db)
+                new_doc.save(datasource)
+
+
+@export
+def list_schemas():
+    return list(BaseCorrectionSchema._SCHEMAS)
+
 
 @export
 def find_schema(name):
@@ -220,27 +230,42 @@ def find_schema(name):
     if schema is None:
         raise KeyError(f'Correction with name {name} not found.')
     return schema
-    
+
+
 @export
 def find_corrections(name, **kwargs):
-    return find_schema(name).find(**kwargs)
+    schema = find_schema(name)
+    labels, extra = schema.extract_labels(**kwargs)
+    return schema.find(**labels)
+
 
 @export
 def find_correction(name, **kwargs):
-    return find_schema(name).find_one(**kwargs)
+    schema = find_schema(name)
+    labels, extra = schema.extract_labels(**kwargs)
+    return schema.find_one(**labels)
 
 
 @URLConfig.register('cmt2')
-def cmt2(name, version='ONLINE', **kwargs):
+def cmt2(name, version='ONLINE', sort=None, attr=None, **kwargs):
     '''URLConfig protocol for fetching values from
     correction documents.
     '''
     dtime = corrections_settings.extract_time(kwargs)
     docs = find_corrections(name, time=dtime, version=version, **kwargs)
+    
     if not docs:
         raise KeyError(f"No matching documents found for {name}.")
-    if hasattr(docs[0], 'value'):
-        docs = [d.value for d in docs]
+
+    if isinstance(sort, str):
+        docs = sorted(docs, key=lambda x: getattr(x, sort))
+    elif sort:
+        docs = sorted(docs)
+
+    if attr is not None:
+        docs = [getattr(d, attr) for d in docs]
+
     if len(docs) == 1:
         return docs[0]
+        
     return docs

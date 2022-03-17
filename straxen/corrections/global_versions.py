@@ -1,5 +1,6 @@
 
 
+import rframe
 import strax
 import straxen
 
@@ -11,6 +12,9 @@ export, __all__ = strax.exporter()
 @export
 class GlobalVersion(CorrectionReference):
     _NAME = 'global_versions'
+
+    strax_version: str = rframe.Index()
+    straxen_version: str = rframe.Index()
 
     @classmethod
     def get_global_config(cls, version,

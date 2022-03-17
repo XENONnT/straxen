@@ -30,7 +30,7 @@ class CorrectionsSettings:
     def run_id_to_time(self, run_id):
         rundb = utilix.xent_collection()
         if isinstance(run_id, str):
-            query = {'name': run_id}
+            query = {'number': int(run_id)}
         elif isinstance(run_id, int):
             query = {'number': run_id}
         else:
@@ -40,7 +40,7 @@ class CorrectionsSettings:
         if not doc:
             raise KeyError(f'Run {run_id} not found.')
 
-        return doc['start']
+        return doc['start'] + (doc['end']  - doc['start'] ) / 2
 
     def extract_time(self, kwargs):
         if 'time' in kwargs:

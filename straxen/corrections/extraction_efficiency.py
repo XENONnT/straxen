@@ -14,13 +14,13 @@ Time dependence of Extraction Efficiency generated from Kr83m calibration data a
 
 import strax
 
-from .base_corrections import TimeSampledCorrection
+from .base_corrections import TimeIntervalCorrection
 
 export, __all__ = strax.exporter()
 
 
 @export
-class RelExtractionEff(TimeSampledCorrection):
+class RelExtractionEff(TimeIntervalCorrection):
     _NAME = "rel_extraction_effs"
 
     value: float

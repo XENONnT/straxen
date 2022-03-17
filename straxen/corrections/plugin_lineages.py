@@ -14,11 +14,11 @@ class PluginLineage(BaseCorrectionSchema):
     _NAME = 'plugin_lineages'
     class Config:
         smart_union = True
+
     data_type: str = rframe.Index()
     lineage_hash: str = rframe.Index()
-    plugin: str = rframe.Index()
-    plugin_version: str = rframe.Index()
-
+    plugin_name: str = rframe.Index()
+    
     config: Dict[str,Union[tuple,Any]]
     depends_on: Dict[str,str]
 
@@ -60,9 +60,15 @@ class PluginLineage(BaseCorrectionSchema):
                 combined[k] = v
         return combined
 
-    def get_dependencies(self, datasource=None):
+    def get_dependencies(self, datasource=None, recursive=False):
         lineages = list(self.depends_on.values())
-        return self.find(datasource, lineage_hash=lineages)
+        docs = self.find(datasource, lineage_hash=lineages)
+        deps = {doc.data_type for doc in docs}
+        if recursive:
+            for doc in docs:
+                extra = doc.get_dependencies(datasource, recursive=True)
+                deps.update(extra)
+        return deps
 
     def get_full_config(self, datasource=None):
         config = {}

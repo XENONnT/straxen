@@ -331,3 +331,14 @@ def open_neural_net(model_path: str, **kwargs):
         tar.extractall(path=tmpdirname)
         return tf.keras.models.load_model(tmpdirname)
 
+@URLConfig.register('getattr')
+def getattr_protocol(instance, attr=None, sort=None):
+    if not isinstance(instance, Container):
+        return getattr(instance, attr)
+
+    if isinstance(sort, str):
+        instance = sorted(instance, key=lambda x: getattr(x, sort))
+    elif sort:
+        instance = sorted(instance)
+    return [getattr(obj, attr) for obj in instance]
+
