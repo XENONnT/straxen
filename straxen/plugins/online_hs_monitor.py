@@ -53,7 +53,7 @@ class OnlineHotspotMonitor(strax.Plugin):
         print(dtype)
         return dtype
 
-    def compute(peak_positions,peaks,start,end):
+    def compute(self,peak_positions,peaks,start,end):
         # Make results en 1D array
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
