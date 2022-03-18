@@ -3,6 +3,7 @@ import strax
 import straxen
 from copy import deepcopy
 from straxen import HAVE_ADMIX
+from straxen import OnlineMonitor
 import os
 import warnings
 import typing as ty
