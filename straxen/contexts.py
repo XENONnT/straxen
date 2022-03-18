@@ -250,7 +250,7 @@ def xenonnt_online(output_folder: str = './strax_data',
 
     return st
 
-def xenonnt_online_hsm():
+def xenonnt_online_hsm(**kwargs):
     st = straxen.contexts.xenonnt_online(**kwargs)
     st.set_context_config({'allow_rechunk':False})
 
