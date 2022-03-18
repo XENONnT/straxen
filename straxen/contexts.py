@@ -251,6 +251,9 @@ def xenonnt_online(output_folder: str = './strax_data',
     return st
 
 def xenonnt_online_hsm(**kwargs):
+    import pymongo
+    import os
+    
     st = straxen.contexts.xenonnt_online(**kwargs)
     st.set_context_config({'allow_rechunk':False})
 
@@ -261,7 +264,7 @@ def xenonnt_online_hsm(**kwargs):
     database = 'test_database'
     joran_db = client[database]
 
-    st.register=[straxen.OnlineHotspotMonitor]
+    st.register(straxen.OnlineHotspotMonitor)
     st.storage=[st.storage[0],
                 strax.DataDirectory(
                     '/daq_common/maricke/2022_03_11_om_test_data/raw',
