@@ -62,7 +62,7 @@ class BayesPeakClassification(strax.Plugin):
                     ln_prob_s1=ln_prob_s1,
                     ln_prob_s2=ln_prob_s2
                     )
-
+        
 def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     """
     Compute waveforms and quantiles for a given number of nodes(atributes)
@@ -134,7 +134,7 @@ def compute_inference(bins: int, bayes_n_nodes: int, cpt: np.ndarray, n_bayes_cl
         lnposterior[:, i, :] = np.log(distributions[i][values_for_inference[:, i], :])
 
     lnposterior_sumsamples = np.sum(lnposterior, axis=1)
-    lnposterior_sumsamples = np.sum([lnposterior_sumsamples, np.log(class_prior)[np.newaxis, ...]])
+    lnposterior_sumsamples = np.sum([lnposterior_sumsamples, np.log(class_prior)[np.newaxis, ...]], axis=0)
     lnposterior_normed = lnposterior_sumsamples - logsumexp(lnposterior_sumsamples, axis=1)[..., np.newaxis]
 
     return lnposterior_normed[:, 0], lnposterior_normed[:, 1]
