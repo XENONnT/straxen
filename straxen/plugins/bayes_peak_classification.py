@@ -62,7 +62,6 @@ class BayesPeakClassification(strax.Plugin):
                     ln_prob_s1=ln_prob_s1,
                     ln_prob_s2=ln_prob_s2
                     )
-        
 def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     """
     Compute waveforms and quantiles for a given number of nodes(atributes)
