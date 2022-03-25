@@ -74,8 +74,8 @@ FAKE_MERGED_S2_TYPE = -42
 class Peaklets(strax.Plugin):
     """
     Split records into:
-        -peaklets
-        -lone_hits
+     - peaklets
+     - lone_hits
 
     Peaklets are very aggressively split peaks such that we are able
     to find S1-S2s even if they are close to each other. (S2) Peaks
@@ -681,7 +681,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
-    __version__ = '0.4.1'
+    __version__ = '0.5.0'
 
     def setup(self):
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,

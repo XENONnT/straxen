@@ -9,6 +9,7 @@ Subpackages
 
    straxen.analyses
    straxen.plugins
+   straxen.storage
 
 Submodules
 ----------
@@ -101,42 +102,10 @@ straxen.misc module
    :undoc-members:
    :show-inheritance:
 
-straxen.mongo\_storage module
------------------------------
-
-.. automodule:: straxen.mongo_storage
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 straxen.numbafied\_scipy module
 -------------------------------
 
 .. automodule:: straxen.numbafied_scipy
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.online\_monitor module
-------------------------------
-
-.. automodule:: straxen.online_monitor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.rucio module
---------------------
-
-.. automodule:: straxen.rucio
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.rundb module
---------------------
-
-.. automodule:: straxen.rundb
    :members:
    :undoc-members:
    :show-inheritance:
