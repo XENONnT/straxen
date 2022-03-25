@@ -13,6 +13,8 @@ import numpy as np
 export, __all__ = strax.exporter()
 
 channel_list = [i for i in range(494)]
+
+
 @export
 @strax.takes_config(
     strax.Option('baseline_window',
@@ -27,20 +29,20 @@ channel_list = [i for i in range(494)]
     strax.Option('channel_list',
                  default=(tuple(channel_list)), infer_type=False,
                  help="List of PMTs. Defalt value: all the PMTs"))
-
 class LEDCalibration(strax.Plugin):
     """
     Preliminary version, several parameters to set during commissioning.
-    LEDCalibration returns: channel, time, dt, lenght, Area,
+    LEDCalibration returns: channel, time, dt, length, Area,
     amplitudeLED and amplitudeNOISE.
+
     The new variables are:
         - Area: Area computed in the given window, averaged over 6
-        windowsthat have the same starting sample and different end
-        samples.
+          windows that have the same starting sample and different end
+          samples.
         - amplitudeLED: peak amplitude of the LED on run in the given
-        window.
+          window.
         - amplitudeNOISE: amplitude of the LED on run in a window far
-         from the signal one.
+          from the signal one.
     """
     
     __version__ = '0.2.3'

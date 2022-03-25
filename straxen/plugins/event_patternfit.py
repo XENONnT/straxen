@@ -18,8 +18,6 @@ export, __all__ = strax.exporter()
                  default='XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'),
     strax.Option('s2_tf_model', help='S2 (x, y) optical data-driven model', infer_type=False,
                  default='XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'),
-    strax.Option('s1_aft_map', help='Date drive S1 area fraction top map.', infer_type=False,
-                 default='s1_aft_dd_xyz_XENONnT_Kr83m_41500eV_31Oct2021.json'),
     strax.Option('mean_pe_per_photon', help='Mean of full VUV single photon response',
                  default=1.2, infer_type=False,),
     strax.Option('gain_model', infer_type=False,
@@ -38,12 +36,6 @@ export, __all__ = strax.exporter()
                  help='Store normalized LLH per channel for each peak'),
     strax.Option('max_r_pattern_fit', default=straxen.tpc_r, type=float,
                  help='Maximal radius of the peaks where llh calculation will be performed'),
-    strax.Option(name='electron_drift_velocity', infer_type=False,
-                 help='Vertical electron drift velocity in cm/ns (1e4 m/ms)',
-                 default=("electron_drift_velocity", "ONLINE", True)),
-    strax.Option(name='electron_drift_time_gate', infer_type=False,
-                 help='Electron drift time from the gate in ns',
-                 default=("electron_drift_time_gate", "ONLINE", True)),
 )
 
 class EventPatternFit(strax.Plugin):
@@ -53,7 +45,29 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
+
+    # Getting S1 AFT maps
+    s1_aft_map = straxen.URLConfig( 
+           default='itp_map://resource://cmt://' 
+                   's1_aft_xyz_map' 
+                   '?version=ONLINE&run_id=plugin.run_id&fmt=json', 
+           cache=True)
+
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
+    )
+
+    electron_drift_time_gate = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_time_gate'
+                '?version=ONLINE&run_id=plugin.run_id',
+        help='Electron drift time from the gate in ns',
+        cache=True)
 
     def infer_dtype(self):
         dtype = [('s2_2llh', np.float32,
@@ -106,15 +120,7 @@ class EventPatternFit(strax.Plugin):
         return dtype
     
     def setup(self):
-        self.electron_drift_velocity = get_correction_from_cmt(self.run_id, self.config['electron_drift_velocity'])
-        self.electron_drift_time_gate = get_correction_from_cmt(self.run_id, self.config['electron_drift_time_gate'])
         self.mean_pe_photon = self.config['mean_pe_per_photon']
-        
-        # Getting S1 AFT maps
-        self.s1_aft_map = straxen.InterpolatingMap(
-            straxen.get_resource(
-                self.config['s1_aft_map'],
-                fmt=self._infer_map_format(self.config['s1_aft_map'])))
                     
         # Getting optical maps
         self.s1_pattern_map = straxen.InterpolatingMap(
@@ -205,10 +211,10 @@ class EventPatternFit(strax.Plugin):
         
         # compute binomial test only if we have events that have valid aft prob, alt s1 area and alt s1 aft
         if np.sum(mask_alt_s1):
-            arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
+            arg = alt_aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_area_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-            arg = aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
+            arg = alt_aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.config['mean_pe_per_photon'], events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_photon_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
                 

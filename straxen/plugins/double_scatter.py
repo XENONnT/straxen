@@ -39,27 +39,32 @@ class DistinctChannels(strax.LoopPlugin):
 
 @export
 class EventInfoDouble(strax.MergeOnlyPlugin):
-    """Alternate version of event_info for Kr and other double scatter
-        analyses:
-      - Uses a different naming convention:
-        s1 -> s1_a, alt_s1 -> s1_b, and similarly for s2s;
-      - Adds s1_b_distinct_channels, which can be tricky to compute
-        (since it requires going back to peaks)
     """
-    __version__ = '0.1.1'
+    Alternate version of event_info for Kr and other double scatter 
+    analyses:
+     - Uses a different naming convention:
+       s1 -> s1_a, alt_s1 -> s1_b, and similarly for s2s;
+     - Adds s1_b_distinct_channels, which can be tricky to compute
+       (since it requires going back to peaks)
+    """
+    __version__ = '0.1.2'
     depends_on = ['event_info', 'distinct_channels']
     save_when = strax.SaveWhen.EXPLICIT
     
     @staticmethod
     def rename_field(orig_name):
-        special_cases = {'alt_cs1': 'cs1_b',
-                         'alt_cs2': 'cs2_b',
-                         'cs1': 'cs1_a',
-                         'cs2': 'cs2_a',
+        special_cases = {'cs1': 'cs1_a',
+                         'alt_cs1': 'cs1_b',
                          'alt_s1_delay': 'ds_s1_dt',
+                         'cs2': 'cs2_a',
+                         'alt_cs2': 'cs2_b',
                          'alt_s2_delay': 'ds_s2_dt',
+                         'cs1_wo_timecorr': 'cs1_a_wo_timecorr',
+                         'alt_cs1_wo_timecorr': 'cs1_b_wo_timecorr',
                          'cs2_wo_elifecorr': 'cs2_a_wo_elifecorr',
                          'alt_cs2_wo_elifecorr': 'cs2_b_wo_elifecorr',
+                         'cs2_wo_timecorr': 'cs2_a_wo_timecorr',
+                         'alt_cs2_wo_timecorr': 'cs2_b_wo_timecorr',
                          'cs2_area_fraction_top': 'cs2_a_area_fraction_top',
                          'alt_cs2_area_fraction_top': 'cs2_b_area_fraction_top',
                          'cs2_bottom': 'cs2_a_bottom',

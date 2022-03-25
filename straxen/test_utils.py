@@ -8,6 +8,7 @@ from os import environ as os_environ
 from straxen import aux_repo, pax_file
 from pandas import DataFrame
 from immutabledict import immutabledict
+from importlib import import_module
 import numpy as np
 
 
@@ -21,8 +22,8 @@ testing_config_1T = dict(
     hev_gain_model=('1T_to_pe_placeholder', False),
     gain_model=('1T_to_pe_placeholder', False),
     elife=1e6,
-    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    electron_drift_time_gate=("electron_drift_time_gate_constant", 1700),
+    electron_drift_velocity=1e-4,
+    electron_drift_time_gate=1700,
 )
 
 # Let's make a dummy map for NVeto
@@ -50,11 +51,11 @@ _testing_config_nT = dict(
     nveto_pmt_position_map=_nveto_pmt_dummy,
     s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
     s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
-    electron_drift_velocity=("electron_drift_velocity_constant", 1e-4),
-    s1_aft_map=aux_repo + '023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json',  # noqa
+    electron_drift_velocity=1e-4,
+    s1_aft_map=f'itp_map://resource://{aux_repo + "023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json"}?fmt=json', # noqa
     s2_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s2_xy_unity_patterns.json.gz',  # noqa
     s1_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s1_xyz_unity_patterns.json.gz',  # noqa
-    electron_drift_time_gate=("electron_drift_time_gate_constant", 2700),
+    electron_drift_time_gate=2700,
     hit_min_amplitude='pmt_commissioning_initial',
     hit_min_amplitude_nv=20,
     hit_min_amplitude_mv=80,
@@ -62,8 +63,10 @@ _testing_config_nT = dict(
     avg_se_gain=1.0,
     se_gain=1.0,
     rel_extraction_eff=1.0,
+    rel_light_yield=1.0,
     g1=0.1,
     g2=10,
+    bayes_config_file=f'resource://{aux_repo +"2df37896923eb9ca3157befb6274cb697ac2f4f7/strax_files/dummy_bayes_model.npz"}?fmt=npy',
 )
 
 
@@ -101,6 +104,14 @@ def _overwrite_testing_function_file(function_file):
     return function_file
 
 
+def is_installed(module):
+    try:
+        import_module(module)
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
 @export
 def _is_on_pytest():
     """Check if we are on a pytest"""
@@ -119,19 +130,35 @@ def _get_fake_daq_reader():
 
 def nt_test_context(target_context='xenonnt_online',
                     deregister=(),
-                    **kwargs):
+                    keep_default_storage=False,
+                    **kwargs) -> strax.Context:
+    """
+    Get a dummy context with full nt-like data simulated data (except aqmon)
+    to allow testing plugins
+
+    :param target_context: Which contexts from straxen.contexts to test
+    :param deregister: a list of plugins from the context
+    :param keep_default_storage: if to True, keep the default context
+        storage. Usually, you don't need this since all the data will be
+         stored in a separate test data folder.
+    :param kwargs: Any kwargs are passed to the target-context
+    :return: a context
+    """
     if not straxen.utilix_is_configured(warning_message=False):
         kwargs.setdefault('_database_init', False)
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config({'diagnose_sorting': True, 'store_per_channel': True})
     st.register(_get_fake_daq_reader())
-    st.storage = [strax.DataDirectory('./strax_test_data')]
     download_test_data('https://raw.githubusercontent.com/XENONnT/'
                        'strax_auxiliary_files/'
                        'f0d177401e11408b273564f0e29df77528e83d26/'
                        'strax_files/'
                        '012882-raw_records-z7q2d2ye2t.tar')
+    if keep_default_storage:
+        st.storage += [strax.DataDirectory('./strax_test_data')]
+    else:
+        st.storage = [strax.DataDirectory('./strax_test_data')]
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)

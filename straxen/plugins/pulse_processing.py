@@ -105,7 +105,7 @@ HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n
     *HITFINDER_OPTIONS)
 class PulseProcessing(strax.Plugin):
     """
-    1. Split raw_records into:
+    Split raw_records into:
      - (tpc) records
      - aqmon_records
      - pulse_counts
