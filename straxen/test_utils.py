@@ -130,19 +130,35 @@ def _get_fake_daq_reader():
 
 def nt_test_context(target_context='xenonnt_online',
                     deregister=(),
-                    **kwargs):
+                    keep_default_storage=False,
+                    **kwargs) -> strax.Context:
+    """
+    Get a dummy context with full nt-like data simulated data (except aqmon)
+    to allow testing plugins
+
+    :param target_context: Which contexts from straxen.contexts to test
+    :param deregister: a list of plugins from the context
+    :param keep_default_storage: if to True, keep the default context
+        storage. Usually, you don't need this since all the data will be
+         stored in a separate test data folder.
+    :param kwargs: Any kwargs are passed to the target-context
+    :return: a context
+    """
     if not straxen.utilix_is_configured(warning_message=False):
         kwargs.setdefault('_database_init', False)
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config({'diagnose_sorting': True, 'store_per_channel': True})
     st.register(_get_fake_daq_reader())
-    st.storage = [strax.DataDirectory('./strax_test_data')]
     download_test_data('https://raw.githubusercontent.com/XENONnT/'
                        'strax_auxiliary_files/'
                        'f0d177401e11408b273564f0e29df77528e83d26/'
                        'strax_files/'
                        '012882-raw_records-z7q2d2ye2t.tar')
+    if keep_default_storage:
+        st.storage += [strax.DataDirectory('./strax_test_data')]
+    else:
+        st.storage = [strax.DataDirectory('./strax_test_data')]
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)

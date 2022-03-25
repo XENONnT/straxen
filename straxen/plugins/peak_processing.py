@@ -497,6 +497,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         return result
 
     @staticmethod
+    @np.errstate(invalid='ignore')
     def getsigma(sigma_and_baseline, s2):
         # The parameter of HalfCauchy, which is a function of S2 area
         return sigma_and_baseline[0] / np.sqrt(s2) + sigma_and_baseline[1]
