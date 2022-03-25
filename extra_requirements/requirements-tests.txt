@@ -14,6 +14,7 @@ holoviews==1.14.8
 hypothesis==6.38.0
 ipywidgets==7.6.5
 jupyter-client==7.1.2                           # for ipywidgets
+Jinja2==3.0.3                                   # Holoviews dependency
 keras==2.8.0                                    # Tensorflow dependency
 matplotlib==3.5.1
 multihist==0.6.5

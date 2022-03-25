@@ -1334,6 +1334,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                         st.make(run_id,
                                 post_target,
                                 config=strax_config,
+                                progress_bar=True,
                                 max_workers=cores)
                     else:
                         log.info(f'Not making {post_target}, it is already stored')

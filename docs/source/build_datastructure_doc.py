@@ -321,7 +321,7 @@ def write_data_kind_dep_tree():
     for data_kind in tree.keys():
         graph_tree.node(data_kind,
                         style='filled',
-                        href='#' + data_kind.replace('_', '-'),
+                        href='#' + data_kind.replace('_', '-') + '-data-kind',
                         fillcolor=kind_colors.get(data_kind, 'grey'),
                         shape='box3d',
                         )
@@ -344,7 +344,7 @@ def write_data_kind_dep_tree():
         graph_tree.attr(rankdir='LR')
         graph_tree.node(data_kind + '-data-kind',
                         style='filled',
-                        href='#' + data_kind.replace('_', '-'),
+                        href='#' + data_kind.replace('_', '-') + '-data-kind',
                         fillcolor=kind_colors.get(data_kind, 'grey'),
                         shape='box3d',
                         )
@@ -352,7 +352,7 @@ def write_data_kind_dep_tree():
         for dtype in data_types:
             graph_tree.node(dtype,
                             style='filled',
-                            href='#' + data_kind.replace('_', '-'),
+                            href='#' + data_kind.replace('_', '-') + '-data-kind',
                             fillcolor=kind_colors.get(data_kind, 'grey'),
                             )
             graph_tree.edge(data_kind + '-data-kind', dtype)
