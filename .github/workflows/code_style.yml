@@ -7,7 +7,7 @@ jobs:
     name: Quality check
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@master
         with:
@@ -16,7 +16,7 @@ jobs:
         run: |
              bash .github/scripts/pre_pyflakes.sh
       - name: Wemake Python Stylguide
-        uses: wemake-services/wemake-python-styleguide@0.16.0
+        uses: wemake-services/wemake-python-styleguide@0.16.1
         continue-on-error: true
         with:
           reporter: 'github-pr-review'
