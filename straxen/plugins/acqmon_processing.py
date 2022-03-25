@@ -41,7 +41,7 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.1.0'
+    __version__ = '1.1.1'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -70,6 +70,12 @@ class AqmonHits(strax.Plugin):
         track=True,
         help='Number of samples to use at the start of the pulse to determine the baseline'
     )
+    check_raw_record_aqmon_overlaps = straxen.URLConfig(
+        default=True,
+        track=False,
+        help='Crash if any of the pulses in raw_records_aqmon overlap with others '
+             'in the same channel'
+    )
 
     depends_on = 'raw_records_aqmon'
     provides = 'aqmon_hits'
@@ -83,11 +89,17 @@ class AqmonHits(strax.Plugin):
         if not_allowed_channels:
             raise ValueError(
                 f'Unknown channel {not_allowed_channels}. Only know {self.aqmon_channels}')
+
+        if self.check_raw_record_aqmon_overlaps:
+            straxen.check_overlaps(raw_records_aqmon,
+                                   n_channels = max(AqmonChannels).value + 1
+            )
+
         records = strax.raw_to_records(raw_records_aqmon)
-        strax.sort_by_time(records)
         strax.zero_out_of_bounds(records)
         strax.baseline(records, baseline_samples=self.baseline_samples_aqmon, flip=True)
         aqmon_hits = self.find_aqmon_hits_per_channel(records)
+        aqmon_hits = strax.sort_by_time(aqmon_hits)
         return aqmon_hits
 
     @property
@@ -109,7 +121,6 @@ class AqmonHits(strax.Plugin):
         if np.sum(is_artificial):
             aqmon_hits = np.concatenate([
                 aqmon_hits, self.get_deadtime_hits(records[is_artificial])])
-            strax.sort_by_time(aqmon_hits)
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
@@ -141,11 +152,11 @@ class AqmonHits(strax.Plugin):
 class VetoIntervals(strax.OverlapWindowPlugin):
     """ Find pairs of veto start and veto stop signals and the veto
     duration between them:
-        busy_*  <= V1495 busy veto for tpc channels
-        busy_he_*    <= V1495 busy veto for high energy tpc channels
-        hev_*   <= DDC10 hardware high energy veto
-        straxen_deadtime <= special case of deadtime introduced by the
-            DAQReader-plugin
+     - busy_*  <= V1495 busy veto for tpc channels
+     - busy_he_*    <= V1495 busy veto for high energy tpc channels
+     - hev_*   <= DDC10 hardware high energy veto
+     - straxen_deadtime <= special case of deadtime introduced by the
+       DAQReader-plugin
     """
     __version__ = '1.1.0'
     depends_on = 'aqmon_hits'
@@ -452,7 +463,7 @@ class DetectorSynchronization(strax.Plugin):
     Reference:
         * xenon:xenonnt:dsg:mveto:sync_monitor
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = ('raw_records_aqmon',
                   'raw_records_aqmon_nv',
                   'raw_records_aux_mv')
@@ -580,6 +591,7 @@ class DetectorSynchronization(strax.Plugin):
             else:
                 # Add err_value in case offset is not valid
                 offsets.append(err_value)
+                prev_time = hits_det0['time'][ind]
 
         return np.array(offsets)
 

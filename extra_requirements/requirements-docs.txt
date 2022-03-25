@@ -1,6 +1,7 @@
 # File for the requirements of the documentation
 commonmark==0.9.1
 graphviz==0.19.1
+m2r==0.2.1
 nbsphinx==0.8.8
 recommonmark==0.7.1
 sphinx==4.4.0
