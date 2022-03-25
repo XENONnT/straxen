@@ -463,7 +463,7 @@ class DetectorSynchronization(strax.Plugin):
     Reference:
         * xenon:xenonnt:dsg:mveto:sync_monitor
     """
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     depends_on = ('raw_records_aqmon',
                   'raw_records_aqmon_nv',
                   'raw_records_aux_mv')
@@ -591,6 +591,7 @@ class DetectorSynchronization(strax.Plugin):
             else:
                 # Add err_value in case offset is not valid
                 offsets.append(err_value)
+                prev_time = hits_det0['time'][ind]
 
         return np.array(offsets)
 
