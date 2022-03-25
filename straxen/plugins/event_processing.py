@@ -803,6 +803,7 @@ class EventShadow(strax.Plugin):
     __version__ = '0.1.4'
     depends_on = ('event_basics', 'peak_basics', 'peak_shadow')
     provides = 'event_shadow'
+    save_when = strax.SaveWhen.EXPLICIT
 
     def infer_dtype(self):
         dtype = []
