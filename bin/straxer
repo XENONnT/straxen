@@ -10,7 +10,6 @@ import psutil
 import json
 import importlib
 import sys
-from pprint import pprint
 
 
 def parse_args():
@@ -203,14 +202,18 @@ def main(args):
     import pandas as pd
     # For showing data availability below
     pd.options.display.max_rows = 999
-    logging.info(straxen.print_versions(tuple({'strax', 'straxen', args.package}), return_string=True))
+    logging.info(straxen.print_versions(
+        tuple({'strax', 'straxen', args.package}),
+        return_string=True,
+        print_output=False)
+        ,)
 
     logging.info('Starting context')
     st = setup_context(args)
     logging.info('Context started')
 
     # Reactivate after https://github.com/XENONnT/straxen/issues/586
-    logging.info(f'Cecking availabilty')
+    logging.info(f'Checking availabilty')
     logging.info(f'Available\n{str(st.available_for_run(args.run_id))}')
 
     logging.info('Infer start/end')
@@ -306,7 +309,9 @@ def register_to_context(st, module: str):
     to_register = importlib.import_module(os.path.splitext(file)[0])
     st.register_all(to_register)
     logging.info(f'Successfully registered {file}. Printing plugins')
-    pprint(st._plugin_class_registry)
+
+    for key, plugin in st._plugin_class_registry.items():
+        logging.info(f'{key}\t{plugin}')
 
 
 def to_dict_tuple(res: dict):
