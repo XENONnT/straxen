@@ -246,6 +246,7 @@ def main(args):
                 max_workers=int(args.workers),
                 allow_multiple=args.multi_target,
                 progress_bar=False,
+                save=strax.to_str_tuple(targets),
             )
 
             if args.profile_to:
