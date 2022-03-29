@@ -115,6 +115,10 @@ def parse_args():
         '--add_folder',
         default='',
         help='Also add folder to st.storage')
+    parser.add_argument(
+        '--print_alive',
+        default=1,
+        help='Print that straxer is still running every this many [seconds]')
     return parser.parse_args()
 
 
@@ -226,6 +230,8 @@ def main(args):
     run_duration = t_end - t_start
     logging.info(f'Infer start/end: run is {run_duration:.1f} s')
 
+    start_alive_thread(logging, args.print_alive)
+
     process = psutil.Process(os.getpid())
     peak_ram = 0
 
@@ -311,6 +317,21 @@ def to_dict_tuple(res: dict):
             # Remove lists to tuples
             res[k] = tuple(_v if type(_v) != list else tuple(_v) for _v in v)
     return res
+
+
+def print_is_alive(log, print_timeout):
+    while True:
+        log.info('Straxer still running')
+        time.sleep(print_timeout)
+
+
+def start_alive_thread(log, print_timeout):
+    from threading import Thread
+    thread = Thread(name='Ping alive',
+                    target=print_is_alive,
+                    args=(log, print_timeout))
+    log.info(f'Starting thread to ping that we are still running')
+    thread.start()
 
 
 if __name__ == '__main__':
