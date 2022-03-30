@@ -2,14 +2,11 @@ import typing
 from enum import IntEnum
 import numba
 import numpy as np
-<<<<<<< HEAD
 import os
 import csv
-=======
 import strax
 import straxen
 from immutabledict import immutabledict
->>>>>>> master
 
 from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 
