@@ -236,7 +236,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         result = result[sort]
         return result
 
-<<<<<<< HEAD
 @export
 @strax.takes_config(
     strax.Option('gps_channel', default = 801,
@@ -363,9 +362,9 @@ class GPS_sync(strax.Plugin):
 
         return ans
 
+
 @numba.njit
 def channel_select_(rr, ch):
-=======
     def handle_starts_and_stops_outside_of_run(
             self,
             veto_hits_start: np.ndarray,
@@ -431,7 +430,6 @@ def channel_select_(rr, ch):
 
 # Don't use @numba since numba doesn't like masking arrays, use numpy
 def channel_select(rr, ch):
->>>>>>> master
     """Return data from start/stop veto channel in the acquisition monitor (AM)"""
     return rr[rr['channel'] == ch]
 
