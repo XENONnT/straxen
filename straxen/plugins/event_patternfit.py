@@ -393,12 +393,10 @@ def lbinom_pmf(k, n, p):
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
     return ret_log
 
-
 @numba.njit
 def binom_pmf(k, n, p):
     """Binomial probability mass function approximated with gamma function"""
     return np.exp(lbinom_pmf(k, n, p))
-
 
 @numba.njit
 def binom_cdf(k, n, p):
@@ -406,11 +404,9 @@ def binom_cdf(k, n, p):
         return 1.0
     return numba_betainc(n - k, k + 1, 1.0 - p)
 
-
 @numba.njit
 def binom_sf(k, n, p):
     return 1 - binom_cdf(k, n, p)
-
 
 @numba.njit
 def lbinom_pmf_diriv(k, n, p, dk=1e-7):
@@ -466,7 +462,7 @@ def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
             max_iter -= 1           
         if x0 == x1 == 0 and y0 - target > 0:
             x1 = np.nan
-        if x0 == x1 == n and y0 - target < 0:
+        if x0 == x1 == args[0] and y0 - target < 0:
             x1 = np.nan
     else:
         x1 = np.nan
@@ -510,7 +506,6 @@ def binom_test(k, n, p):
 @np.vectorize
 @numba.njit
 def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
-    print(aft_prob, area_tot, area_fraction_top)
     """Function to compute the S1 AFT probability"""
     area_top = area_tot * area_fraction_top
 
