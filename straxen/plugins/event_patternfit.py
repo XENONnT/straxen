@@ -531,7 +531,7 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
 
     if do_test:
         if mode == 'discrete':
-            binom_pmf(area_top, area_tot, aft_prob)
+            binomial_test = binom_pmf(area_top, area_tot, aft_prob)
             # TODO:
             #binomial_test = binomtest(k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
         else:
