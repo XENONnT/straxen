@@ -45,7 +45,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
 
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig( 
@@ -420,7 +420,6 @@ def lbinom_pmf_diriv(k, n, p, dk=1e-7):
     else:
         return (lbinom_pmf(k - dk, n, p) - lbinom_pmf(k, n, p)) / - dk
 
-
 @numba.njit(cache=True)
 def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
     """Get close to <target> by doing a numeric derivative"""
@@ -438,7 +437,6 @@ def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
 
     return dx, x0, x1
 
-
 @numba.njit
 def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
     """Find the root of the derivative of log Binomial pmf with secant method"""
@@ -453,21 +451,27 @@ def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
         max_iter -= 1
     return x1
 
-
 @numba.njit
 def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
     """Find the where the log Binomial pmf cross target with secant method"""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
-
-    while (dx > err) and (max_iter > 0):
-        y0 = lbinom_pmf(x0, *args)
-        y1 = lbinom_pmf(x1, *args)
-        dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
-        max_iter -= 1
+    
+    if dx != 0:
+        while (dx > err) and (max_iter > 0):
+            y0 = lbinom_pmf(x0, *args)
+            y1 = lbinom_pmf(x1, *args)
+            dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
+            max_iter -= 1           
+        if x0 == x1 == 0 and y0 - target > 0:
+            x1 = np.nan
+        if x0 == x1 == n and y0 - target < 0:
+            x1 = np.nan
+    else:
+        x1 = np.nan
+        
     return x1
-
 
 @numba.njit
 def binom_test(k, n, p):
@@ -478,28 +482,35 @@ def binom_test(k, n, p):
     k or j are zero, only the non-zero tail is integrated.
     """
     mode = lbinom_pmf_mode(0, n, 0, (n, p))
-
-    if k <= mode:
-        j_min, j_max = mode, n
-    else:
-        j_min, j_max = 0, mode
-
+    distance = abs(mode - k)
     target = lbinom_pmf(k, n, p)
-    j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
-
+   
+    if k < mode: 
+        j_min = mode
+        j_max = min(mode + 1.5 * distance, n)
+        j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
+        ls, rs = k, j
+    else:
+        j_min = max(mode - 1.5 * distance, 0)
+        j_max = mode
+        j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))  
+        ls, rs = j, k
+        
     pval = 0
-    if min(k, j) > 0:
-        pval += binom_cdf(min(k, j), n, p)
-    if max(k, j) > 0:
-        pval += binom_sf(max(k, j), n, p)
-    pval = min(1.0, pval)
-
+    if not np.isnan(ls):
+        pval += binom_cdf(ls, n, p)
+    if not np.isnan(rs):
+        pval += binom_sf(rs, n, p)
+        if np.isnan(ls):
+            pval += binom_pmf(rs, n, p)
+    
     return pval
 
 
 @np.vectorize
 @numba.njit
 def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode='continuous'):
+    print(aft_prob, area_tot, area_fraction_top)
     """Function to compute the S1 AFT probability"""
     area_top = area_tot * area_fraction_top
 
@@ -522,8 +533,8 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
 
     if do_test:
         if mode == 'discrete':
-            binomial_test = binom_pmf(area_top, area_tot, aft_prob)
+            binomial_test = binom_pmf(k=area_top, n=area_tot, p=aft_prob)
         else:
-            binomial_test = binom_test(area_top, area_tot, aft_prob)
+            binomial_test = binom_test(k=area_top, n=area_tot, p=aft_prob)
 
     return binomial_test
