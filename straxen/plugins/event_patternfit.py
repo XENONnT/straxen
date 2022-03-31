@@ -5,6 +5,7 @@ import numpy as np
 import numba
 from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
+from scipy.stats import binomtest
 import tarfile
 import tempfile
 
@@ -486,11 +487,13 @@ def binom_test(k, n, p):
         j_max = min(mode + 1.5 * distance, n)
         j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
         ls, rs = k, j
-    else:
+    elif k > mode:
         j_min = max(mode - 1.5 * distance, 0)
         j_max = mode
         j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))  
         ls, rs = j, k
+    else:
+        ls, rs = k, k
         
     pval = 0
     if not np.isnan(ls):
@@ -528,7 +531,9 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
 
     if do_test:
         if mode == 'discrete':
-            binomial_test = binom_pmf(k=area_top, n=area_tot, p=aft_prob)
+            binom_pmf(area_top, area_tot, aft_prob)
+            # TODO:
+            #binomial_test = binomtest(k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
         else:
             binomial_test = binom_test(k=area_top, n=area_tot, p=aft_prob)
 

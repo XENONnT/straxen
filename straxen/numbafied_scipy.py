@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 # Based on http://numba.pydata.org/numba-doc/latest/extending/high-level.html but
 # omitting the address step.
 # Unfortunately this approach does not allow to cache the resulting numba functions.
-#  Any ideas in this regard would be welcome.
+# Any ideas in this regard would be welcome.
 # All subsequent function will treat their inputs as 64bit floats:
 double = ctypes.c_double
 
