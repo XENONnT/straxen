@@ -38,5 +38,5 @@ tqdm==4.63.0
 typing_extensions==4.1.1                        # Tensorflow/bokeh dependency
 utilix==0.6.6
 wfsim==0.5.13                                   # nestpy doesn't work in py3.10
-xarray==0.21.1
+xarray==2022.3.0
 zstd==1.5.1.0                                   # Strax dependency
