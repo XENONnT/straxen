@@ -34,7 +34,7 @@ pytest-cov==3.0.0
 scikit-learn==1.0.2
 scipy==1.8.0                                    # Strax dependency
 tensorflow==2.8.0
-tqdm==4.63.0
+tqdm==4.63.1
 typing_extensions==4.1.1                        # Tensorflow/bokeh dependency
 utilix==0.6.7
 wfsim==0.5.13                                   # nestpy doesn't work in py3.10
