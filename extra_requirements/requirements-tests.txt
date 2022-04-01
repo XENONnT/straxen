@@ -11,7 +11,7 @@ dill==0.3.4                                     # Strax dependency
 flake8==4.0.1
 gitpython==3.1.26
 holoviews==1.14.8
-hypothesis==6.38.0
+hypothesis==6.40.1
 ipywidgets==7.7.0
 jupyter-client==7.2.1                           # for ipywidgets
 Jinja2==3.0.3                                   # Holoviews dependency
