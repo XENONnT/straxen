@@ -1,6 +1,6 @@
 import unittest
 from hypothesis import strategies, given, settings, example
-from straxen.plugins.event_patternfit import *
+from straxen.plugins.event_patternfit import binom_test
 
 
 @settings(deadline=None)
