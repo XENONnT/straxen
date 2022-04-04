@@ -9,3 +9,4 @@ from straxen.plugins.event_patternfit import binom_test
 def test_patternfit_stats(aftobs, aft, s1tot):
     s1top = aftobs*s1tot
     assert(binom_test(s1top, s1tot, aft) == 1.)
+    
