@@ -9,18 +9,17 @@ updates:
     directory: "/"
     schedule:
       # Check for updates to GitHub Actions every weekday
-      interval: "weekly"
+      interval: "monthly"
     assignees:
-      - jorana
+      - JoranAngevaare
   # Maintain the requirements requirements folder
   - package-ecosystem: "pip"
     directory: "/extra_requirements"
     schedule:
       # Check for updates to requirements every week
-      interval: "monthly"
+      interval: "daily"
     # Raise pull requests for version updates
     # to pip against the `develop` branch
-    target-branch: "development"
-    open-pull-requests-limit: 50
+    target-branch: "master"
     assignees:
-      - jorana
+      - JoranAngevaare
