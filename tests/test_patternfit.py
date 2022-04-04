@@ -4,7 +4,8 @@ from straxen.plugins.event_patternfit import binom_test
 
 
 @settings(deadline=None)
-@given(strategies.floats(0., 1.), strategies.floats(1e-3, 1.-1e-3), strategies.floats(1., 1000))
+#@given(strategies.floats(0., 1.), strategies.floats(1e-3, 1.-1e-3), strategies.floats(1., 1000))
+@given(0.0, 0.05, 10.0)
 @example(0., 0.05, 10.) #AFT_observed, AFT_expected (from xyz), S1_total
 def test_patternfit_stats(aftobs, aft, s1tot):
     s1top = aftobs*s1tot
