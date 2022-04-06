@@ -116,7 +116,7 @@ def parse_args():
         help='Also add folder to st.storage')
     parser.add_argument(
         '--print_alive',
-        default=1,
+        default=300,
         help='Print that straxer is still running every this many [seconds]')
     return parser.parse_args()
 
