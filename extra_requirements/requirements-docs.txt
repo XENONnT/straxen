@@ -4,6 +4,6 @@ graphviz==0.19.1
 m2r==0.2.1
 nbsphinx==0.8.8
 recommonmark==0.7.1
-sphinx==4.4.0
+sphinx==4.5.0
 sphinx_rtd_theme==1.0.0
 Jinja2==3.0.3
