@@ -89,6 +89,10 @@ class TestRunDBFrontend(unittest.TestCase):
             print(f'rm {self.path}')
             shutil.rmtree(self.path)
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.database[cls.collection_name].drop()
+
     @property
     def collection(self):
         return self.database[self.collection_name]
