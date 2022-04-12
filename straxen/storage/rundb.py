@@ -28,7 +28,7 @@ class RunDB(strax.StorageFrontend):
     storage_type = strax.StorageType.LOCAL
     # Dict of alias used in rundb: regex on hostname
     hosts = {
-        '^dali.*rcc.*|^midway2.*rcc.*|fried.rice.edu'
+        'dali': '^dali.*rcc.*|^midway2.*rcc.*|fried.rice.edu'
     }
 
     provide_run_metadata = True
