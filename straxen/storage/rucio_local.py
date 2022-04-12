@@ -4,6 +4,7 @@ import json
 import os
 import re
 import socket
+import typing
 import warnings
 
 import strax
@@ -35,6 +36,10 @@ class RucioLocalFrontend(strax.StorageFrontend):
         super().__init__(*args, **kwargs)
         if path is None:
             local_rse = self.determine_rse()
+            if local_rse is None:
+                self.path = None
+                self.backends = []
+                return
             self.path = self.local_prefixes[local_rse]
         else:
             self.path = path
@@ -54,6 +59,8 @@ class RucioLocalFrontend(strax.StorageFrontend):
         return local_rse
 
     def _find(self, key: strax.DataKey, write, allow_incomplete, fuzzy_for, fuzzy_for_options):
+        if self.path is None:
+            raise strax.DataNotAvailable
         did = key_to_rucio_did(key)
         if allow_incomplete or write:
             raise RuntimeError(f'Allow incomplete/writing is not allowed for '
@@ -79,6 +86,8 @@ class RucioLocalFrontend(strax.StorageFrontend):
         :param did: Rucio DID string
         :return: boolean for whether DID is local or not.
         """
+        if self.path is None:
+            raise strax.DataNotAvailable
         try:
             md = self._get_backend("RucioLocalBackend").get_metadata(did)
         except (strax.DataNotAvailable, strax.DataCorrupted, KeyError):
@@ -104,7 +113,9 @@ class RucioLocalFrontend(strax.StorageFrontend):
                      key: strax.DataKey,
                      fuzzy_for: tuple,
                      fuzzy_for_options: tuple,
-                     ) -> tuple:
+                     ) -> typing.Optional[tuple]:
+        if self.path is None:
+            return None
         pattern = os.path.join(
             self.path,
             f'xnt_{key.run_id}/*/*/{key.data_type}*metadata.json')

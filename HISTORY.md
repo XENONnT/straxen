@@ -1,3 +1,56 @@
+1.6.1 / 2022-04-12
+------------------
+Plugin fixes
+- Remove records not hits. (#987)
+- Remove Shadow&Ambience plugin SaveWhen.EXPLICIT (#982)
+- fix issue 977 (#984)
+- Position shadow sigma set to nan when S2 not positive (#980)
+- Fix small bug if GPS has larger delay (#986)
+
+Improved scripts / test
+- iterative straxer targets (#973)
+- Debug savewhen test (#963)
+- Exit 0 on existing data in straxer (#970)
+- dependabot remote (#1008)
+- print util (#989)
+
+Documentation
+- Fix href datakind page (#969)
+
+Storage fixes
+- only find rucio from dali (#1010)
+- Fix #1010 add midway as dali (#1012)
+- Allow unused rucio local (#976)
+
+Notes:
+ - only lineage changes in `detector_time_offsets` ( #986)
+
+
+1.6.0 / 2022-03-09
+------------------
+Minor:
+- Patch corrected areas (#964)
+- Patch in EventShadow (#967)
+- Bump version of merged S2s (#919)
+- Add Bayes peak probability (#954)
+- fix hit sorting, add raw-record-aqm overlap check (#961)
+
+Notes:
+- Lineage changed for event_shadow, merged_s2s, corrected_area and aqmon_hits.
+- Added new data_types peak_classification_bayes and event_w_bayes_class
+
+
+1.5.0 / 2022-03-08
+------------------
+- Update Shadow plugins and add Ambience plugins (#912)
+- Update online_monitor.py (#958)
+- fix ref to PR in docs (#957)
+
+Notes:
+ - Lineage changes for online_monitor_mv
+ - New plugins `peak_ambiance` and `event_ambiance` and changes in lineage of `event_shadow` and `peak_shadow`
+
+
 1.4.0 / 2022-03-02
 ------------------
 Minor:
@@ -11,7 +64,7 @@ Patch
 
 Notes:
 - Lineage changed for events_positions_nv, corrected_areas and event_pattern_fit due to option changes
-- Lineage chanes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
+- Lineage changes for events, event_basics, event_positions and peak_shadow due to change old config style to new URL style
 
 
 1.3.0 / 2022-02-26
