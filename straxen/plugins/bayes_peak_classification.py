@@ -62,6 +62,8 @@ class BayesPeakClassification(strax.Plugin):
                     ln_prob_s1=ln_prob_s1,
                     ln_prob_s2=ln_prob_s2
                     )
+    
+    
 def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     """
     Compute waveforms and quantiles for a given number of nodes(atributes)
@@ -69,27 +71,36 @@ def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     :param bayes_n_nodes: number of nodes or atributes
     :return: waveforms and quantiles
     """
-    waveforms = np.zeros((len(peaks), bayes_n_nodes))
-    quantiles = np.zeros((len(peaks), bayes_n_nodes))
-
-    num_samples = peaks['data'].shape[1]
-    step_size = int(num_samples/bayes_n_nodes)
-    steps = np.arange(0, num_samples+1, step_size)
-
     data = peaks['data'].copy()
     data[data < 0.0] = 0.0
-    for i, p in enumerate(peaks):
-        sample_number = np.arange(0, num_samples+1, 1)*p['dt']
-        frac_of_cumsum = np.append([0.0], np.cumsum(data[i, :]) / np.sum(data[i, :]))
-        cumsum_steps = np.interp(np.linspace(0., 1., bayes_n_nodes, endpoint=False), frac_of_cumsum, sample_number)
-        cumsum_steps = np.append(cumsum_steps, sample_number[-1])
-        quantiles[i, :] = cumsum_steps[1:] - cumsum_steps[:-1]
+    dt = peaks['dt']
+    return _compute_wf_and_quantiles(data, dt, bayes_n_nodes)
+    
 
-    for j in range(bayes_n_nodes):
-        waveforms[:, j] = np.sum(data[:, steps[j]:steps[j+1]], axis=1)
-    waveforms = waveforms/(peaks['dt']*step_size)[:, np.newaxis]
+@numba.njit(cache=True)
+def _compute_wf_and_quantiles(data, sample_length, bayes_n_nodes: int):
+    waveforms = np.zeros((len(data), bayes_n_nodes))
+    quantiles = np.zeros((len(data), bayes_n_nodes))
 
-    del data
+    num_samples = data.shape[1]
+    step_size = int(num_samples/bayes_n_nodes)
+    steps = np.arange(0, num_samples+1, step_size)
+    inter_points = np.linspace(0., 1.-(1./bayes_n_nodes), bayes_n_nodes)
+    
+    for i, (waveform, dt) in enumerate(zip(data, sample_length)):
+        sample_number = np.arange(0, num_samples+1, 1)*dt
+        
+        frac_of_cumsum = np.zeros(len(waveform) + 1)
+        frac_of_cumsum[1:] = np.cumsum(waveform)/np.sum(waveform)
+        cumsum_steps = np.zeros(bayes_n_nodes + 1, dtype=np.float64)
+        cumsum_steps[:-1] = np.interp(inter_points, frac_of_cumsum, sample_number)
+        cumsum_steps[-1] = sample_number[-1]
+        quantiles[i] = cumsum_steps[1:] - cumsum_steps[:-1]
+
+        for j in range(bayes_n_nodes):
+            waveforms[i][j] = np.sum(waveform[steps[j]:steps[j+1]])
+        waveforms[i] /=(step_size*dt)
+    
     return waveforms, quantiles
 
 def compute_inference(bins: int, bayes_n_nodes: int, cpt: np.ndarray, n_bayes_classes: int, class_prior: np.ndarray,
