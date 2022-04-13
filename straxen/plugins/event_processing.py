@@ -501,7 +501,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics', )
     
-    __version__ = '0.1.4'
+    __version__ = '0.1.5'
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
@@ -566,10 +566,11 @@ class EventPositions(strax.Plugin):
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
         
-        z_obs = - self.electron_drift_velocity * (events['drift_time'] - self.electron_drift_time_gate)
+        z_obs = - self.electron_drift_velocity * events['drift_time']
         orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = self.map(orig_pos)
+        z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
 
         # apply radial correction
         with np.errstate(invalid='ignore', divide='ignore'):
