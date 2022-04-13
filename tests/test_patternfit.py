@@ -1,7 +1,8 @@
 import unittest
 from hypothesis import strategies, given, settings, example
-from straxen.plugins.event_patternfit import binom_test, lbinom_pmf_mode, lbinom_pmf, lbinom_pmf_inverse
+from straxen.plugins.event_patternfit import binom_test, lbinom_pmf_mode, lbinom_pmf, lbinom_pmf_inverse, binom_sf
 import numpy as np
+import scipy.stats as sps
 
 
 @settings(deadline=None)
@@ -43,4 +44,28 @@ def test_inverse_pdf(aftobs, aft, s1tot):
         np.testing.assert_almost_equal(pdf_value, target,2) #values in log
 
 
-        
+@settings(deadline=None)
+@strategies.composite 
+def n_and_k(draw):
+    n = draw(strategies.integers(1,50))
+    k = draw(strategies.integers(0,n))
+    return n,k
+@settings(deadline=None)
+@given(nk = n_and_k(), p = strategies.floats(1e-2, 0.99))
+@example((10,5),0.5)
+def test_pmf(nk,p):
+    #test that at integer n,k binom_pmf agrees with the scipy result
+    n, k = nk
+    sps_lpmf = sps.binom(n,p).logpmf(k)
+    straxen_lpmf = lbinom_pmf(k,n,p)
+    np.testing.assert_almost_equal(straxen_lpmf, sps_lpmf)
+
+@settings(deadline=None)
+@given(nk = n_and_k(), p = strategies.floats(1e-2, 0.99))
+@example((10,5),0.5)
+def test_pvalue(nk,p):
+    #test that at integer n,k binom_pmf agrees with the scipy result
+    n, k = nk
+    sps_pval = sps.binom(n,p).sf(k+0.1)
+    straxen_pval = binom_sf(k,n,p)
+    np.testing.assert_almost_equal(straxen_pval, sps_pval)
