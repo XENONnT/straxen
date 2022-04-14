@@ -21,7 +21,7 @@ class BayesPeakClassification(strax.Plugin):
 
     provides = 'peak_classification_bayes'
     depends_on = ('peaks',)
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     dtype = (strax.time_fields
              + [('ln_prob_s1', np.float32, 'S1 ln probability')]
              + [('ln_prob_s2', np.float32, 'S2 ln probability')]
