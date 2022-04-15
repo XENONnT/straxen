@@ -41,7 +41,7 @@ def test_inverse_pdf(aftobs, aft, s1tot):
         assert(True)
     else:
         pdf_value = lbinom_pmf(j, n, p)
-        np.testing.assert_almost_equal(pdf_value, target,1) #values in log, it is not _really_ crucial that they're precisely equal
+        np.testing.assert_almost_equal(pdf_value, target,0) #values in log, it is not _really_ crucial that they're precisely equal
 
 
 @settings(deadline=None)
