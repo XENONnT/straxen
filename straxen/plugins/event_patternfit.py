@@ -484,16 +484,16 @@ def binom_test(k, n, p):
    
     if k < mode: 
         j_min = mode
-        j_max = min(mode + 1.5 * distance, n)
+        j_max = min(mode + 2.0 * distance, n)
         j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
         ls, rs = k, j
     elif k > mode:
-        j_min = max(mode - 1.5 * distance, 0)
+        j_min = max(mode - 2.0 * distance, 0)
         j_max = mode
         j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))  
         ls, rs = j, k
     else:
-        ls, rs = k, k
+        return 1
         
     pval = 0
     if not np.isnan(ls):
