@@ -1,6 +1,5 @@
 import numpy as np
 import numba
-from scipy.special import logsumexp
 import strax
 import straxen
 
@@ -50,18 +49,18 @@ class BayesPeakClassification(strax.Plugin):
         self.cpt = self.bayes_config_file['cprob']
 
     def compute(self, peaks):
+        result = np.zeros(len(peaks), dtype = self.dtype)
 
         waveforms, quantiles = compute_wf_and_quantiles(peaks, self.bayes_n_nodes)
 
         ln_prob_s1, ln_prob_s2 = compute_inference(self.bins, self.bayes_n_nodes, self.cpt,
                                                    self.n_bayes_classes, self.class_prior,
                                                    waveforms, quantiles)
-
-        return dict(time=peaks['time'],
-                    endtime=peaks['time'] + peaks['dt'] * peaks['length'],
-                    ln_prob_s1=ln_prob_s1,
-                    ln_prob_s2=ln_prob_s2
-                    )
+        result['time']= peaks['time']
+        result['endtime']=peaks['time'] + peaks['dt'] * peaks['length']
+        result['ln_prob_s1']=ln_prob_s1
+        result['ln_prob_s2']=ln_prob_s2
+        return result
     
     
 def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
@@ -115,6 +114,26 @@ def _get_log_posterior(nodes, n_bins, n_classes, cpt, wf_len, wf_values):
         lnposterior[:, i, :] = np.log(distribution[wf_values[:, i], :])
     return lnposterior
 
+@numba.njit
+def _logsumexp_axis1(arr, axis=1):
+    """~20x faster than scipy.special.logsumexp(*, axis=1)"""
+    if axis == 1:
+        res = np.zeros(len(arr), dtype=np.float64)
+        for i, a in enumerate(arr):
+            res[i] = np.log(sum(np.e**a))
+        return res
+    raise ValueError
+
+@numba.njit
+def _set_2d_to_zero(values, max_val):
+    for k, w in enumerate(values):
+        for kk, ww in enumerate(w):
+            if ww < 0:
+                values[k][kk] = 0
+            if ww > max_val:                
+                values[k][kk] = max_val
+
+@numba.njit(cache=True)
 def compute_inference(bins: int, 
                       bayes_n_nodes: int,
                       cpt: np.ndarray,
@@ -138,14 +157,11 @@ def compute_inference(bins: int,
     waveform_num_bin_edges = len(waveform_bin_edges)
     quantile_bin_edges = bins[1, :][bins[1, :] > -1]
     quantile_num_bin_edges = len(quantile_bin_edges)
-
     waveform_values = np.digitize(waveforms, bins=waveform_bin_edges)-1
-    waveform_values[waveform_values < 0] = int(0)
-    waveform_values[waveform_values > int(waveform_num_bin_edges - 2)] = int(waveform_num_bin_edges - 2)
+    _set_2d_to_zero(waveform_values, np.int64(waveform_num_bin_edges - 2))
 
     quantile_values = np.digitize(quantiles, bins=quantile_bin_edges)-1
-    quantile_values[quantile_values < 0] = int(0)
-    quantile_values[quantile_values > int(quantile_num_bin_edges - 2)] = int(quantile_num_bin_edges - 2)
+    _set_2d_to_zero(quantile_values, np.int64(quantile_num_bin_edges - 2))
 
     wf_posterior = _get_log_posterior(
         nodes=bayes_n_nodes, 
@@ -168,7 +184,8 @@ def compute_inference(bins: int,
     lnposterior[:, :bayes_n_nodes] = wf_posterior
     lnposterior[:, bayes_n_nodes:] = quantile_posterior
     lnposterior_sumsamples = np.sum(lnposterior, axis=1)
-    lnposterior_sumsamples = np.sum([lnposterior_sumsamples, np.log(class_prior)[np.newaxis, ...]], axis=0)
-    lnposterior_normed = lnposterior_sumsamples - logsumexp(lnposterior_sumsamples, axis=1)[..., np.newaxis]
+    lnposterior_sumsamples = lnposterior_sumsamples +  np.log(class_prior)
 
-    return lnposterior_normed[:, 0], lnposterior_normed[:, 1]
+    normalization = _logsumexp_axis1(lnposterior_sumsamples, axis=1)
+    normalized_reslt = lnposterior_sumsamples[:, 0]-normalization, lnposterior_sumsamples[:, 1]-normalization
+    return normalized_reslt
