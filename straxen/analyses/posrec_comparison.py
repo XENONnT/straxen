@@ -71,7 +71,7 @@ def load_corrected_positions(context, run_id, events, alt_s1=False, alt_s2=False
     
     s1_pre = 'alt_' if alt_s1 else ''
     s2_pre = 'alt_' if alt_s2 else ''
-    drift_time = events['drift_time'] if not (alt_s1 or alt_s2) else events[s1_pre+'s2_center_time'] - events[s1_pre+'s1_center_time']
+    drift_time = events['drift_time'] if not (alt_s1 or alt_s2) else events[s2_pre+'s2_center_time'] - events[s1_pre+'s1_center_time']
 
     z_obs = - drift_speed * drift_time
 
