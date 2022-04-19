@@ -78,7 +78,7 @@ def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
     
 
 @numba.njit(cache=True)
-def _compute_wf_and_quantiles_new(data, sample_length, bayes_n_nodes: int):
+def _compute_wf_and_quantiles(data, sample_length, bayes_n_nodes: int):
     waveforms = np.zeros((len(data), bayes_n_nodes))
     quantiles = np.zeros((len(data), bayes_n_nodes))
 
