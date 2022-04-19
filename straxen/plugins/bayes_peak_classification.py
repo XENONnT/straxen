@@ -43,23 +43,22 @@ class BayesPeakClassification(strax.Plugin):
     )
 
     def setup(self):
-
         self.class_prior = np.ones(self.n_bayes_classes)/self.n_bayes_classes
         self.bins = self.bayes_config_file['bins']
         self.cpt = self.bayes_config_file['cprob']
 
     def compute(self, peaks):
-        result = np.zeros(len(peaks), dtype = self.dtype)
+        result = np.zeros(len(peaks), dtype=self.dtype)
 
         waveforms, quantiles = compute_wf_and_quantiles(peaks, self.bayes_n_nodes)
 
         ln_prob_s1, ln_prob_s2 = compute_inference(self.bins, self.bayes_n_nodes, self.cpt,
                                                    self.n_bayes_classes, self.class_prior,
                                                    waveforms, quantiles)
-        result['time']= peaks['time']
-        result['endtime']=peaks['time'] + peaks['dt'] * peaks['length']
-        result['ln_prob_s1']=ln_prob_s1
-        result['ln_prob_s2']=ln_prob_s2
+        result['time'] = peaks['time']
+        result['endtime'] = peaks['time'] + peaks['dt'] * peaks['length']
+        result['ln_prob_s1'] = ln_prob_s1
+        result['ln_prob_s2'] = ln_prob_s2
         return result
     
     
@@ -106,13 +105,15 @@ def _compute_wf_and_quantiles(data, sample_length, bayes_n_nodes: int):
     
     return waveforms, quantiles
 
+
 @numba.njit
 def _get_log_posterior(nodes, n_bins, n_classes, cpt, wf_len, wf_values):
-    lnposterior = np.zeros((wf_len, nodes, n_classes))    
+    ln_posterior = np.zeros((wf_len, nodes, n_classes))
     for i in range(nodes):
         distribution = cpt[i, :n_bins, :]
-        lnposterior[:, i, :] = np.log(distribution[wf_values[:, i], :])
-    return lnposterior
+        ln_posterior[:, i, :] = np.log(distribution[wf_values[:, i], :])
+    return ln_posterior
+
 
 @numba.njit
 def _logsumexp_axis1(arr, axis=1):
@@ -124,14 +125,16 @@ def _logsumexp_axis1(arr, axis=1):
         return res
     raise ValueError
 
+
 @numba.njit
-def _set_2d_to_zero(values, max_val):
+def _set_2d_to_zero_or_max_val(values, max_val):
     for k, w in enumerate(values):
         for kk, ww in enumerate(w):
             if ww < 0:
                 values[k][kk] = 0
             if ww > max_val:                
                 values[k][kk] = max_val
+
 
 @numba.njit(cache=True)
 def compute_inference(bins: int, 
@@ -145,7 +148,7 @@ def compute_inference(bins: int,
     Bin the waveforms and quantiles according to Bayes bins and compute inference
     :param bins: Bayes bins
     :param bayes_n_nodes: number of nodes or atributes
-    :param cpt: conditioanl probability tables
+    :param cpt: conditional probability tables
     :param n_bayes_classes: number of classes
     :param class_prior: class_prior
     :param waveforms: waveforms
@@ -158,10 +161,10 @@ def compute_inference(bins: int,
     quantile_bin_edges = bins[1, :][bins[1, :] > -1]
     quantile_num_bin_edges = len(quantile_bin_edges)
     waveform_values = np.digitize(waveforms, bins=waveform_bin_edges)-1
-    _set_2d_to_zero(waveform_values, np.int64(waveform_num_bin_edges - 2))
+    _set_2d_to_zero_or_max_val(waveform_values, np.int64(waveform_num_bin_edges - 2))
 
     quantile_values = np.digitize(quantiles, bins=quantile_bin_edges)-1
-    _set_2d_to_zero(quantile_values, np.int64(quantile_num_bin_edges - 2))
+    _set_2d_to_zero_or_max_val(quantile_values, np.int64(quantile_num_bin_edges - 2))
 
     wf_posterior = _get_log_posterior(
         nodes=bayes_n_nodes, 
@@ -184,8 +187,9 @@ def compute_inference(bins: int,
     lnposterior[:, :bayes_n_nodes] = wf_posterior
     lnposterior[:, bayes_n_nodes:] = quantile_posterior
     lnposterior_sumsamples = np.sum(lnposterior, axis=1)
-    lnposterior_sumsamples = lnposterior_sumsamples +  np.log(class_prior)
+    lnposterior_sumsamples = lnposterior_sumsamples + np.log(class_prior)
 
     normalization = _logsumexp_axis1(lnposterior_sumsamples, axis=1)
-    normalized_reslt = lnposterior_sumsamples[:, 0]-normalization, lnposterior_sumsamples[:, 1]-normalization
-    return normalized_reslt
+    ln_prob_s1 = lnposterior_sumsamples[:, 0]-normalization
+    ln_prob_s2 = lnposterior_sumsamples[:, 1]-normalization
+    return ln_prob_s1, ln_prob_s2
