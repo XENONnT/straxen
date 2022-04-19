@@ -108,7 +108,7 @@ def _compute_wf_and_quantiles(data, sample_length, bayes_n_nodes: int):
     return waveforms, quantiles
 
 @numba.njit
-def _get_log_posterior_sum(nodes, n_bins, n_classes, cpt, wf_len, wf_values):
+def _get_log_posterior(nodes, n_bins, n_classes, cpt, wf_len, wf_values):
     lnposterior = np.zeros((wf_len, nodes, n_classes))    
     for i in range(nodes):
         distribution = cpt[i, :n_bins, :]
@@ -147,7 +147,7 @@ def compute_inference(bins: int,
     quantile_values[quantile_values < 0] = int(0)
     quantile_values[quantile_values > int(quantile_num_bin_edges - 2)] = int(quantile_num_bin_edges - 2)
 
-    wf_posterior = get_log_posterior(
+    wf_posterior = _get_log_posterior(
         nodes=bayes_n_nodes, 
         n_bins=waveform_num_bin_edges-1,
         n_classes=n_bayes_classes,
@@ -155,7 +155,7 @@ def compute_inference(bins: int,
         wf_len=len(waveforms),
         wf_values=waveform_values
     )
-    quantile_posterior = get_log_posterior(
+    quantile_posterior = _get_log_posterior(
         nodes=bayes_n_nodes, 
         n_bins=quantile_num_bin_edges-1,
         n_classes=n_bayes_classes,
