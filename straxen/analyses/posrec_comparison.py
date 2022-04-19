@@ -14,6 +14,8 @@ def load_corrected_positions(context, run_id, events, alt_s1=False, alt_s2=False
         without the need to reprocess event_basics, as the needed
         information is already stored in event_basics.
     
+    :param alt_s1: False by default, if True it uses alternative S1 as main one
+    :param alt_s2: False by default, if True it uses alternative S2 as main one
     :param cmt_version: CMT version to use (it can be a list of same
         length as posrec_algos, if different versions are required for
         different posrec algorithms, default 'local_ONLINE')
