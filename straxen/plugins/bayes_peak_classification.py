@@ -136,7 +136,6 @@ def _set_2d_to_zero_or_max_val(values, max_val):
                 values[k][kk] = max_val
 
 
-@numba.njit(cache=True)
 def compute_inference(bins: int, 
                       bayes_n_nodes: int,
                       cpt: np.ndarray,
