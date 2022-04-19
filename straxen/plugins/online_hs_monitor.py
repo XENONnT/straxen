@@ -53,23 +53,16 @@ class OnlineHotspotMonitor(strax.Plugin):
         print(dtype)
         return dtype
 
-    def compute(self,peak_positions,peaks,start,end):
+    def compute(self,peaks,start,end):
         # Make results en 1D array
-        res = np.zeros(1, dtype=self.dtype)
+        res = np.zeros(len(peaks), dtype=self.dtype)
         res['time'] = start
 
         area = peaks['area']
         range_50p_area = peaks['range_50p_area']
 
-        se_selection = ('(area< 80) & (10<area) & (80<range_50p_area) & (range_50p_area < 700)')
-
-        res['area'] = area[peaks[se_selection]]
-        res['range_50p_area'] = range_50p_area[peaks[se_selection]]
-
-        del se_selection
-
-        res['x_mlp'] = peak_positions['x_mlp']
-        res['y_mlp'] = peak_positions['y_mlp']
+        res['x_mlp'] = peaks['x_mlp']
+        res['y_mlp'] = peaks['y_mlp']
         res['rise_time'] = peaks['rise_time']
         res['endtime'] = end
 
