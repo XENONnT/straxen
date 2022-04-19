@@ -522,27 +522,32 @@ class EventPositions(strax.Plugin):
                 '?version=ONLINE&run_id=plugin.run_id',
         help='Electron drift time from the gate in ns',
         cache=True)
-
-    dtype = [
-        ('x', np.float32,
-         'Interaction x-position, field-distortion corrected (cm)'),
-        ('y', np.float32,
-         'Interaction y-position, field-distortion corrected (cm)'),
-        ('z', np.float32,
-         'Interaction z-position, using mean drift velocity only (cm)'),
-        ('r', np.float32,
-         'Interaction radial position, field-distortion corrected (cm)'),
-        ('z_naive', np.float32,
-         'Interaction z-position using mean drift velocity only (cm)'),
-        ('r_naive', np.float32,
-         'Interaction r-position using observed S2 positions directly (cm)'),
-        ('r_field_distortion_correction', np.float32,
-         'Correction added to r_naive for field distortion (cm)'),
-        ('z_field_distortion_correction', np.float32,
-         'Correction added to z_naive for field distortion (cm)'),
-        ('theta', np.float32,
-         'Interaction angular position (radians)')
-            ] + strax.time_fields
+    
+    dtype = []
+    for j in 'x y r z'.split():
+        comment = f'Main interaction {j}-position, field-distortion corrected (cm)' if j != 'z' \
+                  else 'Interaction z-position, using mean drift velocity only (cm)'
+        dtype += [(j, np.float32, comment)]
+        for s_i in [1, 2]:
+            comment = f'Alternative S{s_i} interaction {j}-position, field-distortion corrected (cm)' if j != 'z' \
+                      else f'Alternative S{s_i} z-position, using mean drift velocity only (cm)'
+            dtype += [(f'alt_s{s_i}_{j}_fdc' if j != 'z' else f'alt_s{s_i}_z', np.float32, comment)]
+    
+    for j in 'r z'.split():
+        dtype += [('_'.join([j, 'naive']), np.float32, f'Main interaction {j}-position with observed position (cm)')]
+        for s_i in [1, 2]:
+            dtype += [(f'alt_s{s_i}_{j}_naive', np.float32, f'Alternative S{s_i} interaction {j}-position with observed position (cm)')]
+            
+    for j in 'r z'.split():
+        dtype += [('_'.join([j, 'field_distortion_correction']), np.float32, f'Correction added to {j}_naive for field distortion (cm)')]
+        for s_i in [1, 2]:
+            dtype += [(f'alt_s{s_i}_{j}_field_distortion_correction', np.float32, f'Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)')]
+            
+    dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
+    for s_i in [1, 2]:
+        dtype += [(f'alt_s{s_i}_theta', np.float32, f'Alternative S{s_i} interaction angular position (radians)')]
+    
+    dtype = dtype + strax.time_fields
 
     def setup(self):
         if isinstance(self.config['fdc_map'], str):
@@ -560,46 +565,53 @@ class EventPositions(strax.Plugin):
 
         else:
             raise NotImplementedError('FDC map format not understood.')
-
+            
     def compute(self, events):
 
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
         
-        z_obs = - self.electron_drift_velocity * events['drift_time']
-        orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
-        r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-        delta_r = self.map(orig_pos)
-        z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
+        for s_i in [0, 1, 2]:
+            
+            drift_time = events['drift_time']  if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
+            
+            z_obs = - self.electron_drift_velocity * drift_time
+            xy_pos = 's2_' if s_i != 2 else 'alt_s2_'
+            orig_pos = np.vstack([events[f'{xy_pos}x'], events[f'{xy_pos}y'], z_obs]).T
+            r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
+            delta_r = self.map(orig_pos)
+            z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
 
-        # apply radial correction
-        with np.errstate(invalid='ignore', divide='ignore'):
-            r_cor = r_obs + delta_r
-            scale = r_cor / r_obs
+            # apply radial correction
+            with np.errstate(invalid='ignore', divide='ignore'):
+                r_cor = r_obs + delta_r
+                scale = r_cor / r_obs
 
-        # z correction due to longer drift time for distortion
-        # (geometrical reasoning not valid if |delta_r| > |z_obs|,
-        #  as cathetus cannot be longer than hypothenuse)
-        with np.errstate(invalid='ignore'):
-            z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-            invalid = np.abs(z_obs) < np.abs(delta_r)
-            # do not apply z correction above gate
-            invalid |= z_obs >= 0
-        z_cor[invalid] = z_obs[invalid]
-        delta_z = z_cor - z_obs
-
-        result.update({'x': orig_pos[:, 0] * scale,
-                       'y': orig_pos[:, 1] * scale,
-                       'r': r_cor,
-                       'r_naive': r_obs,
-                       'r_field_distortion_correction': delta_r,
-                       'theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
-                       'z_naive': z_obs,
-                       # using z_obs in agreement with the dtype description
-                       # the FDC for z (z_cor) is found to be not reliable (see #527)
-                       'z': z_obs,
-                       'z_field_distortion_correction': delta_z
-                       })
+            # z correction due to longer drift time for distortion
+            # (geometrical reasoning not valid if |delta_r| > |z_obs|,
+            #  as cathetus cannot be longer than hypothenuse)
+            with np.errstate(invalid='ignore'):
+                z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
+                invalid = np.abs(z_obs) < np.abs(delta_r)
+                # do not apply z correction above gate
+                invalid |= z_obs >= 0
+            z_cor[invalid] = z_obs[invalid]
+            delta_z = z_cor - z_obs
+            
+            pre_field = '' if s_i == 0  else f'alt_s{s_i}_'
+            post_field = '' if s_i == 0  else '_fdc'
+            result.update({f'{pre_field}x{post_field}': orig_pos[:, 0] * scale,
+                           f'{pre_field}y{post_field}': orig_pos[:, 1] * scale,
+                           f'{pre_field}r{post_field}': r_cor,
+                           f'{pre_field}r_naive': r_obs,
+                           f'{pre_field}r_field_distortion_correction': delta_r,
+                           f'{pre_field}theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
+                           f'{pre_field}z_naive': z_obs,
+                           # using z_obs in agreement with the dtype description
+                           # the FDC for z (z_cor) is found to be not reliable (see #527)
+                           f'{pre_field}z': z_obs,
+                           f'{pre_field}z_field_distortion_correction': delta_z
+                           })
 
         return result
 

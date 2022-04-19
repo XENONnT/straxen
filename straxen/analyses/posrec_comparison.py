@@ -6,7 +6,7 @@ export, __all__ = strax.exporter()
 
 
 @straxen.mini_analysis(requires=('event_basics',))
-def load_corrected_positions(context, run_id, events,
+def load_corrected_positions(context, run_id, events, alt_s1=False, alt_s2=False,
                              cmt_version=None,
                              posrec_algos=('mlp', 'gcn', 'cnn')):
     """
@@ -45,6 +45,7 @@ def load_corrected_positions(context, run_id, events,
     # Get drift from CMT
     ep = context.get_single_plugin(run_id, 'event_positions')
     drift_speed = ep.electron_drift_velocity
+    drift_time_gate = ep.electron_drift_time_gate
     dtype = []
 
     for algo in posrec_algos:
@@ -67,8 +68,12 @@ def load_corrected_positions(context, run_id, events,
 
     dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
     result = np.zeros(len(events), dtype=dtype)
+    
+    s1_pre = 'alt_' if alt_s1 else ''
+    s2_pre = 'alt_' if alt_s2 else ''
+    drift_time = events['drift_time'] if not (alt_s1 or alt_s2) else events[s1_pre+'s2_center_time'] - events[s1_pre+'s1_center_time']
 
-    z_obs = - drift_speed * events['drift_time']
+    z_obs = - drift_speed * drift_time
 
     for algo, v_cmt in zip(posrec_algos, cmt_version):
         fdc_tmp = (f'fdc_map_{algo}', v_cmt, True)
@@ -76,9 +81,10 @@ def load_corrected_positions(context, run_id, events,
         itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt='binary'))
         itp_tmp.scale_coordinates([1., 1., -drift_speed])
 
-        orig_pos = np.vstack([events[f's2_x_{algo}'], events[f's2_y_{algo}'], z_obs]).T
+        orig_pos = np.vstack([events[f'{s2_pre}s2_x_{algo}'], events[f'{s2_pre}s2_y_{algo}'], z_obs]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = itp_tmp(orig_pos)
+        z_obs = z_obs + drift_speed * drift_time_gate
 
         # apply radial correction
         with np.errstate(invalid='ignore', divide='ignore'):
