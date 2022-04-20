@@ -36,6 +36,11 @@ export, __all__ = strax.exporter()
                  default=True, type=bool,
                  help='If true exclude S1s as triggering peaks.',
                  ),
+    strax.Option(
+        name='event_s1_min_coincidence',
+        default=2, infer_type=False,
+        help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
+             "in the peaklet classification"),
 )
 class Events(strax.OverlapWindowPlugin):
     """
@@ -56,7 +61,7 @@ class Events(strax.OverlapWindowPlugin):
     depends_on = ['peak_basics', 'peak_proximity']
     provides = 'events'
     data_kind = 'events'
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     save_when = strax.SaveWhen.NEVER
 
     electron_drift_velocity = straxen.URLConfig(
@@ -92,6 +97,11 @@ class Events(strax.OverlapWindowPlugin):
         _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
         if self.config['exclude_s1_as_triggering_peaks']:
             _is_triggering &= peaks['type'] == 2
+        else:
+            is_not_s1 = peaks['type'] != 1
+            has_tc_large_enough = (peaks['tight_coincidence']
+                                   >= self.config['event_s1_min_coincidence'])
+            _is_triggering &= (is_not_s1 | has_tc_large_enough)
 
         triggers = peaks[_is_triggering]
 
