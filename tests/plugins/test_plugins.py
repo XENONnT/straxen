@@ -38,8 +38,6 @@ class PluginTest(unittest.TestCase, PluginTestAccumulator):
 for _target in straxen.test_utils.nt_test_context()._plugin_class_registry.keys():
     if _target in PluginTest.exclude_plugins:
         continue
-    if _target != 'records':
-        continue
 
     # pylint disable=cell-var-from-loop
     @PluginTestAccumulator.register(f'test_{_target}')
