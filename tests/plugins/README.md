@@ -22,7 +22,7 @@ Make sure that the new `.py`-file is imported in the `test_plugins.py` file
 ## Example
 See for example this ![event_building.py](event_building.py)-file. Here we add 
 a test that works on event_basics (by changing a few configurations and 
-checking that the output is roughly what we expect.
+checking that the output is roughly what we expect).
 
 
 ## Why this organization (technical - only for developers)
@@ -31,7 +31,7 @@ does require quite some computational power if we all want to compute them,
 especially if we want to start computation from scratch (to avoid trying to a 
 test that turns out to rely on data that was scrambled).
 
-A few design consideration were taken into account:
+A few design considerations were taken into account:
  - We want a single class with a `tearDownClass`-method to clean up the data 
    after running. If we would have many classes doing this, you would end up 
    producing the same data many times. If you don't have a `tearDownClass` with
@@ -39,7 +39,7 @@ A few design consideration were taken into account:
    lot of frustration  https://github.com/XENONnT/straxen/pull/923.
  - Add a modular approach where new tests can be added (in a for loop). 
    While [subtests](https://docs.python.org/3/library/unittest.html#distinguishing-test-iterations-using-subtests) 
- - should be a nice tool for doing this, it turns out to be not as transparent 
+   should be a nice tool for doing this, it turns out to be not as transparent 
    as it claims. Furthermore, you somehow still need to have the entire class 
    in one file, whereas we'd lile to split these tests into small, targeted 
    files.
