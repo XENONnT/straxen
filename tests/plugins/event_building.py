@@ -14,4 +14,3 @@ def plugin_test_exclude_s1_as_triggering_peaks_config(self: TestCase):
     events_alt = st_alt.get_array(self.run_id, 'event_basics')
 
     self.assertAlmostEqual(len(events), len(events_alt))
-

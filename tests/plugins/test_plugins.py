@@ -5,6 +5,7 @@ import os
 import shutil
 from importlib import import_module
 
+# Call all tests starting with this name
 _magic_key = 'plugin_test_'
 
 
@@ -27,6 +28,7 @@ class PluginTest(unittest.TestCase):
 
             setattr(cls, test_name, func)
             return func
+
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
@@ -51,23 +53,23 @@ class PluginTest(unittest.TestCase):
 
 
 # Very important step! We add a test for each of the plugins
-for t in straxen.test_utils.nt_test_context()._plugin_class_registry.keys():
-    if t in PluginTest.exclude_plugins:
+for _target in straxen.test_utils.nt_test_context()._plugin_class_registry.keys():
+    if _target in PluginTest.exclude_plugins:
         continue
 
-    @PluginTest.register(f'test_{t}')
-    def _make(self, target=t):
+    # pylint disable=cell-var-from-loop
+    @PluginTest.register(f'test_{_target}')
+    def _make(self, target=_target):
         self.st.make(self.run_id, target)
-
 
 # There is probably a cleaner step but add all the functions in any .py
 # file in this dir to the tests
-for file in os.listdir(os.path.dirname(os.path.abspath(__file__))):
-    if not file.endswith('.py') and file != str(__file__):
+for _file in os.listdir(os.path.dirname(os.path.abspath(__file__))):
+    if not _file.endswith('.py') and _file != str(__file__):
         continue
 
-    module = import_module(file[:-len('.py')])
+    _module = import_module(_file[:-len('.py')])
 
-    for attr, _object in module.__dict__.items():
+    for attr, _object in _module.__dict__.items():
         if attr.startswith(_magic_key):
             PluginTest.register(f'test_{attr[len(_magic_key):]}', _object)
