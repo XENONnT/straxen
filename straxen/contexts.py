@@ -109,8 +109,11 @@ xnt_common_opts.update({
 ##
 
 
-def xenonnt(cmt_version='global_ONLINE', **kwargs):
+def xenonnt(cmt_version='global_ONLINE', _from_cutax=False,  **kwargs):
     """XENONnT context"""
+    if not _from_cutax and cmt_version != 'global_ONLINE':
+        warnings.warn('Don\'t load a context directly from straxen, '
+                      'use cutax instead!')
     st = straxen.contexts.xenonnt_online(**kwargs)
     st.apply_cmt_version(cmt_version)
     return st
