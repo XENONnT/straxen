@@ -1,3 +1,4 @@
+import strax
 import straxen
 import unittest
 from straxen.test_utils import nt_test_run_id
@@ -35,7 +36,10 @@ class PluginTest(unittest.TestCase, PluginTestAccumulator):
 
 
 # Very important step! We add a test for each of the plugins
-for _target in straxen.test_utils.nt_test_context()._plugin_class_registry.keys():
+for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.items()):
+    # Only run one test per plugin (even if it provides multiple targets)
+    _target = strax.to_str_tuple(_target.provides)[0]
+
     if _target in PluginTest.exclude_plugins:
         continue
 
