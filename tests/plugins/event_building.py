@@ -1,7 +1,9 @@
+from _core import PluginTestAccumulator
 from unittest import TestCase
 
 
-def plugin_test_exclude_s1_as_triggering_peaks_config(self: TestCase):
+@PluginTestAccumulator.register('test_exclude_s1_as_triggering_peaks_config')
+def exclude_s1_as_triggering_peaks_config(self: TestCase):
     st = self.st
 
     # Create an alternative config with almost identical settings
