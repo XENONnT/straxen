@@ -347,7 +347,10 @@ def main():
         number = args.process
 
         # Check whether the run is already processed
-        bootstrax_state = run_col.find_one({'number': number}, projection={'bootstrax': True}).get('bootstrax', {}).get{'state', 'no-state')
+        bootstrax_state = run_coll.find_one(
+            {'number': number},
+            projection={'bootstrax': True}).get('bootstrax', {}
+                                                ).get('state', 'no-state')
         if args.production and bootstrax_state in ['done','processing','considering']:
             message = f"It looks like run {number} is already processed."
             log_warning(message, priority='fatal')
