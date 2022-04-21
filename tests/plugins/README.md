@@ -41,7 +41,7 @@ A few design considerations were taken into account:
    While [subtests](https://docs.python.org/3/library/unittest.html#distinguishing-test-iterations-using-subtests) 
    should be a nice tool for doing this, it turns out to be not as transparent 
    as it claims. Furthermore, you somehow still need to have the entire class 
-   in one file, whereas we'd lile to split these tests into small, targeted 
+   in one file, whereas we'd like to split these tests into small, targeted 
    files.
  - In order to accumulate the test functions, we made a dedicated class 
    `PluginTestAccumulator` that just is a dump for the tests that we write in
