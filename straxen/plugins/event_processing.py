@@ -523,7 +523,7 @@ class EventPositions(strax.Plugin):
         help='Electron drift time from the gate in ns',
         cache=True)
     
-def infer_dtype(self):
+    def infer_dtype(self):
         dtype = []
         for j in 'x y r'.split():
             comment = f'Main interaction {j}-position, field-distortion corrected (cm)'
