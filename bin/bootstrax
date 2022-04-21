@@ -359,12 +359,11 @@ def main():
             log_warning(message, priority='fatal')
             raise ValueError(message)
 
-        else:
-            set_state('busy')
-            process_run(rd)
-            log.info(
-                f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
-            wait_on_delete_thread()
+        set_state('busy')
+        process_run(rd)
+        log.info(
+            f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
+        wait_on_delete_thread()
 
     else:
         # Start processing
