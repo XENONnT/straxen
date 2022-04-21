@@ -523,31 +523,49 @@ class EventPositions(strax.Plugin):
         help='Electron drift time from the gate in ns',
         cache=True)
     
-    dtype = []
-    for j in 'x y r z'.split():
-        comment = f'Main interaction {j}-position, field-distortion corrected (cm)' if j != 'z' \
-                  else 'Interaction z-position, using mean drift velocity only (cm)'
-        dtype += [(j, np.float32, comment)]
+def infer_dtype(self):
+        dtype = []
+        for j in 'x y r'.split():
+            comment = f'Main interaction {j}-position, field-distortion corrected (cm)'
+            dtype += [(j, np.float32, comment)]
+            for s_i in [1, 2]:
+                comment = f'Alternative S{s_i} interaction {j}-position, field-distortion corrected (cm)'
+                field = f'alt_s{s_i}_{j}_fdc'
+                dtype += [(field, np.float32, comment)]
+
+        for j in ['z']:
+            comment = 'Interaction z-position, using mean drift velocity only (cm)'
+            dtype += [(j, np.float32, comment)]
+            for s_i in [1, 2]:
+                comment = f'Alternative S{s_i} z-position, using mean drift velocity only (cm)'
+                field = f'alt_s{s_i}_z'
+                dtype += [(field, np.float32, comment)]
+
+        naive_pos = []
+        fdc_pos = []
+        for j in 'r z'.split():
+            naive_pos += [(f'{j}_naive',
+                           np.float32,
+                           f'Main interaction {j}-position with observed position (cm)')]
+            fdc_pos += [(f'{j}_field_distortion_correction',
+                         np.float32,
+                         f'Correction added to {j}_naive for field distortion (cm)')]
+            for s_i in [1, 2]:
+                naive_pos += [(
+                    f'alt_s{s_i}_{j}_naive',
+                    np.float32,
+                    f'Alternative S{s_i} interaction {j}-position with observed position (cm)')]
+                fdc_pos += [(f'alt_s{s_i}_{j}_field_distortion_correction',
+                             np.float32,
+                             f'Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)')]
+        dtype += naive_pos + fdc_pos
         for s_i in [1, 2]:
-            comment = f'Alternative S{s_i} interaction {j}-position, field-distortion corrected (cm)' if j != 'z' \
-                      else f'Alternative S{s_i} z-position, using mean drift velocity only (cm)'
-            dtype += [(f'alt_s{s_i}_{j}_fdc' if j != 'z' else f'alt_s{s_i}_z', np.float32, comment)]
-    
-    for j in 'r z'.split():
-        dtype += [('_'.join([j, 'naive']), np.float32, f'Main interaction {j}-position with observed position (cm)')]
-        for s_i in [1, 2]:
-            dtype += [(f'alt_s{s_i}_{j}_naive', np.float32, f'Alternative S{s_i} interaction {j}-position with observed position (cm)')]
-            
-    for j in 'r z'.split():
-        dtype += [('_'.join([j, 'field_distortion_correction']), np.float32, f'Correction added to {j}_naive for field distortion (cm)')]
-        for s_i in [1, 2]:
-            dtype += [(f'alt_s{s_i}_{j}_field_distortion_correction', np.float32, f'Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)')]
-            
-    dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
-    for s_i in [1, 2]:
-        dtype += [(f'alt_s{s_i}_theta', np.float32, f'Alternative S{s_i} interaction angular position (radians)')]
-    
-    dtype = dtype + strax.time_fields
+            dtype += [(f'alt_s{s_i}_theta',
+                       np.float32,
+                       f'Alternative S{s_i} interaction angular position (radians)')]
+
+        dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
+        return dtype + strax.time_fields
 
     def setup(self):
         if isinstance(self.config['fdc_map'], str):
