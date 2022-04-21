@@ -1,11 +1,10 @@
-from re import X
 import strax
 import numpy as np
 import numba
 import straxen
 from .position_reconstruction import DEFAULT_POSREC_ALGO
 from straxen.common import pax_file, get_resource, first_sr1_run
-from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
+from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 

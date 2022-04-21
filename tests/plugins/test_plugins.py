@@ -4,7 +4,7 @@ import unittest
 from straxen.test_utils import nt_test_run_id
 import os
 import shutil
-from _core import PluginTestAccumulator
+from _core import PluginTestCase, PluginTestAccumulator
 
 # Need import to attach new tests to the PluginTestAccumulator
 import event_building
@@ -12,7 +12,7 @@ import event_building
 
 # Don't bother with remote tests
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-class PluginTest(unittest.TestCase, PluginTestAccumulator):
+class PluginTest(PluginTestCase, PluginTestAccumulator):
     exclude_plugins = 'events_sync_mv', 'events_sync_nv'
 
     @classmethod
@@ -39,7 +39,6 @@ class PluginTest(unittest.TestCase, PluginTestAccumulator):
 for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.values()):
     # Only run one test per plugin (even if it provides multiple targets)
     _target = strax.to_str_tuple(_target.provides)[0]
-
     if _target in PluginTest.exclude_plugins:
         continue
 

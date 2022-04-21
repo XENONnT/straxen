@@ -1,4 +1,24 @@
+import strax
+from unittest import TestCase
+
+
 class PluginTestAccumulator:
+    """
+    Accumulator for test functions for unit-testing such that all plugin
+    related unit tests can be run on the same data within a single
+    unit-test.
+
+    Use example:
+    ```python
+        from _core import PluginTestAccumulator
+
+
+        @PluginTestAccumulator.register('test_example')
+        def test_example(self, # You should always accept self as an argument!
+                        ):
+            raise ValueError('Test failed')
+    ```
+    """
     # See URLConfigs for the original inspiration.
     @classmethod
     def register(cls, test_name, func=None):
@@ -13,3 +33,9 @@ class PluginTestAccumulator:
             return func
 
         return wrapper(func) if func is not None else wrapper
+
+
+class PluginTestCase(TestCase):
+    """Class for type hinting of PluginTest"""
+    run_id: str
+    st: strax.Context
