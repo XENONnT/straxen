@@ -351,7 +351,7 @@ def main():
             {'number': number},
             projection={'bootstrax': True}).get('bootstrax', {}
                                                 ).get('state', 'no-state')
-        if args.production and bootstrax_state in ['done','processing','considering']:
+        if args.production and bootstrax_state in ['done', 'busy', 'considering']:
             message = f"It looks like run {number} is already processed."
             log_warning(message, priority='fatal')
             raise ValueError(message)
