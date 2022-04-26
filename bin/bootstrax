@@ -223,17 +223,14 @@ remove_target_after_fails = {
 ##
 hostname = socket.getfqdn()
 
+versions = straxen.print_versions(
+    modules='strax straxen utilix daqnt numpy tensorflow numba'.split(),
+    include_git=True,
+    return_string=True,
+    ).to_string()
 
 log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
-log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG)
-log.info(f'---\n bootstrax version {__version__}\n---')
-log.info(
-    straxen.print_versions(
-        modules='strax straxen utilix daqnt numpy tensorflow numba'.split(),
-        include_git=True,
-        return_string=True,
-    ))
-
+log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG, opening_message=f'I am processing with these software versions: {versions}')
 
 # Set the output folder
 output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
