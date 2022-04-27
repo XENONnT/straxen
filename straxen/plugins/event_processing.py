@@ -690,6 +690,23 @@ class CorrectedAreas(strax.Plugin):
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
                       (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
         return dtype
+    
+    def rotate(x_arr, y_arr, theta):
+        new_x = np.cos(theta)*x_arr+np.sin(theta)*y_arr
+        new_y = -np.sin(theta)*x_arr+np.cos(theta)*y_arr
+        return np.array([new_x,new_y])
+    
+    def ab_region(self,x,y,linear,circular):
+        new_x,new_y = self.rotate(x,y,-np.pi/6)
+        cond = new_x < linear
+        cond&= new_x > -linear
+        cond&= new_x**2+new_y**2 < circular**2
+
+        return cond
+    
+    def cd_region(self,x,y,linear,circular):
+
+        return ~self.ab_region(x,y,linear,circular)
 
     def compute(self, events):
         result = dict(
@@ -716,60 +733,61 @@ class CorrectedAreas(strax.Plugin):
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
         
-        if len(self.se_gain.name) > 1:
-            par_ab = 'A_and_B'
-            par_cd = 'C_and_D'
-            ee_ab = self.rel_extraction_eff['ee_ab']
-            ee_cd = self.rel_extraction_eff['ee_cd']
-            se_ab = self.se_gain['gain_ab']
-            se_cd = self.se_gain['gain_cd']
-            se_ab_avg = self.avg_se_gain['gain_avg_ab']
-            se_cd_avg = self.avg_se_gain['gain_avg_cd']
-            
+        regions = [self.ab_region,self.cd_region]
+        
+        if len(self.rel_light_yield.names) > 1:
+            se_val = [rel_light_yield['gain_ab'],rel_light_yield['gain_cd']]
+            ee_cor = [rel_extraction_eff['ee_ab'],rel_extraction_eff['ee_cd']]
+            avg_se_val = [avg_se_gain['gain_avg_ab'],avg_se_gain['gain_avg_cd']]
         else:
-            par_ab = 'A_and_B'
-            par_cd = 'C_and_D'
-            ee_ab = self.rel_extraction_eff
-            ee_cd = self.rel_extraction_eff
-            se_ab = self.se_gain
-            se_cd = self.se_gain
-            se_avg_ab = self.avg_se_gain
-            se_avg_cd = self.avg_se_gain
-         
+            se_val = [rel_light_yield]*2
+            ee_cor = [rel_extraction_eff]*2
+            avg_se_val = [avg_se_gain]*2
             
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
-            for partition in ['ab','cd']:
+            result[f"{peak_type}cs2_wo_elifecorr"] = np.zeros(len(result['time']))
+            result[f"{peak_type}cs2_area_fraction_top"] = np.zeros(len(result['time']))
+            result[f"{peak_type}cs2_wo_timecorr"] = np.zeros(len(result['time']))
+            result[f"{peak_type}cs2"] = np.zeros(len(result['time']))
+            result[f"{peak_type}cs2_bottom"] = np.zeros(len(result['time']))
+            
+            # corrected s2 with s2 xy map only, i.e. no elife correction
+            # this is for s2-only events which don't have drift time info
+            
+            cs2_top_xycorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
+            cs2_bottom_xycorr = (events[f'{peak_type}s2_area'] *
+                                       (1 - events[f'{peak_type}s2_area_fraction_top']) /
+                                       self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
+            
+            # For electron lifetime corrections to the S2s,
+            # use drift time computed using the main S1.
+            el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
+            elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
+            result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
+            
+            for i,partition in enumerate(['ab','cd']):
                 # partitioned SE and E
-                cond = eval('{}_selection_event'.format(eval(f'par_{partition}')))(events[f'{peak_type}s2_x'],
-                                                                                   events[f'{peak_type}s2_y'])
-                    
-                # corrected s2 with s2 xy map only, i.e. no elife correction
-                # this is for s2-only events which don't have drift time info
-                cs2_top_xycorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
-                                        self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
-                cs2_bottom_xycorr = (events[f'{peak_type}s2_area'] *
-                                           (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                           self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
+                cond = regions[i](events[f'{peak_type}s2_x'],
+                                  events[f'{peak_type}s2_y'],
+                                  region['linear'],
+                                  region['circular'])
+                
+                # need to input this "region" variable using straxen.URLConfig
 
                 # Correct for SEgain and extraction efficiency
-                seg_ee_corr = (eval(f'se_{partition}') / eval(f'se_{partition}_avg')) * eval(f'ee_{partition}')
-                cs2_top_wo_elifecorr = cs2_top_xycorr / seg_ee_corr
-                cs2_bottom_wo_elifecorr = cs2_bottom_xycorr / seg_ee_corr
-                result[f"{peak_type}cs2_wo_elifecorr"] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+                seg_ee_corr = se_val[i]/avg_se_val[i]*ee_cor[i]
+                
+                cs2_top_wo_elifecorr = cs2_top_xycorr[cond] / seg_ee_corr
+                cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[cond] / seg_ee_corr
+                result[f"{peak_type}cs2_wo_elifecorr"][cond] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
                 # cs2aft doesn't need elife/time corrections as they cancel
-                result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
+                result[f"{peak_type}cs2_area_fraction_top"][cond] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
-
-                # For electron lifetime corrections to the S2s,
-                # use drift time computed using the main S1.
-                el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
-                elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
-                result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
-                result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_elifecorr"] * elife_correction
-                result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
+                result[f"{peak_type}cs2"][cond] = result[f"{peak_type}cs2_wo_elifecorr"][cond] * elife_correction[cond]
+                result[f"{peak_type}cs2_bottom"][cond] = cs2_bottom_wo_elifecorr[cond] * elife_correction[cond]
 
         return result
 
@@ -940,3 +958,4 @@ class EventAmbience(strax.Plugin):
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
         return result
+
