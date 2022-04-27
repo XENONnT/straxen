@@ -588,7 +588,8 @@ class EventPositions(strax.Plugin):
 
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
-        
+       
+	# s_i == 0 indicates the main event, while s_i != 0 means alternative S1 or S2 is used based on s_i value 
         for s_i in [0, 1, 2]:
             
             drift_time = events['drift_time']  if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
