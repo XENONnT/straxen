@@ -669,6 +669,16 @@ class CorrectedAreas(strax.Plugin):
         default='cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id',
         help='Relative light yield (allows for time dependence)'
     )
+    
+    region_linear = straxen.URLConfig(
+        default=28,
+        help = 'linear cut for ab region'
+    )
+    
+    region_circular = straxen.URLConfig(
+        default=60,
+        help = 'circular cut for ab region'
+    )
 
     def infer_dtype(self):
         dtype = []
@@ -696,17 +706,17 @@ class CorrectedAreas(strax.Plugin):
         new_y = -np.sin(theta)*x_arr+np.cos(theta)*y_arr
         return np.array([new_x,new_y])
     
-    def ab_region(self,x,y,linear,circular):
+    def ab_region(self,x,y):
         new_x,new_y = self.rotate(x,y,-np.pi/6)
-        cond = new_x < linear
-        cond&= new_x > -linear
-        cond&= new_x**2+new_y**2 < circular**2
+        cond = new_x < self.region_linear
+        cond&= new_x > -self.region_linear
+        cond&= new_x**2+new_y**2 < self.region_circular**2
 
         return cond
     
-    def cd_region(self,x,y,linear,circular):
+    def cd_region(self,x,y):
 
-        return ~self.ab_region(x,y,linear,circular)
+        return ~self.ab_region(x,y)
 
     def compute(self, events):
         result = dict(
@@ -735,14 +745,14 @@ class CorrectedAreas(strax.Plugin):
         
         regions = [self.ab_region,self.cd_region]
         
-        if len(self.rel_light_yield.names) > 1:
-            se_val = [rel_light_yield['gain_ab'],rel_light_yield['gain_cd']]
-            ee_cor = [rel_extraction_eff['ee_ab'],rel_extraction_eff['ee_cd']]
-            avg_se_val = [avg_se_gain['gain_avg_ab'],avg_se_gain['gain_avg_cd']]
+        if len(self.rel_extraction_eff.names) > 1:
+            se_val = [self.se_gain['gain_ab'],self.se_gain['gain_cd']]
+            ee_cor = [self.rel_extraction_eff['ee_ab'],self.rel_extraction_eff['ee_cd']]
+            avg_se_val = [self.avg_se_gain['gain_avg_ab'],self.avg_se_gain['gain_avg_cd']]
         else:
-            se_val = [rel_light_yield]*2
-            ee_cor = [rel_extraction_eff]*2
-            avg_se_val = [avg_se_gain]*2
+            se_val = [self.rel_light_yield]*2
+            ee_cor = [self.rel_extraction_eff]*2
+            avg_se_val = [self.avg_se_gain]*2
             
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
@@ -768,11 +778,9 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
             
             for i,partition in enumerate(['ab','cd']):
-                # partitioned SE and E
+                # partitioned SE and EE
                 cond = regions[i](events[f'{peak_type}s2_x'],
-                                  events[f'{peak_type}s2_y'],
-                                  region['linear'],
-                                  region['circular'])
+                                  events[f'{peak_type}s2_y'])
                 
                 # need to input this "region" variable using straxen.URLConfig
 
