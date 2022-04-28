@@ -26,6 +26,8 @@ single_value_corrections = ['elife_xenon1t', 'elife', 'baseline_samples_nv',
 arrays_corrections = ['hit_thresholds_tpc', 'hit_thresholds_he',
                       'hit_thresholds_nv', 'hit_thresholds_mv']
 
+dict_corrections = ['se_gain_per_region']
+
 # needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
 # important for apply_cmt_version
 posrec_corrections_basenames = ['s1_xyz_map', 'fdc_map', 's2_xy_map']
@@ -101,7 +103,7 @@ class CorrectionsManagementServices():
 
         if 'to_pe_model' in model_type:
             return self.get_pmt_gains(run_id, model_type, version)
-        elif model_type in single_value_corrections or model_type in arrays_corrections:
+        elif model_type in single_value_corrections or model_type in arrays_corrections or model_type in dict_corrections:
             return self._get_correction(run_id, model_type, version)
         elif model_type in corrections_w_file:
             return self.get_config_from_cmt(run_id, model_type, version)
@@ -151,7 +153,7 @@ class CorrectionsManagementServices():
                     raise CMTnanValueError(f"For {correction} there are NaN values, this means no correction available "
                                            f"for {run_id} in version {version}, please check e-logbook for more info ")
  
-                if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE':
+                if correction in corrections_w_file or correction in arrays_corrections or version in 'ONLINE' or correction in dict_corrections:
                     df = self.interface.interpolate(df, when, how='fill')
                 else:
                     df = self.interface.interpolate(df, when)
