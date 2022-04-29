@@ -982,4 +982,3 @@ class EventAmbience(strax.Plugin):
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
         return result
-
