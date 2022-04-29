@@ -83,11 +83,11 @@ class Events(strax.OverlapWindowPlugin):
         if self.config['s1_min_coincidence'] > self.config['event_s1_min_coincidence']:
             raise ValueError('Peak s1 coincidence requirement should be smaller '
                              'or equal to event_s1_min_coincidence')
-        self.right_extension = self.config['right_event_extension']
         self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
         self.left_extension = self.config['left_event_extension'] + self.drift_time_max
+        self.right_extension = self.config['right_event_extension']
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
