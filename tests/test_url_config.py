@@ -1,3 +1,4 @@
+import os
 import json
 import strax
 import straxen
@@ -7,6 +8,7 @@ import unittest
 import pickle
 import random
 import numpy as np
+from datetime import datetime
 
 
 @straxen.URLConfig.register('random')
@@ -108,10 +110,40 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
-        st2 = self.st.new_context()
-        st2.set_config({'test_config': 'bodega://g1?bodega_version=v2'})
-        p2 = st2.get_single_plugin(nt_test_run_id, 'test_data')
-        self.assertEqual(p.test_config, p2.test_config)
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    def test_seg_file(self):
+        fake_file = {'times': [datetime(2000, 1, 1).timestamp() * 1e9,
+                               datetime(2020, 1, 1).timestamp() * 1e9,
+                               datetime(2040, 1, 1).timestamp() * 1e9],
+                         'gain_ab': [10, 20, 30],
+                         'gain_cd': [11, 21, 31]
+                         }
+        fake_file_name = 'test_seg.json'
+
+        with open(fake_file_name, 'w') as f:
+            json.dump(fake_file, f)
+
+        self.st.set_config({'test_config': f'seg_file://resource://{fake_file_name}?run_id=plugin.run_id&fmt=json'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertIsInstance(p.test_config, dict)
+        os.remove(fake_file_name)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    def test_ee_file(self):
+        fake_file = {'timestamps': [datetime(2000, 1, 1).timestamp() * 1e9,
+                                    datetime(2020, 1, 1).timestamp() * 1e9,
+                                    datetime(2040, 1, 1).timestamp() * 1e9],
+                     'ee_ab': [0.1, 0.2, 0.3],
+                     'ee_cd': [0.4, 0.5, 0.6]
+                     }
+        fake_file_name = 'test_ee.json'
+
+        with open(fake_file_name, 'w') as f:
+            json.dump(fake_file, f)
+
+        self.st.set_config({'test_config': f'ee_file://resource://{fake_file_name}?run_id=plugin.run_id&fmt=json'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertIsInstance(p.test_config, dict)
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
