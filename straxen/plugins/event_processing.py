@@ -958,6 +958,7 @@ class EventAmbience(strax.Plugin):
 
         # 1. Initialization, ambience is set to be the lowest possible value
         result = np.zeros(len(events), self.dtype)
+
         # 2. Assign peaks features to main S1, main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
             for idx, main_peak in zip([event['s1_index'], event['s2_index']], ['s1_', 's2_']):
