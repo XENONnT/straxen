@@ -35,11 +35,12 @@ export, __all__ = strax.exporter()
                  default=True, type=bool,
                  help='If true exclude S1s as triggering peaks.',
                  ),
-    strax.Option(
-        name='event_s1_min_coincidence',
-        default=2, infer_type=False,
-        help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
-             "in the peaklet classification"),
+    strax.Option(name='event_s1_min_coincidence',
+                 default=2, infer_type=False,
+                 help="Event level S1 min coincidence. Should be >= "
+                      "s1_min_coincidence in the peaklet classification"),
+    strax.Option(name='s1_min_coincidence', default=2, type=int,
+                 help="Minimum tight coincidence necessary to make an S1"),
 )
 class Events(strax.OverlapWindowPlugin):
     """
@@ -79,11 +80,14 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     def setup(self):
+        if self.config['s1_min_coincidence'] > self.config['event_s1_min_coincidence']:
+            raise ValueError('Peak s1 coincidence requirement should be smaller '
+                             'or equal to event_s1_min_coincidence')
+        self.right_extension = self.config['right_event_extension']
         self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
         self.left_extension = self.config['left_event_extension'] + self.drift_time_max
-        self.right_extension = self.config['right_event_extension']
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails

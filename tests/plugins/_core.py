@@ -19,6 +19,7 @@ class PluginTestAccumulator:
             raise ValueError('Test failed')
     ```
     """
+
     # See URLConfigs for the original inspiration.
     @classmethod
     def register(cls, test_name, func=None):

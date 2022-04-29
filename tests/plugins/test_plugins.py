@@ -1,9 +1,8 @@
 import strax
 import straxen
 import unittest
+import tempfile
 from straxen.test_utils import nt_test_run_id
-import os
-import shutil
 from _core import PluginTestCase, PluginTestAccumulator
 
 # Need import to attach new tests to the PluginTestAccumulator
@@ -25,14 +24,17 @@ class PluginTest(PluginTestCase, PluginTestAccumulator):
         cls.st = straxen.test_utils.nt_test_context()
         cls.run_id = nt_test_run_id
 
+        # Make sure that we only write to the temp-dir we cleanup after each test
+        cls.st.storage[0].readonly = True
+        cls.tempdir = tempfile.TemporaryDirectory()
+        cls.st.storage.append(strax.DataDirectory(cls.tempdir.name))
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
         Removes test data after tests are done.
         """
-        path = os.path.abspath(cls.st.storage[-1].path)
-        for file in os.listdir(path):
-            shutil.rmtree(os.path.join(path, file))
+        cls.tempdir.cleanup()
 
 
 # Very important step! We add a test for each of the plugins
@@ -41,6 +43,7 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
     _target = strax.to_str_tuple(_target.provides)[0]
     if _target in PluginTest.exclude_plugins:
         continue
+
 
     # pylint: disable=cell-var-from-loop
     @PluginTestAccumulator.register(f'test_{_target}')
