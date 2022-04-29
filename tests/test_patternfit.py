@@ -1,8 +1,8 @@
-import unittest
 from hypothesis import strategies, given, settings, example
 from straxen.plugins.event_patternfit import binom_test, lbinom_pmf_mode, lbinom_pmf, lbinom_pmf_inverse, binom_sf
 import numpy as np
 import scipy.stats as sps
+
 
 @settings(deadline=None)
 @given(strategies.floats(0., 1.), strategies.floats(0.01, 0.99), strategies.floats(2., 1000))
@@ -10,6 +10,7 @@ import scipy.stats as sps
 def test_patternfit_stats(aftobs, aft, s1tot):
     s1top = aftobs*s1tot
     assert( (binom_test(s1top, s1tot, aft) >= 0) & (binom_test(s1top, s1tot, aft) <= 1) )
+
 
 @settings(deadline=None)
 @given(strategies.floats(0., 1.), strategies.floats(0.01, 0.99), strategies.floats(2., 1000))
@@ -42,15 +43,17 @@ def test_inverse_pdf(aftobs, aft, s1tot):
         #values in log, it is not _really_ crucial that they're precisely equal
         np.testing.assert_almost_equal(pdf_value, target, decimal=2) 
 
-@settings(deadline=None)
+
+@settings(max_examples=10)
 @strategies.composite 
 def n_and_k(draw):
     n = draw(strategies.integers(2, 1000))
     k = draw(strategies.integers(0, n))
-    return n,k
+    return n, k
 
-@settings(deadline=None)
-@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99), max_size=50)
+
+@settings(deadline=None, max_examples=10)
+@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99))
 @example((10, 5), 0.5)
 def test_pmf(nk, p):
     #test that at integer n, k binom_pmf agrees with the scipy result
@@ -59,9 +62,10 @@ def test_pmf(nk, p):
     straxen_lpmf = lbinom_pmf(k, n, p)
     np.testing.assert_almost_equal(straxen_lpmf, sps_lpmf, decimal=2)
 
-@settings(deadline=None)
-@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99), max_size=50)
-#@example((10, 5), 0.5)
+
+@settings(deadline=None, max_examples=10)
+@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99),)
+@example((10, 5), 0.5)
 def test_pvalue(nk, p):
     #test that at integer n, k binom_pmf agrees with the scipy result
     n, k = nk
