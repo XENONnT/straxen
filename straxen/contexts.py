@@ -523,6 +523,7 @@ x1t_common_config = dict(
     peak_right_extension=30,
     s1_max_rise_time_post100=150,
     s1_min_coincidence=3,
+    event_s1_min_coincidence=3,
     # Events*
     left_event_extension=int(0.3e6),
     right_event_extension=int(1e6),
