@@ -1,5 +1,6 @@
 from _core import PluginTestAccumulator, PluginTestCase
 import numpy as np
+import straxen
 
 
 @PluginTestAccumulator.register('test_exclude_s1_as_triggering_peaks_config')
@@ -37,6 +38,33 @@ def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area
     s1_triggers = triggers[triggers['type'] == 1]
     self.assertTrue(all(s1_triggers['tight_coincidence'] >= new_min_coincidence))
     self.assertTrue(all(triggers['area'] >= trigger_min_area))
+
+
+@PluginTestAccumulator.register('test_event_info')
+def test_event_info(self):
+    """Do a dummy check on event-info that it loads"""
+    df = self.st.get_df(self.run_id, 'event_info')
+
+    assert len(df) > 0
+    assert 'cs1' in df.columns
+    assert df['cs1'].sum() > 0
+    assert not np.all(np.isnan(df['x'].values))
+
+
+@PluginTestAccumulator.register('test_event_info_double')
+def test_event_info_double(self):
+    """Do a dummy check on event-info that it loads"""
+    df = self.st.get_df(self.run_id, 'event_info_double')
+    assert 'cs2_a' in df.columns
+    assert df['cs2_a'].sum() > 0
+    assert len(df) > 0
+
+
+@PluginTestAccumulator.register('test_get_livetime_sec')
+def test_get_livetime_sec(self):
+    st = self.st
+    events = st.get_array(self.run_id, 'events')
+    straxen.get_livetime_sec(st, self.run_id, things=events)
 
 
 def get_triggering_peaks(events, left_extension, right_extension):

@@ -6,7 +6,10 @@ from straxen.test_utils import nt_test_run_id
 from _core import PluginTestCase, PluginTestAccumulator
 
 # Need import to attach new tests to the PluginTestAccumulator
+import bayes_plugin
 import event_building
+import peak_building
+import posrec_plugins
 
 
 # Don't bother with remote tests
@@ -53,7 +56,12 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
     if _target in PluginTest.exclude_plugins:
         continue
 
+    test_name = f'test_{_target}'
+    if hasattr(PluginTestAccumulator, test_name):
+        # We already made a dedicated test, let's skip this
+        continue
+
     # pylint: disable=cell-var-from-loop
-    @PluginTestAccumulator.register(f'test_{_target}')
+    @PluginTestAccumulator.register(test_name)
     def _make(self, target=_target):
         self.st.make(self.run_id, target)
