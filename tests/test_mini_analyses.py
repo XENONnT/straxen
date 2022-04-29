@@ -62,7 +62,7 @@ class TestMiniAnalyses(unittest.TestCase):
         cls.st.make(nt_test_run_id, 'records')
         cls.first_peak = cls.st.get_array(nt_test_run_id, 'peak_basics')[0]
         cls.first_event = cls.st.get_array(nt_test_run_id, 'event_basics')[0]
-        
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -355,12 +355,12 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_bokeh_selector(self):
         """Test the bokeh data selector"""
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
-        p = self.st.get_array(nt_test_run_id, 'peak_basics')
+        p = self.st.get_array(nt_test_run_id, 'peak_basics', seconds_range=(0, 10))
         ds = DataSelectionHist('ds')
         fig = ds.histogram2d(p,
                              p['area'],
                              p['area'],
-                             bins=50,
+                             bins=10,
                              hist_range=((0, 200), (0, 2000)),
                              log_color_scale=True,
                              clim=(10, None),
@@ -421,9 +421,6 @@ class TestMiniAnalyses(unittest.TestCase):
         Test NV event display for a single event.
         """
         events_nv = self.st.get_array(nt_test_run_id, 'events_nv')
-        warning = ("Do 'rm ./strax_test_data' since your *_nv test "
-                   "data in that folder is messing up this test.")
-        self.assertTrue(len(events_nv), warning)
         self.st.make(nt_test_run_id, 'event_positions_nv')
         self.st.plot_nveto_event_display(nt_test_run_id,
                                          time_within=events_nv[0],
@@ -431,7 +428,7 @@ class TestMiniAnalyses(unittest.TestCase):
         with self.assertRaises(ValueError):
             # If there is no data, we should raise a ValueError
             self.st.plot_nveto_event_display(nt_test_run_id,
-                                             time_range=[-1000,-900],
+                                             time_range=[-1000, -900],
                                              )
 
 
