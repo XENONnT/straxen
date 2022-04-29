@@ -5,17 +5,15 @@ import numpy as np
 import scipy.stats as sps
 
 @settings(deadline=None)
-#AFT_observed, AFT_expected (from xyz), S1_total
 @given(strategies.floats(0., 1.), strategies.floats(0.01, 0.99), strategies.floats(2., 1000))
-#@example(0., 0.05, 10.) 
+@example(0., 0.05, 10.) 
 def test_patternfit_stats(aftobs, aft, s1tot):
     s1top = aftobs*s1tot
     assert( (binom_test(s1top, s1tot, aft) >= 0) & (binom_test(s1top, s1tot, aft) <= 1) )
 
 @settings(deadline=None)
-#AFT_observed, AFT_expected (from xyz), S1_total
 @given(strategies.floats(0., 1.), strategies.floats(0.01, 0.99), strategies.floats(2., 1000))
-#@example(0., 0.05, 10.) 
+@example(0., 0.05, 10.) 
 def test_inverse_pdf(aftobs, aft, s1tot):
     s1top = aftobs * s1tot
     #code stolen from binom_test, checking if the other point on
@@ -52,7 +50,7 @@ def n_and_k(draw):
     return n,k
 
 @settings(deadline=None)
-@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99))
+@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99), max_size=50)
 @example((10, 5), 0.5)
 def test_pmf(nk, p):
     #test that at integer n, k binom_pmf agrees with the scipy result
@@ -62,7 +60,7 @@ def test_pmf(nk, p):
     np.testing.assert_almost_equal(straxen_lpmf, sps_lpmf, decimal=2)
 
 @settings(deadline=None)
-@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99))
+@given(nk = n_and_k(), p = strategies.floats(0.01, 0.99), max_size=50)
 #@example((10, 5), 0.5)
 def test_pvalue(nk, p):
     #test that at integer n, k binom_pmf agrees with the scipy result
