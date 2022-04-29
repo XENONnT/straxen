@@ -12,6 +12,15 @@ import event_building
 # Don't bother with remote tests
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class PluginTest(PluginTestCase, PluginTestAccumulator):
+    """
+    Class for managing tests that depend on specific plugins and
+    require a bit of data to run the test
+    (provided by straxen.test_utils.nt_test_context).
+
+    Don't add tests directly, but add using the
+    `@PluginTestAccumulator.register`-decorator (see
+    straxen/tests/plugins/README.md)
+    """
     exclude_plugins = 'events_sync_mv', 'events_sync_nv'
 
     @classmethod
@@ -19,7 +28,7 @@ class PluginTest(PluginTestCase, PluginTestAccumulator):
         """
         Common setup for all the tests. We need some data which we
         don't delete but reuse to prevent a lot of computations in this
-        class
+        class. Only after running all the tests, we run the cleanup.
         """
         cls.st = straxen.test_utils.nt_test_context()
         cls.run_id = nt_test_run_id
@@ -43,7 +52,6 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
     _target = strax.to_str_tuple(_target.provides)[0]
     if _target in PluginTest.exclude_plugins:
         continue
-
 
     # pylint: disable=cell-var-from-loop
     @PluginTestAccumulator.register(f'test_{_target}')
