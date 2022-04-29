@@ -14,6 +14,7 @@ def is_py310():
     """Check python version"""
     return platform.python_version_tuple()[:2] == ('3', '10')
 
+
 def test_pmt_pos_1t():
     """
     Test if we can get the 1T PMT positions
@@ -28,6 +29,7 @@ def test_pmt_pos_nt():
     pandas.DataFrame(straxen.pmt_positions(False))
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class TestMiniAnalyses(unittest.TestCase):
     """
     Generally, tests in this class run st.<some_mini_analysis>
@@ -152,7 +154,6 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_plot_peaks_aft_histogram(self):
         self.st.plot_peaks_aft_histogram(nt_test_run_id)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_event_scatter(self):
         self.st.event_scatter(nt_test_run_id)
 
@@ -242,14 +243,10 @@ class TestMiniAnalyses(unittest.TestCase):
                                ignore_time_warning=True,
                                )
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_event_display(self):
         """Event display plot, needs CMT"""
         self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_event_display_no_rr(self):
         """Make an event display without including records"""
         self.st.event_display(nt_test_run_id,
@@ -275,8 +272,6 @@ class TestMiniAnalyses(unittest.TestCase):
         df = self.st.get_df(nt_test_run_id, 'peak_basics')[:10]
         straxen.dataframe_to_wiki(df)
 
-    @unittest.skipIf(straxen.utilix_is_configured(),
-                     "Test for no DB access")
     def test_daq_plot_errors_without_utilix(self):
         """
         We should get a not implemented error if we call a function
@@ -286,8 +281,6 @@ class TestMiniAnalyses(unittest.TestCase):
             straxen.analyses.daq_waveforms._get_daq_config(
                 'som_run', run_collection=None)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_daq_plot_errors(self):
         """To other ways we should not be allowed to call daq_waveforms.XX"""
         with self.assertRaises(ValueError):
@@ -295,7 +288,6 @@ class TestMiniAnalyses(unittest.TestCase):
         with self.assertRaises(ValueError):
             straxen.analyses.daq_waveforms._board_to_host_link({'boards': [{'no_boards': 0}]}, 1)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_event_plot_errors(self):
         """
         Several Exceptions should be raised with these following bad
@@ -379,8 +371,6 @@ class TestMiniAnalyses(unittest.TestCase):
         os.remove(save_as)
         self.assertFalse(os.path.exists(save_as))
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_nt_daq_plot(self):
         """Make an nt DAQ plot"""
         self.st.daq_plot(nt_test_run_id,
@@ -389,8 +379,6 @@ class TestMiniAnalyses(unittest.TestCase):
                          vmax=1,
                          )
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_nt_daq_plot_grouped(self):
         """Same as above grouped by ADC"""
         self.st.plot_records_matrix(nt_test_run_id,
@@ -407,15 +395,11 @@ class TestMiniAnalyses(unittest.TestCase):
                                max_samples=20
                                )
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_load_corrected_positions(self):
         """Test that we can do st.load_corrected_positions"""
         self.st.load_corrected_positions(nt_test_run_id,
                                          time_within=self.first_peak)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(),
-                     "No db access, cannot test!")
     def test_nv_event_display(self):
         """
         Test NV event display for a single event.
