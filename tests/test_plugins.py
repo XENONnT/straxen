@@ -128,27 +128,3 @@ def test_1T(ncores=1):
     _test_child_options(st, test_run_id_1T)
 
     print(st.context_config)
-
-
-# def test_nT(ncores=1):
-#     if ncores == 1:
-#         print('-- nT lazy mode --')
-#     init_database = straxen.utilix_is_configured(warning_message=False)
-#     st = straxen.test_utils.nt_test_context(
-#         _database_init=init_database,
-#         use_rucio=False,
-#         deregister=('events_sync_nv', 'events_sync_mv')
-#     )
-#     _update_context(st, ncores, nt=True)
-#     # Lets take an abandoned run where we actually have gains for in the CMT
-#     _run_plugins(st, make_all=True, max_workers=ncores, run_id=nt_test_run_id)
-#     # Test issue #233
-#     st.search_field('cs1')
-#     # Test of child plugins:
-#     _test_child_options(st, nt_test_run_id)
-#     print(st.context_config)
-#
-#
-# def test_nT_mutlticore():
-#     print('nT multicore')
-#     test_nT(3)
