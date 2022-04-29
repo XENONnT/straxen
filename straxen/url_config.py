@@ -1,5 +1,6 @@
 import json
 from typing import Container
+import numpy as np
 import strax
 import fsspec
 import pandas as pd
@@ -11,6 +12,9 @@ from strax.config import OMITTED
 import os
 import tempfile
 import tarfile
+import pytz
+from utilix import xent_collection
+from scipy.interpolate import interp1d
 
 export, __all__ = strax.exporter()
 
@@ -329,3 +333,59 @@ def open_neural_net(model_path: str, **kwargs):
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
         return tf.keras.models.load_model(tmpdirname)
+
+
+@URLConfig.register('seg_file')
+def get_seg(loaded_json, run_id=None, **kwargs):
+    """Get SEG correction from a file (instead of CMT)"""
+    # check if this file support AB and CD partitioning
+    is_partition = 'gain_ab' in loaded_json
+
+    times = loaded_json['times']
+
+    # get start time of this run. Need to make tz-aware
+    start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
+    start = pytz.utc.localize(start).timestamp() * 1e9
+
+    try:
+        if is_partition:
+            interp_ab = interp1d(times, loaded_json['gain_ab'], bounds_error=True)
+            interp_cd = interp1d(times, loaded_json['gain_cd'], bounds_error=True)
+            gain_ab = interp_ab(start)
+            gain_cd = interp_cd(start)
+            return {'ab': gain_ab, 'cd': gain_cd}
+
+        else:
+            interp = interp1d(times, loaded_json['gains'], bounds_error=True)
+            return interp(start)
+
+    except ValueError:
+        raise ValueError(f"The SEG correction is not defined for run {run_id}")
+
+
+@URLConfig.register('ee_file')
+def get_exteff(loaded_json, run_id=None, **kwargs):
+    """Get EE correction from a file (instead of CMT)"""
+    # check if this file support AB and CD partitioning
+    is_partition = 'ee_ab' in loaded_json
+
+    times = loaded_json['timestamps']
+
+    # get start time of this run. Need to make tz-aware
+    start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
+    start = pytz.utc.localize(start).timestamp() * 1e9
+
+    try:
+        if is_partition:
+            interp_ab = interp1d(times, loaded_json['ee_ab'], bounds_error=True)
+            interp_cd = interp1d(times, loaded_json['ee_cd'], bounds_error=True)
+            gain_ab = interp_ab(start)
+            gain_cd = interp_cd(start)
+            return {'ab': gain_ab, 'cd': gain_cd}
+
+        else:
+            interp = interp1d(times, loaded_json['correction'], bounds_error=True)
+            return interp(start)
+
+    except ValueError:
+        raise ValueError(f"The EE correction is not defined for run {run_id}")

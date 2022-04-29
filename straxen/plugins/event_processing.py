@@ -8,7 +8,6 @@ from straxen.common import pax_file, get_resource, first_sr1_run
 from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 
-from partitions_event import A_and_B_selection_event, C_and_D_selection_event
 export, __all__ = strax.exporter()
 
 @export
@@ -621,7 +620,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.2.1'
+    __version__ = '0.3.0'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -672,12 +671,12 @@ class CorrectedAreas(strax.Plugin):
     
     region_linear = straxen.URLConfig(
         default=28,
-        help = 'linear cut for ab region'
+        help='linear cut for ab region'
     )
     
     region_circular = straxen.URLConfig(
         default=60,
-        help = 'circular cut for ab region'
+        help='circular cut for ab region'
     )
 
     def infer_dtype(self):
@@ -700,23 +699,22 @@ class CorrectedAreas(strax.Plugin):
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
                       (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
         return dtype
-    
+
+    @staticmethod
     def rotate(x_arr, y_arr, theta):
         new_x = np.cos(theta)*x_arr+np.sin(theta)*y_arr
         new_y = -np.sin(theta)*x_arr+np.cos(theta)*y_arr
-        return np.array([new_x,new_y])
+        return np.array([new_x, new_y])
     
-    def ab_region(self,x,y):
-        new_x,new_y = self.rotate(x,y,-np.pi/6)
+    def ab_region(self, x, y):
+        new_x, new_y = self.rotate(x, y, -np.pi/6)
         cond = new_x < self.region_linear
-        cond&= new_x > -self.region_linear
-        cond&= new_x**2+new_y**2 < self.region_circular**2
-
+        cond &= new_x > -self.region_linear
+        cond &= new_x**2 + new_y**2 < self.region_circular**2
         return cond
     
-    def cd_region(self,x,y):
-
-        return ~self.ab_region(x,y)
+    def cd_region(self, x, y):
+        return ~self.ab_region(x, y)
 
     def compute(self, events):
         result = dict(
@@ -742,18 +740,26 @@ class CorrectedAreas(strax.Plugin):
         else:
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
-        
-        regions = [self.ab_region,self.cd_region]
-        
-        if len(self.rel_extraction_eff.names) > 1:
-            se_val = [self.se_gain['gain_ab'],self.se_gain['gain_cd']]
-            ee_cor = [self.rel_extraction_eff['ee_ab'],self.rel_extraction_eff['ee_cd']]
-            avg_se_val = [self.avg_se_gain['gain_avg_ab'],self.avg_se_gain['gain_avg_cd']]
+
+        regions = {'ab': self.ab_region, 'cd': self.cd_region}
+
+        # setup SEG and EE corrections
+        if isinstance(self.se_gain, dict):
+            seg = self.se_gain
         else:
-            se_val = [self.rel_light_yield]*2
-            ee_cor = [self.rel_extraction_eff]*2
-            avg_se_val = [self.avg_se_gain]*2
-            
+            seg = {key: self.se_gain for key in regions}
+
+        if isinstance(self.avg_se_gain, dict):
+            avg_seg = self.avg_se_gain
+        else:
+            avg_seg = {key: self.avg_se_gain for key in regions}
+
+        if isinstance(self.rel_extraction_eff, dict):
+            ee = self.rel_extraction_eff
+        else:
+            ee = {key: self.rel_extraction_eff for key in regions}
+
+        # now can start doing corrections
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
@@ -776,16 +782,14 @@ class CorrectedAreas(strax.Plugin):
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
             result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
-            
-            for i,partition in enumerate(['ab','cd']):
+
+
+            for partition, func in regions.items():
                 # partitioned SE and EE
-                cond = regions[i](events[f'{peak_type}s2_x'],
-                                  events[f'{peak_type}s2_y'])
-                
-                # need to input this "region" variable using straxen.URLConfig
+                cond = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
 
                 # Correct for SEgain and extraction efficiency
-                seg_ee_corr = se_val[i]/avg_se_val[i]*ee_cor[i]
+                seg_ee_corr = seg[partition]/avg_seg[partition]*ee[partition]
                 
                 cs2_top_wo_elifecorr = cs2_top_xycorr[cond] / seg_ee_corr
                 cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[cond] / seg_ee_corr
@@ -795,7 +799,7 @@ class CorrectedAreas(strax.Plugin):
                 result[f"{peak_type}cs2_area_fraction_top"][cond] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
                 result[f"{peak_type}cs2"][cond] = result[f"{peak_type}cs2_wo_elifecorr"][cond] * elife_correction[cond]
-                result[f"{peak_type}cs2_bottom"][cond] = cs2_bottom_wo_elifecorr[cond] * elife_correction[cond]
+                result[f"{peak_type}cs2_bottom"][cond] = cs2_bottom_wo_elifecorr * elife_correction[cond]
 
         return result
 
