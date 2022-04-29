@@ -1,11 +1,10 @@
-from re import X
 import strax
 import numpy as np
 import numba
 import straxen
 from .position_reconstruction import DEFAULT_POSREC_ALGO
 from straxen.common import pax_file, get_resource, first_sr1_run
-from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
+from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
@@ -36,6 +35,12 @@ export, __all__ = strax.exporter()
                  default=True, type=bool,
                  help='If true exclude S1s as triggering peaks.',
                  ),
+    strax.Option(name='event_s1_min_coincidence',
+                 default=2, infer_type=False,
+                 help="Event level S1 min coincidence. Should be >= "
+                      "s1_min_coincidence in the peaklet classification"),
+    strax.Option(name='s1_min_coincidence', default=2, type=int,
+                 help="Minimum tight coincidence necessary to make an S1"),
 )
 class Events(strax.OverlapWindowPlugin):
     """
@@ -56,7 +61,7 @@ class Events(strax.OverlapWindowPlugin):
     depends_on = ['peak_basics', 'peak_proximity']
     provides = 'events'
     data_kind = 'events'
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     save_when = strax.SaveWhen.NEVER
 
     electron_drift_velocity = straxen.URLConfig(
@@ -75,6 +80,9 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     def setup(self):
+        if self.config['s1_min_coincidence'] > self.config['event_s1_min_coincidence']:
+            raise ValueError('Peak s1 coincidence requirement should be smaller '
+                             'or equal to event_s1_min_coincidence')
         self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
@@ -92,6 +100,11 @@ class Events(strax.OverlapWindowPlugin):
         _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
         if self.config['exclude_s1_as_triggering_peaks']:
             _is_triggering &= peaks['type'] == 2
+        else:
+            is_not_s1 = peaks['type'] != 1
+            has_tc_large_enough = (peaks['tight_coincidence']
+                                   >= self.config['event_s1_min_coincidence'])
+            _is_triggering &= (is_not_s1 | has_tc_large_enough)
 
         triggers = peaks[_is_triggering]
 
