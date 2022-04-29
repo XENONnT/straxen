@@ -8,5 +8,8 @@ omit =
 exclude_lines =
     if __name__ == .__main__.:
     raise
+    print
+    log.
+    logging.
 
 ignore_errors = True

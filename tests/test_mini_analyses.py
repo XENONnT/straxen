@@ -272,15 +272,6 @@ class TestMiniAnalyses(unittest.TestCase):
         df = self.st.get_df(nt_test_run_id, 'peak_basics')[:10]
         straxen.dataframe_to_wiki(df)
 
-    def test_daq_plot_errors_without_utilix(self):
-        """
-        We should get a not implemented error if we call a function
-        in the daq_waveforms analyses
-        """
-        with self.assertRaises(NotImplementedError):
-            straxen.analyses.daq_waveforms._get_daq_config(
-                'som_run', run_collection=None)
-
     def test_daq_plot_errors(self):
         """To other ways we should not be allowed to call daq_waveforms.XX"""
         with self.assertRaises(ValueError):
