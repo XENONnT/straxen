@@ -250,41 +250,6 @@ def xenonnt_online(output_folder: str = './strax_data',
 
     return st
 
-def xenonnt_online_hsm(**kwargs):
-    import pymongo
-    import os
-    
-    st = straxen.contexts.xenonnt_online(**kwargs)
-    st.set_context_config({'allow_rechunk':False})
-
-    #Change these to right passwords and settings
-    db_password = os.environ.get('MONGO_TST_PASSWORD')
-    url = "mongodb+srv://bootstrax:"f"{db_password}@jorandb.z6nbo.mongodb.net/admin?retryWrites=true&w=majority"
-    client = pymongo.MongoClient(url)
-    database = 'test_database'
-    joran_db = client[database]
-
-    st.register(straxen.OnlineHotspotMonitor)
-    st.storage=[st.storage[0],
-                strax.DataDirectory(
-                    '/daq_common/maricke/2022_03_11_om_test_data/raw',
-                    take_only=(straxen.DAQReader.provides + 
-                                straxen.Peaklets.provides + 
-                                straxen.PeakBasics.provides +
-                                straxen.PeakPositionsMLP.provides +
-                                straxen.OnlineHotspotMonitor.provides
-                                ),
-                    readonly=False),
-                straxen.storage.online_monitor_frontend.OnlineMonitor(
-                    uri = url,
-                    database = database,
-                    take_only = ('online_hotspot_monitor'),
-                    col_name = 'online_monitor',
-                    readonly = False,)
-                ]
-    print("I'm a new context!")
-    return st
-
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
     st.set_context_config(
