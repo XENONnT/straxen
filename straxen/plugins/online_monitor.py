@@ -199,12 +199,6 @@ class OnlineHotspotMonitor(strax.Plugin):
     rechunk_on_save = False #??
 
     def infer_dtype(self):
-        # n_bins_area_width = self.config['area_vs_width_nbins']
-        # bounds_area_width = self.config['area_vs_width_bounds']
-
-        # n_bins = self.config['online_peak_monitor_nbins']
-
-        # n_tpc_pmts = self.config['n_tpc_pmts']
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
@@ -225,7 +219,6 @@ class OnlineHotspotMonitor(strax.Plugin):
         return dtype
 
     def compute(self,peaks,start,end):
-        # Make results en 1D array
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
 
