@@ -684,12 +684,12 @@ class CorrectedAreas(strax.Plugin):
     
     region_linear = straxen.URLConfig(
         default=28,
-        help='linear cut for ab region'
+        help='linear cut for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
     
     region_circular = straxen.URLConfig(
         default=60,
-        help='circular cut for ab region'
+        help='circular cut for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
 
     def infer_dtype(self):
