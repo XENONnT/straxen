@@ -488,7 +488,7 @@ class DetectorSynchronization(strax.Plugin):
     )
     # This value is only valid for SR0:
     epsilon_offset = straxen.URLConfig(
-        default=116,
+        default=76,
         type=int,
         track=True,
         help='Measured missing offset for nveto in [ns]'
