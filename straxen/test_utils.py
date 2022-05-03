@@ -5,7 +5,6 @@ import io
 import os
 from warnings import warn
 from os import environ as os_environ
-from straxen import aux_repo, pax_file
 from pandas import DataFrame
 from immutabledict import immutabledict
 from importlib import import_module
@@ -127,13 +126,6 @@ def nt_test_context(target_context='xenonnt_online',
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
-    # if not straxen.utilix_is_configured(warning_message=False):
-        # st.set_config(_testing_config_nT)
-        # to_remove += 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
-        # # The test data for this plugin doesn't work
-        # to_remove += ['event_pattern_fit']
-        # st.set_config({'gain_model': ("to_pe_placeholder", True)})
-        # st.register(straxen.PeakPositions1T)
     for plugin in to_remove:
         del st._plugin_class_registry[plugin]
     return st

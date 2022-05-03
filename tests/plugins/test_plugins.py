@@ -10,7 +10,7 @@ import bayes_plugin
 import event_building
 import peak_building
 import posrec_plugins
-
+import pulse_processing
 
 # Don't bother with remote tests
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
