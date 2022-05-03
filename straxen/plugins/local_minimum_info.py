@@ -144,7 +144,7 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
             gaps[j] = right_crossing - left_crossing
             gap_heights[j] = gh
 
-        max_gap = np.max(gap_heights)
+        max_gap = gaps[np.argmax(gap_heights)]
         valley_depth = gap_heights[np.argmax(gap_heights)]
         return max_gap * dt, valley_depth
 
