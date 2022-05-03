@@ -106,6 +106,7 @@ class LocalMinimumInfo(strax.LoopPlugin):
                 's2_valley_height_ratio': valley_height_ratio}
 
 
+@numba.njit()
 def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     """
     Full gap at percent valley. The width of the valley at "pv" of the valley height
@@ -130,9 +131,10 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
         for j in range(n_gap):
             gh = np.min(smoothp[max_loc[j:j + 2]])
             gh -= smoothp[min_loc[j]]
-
+            
+            print(gh)
             height_pv = (smoothp[min_loc[j]] + gh * pv)
-
+            
             above_hpv = smoothp > height_pv
             above_hpv |= np.arange(p_length) < max_loc[j]
             left_crossing = np.argmin(above_hpv)
