@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 import strax
 from strax.processing.peak_splitting import natural_breaks_gof
 
