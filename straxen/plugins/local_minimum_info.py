@@ -122,7 +122,7 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     """
     n_gap = len(min_loc)
     p_length = len(smoothp)
-    if ~((len(max_loc) - n_gap != 1)&(len(min_loc)>0)):
+    if ~((len(max_loc) - n_gap == 1)&(len(min_loc)>0)):
         return 0, 0
     else:
         gaps = np.zeros(n_gap)
