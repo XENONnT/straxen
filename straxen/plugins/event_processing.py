@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 from .position_reconstruction import DEFAULT_POSREC_ALGO
-from straxen.common import pax_file, get_resource, first_sr1_run
+from straxen.common import pax_file, get_resource, first_sr1_run, rotate_perp_wires
 from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 
@@ -713,14 +713,14 @@ class CorrectedAreas(strax.Plugin):
                       (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
         return dtype
 
-    @staticmethod
+   ''' @staticmethod
     def rotate(x_arr, y_arr, theta):
         new_x = np.cos(theta)*x_arr+np.sin(theta)*y_arr
         new_y = -np.sin(theta)*x_arr+np.cos(theta)*y_arr
-        return np.array([new_x, new_y])
+        return np.array([new_x, new_y])'''
     
     def ab_region(self, x, y):
-        new_x, new_y = self.rotate(x, y, -np.pi/6)
+        new_x, new_y = rotate_perp_wires(x, y)
         cond = new_x < self.region_linear
         cond &= new_x > -self.region_linear
         cond &= new_x**2 + new_y**2 < self.region_circular**2
