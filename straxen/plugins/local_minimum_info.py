@@ -133,7 +133,6 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
             gh = np.min(smoothp[max_loc[j:j + 2]])
             gh -= smoothp[min_loc[j]]
             
-            print(gh)
             height_pv = (smoothp[min_loc[j]] + gh * pv)
             
             above_hpv = smoothp > height_pv
