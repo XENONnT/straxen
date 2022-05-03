@@ -1,3 +1,6 @@
+import unittest
+import numpy as np
+
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class TestS2LocalMinimum(unittest.TestCase):
     def setUp(self):
