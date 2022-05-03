@@ -1,3 +1,31 @@
+1.6.1 / 2022-04-12
+------------------
+Plugin fixes
+- Remove records not hits. (#987)
+- Remove Shadow&Ambience plugin SaveWhen.EXPLICIT (#982)
+- fix issue 977 (#984)
+- Position shadow sigma set to nan when S2 not positive (#980)
+- Fix small bug if GPS has larger delay (#986)
+
+Improved scripts / test
+- iterative straxer targets (#973)
+- Debug savewhen test (#963)
+- Exit 0 on existing data in straxer (#970)
+- dependabot remote (#1008)
+- print util (#989)
+
+Documentation
+- Fix href datakind page (#969)
+
+Storage fixes
+- only find rucio from dali (#1010)
+- Fix #1010 add midway as dali (#1012)
+- Allow unused rucio local (#976)
+
+Notes:
+ - only lineage changes in `detector_time_offsets` ( #986)
+
+
 1.6.0 / 2022-03-09
 ------------------
 Minor:

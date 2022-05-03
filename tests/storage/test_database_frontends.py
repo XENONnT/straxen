@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import pymongo
 import datetime
+import socket
 
 
 def mongo_uri_not_set():
@@ -57,6 +58,20 @@ class TestRunDBFrontend(unittest.TestCase):
         cls.rundb_sf.client = client
         cls.rundb_sf.collection = collection
 
+        # Extra test for regexes
+        class RunDBTestLocal(straxen.RunDB):
+            """Change class to mathc current host too"""
+            hosts = {'bla': f'{socket.getfqdn()}'}
+
+        cls.rundb_sf_with_current_host = RunDBTestLocal(readonly=False,
+                                                        runid_field='number',
+                                                        new_data_path=cls.path,
+                                                        minimum_run_number=-1,
+                                                        rucio_path='./strax_test_data',
+                                                        )
+        cls.rundb_sf_with_current_host.client = client
+        cls.rundb_sf_with_current_host.collection = collection
+
         cls.st = strax.Context(register=[Records, Peaks],
                                storage=[cls.rundb_sf],
                                use_per_run_defaults=False,
@@ -73,6 +88,10 @@ class TestRunDBFrontend(unittest.TestCase):
         if os.path.exists(self.path):
             print(f'rm {self.path}')
             shutil.rmtree(self.path)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.database[cls.collection_name].drop()
 
     @property
     def collection(self):
@@ -152,7 +171,7 @@ class TestRunDBFrontend(unittest.TestCase):
         with self.assertRaises(strax.DataNotAvailable):
             self.rundb_sf.find(self.st.key_for('_super-run', self.all_targets[0]))
         with self.assertRaises(strax.DataNotAvailable):
-            self.rundb_sf._find(self.st.key_for('_super-run',self.all_targets[0]),
+            self.rundb_sf._find(self.st.key_for('_super-run', self.all_targets[0]),
                                 write=False,
                                 allow_incomplete=False,
                                 fuzzy_for = [],
@@ -178,17 +197,31 @@ class TestRunDBFrontend(unittest.TestCase):
 
         # Make sure we get the backend key using the _find option
         self.assertTrue(
-            self.rundb_sf._find(key,
-                                write=False,
-                                allow_incomplete=False,
-                                fuzzy_for=None,
-                                fuzzy_for_options=None,
-                                )[1] == did,
+            self.rundb_sf_with_current_host._find(
+                key,
+                write=False,
+                allow_incomplete=False,
+                fuzzy_for=None,
+                fuzzy_for_options=None,
+            )[1] == did,
         )
+        with self.assertRaises(strax.DataNotAvailable):
+            # Now, this same test should fail if we have a rundb SF
+            # without our host added to the regex
+            self.rundb_sf._find(
+                key,
+                write=False,
+                allow_incomplete=False,
+                fuzzy_for=None,
+                fuzzy_for_options=None,
+            )
         with self.assertRaises(strax.DataNotAvailable):
             # Although we did insert a document, we should get a data
             # not available error as we did not actually save any data
             # on the rucio folder
+            self.rundb_sf_with_current_host.find(key)
+        with self.assertRaises(strax.DataNotAvailable):
+            # Same, just double checking!
             self.rundb_sf.find(key)
 
 
