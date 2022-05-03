@@ -56,3 +56,5 @@ class TestS2LocalMinimum(unittest.TestCase):
         assert (valley2<valley1)&(valley2<valley3)
         assert (valley3>valley1)&(valley3>valley2)
         assert (valley_gap3>valley_gap1)&(valley_gap3>valley_gap2)
+        
+        
