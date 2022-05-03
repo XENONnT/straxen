@@ -42,6 +42,7 @@ def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area
     self.assertTrue(all(s1_triggers['tight_coincidence'] >= new_min_coincidence))
     self.assertTrue(all(triggers['area'] >= trigger_min_area))
 
+
 @PluginTestAccumulator.register('test_partitioned_tpc_corrected_areas')
 def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     """
