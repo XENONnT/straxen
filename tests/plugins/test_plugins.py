@@ -7,6 +7,7 @@ from _core import PluginTestCase, PluginTestAccumulator
 
 # Need import to attach new tests to the PluginTestAccumulator
 import event_building
+import local_minimum_info
 
 
 # Don't bother with remote tests
