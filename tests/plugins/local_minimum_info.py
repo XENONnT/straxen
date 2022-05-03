@@ -22,8 +22,8 @@ def test_identify_local_extrema(self: PluginTestCase):
     max2, min2 = straxen.local_minimum_info.identify_local_extrema(test_peak_2)
 
     assert np.all(min1 == min2)
-    assert max2-min2 == 1
-    assert max1-min1 == 1
+    assert len(max2)-len(min2) == 1
+    assert len(max1)-len(min1) == 1
     assert min1[0]==100
     assert len(max1) == 2
     assert len(max2) == 2
