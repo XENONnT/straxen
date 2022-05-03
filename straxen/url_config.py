@@ -345,7 +345,7 @@ def get_itp_dict(loaded_json,
     Interpolate the dictionary at the start time that is queried from
     a run-id.
 
-    The loaded JSON (dictionary), should have at least one collum `times`
+    The loaded JSON (dictionary), should have at least one collum `time`
     and has other columns given by `itp_dict_keys`.
 
     :param loaded_json: a dictionary with a time-series
@@ -358,7 +358,7 @@ def get_itp_dict(loaded_json,
         (multiple itp_dict_keys)
     """
     keys = strax.to_str_tuple(itp_dict_keys.split(','))
-    times = loaded_json['times']
+    times = loaded_json['time']
     if not all(k in loaded_json for k in keys):
         raise ValueError(f'One or more of {itp_dict_keys} are not in {loaded_json.keys()}')
 

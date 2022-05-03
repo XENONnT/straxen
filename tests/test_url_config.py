@@ -125,9 +125,9 @@ class TestURLConfig(unittest.TestCase):
             {'number': int(nt_test_run_id)},
             projection={'start': 1}
         ).get('start', 'QUERY FAILED!')
-        fake_file = {'times': [datetime(2000, 1, 1).timestamp() * 1e9,
-                               central_datetime.timestamp() * 1e9,
-                               datetime(2040, 1, 1).timestamp() * 1e9],
+        fake_file = {'time': [datetime(2000, 1, 1).timestamp() * 1e9,
+                              central_datetime.timestamp() * 1e9,
+                              datetime(2040, 1, 1).timestamp() * 1e9],
                      'ab': [10, ab_value, 30],
                      'cd': [11, cd_value, 31]
                          }
@@ -160,10 +160,10 @@ class TestURLConfig(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_ee_file(self):
-        """Same logic as test_seg_file, just keeping this example for bookkeeping"""
-        fake_file = {'times': [datetime(2000, 1, 1).timestamp() * 1e9,
-                               datetime(2020, 1, 1).timestamp() * 1e9,
-                               datetime(2040, 1, 1).timestamp() * 1e9],
+        """Same logic as test_seg_file, just keeping this example for bookkeeping since it's nice"""
+        fake_file = {'time': [datetime(2000, 1, 1).timestamp() * 1e9,
+                              datetime(2020, 1, 1).timestamp() * 1e9,
+                              datetime(2040, 1, 1).timestamp() * 1e9],
                      'ee_ab': [0.1, 0.2, 0.3],
                      'ee_cd': [0.4, 0.5, 0.6]
                      }
