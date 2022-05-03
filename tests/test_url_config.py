@@ -1,8 +1,11 @@
 import os
 import json
+
+import pandas as pd
 import strax
 import straxen
 import fsspec
+import utilix.rundb
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 import pickle
@@ -111,28 +114,56 @@ class TestURLConfig(unittest.TestCase):
         self.assertTrue(p.test_config)
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
-    def test_seg_file(self):
+    def test_seg_file_json(self, ab_value=20, cd_value=21, dump_as='json'):
+        """
+        Test that we are getting ~the same value from interpolating at the central date in a dict
+
+        :param ab_value, cd_value: some values to test against
+        :param dump_as: Write as csv or as json file
+        """
+        central_datetime = utilix.rundb.xent_collection().find_one(
+            {'number': int(nt_test_run_id)},
+            projection={'start': 1}
+        ).get('start', 'QUERY FAILED!')
         fake_file = {'times': [datetime(2000, 1, 1).timestamp() * 1e9,
-                               datetime(2020, 1, 1).timestamp() * 1e9,
+                               central_datetime.timestamp() * 1e9,
                                datetime(2040, 1, 1).timestamp() * 1e9],
-                         'gain_ab': [10, 20, 30],
-                         'gain_cd': [11, 21, 31]
+                     'ab': [10, ab_value, 30],
+                     'cd': [11, cd_value, 31]
                          }
-        fake_file_name = 'test_seg.json'
+        if dump_as == 'json':
+            fake_file_name = 'test_seg.json'
 
-        with open(fake_file_name, 'w') as f:
-            json.dump(fake_file, f)
+            with open(fake_file_name, 'w') as f:
+                json.dump(fake_file, f)
+        elif dump_as == 'csv':
+            # This example also works well with dataframes!
+            fake_file_name = 'test_seg.csv'
+            pd.DataFrame(fake_file).to_csv(fake_file_name)
+        else:
+            raise ValueError
 
-        self.st.set_config({'test_config': f'seg_file://resource://{fake_file_name}?run_id=plugin.run_id&fmt=json'})
+        self.st.set_config({'test_config':f'itp_dict://'
+                                          f'resource://'
+                                          f'{fake_file_name}'
+                                          f'?run_id=plugin.run_id'
+                                          f'&fmt={dump_as}'
+                                          f'&itp_dict_keys=ab,cd'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertIsInstance(p.test_config, dict)
+        assert np.isclose(p.test_config['ab'], ab_value)
+        assert np.isclose(p.test_config['cd'], cd_value)
         os.remove(fake_file_name)
+
+    def test_seg_file_csv(self):
+        self.test_seg_file_json(dump_as='csv')
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_ee_file(self):
-        fake_file = {'timestamps': [datetime(2000, 1, 1).timestamp() * 1e9,
-                                    datetime(2020, 1, 1).timestamp() * 1e9,
-                                    datetime(2040, 1, 1).timestamp() * 1e9],
+        """Same logic as test_seg_file, just keeping this example for bookkeeping"""
+        fake_file = {'times': [datetime(2000, 1, 1).timestamp() * 1e9,
+                               datetime(2020, 1, 1).timestamp() * 1e9,
+                               datetime(2040, 1, 1).timestamp() * 1e9],
                      'ee_ab': [0.1, 0.2, 0.3],
                      'ee_cd': [0.4, 0.5, 0.6]
                      }
@@ -141,9 +172,16 @@ class TestURLConfig(unittest.TestCase):
         with open(fake_file_name, 'w') as f:
             json.dump(fake_file, f)
 
-        self.st.set_config({'test_config': f'ee_file://resource://{fake_file_name}?run_id=plugin.run_id&fmt=json'})
+        self.st.set_config({'test_config':
+                                f'itp_dict://'
+                                f'resource://'
+                                f'{fake_file_name}'
+                                f'?run_id=plugin.run_id'
+                                f'&fmt=json'
+                                f'&itp_dict_keys=ee_ab,ee_cd'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertIsInstance(p.test_config, dict)
+        os.remove(fake_file_name)
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()

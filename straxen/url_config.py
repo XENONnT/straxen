@@ -1,4 +1,5 @@
 import json
+import typing
 from typing import Container
 import numpy as np
 import strax
@@ -335,57 +336,45 @@ def open_neural_net(model_path: str, **kwargs):
         return tf.keras.models.load_model(tmpdirname)
 
 
-@URLConfig.register('seg_file')
-def get_seg(loaded_json, run_id=None, **kwargs):
-    """Get SEG correction from a file (instead of CMT)"""
-    # check if this file support AB and CD partitioning
-    is_partition = 'gain_ab' in loaded_json
+@URLConfig.register('itp_dict')
+def get_itp_dict(loaded_json,
+                 run_id=None,
+                 itp_dict_keys='correction',
+                 **kwargs) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
+    """
+    Interpolate the dictionary at the start time that is queried from
+    a run-id.
 
+    The loaded JSON (dictionary), should have at least one collum `times`
+    and has other columns given by `itp_dict_keys`.
+
+    :param loaded_json: a dictionary with a time-series
+    :param run_id: run_id
+    :param itp_dict_keys: which keys from the dict to read. Should be
+        comma (',') seperated!
+
+    :return: Interpolated values of dict at the start time, either
+        returned as an np.ndarray (single value) or as a dict
+        (multiple itp_dict_keys)
+    """
+    keys = strax.to_str_tuple(itp_dict_keys.split(','))
     times = loaded_json['times']
+    if not all(k in loaded_json for k in keys):
+        raise ValueError(f'One or more of {itp_dict_keys} are not in {loaded_json.keys()}')
 
     # get start time of this run. Need to make tz-aware
     start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
     start = pytz.utc.localize(start).timestamp() * 1e9
 
     try:
-        if is_partition:
-            interp_ab = interp1d(times, loaded_json['gain_ab'], bounds_error=True)
-            interp_cd = interp1d(times, loaded_json['gain_cd'], bounds_error=True)
-            gain_ab = interp_ab(start)
-            gain_cd = interp_cd(start)
-            return {'ab': gain_ab, 'cd': gain_cd}
+        if len(strax.to_str_tuple(keys))>1:
+            return {key:
+                    interp1d(times, loaded_json[key], bounds_error=True)(start)
+                    for key in keys}
 
         else:
-            interp = interp1d(times, loaded_json['gains'], bounds_error=True)
+            interp = interp1d(times, loaded_json[keys[0]], bounds_error=True)
             return interp(start)
+    except ValueError as e:
+        raise ValueError(f"The correction is not defined for run {run_id}") from e
 
-    except ValueError:
-        raise ValueError(f"The SEG correction is not defined for run {run_id}")
-
-
-@URLConfig.register('ee_file')
-def get_exteff(loaded_json, run_id=None, **kwargs):
-    """Get EE correction from a file (instead of CMT)"""
-    # check if this file support AB and CD partitioning
-    is_partition = 'ee_ab' in loaded_json
-
-    times = loaded_json['timestamps']
-
-    # get start time of this run. Need to make tz-aware
-    start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
-    start = pytz.utc.localize(start).timestamp() * 1e9
-
-    try:
-        if is_partition:
-            interp_ab = interp1d(times, loaded_json['ee_ab'], bounds_error=True)
-            interp_cd = interp1d(times, loaded_json['ee_cd'], bounds_error=True)
-            gain_ab = interp_ab(start)
-            gain_cd = interp_cd(start)
-            return {'ab': gain_ab, 'cd': gain_cd}
-
-        else:
-            interp = interp1d(times, loaded_json['correction'], bounds_error=True)
-            return interp(start)
-
-    except ValueError:
-        raise ValueError(f"The EE correction is not defined for run {run_id}")
