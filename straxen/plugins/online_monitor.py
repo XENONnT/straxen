@@ -210,8 +210,6 @@ class OnlineHotspotMonitor(strax.Plugin):
              np.float32), 
             (('Width (in ns) of the central 50% area of the peak',
             'range_50p_area'), np.float32),
-            (('Time between 10% and 50% area quantiles [ns]',
-            'rise_time'), np.float32),
             (('End time of the chunk', 'endtime'),
              np.int64),
         ]
@@ -219,6 +217,11 @@ class OnlineHotspotMonitor(strax.Plugin):
         return dtype
 
     def compute(self,peaks,start,end):
+        # check data size;
+        # when bigger than 8MB -> mask fraction of data that is needed
+        # to get it under 8MB;
+        # still remember the total rate though;
+        # be happy!
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
 
