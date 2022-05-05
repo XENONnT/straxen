@@ -339,7 +339,8 @@ def open_neural_net(model_path: str, **kwargs):
 @URLConfig.register('itp_dict')
 def get_itp_dict(loaded_json,
                  run_id=None,
-                 itp_dict_keys='correction',
+                 time_key='time',
+                 itp_keys='correction',
                  **kwargs) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
     """
     Interpolate the dictionary at the start time that is queried from
@@ -350,17 +351,18 @@ def get_itp_dict(loaded_json,
 
     :param loaded_json: a dictionary with a time-series
     :param run_id: run_id
-    :param itp_dict_keys: which keys from the dict to read. Should be
-        comma (',') seperated!
+    :param time_key: key that gives the timestamps
+    :param itp_keys: which keys from the dict to read. Should be
+        comma (',') separated!
 
     :return: Interpolated values of dict at the start time, either
         returned as an np.ndarray (single value) or as a dict
         (multiple itp_dict_keys)
     """
-    keys = strax.to_str_tuple(itp_dict_keys.split(','))
-    times = loaded_json['time']
+    keys = strax.to_str_tuple(itp_keys.split(','))
+    times = loaded_json[time_key]
     if not all(k in loaded_json for k in keys):
-        raise ValueError(f'One or more of {itp_dict_keys} are not in {loaded_json.keys()}')
+        raise ValueError(f'One or more of {itp_keys} are not in {loaded_json.keys()}')
 
     # get start time of this run. Need to make tz-aware
     start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
@@ -378,3 +380,20 @@ def get_itp_dict(loaded_json,
     except ValueError as e:
         raise ValueError(f"The correction is not defined for run {run_id}") from e
 
+
+@URLConfig.register('rekey_dict')
+def rekey_dict(d, replace_keys='', with_keys=''):
+    '''
+    :param d: dictionary that will have its keys renamed
+    :param replace_keys: comma-separated list of keys that will be replaced
+    :param with_keys:  comma-separated list of keys that will replace the replace_keys
+    :return: dictionary with renamed keys
+    '''
+    new_dict = d.copy()
+    replace_keys = strax.to_str_tuple(replace_keys.split(','))
+    with_keys = strax.to_str_tuple(with_keys.split(','))
+    if len(replace_keys) != len(with_keys):
+        raise RuntimeError("replace_keys and with_keys must have the same length")
+    for old_key, new_key in zip(replace_keys, with_keys):
+        new_dict[new_key] = new_dict.pop(old_key)
+    return new_dict
