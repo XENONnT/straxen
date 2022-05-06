@@ -1,5 +1,9 @@
+import os
+import tempfile
 from _core import PluginTestAccumulator, PluginTestCase
 import numpy as np
+import pandas as pd
+from datetime import datetime
 
 
 @PluginTestAccumulator.register('test_exclude_s1_as_triggering_peaks_config')
@@ -37,6 +41,34 @@ def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area
     s1_triggers = triggers[triggers['type'] == 1]
     self.assertTrue(all(s1_triggers['tight_coincidence'] >= new_min_coincidence))
     self.assertTrue(all(triggers['area'] >= trigger_min_area))
+
+
+@PluginTestAccumulator.register('test_partitioned_tpc_corrected_areas')
+def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
+    """
+    Run the test in ../test_url_config.TestURLConfig.test_seg_file_json
+    on corrected_areas
+    """
+    fake_file = {'time': [datetime(2000, 1, 1).timestamp() * 1e9,
+                          datetime(2021, 1, 1).timestamp() * 1e9,
+                          datetime(2040, 1, 1).timestamp() * 1e9],
+                 'ab': [10, ab_value, 30],
+                 'cd': [11, cd_value, 31]
+                 }
+    # This example also works well with dataframes!
+    temp_dir = tempfile.TemporaryDirectory()
+    fake_file_name = os.path.join(temp_dir.name, 'test_seg.csv')
+    pd.DataFrame(fake_file).to_csv(fake_file_name)
+
+    self.st.set_config({'test_config':f'itp_dict://'
+                                      f'resource://'
+                                      f'{fake_file_name}'
+                                      f'?run_id=plugin.run_id'
+                                      f'&fmt=csv'
+                                      f'&itp_dict_keys=ab,cd'})
+    # Try loading some new data with the interpolated dictionary
+    _ = self.st.get_array(self.run_id, 'corrected_areas')
+    temp_dir.cleanup()
 
 
 def get_triggering_peaks(events, left_extension, right_extension):

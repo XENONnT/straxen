@@ -785,10 +785,12 @@ class CorrectedAreas(strax.Plugin):
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
             
-            cs2_top_xycorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] / self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
-            cs2_bottom_xycorr = (events[f'{peak_type}s2_area'] *
-                                       (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                       self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
+            cs2_top_xycorr = (events[f'{peak_type}s2_area']
+                              * events[f'{peak_type}s2_area_fraction_top']
+                              / self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
+            cs2_bottom_xycorr = (events[f'{peak_type}s2_area']
+                                 * (1 - events[f'{peak_type}s2_area_fraction_top'])
+                                 / self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
             
             # For electron lifetime corrections to the S2s,
             # use drift time computed using the main S1.

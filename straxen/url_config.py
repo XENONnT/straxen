@@ -1,4 +1,5 @@
 import json
+import typing
 from typing import Container
 import numpy as np
 import strax
@@ -335,57 +336,64 @@ def open_neural_net(model_path: str, **kwargs):
         return tf.keras.models.load_model(tmpdirname)
 
 
-@URLConfig.register('seg_file')
-def get_seg(loaded_json, run_id=None, **kwargs):
-    """Get SEG correction from a file (instead of CMT)"""
-    # check if this file support AB and CD partitioning
-    is_partition = 'gain_ab' in loaded_json
+@URLConfig.register('itp_dict')
+def get_itp_dict(loaded_json,
+                 run_id=None,
+                 time_key='time',
+                 itp_keys='correction',
+                 **kwargs) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
+    """
+    Interpolate the dictionary at the start time that is queried from
+    a run-id.
 
-    times = loaded_json['times']
+    The loaded JSON (dictionary), should have at least one collum `time`
+    and has other columns given by `itp_dict_keys`.
 
-    # get start time of this run. Need to make tz-aware
-    start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
-    start = pytz.utc.localize(start).timestamp() * 1e9
+    :param loaded_json: a dictionary with a time-series
+    :param run_id: run_id
+    :param time_key: key that gives the timestamps
+    :param itp_keys: which keys from the dict to read. Should be
+        comma (',') separated!
 
-    try:
-        if is_partition:
-            interp_ab = interp1d(times, loaded_json['gain_ab'], bounds_error=True)
-            interp_cd = interp1d(times, loaded_json['gain_cd'], bounds_error=True)
-            gain_ab = interp_ab(start)
-            gain_cd = interp_cd(start)
-            return {'ab': gain_ab, 'cd': gain_cd}
-
-        else:
-            interp = interp1d(times, loaded_json['gains'], bounds_error=True)
-            return interp(start)
-
-    except ValueError:
-        raise ValueError(f"The SEG correction is not defined for run {run_id}")
-
-
-@URLConfig.register('ee_file')
-def get_exteff(loaded_json, run_id=None, **kwargs):
-    """Get EE correction from a file (instead of CMT)"""
-    # check if this file support AB and CD partitioning
-    is_partition = 'ee_ab' in loaded_json
-
-    times = loaded_json['timestamps']
+    :return: Interpolated values of dict at the start time, either
+        returned as an np.ndarray (single value) or as a dict
+        (multiple itp_dict_keys)
+    """
+    keys = strax.to_str_tuple(itp_keys.split(','))
+    times = loaded_json[time_key]
+    if not all(k in loaded_json for k in keys):
+        raise ValueError(f'One or more of {itp_keys} are not in {loaded_json.keys()}')
 
     # get start time of this run. Need to make tz-aware
     start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
     start = pytz.utc.localize(start).timestamp() * 1e9
 
     try:
-        if is_partition:
-            interp_ab = interp1d(times, loaded_json['ee_ab'], bounds_error=True)
-            interp_cd = interp1d(times, loaded_json['ee_cd'], bounds_error=True)
-            gain_ab = interp_ab(start)
-            gain_cd = interp_cd(start)
-            return {'ab': gain_ab, 'cd': gain_cd}
+        if len(strax.to_str_tuple(keys))>1:
+            return {key:
+                    interp1d(times, loaded_json[key], bounds_error=True)(start)
+                    for key in keys}
 
         else:
-            interp = interp1d(times, loaded_json['correction'], bounds_error=True)
+            interp = interp1d(times, loaded_json[keys[0]], bounds_error=True)
             return interp(start)
+    except ValueError as e:
+        raise ValueError(f"The correction is not defined for run {run_id}") from e
 
-    except ValueError:
-        raise ValueError(f"The EE correction is not defined for run {run_id}")
+
+@URLConfig.register('rekey_dict')
+def rekey_dict(d, replace_keys='', with_keys=''):
+    '''
+    :param d: dictionary that will have its keys renamed
+    :param replace_keys: comma-separated list of keys that will be replaced
+    :param with_keys:  comma-separated list of keys that will replace the replace_keys
+    :return: dictionary with renamed keys
+    '''
+    new_dict = d.copy()
+    replace_keys = strax.to_str_tuple(replace_keys.split(','))
+    with_keys = strax.to_str_tuple(with_keys.split(','))
+    if len(replace_keys) != len(with_keys):
+        raise RuntimeError("replace_keys and with_keys must have the same length")
+    for old_key, new_key in zip(replace_keys, with_keys):
+        new_dict[new_key] = new_dict.pop(old_key)
+    return new_dict
