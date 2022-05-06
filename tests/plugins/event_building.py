@@ -67,6 +67,19 @@ def test_get_livetime_sec(self):
     straxen.get_livetime_sec(st, self.run_id, things=events)
 
 
+@PluginTestAccumulator.register('test_event_info_double_w_double_peaks')
+def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area=10):
+    """
+    Try building event-info double with very long events
+    """
+    st = self.st.new_context()
+    ev = st.get_array(self.run_id, 'events')
+    ev_time_diff = np.median(ev['time'][1:])
+    # increase the event_extension such that we start merging several events
+    st.set_config(dict(event_right_extension=ev_time_diff))
+    st.get_array(self.run_id, 'event_info_double')
+
+    
 def get_triggering_peaks(events, left_extension, right_extension):
     """
     Extract the first and last triggering peaks from an event and return type, area an tight_coincidence
