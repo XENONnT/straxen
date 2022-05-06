@@ -16,6 +16,7 @@ export, __all__ = strax.exporter()
 
 class AqmonChannels(IntEnum):
     """Mapper of named aqmon channels to ints"""
+    MV_TRIGGER = 797
     GPS_SYNC = 798
     ARTIFICIAL_DEADTIME = ARTIFICIAL_DEADTIME_CHANNEL
     # Analogue sum waveform
@@ -41,13 +42,14 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.1.1'
+    __version__ = '1.1.2'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
             (50, (int(AqmonChannels.SUM_WF),)),
             # Digital signals, can set a much higher threshold
             (1500, (
+                int(AqmonChannels.MV_TRIGGER),
                 int(AqmonChannels.GPS_SYNC),
                 int(AqmonChannels.GPS_SYNC_AM),
                 int(AqmonChannels.HEV_STOP),
