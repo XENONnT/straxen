@@ -712,12 +712,6 @@ class CorrectedAreas(strax.Plugin):
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
                       (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
         return dtype
-
-    ''' @staticmethod
-    def rotate(x_arr, y_arr, theta):
-        new_x = np.cos(theta)*x_arr+np.sin(theta)*y_arr
-        new_y = -np.sin(theta)*x_arr+np.cos(theta)*y_arr
-        return np.array([new_x, new_y])'''
     
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
