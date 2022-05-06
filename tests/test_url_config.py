@@ -148,11 +148,12 @@ class TestURLConfig(unittest.TestCase):
                                           f'{fake_file_name}'
                                           f'?run_id=plugin.run_id'
                                           f'&fmt={dump_as}'
-                                          f'&itp_dict_keys=ab,cd'})
+                                          f'&itp_keys=ab,cd'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        print(p.test_config)
         self.assertIsInstance(p.test_config, dict)
-        assert np.isclose(p.test_config['ab'], ab_value)
-        assert np.isclose(p.test_config['cd'], cd_value)
+        assert np.isclose(p.test_config['ab'], ab_value, rtol=1e-3)
+        assert np.isclose(p.test_config['cd'], cd_value, rtol=1e-3)
         os.remove(fake_file_name)
 
     def test_seg_file_csv(self):
@@ -162,8 +163,8 @@ class TestURLConfig(unittest.TestCase):
     def test_ee_file(self):
         """Same logic as test_seg_file, just keeping this example for bookkeeping since it's nice"""
         fake_file = {'time': [datetime(2000, 1, 1).timestamp() * 1e9,
-                              datetime(2020, 1, 1).timestamp() * 1e9,
-                              datetime(2040, 1, 1).timestamp() * 1e9],
+                                    datetime(2020, 1, 1).timestamp() * 1e9,
+                                    datetime(2040, 1, 1).timestamp() * 1e9],
                      'ee_ab': [0.1, 0.2, 0.3],
                      'ee_cd': [0.4, 0.5, 0.6]
                      }
@@ -178,10 +179,25 @@ class TestURLConfig(unittest.TestCase):
                                 f'{fake_file_name}'
                                 f'?run_id=plugin.run_id'
                                 f'&fmt=json'
-                                f'&itp_dict_keys=ee_ab,ee_cd'})
+                                f'&itp_keys=ee_ab,ee_cd'
+                            })
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertIsInstance(p.test_config, dict)
         os.remove(fake_file_name)
+
+    def test_rekey(self):
+        original_dict = {'a': 1, 'b': 2, 'c': 3}
+        check_dict = {'anew': 1, 'bnew': 2, 'cnew': 3}
+        test_file = 'test_dict.json'
+        with open(test_file, 'w') as f:
+            json.dump(original_dict, f)
+
+        self.st.set_config({'test_config': f'rekey_dict://resource://{test_file}?'
+                                           f'fmt=json&replace_keys=a,b,c'
+                                           f'&with_keys=anew,bnew,cnew'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, check_dict)
+
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
