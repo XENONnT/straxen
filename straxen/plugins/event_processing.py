@@ -529,7 +529,7 @@ class EventPositions(strax.Plugin):
             comment = f'Main interaction {j}-position, field-distortion corrected (cm)'
             dtype += [(j, np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f'Alternative S{s_i} interaction {j}-position, field-distortion corrected (cm)'
+                comment = f'Alternative S{s_i} interaction (rel. main S{int(2*(1.5-s_i)+s_i)}) {j}-position, field-distortion corrected (cm)'
                 field = f'alt_s{s_i}_{j}_fdc'
                 dtype += [(field, np.float32, comment)]
 
@@ -537,7 +537,7 @@ class EventPositions(strax.Plugin):
             comment = 'Interaction z-position, using mean drift velocity only (cm)'
             dtype += [(j, np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f'Alternative S{s_i} z-position, using mean drift velocity only (cm)'
+                comment = f'Alternative S{s_i} z-position (rel. main S{int(2*(1.5-s_i)+s_i)}), using mean drift velocity only (cm)'
                 field = f'alt_s{s_i}_z'
                 dtype += [(field, np.float32, comment)]
 
@@ -554,7 +554,7 @@ class EventPositions(strax.Plugin):
                 naive_pos += [(
                     f'alt_s{s_i}_{j}_naive',
                     np.float32,
-                    f'Alternative S{s_i} interaction {j}-position with observed position (cm)')]
+                    f'Alternative S{s_i} interaction (rel. main S{int(2*(1.5-s_i)+s_i)}) {j}-position with observed position (cm)')]
                 fdc_pos += [(f'alt_s{s_i}_{j}_field_distortion_correction',
                              np.float32,
                              f'Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)')]
@@ -562,7 +562,7 @@ class EventPositions(strax.Plugin):
         for s_i in [1, 2]:
             dtype += [(f'alt_s{s_i}_theta',
                        np.float32,
-                       f'Alternative S{s_i} interaction angular position (radians)')]
+                       f'Alternative S{s_i} (rel. main S{int(2*(1.5-s_i)+s_i)}) interaction angular position (radians)')]
 
         dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
         return dtype + strax.time_fields
@@ -589,9 +589,11 @@ class EventPositions(strax.Plugin):
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
        
-	# s_i == 0 indicates the main event, while s_i != 0 means alternative S1 or S2 is used based on s_i value 
+        # s_i == 0 indicates the main event, while s_i != 0 means alternative S1 or S2 is used based on s_i value
+        # while the other peak is the main one (e.g., s_i == 1 means that the event is defined using altS1 and main S2)
         for s_i in [0, 1, 2]:
             
+            # alt_sx_interaction_drift_time is calculated between main Sy and alternative Sx
             drift_time = events['drift_time']  if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
             
             z_obs = - self.electron_drift_velocity * drift_time
@@ -604,9 +606,11 @@ class EventPositions(strax.Plugin):
             # apply radial correction
             with np.errstate(invalid='ignore', divide='ignore'):
                 r_cor = r_obs + delta_r
-                scale = r_cor / r_obs
+                scale = np.divide(r_cor, r_obs, out=np.zeros_like(r_cor), where=r_obs!=0)
 
             # z correction due to longer drift time for distortion
+            # calculated based on the Pythagorean theorem where
+            # the electron track is assumed to be a straight line
             # (geometrical reasoning not valid if |delta_r| > |z_obs|,
             #  as cathetus cannot be longer than hypothenuse)
             with np.errstate(invalid='ignore'):
