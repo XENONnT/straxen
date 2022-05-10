@@ -239,7 +239,7 @@ class OnlineMonitorNV(strax.Plugin):
         # Array of baseline_rms of NV PMTs
         if self.ends_with == '_nv': 
             # This is because lone_raw_record_statistics only exists in NVeto
-            res[f'baseline_rms{self.ends_with}_per_channel'] = lone_raw_record_statistics_nv['baseline_rms']
+            res[f'baseline_rms{self.ends_with}_per_channel'] = np.average(lone_raw_record_statistics_nv['baseline_rms'], axis=0)
 
         # Count number of events_nv with coincidence cut
         res[f'events{self.ends_with}_per_chunk'] = len(events_nv)
