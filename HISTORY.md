@@ -1,3 +1,15 @@
+v1.6.2 / 2022-05-06
+---------------------
+## What's Changed
+-  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
+
+Notes:
+ - only lineage changes for dtypes > `aqmon_hits`  (https://github.com/XENONnT/straxen/pull/1035)
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.6.1...v1.6.2
+
+
 1.6.1 / 2022-04-12
 ------------------
 Plugin fixes
