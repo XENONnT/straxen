@@ -684,12 +684,12 @@ class CorrectedAreas(strax.Plugin):
     
     region_linear = straxen.URLConfig(
         default=28,
-        help='linear cut for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
+        help='linear cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
     
     region_circular = straxen.URLConfig(
         default=60,
-        help='circular cut for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
+        help='circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
 
     def infer_dtype(self):
@@ -724,10 +724,9 @@ class CorrectedAreas(strax.Plugin):
         return ~self.ab_region(x, y)
 
     def compute(self, events):
-        result = dict(
-            time=events['time'],
-            endtime=strax.endtime(events)
-        )
+        result = np.zeros(len(events), self.dtype)
+        result['time'] = events['time']
+        result['endtime'] = events['endtime']
 
         # S1 corrections depend on the actual corrected event position.
         # We use this also for the alternate S1; for e.g. Kr this is
@@ -751,6 +750,9 @@ class CorrectedAreas(strax.Plugin):
         regions = {'ab': self.ab_region, 'cd': self.cd_region}
 
         # setup SEG and EE corrections
+        # if they are dicts, we just leave them as is
+        # if they are not, we assume they are floats and
+        # create a dict with the same correction in each region
         if isinstance(self.se_gain, dict):
             seg = self.se_gain
         else:
@@ -770,11 +772,6 @@ class CorrectedAreas(strax.Plugin):
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
-            result[f"{peak_type}cs2_wo_elifecorr"] = np.zeros(len(result['time']))
-            result[f"{peak_type}cs2_area_fraction_top"] = np.zeros(len(result['time']))
-            result[f"{peak_type}cs2_wo_timecorr"] = np.zeros(len(result['time']))
-            result[f"{peak_type}cs2"] = np.zeros(len(result['time']))
-            result[f"{peak_type}cs2_bottom"] = np.zeros(len(result['time']))
             
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
@@ -792,23 +789,24 @@ class CorrectedAreas(strax.Plugin):
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
             result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
 
-
             for partition, func in regions.items():
                 # partitioned SE and EE
-                cond = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
+                partition_mask = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
 
                 # Correct for SEgain and extraction efficiency
                 seg_ee_corr = seg[partition]/avg_seg[partition]*ee[partition]
-                
-                cs2_top_wo_elifecorr = cs2_top_xycorr[cond] / seg_ee_corr
-                cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[cond] / seg_ee_corr
-                result[f"{peak_type}cs2_wo_elifecorr"][cond] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+
+                # note that these are already masked!
+                cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
+                cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[partition_mask] / seg_ee_corr
+
+                result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
                 # cs2aft doesn't need elife/time corrections as they cancel
-                result[f"{peak_type}cs2_area_fraction_top"][cond] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+                result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
-                result[f"{peak_type}cs2"][cond] = result[f"{peak_type}cs2_wo_elifecorr"][cond] * elife_correction[cond]
-                result[f"{peak_type}cs2_bottom"][cond] = cs2_bottom_wo_elifecorr * elife_correction[cond]
+                result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
+                result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
 
         return result
 

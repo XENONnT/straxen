@@ -60,12 +60,12 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     fake_file_name = os.path.join(temp_dir.name, 'test_seg.csv')
     pd.DataFrame(fake_file).to_csv(fake_file_name)
 
-    self.st.set_config({'test_config':f'itp_dict://'
+    self.st.set_config({'se_gain': f'itp_dict://'
                                       f'resource://'
                                       f'{fake_file_name}'
                                       f'?run_id=plugin.run_id'
                                       f'&fmt=csv'
-                                      f'&itp_dict_keys=ab,cd'})
+                                      f'&itp_keys=ab,cd'})
     # Try loading some new data with the interpolated dictionary
     _ = self.st.get_array(self.run_id, 'corrected_areas')
     temp_dir.cleanup()

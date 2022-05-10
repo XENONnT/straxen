@@ -1,6 +1,6 @@
 import os
 import json
-
+import tempfile
 import pandas as pd
 import strax
 import straxen
@@ -114,7 +114,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertTrue(p.test_config)
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
-    def test_seg_file_json(self, ab_value=20, cd_value=21, dump_as='json'):
+    def test_itp_dict(self, ab_value=20, cd_value=21, dump_as='json'):
         """
         Test that we are getting ~the same value from interpolating at the central date in a dict
 
@@ -131,14 +131,16 @@ class TestURLConfig(unittest.TestCase):
                      'ab': [10, ab_value, 30],
                      'cd': [11, cd_value, 31]
                          }
-        if dump_as == 'json':
-            fake_file_name = 'test_seg.json'
 
+        temp_dir = tempfile.TemporaryDirectory()
+
+        if dump_as == 'json':
+            fake_file_name = os.path.join(temp_dir.name, 'test_seg.json')
             with open(fake_file_name, 'w') as f:
                 json.dump(fake_file, f)
         elif dump_as == 'csv':
             # This example also works well with dataframes!
-            fake_file_name = 'test_seg.csv'
+            fake_file_name = os.path.join(temp_dir.name, 'test_seg.csv')
             pd.DataFrame(fake_file).to_csv(fake_file_name)
         else:
             raise ValueError
@@ -150,40 +152,13 @@ class TestURLConfig(unittest.TestCase):
                                           f'&fmt={dump_as}'
                                           f'&itp_keys=ab,cd'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        print(p.test_config)
         self.assertIsInstance(p.test_config, dict)
         assert np.isclose(p.test_config['ab'], ab_value, rtol=1e-3)
         assert np.isclose(p.test_config['cd'], cd_value, rtol=1e-3)
         os.remove(fake_file_name)
 
-    def test_seg_file_csv(self):
-        self.test_seg_file_json(dump_as='csv')
-
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
-    def test_ee_file(self):
-        """Same logic as test_seg_file, just keeping this example for bookkeeping since it's nice"""
-        fake_file = {'time': [datetime(2000, 1, 1).timestamp() * 1e9,
-                                    datetime(2020, 1, 1).timestamp() * 1e9,
-                                    datetime(2040, 1, 1).timestamp() * 1e9],
-                     'ee_ab': [0.1, 0.2, 0.3],
-                     'ee_cd': [0.4, 0.5, 0.6]
-                     }
-        fake_file_name = 'test_ee.json'
-
-        with open(fake_file_name, 'w') as f:
-            json.dump(fake_file, f)
-
-        self.st.set_config({'test_config':
-                                f'itp_dict://'
-                                f'resource://'
-                                f'{fake_file_name}'
-                                f'?run_id=plugin.run_id'
-                                f'&fmt=json'
-                                f'&itp_keys=ee_ab,ee_cd'
-                            })
-        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        self.assertIsInstance(p.test_config, dict)
-        os.remove(fake_file_name)
+    def test_itp_dict_csv(self):
+        self.test_itp_dict(dump_as='csv')
 
     def test_rekey(self):
         original_dict = {'a': 1, 'b': 2, 'c': 3}

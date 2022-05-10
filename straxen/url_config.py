@@ -343,11 +343,8 @@ def get_itp_dict(loaded_json,
                  itp_keys='correction',
                  **kwargs) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
     """
-    Interpolate the dictionary at the start time that is queried from
+    Interpolate a dictionary at the start time that is queried from
     a run-id.
-
-    The loaded JSON (dictionary), should have at least one collum `time`
-    and has other columns given by `itp_dict_keys`.
 
     :param loaded_json: a dictionary with a time-series
     :param run_id: run_id
@@ -360,16 +357,18 @@ def get_itp_dict(loaded_json,
         (multiple itp_dict_keys)
     """
     keys = strax.to_str_tuple(itp_keys.split(','))
+    for key in list(keys) + [time_key]:
+        if key not in loaded_json:
+            raise KeyError(f"The json does contain the key '{key}'. Try one of: {loaded_json.keys()}")
+
     times = loaded_json[time_key]
-    if not all(k in loaded_json for k in keys):
-        raise ValueError(f'One or more of {itp_keys} are not in {loaded_json.keys()}')
 
     # get start time of this run. Need to make tz-aware
     start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
     start = pytz.utc.localize(start).timestamp() * 1e9
 
     try:
-        if len(strax.to_str_tuple(keys))>1:
+        if len(strax.to_str_tuple(keys)) > 1:
             return {key:
                     interp1d(times, loaded_json[key], bounds_error=True)(start)
                     for key in keys}
@@ -378,15 +377,15 @@ def get_itp_dict(loaded_json,
             interp = interp1d(times, loaded_json[keys[0]], bounds_error=True)
             return interp(start)
     except ValueError as e:
-        raise ValueError(f"The correction is not defined for run {run_id}") from e
+        raise ValueError(f"Correction is not defined for run {run_id}") from e
 
 
 @URLConfig.register('rekey_dict')
 def rekey_dict(d, replace_keys='', with_keys=''):
     '''
     :param d: dictionary that will have its keys renamed
-    :param replace_keys: comma-separated list of keys that will be replaced
-    :param with_keys:  comma-separated list of keys that will replace the replace_keys
+    :param replace_keys: comma-separated string of keys that will be replaced
+    :param with_keys:  comma-separated string of keys that will replace the replace_keys
     :return: dictionary with renamed keys
     '''
     new_dict = d.copy()
