@@ -279,8 +279,8 @@ def veto_monitor_dtype(veto_name: str = '_nv',
 
 
 @export
-class OnlineMonitorMV(OnlineMonitorNV2):
-    __doc__ = OnlineMonitorNV2.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
+class OnlineMonitorMV(OnlineMonitorNV):
+    __doc__ = OnlineMonitorNV.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
     depends_on = ('hitlets_mv', 'events_mv')
     provides = 'online_monitor_mv'
     data_kind = 'online_monitor_mv'
