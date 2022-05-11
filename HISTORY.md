@@ -1,5 +1,24 @@
 v1.6.2 / 2022-05-06
 ---------------------
+Minor:
+- Fix detector sync (#1033) 
+- Numbafy function (#1015) 
+- Fixing binomial (#991) 
+- Patched wrong setting (#1014) 
+- Partitioned tpc (#1027) 
+Patch:
+- Update requirements-tests.txt (#1021) 
+- remove deprecated function (#1023)
+- Warn when context not from cutax (#1020) 
+- Add 'electron_diffusion_cte' variable from CMT (#1025) 
+- Start testing with PluginTestingSuite, fix #881 (#1022) 
+- add dict type correction (#1028) 
+Notes:
+- Lineage changes for event_area_per_channel, event_pattern_fit, peak_classification_bayes, detector_time_offsets, event_sync_nv
+
+
+v1.6.2 / 2022-05-06
+---------------------
 ## What's Changed
 -  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
 
