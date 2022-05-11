@@ -155,7 +155,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertIsInstance(p.test_config, dict)
         assert np.isclose(p.test_config['ab'], ab_value, rtol=1e-3)
         assert np.isclose(p.test_config['cd'], cd_value, rtol=1e-3)
-        os.remove(fake_file_name)
+        temp_dir.cleanup()
 
     def test_itp_dict_csv(self):
         self.test_itp_dict(dump_as='csv')
