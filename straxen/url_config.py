@@ -262,7 +262,7 @@ class URLConfig(strax.Config):
         attributes of the plugin are not yet note to this dry evaluation
         of the url-string.
 
-        :param url:
+        :param url: URL to evaluate, see above for example.
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
         """
