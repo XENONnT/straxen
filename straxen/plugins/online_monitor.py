@@ -279,7 +279,7 @@ class OnlineMonitorMV(OnlineMonitorNV):
     data_kind = 'online_monitor_mv'
     rechunk_on_save = False
 
-    # Needed in case we make again an muVETO child.
+    # Needed in case we make again an muVETO child. remove later
     ends_with = '_mv'
     child_plugin = True
 
