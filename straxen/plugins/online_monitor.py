@@ -208,7 +208,7 @@ class OnlineMonitorNV(strax.Plugin):
 
     Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
-    depends_on = ('hitlets_nv', 'events_nv')
+    depends_on = ('hitlets_nv', 'events_nv', 'lone_raw_record_statistics_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
     rechunk_on_save = False
@@ -216,14 +216,14 @@ class OnlineMonitorNV(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['nveto']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
 
-    def compute(self, hitlets_nv, events_nv, start, end):
+    def compute(self, hitlets_nv, events_nv, lone_raw_record_statistics_nv, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
@@ -235,6 +235,11 @@ class OnlineMonitorNV(strax.Plugin):
                                                 range=[self.channel_range[0],
                                                        self.channel_range[1] + 1])
         res[f'hitlets{self.ends_with}_per_channel'] = hitlets_channel_count
+        
+        # Array of baseline_rms of NV PMTs
+        if self.ends_with == '_nv': 
+            # This is because lone_raw_record_statistics only exists in NVeto
+            res[f'baseline_rms{self.ends_with}_per_channel'] = np.average(lone_raw_record_statistics_nv['baseline_rms'], axis=0)
 
         # Count number of events_nv with coincidence cut
         res[f'events{self.ends_with}_per_chunk'] = len(events_nv)
@@ -268,6 +273,8 @@ def veto_monitor_dtype(veto_name: str = '_nv',
               ((f'events{veto_name} 8-coincidence per chunk', f'events{veto_name}_8coinc_per_chunk'), np.int64),
               ((f'events{veto_name} 10-coincidence per chunk', f'events{veto_name}_10coinc_per_chunk'), np.int64)
              ]
+    if veto_name=='_nv':
+        dtype += [((f'baseline_rms{veto_name} per channel', f'baseline_rms{veto_name}_per_channel'), (np.float64, n_pmts))]
     return dtype
 
 
@@ -275,15 +282,15 @@ def veto_monitor_dtype(veto_name: str = '_nv',
 class OnlineMonitorMV(OnlineMonitorNV):
     __doc__ = OnlineMonitorNV.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
     depends_on = ('hitlets_mv', 'events_mv')
-    provides = 'online_monitor_mv'
-    data_kind = 'online_monitor_mv'
+    provides = 'online_monitor_mv2'
+    data_kind = 'online_monitor_mv2'
     rechunk_on_save = False
 
-    # Needed in case we make again an muVETO child. remove later
+    # Needed in case we make again an muVETO child.
     ends_with = '_mv'
     child_plugin = True
 
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['mv']
@@ -292,4 +299,4 @@ class OnlineMonitorMV(OnlineMonitorNV):
 
     def compute(self, hitlets_mv, events_mv, start, end):
         events_mv = np.copy(events_mv)
-        return super().compute(hitlets_mv, events_mv, start, end)
+        return super().compute(hitlets_mv, events_mv, None, start, end)
