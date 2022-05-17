@@ -237,9 +237,9 @@ class OnlineMonitorNV(strax.Plugin):
         res[f'hitlets{self.ends_with}_per_channel'] = hitlets_channel_count
         
         # Array of baseline_rms of NV PMTs
-        if self.ends_with == '_nv': 
-            # This is because lone_raw_record_statistics only exists in NVeto
-            res[f'baseline_rms{self.ends_with}_per_channel'] = np.average(lone_raw_record_statistics_nv['baseline_rms'], axis=0)
+#         if self.ends_with == '_nv': 
+#             # This is because lone_raw_record_statistics only exists in NVeto
+#             res[f'baseline_rms{self.ends_with}_per_channel'] = np.average(lone_raw_record_statistics_nv['baseline_rms'], axis=0)
 
         # Count number of events_nv with coincidence cut
         res[f'events{self.ends_with}_per_chunk'] = len(events_nv)
@@ -273,8 +273,8 @@ def veto_monitor_dtype(veto_name: str = '_nv',
               ((f'events{veto_name} 8-coincidence per chunk', f'events{veto_name}_8coinc_per_chunk'), np.int64),
               ((f'events{veto_name} 10-coincidence per chunk', f'events{veto_name}_10coinc_per_chunk'), np.int64)
              ]
-    if veto_name=='_nv':
-        dtype += [((f'baseline_rms{veto_name} per channel', f'baseline_rms{veto_name}_per_channel'), (np.float64, n_pmts))]
+#     if veto_name=='_nv':
+#         dtype += [((f'baseline_rms{veto_name} per channel', f'baseline_rms{veto_name}_per_channel'), (np.float64, n_pmts))]
     return dtype
 
 
@@ -282,8 +282,8 @@ def veto_monitor_dtype(veto_name: str = '_nv',
 class OnlineMonitorMV(OnlineMonitorNV):
     __doc__ = OnlineMonitorNV.__doc__.replace('_nv', '_mv').replace('nVeto', 'muVeto')
     depends_on = ('hitlets_mv', 'events_mv')
-    provides = 'online_monitor_mv2'
-    data_kind = 'online_monitor_mv2'
+    provides = 'online_monitor_mv'
+    data_kind = 'online_monitor_mv'
     rechunk_on_save = False
 
     # Needed in case we make again an muVETO child.
