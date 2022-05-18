@@ -208,7 +208,7 @@ class OnlineMonitorNV(strax.Plugin):
 
     Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
-    depends_on = ('hitlets_nv', 'events_nv', 'lone_raw_record_statistics_nv')
+    depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
     rechunk_on_save = False
@@ -216,7 +216,7 @@ class OnlineMonitorNV(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.5'
+    __version__ = '0.0.4'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['nveto']
@@ -235,11 +235,6 @@ class OnlineMonitorNV(strax.Plugin):
                                                 range=[self.channel_range[0],
                                                        self.channel_range[1] + 1])
         res[f'hitlets{self.ends_with}_per_channel'] = hitlets_channel_count
-        
-        # Array of baseline_rms of NV PMTs
-#         if self.ends_with == '_nv': 
-#             # This is because lone_raw_record_statistics only exists in NVeto
-#             res[f'baseline_rms{self.ends_with}_per_channel'] = np.average(lone_raw_record_statistics_nv['baseline_rms'], axis=0)
 
         # Count number of events_nv with coincidence cut
         res[f'events{self.ends_with}_per_chunk'] = len(events_nv)
@@ -273,8 +268,6 @@ def veto_monitor_dtype(veto_name: str = '_nv',
               ((f'events{veto_name} 8-coincidence per chunk', f'events{veto_name}_8coinc_per_chunk'), np.int64),
               ((f'events{veto_name} 10-coincidence per chunk', f'events{veto_name}_10coinc_per_chunk'), np.int64)
              ]
-#     if veto_name=='_nv':
-#         dtype += [((f'baseline_rms{veto_name} per channel', f'baseline_rms{veto_name}_per_channel'), (np.float64, n_pmts))]
     return dtype
 
 
@@ -290,7 +283,7 @@ class OnlineMonitorMV(OnlineMonitorNV):
     ends_with = '_mv'
     child_plugin = True
 
-    __version__ = '0.0.3'
+    __version__ = '0.0.2'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['mv']
