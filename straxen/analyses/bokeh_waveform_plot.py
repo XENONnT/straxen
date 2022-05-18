@@ -66,7 +66,7 @@ def event_display_interactive(events,
         >                  )
         > bklt.show(fig)
 
-    Warning:
+    :raises:
         Raises an error if the user queries a time range which contains
         more than a single event.
 
