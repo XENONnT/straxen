@@ -208,7 +208,7 @@ class OnlineMonitorNV(strax.Plugin):
 
     Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
-    depends_on = ('hitlets_nv', 'events_nv')
+    depends_on = ('hitlets_nv', 'events_nv', 'lone_raw_record_statistics_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
     rechunk_on_save = False
@@ -216,7 +216,7 @@ class OnlineMonitorNV(strax.Plugin):
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
 
-    __version__ = '0.0.4'
+    __version__ = '0.0.5'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['nveto']
@@ -283,7 +283,7 @@ class OnlineMonitorMV(OnlineMonitorNV):
     ends_with = '_mv'
     child_plugin = True
 
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
     def infer_dtype(self):
         self.channel_range = self.config['channel_map']['mv']
