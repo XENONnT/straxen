@@ -208,7 +208,7 @@ class OnlineMonitorNV(strax.Plugin):
 
     Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
     """
-    depends_on = ('hitlets_nv', 'events_nv', 'lone_raw_record_statistics_nv')
+    depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
     rechunk_on_save = False
