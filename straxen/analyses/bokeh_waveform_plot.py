@@ -55,7 +55,7 @@ def event_display_interactive(events,
         glyph renders for small values.
     :param log: If true color sclae is used for hitpattern plots.
 
-    :example:
+    example::
 
         from IPython.core.display import display, HTML
         display(HTML("<style>.container { width:80% !important; }</style>"))
