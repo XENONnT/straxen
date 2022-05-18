@@ -223,7 +223,7 @@ class OnlineMonitorNV(strax.Plugin):
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_monitor_dtype(self.ends_with, self.n_channel, self.config['events_area_nbins'])
 
-    def compute(self, hitlets_nv, events_nv, , lone_raw_record_statistics_nv, start, end):
+    def compute(self, hitlets_nv, events_nv, lone_raw_record_statistics_nv, start, end):
         # General setup
         res = np.zeros(1, dtype=self.dtype)
         res['time'] = start
