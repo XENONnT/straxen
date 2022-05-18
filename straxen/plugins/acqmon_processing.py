@@ -18,6 +18,7 @@ export, __all__ = strax.exporter()
 
 class AqmonChannels(IntEnum):
     """Mapper of named aqmon channels to ints"""
+    MV_TRIGGER = 797
     GPS_SYNC = 798
     ARTIFICIAL_DEADTIME = ARTIFICIAL_DEADTIME_CHANNEL
     # Analogue sum waveform
@@ -33,6 +34,10 @@ class AqmonChannels(IntEnum):
     # Low energy boards (main chain)
     BUSY_STOP = 806
     BUSY_START = 807
+    # nVETO GPS_Sync
+    GPS_SYNC_NV = 813
+    # mVETO GPS_Sync
+    GPS_SYNC_MV = 1084
 
 
 @export
@@ -43,13 +48,14 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.1.1'
+    __version__ = '1.1.2'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
             (50, (int(AqmonChannels.SUM_WF),)),
             # Digital signals, can set a much higher threshold
             (1500, (
+                int(AqmonChannels.MV_TRIGGER),
                 int(AqmonChannels.GPS_SYNC),
                 int(AqmonChannels.GPS_SYNC_AM),
                 int(AqmonChannels.HEV_STOP),
@@ -594,7 +600,7 @@ class DetectorSynchronization(strax.Plugin):
     Reference:
         * xenon:xenonnt:dsg:mveto:sync_monitor
     """
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
     depends_on = ('raw_records_aqmon',
                   'raw_records_aqmon_nv',
                   'raw_records_aux_mv')
@@ -602,7 +608,7 @@ class DetectorSynchronization(strax.Plugin):
     data_kind = 'detector_time_offsets'
 
     tpc_internal_delay = straxen.URLConfig(
-        default={'0': 4817, '021286': 10137},
+        default={'0': 4917, '020380': 10137},
         type=dict,
         track=True,
         help='Internal delay between aqmon and regular TPC channels ins [ns]'
@@ -613,9 +619,10 @@ class DetectorSynchronization(strax.Plugin):
         track=True,
         help='Threshold in [adc] to search for the NIM signal'
     )
+    # This value is only valid for SR0:
     epsilon_offset = straxen.URLConfig(
-        default=0,
-        type=(int, float),
+        default=76,
+        type=int,
         track=True,
         help='Measured missing offset for nveto in [ns]'
     )
@@ -657,11 +664,12 @@ class DetectorSynchronization(strax.Plugin):
             extra_offset = self.get_delay()
 
         hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.config['adc_threshold_nim_signal'])
+        hits_tpc['time'] += extra_offset
 
-        _mask_mveto = (rr_mv['channel'] == 1084)
+        _mask_mveto = (rr_mv['channel'] == AqmonChannels.GPS_SYNC_MV)
         hits_mv = self.get_nim_edge(rr_mv[_mask_mveto], self.config['adc_threshold_nim_signal'])
 
-        _mask_nveto = rr_nv['channel'] == 813
+        _mask_nveto = rr_nv['channel'] == AqmonChannels.GPS_SYNC_NV
         hits_nv = self.get_nim_edge(rr_nv[_mask_nveto], self.config['adc_threshold_nim_signal'])
         nveto_extra_offset = 0
         if not len(hits_nv):
@@ -670,6 +678,7 @@ class DetectorSynchronization(strax.Plugin):
             _mask_nveto &= rr_nv['record_i'] == 0
             nveto_extra_offset = self.config['epsilon_offset']
             hits_nv = rr_nv[_mask_nveto]
+        hits_nv['time'] += nveto_extra_offset
 
         offsets_mv = self.estimate_delay(hits_tpc, hits_mv)
         offsets_nv = self.estimate_delay(hits_tpc, hits_nv)
@@ -678,8 +687,8 @@ class DetectorSynchronization(strax.Plugin):
         result = np.zeros(len(offsets_mv), dtype=self.dtype)
         result['time'] = hits_tpc['time']
         result['endtime'] = strax.endtime(hits_tpc)
-        result['time_offset_nv'] = offsets_nv + extra_offset + nveto_extra_offset
-        result['time_offset_mv'] = offsets_mv + extra_offset
+        result['time_offset_nv'] = offsets_nv
+        result['time_offset_mv'] = offsets_mv
 
         return result
 

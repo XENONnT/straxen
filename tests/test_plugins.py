@@ -29,23 +29,17 @@ def _run_plugins(st,
                                     st._plugin_class_registry['raw_records'].provides])
         st.set_context_config({'forbid_creation_of': _forbidden_plugins})
 
-        # Create event info
-        target = 'event_info'
-        st.make(run_id=run_id,
-                targets=target,
-                **process_kwargs)
-
-        # The stuff should be there
-        assert st.is_stored(run_id, target), f'Could not make {target}'
-
         if not make_all:
             return
 
         end_targets = set(st._get_end_targets(st._plugin_class_registry))
-        for data_type in end_targets - set(_forbidden_plugins):
-            if data_type in straxen.DAQReader.provides:
-                continue
-            st.make(run_id, data_type)
+        if st.context_config['allow_multiprocess']:
+            st.make(run_id, list(end_targets), allow_multiple=True)
+        else:
+            for data_type in end_targets - set(_forbidden_plugins):
+                if data_type in straxen.DAQReader.provides:
+                    continue
+                st.make(run_id, data_type)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
         for data_type in all_datatypes - set(_forbidden_plugins):
@@ -57,6 +51,7 @@ def _run_plugins(st,
                 is_stored = st.is_stored(run_id, data_type)
                 assert is_stored, f"{data_type} did not save correctly!"
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
+
 
 def _update_context(st, max_workers, nt=True):
     # Ignore strax-internal warnings
@@ -75,6 +70,7 @@ def _update_context(st, max_workers, nt=True):
             'allow_multiprocess': True,
             'allow_lazy': False,
             'timeout': 60,  # we don't want to build travis for ever
+            'allow_shm': True,
         })
     print('--- Plugins ---')
     for k, v in st._plugin_class_registry.items():

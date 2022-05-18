@@ -21,7 +21,7 @@ with open('HISTORY.md') as file:
     history = file.read()
 
 setuptools.setup(name='straxen',
-                 version='1.6.0',
+                 version='1.7.1',
                  description='Streaming analysis for XENON',
                  author='Straxen contributors, the XENON collaboration',
                  url='https://github.com/XENONnT/straxen',
@@ -43,6 +43,7 @@ setuptools.setup(name='straxen',
                      'bin/microstrax',
                      'bin/ajax',
                      'bin/refresh_raw_records',
+                     'bin/straxen-print_versions',
                  ],
                  packages=setuptools.find_packages() + ['extra_requirements'],
                  package_dir={'extra_requirements': 'extra_requirements'},

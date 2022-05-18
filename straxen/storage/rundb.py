@@ -28,7 +28,7 @@ class RunDB(strax.StorageFrontend):
     storage_type = strax.StorageType.LOCAL
     # Dict of alias used in rundb: regex on hostname
     hosts = {
-        'dali': r'^dali.*rcc.*',
+        'dali': r'^dali.*rcc.*|^midway2.*rcc.*|fried.rice.edu'
     }
 
     provide_run_metadata = True
@@ -124,9 +124,13 @@ class RunDB(strax.StorageFrontend):
             if re.match(regex, self.hostname):
                 self.available_query.append({'host': host_alias})
 
-        if self.rucio_path is not None:
+        # When querying for rucio, add that it should be dali-userdisk (when on dali)
+        if (self.rucio_path is not None and
+                any(
+                    re.match(regex, self.hostname)
+                    for regex in self.hosts.values()
+                )):
             self.backends.append(RucioLocalBackend(self.rucio_path))
-            # When querying for rucio, add that it should be dali-userdisk
             self.available_query.append({'host': 'rucio-catalogue',
                                          'location': 'UC_DALI_USERDISK',
                                          'status': 'transferred',
