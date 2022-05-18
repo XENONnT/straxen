@@ -58,11 +58,13 @@ def event_display_interactive(events,
     Note:
         How to use:
 
-        > st.event_display(context,
+        > fig = st.event_display_interactive(
         >                  run_id,
         >                  time_range=(event['time'],
         >                              event['endtime'])
         >                  )
+        > import bokeh.plotting as bklt
+        > bklt.show(fig)
 
     Warning:
         Raises an error if the user queries a time range which contains
