@@ -56,15 +56,16 @@ def event_display_interactive(events,
     :param log: If true color sclae is used for hitpattern plots.
 
     :example:
-        > from IPython.core.display import display, HTML
-        > display(HTML("<style>.container { width:80% !important; }</style>"))
-        > import bokeh.plotting as bklt
-        > fig = st.event_display_interactive(
-        >                  run_id,
-        >                  time_range=(event['time'],
-        >                              event['endtime'])
-        >                  )
-        > bklt.show(fig)
+
+        from IPython.core.display import display, HTML
+        display(HTML("<style>.container { width:80% !important; }</style>"))
+        import bokeh.plotting as bklt
+        fig = st.event_display_interactive(
+                         run_id,
+                         time_range=(event['time'],
+                                     event['endtime'])
+                         )
+        bklt.show(fig)
 
     :raises:
         Raises an error if the user queries a time range which contains
