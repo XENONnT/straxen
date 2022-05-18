@@ -55,15 +55,15 @@ def event_display_interactive(events,
         glyph renders for small values.
     :param log: If true color sclae is used for hitpattern plots.
 
-    Note:
-        How to use:
-
+    :example:
+        > from IPython.core.display import display, HTML
+        > display(HTML("<style>.container { width:80% !important; }</style>"))
+        > import bokeh.plotting as bklt
         > fig = st.event_display_interactive(
         >                  run_id,
         >                  time_range=(event['time'],
         >                              event['endtime'])
         >                  )
-        > import bokeh.plotting as bklt
         > bklt.show(fig)
 
     Warning:
