@@ -246,9 +246,8 @@ class URLConfig(strax.Config):
         Utility function to quickly test and evaluate URL configs,
         without the initialization of plugins (so no plugin attributes).
 
-        Example:
+        :example:
 
-            ```python
             from straxen import URLConfig
             url_string='cmt://electron_drift_velocity?run_id=027000&version=v3'
             URLConfig.evaluate_dry(url_string)
@@ -256,7 +255,6 @@ class URLConfig(strax.Config):
             # or similarly
             url_string='cmt://electron_drift_velocity?version=v3'
             URLConfig.evaluate_dry(url_string, run_id='027000')
-            ```
 
         Please note that this has to be done outside of the plugin, so any
         attributes of the plugin are not yet note to this dry evaluation
