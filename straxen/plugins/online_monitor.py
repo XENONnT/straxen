@@ -180,16 +180,16 @@ class OnlinePeakMonitor(strax.Plugin):
 @export
 class OnlineHotspotMonitor(strax.Plugin):
     """
-    Plugin to write data needed for the online hotspot monitor to the 
+    Plugin to write data needed for the online SE monitor to the 
     online-monitor collection in the runs-database. Data that is written by
     this plugin should be small such as to not overload the runs-
-    database.
+    database. Therefore only a fraction of the SE peaks is stored.
 
     This plugin takes 'peak_basics' and 'peak_positions_mlp'. Although 
     they are not strictly related, they are aggregated into a single data_type
     in order to minimize the number of documents in the online monitor.
 
-    Produces 'online_hotspot_monitor' with info on the peaks and their
+    Produces 'online_se_monitor' with info on the peaks and their
     positions.
     """
     depends_on = ('peak_basics', 'peak_positions_mlp')
@@ -198,7 +198,10 @@ class OnlineHotspotMonitor(strax.Plugin):
     __version__ = '0.0.1'
     rechunk_on_save = False #??
 
+    from numpy import random
+    
     def infer_dtype(self):
+        
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
@@ -213,28 +216,73 @@ class OnlineHotspotMonitor(strax.Plugin):
             (('End time of the chunk', 'endtime'),
              np.int64),
         ]
-        print(dtype)
         return dtype
 
     def compute(self,peaks,start,end):
-        # check data size;
-        # when bigger than 8MB -> mask fraction of data that is needed
-        # to get it under 8MB;
-        # still remember the total rate though;
-        # be happy!
-        res = np.zeros(1, dtype=self.dtype)
+
+        se_selection = (peaks['area'] < 80) & (10 < peaks['area']) & (80 < peaks['range_50p_area']) & (peaks['range_50p_area'] < 700)
+        
+        se = peaks[se_selection]
+        
+        # It starts complaining after 16MB, but let's play safe. 
+        # (Make this config (and/or class variable) option?)
+        global max_bytes,se_size
+        
+        max_bytes = 10e6
+        se_size = se.nbytes
+        
+        print(f'The peaks chunck is {peaks.nbytes} bytes.')
+        print(f'After the SE cut, the chunk is of {se.nbytes} bytes.')
+        print(f'The SE array has {len(se)} elements.')
+        
+        if se_size > max_bytes:
+            old_se = se
+            fraction,new_size = self.correction(se_size,max_bytes)
+            
+            print(f'I have cut {round(fraction*100,2)}% of the original chunk data (of size {se_size})' 
+                  f'to make it fit in the database. The new size is {round(new_size/1e6,2)}MB.')
+            
+            # Of course not exact, but to guess order of magnitude
+            new_len = int(len(se)/se_size * new_size)
+            
+            se = np.random.choice(old_se,replace=False,size=new_len)
+
+        else:
+            old_se = se
+            new_size = 10e-7 * max_bytes
+            new_len = int(len(se)/se_size * new_size)
+            
+            se = np.random.choice(old_se,replace=False,size=new_len)
+            
+        
+        res = np.zeros(len(se), dtype=self.dtype)
         res['time'] = start
+        
+        res['x_mlp'] = se['x_mlp']
 
-        area = peaks['area']
-        range_50p_area = peaks['range_50p_area']
-
-        res['x_mlp'] = peaks['x_mlp']
-        res['y_mlp'] = peaks['y_mlp']
-        res['rise_time'] = peaks['rise_time']
+        res['y_mlp'] = se['y_mlp']
+        
+        res['area'] = se['area']
+        res['range_50p_area'] = se['range_50p_area']
         res['endtime'] = end
 
-        print(res)
+        print('Deleting the selection string and old_se array...')
+        del se_selection,old_se
+        
+        print(f'We hopefully saved the data now, since SE has (now) the (new) size of {se.nbytes/1e6}MB.')
+        
         return res
+    
+    def correction(self,se_size,max_bytes=10e6):
+        
+        max_bytes = max_bytes
+        se_size = se_size
+        
+        fraction = (se_size - max_bytes + 1)/se_size
+        
+        new_size = max_bytes * fraction
+        
+        return fraction,new_size
 
 @export
 @strax.takes_config(
