@@ -231,10 +231,6 @@ class OnlineHotspotMonitor(strax.Plugin):
         max_bytes = 10e6
         se_size = se.nbytes
         
-        print(f'The peaks chunck is {peaks.nbytes} bytes.')
-        print(f'After the SE cut, the chunk is of {se.nbytes} bytes.')
-        print(f'The SE array has {len(se)} elements.')
-        
         if se_size > max_bytes:
             old_se = se
             fraction,new_size = self.correction(se_size,max_bytes)
