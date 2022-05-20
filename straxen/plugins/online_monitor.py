@@ -235,9 +235,6 @@ class OnlineSEMonitor(strax.Plugin):
             old_se = se
             fraction,new_size = self.correction(se_size,max_bytes)
             
-            print(f'I have cut {1-round(fraction*100,2)}% of the original chunk data (of size {se_size})' 
-                  f'to make it fit in the database. The new size is {round(new_size/1e6,2)}MB.')
-            
             # Of course not exact, but to guess order of magnitude
             new_len = int(len(se)/se_size * new_size)
             
@@ -261,6 +258,9 @@ class OnlineSEMonitor(strax.Plugin):
         res['area'] = se['area']
         res['range_50p_area'] = se['range_50p_area']
         res['endtime'] = end
+
+        print(f'I have cut {100-round(new_size*100/se_size,2)}% of the original chunk data (of size {se_size})' 
+              f'to make it fit in the database. The new size is {round(new_size/1e6,2)}MB.')
 
         del se_selection,old_se
         
