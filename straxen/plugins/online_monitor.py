@@ -235,7 +235,7 @@ class OnlineHotspotMonitor(strax.Plugin):
             old_se = se
             fraction,new_size = self.correction(se_size,max_bytes)
             
-            print(f'I have cut {round(fraction*100,2)}% of the original chunk data (of size {se_size})' 
+            print(f'I have cut {1-round(fraction*100,2)}% of the original chunk data (of size {se_size})' 
                   f'to make it fit in the database. The new size is {round(new_size/1e6,2)}MB.')
             
             # Of course not exact, but to guess order of magnitude
@@ -243,7 +243,7 @@ class OnlineHotspotMonitor(strax.Plugin):
             
             se = np.random.choice(old_se,replace=False,size=new_len)
 
-        else:
+        elif se_size <= max_bytes:
             old_se = se
             new_size = 10e-7 * max_bytes
             new_len = int(len(se)/se_size * new_size)
