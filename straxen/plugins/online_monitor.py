@@ -266,10 +266,7 @@ class OnlineHotspotMonitor(strax.Plugin):
         res['range_50p_area'] = se['range_50p_area']
         res['endtime'] = end
 
-        print('Deleting the selection string and old_se array...')
         del se_selection,old_se
-        
-        print(f'We hopefully saved the data now, since SE has (now) the (new) size of {se.nbytes/1e6}MB.')
         
         return res
     
