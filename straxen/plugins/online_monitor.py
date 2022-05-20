@@ -178,7 +178,7 @@ class OnlinePeakMonitor(strax.Plugin):
         return hist.T
 
 @export
-class OnlineHotspotMonitor(strax.Plugin):
+class OnlineSEMonitor(strax.Plugin):
     """
     Plugin to write data needed for the online SE monitor to the 
     online-monitor collection in the runs-database. Data that is written by
@@ -193,8 +193,8 @@ class OnlineHotspotMonitor(strax.Plugin):
     positions.
     """
     depends_on = ('peak_basics', 'peak_positions_mlp')
-    provides = 'online_hotspot_monitor'
-    data_kind = 'online_hotspot_monitor'
+    provides = 'online_se_monitor'
+    data_kind = 'online_se_monitor'
     __version__ = '0.0.1'
     rechunk_on_save = False #??
 
