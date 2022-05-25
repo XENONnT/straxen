@@ -230,7 +230,7 @@ class OnlineSEMonitor(strax.Plugin):
 
         peaks_size = peaks.nbytes
         
-         if peaks_size > max_bytes:
+        if peaks_size > max_bytes:
             # Calculate fraction of the data that can be kept
             # to reduce datasize
             fraction = (max_bytes/peaks_size)
