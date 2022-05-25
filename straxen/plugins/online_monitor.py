@@ -248,7 +248,8 @@ class OnlineSEMonitor(strax.Plugin):
                 # to reduce datasize
                 fraction = (max_bytes/se_size)
                 new_len = int(len(se)/se_size * max_bytes)
-                data = np.random.choice(se,replace=False,size=max_bytes)
+                idx = np.random.choice(np.arange(len(se)),replace=False,size=new_len)
+                data = se[np.sort(idx)]
                 
                        
         elif peaks_size <= max_bytes:
