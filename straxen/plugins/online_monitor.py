@@ -260,6 +260,8 @@ class OnlineSEMonitor(strax.Plugin):
         res['area'] = data['area']
         res['range_50p_area'] = data['range_50p_area']
         res['endtime'] = end
+
+        del se
         
         return res
 
