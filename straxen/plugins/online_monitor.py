@@ -230,15 +230,15 @@ class OnlineSEMonitor(strax.Plugin):
 
         peaks_size = peaks.nbytes
         
-        if peaks_size > max_bytes:
+        if peaks_size > self.max_bytes:
             # Calculate fraction of the data that can be kept
             # to reduce datasize
-            fraction = (max_bytes/peaks_size)
-            new_len = int(len(peaks)/peaks_size * max_bytes)
+            fraction = (self.max_bytes/peaks_size)
+            new_len = int(len(peaks)/peaks_size * self.max_bytes)
             idx = np.random.choice(np.arange(len(peaks)),replace=False,size=new_len)
             data = se[np.sort(idx)]
                              
-        elif peaks_size <= max_bytes:
+        elif peaks_size <= self.max_bytes:
             data = peaks
                 
         res = np.zeros(len(data), dtype=self.dtype)
