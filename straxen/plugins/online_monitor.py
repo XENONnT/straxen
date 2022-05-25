@@ -195,6 +195,13 @@ class OnlineSEMonitor(strax.Plugin):
     Produces 'online_se_monitor' with info on the (SE) peaks and their
     positions.
     """
+
+    max_bytes = straxen.URLConfig(
+        default=10e6,
+        track=True,
+        help='Maximum amount of bytes of data for MongoDB document'
+    )
+
     depends_on = ('peak_basics', 'peak_positions_mlp')
     provides = 'online_se_monitor'
     data_kind = 'online_se_monitor'
@@ -225,10 +232,6 @@ class OnlineSEMonitor(strax.Plugin):
         se_selection = (peaks['area'] < 80) & (10 < peaks['area']) & (80 < peaks['range_50p_area']) & (peaks['range_50p_area'] < 700)
         
         se = peaks[se_selection]
-        
-        # It starts complaining after 16MB, but let's play safe. 
-        # (Make this config (and/or class variable) option?)
-        global max_bytes,se_size
         
         max_bytes = 10e6
         se_size = se.nbytes
