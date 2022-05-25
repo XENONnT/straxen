@@ -184,15 +184,14 @@ class OnlineSEMonitor(strax.Plugin):
     Plugin to write data needed for the online SE monitor to the 
     online-monitor collection in the runs-database. Data that is written by
     this plugin should be small such as to not overload the runs-
-    database. If the peaks are large, the SE selection is applied to
-    reduce the datasize. If the array is then still to big, random
-    max_bytes of data are selected from these SE peaks.
+    database. If the peaks are large, random
+    max_bytes of data are selected from the peaks.
 
     This plugin takes 'peak_basics' and 'peak_positions_mlp'. Although 
     they are not strictly related, they are aggregated into a single data_type
     in order to minimize the number of documents in the online monitor.
 
-    Produces 'online_se_monitor' with info on the (SE) peaks and their
+    Produces 'online_se_monitor' with info on the peaks and their
     positions.
     """
 
