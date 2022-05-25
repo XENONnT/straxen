@@ -228,33 +228,19 @@ class OnlineSEMonitor(strax.Plugin):
 
     def compute(self,peaks,start,end):
 
-        se_selection = (peaks['area'] < 80) & (10 < peaks['area']) & (80 < peaks['range_50p_area']) & (peaks['range_50p_area'] < 700)
-        
-        se = peaks[se_selection]
-        
-        max_bytes = 10e6
-        se_size = se.nbytes
         peaks_size = peaks.nbytes
         
          if peaks_size > max_bytes:
-            
-            if se_size < max_bytes:
-                # Apply SE selection to reduce datasize
-                data = se
-                
-            elif se_size > max_bytes:
-                # Calculate fraction of the data that can be kept
-                # to reduce datasize
-                fraction = (max_bytes/se_size)
-                new_len = int(len(se)/se_size * max_bytes)
-                idx = np.random.choice(np.arange(len(se)),replace=False,size=new_len)
-                data = se[np.sort(idx)]
-                
-                       
+            # Calculate fraction of the data that can be kept
+            # to reduce datasize
+            fraction = (max_bytes/peaks_size)
+            new_len = int(len(peaks)/peaks_size * max_bytes)
+            idx = np.random.choice(np.arange(len(peaks)),replace=False,size=new_len)
+            data = se[np.sort(idx)]
+                             
         elif peaks_size <= max_bytes:
             data = peaks
-            
-        
+                
         res = np.zeros(len(data), dtype=self.dtype)
         res['time'] = start
         
@@ -265,8 +251,6 @@ class OnlineSEMonitor(strax.Plugin):
         res['area'] = data['area']
         res['range_50p_area'] = data['range_50p_area']
         res['endtime'] = end
-
-        del se
         
         return res
 
