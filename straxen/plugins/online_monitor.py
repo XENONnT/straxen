@@ -206,7 +206,7 @@ class OnlineSEMonitor(strax.Plugin):
     provides = 'online_se_monitor'
     data_kind = 'online_se_monitor'
     __version__ = '0.0.1'
-    rechunk_on_save = False #??
+    rechunk_on_save = False
 
     
     def infer_dtype(self):
@@ -214,8 +214,8 @@ class OnlineSEMonitor(strax.Plugin):
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
-            (('Peak integral in PE',
-            'area'), np.float32),
+            (('Peak integral in PE','area'),
+             np.float32),
             (('Reconstructed mlp peak x-position','x_mlp'), 
              np.float32), 
             (('Reconstructed mlp peak y-position','y_mlp'), 
