@@ -262,17 +262,6 @@ class OnlineSEMonitor(strax.Plugin):
         res['endtime'] = end
         
         return res
-    
-    def correction(self,se_size,max_bytes=10e6):
-        
-        max_bytes = max_bytes
-        se_size = se_size
-        
-        fraction = (se_size - max_bytes + 1)/se_size
-        
-        new_size = max_bytes * fraction
-        
-        return fraction,new_size
 
 @export
 @strax.takes_config(
