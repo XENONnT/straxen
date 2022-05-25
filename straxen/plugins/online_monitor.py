@@ -1,6 +1,7 @@
 import strax
 import numpy as np
 from immutabledict import immutabledict
+from numpy import random
 
 export, __all__ = strax.exporter()
 
@@ -200,7 +201,6 @@ class OnlineSEMonitor(strax.Plugin):
     __version__ = '0.0.1'
     rechunk_on_save = False #??
 
-    from numpy import random
     
     def infer_dtype(self):
         
