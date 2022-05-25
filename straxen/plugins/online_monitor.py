@@ -230,39 +230,36 @@ class OnlineSEMonitor(strax.Plugin):
         
         max_bytes = 10e6
         se_size = se.nbytes
+        peaks_size = peaks.nbytes
         
-        if se_size > max_bytes:
-            old_se = se
-            fraction,new_size = self.correction(se_size,max_bytes)
+         if peaks_size > max_bytes:
             
-            # Of course not exact, but to guess order of magnitude
-            new_len = int(len(se)/se_size * new_size)
-            
-            se = np.random.choice(old_se,replace=False,size=new_len)
-
-        elif se_size <= max_bytes:
-            old_se = se
-            new_size = 10e-7 * max_bytes
-            new_len = int(len(se)/se_size * new_size)
-            
-            se = np.random.choice(old_se,replace=False,size=new_len)
+            if se_size < max_bytes:
+                # Apply SE selection to reduce datasize
+                data = se
+                
+            elif se_size > max_bytes:
+                # Calculate fraction of the data that can be kept
+                # to reduce datasize
+                fraction = (max_bytes/se_size)
+                new_len = int(len(se)/se_size * max_bytes)
+                data = np.random.choice(se,replace=False,size=max_bytes)
+                
+                       
+        elif peaks_size <= max_bytes:
+            data = peaks
             
         
-        res = np.zeros(len(se), dtype=self.dtype)
+        res = np.zeros(len(data), dtype=self.dtype)
         res['time'] = start
         
-        res['x_mlp'] = se['x_mlp']
+        res['x_mlp'] = data['x_mlp']
 
-        res['y_mlp'] = se['y_mlp']
+        res['y_mlp'] = data['y_mlp']
         
-        res['area'] = se['area']
-        res['range_50p_area'] = se['range_50p_area']
+        res['area'] = data['area']
+        res['range_50p_area'] = data['range_50p_area']
         res['endtime'] = end
-
-        print(f'I have cut {100-round(new_size*100/se_size,2)}% of the original chunk data (of size {se_size})' 
-              f'to make it fit in the database. The new size is {round(new_size/1e6,2)}MB.')
-
-        del se_selection,old_se
         
         return res
     
