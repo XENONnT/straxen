@@ -236,7 +236,7 @@ class OnlineSEMonitor(strax.Plugin):
             fraction = (self.max_bytes/peaks_size)
             new_len = int(len(peaks)/peaks_size * self.max_bytes)
             idx = np.random.choice(np.arange(len(peaks)),replace=False,size=new_len)
-            data = se[np.sort(idx)]
+            data = peaks[np.sort(idx)]
                              
         elif peaks_size <= self.max_bytes:
             data = peaks
