@@ -206,7 +206,6 @@ class OnlineSEMonitor(strax.Plugin):
     provides = 'online_se_monitor'
     data_kind = 'online_se_monitor'
     __version__ = '0.0.1'
-    rechunk_on_save = False
 
     
     def infer_dtype(self):
