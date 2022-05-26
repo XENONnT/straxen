@@ -242,3 +242,28 @@ class TestURLConfig(unittest.TestCase):
         filtered2 = straxen.filter_kwargs(func2, all_kwargs)
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    def test_dry_evaluation(self):
+        """
+        Check that running a dry evaluation can be done outside of the
+        context of a URL config and yield the same result.
+        """
+        plugin_url = 'cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3'
+        self.st.set_config({'test_config': plugin_url})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        correct_val = p.test_config
+
+        # We can also get it from one of these methods
+        dry_val1 = straxen.URLConfig.evaluate_dry(
+            f'cmt://electron_drift_velocity?run_id={nt_test_run_id}&version=v3')
+        dry_val2 = straxen.URLConfig.evaluate_dry(
+            f'cmt://electron_drift_velocity?version=v3', run_id=nt_test_run_id)
+
+        # All methods should yield the same
+        assert correct_val == dry_val1 == dry_val2
+
+        # However dry-evaluation does NOT allow loading the plugin.run_id
+        # as in the plugin_url and should complain about that
+        with self.assertRaises(ValueError):
+            straxen.URLConfig.evaluate_dry(plugin_url)
