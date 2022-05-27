@@ -225,21 +225,21 @@ class EventBasics(strax.Plugin):
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
             # name                dtype       comment
-            ('time',              np.int64,   'start time since unix epoch [ns]'),
-            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
-            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
-            ('area',              np.float32, 'area, uncorrected [PE]'),
-            ('n_channels',        np.int16,   'count of contributing PMTs'),
-            ('n_hits',            np.int16,   'count of hits contributing at least one sample to the peak'),
-            ('n_competing',       np.int32,   'number of competing peaks'),
-            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
-            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
-            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
-            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
-            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
+            ('time', np.int64, 'start time since unix epoch [ns]'),
+            ('center_time', np.int64, 'weighted center time since unix epoch [ns]'),
+            ('endtime', np.int64, 'end time since unix epoch [ns]'),
+            ('area', np.float32, 'area, uncorrected [PE]'),
+            ('n_channels', np.int16, 'count of contributing PMTs'),
+            ('n_hits', np.int16, 'count of hits contributing at least one sample to the peak'),
+            ('n_competing', np.int32, 'number of competing peaks'),
+            ('max_pmt', np.int16, 'PMT number which contributes the most PE'),
+            ('max_pmt_area', np.float32, 'area in the largest-contributing PMT (PE)'),
+            ('range_50p_area', np.float32, 'width, 50% area [ns]'),
+            ('range_90p_area', np.float32, 'width, 90% area [ns]'),
+            ('rise_time', np.float32, 'time between 10% and 50% area quantiles [ns]'),
             ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'),
             ('tight_coincidence', np.int16, 'Channel within tight range of mean'),
-            ('n_saturated_channels',      np.int16, 'Total number of saturated channels'),
+            ('n_saturated_channels', np.int16, 'Total number of saturated channels'),
         )
 
     def setup(self):
