@@ -1,15 +1,10 @@
 import numpy as np
-import unittest
-import os
-import shutil
 from hypothesis import given, settings
 import hypothesis.strategies as strat
-
 import strax
 from strax.testutils import fake_hits
 import straxen
 from straxen.plugins.peaklet_processing import get_tight_coin
-from straxen.test_utils import nt_test_context, nt_test_run_id
 
 
 @settings(deadline=None)

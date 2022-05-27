@@ -1,6 +1,5 @@
 import strax
 import straxen
-
 import numpy as np
 import unittest
 

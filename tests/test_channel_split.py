@@ -1,6 +1,5 @@
 import numpy as np
 import hypothesis
-
 import strax.testutils
 import straxen
 
