@@ -92,6 +92,7 @@ def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area
     st.set_config(dict(event_right_extension=ev_time_diff))
     st.get_array(self.run_id, 'event_info_double')
 
+
 def get_triggering_peaks(events, left_extension, right_extension):
     """
     Extract the first and last triggering peaks from an event and return type, area an tight_coincidence
@@ -116,6 +117,7 @@ def get_triggering_peaks(events, left_extension, right_extension):
                     peaks[peaks_seen][field] = event[f'{peak}{field}']
                 peaks_seen += 1
     return peaks[:peaks_seen]
+
 
 @PluginTestAccumulator.register('test_partitioned_tpc_corrected_areas')
 def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
@@ -144,5 +146,6 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     _ = self.st.get_array(self.run_id, 'corrected_areas')
     temp_dir.cleanup()
 
+
 def _is_empty_data_test(st, run_id):
-    return str(st.key_for(run_id, 'raw_records'))==f'{run_id}-raw_records-5uvrrzwhnl'
+    return str(st.key_for(run_id, 'raw_records')) == f'{run_id}-raw_records-5uvrrzwhnl'

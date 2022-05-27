@@ -12,6 +12,7 @@ import peak_building
 import posrec_plugins
 import pulse_processing
 
+
 # Don't bother with remote tests
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class PluginTest(PluginTestCase, PluginTestAccumulator):
@@ -61,6 +62,7 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
         # We already made a dedicated test, let's skip this
         continue
 
+
     # pylint: disable=cell-var-from-loop
     @PluginTestAccumulator.register(test_name)
     def _make(self, target=_target):
@@ -69,6 +71,7 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
 
 class TestEmptyRecords(PluginTest):
     """Run the tests again, but this time with empty raw-records"""
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
