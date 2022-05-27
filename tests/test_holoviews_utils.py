@@ -6,8 +6,14 @@ import panel as pn
 import numpy as np
 from tempfile import TemporaryDirectory
 import os
+import pandas as pd
 
-_dummy_map = straxen.test_utils._nveto_pmt_dummy_df.to_records()
+_nveto_pmt_dummy = {'channel': list(range(2000, 2120)),
+                    'x': list(range(120)),
+                    'y': list(range(120)),
+                    'z': list(range(120)),
+                    }
+_dummy_map = pd.DataFrame(_nveto_pmt_dummy).to_records()
 
 
 def test_hitlets_to_hv_points():

@@ -1,4 +1,3 @@
-import numpy as np
 import straxen
 import tempfile
 import os

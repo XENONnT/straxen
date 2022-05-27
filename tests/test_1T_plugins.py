@@ -1,15 +1,22 @@
+"""Test for 1T plugins, nT plugins are tested in the ./plugins directory"""
 import tempfile
 import strax
 import straxen
-from straxen.test_utils import DummyRawRecords, testing_config_1T, test_run_id_1T, nt_test_run_id
+from straxen.test_utils import DummyRawRecords
 from immutabledict import immutabledict
 
+test_run_id_1T = '180423_1021'
 
-def _run_plugins(st,
-                 make_all=False,
-                 run_id=nt_test_run_id,
-                 from_scratch=False,
-                 **process_kwargs):
+testing_config_1T = dict(
+    hev_gain_model=('1T_to_pe_placeholder', False),
+    gain_model=('1T_to_pe_placeholder', False),
+    elife=1e6,
+    electron_drift_velocity=1e-4,
+    electron_drift_time_gate=1700,
+)
+
+
+def _run_plugins(st, make_all=False, run_id=test_run_id_1T, **process_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
     we can really push some (empty) data from it and don't have any nasty
@@ -17,32 +24,22 @@ def _run_plugins(st,
     """
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        if from_scratch:
-            st.storage = [strax.DataDirectory(temp_dir)]
-            # As we use a temporary directory we should have a clean start
-            assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
-
-        # Don't concern ourselves with rr_aqmon et cetera
-        _forbidden_plugins = tuple([p for p in
-                                    straxen.daqreader.DAQReader.provides
-                                    if p not in
-                                    st._plugin_class_registry['raw_records'].provides])
-        st.set_context_config({'forbid_creation_of': _forbidden_plugins})
+        st.storage = [strax.DataDirectory(temp_dir)]
+        # As we use a temporary directory we should have a clean start
+        assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
 
         if not make_all:
             return
 
         end_targets = set(st._get_end_targets(st._plugin_class_registry))
         if st.context_config['allow_multiprocess']:
-            st.make(run_id, list(end_targets), allow_multiple=True)
+            st.make(run_id, list(end_targets), allow_multiple=True, **process_kwargs)
         else:
-            for data_type in end_targets - set(_forbidden_plugins):
-                if data_type in straxen.DAQReader.provides:
-                    continue
+            for data_type in end_targets:
                 st.make(run_id, data_type)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
-        for data_type in all_datatypes - set(_forbidden_plugins):
+        for data_type in all_datatypes:
             savewhen = st._plugin_class_registry[data_type].save_when
             if isinstance(savewhen, (dict, immutabledict)):
                 savewhen = savewhen[data_type]
@@ -53,9 +50,10 @@ def _run_plugins(st,
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
-def _update_context(st, max_workers, nt=True):
+def _update_context(st, max_workers):
     # Ignore strax-internal warnings
-    st.set_context_config({'free_options': tuple(st.config.keys())})
+    st.set_context_config({'free_options': tuple(st.config.keys()),
+                           'forbid_creation_of': ()})
 
     st.register(DummyRawRecords)
     st.set_config(testing_config_1T)
@@ -108,21 +106,16 @@ def _test_child_options(st, run_id):
                                f'"{option_name}"!')
 
 
-def test_1T(ncores=1):
-    if ncores == 1:
-        print('-- 1T lazy mode --')
+def test_1T(ncores=2):
     st = straxen.contexts.xenon1t_dali()
-    _update_context(st, ncores, nt=False)
-
-    # Register the 1T plugins for this test as well
+    _update_context(st, ncores)
     st.register_all(straxen.plugins.x1t_cuts)
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
 
     # Run the test
-    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T, from_scratch=True)
-
+    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T)
     # set all the configs to be non-CMT
     st.set_config(testing_config_1T)
     _test_child_options(st, test_run_id_1T)

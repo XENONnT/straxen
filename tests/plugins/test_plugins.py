@@ -65,3 +65,12 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
     @PluginTestAccumulator.register(test_name)
     def _make(self, target=_target):
         self.st.make(self.run_id, target)
+
+
+class TestEmptyRecords(PluginTest):
+    """Run the tests again, but this time with empty raw-records"""
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.st.register(straxen.test_utils.DummyRawRecords)
+        cls.st.set_context_config(dict(forbid_creation_of=()))

@@ -5,7 +5,6 @@ import io
 import os
 from warnings import warn
 from os import environ as os_environ
-from pandas import DataFrame
 from immutabledict import immutabledict
 from importlib import import_module
 import numpy as np
@@ -15,23 +14,6 @@ export, __all__ = strax.exporter()
 
 
 nt_test_run_id = '012882'
-test_run_id_1T = '180423_1021'
-
-testing_config_1T = dict(
-    hev_gain_model=('1T_to_pe_placeholder', False),
-    gain_model=('1T_to_pe_placeholder', False),
-    elife=1e6,
-    electron_drift_velocity=1e-4,
-    electron_drift_time_gate=1700,
-)
-
-# Let's make a dummy map for NVeto
-_nveto_pmt_dummy = {'channel': list(range(2000, 2120)),
-                    'x': list(range(120)),
-                    'y': list(range(120)),
-                    'z': list(range(120)),
-                    }
-_nveto_pmt_dummy_df = DataFrame(_nveto_pmt_dummy)
 
 
 @export
@@ -173,13 +155,7 @@ class DummyRawRecords(strax.Plugin):
     """
     Provide dummy raw records for the mayor raw_record types
     """
-    provides = ('raw_records',
-                'raw_records_he',
-                'raw_records_nv',
-                'raw_records_aqmon',
-                'raw_records_aux_mv',
-                'raw_records_mv'
-                )
+    provides = straxen.daqreader.DAQReader.provides
     parallel = 'process'
     depends_on = tuple()
     data_kind = immutabledict(zip(provides, provides))
@@ -221,7 +197,13 @@ class DummyRawRecords(strax.Plugin):
                     # Channel map for 1T is different.
                     continue
                 if p.endswith(key):
-                    s, e = self.config['channel_map'][channel_key]
-                    rr['channel'] += s
+                    first_channel, last_channel = self.config['channel_map'][channel_key]
+                    rr['channel'] += first_channel
+                    if key == 'aqmon':
+                        # explicitly clip these channels as we have an additional check higher in the chain
+                        first_channel=int(min(straxen.plugins.acqmon_processing.AqmonChannels))
+                        last_channel=int(max(straxen.plugins.acqmon_processing.AqmonChannels))
+
+                    rr = rr[(rr['channel']>=first_channel) & (rr['channel']<last_channel)]
             res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res

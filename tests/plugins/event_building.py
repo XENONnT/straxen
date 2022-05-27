@@ -12,6 +12,8 @@ def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area
     """
     Test for checking the event building options, specifically the S1 (exclusion)
     """
+    if _is_empty_data_test(self.st, self.run_id):
+        return
     # Change the config to allow s1s to be triggering, also drastically
     # decrease the trigger_min_area to allow small s1s to be triggering
     st = self.st.new_context()
@@ -47,9 +49,11 @@ def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area
 @PluginTestAccumulator.register('test_event_info')
 def test_event_info(self):
     """Do a dummy check on event-info that it loads"""
+    if _is_empty_data_test(self.st, self.run_id):
+        return
     df = self.st.get_df(self.run_id, 'event_info')
 
-    assert len(df) > 0
+    assert len(df) > 0, self.st.key_for(self.run_id, 'raw_records')
     assert 'cs1' in df.columns
     assert df['cs1'].sum() > 0
     assert not np.all(np.isnan(df['x'].values))
@@ -58,6 +62,8 @@ def test_event_info(self):
 @PluginTestAccumulator.register('test_event_info_double')
 def test_event_info_double(self):
     """Do a dummy check on event-info that it loads"""
+    if _is_empty_data_test(self.st, self.run_id):
+        return
     df = self.st.get_df(self.run_id, 'event_info_double')
     assert 'cs2_a' in df.columns
     assert df['cs2_a'].sum() > 0
@@ -68,7 +74,8 @@ def test_event_info_double(self):
 def test_get_livetime_sec(self):
     st = self.st
     events = st.get_array(self.run_id, 'events')
-    straxen.get_livetime_sec(st, self.run_id, things=events)
+    if len(events):
+        straxen.get_livetime_sec(st, self.run_id, things=events)
 
 
 @PluginTestAccumulator.register('test_event_info_double_w_double_peaks')
@@ -78,6 +85,8 @@ def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area
     """
     st = self.st.new_context()
     ev = st.get_array(self.run_id, 'events')
+    if not len(ev):
+        return
     ev_time_diff = np.median(ev['time'][1:])
     # increase the event_extension such that we start merging several events
     st.set_config(dict(event_right_extension=ev_time_diff))
@@ -134,3 +143,6 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     # Try loading some new data with the interpolated dictionary
     _ = self.st.get_array(self.run_id, 'corrected_areas')
     temp_dir.cleanup()
+
+def _is_empty_data_test(st, run_id):
+    return str(st.key_for(run_id, 'raw_records'))==f'{run_id}-raw_records-5uvrrzwhnl'
