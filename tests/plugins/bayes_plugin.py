@@ -1,4 +1,5 @@
-from _core import PluginTestAccumulator, PluginTestCase
+"""Run with python tests/plugins/bayes_plugin.py"""
+from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 import numpy as np
 
 
@@ -25,3 +26,7 @@ def test_bayes_inference(self: PluginTestCase):
     self.st.make(self.run_id, target)
     bayes = self.st.get_array(self.run_id, target)
     assert not np.any(bayes['ln_prob_s1'] > 0)
+
+
+if __name__ == '__main__':
+    run_pytest_from_main()

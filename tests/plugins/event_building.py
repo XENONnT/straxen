@@ -1,6 +1,7 @@
+"""Run with python tests/plugins/event_building.py"""
 import os
 import tempfile
-from _core import PluginTestAccumulator, PluginTestCase
+from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 import numpy as np
 import straxen
 import pandas as pd
@@ -87,10 +88,19 @@ def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area
     ev = st.get_array(self.run_id, 'events')
     if not len(ev):
         return
-    ev_time_diff = np.median(ev['time'][1:])
+    ev_time_diff = np.median(np.diff(ev['time']))
     # increase the event_extension such that we start merging several events
     st.set_config(dict(event_right_extension=ev_time_diff))
     st.get_array(self.run_id, 'event_info_double')
+
+    distinct_channels = st.get_single_plugin(self.run_id, 'distinct_channels')
+    events = st.get_array(self.run_id, 'event_basics')
+    # Make alt == main just to test that we are able to compute that
+    # all have no distinct channels
+    events['alt_s1_index'] = events['s1_index']
+    peaks = st.get_array(self.run_id, 'peaks')
+    res = distinct_channels.compute(events, peaks)
+    assert np.all(res['alt_s1_distinct_channels'] == 0)
 
 
 def get_triggering_peaks(events, left_extension, right_extension):
@@ -149,3 +159,7 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
 
 def _is_empty_data_test(st, run_id):
     return str(st.key_for(run_id, 'raw_records')) == f'{run_id}-raw_records-5uvrrzwhnl'
+
+
+if __name__ == '__main__':
+    run_pytest_from_main()

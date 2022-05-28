@@ -1,7 +1,8 @@
+"""Run with python tests/plugins/posrec_processing.py"""
 import os
 import strax
 import straxen
-from _core import PluginTestAccumulator, PluginTestCase
+from _core import PluginTestAccumulator, run_pytest_from_main
 import numpy as np
 
 
@@ -72,3 +73,8 @@ def test_posrec_bad_configs_raising_errors(self,
     plugin_name = strax.camel_to_snake('PeakPositionsBaseNT')
     with self.assertRaises(NotImplementedError):
         dummy_st.get_single_plugin(self.run_id, plugin_name)
+
+
+if __name__ == '__main__':
+    """Run with python tests/plugins/peak_building.py"""
+    run_pytest_from_main()
