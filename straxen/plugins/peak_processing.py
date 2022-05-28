@@ -181,7 +181,7 @@ class PeakBasicsHighEnergy(PeakBasics):
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10,  infer_type=False,),
+                 default=10, infer_type=False, ),
     strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
                  help="Number of top PMTs")
 )
