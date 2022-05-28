@@ -62,7 +62,7 @@ def _update_context(st, max_workers):
         st.set_context_config({
             'allow_multiprocess': True,
             'allow_lazy': False,
-            'timeout': 60,  # we don't want to build travis for ever
+            'timeout': 120,  # we don't want to build travis for ever
             'allow_shm': True,
         })
 

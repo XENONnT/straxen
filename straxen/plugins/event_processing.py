@@ -224,7 +224,6 @@ class EventBasics(strax.Plugin):
         """Needs to be run before inferring dtype as it is needed there"""
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
-            # name                dtype       comment
             ('time', np.int64, 'start time since unix epoch [ns]'),
             ('center_time', np.int64, 'weighted center time since unix epoch [ns]'),
             ('endtime', np.int64, 'end time since unix epoch [ns]'),
