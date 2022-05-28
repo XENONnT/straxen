@@ -18,6 +18,7 @@ def test_saturation_correction(self: PluginTestCase):
     appropriately handled in the desaturation correction
     """
     st = self.st.new_context()
+    st.set_config(dict(saturation_reference_length=15))
     rr = st.get_array(self.run_id, 'raw_records', seconds_range=(0, 10))
     assert len(rr)
     # manually saturate the data
