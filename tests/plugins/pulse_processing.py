@@ -9,6 +9,7 @@ def test_alternative_hitfinder_options(self: PluginTestCase):
     st.set_config(dict(
         hit_min_amplitude='pmt_commissioning_initial',
         hev_gain_model=("to_pe_placeholder", True),
+        tail_veto_threshold=1,
         pmt_pulse_filter=(
             0.012, -0.119, 2.435, -1.271, 0.357, -0.174, -0., -0.036, -0.028, -0.019, -0.025,
             -0.013,
