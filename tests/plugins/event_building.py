@@ -1,6 +1,9 @@
 """Run with python tests/plugins/event_building.py"""
 import os
 import tempfile
+
+import strax
+
 from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 import numpy as np
 import straxen
@@ -99,8 +102,10 @@ def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area
     # all have no distinct channels
     events['alt_s1_index'] = events['s1_index']
     peaks = st.get_array(self.run_id, 'peaks')
-    res = distinct_channels.compute(events, peaks)
-    assert np.all(res['alt_s1_distinct_channels'] == 0)
+    split_peaks = strax.split_by_containment(peaks, events)
+    for event, split_peak in zip(events, split_peaks):
+        res = distinct_channels.compute_loop(event, split_peak)
+        assert res['alt_s1_distinct_channels'] == 0
 
 
 def get_triggering_peaks(events, left_extension, right_extension):
