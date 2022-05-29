@@ -1,6 +1,5 @@
 import strax
 import straxen
-
 import numpy as np
 import unittest
 
@@ -134,6 +133,7 @@ class TestCoincidence(unittest.TestCase):
         assert endtime_is_correct, 'Coincidence does not have the correct endtime'
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_nv_for_dummy_rr():
     """Basic test to run the nv rr for dummy raw-records"""
     st = straxen.test_utils.nt_test_context(deregister=())
