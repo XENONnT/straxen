@@ -346,5 +346,6 @@ if __name__ == '__main__':
 
         mem = memory_usage(proc=(main, [args], dict()))
         print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
+        sys.exit()
     else:
         sys.exit(main(args))
