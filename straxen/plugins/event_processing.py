@@ -606,7 +606,7 @@ class EventPositions(strax.Plugin):
         for s_i in [0, 1, 2]:
             
             # alt_sx_interaction_drift_time is calculated between main Sy and alternative Sx
-            drift_time = events['drift_time']  if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
+            drift_time = events['drift_time'] if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
             
             z_obs = - self.electron_drift_velocity * drift_time
             xy_pos = 's2_' if s_i != 2 else 'alt_s2_'
@@ -633,8 +633,8 @@ class EventPositions(strax.Plugin):
             z_cor[invalid] = z_obs[invalid]
             delta_z = z_cor - z_obs
             
-            pre_field = '' if s_i == 0  else f'alt_s{s_i}_'
-            post_field = '' if s_i == 0  else '_fdc'
+            pre_field = '' if s_i == 0 else f'alt_s{s_i}_'
+            post_field = '' if s_i == 0 else '_fdc'
             result.update({f'{pre_field}x{post_field}': orig_pos[:, 0] * scale,
                            f'{pre_field}y{post_field}': orig_pos[:, 1] * scale,
                            f'{pre_field}r{post_field}': r_cor,
