@@ -48,27 +48,8 @@ def load_corrected_positions(context, run_id, events, alt_s1=False, alt_s2=False
     ep = context.get_single_plugin(run_id, 'event_positions')
     drift_speed = ep.electron_drift_velocity
     drift_time_gate = ep.electron_drift_time_gate
-    dtype = []
-
-    for algo in posrec_algos:
-        for xyzr in 'x y z r'.split():
-            dtype += [
-                ((f'Interaction {xyzr}-position, field-distortion corrected (cm) - '
-                  f'{algo.upper()} posrec algorithm', f'{xyzr}_{algo}'),
-                 np.float32),
-            ]
-        dtype += [
-            ((f'Interaction r-position using observed S2 positions directly (cm) -'
-              f' {algo.upper()} posrec algorithm', f'r_naive_{algo}'),
-             np.float32),
-            ((f'Correction added to r_naive for field distortion (cm) - '
-              f'{algo.upper()} posrec algorithm',
-              f'r_field_distortion_correction_{algo}'), np.float32),
-            ((f'Interaction angular position (radians) - {algo.upper()} '
-              f'posrec algorithm', f'theta_{algo}'),
-             np.float32)]
-
-    dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
+    
+    dtype = load_dtypes(posrec_algos)
     result = np.zeros(len(events), dtype=dtype)
     
     s1_pre = 'alt_' if alt_s1 else ''
@@ -108,3 +89,28 @@ def load_corrected_positions(context, run_id, events, alt_s1=False, alt_s2=False
 
     result['z_naive'] = z_obs
     return result
+
+def load_dtypes(posrec_algos):
+    
+    dtype = []
+    
+    for algo in posrec_algos:
+        for xyzr in 'x y z r'.split():
+            dtype += [
+                ((f'Interaction {xyzr}-position, field-distortion corrected (cm) - '
+                  f'{algo.upper()} posrec algorithm', f'{xyzr}_{algo}'),
+                 np.float32),
+            ]
+        dtype += [
+            ((f'Interaction r-position using observed S2 positions directly (cm) -'
+              f' {algo.upper()} posrec algorithm', f'r_naive_{algo}'),
+             np.float32),
+            ((f'Correction added to r_naive for field distortion (cm) - '
+              f'{algo.upper()} posrec algorithm',
+              f'r_field_distortion_correction_{algo}'), np.float32),
+            ((f'Interaction angular position (radians) - {algo.upper()} '
+              f'posrec algorithm', f'theta_{algo}'),
+             np.float32)]
+
+    dtype += [(('Interaction z-position using mean drift velocity only (cm)', 'z_naive'), np.float32)]
+    return dtype
