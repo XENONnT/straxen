@@ -243,18 +243,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         return result
 
 @export
-@strax.takes_config(
-    strax.Option('gps_channel', default = 801,
-                help = 'Channel number of mv_sync.'),
-    strax.Option('gps_module_string', default = '#@0',
-                 help = 'String identifier on the ASCII gps file'),
-    strax.Option('gps_file_path', type = str,
-                help = 'Path to gps files. TODO: make it fetch the RunDB\
-                 or utilix'),
-    strax.Option('gps_verbose', default = False,
-                help = 'Debug prints for when things are desperate.'),
-                )
-
 class GPS_sync(strax.Plugin):
     """
     Correct the event times to GPS time. 
@@ -395,7 +383,7 @@ class GPS_sync(strax.Plugin):
         return ans
 
     def load_aqmon_array(self, hits):
-        gps_hits = hits[hits['channel'] == self.config['gps_channel']]
+        gps_hits = hits[hits['channel'] == AqmonChannels.GPS_SYNC_AM]
         aqmon_array = gps_hits['time']
         return aqmon_array
 
