@@ -1,21 +1,16 @@
-import unittest
 from hypothesis import strategies, given, settings, example
 from straxen.plugins.event_patternfit import binom_test, lbinom_pmf_mode, lbinom_pmf, lbinom_pmf_inverse, binom_sf
 import numpy as np
 import scipy.stats as sps
 
 @settings(deadline=None)
-#AFT_observed, AFT_expected (from xyz), S1_total
 @given(strategies.floats(0., 1.), strategies.floats(0.01, 0.99), strategies.floats(2., 1000))
-#@example(0., 0.05, 10.) 
 def test_patternfit_stats(aftobs, aft, s1tot):
     s1top = aftobs*s1tot
     assert( (binom_test(s1top, s1tot, aft) >= 0) & (binom_test(s1top, s1tot, aft) <= 1) )
 
 @settings(deadline=None)
-#AFT_observed, AFT_expected (from xyz), S1_total
 @given(strategies.floats(0., 1.), strategies.floats(0.01, 0.99), strategies.floats(2., 1000))
-#@example(0., 0.05, 10.) 
 def test_inverse_pdf(aftobs, aft, s1tot):
     s1top = aftobs * s1tot
     #code stolen from binom_test, checking if the other point on
@@ -63,7 +58,6 @@ def test_pmf(nk, p):
 
 @settings(deadline=None)
 @given(nk = n_and_k(), p = strategies.floats(0.01, 0.99))
-#@example((10, 5), 0.5)
 def test_pvalue(nk, p):
     #test that at integer n, k binom_pmf agrees with the scipy result
     n, k = nk

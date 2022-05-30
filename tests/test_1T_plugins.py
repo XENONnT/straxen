@@ -1,15 +1,22 @@
+"""Test for 1T plugins, nT plugins are tested in the ./plugins directory"""
 import tempfile
 import strax
 import straxen
-from straxen.test_utils import nt_test_run_id, DummyRawRecords, testing_config_1T, test_run_id_1T
+from straxen.test_utils import DummyRawRecords
 from immutabledict import immutabledict
 
+test_run_id_1T = '180423_1021'
 
-def _run_plugins(st,
-                 make_all=False,
-                 run_id=nt_test_run_id,
-                 from_scratch=False,
-                 **process_kwargs):
+testing_config_1T = dict(
+    hev_gain_model=('1T_to_pe_placeholder', False),
+    gain_model=('1T_to_pe_placeholder', False),
+    elife=1e6,
+    electron_drift_velocity=1e-4,
+    electron_drift_time_gate=1700,
+)
+
+
+def _run_plugins(st, make_all=False, run_id=test_run_id_1T, **process_kwargs):
     """
     Try all plugins (except the DAQReader) for a given context (st) to see if
     we can really push some (empty) data from it and don't have any nasty
@@ -17,32 +24,22 @@ def _run_plugins(st,
     """
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        if from_scratch:
-            st.storage = [strax.DataDirectory(temp_dir)]
-            # As we use a temporary directory we should have a clean start
-            assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
-
-        # Don't concern ourselves with rr_aqmon et cetera
-        _forbidden_plugins = tuple([p for p in
-                                    straxen.daqreader.DAQReader.provides
-                                    if p not in
-                                    st._plugin_class_registry['raw_records'].provides])
-        st.set_context_config({'forbid_creation_of': _forbidden_plugins})
+        st.storage = [strax.DataDirectory(temp_dir)]
+        # As we use a temporary directory we should have a clean start
+        assert not st.is_stored(run_id, 'raw_records'), 'have RR???'
 
         if not make_all:
             return
 
         end_targets = set(st._get_end_targets(st._plugin_class_registry))
         if st.context_config['allow_multiprocess']:
-            st.make(run_id, list(end_targets), allow_multiple=True)
+            st.make(run_id, list(end_targets), allow_multiple=True, **process_kwargs)
         else:
-            for data_type in end_targets - set(_forbidden_plugins):
-                if data_type in straxen.DAQReader.provides:
-                    continue
+            for data_type in end_targets:
                 st.make(run_id, data_type)
         # Now make sure we can get some data for all plugins
         all_datatypes = set(st._plugin_class_registry.keys())
-        for data_type in all_datatypes - set(_forbidden_plugins):
+        for data_type in all_datatypes:
             savewhen = st._plugin_class_registry[data_type].save_when
             if isinstance(savewhen, (dict, immutabledict)):
                 savewhen = savewhen[data_type]
@@ -53,28 +50,21 @@ def _run_plugins(st,
     print("Wonderful all plugins work (= at least they don't fail), bye bye")
 
 
-def _update_context(st, max_workers, nt=True):
+def _update_context(st, max_workers):
     # Ignore strax-internal warnings
-    st.set_context_config({'free_options': tuple(st.config.keys())})
-    if not nt:
-        st.register(DummyRawRecords)
-        if straxen.utilix_is_configured(warning_message=False):
-            # Set some placeholder gain as this takes too long for 1T to load from CMT
-            st.set_config({k: v for k, v in testing_config_1T.items() if
-                           k in ('hev_gain_model', 'gain_model')})
-        else:
-            st.set_config(testing_config_1T)
+    st.set_context_config({'free_options': tuple(st.config.keys()),
+                           'forbid_creation_of': ()})
+
+    st.register(DummyRawRecords)
+    st.set_config(testing_config_1T)
 
     if max_workers - 1:
         st.set_context_config({
             'allow_multiprocess': True,
             'allow_lazy': False,
-            'timeout': 60,  # we don't want to build travis for ever
+            'timeout': 120,  # we don't want to build travis for ever
             'allow_shm': True,
         })
-    print('--- Plugins ---')
-    for k, v in st._plugin_class_registry.items():
-        print(k, v)
 
 
 def _test_child_options(st, run_id):
@@ -116,50 +106,18 @@ def _test_child_options(st, run_id):
                                f'"{option_name}"!')
 
 
-def test_1T(ncores=1):
-    if ncores == 1:
-        print('-- 1T lazy mode --')
+def test_1T(ncores=2):
     st = straxen.contexts.xenon1t_dali()
-    _update_context(st, ncores, nt=False)
-
-    # Register the 1T plugins for this test as well
+    _update_context(st, ncores)
     st.register_all(straxen.plugins.x1t_cuts)
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS
 
     # Run the test
-    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T, from_scratch=True)
-
-    # Test issue #233
-    st.search_field('cs1')
-
+    _run_plugins(st, make_all=True, max_workers=ncores, run_id=test_run_id_1T)
     # set all the configs to be non-CMT
     st.set_config(testing_config_1T)
     _test_child_options(st, test_run_id_1T)
 
     print(st.context_config)
-
-
-def test_nT(ncores=1):
-    if ncores == 1:
-        print('-- nT lazy mode --')
-    init_database = straxen.utilix_is_configured(warning_message=False)
-    st = straxen.test_utils.nt_test_context(
-        _database_init=init_database,
-        use_rucio=False,
-        deregister=('events_sync_nv', 'events_sync_mv')
-    )
-    _update_context(st, ncores, nt=True)
-    # Lets take an abandoned run where we actually have gains for in the CMT
-    _run_plugins(st, make_all=True, max_workers=ncores, run_id=nt_test_run_id)
-    # Test issue #233
-    st.search_field('cs1')
-    # Test of child plugins:
-    _test_child_options(st, nt_test_run_id)
-    print(st.context_config)
-
-
-def test_nT_mutlticore():
-    print('nT multicore')
-    test_nT(3)
