@@ -181,7 +181,7 @@ class PeakBasicsHighEnergy(PeakBasics):
             (first_sr1_run, pax_file('XENON1T_tensorflow_nn_pos_weights_20171217_sr1.h5'))]),   # noqa
     strax.Option('min_reconstruction_area',
                  help='Skip reconstruction if area (PE) is less than this',
-                 default=10,  infer_type=False,),
+                 default=10, infer_type=False, ),
     strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
                  help="Number of top PMTs")
 )
@@ -382,15 +382,6 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         return 10 * self.config['shadow_time_window_backward']
-
-    @property
-    def shadtype(self):
-        # Shadow related features shared by previous S1 & S2
-        dtype = []
-        dtype += [('shadow', np.float32), ('dt', np.int64)]
-        dtype += [('x', np.float32), ('y', np.float32)]
-        dtype += [('nearest_dt', np.int64)]
-        return dtype
 
     def infer_dtype(self):
         s1_time_shadow_dtype = []

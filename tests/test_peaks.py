@@ -1,8 +1,6 @@
 import strax
 import straxen
-
 import numpy as np
-
 import unittest
 from strax.testutils import run_id
 from hypothesis import strategies, given, settings
