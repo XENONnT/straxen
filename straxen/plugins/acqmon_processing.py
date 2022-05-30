@@ -2,11 +2,11 @@ import typing
 from enum import IntEnum
 import numba
 import numpy as np
-import os
-import csv
 import strax
 import straxen
-from immutabledict import immutabledict
+import datetime
+import utilix
+import pandas as pd
 
 from .daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 
@@ -256,56 +256,49 @@ class VetoIntervals(strax.OverlapWindowPlugin):
                 )
 
 class GPS_sync(strax.Plugin):
-    """Find the TTL GPS pulses coming into the AM from the gps 
+    """
+    Correct the event times to GPS time. 
+      1. Finds the TTL GPS pulses coming into the AM from the gps 
     module and their pairs in the ASCII file coming from the module
     for the correspondant run.
+      2. Corrects the timestamp of all events by linearly interpolating
+    between the previous and next sync pulses. 
     """
         
-    __version__ ='0.0.11'
-    depends_on = 'aqmon_hits'   
-    provides  = 'gps_aqmon'
-    data_kind = 'gps_aqmon'
+    __version__ ='0.1.0'
+    depends_on = ('aqmon_hits', 'event_info')
+    provides  = 'gps_sync'
+    data_kind = 'gps_sync'
     
     def infer_dtype(self):
-        dtype = [(('Start time since unix epoch [ns]', 'time'), np.int64),
-                 (('End time since unix epoch [ns]', 'endtime'), np.int64),
-                 (('GPS module pulse time (corrected to UTC) [ns]','gps_pulse'),np.int64)
+        dtype = [(('Time since unix epoch [ns]', 'time'), np.int64),
+                 (('GPS absolute time [ns]', 't_gps'), np.int64),
                 ]
         return dtype
 
 
-    def get_gpsdata(self, run_id):
-        '''Function to fetch the gps file from the given source.
-        Could be RunDB or directory with all the files.'''
+    def gps_times_from_runid(self,run_id):
+        '''
+        Fetches the mongodb looking for the gps_sync collection for 
+        timestamps between the start and end times of a given run_id.
+        '''
 
-        gps_file = self.config['gps_file_path'] + 'gps_times_' + run_id + '.txt'
-        assert (os.path.exists(gps_file)), "Didn't find gps sync file for run %s." %run_id
-         
-        return [gps_file] #it is now implemented one file per run so a list 
-                          #that contains all the files needed is no longer necessary.
-                          # To be cleaned up if confirmed
-    
-    def get_gps_time_array(self):
-        gps_file_list = self.get_gpsdata(self.run_id)
+        rundb = utilix.xent_collection()
+        gps_times = utilix.xent_collection(collection='gps_sync',  database='xenonnt')
 
-        if self.config['gps_verbose'] == True:
-            print('Files to load:', gps_file_list)
-            
-        gpsdata = np.array([])
+        if isinstance(run_id, str):
+            run_id = int(run_id)
+
+        query = {"number": run_id}
+
+        doc = rundb.find_one(query, projection={'start': 1, 'end': 1})
         
-        for gps_file in gps_file_list: # to be cleaned up (see above comment)
-            if self.config['gps_verbose'] == True:
-                print('File loaded:', gps_file)
-            with open(gps_file,'r',newline='') as dest_f:
-                data_iter = csv.reader(dest_f,
-                                   delimiter = ' ',
-                                   quotechar = '"')
-                data = [np.int64(line[1] + '{:<09s}'.format(line[2])) for line in \
-                        data_iter if line[0]==self.config['gps_module_string']]
-                
-            gpsdata = np.concatenate((gpsdata,np.asarray(data)))
+        start_t = doc['start'].replace(tzinfo=datetime.timezone.utc).timestamp()
+        end_t = doc['end'].replace(tzinfo=datetime.timezone.utc).timestamp()
+        
+        query = {"gps_sec": { '$gte': start_t - 1, '$lte': end_t + 1}, 'channel': 0 }
 
-        return np.array(gpsdata)
+        return pd.DataFrame(gps_times.find(query))
 
     def cut_outside_run(self,aqmon_array, gps_array):
         first_idx = None
@@ -325,48 +318,92 @@ class GPS_sync(strax.Plugin):
 
         return gps_array_corr
 
-    def compute(self, aqmon_hits): 
+    # Basic algorithm to compute corrected time given all the inputs
+    def compute_time_individual(self, t0_daq, t1_daq, t0_gps, t1_gps, t_evt):
+        '''
+        Compute the corrected time given the previous and next sync pulse.
+          * t0: previous pulse (daq or gps)
+          * t1: previous pulse (daq or gps)
+          * t_evt: uncorrected time of event (in DAQ time)
+        Returns a single value, t_evt in gps-time.
+        '''
+        delta_sync_offset = t0_gps-t0_daq
+        delta_t_evt = t_evt - t0_daq
+        
+        return t0_daq + delta_sync_offset + (t1_gps-t0_gps)/(t1_daq-t0_daq)*delta_t_evt
+
+    def compute_time_array(self, l_daq_sync, l_gps_sync, l_daq_evt):
+        l_gps_evt = np.zeros(len(l_daq_evt))
+        
+        #correlate the values of t_daq_evt with the array l_daq_sync
+        l_idx_evt_sync_daq = np.searchsorted(l_daq_sync, l_daq_evt)
+
+        for counter,_t_evt in enumerate(l_daq_evt):
+            index_in_matched_pulses = l_idx_evt_sync_daq[counter]
+            
+            if index_in_matched_pulses == 0: # events before the first pulse
+                _t0_daq = l_daq_sync[0] - 10*1e9
+                _t0_gps = l_gps_sync[0] - 10*1e9
+                _t1_daq = l_daq_sync[0]
+                _t1_gps = l_gps_sync[0]
+                
+            if index_in_matched_pulses == len(l_daq_sync): # events after the last pulse
+                _t0_daq = l_daq_sync[-1]
+                _t0_gps = l_gps_sync[-1]
+                _t1_daq = l_daq_sync[-1] + 10*1e9
+                _t1_gps = l_gps_sync[-1] + 10*1e9
+                
+            else:
+                _t0_daq = l_daq_sync[index_in_matched_pulses - 1]
+                _t0_gps = l_gps_sync[index_in_matched_pulses - 1]
+                _t1_daq = l_daq_sync[index_in_matched_pulses]
+                _t1_gps = l_gps_sync[index_in_matched_pulses]
+                
+            _t_gps_evt = self.compute_time_individual(_t0_daq, _t1_daq, _t0_gps, _t1_gps, _t_evt)
+            l_gps_evt[counter] = _t_gps_evt
+            
+        return l_gps_evt
+
+    def compute(self, aqmon_hits, event_info): 
         hits = aqmon_hits
-        
-        ans_temp = dict()
-        
-        gps_hits = hits[hits['channel'] == self.config['gps_channel']]
+        evts = event_info
 
-        if self.config['gps_verbose'] == True:
-            print('len aqmon gps hits', len(gps_hits))
-            if len(gps_hits) == 1:
-                print(gps_hits)
-
-        # Check that we found a GPS pulses in aqmon data and update the resulting dict
-        if len(gps_hits):
-            ans_temp.setdefault("time",[]).extend(gps_hits['time'])
-            ans_temp.setdefault("endtime",[]).extend(gps_hits['time'] +\
-                                                     gps_hits['length'] * gps_hits['dt'])
+        # Load pulses from aqmon
+        aqmon_array = self.load_aqmon_array(hits)
         
-        ans = strax.dict_to_rec(ans_temp, dtype=self.dtype)
-        ans.sort(order = 'time')
-
         #Load GPS-module pulses
-        gps_module_pulses = self.get_gps_time_array()
-        if self.config['gps_verbose'] == True:
-             print('len gps_module_pulses', len(gps_module_pulses))
+        gps_array = self.load_gps_array()
 
         # Make sure first and last pulses match
-        gps_array_corr = self.cut_outside_run(ans['time'],gps_module_pulses)
-
+        #gps_array_corr = self.cut_outside_run(ans['time'],gps_module_pulses)
+        #
         # Take out pulses with entry problems and roll with it
-        weirdpulses_mask = np.abs(ans['time']-gps_array_corr)<1e9
+        #weirdpulses_mask = np.abs(ans['time']-gps_array_corr)<1e9
+        #ans = ans[weirdpulses_mask]
+        #gps_array_corr = gps_array_corr[weirdpulses_mask]
         
-        ans = ans[weirdpulses_mask]
-        gps_array_corr = gps_array_corr[weirdpulses_mask]
-        
-        assert (len(ans) == len(gps_array_corr)), \
+        assert (len(gps_array) == len(aqmon_array)), \
         "Number of pulses in AM (%d) and GPS file (%d) don't match for run %s."\
-        %(len(ans), len(gps_array_corr), self.run_id)
-    
-        ans['gps_pulse'] = gps_array_corr
+        %(len(aqmon_array), len(gps_array), self.run_id)
+
+        t_events_gps = self.compute_time_array(aqmon_array, gps_array, evts['time'])
+
+        ans = dict()
+        ans['time']  = evts['time']
+        ans['t_gps'] = t_events_gps
 
         return ans
+
+    def load_aqmon_array(self, hits):
+        gps_hits = hits[hits['channel'] == self.config['gps_channel']]
+        aqmon_array = gps_hits['time']
+        return aqmon_array
+
+    def load_gps_array(self):
+        gps_info = self.gps_times_from_runid(self.run_id)
+        gps_info['pulse_time'] = np.int64(gps_info['gps_sec']*1e9) + np.int64(gps_info['gps_ns'])
+        gps_array = np.sort(gps_info['pulse_time'])
+        return gps_array
 
 
 @numba.njit
