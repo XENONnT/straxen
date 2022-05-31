@@ -111,8 +111,8 @@ jobs:
           coverage run --source=straxen -m pytest -v
 
           # Test notebooks
-          coverage run --append --source=straxen -m pytest --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
-          coverage run --append --source=straxen -m pytest --nbmake -n=auto notebooks/tutorials/ScadaInterfaceExample.ipynb
+          coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
+          coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/ScadaInterfaceExample.ipynb
 
           # Run twice, once without and once with db access
           if test -f ~/.xenon_config; then
