@@ -247,16 +247,16 @@ class GPS_sync(strax.Plugin):
     """
     Correct the event times to GPS time. 
       1. Finds the TTL GPS pulses coming into the AM from the gps 
-    module and their pairs in the ASCII file coming from the module
-    for the correspondant run.
+    module and their pairs coming from the module for the 
+    correspondant run.
       2. Corrects the timestamp of all events by linearly interpolating
     between the previous and next sync pulses. 
     """
         
     __version__ ='0.1.0'
     depends_on = ('aqmon_hits', 'event_info')
-    provides  = 'gps_sync'
-    data_kind = 'gps_sync'
+    provides = 'gps_sync'
+    data_kind = 'events'
     
     def infer_dtype(self):
         dtype = [(('Time since unix epoch [ns]', 'time'), np.int64),
@@ -272,7 +272,7 @@ class GPS_sync(strax.Plugin):
         '''
 
         rundb = utilix.xent_collection()
-        gps_times = utilix.xent_collection(collection='gps_sync',  database='xenonnt')
+        gps_times = utilix.xent_collection(collection='gps_sync', database='xenonnt')
 
         if isinstance(run_id, str):
             run_id = int(run_id)
@@ -281,10 +281,12 @@ class GPS_sync(strax.Plugin):
 
         doc = rundb.find_one(query, projection={'start': 1, 'end': 1})
         
+        assert doc != None, 'No match for run_id %s when computing GPS times.'%self.run_id
+
         start_t = doc['start'].replace(tzinfo=datetime.timezone.utc).timestamp()
         end_t = doc['end'].replace(tzinfo=datetime.timezone.utc).timestamp()
         
-        query = {"gps_sec": { '$gte': start_t - 1, '$lte': end_t + 1}, 'channel': 0 }
+        query = {"gps_sec": { '$gte': start_t - 11, '$lte': end_t + 11}, 'channel': 0 }
 
         return pd.DataFrame(gps_times.find(query))
 
@@ -363,8 +365,8 @@ class GPS_sync(strax.Plugin):
         gps_array = self.load_gps_array()
 
         # Make sure first and last pulses match
-        #gps_array_corr = self.cut_outside_run(ans['time'],gps_module_pulses)
-        #
+        gps_array = self.cut_outside_run(aqmon_array,gps_array)
+        
         # Take out pulses with entry problems and roll with it
         #weirdpulses_mask = np.abs(ans['time']-gps_array_corr)<1e9
         #ans = ans[weirdpulses_mask]
@@ -377,7 +379,7 @@ class GPS_sync(strax.Plugin):
         t_events_gps = self.compute_time_array(aqmon_array, gps_array, evts['time'])
 
         ans = dict()
-        ans['time']  = evts['time']
+        ans['time'] = evts['time']
         ans['t_gps'] = t_events_gps
 
         return ans
