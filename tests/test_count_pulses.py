@@ -1,17 +1,16 @@
 from hypothesis import given, settings
-import strax
 import strax.testutils
 import straxen
 import numpy as np
 
 
-@settings(deadline=None)
+@settings(deadline=None, max_examples=10)
 @given(strax.testutils.several_fake_records)
 def test_count_pulses(records):
     _check_pulse_count(records)
 
 
-@settings(deadline=None)
+@settings(deadline=None, max_examples=10)
 @given(strax.testutils.several_fake_records_one_channel)
 def test_count_pulses_2(records):
     _check_pulse_count(records)

@@ -1,8 +1,6 @@
 import strax
 import straxen
-
 import numpy as np
-
 import hypothesis
 from hypothesis import given, settings
 import hypothesis.strategies as hst
