@@ -218,8 +218,8 @@ class OnlineSEMonitor(strax.Plugin):
              np.float32), 
             (('Reconstructed mlp peak y-position','y_mlp'), 
              np.float32), 
-            (('Width (in ns) of the central 50% area of the peak',
-            'range_50p_area'), np.float32),
+            (('Width (in ns) of the central 50% area of the peak','range_50p_area'),
+             np.float32),
             (('End time of the chunk', 'endtime'),
              np.int64),
         ]
