@@ -220,6 +220,8 @@ class OnlineSEMonitor(strax.Plugin):
              np.float32), 
             (('Width (in ns) of the central 50% area of the peak','range_50p_area'),
              np.float32),
+            (('Fraction of original peaks array length that is saved','weight'),
+             np.int64),
             (('End time of the chunk', 'endtime'),
              np.int64),
         ]
@@ -241,15 +243,18 @@ class OnlineSEMonitor(strax.Plugin):
             data = peaks
                 
         res = np.zeros(len(data), dtype=self.dtype)
-        res['time'] = start
-        
+        res['time'] = start        
         res['x_mlp'] = data['x_mlp']
-
         res['y_mlp'] = data['y_mlp']
-        
         res['area'] = data['area']
         res['range_50p_area'] = data['range_50p_area']
         res['endtime'] = end
+
+        if len(data):
+            res['weight'] = len(peaks)/len(data)
+        
+        else:
+            res['weight'] = 0
         
         return res
 
