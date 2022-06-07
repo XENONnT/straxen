@@ -180,7 +180,7 @@ class OnlinePeakMonitor(strax.Plugin):
 
 
 @export
-class OnlineSEMonitor(strax.Plugin):
+class IndividualPeakMonitor(strax.Plugin):
     """
     Plugin to write data needed for the online SE monitor to the 
     online-monitor collection in the runs-database. Data that is written by
@@ -192,19 +192,19 @@ class OnlineSEMonitor(strax.Plugin):
     they are not strictly related, they are aggregated into a single data_type
     in order to minimize the number of documents in the online monitor.
 
-    Produces 'online_se_monitor' with info on the peaks and their
+    Produces 'individual_peak_monitor' with info on the peaks and their
     positions.
     """
 
-    max_bytes = straxen.URLConfig(
+    online_max_bytes = straxen.URLConfig(
         default=10e6,
         track=True,
         help='Maximum amount of bytes of data for MongoDB document'
     )
 
     depends_on = ('peak_basics', 'peak_positions_mlp')
-    provides = 'online_se_monitor'
-    data_kind = 'online_se_monitor'
+    provides = 'individual_peak_monitor'
+    data_kind = 'individual_peak_monitor'
     __version__ = '0.0.1'
 
     def infer_dtype(self):
@@ -225,10 +225,10 @@ class OnlineSEMonitor(strax.Plugin):
     def compute(self, peaks):
         peaks_size = peaks.nbytes
 
-        if peaks_size > self.max_bytes:
+        if peaks_size > self.online_max_bytes:
             # Calculate fraction of the data that can be kept
             # to reduce datasize
-            new_len = int(len(peaks) / peaks_size * self.max_bytes)
+            new_len = int(len(peaks) / peaks_size * self.online_max_bytes)
             idx = np.random.choice(np.arange(len(peaks)), replace=False, size=new_len)
             data = peaks[np.sort(idx)]
 
