@@ -227,7 +227,7 @@ class OnlineSEMonitor(strax.Plugin):
         ]
         return dtype
 
-    def compute(self,peaks,start,end):
+    def compute(self,peaks):
 
         peaks_size = peaks.nbytes
         
@@ -243,12 +243,12 @@ class OnlineSEMonitor(strax.Plugin):
             data = peaks
                 
         res = np.zeros(len(data), dtype=self.dtype)
-        res['time'] = start        
+        res['time'] = data['time']       
         res['x_mlp'] = data['x_mlp']
         res['y_mlp'] = data['y_mlp']
         res['area'] = data['area']
         res['range_50p_area'] = data['range_50p_area']
-        res['endtime'] = end
+        res['endtime'] = data['endtime']
 
         if len(data):
             res['weight'] = len(peaks)/len(data)
