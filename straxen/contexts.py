@@ -3,7 +3,6 @@ import strax
 import straxen
 from copy import deepcopy
 from straxen import HAVE_ADMIX
-from straxen import OnlineMonitor
 import os
 import warnings
 import typing as ty
@@ -253,6 +252,7 @@ def xenonnt_online(output_folder: str = './strax_data',
         st.set_context_config(_context_config_overwrite)
 
     return st
+
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)

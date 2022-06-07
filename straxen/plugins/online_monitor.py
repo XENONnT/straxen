@@ -178,6 +178,7 @@ class OnlinePeakMonitor(strax.Plugin):
             bins=self.config['area_vs_width_nbins'])
         return hist.T
 
+
 @export
 class OnlineSEMonitor(strax.Plugin):
     """
@@ -206,44 +207,40 @@ class OnlineSEMonitor(strax.Plugin):
     data_kind = 'online_se_monitor'
     __version__ = '0.0.1'
 
-    
     def infer_dtype(self):
-        
         dtype = [
             (('Start time of the chunk', 'time'),
              np.int64),
-            (('Peak integral in PE','area'),
+            (('Peak integral in PE', 'area'),
              np.float32),
-            (('Reconstructed mlp peak x-position','x_mlp'), 
-             np.float32), 
-            (('Reconstructed mlp peak y-position','y_mlp'), 
-             np.float32), 
-            (('Width (in ns) of the central 50% area of the peak','range_50p_area'),
+            (('Reconstructed mlp peak x-position', 'x_mlp'),
              np.float32),
-            (('Fraction of original peaks array length that is saved','weight'),
+            (('Reconstructed mlp peak y-position', 'y_mlp'),
+             np.float32),
+            (('Width (in ns) of the central 50% area of the peak', 'range_50p_area'),
+             np.float32),
+            (('Fraction of original peaks array length that is saved', 'weight'),
              np.float32),
             (('End time of the chunk', 'endtime'),
              np.int64),
         ]
         return dtype
 
-    def compute(self,peaks):
-
+    def compute(self, peaks):
         peaks_size = peaks.nbytes
-        
+
         if peaks_size > self.max_bytes:
             # Calculate fraction of the data that can be kept
             # to reduce datasize
-            fraction = (self.max_bytes/peaks_size)
-            new_len = int(len(peaks)/peaks_size * self.max_bytes)
-            idx = np.random.choice(np.arange(len(peaks)),replace=False,size=new_len)
+            new_len = int(len(peaks) / peaks_size * self.max_bytes)
+            idx = np.random.choice(np.arange(len(peaks)), replace=False, size=new_len)
             data = peaks[np.sort(idx)]
-                             
+
         elif peaks_size <= self.max_bytes:
             data = peaks
-                
+
         res = np.zeros(len(data), dtype=self.dtype)
-        res['time'] = data['time']       
+        res['time'] = data['time']
         res['x_mlp'] = data['x_mlp']
         res['y_mlp'] = data['y_mlp']
         res['area'] = data['area']
@@ -251,12 +248,12 @@ class OnlineSEMonitor(strax.Plugin):
         res['endtime'] = data['endtime']
 
         if len(data):
-            res['weight'] = len(peaks)/len(data)
-        
+            res['weight'] = len(peaks) / len(data)
         else:
             res['weight'] = 0
-        
+
         return res
+
 
 @export
 @strax.takes_config(
