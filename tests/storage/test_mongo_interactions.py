@@ -7,8 +7,6 @@ not show up in Pull Requests.
 import straxen
 import os
 import unittest
-from pymongo import ReadPreference
-import warnings
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")

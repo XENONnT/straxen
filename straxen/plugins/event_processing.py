@@ -1,14 +1,13 @@
-from re import X
 import strax
 import numpy as np
 import numba
 import straxen
 from .position_reconstruction import DEFAULT_POSREC_ALGO
-from straxen.common import pax_file, get_resource, first_sr1_run
-from straxen.get_corrections import get_correction_from_cmt, get_cmt_resource, is_cmt_option
+from straxen.common import pax_file, get_resource, first_sr1_run, rotate_perp_wires
+from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
-export, __all__ = strax.exporter()
 
+export, __all__ = strax.exporter()
 
 @export
 @strax.takes_config(
@@ -36,6 +35,12 @@ export, __all__ = strax.exporter()
                  default=True, type=bool,
                  help='If true exclude S1s as triggering peaks.',
                  ),
+    strax.Option(name='event_s1_min_coincidence',
+                 default=2, infer_type=False,
+                 help="Event level S1 min coincidence. Should be >= "
+                      "s1_min_coincidence in the peaklet classification"),
+    strax.Option(name='s1_min_coincidence', default=2, type=int,
+                 help="Minimum tight coincidence necessary to make an S1"),
 )
 class Events(strax.OverlapWindowPlugin):
     """
@@ -56,7 +61,7 @@ class Events(strax.OverlapWindowPlugin):
     depends_on = ['peak_basics', 'peak_proximity']
     provides = 'events'
     data_kind = 'events'
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
     save_when = strax.SaveWhen.NEVER
 
     electron_drift_velocity = straxen.URLConfig(
@@ -75,6 +80,9 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     def setup(self):
+        if self.config['s1_min_coincidence'] > self.config['event_s1_min_coincidence']:
+            raise ValueError('Peak s1 coincidence requirement should be smaller '
+                             'or equal to event_s1_min_coincidence')
         self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
@@ -92,6 +100,11 @@ class Events(strax.OverlapWindowPlugin):
         _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
         if self.config['exclude_s1_as_triggering_peaks']:
             _is_triggering &= peaks['type'] == 2
+        else:
+            is_not_s1 = peaks['type'] != 1
+            has_tc_large_enough = (peaks['tight_coincidence']
+                                   >= self.config['event_s1_min_coincidence'])
+            _is_triggering &= (is_not_s1 | has_tc_large_enough)
 
         triggers = peaks[_is_triggering]
 
@@ -211,22 +224,21 @@ class EventBasics(strax.Plugin):
         """Needs to be run before inferring dtype as it is needed there"""
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
-            # name                dtype       comment
-            ('time',              np.int64,   'start time since unix epoch [ns]'),
-            ('center_time',       np.int64,   'weighted center time since unix epoch [ns]'),
-            ('endtime',           np.int64,   'end time since unix epoch [ns]'),
-            ('area',              np.float32, 'area, uncorrected [PE]'),
-            ('n_channels',        np.int16,   'count of contributing PMTs'),
-            ('n_hits',            np.int16,   'count of hits contributing at least one sample to the peak'),
-            ('n_competing',       np.int32,   'number of competing peaks'),
-            ('max_pmt',           np.int16,   'PMT number which contributes the most PE'),
-            ('max_pmt_area',      np.float32, 'area in the largest-contributing PMT (PE)'),
-            ('range_50p_area',    np.float32, 'width, 50% area [ns]'),
-            ('range_90p_area',    np.float32, 'width, 90% area [ns]'),
-            ('rise_time',         np.float32, 'time between 10% and 50% area quantiles [ns]'),
+            ('time', np.int64, 'start time since unix epoch [ns]'),
+            ('center_time', np.int64, 'weighted center time since unix epoch [ns]'),
+            ('endtime', np.int64, 'end time since unix epoch [ns]'),
+            ('area', np.float32, 'area, uncorrected [PE]'),
+            ('n_channels', np.int16, 'count of contributing PMTs'),
+            ('n_hits', np.int16, 'count of hits contributing at least one sample to the peak'),
+            ('n_competing', np.int32, 'number of competing peaks'),
+            ('max_pmt', np.int16, 'PMT number which contributes the most PE'),
+            ('max_pmt_area', np.float32, 'area in the largest-contributing PMT (PE)'),
+            ('range_50p_area', np.float32, 'width, 50% area [ns]'),
+            ('range_90p_area', np.float32, 'width, 90% area [ns]'),
+            ('rise_time', np.float32, 'time between 10% and 50% area quantiles [ns]'),
             ('area_fraction_top', np.float32, 'fraction of area seen by the top PMT array'),
             ('tight_coincidence', np.int16, 'Channel within tight range of mean'),
-            ('n_saturated_channels',      np.int16, 'Total number of saturated channels'),
+            ('n_saturated_channels', np.int16, 'Total number of saturated channels'),
         )
 
     def setup(self):
@@ -501,7 +513,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics', )
     
-    __version__ = '0.1.4'
+    __version__ = '0.1.5'
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
@@ -522,27 +534,50 @@ class EventPositions(strax.Plugin):
                 '?version=ONLINE&run_id=plugin.run_id',
         help='Electron drift time from the gate in ns',
         cache=True)
+    
+    def infer_dtype(self):
+        dtype = []
+        for j in 'x y r'.split():
+            comment = f'Main interaction {j}-position, field-distortion corrected (cm)'
+            dtype += [(j, np.float32, comment)]
+            for s_i in [1, 2]:
+                comment = f'Alternative S{s_i} interaction (rel. main S{int(2*(1.5-s_i)+s_i)}) {j}-position, field-distortion corrected (cm)'
+                field = f'alt_s{s_i}_{j}_fdc'
+                dtype += [(field, np.float32, comment)]
 
-    dtype = [
-        ('x', np.float32,
-         'Interaction x-position, field-distortion corrected (cm)'),
-        ('y', np.float32,
-         'Interaction y-position, field-distortion corrected (cm)'),
-        ('z', np.float32,
-         'Interaction z-position, using mean drift velocity only (cm)'),
-        ('r', np.float32,
-         'Interaction radial position, field-distortion corrected (cm)'),
-        ('z_naive', np.float32,
-         'Interaction z-position using mean drift velocity only (cm)'),
-        ('r_naive', np.float32,
-         'Interaction r-position using observed S2 positions directly (cm)'),
-        ('r_field_distortion_correction', np.float32,
-         'Correction added to r_naive for field distortion (cm)'),
-        ('z_field_distortion_correction', np.float32,
-         'Correction added to z_naive for field distortion (cm)'),
-        ('theta', np.float32,
-         'Interaction angular position (radians)')
-            ] + strax.time_fields
+        for j in ['z']:
+            comment = 'Interaction z-position, using mean drift velocity only (cm)'
+            dtype += [(j, np.float32, comment)]
+            for s_i in [1, 2]:
+                comment = f'Alternative S{s_i} z-position (rel. main S{int(2*(1.5-s_i)+s_i)}), using mean drift velocity only (cm)'
+                field = f'alt_s{s_i}_z'
+                dtype += [(field, np.float32, comment)]
+
+        naive_pos = []
+        fdc_pos = []
+        for j in 'r z'.split():
+            naive_pos += [(f'{j}_naive',
+                           np.float32,
+                           f'Main interaction {j}-position with observed position (cm)')]
+            fdc_pos += [(f'{j}_field_distortion_correction',
+                         np.float32,
+                         f'Correction added to {j}_naive for field distortion (cm)')]
+            for s_i in [1, 2]:
+                naive_pos += [(
+                    f'alt_s{s_i}_{j}_naive',
+                    np.float32,
+                    f'Alternative S{s_i} interaction (rel. main S{int(2*(1.5-s_i)+s_i)}) {j}-position with observed position (cm)')]
+                fdc_pos += [(f'alt_s{s_i}_{j}_field_distortion_correction',
+                             np.float32,
+                             f'Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)')]
+        dtype += naive_pos + fdc_pos
+        for s_i in [1, 2]:
+            dtype += [(f'alt_s{s_i}_theta',
+                       np.float32,
+                       f'Alternative S{s_i} (rel. main S{int(2*(1.5-s_i)+s_i)}) interaction angular position (radians)')]
+
+        dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
+        return dtype + strax.time_fields
 
     def setup(self):
         if isinstance(self.config['fdc_map'], str):
@@ -560,45 +595,58 @@ class EventPositions(strax.Plugin):
 
         else:
             raise NotImplementedError('FDC map format not understood.')
-
+            
     def compute(self, events):
 
         result = {'time': events['time'],
                   'endtime': strax.endtime(events)}
-        
-        z_obs = - self.electron_drift_velocity * (events['drift_time'] - self.electron_drift_time_gate)
-        orig_pos = np.vstack([events[f's2_x'], events[f's2_y'], z_obs]).T
-        r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-        delta_r = self.map(orig_pos)
+       
+        # s_i == 0 indicates the main event, while s_i != 0 means alternative S1 or S2 is used based on s_i value
+        # while the other peak is the main one (e.g., s_i == 1 means that the event is defined using altS1 and main S2)
+        for s_i in [0, 1, 2]:
+            
+            # alt_sx_interaction_drift_time is calculated between main Sy and alternative Sx
+            drift_time = events['drift_time'] if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
+            
+            z_obs = - self.electron_drift_velocity * drift_time
+            xy_pos = 's2_' if s_i != 2 else 'alt_s2_'
+            orig_pos = np.vstack([events[f'{xy_pos}x'], events[f'{xy_pos}y'], z_obs]).T
+            r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
+            delta_r = self.map(orig_pos)
+            z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
 
-        # apply radial correction
-        with np.errstate(invalid='ignore', divide='ignore'):
-            r_cor = r_obs + delta_r
-            scale = r_cor / r_obs
+            # apply radial correction
+            with np.errstate(invalid='ignore', divide='ignore'):
+                r_cor = r_obs + delta_r
+                scale = np.divide(r_cor, r_obs, out=np.zeros_like(r_cor), where=r_obs!=0)
 
-        # z correction due to longer drift time for distortion
-        # (geometrical reasoning not valid if |delta_r| > |z_obs|,
-        #  as cathetus cannot be longer than hypothenuse)
-        with np.errstate(invalid='ignore'):
-            z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-            invalid = np.abs(z_obs) < np.abs(delta_r)
-            # do not apply z correction above gate
-            invalid |= z_obs >= 0
-        z_cor[invalid] = z_obs[invalid]
-        delta_z = z_cor - z_obs
-
-        result.update({'x': orig_pos[:, 0] * scale,
-                       'y': orig_pos[:, 1] * scale,
-                       'r': r_cor,
-                       'r_naive': r_obs,
-                       'r_field_distortion_correction': delta_r,
-                       'theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
-                       'z_naive': z_obs,
-                       # using z_obs in agreement with the dtype description
-                       # the FDC for z (z_cor) is found to be not reliable (see #527)
-                       'z': z_obs,
-                       'z_field_distortion_correction': delta_z
-                       })
+            # z correction due to longer drift time for distortion
+            # calculated based on the Pythagorean theorem where
+            # the electron track is assumed to be a straight line
+            # (geometrical reasoning not valid if |delta_r| > |z_obs|,
+            #  as cathetus cannot be longer than hypothenuse)
+            with np.errstate(invalid='ignore'):
+                z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
+                invalid = np.abs(z_obs) < np.abs(delta_r)
+                # do not apply z correction above gate
+                invalid |= z_obs >= 0
+            z_cor[invalid] = z_obs[invalid]
+            delta_z = z_cor - z_obs
+            
+            pre_field = '' if s_i == 0 else f'alt_s{s_i}_'
+            post_field = '' if s_i == 0 else '_fdc'
+            result.update({f'{pre_field}x{post_field}': orig_pos[:, 0] * scale,
+                           f'{pre_field}y{post_field}': orig_pos[:, 1] * scale,
+                           f'{pre_field}r{post_field}': r_cor,
+                           f'{pre_field}r_naive': r_obs,
+                           f'{pre_field}r_field_distortion_correction': delta_r,
+                           f'{pre_field}theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
+                           f'{pre_field}z_naive': z_obs,
+                           # using z_obs in agreement with the dtype description
+                           # the FDC for z (z_cor) is found to be not reliable (see #527)
+                           f'{pre_field}z': z_obs,
+                           f'{pre_field}z_field_distortion_correction': delta_z
+                           })
 
         return result
 
@@ -620,7 +668,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.2.1'
+    __version__ = '0.3.0'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -668,6 +716,16 @@ class CorrectedAreas(strax.Plugin):
         default='cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id',
         help='Relative light yield (allows for time dependence)'
     )
+    
+    region_linear = straxen.URLConfig(
+        default=28,
+        help='linear cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
+    )
+    
+    region_circular = straxen.URLConfig(
+        default=60,
+        help='circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
+    )
 
     def infer_dtype(self):
         dtype = []
@@ -689,12 +747,21 @@ class CorrectedAreas(strax.Plugin):
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
                       (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
         return dtype
+    
+    def ab_region(self, x, y):
+        new_x, new_y = rotate_perp_wires(x, y)
+        cond = new_x < self.region_linear
+        cond &= new_x > -self.region_linear
+        cond &= new_x**2 + new_y**2 < self.region_circular**2
+        return cond
+    
+    def cd_region(self, x, y):
+        return ~self.ab_region(x, y)
 
     def compute(self, events):
-        result = dict(
-            time=events['time'],
-            endtime=strax.endtime(events)
-        )
+        result = np.zeros(len(events), self.dtype)
+        result['time'] = events['time']
+        result['endtime'] = events['endtime']
 
         # S1 corrections depend on the actual corrected event position.
         # We use this also for the alternate S1; for e.g. Kr this is
@@ -715,35 +782,66 @@ class CorrectedAreas(strax.Plugin):
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
 
+        regions = {'ab': self.ab_region, 'cd': self.cd_region}
+
+        # setup SEG and EE corrections
+        # if they are dicts, we just leave them as is
+        # if they are not, we assume they are floats and
+        # create a dict with the same correction in each region
+        if isinstance(self.se_gain, dict):
+            seg = self.se_gain
+        else:
+            seg = {key: self.se_gain for key in regions}
+
+        if isinstance(self.avg_se_gain, dict):
+            avg_seg = self.avg_se_gain
+        else:
+            avg_seg = {key: self.avg_se_gain for key in regions}
+
+        if isinstance(self.rel_extraction_eff, dict):
+            ee = self.rel_extraction_eff
+        else:
+            ee = {key: self.rel_extraction_eff for key in regions}
+
+        # now can start doing corrections
         for peak_type in ["", "alt_"]:
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y']]).T
-
+            
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-            cs2_top_xycorr = (events[f'{peak_type}s2_area'] * events[f'{peak_type}s2_area_fraction_top'] /
-                                    self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
-            cs2_bottom_xycorr = (events[f'{peak_type}s2_area'] *
-                                       (1 - events[f'{peak_type}s2_area_fraction_top']) /
-                                       self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
-
-            # Correct for SEgain and extraction efficiency
-            seg_ee_corr = (self.se_gain / self.avg_se_gain) * self.rel_extraction_eff
-            cs2_top_wo_elifecorr = cs2_top_xycorr / seg_ee_corr
-            cs2_bottom_wo_elifecorr = cs2_bottom_xycorr / seg_ee_corr
-            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
-
-            # cs2aft doesn't need elife/time corrections as they cancel
-            result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
-
-
+            
+            cs2_top_xycorr = (events[f'{peak_type}s2_area']
+                              * events[f'{peak_type}s2_area_fraction_top']
+                              / self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
+            cs2_bottom_xycorr = (events[f'{peak_type}s2_area']
+                                 * (1 - events[f'{peak_type}s2_area_fraction_top'])
+                                 / self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name))
+            
             # For electron lifetime corrections to the S2s,
             # use drift time computed using the main S1.
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
             result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
-            result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_elifecorr"] * elife_correction
-            result[f"{peak_type}cs2_bottom"] = cs2_bottom_wo_elifecorr * elife_correction
+
+            for partition, func in regions.items():
+                # partitioned SE and EE
+                partition_mask = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
+
+                # Correct for SEgain and extraction efficiency
+                seg_ee_corr = seg[partition]/avg_seg[partition]*ee[partition]
+
+                # note that these are already masked!
+                cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
+                cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[partition_mask] / seg_ee_corr
+
+                result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+
+                # cs2aft doesn't need elife/time corrections as they cancel
+                result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+
+                result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
+                result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
 
         return result
 
@@ -902,7 +1000,6 @@ class EventAmbience(strax.Plugin):
 
         # 1. Initialization, ambience is set to be the lowest possible value
         result = np.zeros(len(events), self.dtype)
-
         # 2. Assign peaks features to main S1, main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
             for idx, main_peak in zip([event['s1_index'], event['s2_index']], ['s1_', 's2_']):

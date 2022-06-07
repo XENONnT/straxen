@@ -342,11 +342,23 @@ def main():
     elif args.process:
         t_start = now()
         number = args.process
+
+        # Check whether the run is already processed
+        bootstrax_state = run_coll.find_one(
+            {'number': number},
+            projection={'bootstrax': True}).get('bootstrax', {}
+                                                ).get('state', 'no-state')
+        if args.production and bootstrax_state in ['done', 'busy', 'considering']:
+            message = f"It looks like run {number} is already processed."
+            log_warning(message, priority='fatal')
+            raise ValueError(message)
+            
         rd = consider_run({'number': number})
         if rd is None:
             message = f"Trying to process single run but no run numbered {number} exists"
             log_warning(message, priority='fatal')
             raise ValueError(message)
+
         set_state('busy')
         process_run(rd)
         log.info(
