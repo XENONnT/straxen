@@ -236,9 +236,8 @@ class OnlineSEMonitor(strax.Plugin):
             idx = np.random.choice(np.arange(len(peaks)), replace=False, size=new_len)
             data = peaks[np.sort(idx)]
 
-        elif peaks_size <= self.max_bytes:
+        else:  # peaks_size <= self.max_bytes:
             data = peaks
-
         res = np.zeros(len(data), dtype=self.dtype)
         res['time'] = data['time']
         res['x_mlp'] = data['x_mlp']
