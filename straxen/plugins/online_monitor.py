@@ -2,6 +2,7 @@ import strax
 import numpy as np
 from immutabledict import immutabledict
 from numpy import random
+import straxen
 
 export, __all__ = strax.exporter()
 
