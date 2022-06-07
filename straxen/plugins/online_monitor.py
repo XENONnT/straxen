@@ -209,8 +209,6 @@ class OnlineSEMonitor(strax.Plugin):
 
     def infer_dtype(self):
         dtype = [
-            (('Start time of the chunk', 'time'),
-             np.int64),
             (('Peak integral in PE', 'area'),
              np.float32),
             (('Reconstructed mlp peak x-position', 'x_mlp'),
@@ -221,9 +219,7 @@ class OnlineSEMonitor(strax.Plugin):
              np.float32),
             (('Fraction of original peaks array length that is saved', 'weight'),
              np.float32),
-            (('End time of the chunk', 'endtime'),
-             np.int64),
-        ]
+        ] + strax.time_fields
         return dtype
 
     def compute(self, peaks):
