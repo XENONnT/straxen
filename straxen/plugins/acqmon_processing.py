@@ -253,17 +253,12 @@ class GPS_sync(strax.Plugin):
     between the previous and next sync pulses. 
     """
         
-    __version__ ='0.1.0'
+    __version__ ='0.1.1'
     depends_on = ('aqmon_hits', 'event_info')
     provides = 'gps_sync'
     data_kind = 'events'
     
-    def infer_dtype(self):
-        dtype = [(('Time since unix epoch [ns]', 'time'), np.int64),
-                 (('GPS absolute time [ns]', 't_gps'), np.int64),
-                ]
-        return dtype
-
+    dtype = strax.time_fields + [(('GPS absolute time [ns]', 't_gps'), np.int64)]
 
     def gps_times_from_runid(self,run_id):
         '''
@@ -354,9 +349,9 @@ class GPS_sync(strax.Plugin):
             
         return l_gps_evt
 
-    def compute(self, aqmon_hits, event_info): 
+    def compute(self, aqmon_hits, events): 
         hits = aqmon_hits
-        evts = event_info
+        evts = events
 
         # Load pulses from aqmon
         aqmon_array = self.load_aqmon_array(hits)
@@ -380,6 +375,7 @@ class GPS_sync(strax.Plugin):
 
         ans = dict()
         ans['time'] = evts['time']
+        ans['endtime'] = evts['endtime']
         ans['t_gps'] = t_events_gps
 
         return ans
