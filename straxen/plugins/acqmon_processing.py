@@ -614,7 +614,7 @@ class DetectorSynchronization(strax.Plugin):
         return value-array[idx]
 
 @export
-class GPS_sync(strax.Plugin):
+class GpsSync(strax.Plugin):
     """
     Correct the event times to GPS time. 
       1. Finds the TTL GPS pulses coming into the AM from the gps 
