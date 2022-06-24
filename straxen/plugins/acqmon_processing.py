@@ -46,7 +46,7 @@ class AqmonHits(strax.Plugin):
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.1.2'
+    __version__ = '1.1.3'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -87,7 +87,8 @@ class AqmonHits(strax.Plugin):
     provides = 'aqmon_hits'
     data_kind = 'aqmon_hits'
 
-    dtype = strax.hit_dtype
+    wanted_fields = ['time', 'length', 'dt', 'channel', 'area']
+    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in wanted_fields]
 
     def compute(self, raw_records_aqmon):
         not_allowed_channels = (set(np.unique(raw_records_aqmon['channel']))
@@ -106,7 +107,13 @@ class AqmonHits(strax.Plugin):
         strax.baseline(records, baseline_samples=self.baseline_samples_aqmon, flip=True)
         aqmon_hits = self.find_aqmon_hits_per_channel(records)
         aqmon_hits = strax.sort_by_time(aqmon_hits)
-        return aqmon_hits
+
+        # in busy runs veto starts get split at chunk edges into two. we introduce hitlets:
+        aqmon_hitlets = strax.create_hitlets_from_hits(aqmon_hits, (0,0), [0, 1000])
+        to_pe = np.ones(808)  # stay in ADC units: these are NIM signals
+        aqmon_hitlets = strax.get_hitlets_data(aqmon_hitlets, records, to_pe=to_pe)
+
+        return aqmon_hitlets[self.wanted_fields]
 
     @property
     def aqmon_channels(self):
