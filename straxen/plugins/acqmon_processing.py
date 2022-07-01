@@ -41,8 +41,8 @@ class AqmonChannels(IntEnum):
 @export
 class AqmonHits(strax.Plugin):
     """
-    Find hits in acquisition monitor data. These hits could be
-    then used by other plugins for deadtime calculations,
+    Find hits in acquisition monitor data. Create hitlets to account for hits that are split.
+    These hitlets could be then used by other plugins for deadtime calculations,
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
