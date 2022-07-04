@@ -82,18 +82,13 @@ class AqmonHits(strax.Plugin):
         help='Crash if any of the pulses in raw_records_aqmon overlap with others '
              'in the same channel'
     )
-    wanted_fields = straxen.URLConfig(
-        default=['time', 'length', 'dt', 'channel', 'area'],
-        track=False,
-        help='Fields of hits that are actually needed, in order to save a little '
-             'disk space from unused zeros.'
-    )
 
     depends_on = 'raw_records_aqmon'
     provides = 'aqmon_hits'
     data_kind = 'aqmon_hits'
 
-    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in self.wanted_fields]
+    wanted_fields = ['time', 'length', 'dt', 'channel', 'area'],
+    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in AqmonHits.wanted_fields]
 
 
     def compute(self, raw_records_aqmon):
