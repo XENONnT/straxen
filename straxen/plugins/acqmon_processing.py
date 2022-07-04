@@ -87,8 +87,7 @@ class AqmonHits(strax.Plugin):
     provides = 'aqmon_hits'
     data_kind = 'aqmon_hits'
 
-    wanted_fields = ['time', 'length', 'dt', 'channel', 'area'],
-    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in AqmonHits.wanted_fields]
+    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in ['time', 'length', 'dt', 'channel', 'area']]
 
 
     def compute(self, raw_records_aqmon):
@@ -114,7 +113,7 @@ class AqmonHits(strax.Plugin):
         to_pe = np.ones(808)  # stay in ADC units: these are NIM signals
         aqmon_hitlets = strax.get_hitlets_data(aqmon_hitlets, records, to_pe=to_pe)
 
-        return aqmon_hitlets[self.wanted_fields]
+        return aqmon_hitlets[['time', 'length', 'dt', 'channel', 'area']]
 
     @property
     def aqmon_channels(self):
