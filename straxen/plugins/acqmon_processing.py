@@ -93,7 +93,7 @@ class AqmonHits(strax.Plugin):
     provides = 'aqmon_hits'
     data_kind = 'aqmon_hits'
 
-    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in wanted_fields]
+    dtype = [dt for dt in strax.hit_dtype if dt[0][1] in self.wanted_fields]
 
 
     def compute(self, raw_records_aqmon):
