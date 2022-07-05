@@ -38,15 +38,6 @@ class AqmonChannels(IntEnum):
     GPS_SYNC_MV = 1084
 
 
-class AqmonDtype():
-    """Many fields of the hit dtype are not required for AQMon Hits.
-       Just store the fields needed. This also saves the creation
-       of some fields, as well as the diskspace to store zeros."""
-    def __init__(self):
-        self.wanted_fields = ['time', 'length', 'dt', 'channel', 'area']
-        self.dtype = [dt for dt in strax.hit_dtype if dt[0][1] in self.wanted_fields]
-
-
 @export
 class AqmonHits(strax.Plugin):
     """
@@ -96,7 +87,10 @@ class AqmonHits(strax.Plugin):
     provides = 'aqmon_hits'
     data_kind = 'aqmon_hits'
 
-    dtype = AqmonDtype().dtype
+    def infer_dtype(self):
+        wanted_fields = ['time', 'length', 'dt', 'channel', 'area']
+        dtype = [dt for dt in strax.hit_dtype if dt[0][1] in wanted_fields]
+        return dtype
 
 
     def compute(self, raw_records_aqmon):
@@ -122,7 +116,7 @@ class AqmonHits(strax.Plugin):
         to_pe = np.ones(808)  # stay in ADC units: these are NIM signals
         aqmon_hitlets = strax.get_hitlets_data(aqmon_hitlets, records, to_pe=to_pe)
 
-        return aqmon_hitlets[AqmonDtype().wanted_fields]
+        return aqmon_hitlets[self.dtype.names]
 
     @property
     def aqmon_channels(self):
@@ -142,7 +136,7 @@ class AqmonHits(strax.Plugin):
 
         if np.sum(is_artificial):
             aqmon_hits = np.concatenate([
-                aqmon_hits[AqmonDtype().wanted_fields],
+                aqmon_hits[self.dtype.names],
                 self.get_deadtime_hits(records[is_artificial])])
         return aqmon_hits
 
@@ -151,7 +145,7 @@ class AqmonHits(strax.Plugin):
         Actually, the artificial deadtime hits are already an interval so
         we only have to copy the appropriate hits
         """
-        hits = np.zeros(len(artificial_deadtime), dtype=AqmonDtype().dtype)
+        hits = np.zeros(len(artificial_deadtime), dtype=self.dtype)
         hits['time'] = artificial_deadtime['time']
         hits['dt'] = artificial_deadtime['dt']
         hits['length'] = artificial_deadtime['length']
@@ -313,7 +307,8 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
     @staticmethod
     def fake_hit(start, dt=1, length=1):
-        hit = np.zeros(1, AqmonDtype().dtype)
+        aqmon_hit_dtype = strax.unpack_dtype(self.deps['aqmon_hits'].dtype_for('aqmon_hits'))
+        hit = np.zeros(1, aqmon_hit_dtype)
         hit['time'] = start
         hit['dt'] = dt
         hit['length'] = length
