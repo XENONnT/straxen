@@ -142,7 +142,8 @@ class AqmonHits(strax.Plugin):
 
         if np.sum(is_artificial):
             aqmon_hits = np.concatenate([
-                aqmon_hits, self.get_deadtime_hits(records[is_artificial])])
+                aqmon_hits[AqmonDtype().wanted_fields],
+                self.get_deadtime_hits(records[is_artificial])])
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
