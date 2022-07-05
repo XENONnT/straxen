@@ -150,7 +150,7 @@ class AqmonHits(strax.Plugin):
         Actually, the artificial deadtime hits are already an interval so
         we only have to copy the appropriate hits
         """
-        hits = np.zeros(len(artificial_deadtime), dtype=self.dtype)
+        hits = np.zeros(len(artificial_deadtime), dtype=AqmonDtype().dtype)
         hits['time'] = artificial_deadtime['time']
         hits['dt'] = artificial_deadtime['dt']
         hits['length'] = artificial_deadtime['length']
