@@ -47,7 +47,6 @@ class DummyAqmonHits(strax.Plugin):
     depends_on = ()
     parallel = False
     provides = straxen.AqmonHits.provides
-    dtype = straxen.AqmonHits.dtype
     save_when = strax.SaveWhen.NEVER
 
     # Keep track for we need this from plugin to plugin
@@ -66,6 +65,9 @@ class DummyAqmonHits(strax.Plugin):
 
     def is_ready(self, chunk_i):
         return chunk_i < len(self.vetos_per_chunk)
+
+    def infer_dtype(self):
+        return strax.unpack_dtype(self.deps['aqmon_hits'].dtype_for('aqmon_hits'))
 
     def compute(self, chunk_i):
         if chunk_i == 0:
