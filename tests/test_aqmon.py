@@ -67,7 +67,8 @@ class DummyAqmonHits(strax.Plugin):
         return chunk_i < len(self.vetos_per_chunk)
 
     def infer_dtype(self):
-        return strax.unpack_dtype(self.deps['aqmon_hits'].dtype_for('aqmon_hits'))
+        hit_class = straxen.AqmonHits()
+        return hit_class.infer_dtype()
 
     def compute(self, chunk_i):
         if chunk_i == 0:
