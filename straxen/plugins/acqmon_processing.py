@@ -305,8 +305,8 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
         return veto_hits_start, veto_hits_stop
 
-    @staticmethod
-    def fake_hit(start, dt=1, length=1):
+
+    def fake_hit(self, start, dt=1, length=1):
         aqmon_hit_dtype = strax.unpack_dtype(self.deps['aqmon_hits'].dtype_for('aqmon_hits'))
         hit = np.zeros(1, aqmon_hit_dtype)
         hit['time'] = start
