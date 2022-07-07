@@ -116,7 +116,7 @@ class AqmonHits(strax.Plugin):
         to_pe = np.ones(808)  # stay in ADC units: these are NIM signals
         aqmon_hitlets = strax.get_hitlets_data(aqmon_hitlets, records, to_pe=to_pe)
 
-        return aqmon_hitlets[self.dtype.names]
+        return aqmon_hitlets[list(self.dtype.names)]
 
     @property
     def aqmon_channels(self):
@@ -136,7 +136,7 @@ class AqmonHits(strax.Plugin):
 
         if np.sum(is_artificial):
             aqmon_hits = np.concatenate([
-                aqmon_hits[self.dtype.names],
+                aqmon_hits[list(self.dtype.names)],
                 self.get_deadtime_hits(records[is_artificial])])
         return aqmon_hits
 
