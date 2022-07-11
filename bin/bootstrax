@@ -118,11 +118,13 @@ timeouts = {
     # Escalates exponentially on repeated failures: 1x, 5x, 25x, 125x, 125x, 125x, ...
     # Some jitter is applied: actual delays will randomly be 0.5 - 1.5x as long
     'retry_run': 60,
-    # Maximum time for strax to complete a processing
+    # Maximum time [s] for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    'max_processing_time': 7200,
+    'max_processing_time': 24*3600,
+    # Max processing time [s] for bootstrax to finish processing after run ended
+    'max_processing_time_after_completion': 3600,
     # Sleep between checking whether a strax process is alive
-    'check_on_strax': 10,
+    'check_on_strax': 60,
     # Maximum time a run is 'busy' without a further update from
     # its responsible bootstrax. Bootstrax normally updates every
     # check_on_strax seconds, so make sure this is substantially
@@ -1456,13 +1458,23 @@ def process_run(rd, send_heartbeats=args.production):
                 if t0 < now(-timeouts['max_processing_time']):
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
                     kill_process(strax_proc.pid)
-                # Still working, check in later
-                # TODO: is there a good way to detect hangs, before max_processing_time expires?
+
+                elif end_time := run_coll.find_one({'_id': rd['_id']},
+                                                   projection={'end': 1}
+                                                   ).get('end', None) is not None:
+                    if end_time < now(-timeouts['max_processing_time_after_completion']):
+                        fail(f"After the run ended, processing did not succeed in "
+                             f"{timeouts['max_processing_time_after_completion']} sec")
+                        kill_process(strax_proc.pid)
+
+                elif args.production:
+                    # TODO maybe add a small if statement to check if the last raw-records chunk
+                    #  that was written to disk is less than ~60 s old? That would be a very
+                    #  effective check against hangs 
+                    set_run_state(rd, 'busy', **info)
+                    time.sleep(timeouts['check_on_strax'])
 
                 log.info(f"Still processing run {run_id}")
-                if args.production:
-                    set_run_state(rd, 'busy', **info)
-                time.sleep(timeouts['check_on_strax'])
                 continue
 
             elif ec == 0:
