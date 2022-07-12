@@ -1481,9 +1481,11 @@ def process_run(rd, send_heartbeats=args.production):
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
                     kill_process(strax_proc.pid)
 
-                elif end_time := run_coll.find_one({'_id': rd['_id']},
+                elif (end_time := run_coll.find_one({'_id': rd['_id']},
                                                    projection={'end': 1}
-                                                   ).get('end', None) is not None:
+                                                   ).get('end', None)
+                                                   ) is not None:
+                    end_time = end_time.replace(tzinfo=pytz.utc)
                     if end_time < now(-timeouts['max_processing_time_after_completion']):
                         fail(f"After the run ended, processing did not succeed in "
                              f"{timeouts['max_processing_time_after_completion']} sec")
