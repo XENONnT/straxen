@@ -1477,31 +1477,28 @@ def process_run(rd, send_heartbeats=args.production):
                 send_heartbeat(update)
             ec = strax_proc.exitcode
             if ec is None:
-                # fail(bla) raises RunFailed so no need for elifs
+                # fail(bla) raises RunFailed so no need for elifs. Make sure to
+                # kill main process before raising errors in fail(bla)
+
+                # Fail because we are taking a very long time to process
                 if t0 < now(-timeouts['max_processing_time']):
                     kill_process(strax_proc.pid)
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
-                    
 
-                if (
-                (end_time := run_coll.find_one({'_id': rd['_id']},
-                        projection={'end': 1}
-                        ).get('end', None)
-                        ) is not None
-                and t0 < now(-timeouts['max_processing_time_after_completion'])
-                ):
+                # Fail because we are taking a very long time to process despite the run having ended
+                if (run_coll.find_one({'_id': rd['_id']}, projection={'end': 1}).get('end', None) is not None
+                    and t0 < now(-timeouts['max_processing_time_after_completion'])):
                         kill_process(strax_proc.pid)
                         fail(f"After the run ended, processing did not succeed in "
-                             f"{timeouts['max_processing_time_after_completion']} sec")
-                if (
-                    t0 < now(-timeouts['max_no_write_time'])
-                    and
-                    (last_write := last_file_write_time(os.path.join(output_folder, f'{run_id}*'))
-                    ) < now(-timeouts['max_no_write_time'])
-                ):
+                             f"{timeouts['max_processing_time_after_completion']} sec.")
+
+                # Fail because for some reason, we are not writing any new files to disk.
+                if (t0 < now(-timeouts['max_no_write_time'])
+                    and (last_write := last_file_write_time(os.path.join(output_folder, f'{run_id}*'))
+                        ) < now(-timeouts['max_no_write_time'])):
                     kill_process(strax_proc.pid)
                     fail(f"No data written for {timeouts['max_no_write_time']} sec. Last write is from {last_write}")
-                    
+
                 if args.production:
                     set_run_state(rd, 'busy', **info)
                 time.sleep(timeouts['check_on_strax'])
