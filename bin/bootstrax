@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.2.1'
+__version__ = '1.3.0'
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -31,7 +31,7 @@ import time
 import traceback
 import numpy as np
 import pymongo
-from psutil import pid_exists, disk_usage
+from psutil import pid_exists, disk_usage, Process
 import pytz
 import strax
 import straxen
@@ -121,13 +121,13 @@ timeouts = {
     'retry_run': 60,
     # Maximum time [s] for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    'max_processing_time': 24*3600,
+    'max_processing_time': 24*36000,
     # Max processing time [s] for bootstrax to finish processing after run ended
     'max_processing_time_after_completion': 6*3600,
     # Every this many [s] we should have at least one new file written to disk
-    'max_no_write_time': 15*60,
+    'max_no_write_time': 30*60,
     # Sleep between checking whether a strax process is alive
-    'check_on_strax': 60,
+    'check_on_strax': 10,
     # Maximum time a run is 'busy' without a further update from
     # its responsible bootstrax. Bootstrax normally updates every
     # check_on_strax seconds, so make sure this is substantially
@@ -460,24 +460,24 @@ def now(plus=0):
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
 
 
-def kill_process(pid, wait_time=None):
-    """Kill process pid, or raise RuntimeError if we cannot
-    :param wait_time: time to wait before escalating signal strength
-    """
-    if wait_time is None:
-        wait_time = timeouts['signal_escalate']
+def kill_process(pid):
+    """Kill process pid"""
+    log.warning(f'Kill PID:{pid}')
     if not pid_exists(pid):
+        log.warning(f'No PID:{pid}')
         return
 
-    for sig in [signal.SIGTERM, signal.SIGKILL, 'die']:
-        time.sleep(wait_time)
-        if not pid_exists(pid):
-            return
-        if signal == 'die':
-            message = f"Could not kill process {pid}"
-            log_warning(message, priority='fatal')
-            raise RuntimeError(message)
-        os.kill(pid, sig)
+    parent = Process(pid)
+    for child in parent.children(recursive=True):
+        child.kill()
+    parent.kill()
+
+    # Just make it extra dead
+    os.kill(pid, signal.SIGKILL)
+
+    if pid_exists(pid):
+        message = f"Could not kill process {pid}?!"
+        log_warning(message, priority='fatal')        
 
 
 def _remove_veto_from_t(targets: ty.Union[str, list, tuple],
@@ -1477,27 +1477,35 @@ def process_run(rd, send_heartbeats=args.production):
                 send_heartbeat(update)
             ec = strax_proc.exitcode
             if ec is None:
+                # fail(bla) raises RunFailed so no need for elifs
                 if t0 < now(-timeouts['max_processing_time']):
-                    fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
                     kill_process(strax_proc.pid)
+                    fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
+                    
 
-                elif (end_time := run_coll.find_one({'_id': rd['_id']},
-                                                   projection={'end': 1}
-                                                   ).get('end', None)
-                                                   ) is not None:
-                    end_time = end_time.replace(tzinfo=pytz.utc)
-                    if end_time < now(-timeouts['max_processing_time_after_completion']):
+                if (
+                (end_time := run_coll.find_one({'_id': rd['_id']},
+                        projection={'end': 1}
+                        ).get('end', None)
+                        ) is not None
+                and t0 < now(-timeouts['max_processing_time_after_completion'])
+                ):
+                        kill_process(strax_proc.pid)
                         fail(f"After the run ended, processing did not succeed in "
                              f"{timeouts['max_processing_time_after_completion']} sec")
-                        kill_process(strax_proc.pid)
-                elif last_write := last_file_write_time(os.path.join(output_folder, f'{run_id}*')) < now(-timeouts['max_no_rr_write_time']):
-                    fail(f"No data written for {timeouts['max_no_write_time']} sec. Last write is from {last_write}")
+                if (
+                    t0 < now(-timeouts['max_no_write_time'])
+                    and
+                    (last_write := last_file_write_time(os.path.join(output_folder, f'{run_id}*'))
+                    ) < now(-timeouts['max_no_write_time'])
+                ):
                     kill_process(strax_proc.pid)
-                elif args.production:
+                    fail(f"No data written for {timeouts['max_no_write_time']} sec. Last write is from {last_write}")
+                    
+                if args.production:
                     set_run_state(rd, 'busy', **info)
-                    time.sleep(timeouts['check_on_strax'])
-
-                log.info(f"Still processing run {run_id}")
+                time.sleep(timeouts['check_on_strax'])
+                log.info(f"Still processing run {run_id}. PID:{strax_proc.pid}")
                 continue
 
             elif ec == 0:
