@@ -18,6 +18,7 @@ https://straxen.readthedocs.io/en/latest/bootstrax.html
 __version__ = '1.3.0'
 
 import argparse
+import typing
 from datetime import datetime, timedelta, timezone
 import logging
 import multiprocessing
@@ -1127,6 +1128,9 @@ def upload_file_metadata(rd):
                  })
 
 
+def get_end_time(rd) -> typing.Optional[datetime]:
+    return run_coll.find_one({'_id': rd['_id']}, projection={'end': 1}).get('end', None)
+
 def set_status_finished(rd):
     """Set the status to ready to upload for datamanager and admix"""
     # Check mongo connection
@@ -1486,7 +1490,7 @@ def process_run(rd, send_heartbeats=args.production):
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
 
                 # Fail because we are taking a very long time to process despite the run having ended
-                if (run_coll.find_one({'_id': rd['_id']}, projection={'end': 1}).get('end', None) is not None
+                if (get_end_time(rd) is not None
                     and t0 < now(-timeouts['max_processing_time_after_completion'])):
                         kill_process(strax_proc.pid)
                         fail(f"After the run ended, processing did not succeed in "
@@ -1536,8 +1540,8 @@ def process_run(rd, send_heartbeats=args.production):
                         fail("Processing succeeded, but no chunks were written!")
 
                     log.info(f"Check that run has ended")
-                    rd = get_run(mongo_id=rd['_id'])
-                    if 'end' not in rd or rd['end'] is None:
+                    end_time=get_end_time(rd)
+                    if end_time is None:
                         fail("Processing succeeded, but run hasn't yet ended!")
 
                     log.info(f"Check the processing time of the run")
@@ -1551,7 +1555,7 @@ def process_run(rd, send_heartbeats=args.production):
                                  min([x.get('first_time', 10e9 * 1e9) for x in
                                       md['chunks']])) / 1e9)
                     log.info(f"Compute runtime")
-                    run_duration = rd['end'] - rd['start']
+                    run_duration = end_time - rd['start']
                     if not (0 < t_covered.seconds < float('inf')):
                         fail(f"Processed data covers {t_covered} sec")
                     if not (timedelta(seconds=-max_timetamp_diff)
