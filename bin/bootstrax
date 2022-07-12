@@ -124,8 +124,8 @@ timeouts = {
     'max_processing_time': 24*3600,
     # Max processing time [s] for bootstrax to finish processing after run ended
     'max_processing_time_after_completion': 6*3600,
-    # Every this many [s] we should have at least one new raw-records entry written to disk
-    'max_no_write_time': 5*60,
+    # Every this many [s] we should have at least one new file written to disk
+    'max_no_write_time': 15*60,
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 60,
     # Maximum time a run is 'busy' without a further update from
@@ -1345,21 +1345,24 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
             f.write(exc_info)
         raise
 
-def last_file_write_time(base_location: str) -> datetime:
+def last_file_write_time(match_location: str) -> datetime:
     """
     Get the datetime in UTC of the last file that was written in raw-records*
-    :param base_location: Location where runs are written to
+    :param match_location: Location where runs are written to
     :return: TZ aware timestamp
     """
-    last_time = datetime.datetime.fromtimestamp(0).replace(tzinfo=pytz.utc)
-    for rr_dir in glob(os.path.join(base_location, 'raw_records*')):
+    last_time = datetime.fromtimestamp(0).replace(tzinfo=pytz.utc)
+    matched_folders = glob(match_location)
+    for folder in matched_folders:
         # check last three files only
-        rr_files = sorted(glob(os.path.join(rr_dir, '*')))[-3:]
-        for rr_chunk in rr_files:
-            chunk_write_time = datetime.fromtimestamp(
-                os.stat(rr_chunk).st_mtime
-            ).replace(tzinfo=pytz.utc)
-            last_time = max(last_time, chunk_write_time)
+        chunk_files = sorted(glob(os.path.join(folder, '*')))[-3:]
+        for chunk in chunk_files:
+            # Check that we did not rename this file since the glob above
+            if os.path.exists(chunk):
+                chunk_write_time = datetime.fromtimestamp(
+                    os.stat(chunk).st_mtime
+                ).replace(tzinfo=pytz.utc)
+                last_time = max(last_time, chunk_write_time)
     return last_time
 
 def process_run(rd, send_heartbeats=args.production):
@@ -1485,8 +1488,8 @@ def process_run(rd, send_heartbeats=args.production):
                         fail(f"After the run ended, processing did not succeed in "
                              f"{timeouts['max_processing_time_after_completion']} sec")
                         kill_process(strax_proc.pid)
-                elif last_file_write_time(os.path.join(output_folder, run_id)) < now(-timeouts['max_no_write_time']):
-                    fail(f"No raw-records written for {timeouts['max_no_write_time']} sec")
+                elif last_write := last_file_write_time(os.path.join(output_folder, f'{run_id}*')) < now(-timeouts['max_no_rr_write_time']):
+                    fail(f"No data written for {timeouts['max_no_write_time']} sec. Last write is from {last_write}")
                     kill_process(strax_proc.pid)
                 elif args.production:
                     set_run_state(rd, 'busy', **info)
