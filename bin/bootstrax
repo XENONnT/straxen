@@ -1035,11 +1035,16 @@ def check_data_written(rd):
     on this host
     """
     files_written = 0
-    for ddoc in rd['data']:
+
+    # Fetch the rd again -> to see status of 'data' field
+    new_rd = get_run(mongo_id=rd['_id'], full_doc=True)
+    log.debug(new_rd['data'])
+    for ddoc in new_rd['data']:
         ddoc_loc = ddoc.get('location', 'NO LOCATION')
         ddoc_host = ddoc.get('host', 'NO HOST')
-        log.debug(f'Checking {ddoc_loc} on {ddoc_host}')
+        log.debug(f'Checking {ddoc_loc} on {ddoc_host} (current {hostname})')
         if ddoc_host == hostname:
+            log.debug(f'Counting files {ddoc_loc} on {ddoc_host}')
             if os.path.exists(ddoc_loc):
                 log.debug(f'{ddoc_loc} written')
                 files_written += 1
