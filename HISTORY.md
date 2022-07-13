@@ -5,9 +5,9 @@ v1.8.2 / 2022-07-12
 * Allow long runs by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1062
 
 Notes:
-* No lineage
+* No lineage changes
 
-Full Changelog: 
+Full Changelog:
 - https://github.com/XENONnT/straxen/compare/v1.8.1...v1.8.2
 
 
