@@ -240,6 +240,38 @@ class URLConfig(strax.Config):
         df = cls.protocol_descr()
         print(df)
 
+    @classmethod
+    def evaluate_dry(cls, url: str, **kwargs):
+        """
+        Utility function to quickly test and evaluate URL configs,
+        without the initialization of plugins (so no plugin attributes).
+
+        example::
+
+            from straxen import URLConfig
+            url_string='cmt://electron_drift_velocity?run_id=027000&version=v3'
+            URLConfig.evaluate_dry(url_string)
+
+            # or similarly
+            url_string='cmt://electron_drift_velocity?version=v3'
+            URLConfig.evaluate_dry(url_string, run_id='027000')
+
+        Please note that this has to be done outside of the plugin, so any
+        attributes of the plugin are not yet note to this dry evaluation
+        of the url-string.
+
+        :param url: URL to evaluate, see above for example.
+        :keyword: any additional kwargs are passed to self.dispatch (see example)
+        :return: evaluated value of the URL.
+        """
+        if cls.PLUGIN_ATTR_PREFIX in url:
+            raise ValueError(
+                'You specified at least one parameter that depends on the '
+                'plugin. We cannot fetch this in the dry run. Try replacing '
+                'e.g. plugin.run_id=027000 with run_id=027000 (or pass as an '
+                'extra kwargs)')
+        url_arg, url_kwarg = cls.split_url_kwargs(url)
+        return cls.dispatch(cls, url_arg, **url_kwarg, **kwargs)
 
 @URLConfig.register('cmt')
 def get_correction(name: str,

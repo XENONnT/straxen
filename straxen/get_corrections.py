@@ -85,7 +85,7 @@ def get_correction_from_cmt(run_id, conf):
 
         # special case constant single value or list of values.
         elif 'constant' in model_conf:
-            if not isinstance(cte_value, (float, int, str, list)):
+            if not isinstance(cte_value, (float, int, str, list, tuple)):
                 raise ValueError(f"User specify a model type {model_conf} "
                                  "and should provide a number or list of numbers. Got: "
                                  f"{type(cte_value)}")

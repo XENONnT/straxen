@@ -334,7 +334,8 @@ def start_alive_thread(log, print_timeout):
     from threading import Thread
     thread = Thread(name='Ping alive',
                     target=print_is_alive,
-                    args=(log, print_timeout))
+                    args=(log, print_timeout),
+                    daemon=True)
     log.info(f'Starting thread to ping that we are still running')
     thread.start()
 
@@ -346,5 +347,6 @@ if __name__ == '__main__':
 
         mem = memory_usage(proc=(main, [args], dict()))
         print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
+        sys.exit()
     else:
         sys.exit(main(args))
