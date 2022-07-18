@@ -1,6 +1,17 @@
+v1.8.3 / 2022-07-18
+-------------------
+* Bootstrax file-check fix by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1064
+* Fix hanging straxer by @jmosbacher in https://github.com/XENONnT/straxen/pull/1065
+
+Notes:
+* No lineage changes
+
+Full Changelog:
+ - https://github.com/XENONnT/straxen/compare/v1.8.2...v1.8.3
+
+
 v1.8.2 / 2022-07-12
 -------------------
-## What's Changed
 * Stop tf pbar by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1063
 * Allow long runs by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1062
 
