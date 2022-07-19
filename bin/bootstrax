@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
 import argparse
 import typing
@@ -124,7 +124,7 @@ timeouts = {
     # if exceeded, strax will be killed by bootstrax
     'max_processing_time': 24*36000,
     # Max processing time [s] for bootstrax to finish processing after run ended
-    'max_processing_time_after_completion': 6*3600,
+    'max_processing_time_after_completion': 13*3600,
     # Every this many [s] we should have at least one new file written to disk
     'max_no_write_time': 30*60,
     # Sleep between checking whether a strax process is alive
