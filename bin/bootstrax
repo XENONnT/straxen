@@ -1545,7 +1545,8 @@ def process_run(rd, send_heartbeats=args.production):
                         fail("Processing succeeded, but no chunks were written!")
 
                     log.info(f"Check that run has ended")
-                    end_time=get_end_time(rd)
+                    rd = get_run(mongo_id = rd['_id'])
+                    end_time = rd.get('end')
                     if end_time is None:
                         fail("Processing succeeded, but run hasn't yet ended!")
 
