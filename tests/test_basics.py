@@ -1,4 +1,3 @@
-import numpy as np
 import straxen
 import tempfile
 import os
@@ -37,25 +36,6 @@ class TestBasics(unittest.TestCase):
         print(run_df)
         run_id = run_df.iloc[0]['name']
         assert run_id == test_run_id_1T
-
-    def test_processing(self):
-        df = self.st.get_df(self.run_id, 'event_info')
-
-        assert len(df) > 0
-        assert 'cs1' in df.columns
-        assert df['cs1'].sum() > 0
-        assert not np.all(np.isnan(df['x'].values))
-
-    def test_event_info_double(self):
-        df = self.st.get_df(self.run_id, 'event_info_double')
-        assert 'cs2_a' in df.columns
-        assert df['cs2_a'].sum() > 0
-        assert len(df) > 0
-
-    def test_get_livetime_sec(self):
-        st = self.st
-        events = st.get_array(self.run_id, 'events')
-        straxen.get_livetime_sec(st, test_run_id_1T, things=events)
 
     def test_mini_analysis(self):
         @straxen.mini_analysis(requires=('raw_records',))

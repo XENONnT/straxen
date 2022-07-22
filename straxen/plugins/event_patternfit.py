@@ -351,7 +351,9 @@ class EventPatternFit(strax.Plugin):
                 s2_pos = np.stack((x, y)).T[s2_mask]
                 s2_pat = events[t_ + '_area_per_channel'][s2_mask, 0:self.config['n_top_pmts']]
                 # Output[0]: loss function, -2*log-likelihood, Output[1]: chi2
-                result[t_ + '_neural_2llh'][s2_mask] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
+                result[t_ + '_neural_2llh'][s2_mask] = self.model_chi2.predict(
+                    {'xx': s2_pos, 'yy': s2_pat},
+                    verbose=0)[1]
 
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
