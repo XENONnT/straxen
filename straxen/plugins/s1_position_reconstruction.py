@@ -195,3 +195,4 @@ class S1EventPosition(strax.MergeOnlyPlugin):
         for xyz in ('x', 'y', 'z'):
             result[xyz] = events[f'{xyz}_{algorithm}']
         return result
+        
