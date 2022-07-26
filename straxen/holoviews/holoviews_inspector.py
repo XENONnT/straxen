@@ -260,6 +260,7 @@ class EventStats(param.Parameterized):
                        )
         return hist
     
+    
     def _plot_selected_event(self, 
                              x_field: str, 
                              y_field:str, 
@@ -268,17 +269,30 @@ class EventStats(param.Parameterized):
         """
         point_x = self.events[x_field][index]
         point_y = self.events[y_field][index]
+        _is_nan = (np.isnan(point_x) or np.isnan(point_y))
+        if not _is_nan:
+            selected_points = hv.Points(
+                (point_x, 
+                 point_y),
+                [self.x_field_widget.value,
+                 self.y_field_widget.value
+                ]
+            ).opts(color='red', size=7, alpha=1)
+
+            hline = hv.HLine(point_y).opts(color='red', alpha=0.4)
+            vline = hv.VLine(point_x).opts(color='red', alpha=0.4)
+        else:
+            # In case one of the parameters is not defined 
+            # plot invisilbe point
+            selected_points = hv.Points(
+                (0, 
+                 0),
+                [self.x_field_widget.value,
+                 self.y_field_widget.value
+                ]
+            ).opts(color='k', alpha=0, size=7)
+
+            hline = hv.HLine(0).opts(color='k', alpha=0)
+            vline = hv.VLine(0).opts(color='k', alpha=0)
         
-        selected_points = hv.Points(
-            (point_x, 
-             point_y),
-            [self.x_field_widget.value,
-             self.y_field_widget.value
-            ]
-        ).opts(color='red', size=7)
-        
-        hline = hv.HLine(point_y).opts(color='red', alpha=0.4)
-        vline = hv.VLine(point_x).opts(color='red', alpha=0.4)
         return selected_points*hline*vline
-    
-    
