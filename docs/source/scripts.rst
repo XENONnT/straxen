@@ -26,6 +26,16 @@ For more information on the options, please refer to the help:
     straxer --help
 
 
+straxen-print_versions
+----------------------
+``straxen-print_versions`` is a small bin utility that wraps around ``straxen.print_versions``.
+It allows one to quickly print which installation paths are used, such as for example:
+
+.. code-block:: bash
+
+    straxen-print_versions strax straxen cutax wfsim pema
+
+
 ajax [DAQ-only]
 ----------------
 The DAQ-cleaning script. Data is stored on the DAQ such that other tools

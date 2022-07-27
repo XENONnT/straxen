@@ -1,8 +1,9 @@
 # File for the requirements of the documentation
 commonmark==0.9.1
-graphviz==0.19.1
+graphviz==0.20.1
 m2r==0.2.1
-nbsphinx==0.8.8
+nbsphinx==0.8.9
 recommonmark==0.7.1
-sphinx==4.4.0
+sphinx==5.1.1
 sphinx_rtd_theme==1.0.0
+Jinja2==3.0.3

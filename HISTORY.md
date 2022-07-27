@@ -1,3 +1,151 @@
+v1.8.3 / 2022-07-18
+-------------------
+* Bootstrax file-check fix by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1064
+* Fix hanging straxer by @jmosbacher in https://github.com/XENONnT/straxen/pull/1065
+
+Notes:
+* No lineage changes
+
+Full Changelog:
+ - https://github.com/XENONnT/straxen/compare/v1.8.2...v1.8.3
+
+
+v1.8.2 / 2022-07-12
+-------------------
+* Stop tf pbar by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1063
+* Allow long runs by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1062
+
+Notes:
+* No lineage changes
+
+Full Changelog:
+- https://github.com/XENONnT/straxen/compare/v1.8.1...v1.8.2
+
+
+v1.8.1 / 2022-06-07
+-------------------
+Minor:
+* Change FDC z offset and add alternative interaction by @ftoschi in #1017
+* Plugin for online individual peak monitoring by @mflierm in #1054
+
+Notes:
+* Lineage changes for event_positions, corrected_areas, energy_estimates, event_info, event_info_double
+Added new data-kind: individual_peak_monitor
+
+Patch:
+* Version logging by @mflierm in #1055
+* update docs ev interactive display by @JoranAngevaare in #1042
+* allow dry eval of URL configs by @JoranAngevaare in #1040
+* refactor tests by @JoranAngevaare in #1030
+* start testing examples of notebooks by @JoranAngevaare in #1048
+* Bump nbsphinx from 0.8.8 to 0.8.9 in /extra_requirements by @dependabot in #1053
+* Add kicp to query by @JoranAngevaare in #1052
+* Bump sphinx from 4.5.0 to 5.0.1 in /extra_requirements by @dependabot in #1051
+* Allow constant tuple options by @JoranAngevaare in #1039
+
+Full changelog:
+- https://github.com/XENONnT/straxen/compare/v1.7.1...v1.8.0
+
+v1.7.2 / 2022-07-18
+-------------------
+Patch:
+ * Upload cherry picks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1066
+ * Fix hanging straxer by @jmosbacher in https://github.com/XENONnT/straxen/pull/1065
+ * Stop tf pbar by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1063
+ * update docs ev interactive display by @JoranAngevaare in #1042
+ * allow dry eval of URL configs by @JoranAngevaare in #1040
+ * refactor tests by @JoranAngevaare in #1030
+ * start testing examples of notebooks by @JoranAngevaare in #1048
+ * Bump nbsphinx from 0.8.8 to 0.8.9 in /extra_requirements by @dependabot in #1053
+ * Add kicp to query by @JoranAngevaare in #1052
+ * Bump sphinx from 4.5.0 to 5.0.1 in /extra_requirements by @dependabot in #1051
+ * Allow constant tuple options by @JoranAngevaare in #1039
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.7.1...v1.7.2
+
+
+v1.7.1 / 2022-05-16
+-------------------
+Patch:
+* Check if processed data already exists in --production mode by @mflierm in https://github.com/XENONnT/straxen/pull/1024
+
+
+Notes:
+- No lineage changes
+
+Full Changelog: 
+ - https://github.com/XENONnT/straxen/compare/v1.7.0...v1.7.1
+
+New Contributors
+ - @mflierm made their first contribution in https://github.com/XENONnT/straxen/pull/1024
+
+
+v1.7.0 / 2022-05-11
+---------------------
+Minor:
+- Fix detector sync (#1033) 
+- Numbafy function (#1015) 
+- Fixing binomial (#991) 
+- Patched wrong setting (#1014) 
+- Partitioned tpc (#1027) 
+
+Patch:
+- Update requirements-tests.txt (#1021) 
+- remove deprecated function (#1023)
+- Warn when context not from cutax (#1020) 
+- Add 'electron_diffusion_cte' variable from CMT (#1025) 
+- Start testing with PluginTestingSuite, fix #881 (#1022) 
+- add dict type correction (#1028) 
+
+Notes:
+- Lineage changes for event_area_per_channel, event_pattern_fit, peak_classification_bayes, detector_time_offsets, event_sync_nv
+
+
+Full Changelog:
+ - https://github.com/XENONnT/straxen/compare/v1.6.2...v1.7.0
+
+
+v1.6.2 / 2022-05-06
+---------------------
+Patch:
+-  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
+
+Notes:
+ - only lineage changes for dtypes > `aqmon_hits`  (https://github.com/XENONnT/straxen/pull/1035)
+
+
+Full Changelog:
+ - https://github.com/XENONnT/straxen/compare/v1.6.1...v1.6.2
+
+
+1.6.1 / 2022-04-12
+------------------
+Plugin fixes
+- Remove records not hits. (#987)
+- Remove Shadow&Ambience plugin SaveWhen.EXPLICIT (#982)
+- fix issue 977 (#984)
+- Position shadow sigma set to nan when S2 not positive (#980)
+- Fix small bug if GPS has larger delay (#986)
+
+Improved scripts / test
+- iterative straxer targets (#973)
+- Debug savewhen test (#963)
+- Exit 0 on existing data in straxer (#970)
+- dependabot remote (#1008)
+- print util (#989)
+
+Documentation
+- Fix href datakind page (#969)
+
+Storage fixes
+- only find rucio from dali (#1010)
+- Fix #1010 add midway as dali (#1012)
+- Allow unused rucio local (#976)
+
+Notes:
+ - only lineage changes in `detector_time_offsets` ( #986)
+
+
 1.6.0 / 2022-03-09
 ------------------
 Minor:

@@ -5,6 +5,7 @@ import numpy as np
 import numba
 from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
+from scipy.stats import binomtest
 import tarfile
 import tempfile
 
@@ -45,7 +46,7 @@ class EventPatternFit(strax.Plugin):
     
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
 
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig( 
@@ -350,7 +351,9 @@ class EventPatternFit(strax.Plugin):
                 s2_pos = np.stack((x, y)).T[s2_mask]
                 s2_pat = events[t_ + '_area_per_channel'][s2_mask, 0:self.config['n_top_pmts']]
                 # Output[0]: loss function, -2*log-likelihood, Output[1]: chi2
-                result[t_ + '_neural_2llh'][s2_mask] = self.model_chi2.predict({'xx': s2_pos, 'yy': s2_pat})[1]
+                result[t_ + '_neural_2llh'][s2_mask] = self.model_chi2.predict(
+                    {'xx': s2_pos, 'yy': s2_pat},
+                    verbose=0)[1]
 
     @staticmethod
     def _infer_map_format(map_name, known_formats=('pkl', 'json', 'json.gz')):
@@ -393,12 +396,10 @@ def lbinom_pmf(k, n, p):
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
     return ret_log
 
-
 @numba.njit
 def binom_pmf(k, n, p):
     """Binomial probability mass function approximated with gamma function"""
     return np.exp(lbinom_pmf(k, n, p))
-
 
 @numba.njit
 def binom_cdf(k, n, p):
@@ -406,11 +407,9 @@ def binom_cdf(k, n, p):
         return 1.0
     return numba_betainc(n - k, k + 1, 1.0 - p)
 
-
 @numba.njit
 def binom_sf(k, n, p):
     return 1 - binom_cdf(k, n, p)
-
 
 @numba.njit
 def lbinom_pmf_diriv(k, n, p, dk=1e-7):
@@ -419,7 +418,6 @@ def lbinom_pmf_diriv(k, n, p, dk=1e-7):
         return (lbinom_pmf(k + dk, n, p) - lbinom_pmf(k, n, p)) / dk
     else:
         return (lbinom_pmf(k - dk, n, p) - lbinom_pmf(k, n, p)) / - dk
-
 
 @numba.njit(cache=True)
 def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
@@ -438,7 +436,6 @@ def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
 
     return dx, x0, x1
 
-
 @numba.njit
 def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
     """Find the root of the derivative of log Binomial pmf with secant method"""
@@ -453,21 +450,27 @@ def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
         max_iter -= 1
     return x1
 
-
 @numba.njit
 def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
     """Find the where the log Binomial pmf cross target with secant method"""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
-
-    while (dx > err) and (max_iter > 0):
-        y0 = lbinom_pmf(x0, *args)
-        y1 = lbinom_pmf(x1, *args)
-        dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
-        max_iter -= 1
+    
+    if dx != 0:
+        while (dx > err) and (max_iter > 0):
+            y0 = lbinom_pmf(x0, *args)
+            y1 = lbinom_pmf(x1, *args)
+            dx, x0, x1 = _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1)
+            max_iter -= 1           
+        if x0 == x1 == 0 and y0 - target > 0:
+            x1 = np.nan
+        if x0 == x1 == args[0] and y0 - target < 0:
+            x1 = np.nan
+    else:
+        x1 = np.nan
+        
     return x1
-
 
 @numba.njit
 def binom_test(k, n, p):
@@ -478,22 +481,30 @@ def binom_test(k, n, p):
     k or j are zero, only the non-zero tail is integrated.
     """
     mode = lbinom_pmf_mode(0, n, 0, (n, p))
-
-    if k <= mode:
-        j_min, j_max = mode, n
-    else:
-        j_min, j_max = 0, mode
-
+    distance = abs(mode - k)
     target = lbinom_pmf(k, n, p)
-    j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
-
+   
+    if k < mode: 
+        j_min = mode
+        j_max = min(mode + 2.0 * distance, n)
+        j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))
+        ls, rs = k, j
+    elif k > mode:
+        j_min = max(mode - 2.0 * distance, 0)
+        j_max = mode
+        j = lbinom_pmf_inverse(j_min, j_max, target, (n, p))  
+        ls, rs = j, k
+    else:
+        return 1
+        
     pval = 0
-    if min(k, j) > 0:
-        pval += binom_cdf(min(k, j), n, p)
-    if max(k, j) > 0:
-        pval += binom_sf(max(k, j), n, p)
-    pval = min(1.0, pval)
-
+    if not np.isnan(ls):
+        pval += binom_cdf(ls, n, p)
+    if not np.isnan(rs):
+        pval += binom_sf(rs, n, p)
+        if np.isnan(ls):
+            pval += binom_pmf(rs, n, p)
+    
     return pval
 
 
@@ -523,6 +534,8 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
     if do_test:
         if mode == 'discrete':
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
+            # TODO:
+            #binomial_test = binomtest(k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
 
