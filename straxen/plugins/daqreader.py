@@ -5,7 +5,7 @@ from collections import Counter
 from immutabledict import immutabledict
 import numpy as np
 import numba
-
+import utilix
 import strax
 
 export, __all__ = strax.exporter()
@@ -186,8 +186,8 @@ class DAQReader(strax.Plugin):
                 (pre and post
                  or chunk_i == 0 and post
                  or ended and (pre and not next_ahead)))):
-            self.endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}, projection={'end': 1})
-            self.endtime = self.endtime['end'].timestamp()*int(1e9) if self.endtime is not None else None
+            self._endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}, projection={'end': 1})
+            self._endtime = self._endtime['end'].timestamp() * int(1e9) if self._endtime is not None else None
             return True
         return False
 
@@ -328,10 +328,11 @@ class DAQReader(strax.Plugin):
             np.asarray(list(self.config['channel_map'].values())))
         del records
         
-        if self.endtime is not None:
-            result_arrays = [r[strax.endtime(r)<self.endtime] for r in result_arrays]
-            # Maybe clip the boundary of the chunk as well? TODO
-            break_post = self.endtime - self.t0 
+        if self._endtime is not None:
+            # TODO this is too slow probably (no need to do endtime for all the data in the chunk) but just illustrates the example
+            result_arrays = [r[strax.endtime(r) < self._endtime] for r in result_arrays]
+            # TODO Maybe clip the boundary of the chunk as well?
+            #  break_post = self._endtime - self.t0
         
         # Convert to strax chunks
         result = dict()
