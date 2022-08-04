@@ -175,8 +175,9 @@ class DAQReader(strax.Plugin):
         end_dir = self.config["daq_input_dir"] + '/THE_END'
         if not os.path.exists(end_dir):
             return False
-        else:
-            return self._count_files_per_chunk(end_dir) >= self.n_readout_threads
+        self._endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}, projection={'end': 1})
+        self._endtime = self._endtime['end'].timestamp() * int(1e9) if self._endtime is not None else None
+        return self._count_files_per_chunk(end_dir) >= self.n_readout_threads
 
     def is_ready(self, chunk_i):
         ended = self.source_finished()
@@ -186,8 +187,6 @@ class DAQReader(strax.Plugin):
                 (pre and post
                  or chunk_i == 0 and post
                  or ended and (pre and not next_ahead)))):
-            self._endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}, projection={'end': 1})
-            self._endtime = self._endtime['end'].timestamp() * int(1e9) if self._endtime is not None else None
             return True
         return False
 
