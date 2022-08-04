@@ -98,6 +98,7 @@ class DAQReader(strax.Plugin):
     )
     compressor = 'lz4'
     __version__ = '0.0.0'
+    _endtime = None
     input_timeout = 300
     
     def infer_dtype(self):
@@ -185,6 +186,7 @@ class DAQReader(strax.Plugin):
                 (pre and post
                  or chunk_i == 0 and post
                  or ended and (pre and not next_ahead)))):
+            self.endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}', projection={'end': 1})
             return True
         return False
 
@@ -324,6 +326,9 @@ class DAQReader(strax.Plugin):
             records,
             np.asarray(list(self.config['channel_map'].values())))
         del records
+        
+        if self.endtime is not None:
+            result_arrays = [r[strax.endtime(r)<self.endtime] for r in result_arrays]
 
         # Convert to strax chunks
         result = dict()
