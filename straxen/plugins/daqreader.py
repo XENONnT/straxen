@@ -186,7 +186,8 @@ class DAQReader(strax.Plugin):
                 (pre and post
                  or chunk_i == 0 and post
                  or ended and (pre and not next_ahead)))):
-            self.endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}', projection={'end': 1})
+            self.endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}, projection={'end': 1})
+            self.endtime = self.endtime['end'].timestamp()*int(1e9) if self.endtime is not None else None
             return True
         return False
 
@@ -329,7 +330,9 @@ class DAQReader(strax.Plugin):
         
         if self.endtime is not None:
             result_arrays = [r[strax.endtime(r)<self.endtime] for r in result_arrays]
-
+            # Maybe clip the boundary of the chunk as well? TODO
+            break_post = self.endtime - self.t0 
+        
         # Convert to strax chunks
         result = dict()
         for i, subd in enumerate(self.config['channel_map']):
