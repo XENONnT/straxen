@@ -15,9 +15,10 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.2.1'
+__version__ = '1.3.1'
 
 import argparse
+import typing
 from datetime import datetime, timedelta, timezone
 import logging
 import multiprocessing
@@ -31,7 +32,7 @@ import time
 import traceback
 import numpy as np
 import pymongo
-from psutil import pid_exists, disk_usage
+from psutil import pid_exists, disk_usage, Process
 import pytz
 import strax
 import straxen
@@ -40,6 +41,7 @@ import pandas as pd
 import typing as ty
 import daqnt
 import fnmatch
+from glob import glob
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -118,9 +120,13 @@ timeouts = {
     # Escalates exponentially on repeated failures: 1x, 5x, 25x, 125x, 125x, 125x, ...
     # Some jitter is applied: actual delays will randomly be 0.5 - 1.5x as long
     'retry_run': 60,
-    # Maximum time for strax to complete a processing
+    # Maximum time [s] for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    'max_processing_time': 7200,
+    'max_processing_time': 24*36000,
+    # Max processing time [s] for bootstrax to finish processing after run ended
+    'max_processing_time_after_completion': 13*3600,
+    # Every this many [s] we should have at least one new file written to disk
+    'max_no_write_time': 30*60,
     # Sleep between checking whether a strax process is alive
     'check_on_strax': 10,
     # Maximum time a run is 'busy' without a further update from
@@ -455,24 +461,24 @@ def now(plus=0):
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
 
 
-def kill_process(pid, wait_time=None):
-    """Kill process pid, or raise RuntimeError if we cannot
-    :param wait_time: time to wait before escalating signal strength
-    """
-    if wait_time is None:
-        wait_time = timeouts['signal_escalate']
+def kill_process(pid):
+    """Kill process pid"""
+    log.warning(f'Kill PID:{pid}')
     if not pid_exists(pid):
+        log.warning(f'No PID:{pid}')
         return
 
-    for sig in [signal.SIGTERM, signal.SIGKILL, 'die']:
-        time.sleep(wait_time)
-        if not pid_exists(pid):
-            return
-        if signal == 'die':
-            message = f"Could not kill process {pid}"
-            log_warning(message, priority='fatal')
-            raise RuntimeError(message)
-        os.kill(pid, sig)
+    parent = Process(pid)
+    for child in parent.children(recursive=True):
+        child.kill()
+    parent.kill()
+
+    # Just make it extra dead
+    os.kill(pid, signal.SIGKILL)
+
+    if pid_exists(pid):
+        message = f"Could not kill process {pid}?!"
+        log_warning(message, priority='fatal')        
 
 
 def _remove_veto_from_t(targets: ty.Union[str, list, tuple],
@@ -1029,11 +1035,16 @@ def check_data_written(rd):
     on this host
     """
     files_written = 0
-    for ddoc in rd['data']:
+
+    # Fetch the rd again -> to see status of 'data' field
+    new_rd = get_run(mongo_id=rd['_id'], full_doc=True)
+    log.debug(new_rd['data'])
+    for ddoc in new_rd['data']:
         ddoc_loc = ddoc.get('location', 'NO LOCATION')
         ddoc_host = ddoc.get('host', 'NO HOST')
-        log.debug(f'Checking {ddoc_loc} on {ddoc_host}')
+        log.debug(f'Checking {ddoc_loc} on {ddoc_host} (current {hostname})')
         if ddoc_host == hostname:
+            log.debug(f'Counting files {ddoc_loc} on {ddoc_host}')
             if os.path.exists(ddoc_loc):
                 log.debug(f'{ddoc_loc} written')
                 files_written += 1
@@ -1121,6 +1132,9 @@ def upload_file_metadata(rd):
                       }
                  })
 
+
+def get_end_time(rd) -> typing.Optional[datetime]:
+    return run_coll.find_one({'_id': rd['_id']}, projection={'end': 1}).get('end', None)
 
 def set_status_finished(rd):
     """Set the status to ready to upload for datamanager and admix"""
@@ -1340,6 +1354,25 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
             f.write(exc_info)
         raise
 
+def last_file_write_time(match_location: str) -> datetime:
+    """
+    Get the datetime in UTC of the last file that was written in raw-records*
+    :param match_location: Location where runs are written to
+    :return: TZ aware timestamp
+    """
+    last_time = datetime.fromtimestamp(0).replace(tzinfo=pytz.utc)
+    matched_folders = glob(match_location)
+    for folder in matched_folders:
+        # check last three files only
+        chunk_files = sorted(glob(os.path.join(folder, '*')))[-3:]
+        for chunk in chunk_files:
+            # Check that we did not rename this file since the glob above
+            if os.path.exists(chunk):
+                chunk_write_time = datetime.fromtimestamp(
+                    os.stat(chunk).st_mtime
+                ).replace(tzinfo=pytz.utc)
+                last_time = max(last_time, chunk_write_time)
+    return last_time
 
 def process_run(rd, send_heartbeats=args.production):
     log.info(f"Starting processing of run {rd['number']}")
@@ -1453,16 +1486,32 @@ def process_run(rd, send_heartbeats=args.production):
                 send_heartbeat(update)
             ec = strax_proc.exitcode
             if ec is None:
-                if t0 < now(-timeouts['max_processing_time']):
-                    fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
-                    kill_process(strax_proc.pid)
-                # Still working, check in later
-                # TODO: is there a good way to detect hangs, before max_processing_time expires?
+                # fail(bla) raises RunFailed so no need for elifs. Make sure to
+                # kill main process before raising errors in fail(bla)
 
-                log.info(f"Still processing run {run_id}")
+                # Fail because we are taking a very long time to process
+                if t0 < now(-timeouts['max_processing_time']):
+                    kill_process(strax_proc.pid)
+                    fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
+
+                # Fail because we are taking a very long time to process despite the run having ended
+                if (get_end_time(rd) is not None
+                    and t0 < now(-timeouts['max_processing_time_after_completion'])):
+                        kill_process(strax_proc.pid)
+                        fail(f"After the run ended, processing did not succeed in "
+                             f"{timeouts['max_processing_time_after_completion']} sec.")
+
+                # Fail because for some reason, we are not writing any new files to disk.
+                if (t0 < now(-timeouts['max_no_write_time'])
+                    and (last_write := last_file_write_time(os.path.join(output_folder, f'{run_id}*'))
+                        ) < now(-timeouts['max_no_write_time'])):
+                    kill_process(strax_proc.pid)
+                    fail(f"No data written for {timeouts['max_no_write_time']} sec. Last write is from {last_write}")
+
                 if args.production:
                     set_run_state(rd, 'busy', **info)
                 time.sleep(timeouts['check_on_strax'])
+                log.info(f"Still processing run {run_id}. PID:{strax_proc.pid}")
                 continue
 
             elif ec == 0:
@@ -1496,8 +1545,9 @@ def process_run(rd, send_heartbeats=args.production):
                         fail("Processing succeeded, but no chunks were written!")
 
                     log.info(f"Check that run has ended")
-                    rd = get_run(mongo_id=rd['_id'])
-                    if 'end' not in rd or rd['end'] is None:
+                    rd = get_run(mongo_id = rd['_id'])
+                    end_time = rd.get('end')
+                    if end_time is None:
                         fail("Processing succeeded, but run hasn't yet ended!")
 
                     log.info(f"Check the processing time of the run")
@@ -1511,7 +1561,7 @@ def process_run(rd, send_heartbeats=args.production):
                                  min([x.get('first_time', 10e9 * 1e9) for x in
                                       md['chunks']])) / 1e9)
                     log.info(f"Compute runtime")
-                    run_duration = rd['end'] - rd['start']
+                    run_duration = end_time - rd['start']
                     if not (0 < t_covered.seconds < float('inf')):
                         fail(f"Processed data covers {t_covered} sec")
                     if not (timedelta(seconds=-max_timetamp_diff)
