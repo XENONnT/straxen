@@ -175,6 +175,7 @@ class DAQReader(strax.Plugin):
         end_dir = self.config["daq_input_dir"] + '/THE_END'
         if not os.path.exists(end_dir):
             return False
+        # TODO 'end' doesn't reflect the timestamps in the live data, should have GPS times or something better
         self._endtime = utilix.rundb.xent_collection().find_one({'number': int(self.run_id)}, projection={'end': 1})
         self._endtime = self._endtime['end'].timestamp() * int(1e9) if self._endtime is not None else None
         return self._count_files_per_chunk(end_dir) >= self.n_readout_threads
