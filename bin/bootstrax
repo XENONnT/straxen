@@ -42,6 +42,7 @@ import typing as ty
 import daqnt
 import fnmatch
 from glob import glob
+import daq_core
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -298,29 +299,13 @@ def new_context(cores=args.cores,
 
 st = new_context()
 
-# DAQ database
-daq_db_name = 'daq'
-daq_uri = straxen.get_mongo_uri(header='rundb_admin',
-                                user_key='mongo_daq_username',
-                                pwd_key='mongo_daq_password',
-                                url_key='mongo_daq_url')
-daq_client = pymongo.MongoClient(daq_uri)
-daq_db = daq_client[daq_db_name]
-bs_coll = daq_db['eb_monitor']
-ag_stat_coll = daq_db['aggregate_status']
-log_coll = daq_db['log']
-
-# Runs database
-run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
-run_collname = 'runs'
-if args.production:
-    run_db = st.storage[0].client[run_dbname]
-else:
-    # Please note, this is a read only account on the rundb
-    run_uri = straxen.get_mongo_uri()
-    run_client = pymongo.MongoClient(run_uri)
-    run_db = run_client[run_dbname]
-run_coll = run_db[run_collname]
+databases = daq_core.DataBases(production=args.production)
+run_db = databases.run_db
+daq_db = databases.daq_db
+run_coll = databases.run_coll
+log_coll = databases.log_coll
+ag_stat_coll = databases.ag_stat_coll
+bs_coll = databases.bs_coll
 run_db.command('ping')
 
 # Ping the databases to ensure the mongo connections are working
@@ -659,34 +644,8 @@ def send_heartbeat(update_fields=None):
 
 
 def log_warning(message, priority='warning', run_id=None):
-    """Report a warning to the terminal (using the logging module)
-    and the DAQ log DB.
-    :param message: insert string into log_coll
-    :param priority: severity of warning. Can be:
-        info: 1,
-        warning: 2,
-        <any other valid python logging level, e.g. error or fatal>: 3
-    :param run_id: optional run id.
-    """
-    if not args.production:
-        return
     getattr(log, priority.lower())(message)
-    # Log according to redax rules
-    # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
-    warning_message = {
-        'message': message,
-        'user': f'bootstrax_{hostname}',
-        'priority':
-            dict(debug=0,
-                 info=1,
-                 warning=2,
-                 error=3,
-                 fatal=4,
-                 ).get(priority.lower(), 3)}
-    if run_id is not None:
-        warning_message.update({'runid': int(run_id)})
-    log_coll.insert_one(warning_message)
-
+    databases.log_warning(message, priority=priority, run_id=run_id, production=args.production, user=f'bootstrax_{hostname}',)
 
 def eb_can_process():
     """"The new ebs (eb3-5) should be sufficient to process all data. In exceptional
@@ -1151,12 +1110,12 @@ def set_status_finished(rd):
     all_files_saved(rd)
 
     # Only update the status if it does not exist or if it needs to be uploaded
-    ready_to_upload = {'status': 'eb_ready_to_upload'}
+    ready_for_restrax = {'status': 'eb_finished_pre'}
     if rd.get('status') in [None, 'needs_upload']:
         run_coll.update_one(
             {'_id': rd['_id']},
-            {'$set': ready_to_upload})
-    elif rd.get('status') == ready_to_upload.get('status'):
+            {'$set': ready_for_restrax})
+    elif rd.get('status') == ready_for_restrax.get('status'):
         # This is strange, bootstrax already finished this run before
         log_warning('WARNING: bootstax has already marked this run as ready '
                     'for upload. Doing nothing.',
@@ -1165,7 +1124,7 @@ def set_status_finished(rd):
     else:
         # Do not override this field for runs already uploaded in admix
         message = (f'Trying to set set the status {rd.get("status")} to '
-                   f'{ready_to_upload}! One should not override this field.')
+                   f'{ready_for_restrax}! One should not override this field.')
         log_warning(message, priority='fatal')
         raise ValueError(message)
 
