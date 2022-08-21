@@ -31,6 +31,8 @@ import re
 import numpy as np
 import sys
 import straxen
+from daq_core import ceph_folder, output_folder, pre_folder, non_registered_folder
+
 
 ##
 # Parameters
@@ -277,7 +279,9 @@ def clean_unregistered(delete_live=False):
     :param delete_live: bool, if true delete unregistered live data.
     """
     set_state('clean_unregistered')
-    folder_to_check = output_folder if delete_live is False else ceph_folder
+    # We should only do this for the pre-folder since the production folder does have unregistered data when
+    # we are still trying to recompress the data
+    folder_to_check = pre_folder if delete_live is False else ceph_folder
     all_data = os.listdir(folder_to_check)
     run_ids = []
     for f in all_data:
@@ -870,10 +874,6 @@ if __name__ == '__main__':
         # Need the context for the latest hash
         st = straxen.contexts.xenonnt_online()
 
-    # Set the folders
-    ceph_folder = '/live_data/xenonnt/'
-    output_folder = '/data/xenonnt_processed/'
-    non_registered_folder = '/data/xenonnt_unregistered/'
     for f in (output_folder, non_registered_folder):
         if os.access(f, os.W_OK) is not True:
             log_warning(f'main::\tNo writing access to {f}', priority='fatal')

@@ -36,7 +36,7 @@ def parse_args():
                         help="Run restrax in production mode.")
     parser.add_argument('--ignore_checks', action='store_true',
                         help="Do not use! Skip checks before changing documents there be dragons.")
-    parser.add_argument('--input_folder', type=str, default='/data/pre_processed/',
+    parser.add_argument('--input_folder', type=str, default=daq_core.pre_folder,
                         help="Where to read the data from, should only be used when testing", )
     parser.add_argument('--max_threads', type=int, default=1,
                         help='max number of threads to simultaniously work on one run'

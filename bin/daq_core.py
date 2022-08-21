@@ -3,6 +3,10 @@ import utilix
 from utilix import uconfig
 import straxen
 
+ceph_folder = '/live_data/xenonnt/'
+output_folder = '/data/xenonnt_processed/'
+pre_folder = '/data/pre_processed/'
+non_registered_folder = '/data/xenonnt_unregistered/'
 
 class DataBases:
     def __init__(self, production=False):

@@ -240,7 +240,7 @@ log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
 log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG, opening_message=f'I am processing with these software versions: {versions}')
 
 # Set the output folder
-output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
+output_folder = daq_core.pre_folder if args.production else test_data_folder
 
 if not args.production:
     # This means we are in some test mode
@@ -1035,63 +1035,6 @@ def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
         time.sleep(wait_per_cycle)
     return True
 
-
-def upload_file_metadata(rd):
-    """
-    Update the data-field in the rundoc with a portion of the metadata. Also count the
-    number of files on the location on the basis of the data entry in the rundoc. The
-    filecount info is used for Admix to checksum that all the files are correctly uploaded
-    to Rucio.
-    :param rd: rundoc
-    """
-    try:
-        st_meta = new_context(cores=args.cores, max_messages=args.max_messages, timeout=100)
-        st_meta.set_context_config({'forbid_creation_of': '*'})
-    except Exception as e:
-        log_warning(f"Cannot create context to read the metadata: {e}", priority='warning')
-        st_meta = None
-
-    for ddoc in rd['data']:
-        if hostname != ddoc['host']:
-            continue
-        loc = ddoc.get('location', '')
-
-        if os.path.exists(loc):
-            file_count = len(os.listdir(loc))
-            # Can also get the latter from st.lineage_for but too lazy for that
-            data_size_mb, avg_data_size_mb, lineage_hash, compressor = None, None, None, None
-            run_id = '%06d' % rd['number']
-            if st_meta is not None:
-                try:
-                    md = st.get_meta(run_id, ddoc['type'])
-                    chunk_mb = [chunk['nbytes'] / (1e6) for chunk in md['chunks']]
-                    data_size_mb = int(np.sum(chunk_mb))
-                    avg_data_size_mb = int(np.average(chunk_mb))
-                    lineage_hash = md['lineage_hash']
-                    compressor = md['compressor']
-                except Exception as e:
-                    log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
-                                priority='warning',
-                                run_id=f'{rd["number"]:06}')
-
-            run_coll.update_one(
-                {'_id': rd['_id'],
-                'data': {
-                    '$elemMatch': {
-                        'location': ddoc['location'],
-                        'host': ddoc['host']}}},
-                {'$set':
-                     {'data.$.file_count': file_count,
-                      'data.$.meta.strax_version': strax.__version__,
-                      'data.$.meta.straxen_version': straxen.__version__,
-                      'data.$.meta.size_mb': data_size_mb,
-                      'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash,
-                      'data.$.meta.compressor': compressor,
-                      }
-                 })
-
-
 def get_end_time(rd) -> typing.Optional[datetime]:
     return run_coll.find_one({'_id': rd['_id']}, projection={'end': 1}).get('end', None)
 
@@ -1539,7 +1482,6 @@ def process_run(rd, send_heartbeats=args.production):
                     set_run_state(rd, 'done', **info)
 
                     set_status_finished(rd)
-                    upload_file_metadata(rd)
 
                     if args.delete_live:
                         delete_live_data(rd, loc)
