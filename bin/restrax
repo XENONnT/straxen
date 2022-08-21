@@ -98,7 +98,7 @@ class ReStrax(daq_core.DataBases):
         test_out='/data/test_processed')
     # TODO probably this should be an argument?
     skip_compression = ('*event*', '*peak*')
-    raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv', 'records', 'records_nvrecords_mv')
+    raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv', 'records', 'records_nv', 'records_mv')
 
     def __int__(self, args):
         super().__init__(production=args.production)
