@@ -38,6 +38,7 @@ setuptools.setup(name='straxen',
                  },
                  scripts=[
                      'bin/bootstrax',
+                     'bin/restrax',
                      'bin/straxer',
                      'bin/fake_daq',
                      'bin/microstrax',
