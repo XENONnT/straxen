@@ -5,6 +5,7 @@ In this short notebook we will explain how the interactive event display can be 
 
 
 .. code-block:: python
+
     import strax
     import straxen
     st = straxen.contexts.xenonnt_online(include_rucio_remote=True,
@@ -16,6 +17,7 @@ In addition to our standard import we have to set up our jupyter notebook to sho
 
 
 .. code-block:: python
+
     import bokeh.plotting as bklt
 
 
@@ -23,6 +25,7 @@ No let us get some events...
 
 
 .. code-block:: python
+
     # If data is not stored already download single chunk and make events
     # for single chunk only:
     if not st.is_stored('024399', 'event_basics'):
@@ -35,6 +38,7 @@ No let us get some events...
 
 
 .. code-block:: python
+
     ith_event = 1
     fig = st.event_display_interactive(run_id='024399', 
                                          time_range=(events[ith_event]['time'], 
@@ -47,6 +51,7 @@ For my 24 inch screen a width of 80% works fine. If you would like to go back to
 
 
 .. code-block:: python
+
     from IPython.core.display import display, HTML
     display(HTML("<style>.container { width:80% !important; }</style>"))
 
@@ -54,6 +59,7 @@ To show the figure we can call:
 
 
 .. code-block:: python
+
     bklt.show(fig)
 
 
@@ -67,6 +73,7 @@ You can also copy the plots to our wiki. For this purpose you can call...
 
 
 .. code-block:: python
+
     straxen.bokeh_to_wiki(fig)
 
 
@@ -76,18 +83,20 @@ In case you would like to keep the data just as a normal html file you can do:
 
 
 .. code-block:: python
+
     bklt.save(fig, 'example.html')
 
 
 but please be aware that in this case you have to change the first lines of the file into  
-```html
-<!DOCTYPE html>
-<html lang="en">
-```
-into
-```html
-<html>
-```
+.. code-block:: html
+
+    <!DOCTYPE html>
+    <html lang="en">
+    ```
+    into
+    ```html
+    <html>
+
 if you want to copy the output to the wiki.
 
 In case you would like to store the event display as a png or svg file please follow this [guide](https://docs.bokeh.org/en/latest/docs/user_guide/export.html).
@@ -105,6 +114,7 @@ For talks or a thesis it might be necessary to modify some of the fonts styles o
 
 
 .. code-block:: python
+
     ith_event = 1
     fig = st.event_display_interactive(run_id='024399', 
                                          time_range=(events[ith_event]['time'], 
@@ -124,6 +134,7 @@ The entire display is build up by many individual figure objects. To customize c
 
 
 .. code-block:: python
+
     fig.children
 
 
@@ -131,6 +142,7 @@ The entire display is build up by many individual figure objects. To customize c
 
 
 .. code-block:: python
+
     fig.children[1].children
 
 
@@ -138,6 +150,7 @@ The entire display is build up by many individual figure objects. To customize c
 
 
 .. code-block:: python
+
     div = fig.children[0]
 
 
@@ -145,6 +158,7 @@ Lets add the color green:
 
 
 .. code-block:: python
+
     div.style['color'] = 'green'
 
 
@@ -152,6 +166,7 @@ Before we plot let us also remove the toolbar:
 
 
 .. code-block:: python
+
     tool_box = fig.children[1].children[0]
     tool_box.visible=False
     bklt.show(fig)
@@ -164,6 +179,7 @@ The regular event display can be extended by an additional record matrix which i
 
 
 .. code-block:: python
+
     if not st.is_stored('024399', 'records'):
         st.make('024399', 'records', _chunk_number=0)
 
@@ -182,6 +198,7 @@ Once you zoomed in far enough, such that the x_range spans only 10 µs (default 
 
 
 .. code-block:: python
+
     fig
 
 
@@ -194,6 +211,7 @@ Beside an interactive event display we also have now an interactive cut selectio
 
 
 .. code-block:: python
+
     peaks = st.get_array('024399', 'peak_basics', _chunk_number=0)
 
 
@@ -201,12 +219,14 @@ Now we can import the tool...
 
 
 .. code-block:: python
+
     from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
 
 ... and initialize it. Please note, that you have to put the class object name as a string into the first function argument. Otherwise the JavaScript call back for the data selection wont work.
 
 
 .. code-block:: python
+
     ds = DataSelectionHist('ds')
 
 
@@ -214,6 +234,7 @@ Now we can plot any data e.g. some peak properties...
 
 
 .. code-block:: python
+
     f = ds.histogram2d(peaks, 
                        peaks['area'], 
                        peaks['range_50p_area'], 
@@ -231,6 +252,7 @@ If you would like to make multiple selections at once you can press shift to add
 
 
 .. code-block:: python
+
     import bokeh
     bokeh.io.output_notebook()
     bklt.show(f)
@@ -239,12 +261,14 @@ Once you are satisfied with your selection you can return the corresponding peak
 
 
 .. code-block:: python
+
     ps = ds.get_back_selected_items()
 
 
 ... which stores the information is ps. Let us now finally make a control plot to see if the selection work. For this plot we use a finder binning:
 
 .. code-block:: python
+
     import matplotlib.pyplot as plt
     import matplotlib
 
