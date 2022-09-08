@@ -1,4 +1,5 @@
-# Interactive event display
+Interactive event display
+====================
 
 In this short notebook we will explain how the interactive event display can be used and further customized. In the first section the basics are explained. Further, I show how the appearance of the event display can be customized. After the customization section I quickly explain how the record matrix addition works.
 
@@ -97,7 +98,8 @@ if you want to copy the output to the wiki.
 
 In case you would like to store the event display as a png or svg file please follow this [guide](https://docs.bokeh.org/en/latest/docs/user_guide/export.html).
 
-### Manipulating the display appearance:
+Manipulating the display appearance:
+-----------------------------------------------------
 
 For talks or a thesis it might be necessary to modify some of the fonts styles or size. Further, it may be needed to reduce the amount of shown information. For this purpose I added some additional options: 
 
@@ -126,7 +128,8 @@ fig = st.event_display_interactive(run_id='024399',
 bklt.show(fig)
 ```
 
-### How to customize the display even further? 
+How to customize the display even further?
+--------------------------------------------------------------
 
 The entire display is build up by many individual figure objects. To customize certain properties we have to add them to the corresponding figure. To get the individual components one can use `fig.children`...
 
@@ -169,7 +172,8 @@ tool_box.visible=False
 bklt.show(fig)
 ```
 
-# Record matrix: 
+Record matrix: 
+============
 
 The regular event display can be extended by an additional record matrix which is helpful especially for peak building and splitting analyses. To plot the record matrix you have to simply set ` plot_record_matrix=True`. The event display will then automatically check if the specified raw_data is available. The record matrix is build on records, in case only `raw_records` are available the event display will warn you and build the required `records` on the fly.    
 
@@ -202,7 +206,8 @@ fig
 
 The re-plotting of the record array requires an active python kernel in the background. This means that the interactivity of this plot gets lost as soon as it is exported as an HTML file.
 
-# Event selection:
+Event selection:
+=============
 
 Beside an interactive event display we also have now an interactive cut selection tool. To use the tool we have to first import get some data:
 
