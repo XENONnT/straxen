@@ -205,7 +205,7 @@ Once you zoomed in far enough, such that the x_range spans only 10 µs (default 
 The re-plotting of the record array requires an active python kernel in the background. This means that the interactivity of this plot gets lost as soon as it is exported as an HTML file.
 
 Event selection:
-=============
+-----------------------------------------------------
 
 Beside an interactive event display we also have now an interactive cut selection tool. To use the tool we have to first import get some data:
 
