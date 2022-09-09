@@ -173,7 +173,7 @@ Before we plot let us also remove the toolbar:
     
 
 Record matrix: 
-============
+-----------------------------------------------------
 
 The regular event display can be extended by an additional record matrix which is helpful especially for peak building and splitting analyses. To plot the record matrix you have to simply set ` plot_record_matrix=True`. The event display will then automatically check if the specified raw_data is available. The record matrix is build on records, in case only `raw_records` are available the event display will warn you and build the required `records` on the fly.    
 
