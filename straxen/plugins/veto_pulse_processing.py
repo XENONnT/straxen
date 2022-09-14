@@ -11,12 +11,12 @@ MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
 
 NV_HIT_DEFAULTS = {
     'save_outside_hits_nv': (3, 15),
-    'hit_min_amplitude_nv': 'cmt://hit_thresholds_nv?version=ONLINE',
+    'hit_min_amplitude_nv': 'cmt://hit_thresholds_nv?version=ONLINE&run_id=plugin.run_id',
 }
 
 MV_HIT_DEFAULTS = {
     'save_outside_hits_mv': (2, 5),
-    'hit_min_amplitude_mv': 'cmt://hit_thresholds_mv?version=ONLINE',
+    'hit_min_amplitude_mv': 'cmt://hit_thresholds_mv?version=ONLINE&run_id=plugin.run_id',
 }
 
 
@@ -57,13 +57,13 @@ class nVETOPulseProcessing(strax.Plugin):
 
     baseline_samples_nv = straxen.URLConfig(
         infer_type=False,
-        default='cmt://baseline_samples_nv?version=ONLINE', track=True,
+        default='cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id', track=True,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline')
 
     def setup(self):
         self.baseline_samples = self.baseline_samples_nv
-        self.hit_thresholds = self.hit_min_amplitude_nv
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_nv)
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(
@@ -134,7 +134,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
 
     def setup(self):
         self.baseline_samples = self.baseline_samples_mv
-        self.hit_thresholds = self.hit_min_amplitude_mv
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_mv)
 
     def infer_dtype(self):
         record_length = strax.record_length_from_dtype(

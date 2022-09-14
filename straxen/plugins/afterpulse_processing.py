@@ -2,7 +2,6 @@ import numba
 import numpy as np
 import strax
 import straxen
-from straxen.get_corrections import is_cmt_option
 
 export, __all__ = strax.exporter()
 
@@ -43,7 +42,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
     hit_min_amplitude = straxen.URLConfig(
                  track=True, infer_type=False,
-                 default='cmt://hit_thresholds_tpc?version=ONLINE',
+                 default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
                  help='Minimum hit amplitude in ADC counts above baseline. '
                       'Specify as a tuple of length n_tpc_pmts, or a number,'
                       'or a string like "pmt_commissioning_initial" which means calling'
@@ -71,7 +70,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = self.gain_model
-        self.hit_thresholds = self.hit_min_amplitude
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude)
         self.hit_left_extension, self.hit_right_extension = self.save_outside_hits
        
     def compute(self, raw_records):

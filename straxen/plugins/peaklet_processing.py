@@ -80,8 +80,8 @@ class Peaklets(strax.Plugin):
                  help="Enable runtime checks for sorting and disjointness")
                  
     gain_model = straxen.URLConfig(infer_type=False,
-                 help='PMT gain model. Specify as '
-                 '(str(model_config), str(version), nT-->boolean')
+                 help='PMT gain model. Specify as URL or explicit value'
+                 )
                  
     tight_coincidence_window_left = straxen.URLConfig(default=50, infer_type=False,
                  help="Time range left of peak center to call "
@@ -138,7 +138,7 @@ class Peaklets(strax.Plugin):
 
         self.to_pe = self.gain_model
 
-        self.hit_thresholds = self.hit_min_amplitude
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude)
             
         self.channel_range = self.channel_map['tpc']
 
@@ -545,7 +545,7 @@ class PeakletsHighEnergy(Peaklets):
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.le_to_he_amplification
 
-        self.hit_thresholds = self.hit_min_amplitude_he
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_he)
 
         self.channel_range = self.channel_map['he']
 

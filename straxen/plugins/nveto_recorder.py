@@ -23,7 +23,7 @@ class nVETORecorder(strax.Plugin):
     a fixed number of the lone_records per channel are stored.
     """
     __version__ = '0.0.7'
-    
+
     parallel = 'process'
 
     rechunk_on_save = True
@@ -52,7 +52,7 @@ class nVETORecorder(strax.Plugin):
                  help="Resolving time of the coincidence in ns.")
 
     baseline_samples_nv = straxen.URLConfig(infer_type=False,
-                 default='cmt://baseline_samples_nv?version=ONLINE', track=True,
+                 default='cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id', track=True,
                  help="Number of samples used in baseline rms calculation")
 
     hit_min_amplitude_nv = straxen.URLConfig(
@@ -79,7 +79,7 @@ class nVETORecorder(strax.Plugin):
 
     def setup(self):
         self.baseline_samples = self.baseline_samples_nv
-        self.hit_thresholds = self.hit_min_amplitude_nv
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_nv)
         
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(

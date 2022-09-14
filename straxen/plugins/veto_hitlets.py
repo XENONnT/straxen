@@ -79,7 +79,7 @@ class nVETOHitlets(strax.Plugin):
                       "channel number.")
 
     gain_model_nv = straxen.URLConfig(
-                 default="cmt://to_pe_model_nv?version=ONLINE", infer_type=False,
+                 default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id", infer_type=False,
                  help='PMT gain model. Specify as (model_type, model_config, nT = True)')
 
     def setup(self):
@@ -94,7 +94,7 @@ class nVETOHitlets(strax.Plugin):
 
         # Check config of `hit_min_amplitude_nv` and define hit thresholds
         # if cmt config
-        self.hit_thresholds = self.hit_min_amplitude_nv
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_nv)
         
     def compute(self, records_nv, start, end):
         records_nv = remove_switched_off_channels(records_nv, self.to_pe)
@@ -200,7 +200,7 @@ class muVETOHitlets(nVETOHitlets):
              'the template.')
 
     gain_model_mv = straxen.URLConfig(
-                 default="cmt://to_pe_model_mv?version=ONLINE",infer_type=False,
+                 default="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id",infer_type=False,
                  child_option=True, parent_option_name='gain_model_nv',
                  help='PMT gain model. Specify as (model_type, model_config)')
 
@@ -213,7 +213,7 @@ class muVETOHitlets(nVETOHitlets):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
-        self.hit_thresholds = self.hit_min_amplitude_mv
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_mv)
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)

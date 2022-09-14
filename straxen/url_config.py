@@ -280,13 +280,9 @@ def get_correction(name: str,
                    detector: str = 'nt',
                    **kwargs):
     """Get value for name from CMT"""
-    
-    if version == 'CONSTANT':
-        return straxen.get_correction_from_cmt(run_id, (name, detector == 'nt'))
 
     if run_id is None:
-        raise ValueError('Attempting to fetch a correction without a run id.')
-    
+        raise ValueError('Attempting to fetch a correction without a run id.')    
 
     return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
@@ -434,3 +430,11 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     for old_key, new_key in zip(replace_keys, with_keys):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
+
+@URLConfig.register('fixed')
+def get_fixed(name: str):
+    """Return a fixed value for a given name"""
+    from .get_corrections import FIXED_TO_PE
+
+    return FIXED_TO_PE[name]
+

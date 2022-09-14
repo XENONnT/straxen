@@ -12,11 +12,11 @@ __all__ += ['NO_PULSE_COUNTS']
 
 # These are also needed in peaklets, since hitfinding is repeated
 HITFINDER_DEFAULTS = {
-    'hit_min_amplitude': 'cmt://hit_thresholds_tpc?version=ONLINE',
+    'hit_min_amplitude': 'cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
 }
 
 HITFINDER_DEFAULTS_he = {
-    'hit_min_amplitude_he': 'cmt://hit_thresholds_he?version=ONLINE',
+    'hit_min_amplitude_he': 'cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id',
 }
 
 HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
@@ -152,7 +152,7 @@ class PulseProcessing(strax.Plugin):
         self.hev_enabled = self.hev_gain_model is not None and self.tail_veto_threshold
         if self.hev_enabled:
             self.to_pe = self.hev_gain_model
-        self.hit_thresholds = self.hit_min_amplitude
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude)
         
     def compute(self, raw_records, start, end):
         if self.check_raw_record_overlaps:
@@ -264,8 +264,8 @@ class PulseProcessingHighEnergy(PulseProcessing):
 
         #FIXME: This looks hacky. Maybe find a better way?
         self.config['n_tpc_pmts'] = self.config['n_he_pmts']
-        
-        self.hit_thresholds = self.hit_min_amplitude_he
+
+        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_he)
 
     def compute(self, raw_records_he, start, end):
         result = super().compute(raw_records_he, start, end)

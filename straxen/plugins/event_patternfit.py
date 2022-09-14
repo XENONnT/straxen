@@ -63,7 +63,7 @@ class EventPatternFit(strax.Plugin):
     mean_pe_per_photon = straxen.URLConfig(help='Mean of full VUV single photon response',
                  default=1.2, infer_type=False,)
 
-    to_pe = straxen.URLConfig(infer_type=False,
+    gain_model = straxen.URLConfig(infer_type=False,
                  help='PMT gain model. Specify as (model_type, model_config)')
 
     n_tpc_pmts = straxen.URLConfig(type=int,
@@ -145,6 +145,8 @@ class EventPatternFit(strax.Plugin):
     def setup(self):
         #FIXME: Consider renaming the configs to match usage
         
+        self.to_pe = self.gain_model
+
         self.mean_pe_photon = self.mean_pe_per_photon
                     
         # Getting optical maps
