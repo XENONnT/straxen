@@ -295,7 +295,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
                       't_to_next_peak [ns]')
 
     def get_window_size(self):
-        return self.config['peak_max_proximity_time']
+        return self.peak_max_proximity_time
 
     def compute(self, peaks):
         windows = strax.touching_windows(peaks, peaks,
