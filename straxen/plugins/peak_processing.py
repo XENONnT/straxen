@@ -14,15 +14,6 @@ from .pulse_processing import HE_PREAMBLE
 
 
 @export
-@strax.takes_config(
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
-                 help="Number of top PMTs"),
-    strax.Option('check_peak_sum_area_rtol', default=None, track=False, infer_type=False,
-                 help="Check if the sum area and the sum of area per "
-                      "channel are the same. If None, don't do the "
-                      "check. To perform the check, set to the desired "
-                      " rtol value used e.g. '1e-4' (see np.isclose)."),
-)
 class PeakBasics(strax.Plugin):
     """
     Compute the basic peak-properties, thereby dropping structured
@@ -72,6 +63,15 @@ class PeakBasics(strax.Plugin):
         (('Classification of the peak(let)',
           'type'), np.int8)
     ]
+
+    n_top_pmts  = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
+                 help="Number of top PMTs")
+
+    check_peak_sum_area_rtol = straxen.URLConfig(default=None, track=False, infer_type=False,
+                 help="Check if the sum area and the sum of area per "
+                      "channel are the same. If None, don't do the "
+                      "check. To perform the check, set to the desired "
+                      " rtol value used e.g. '1e-4' (see np.isclose).")
 
     def compute(self, peaks):
         p = peaks
@@ -261,21 +261,13 @@ class PeakPositions1T(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option('min_area_fraction', default=0.5, infer_type=False,
-                 help='The area of competing peaks must be at least '
-                      'this fraction of that of the considered peak'),
-    strax.Option('nearby_window', default=int(1e7), infer_type=False,
-                 help='Peaks starting within this time window (on either side)'
-                      'in ns count as nearby.'),
-    strax.Option('peak_max_proximity_time', default=int(1e8), infer_type=False,
-                 help='Maximum value for proximity values such as '
-                      't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
     """
     Look for peaks around a peak to determine how many peaks are in
     proximity (in time) of a peak.
     """
+    __version__ = '0.4.0'
+
     depends_on = ('peak_basics',)
     dtype = [
         ('n_competing', np.int32,
@@ -289,8 +281,18 @@ class PeakProximity(strax.OverlapWindowPlugin):
         ('t_to_nearest_peak', np.int64,
          'Smaller of t_to_prev_peak and t_to_next_peak [ns]')
     ] + strax.time_fields
+    
+    min_area_fraction = straxen.URLConfig( default=0.5, infer_type=False,
+                 help='The area of competing peaks must be at least '
+                      'this fraction of that of the considered peak')
 
-    __version__ = '0.4.0'
+    nearby_window = straxen.URLConfig(default=int(1e7), infer_type=False,
+                 help='Peaks starting within this time window (on either side)'
+                      'in ns count as nearby.')
+
+    peak_max_proximity_time = straxen.URLConfig(default=int(1e8), infer_type=False,
+                 help='Maximum value for proximity values such as '
+                      't_to_next_peak [ns]')
 
     def get_window_size(self):
         return self.config['peak_max_proximity_time']
@@ -346,6 +348,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     """
 
     __version__ = '0.1.5'
+    
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
