@@ -5,7 +5,6 @@ from immutabledict import immutabledict
 from strax.processing.general import _touching_windows
 import straxen
 from .pulse_processing import HITFINDER_DEFAULTS, HITFINDER_DEFAULTS_he, HE_PREAMBLE
-from straxen.get_corrections import is_cmt_option
 
 
 export, __all__ = strax.exporter()

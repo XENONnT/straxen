@@ -13,9 +13,6 @@ DEFAULT_POSREC_ALGO = "mlp"
 
 
 @export
-@strax.takes_config(
-
-)
 class PeakPositionsBaseNT(strax.Plugin):
     """
     Base class for reconstructions.
@@ -201,8 +198,8 @@ class S2ReconPosDiff(strax.Plugin):
     Plugin that provides position reconstruction difference for S2s in events, see note:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
     """
-
     __version__ = '0.0.3'
+
     parallel = True
     depends_on = 'event_basics'
     provides = 's2_recon_pos_diff'
