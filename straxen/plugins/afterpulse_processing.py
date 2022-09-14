@@ -17,7 +17,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = True
 
-    to_pe = straxen.URLConfig(infer_type=False,
+    gain_model = straxen.URLConfig(infer_type=False,
                  help='PMT gain model. Specify as (model_type, model_config)',
                  )
 
@@ -41,7 +41,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
                  help='Number of samples to use at start of WF to determine the baseline',
                  )
 
-    hit_thresholds = straxen.URLConfig(
+    hit_min_amplitude = straxen.URLConfig(
                  track=True, infer_type=False,
                  default='cmt://hit_thresholds_tpc?version=ONLINE',
                  help='Minimum hit amplitude in ADC counts above baseline. '
@@ -70,6 +70,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
         return dtype
 
     def setup(self):
+        self.to_pe = self.gain_model
+        self.hit_thresholds = self.hit_min_amplitude
         self.hit_left_extension, self.hit_right_extension = self.save_outside_hits
        
     def compute(self, raw_records):

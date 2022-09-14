@@ -42,25 +42,25 @@ class EventPatternFit(strax.Plugin):
         help='Electron drift time from the gate in ns',
         cache=True)
         
-    s1_pattern_map = straxen.URLConfig(help='S1 (x, y, z) optical/pattern map.', infer_type=False,
+    s1_optical_map = straxen.URLConfig(help='S1 (x, y, z) optical/pattern map.', infer_type=False,
                  default='itp_map://'
                          'resource://'
                          'XENONnT_s1_xyz_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'
                          '?fmt=pkl')
 
-    s2_pattern_map = straxen.URLConfig(help='S2 (x, y) optical/pattern map.', infer_type=False,
+    s2_optical_map = straxen.URLConfig(help='S2 (x, y) optical/pattern map.', infer_type=False,
                  default='itp_map://'
                          'resource://'
                          'XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl'
                          '?fmt=pkl')
 
-    model = straxen.URLConfig(help='S2 (x, y) optical data-driven model', infer_type=False,
+    s2_tf_model = straxen.URLConfig(help='S2 (x, y) optical data-driven model', infer_type=False,
                  default='tf://'
                          'XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'
                          '?custom_objects=plugin.s2_map_custom_objects'
                          '&fmt=tar.gz')
 
-    mean_pe_photon = straxen.URLConfig(help='Mean of full VUV single photon response',
+    mean_pe_per_photon = straxen.URLConfig(help='Mean of full VUV single photon response',
                  default=1.2, infer_type=False,)
 
     to_pe = straxen.URLConfig(infer_type=False,
@@ -143,8 +143,17 @@ class EventPatternFit(strax.Plugin):
         return {"_logl_loss": _logl_loss}
 
     def setup(self):
+        #FIXME: Consider renaming the configs to match usage
+        
+        self.mean_pe_photon = self.mean_pe_per_photon
                     
+        # Getting optical maps
+        self.s1_pattern_map = self.s1_optical_map
+        self.s2_pattern_map = self.s2_optical_map
+       
         # Getting S2 data-driven tensorflow models
+        self.model = self.s2_tf_model
+
         import tensorflow as tf
         self.model_chi2 = tf.keras.Model(self.model.inputs,
                                          self.model.get_layer('Likelihood').output)
@@ -195,7 +204,7 @@ class EventPatternFit(strax.Plugin):
             arg = aft_prob[mask_s1], events['s1_area'][mask_s1], events['s1_area_fraction_top'][mask_s1]
             result['s1_area_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
             result['s1_area_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-            arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.mean_pe_photon, events['s1_area_fraction_top'][mask_s1]
+            arg = aft_prob[mask_s1], events['s1_area'][mask_s1]/self.mean_pe_per_photon, events['s1_area_fraction_top'][mask_s1]
             result['s1_photon_fraction_top_continuous_probability'][mask_s1] = s1_area_fraction_top_probability(*arg)
             result['s1_photon_fraction_top_discrete_probability'][mask_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
         
@@ -215,7 +224,7 @@ class EventPatternFit(strax.Plugin):
             arg = alt_aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1], events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_area_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_area_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
-            arg = alt_aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.mean_pe_photon, events['alt_s1_area_fraction_top'][mask_alt_s1]
+            arg = alt_aft_prob[mask_alt_s1], events['alt_s1_area'][mask_alt_s1]/self.mean_pe_per_photon, events['alt_s1_area_fraction_top'][mask_alt_s1]
             result['alt_s1_photon_fraction_top_continuous_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg)
             result['alt_s1_photon_fraction_top_discrete_probability'][mask_alt_s1] = s1_area_fraction_top_probability(*arg, 'discrete')
                 
