@@ -497,25 +497,6 @@ def _peak_saturation_correction_inner(channel_saturated, records, p,
 
 
 @export
-@strax.takes_config(
-    straxen.URLConfig('n_he_pmts', track=False, default=752, infer_type=False,
-                 help="Maximum channel of the he channels"),
-    straxen.URLConfig('he_channel_offset', track=False, default=500, infer_type=False,
-                 help="Minimum channel number of the he channels"),
-    straxen.URLConfig('le_to_he_amplification', default=20, track=True, infer_type=False,
-                 help="Difference in amplification between low energy and high "
-                      "energy channels"),
-    straxen.URLConfig('peak_min_pmts_he', default=2, infer_type=False,
-                 child_option=True, parent_option_name='peak_min_pmts',
-                 track=True,
-                 help="Minimum number of contributing PMTs needed to define a peak"),
-    straxen.URLConfig('saturation_correction_on_he', default=False, infer_type=False,
-                 child_option=True, parent_option_name='saturation_correction_on',
-                 track=True,
-                 help='On off switch for saturation correction for High Energy'
-                      ' channels'),
-    *HITFINDER_OPTIONS_he
-)
 class PeakletsHighEnergy(Peaklets):
     __doc__ = HE_PREAMBLE + Peaklets.__doc__
     depends_on = 'records_he'
@@ -524,6 +505,27 @@ class PeakletsHighEnergy(Peaklets):
     __version__ = '0.0.2'
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
+
+    n_he_pmts = straxen.URLConfig(track=False, default=752, infer_type=False,
+                 help="Maximum channel of the he channels")
+                 
+    he_channel_offset = straxen.URLConfig(track=False, default=500, infer_type=False,
+                 help="Minimum channel number of the he channels")
+                 
+    le_to_he_amplification = straxen.URLConfig(default=20, track=True, infer_type=False,
+                 help="Difference in amplification between low energy and high "
+                      "energy channels")
+                      
+    peak_min_pmts_he = straxen.URLConfig(default=2, infer_type=False,
+                 child_option=True, parent_option_name='peak_min_pmts',
+                 track=True,
+                 help="Minimum number of contributing PMTs needed to define a peak")
+                 
+    saturation_correction_on_he = straxen.URLConfig(default=False, infer_type=False,
+                 child_option=True, parent_option_name='saturation_correction_on',
+                 track=True,
+                 help='On off switch for saturation correction for High Energy'
+                      ' channels')
 
     hit_min_amplitude_he = straxen.URLConfig(
         default=HITFINDER_DEFAULTS_he['hit_min_amplitude_he'], track=True, infer_type=False,
@@ -534,6 +536,7 @@ class PeakletsHighEnergy(Peaklets):
                 'or a tuple like (correction=str, version=str, nT=boolean),'
                 'which means we are using cmt.'
         )
+
     def infer_dtype(self):
         return strax.peak_dtype(n_channels=self.n_he_pmts)
 
@@ -553,32 +556,38 @@ class PeakletsHighEnergy(Peaklets):
 
 
 @export
-@strax.takes_config(
-    straxen.URLConfig('s1_risetime_area_parameters', default=(50, 80, 12), type=(list, tuple),
-                 help="norm, const, tau in the empirical boundary in the risetime-area plot"),
-    straxen.URLConfig('s1_risetime_aft_parameters', default=(-1, 2.6), type=(list, tuple),
-                 help=("Slope and offset in exponential of emperical boundary in the rise time-AFT "
-                      "plot. Specified as (slope, offset)")),
-    straxen.URLConfig('s1_flatten_threshold_aft', default=(0.6, 100), type=(tuple, list),
-                 help=("Threshold for AFT, above which we use a flatted boundary for rise time" 
-                       "Specified values: (AFT boundary, constant rise time).")),
-    straxen.URLConfig('n_top_pmts', default=straxen.n_top_pmts, type=int,
-                 help="Number of top PMTs"),
-    straxen.URLConfig('s1_max_rise_time_post100', default=200, type=(int, float),
-                 help="Maximum S1 rise time for > 100 PE [ns]"),
-    straxen.URLConfig('s1_min_coincidence', default=2, type=int,
-                 help="Minimum tight coincidence necessary to make an S1"),
-    straxen.URLConfig('s2_min_pmts', default=4, type=int,
-                 help="Minimum number of PMTs contributing to an S2"))
 class PeakletClassification(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
+    __version__ = '3.0.3'
+
     provides = 'peaklet_classification'
     depends_on = ('peaklets',)
     parallel = True
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')])
 
-    __version__ = '3.0.3'
+    s1_risetime_area_parameters = straxen.URLConfig(default=(50, 80, 12), type=(list, tuple),
+                 help="norm, const, tau in the empirical boundary in the risetime-area plot")
+
+    s1_risetime_aft_parameters = straxen.URLConfig(default=(-1, 2.6), type=(list, tuple),
+                 help=("Slope and offset in exponential of emperical boundary in the rise time-AFT "
+                      "plot. Specified as (slope, offset)"))
+                      
+    s1_flatten_threshold_aft = straxen.URLConfig(default=(0.6, 100), type=(tuple, list),
+                 help=("Threshold for AFT, above which we use a flatted boundary for rise time" 
+                       "Specified values: (AFT boundary, constant rise time)."))
+                       
+    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int,
+                 help="Number of top PMTs")
+                 
+    s1_max_rise_time_post100 = straxen.URLConfig(default=200, type=(int, float),
+                 help="Maximum S1 rise time for > 100 PE [ns]")
+                 
+    s1_min_coincidence = straxen.URLConfig(default=2, type=int,
+                 help="Minimum tight coincidence necessary to make an S1")
+                 
+    s2_min_pmts = straxen.URLConfig(default=4, type=int,
+                 help="Minimum number of PMTs contributing to an S2")
 
     @staticmethod
     def upper_rise_time_area_boundary(area, norm, const, tau):
