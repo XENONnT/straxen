@@ -280,8 +280,14 @@ def get_correction(name: str,
                    detector: str = 'nt',
                    **kwargs):
     """Get value for name from CMT"""
+    
+    if version == 'CONSTANT':
+        return straxen.get_correction_from_cmt(run_id, (name, detector == 'nt'))
+
     if run_id is None:
         raise ValueError('Attempting to fetch a correction without a run id.')
+    
+
     return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
 

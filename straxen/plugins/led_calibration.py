@@ -5,6 +5,7 @@ if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.
 import datetime
 from immutabledict import immutabledict
 import strax
+import straxen
 import numba
 import numpy as np
 
@@ -16,19 +17,6 @@ channel_list = [i for i in range(494)]
 
 
 @export
-@strax.takes_config(
-    strax.Option('baseline_window',
-                 default=(0,40), infer_type=False,
-                 help="Window (samples) for baseline calculation."),
-    strax.Option('led_window',
-                 default=(78, 116), infer_type=False,
-                 help="Window (samples) where we expect the signal in LED calibration"),
-    strax.Option('noise_window',
-                 default=(10, 48), infer_type=False,
-                 help="Window (samples) to analysis the noise"),
-    strax.Option('channel_list',
-                 default=(tuple(channel_list)), infer_type=False,
-                 help="List of PMTs. Defalt value: all the PMTs"))
 class LEDCalibration(strax.Plugin):
     """
     Preliminary version, several parameters to set during commissioning.
@@ -46,11 +34,28 @@ class LEDCalibration(strax.Plugin):
     """
     
     __version__ = '0.2.3'
+
     depends_on = ('raw_records',)
     data_kind = 'led_cal' 
     compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = False
+
+    baseline_window = straxen.URLConfig(
+                 default=(0,40), infer_type=False,
+                 help="Window (samples) for baseline calculation.")
+                 
+    led_window = straxen.URLConfig(
+                 default=(78, 116), infer_type=False,
+                 help="Window (samples) where we expect the signal in LED calibration")
+                 
+    noise_window = straxen.URLConfig(
+                 default=(10, 48), infer_type=False,
+                 help="Window (samples) to analysis the noise")
+                 
+    channel_list = straxen.URLConfig(
+                 default=(tuple(channel_list)), infer_type=False,
+                 help="List of PMTs. Defalt value: all the PMTs")
 
     dtype = [('area', np.float32, 'Area averaged in integration windows'),
              ('amplitude_led', np.float32, 'Amplitude in LED window'),
@@ -65,19 +70,19 @@ class LEDCalibration(strax.Plugin):
         The data for LED calibration are build for those PMT which belongs to channel list. 
         This is used for the different ligh levels. As defaul value all the PMTs are considered.
         '''
-        mask = np.where(np.in1d(raw_records['channel'], self.config['channel_list']))[0]
+        mask = np.where(np.in1d(raw_records['channel'], self.channel_list))[0]
         rr   = raw_records[mask]
-        r    = get_records(rr, baseline_window=self.config['baseline_window'])
+        r    = get_records(rr, baseline_window=self.baseline_window)
         del rr, raw_records
 
         temp = np.zeros(len(r), dtype=self.dtype)
         strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
 
-        on, off = get_amplitude(r, self.config['led_window'], self.config['noise_window'])
+        on, off = get_amplitude(r, self.led_window, self.noise_window)
         temp['amplitude_led']   = on['amplitude']
         temp['amplitude_noise'] = off['amplitude']
 
-        area = get_area(r, self.config['led_window'])
+        area = get_area(r, self.led_window)
         temp['area'] = area['area']
         return temp
 
@@ -147,23 +152,24 @@ def get_area(records, led_window):
 
 
 @export
-@strax.takes_config(
-    strax.Option('channel_map', track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number."),
-)
 class nVetoExtTimings(strax.Plugin):
     """
     Plugin which computes the time difference `delta_time` from pulse timing 
     of `hitlets_nv` to start time of `raw_records` which belong the `hitlets_nv`.
     They are used as the external trigger timings.
     """
+
+    __version__ = '0.0.1'
+
     depends_on = ('raw_records_nv', 'hitlets_nv')
     provides = 'ext_timings_nv'
     data_kind = 'hitlets_nv'
 
     compressor = 'zstd'
-    __version__ = '0.0.1'
+    
+    channel_map = straxen.URLConfig(track=False, type=immutabledict,
+                 help="immutabledict mapping subdetector to (min, max) "
+                      "channel number.")
 
     def infer_dtype(self):
         dtype = []
@@ -174,8 +180,8 @@ class nVetoExtTimings(strax.Plugin):
         return dtype
 
     def setup(self):
-        self.nv_pmt_start = self.config['channel_map']['nveto'][0]
-        self.nv_pmt_stop = self.config['channel_map']['nveto'][1] + 1
+        self.nv_pmt_start = self.channel_map['nveto'][0]
+        self.nv_pmt_stop = self.channel_map['nveto'][1] + 1
 
     def compute(self, hitlets_nv, raw_records_nv):
 
