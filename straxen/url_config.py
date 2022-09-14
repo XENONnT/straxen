@@ -356,7 +356,7 @@ def load_value(name: str, bodega_version=None):
 
 
 @URLConfig.register('tf')
-def open_neural_net(model_path: str, **kwargs):
+def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
     import tensorflow as tf
@@ -365,7 +365,7 @@ def open_neural_net(model_path: str, **kwargs):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
-        return tf.keras.models.load_model(tmpdirname)
+        return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
 
 
 @URLConfig.register('itp_dict')
