@@ -1,6 +1,7 @@
 import json
 import typing
 from typing import Container
+from uuid import uuid4
 import numpy as np
 import strax
 import fsspec
@@ -207,11 +208,15 @@ class URLConfig(strax.Config):
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
+
         kwargs = {k: self.fetch_attribute(plugin, v)
                   for k, v in url_kwargs.items()}
 
         # construct a deterministic hash key
-        key = strax.deterministic_hash((url, kwargs))
+        try:
+            key = strax.deterministic_hash((url, kwargs))
+        except TypeError:
+            key = uuid4()
 
         # fetch from cache if exists
         value = self.cache.get(key, None)
@@ -264,14 +269,16 @@ class URLConfig(strax.Config):
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
         """
-        if cls.PLUGIN_ATTR_PREFIX in url:
-            raise ValueError(
-                'You specified at least one parameter that depends on the '
-                'plugin. We cannot fetch this in the dry run. Try replacing '
-                'e.g. plugin.run_id=027000 with run_id=027000 (or pass as an '
-                'extra kwargs)')
         url_arg, url_kwarg = cls.split_url_kwargs(url)
-        return cls.dispatch(cls, url_arg, **url_kwarg, **kwargs)
+
+        combined_kwargs = dict(url_kwarg, **kwargs)
+        for k,v in combined_kwargs.items():
+            if isinstance(v, str) and cls.PLUGIN_ATTR_PREFIX in v:
+                raise ValueError(f'The URL parameter {k} depends on the plugin'
+                                'You must specify the value for this parameter'
+                                'for this URL to be evaluated correctly.')
+
+        return cls.dispatch(cls, url_arg, **combined_kwargs)
 
 @URLConfig.register('cmt')
 def get_correction(name: str,
@@ -437,4 +444,10 @@ def get_fixed(name: str):
     from .get_corrections import FIXED_TO_PE
 
     return FIXED_TO_PE[name]
+
+@URLConfig.register('fixed-thresholds')
+def get_thresholds(model: str):
+    """Return a fixed value for a given model"""
+    
+    return straxen.hit_min_amplitude(model)
 

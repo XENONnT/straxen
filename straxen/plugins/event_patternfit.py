@@ -56,9 +56,10 @@ class EventPatternFit(strax.Plugin):
 
     s2_tf_model = straxen.URLConfig(help='S2 (x, y) optical data-driven model', infer_type=False,
                  default='tf://'
+                         'resource://'
                          'XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz'
                          '?custom_objects=plugin.s2_map_custom_objects'
-                         '&fmt=tar.gz')
+                         '&fmt=abs_path')
 
     mean_pe_per_photon = straxen.URLConfig(help='Mean of full VUV single photon response',
                  default=1.2, infer_type=False,)
@@ -144,7 +145,7 @@ class EventPatternFit(strax.Plugin):
 
     def setup(self):
         #FIXME: Consider renaming the configs to match usage
-        
+
         self.to_pe = self.gain_model
 
         self.mean_pe_photon = self.mean_pe_per_photon

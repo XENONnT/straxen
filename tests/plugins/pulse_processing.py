@@ -7,8 +7,8 @@ def test_alternative_hitfinder_options(self: PluginTestCase):
     """Test some old ways of setting the hitfinder options"""
     st = self.st.new_context()
     st.set_config(dict(
-        hit_min_amplitude='pmt_commissioning_initial',
-        hev_gain_model=("to_pe_placeholder", True),
+        hit_min_amplitude='fixed-thresholds://pmt_commissioning_initial',
+        hev_gain_model="fixed://to_pe_placeholder",
         tail_veto_threshold=1,
         pmt_pulse_filter=(
             0.012, -0.119, 2.435, -1.271, 0.357, -0.174, -0., -0.036, -0.028, -0.019, -0.025,

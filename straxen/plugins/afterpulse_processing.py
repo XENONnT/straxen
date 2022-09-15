@@ -45,7 +45,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
                  default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
                  help='Minimum hit amplitude in ADC counts above baseline. '
                       'Specify as a tuple of length n_tpc_pmts, or a number,'
-                      'or a string like "pmt_commissioning_initial" which means calling'
+                      'or a string like "fixed-thresholds://pmt_commissioning_initial" which means calling'
                       'hitfinder_thresholds.py'
                       'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
                       'calling cmt.',
@@ -70,7 +70,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
     def setup(self):
         self.to_pe = self.gain_model
-        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude)
+        self.hit_thresholds = self.hit_min_amplitude
         self.hit_left_extension, self.hit_right_extension = self.save_outside_hits
        
     def compute(self, raw_records):

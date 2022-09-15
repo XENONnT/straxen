@@ -79,7 +79,7 @@ class nVETORecorder(strax.Plugin):
 
     def setup(self):
         self.baseline_samples = self.baseline_samples_nv
-        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_nv)
+        self.hit_thresholds = self.hit_min_amplitude_nv
         
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(

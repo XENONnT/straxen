@@ -138,7 +138,7 @@ class Peaklets(strax.Plugin):
 
         self.to_pe = self.gain_model
 
-        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude)
+        self.hit_thresholds = self.hit_min_amplitude
             
         self.channel_range = self.channel_map['tpc']
 
@@ -545,7 +545,7 @@ class PeakletsHighEnergy(Peaklets):
         self.to_pe = np.concatenate((buffer_pmts, self.to_pe))
         self.to_pe *= self.le_to_he_amplification
 
-        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_he)
+        self.hit_thresholds = self.hit_min_amplitude_he
 
         self.channel_range = self.channel_map['he']
 

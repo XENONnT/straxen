@@ -506,7 +506,7 @@ x1t_common_config = dict(
         -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    hit_min_amplitude='XENON1T_SR1',
+    hit_min_amplitude='fixed-thresholds://XENON1T_SR1',
     tail_veto_threshold=int(1e5),
     save_outside_hits=(3, 3),
     # Peaklets

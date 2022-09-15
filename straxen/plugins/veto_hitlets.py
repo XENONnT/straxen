@@ -94,7 +94,7 @@ class nVETOHitlets(strax.Plugin):
 
         # Check config of `hit_min_amplitude_nv` and define hit thresholds
         # if cmt config
-        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_nv)
+        self.hit_thresholds = self.hit_min_amplitude_nv
         
     def compute(self, records_nv, start, end):
         records_nv = remove_switched_off_channels(records_nv, self.to_pe)
@@ -213,7 +213,7 @@ class muVETOHitlets(nVETOHitlets):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0]:] = to_pe[:]
 
-        self.hit_thresholds = straxen.hit_min_amplitude(self.hit_min_amplitude_mv)
+        self.hit_thresholds = self.hit_min_amplitude_mv
 
     def compute(self, records_mv, start, end):
         return super().compute(records_mv, start, end)
