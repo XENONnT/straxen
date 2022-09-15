@@ -438,6 +438,7 @@ def rekey_dict(d, replace_keys='', with_keys=''):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
 
+
 @URLConfig.register('fixed')
 def get_fixed(name: str):
     """Return a fixed value for a given name"""
@@ -445,9 +446,9 @@ def get_fixed(name: str):
 
     return FIXED_TO_PE[name]
 
+
 @URLConfig.register('fixed-thresholds')
 def get_thresholds(model: str):
     """Return a fixed value for a given model"""
     
     return straxen.hit_min_amplitude(model)
-
