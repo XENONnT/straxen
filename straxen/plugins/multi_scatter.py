@@ -12,6 +12,7 @@ export, __all__ = strax.exporter()
 class EventPeaks(strax.Plugin):
     """
     Add event number for peaks and drift times of all s2 depending on the largest s1.
+    Link - https://xe1t-wiki.lngs.infn.it/doku.php?id=weiss:analysis:ms_plugin
     """
     __version__ = '0.0.57'
     depends_on = ('event_info', 'peak_basics','peak_positions')
