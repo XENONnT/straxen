@@ -11,6 +11,9 @@ jobs:
       - name: Change __all__ exports for pyflake
         run: |
              bash .github/scripts/pre_pyflakes.sh
+      - uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: v0.14.1
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.15.2
         continue-on-error: false
