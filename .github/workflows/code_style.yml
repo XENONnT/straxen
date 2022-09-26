@@ -7,15 +7,15 @@ jobs:
     name: Quality check
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
       - name: Change __all__ exports for pyflake
         run: |
              bash .github/scripts/pre_pyflakes.sh
       - uses: reviewdog/action-setup@v1
         with:
           reviewdog_version: v0.14.1
-      - name: pin bandit
-        run: pip install bandit==1.7.2
+      - name: patch reviewdog
+        run: sudo chown -R root:root $GITHUB_WORKSPACE
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.16.1
         continue-on-error: false
