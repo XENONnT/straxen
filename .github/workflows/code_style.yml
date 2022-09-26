@@ -1,3 +1,9 @@
+# NB! If this action fails with a rather cryptic message about:
+#   AttributeError: 'Binding' object has no attribute 'names'
+# This is most likely due to the fact that modules were added 
+# that are not considered in (and my have to patch):
+# .github/scripts/pre_pyflakes.sh
+
 name: Python style
 on:
   pull_request:
