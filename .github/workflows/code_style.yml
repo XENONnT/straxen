@@ -15,7 +15,7 @@ jobs:
         with:
           reviewdog_version: v0.14.1
       - name: Wemake Python Stylguide
-        uses: wemake-services/wemake-python-styleguide@0.15.2
+        uses: wemake-services/wemake-python-styleguide@0.16.1
         continue-on-error: false
         with:
           reporter: 'github-pr-review'
