@@ -12,8 +12,8 @@ jobs:
         run: |
              bash .github/scripts/pre_pyflakes.sh
       - name: Wemake Python Stylguide
-        uses: wemake-services/wemake-python-styleguide@0.16.1
-        continue-on-error: true
+        uses: wemake-services/wemake-python-styleguide@0.15.3
+        continue-on-error: false
         with:
           reporter: 'github-pr-review'
         env:
