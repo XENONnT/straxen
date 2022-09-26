@@ -1,6 +1,6 @@
 # NB! If this action fails with a rather cryptic message about:
 #   AttributeError: 'Binding' object has no attribute 'names'
-# This is most likely due to the fact that modules were added 
+# This is most likely due to the fact that modules were added
 # that are not considered in (and my have to patch):
 # .github/scripts/pre_pyflakes.sh
 
@@ -21,14 +21,11 @@ jobs:
         uses: actions/setup-python@master
         with:
           python-version: 3.8
-#      - uses: reviewdog/action-setup@v1
-#        with:
-#          reviewdog_version: v0.14.1
       - name: patch reviewdog
         run: sudo chown -R root:root $GITHUB_WORKSPACE
       - name: Wemake Python Stylguide
         uses: wemake-services/wemake-python-styleguide@0.16.1
-        continue-on-error: false
+        continue-on-error: true
         with:
           reporter: 'github-pr-review'
         env:
