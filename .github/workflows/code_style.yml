@@ -7,7 +7,7 @@ jobs:
     name: Quality check
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v1
       - name: Change __all__ exports for pyflake
         run: |
              bash .github/scripts/pre_pyflakes.sh
