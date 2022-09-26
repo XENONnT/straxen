@@ -11,6 +11,10 @@ jobs:
       - name: Change __all__ exports for pyflake
         run: |
              bash .github/scripts/pre_pyflakes.sh
+      - name: Set up Python
+        uses: actions/setup-python@master
+        with:
+          python-version: 3.8
 #      - uses: reviewdog/action-setup@v1
 #        with:
 #          reviewdog_version: v0.14.1
