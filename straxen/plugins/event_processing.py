@@ -10,38 +10,6 @@ from straxen.itp_map import InterpolatingMap
 export, __all__ = strax.exporter()
 
 @export
-@strax.takes_config(
-    strax.Option('trigger_min_area', default=100, type=(int,float),
-                 help='Peaks must have more area (PE) than this to '
-                      'cause events'),
-    strax.Option('trigger_max_competing', default=7, type=int,
-                 help='Peaks must have FEWER nearby larger or slightly smaller'
-                      ' peaks to cause events'),
-    strax.Option('left_event_extension', default=int(0.25e6), type=(int, float),
-                 help='Extend events this many ns to the left from each '
-                      'triggering peak. This extension is added to the maximum '
-                      'drift time.',
-                 ),
-    strax.Option('right_event_extension', default=int(0.25e6), type=(int, float),
-                 help='Extend events this many ns to the right from each '
-                      'triggering peak.',
-                 ),
-    strax.Option(name='max_drift_length',
-                 default=straxen.tpc_z, type=(int, float),
-                 help='Total length of the TPC from the bottom of gate to the '
-                      'top of cathode wires [cm]',
-                 ),
-    strax.Option(name='exclude_s1_as_triggering_peaks',
-                 default=True, type=bool,
-                 help='If true exclude S1s as triggering peaks.',
-                 ),
-    strax.Option(name='event_s1_min_coincidence',
-                 default=2, infer_type=False,
-                 help="Event level S1 min coincidence. Should be >= "
-                      "s1_min_coincidence in the peaklet classification"),
-    strax.Option(name='s1_min_coincidence', default=2, type=int,
-                 help="Minimum tight coincidence necessary to make an S1"),
-)
 class Events(strax.OverlapWindowPlugin):
     """
     Plugin which defines an "event" in our TPC.
@@ -58,11 +26,21 @@ class Events(strax.OverlapWindowPlugin):
         The time range which defines an event gets chopped at the chunk
         boundaries. This happens at invalid boundaries of the
     """
+
+    __version__ = '0.1.1'
+
     depends_on = ['peak_basics', 'peak_proximity']
     provides = 'events'
     data_kind = 'events'
-    __version__ = '0.1.1'
+    
     save_when = strax.SaveWhen.NEVER
+
+    dtype = [
+        ('event_number', np.int64, 'Event number in this dataset'),
+        ('time', np.int64, 'Event start time in ns since the unix epoch'),
+        ('endtime', np.int64, 'Event end time in ns since the unix epoch')]
+
+    events_seen = 0
 
     electron_drift_velocity = straxen.URLConfig(
         default='cmt://'
@@ -72,38 +50,69 @@ class Events(strax.OverlapWindowPlugin):
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
 
-    dtype = [
-        ('event_number', np.int64, 'Event number in this dataset'),
-        ('time', np.int64, 'Event start time in ns since the unix epoch'),
-        ('endtime', np.int64, 'Event end time in ns since the unix epoch')]
+    trigger_min_area = straxen.URLConfig(default=100, type=(int,float),
+                 help='Peaks must have more area (PE) than this to '
+                      'cause events')
+                      
+    trigger_max_competing = straxen.URLConfig(default=7, type=int,
+                 help='Peaks must have FEWER nearby larger or slightly smaller'
+                      ' peaks to cause events')
+                      
+    left_event_extension = straxen.URLConfig(default=int(0.25e6), type=(int, float),
+                 help='Extend events this many ns to the left from each '
+                      'triggering peak. This extension is added to the maximum '
+                      'drift time.',
+                 )
+                 
+    right_event_extension = straxen.URLConfig(default=int(0.25e6), type=(int, float),
+                 help='Extend events this many ns to the right from each '
+                      'triggering peak.',
+                 )
+                 
+    max_drift_length = straxen.URLConfig(
+                 default=straxen.tpc_z, type=(int, float),
+                 help='Total length of the TPC from the bottom of gate to the '
+                      'top of cathode wires [cm]',
+                 )
+                 
+    exclude_s1_as_triggering_peaks = straxen.URLConfig(
+                 default=True, type=bool,
+                 help='If true exclude S1s as triggering peaks.',
+                 )
+                 
+    event_s1_min_coincidence = straxen.URLConfig(
+                 default=2, infer_type=False,
+                 help="Event level S1 min coincidence. Should be >= "
+                      "s1_min_coincidence in the peaklet classification")
 
-    events_seen = 0
+    s1_min_coincidence = straxen.URLConfig(default=2, type=int,
+                 help="Minimum tight coincidence necessary to make an S1")
 
     def setup(self):
-        if self.config['s1_min_coincidence'] > self.config['event_s1_min_coincidence']:
+        if self.s1_min_coincidence > self.event_s1_min_coincidence:
             raise ValueError('Peak s1 coincidence requirement should be smaller '
                              'or equal to event_s1_min_coincidence')
-        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
+        self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
         # Left_extension and right_extension should be computed in setup to be
         # reflected in cutax too.
-        self.left_extension = self.config['left_event_extension'] + self.drift_time_max
-        self.right_extension = self.config['right_event_extension']
+        self.left_extension = self.left_event_extension + self.drift_time_max
+        self.right_extension = self.right_event_extension
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
-        return 10 * (self.config['left_event_extension']
+        return 10 * (self.left_event_extension
                      + self.drift_time_max
-                     + self.config['right_event_extension'])
+                     + self.right_event_extension)
 
     def compute(self, peaks, start, end):
-        _is_triggering = peaks['area'] > self.config['trigger_min_area']
-        _is_triggering &= (peaks['n_competing'] <= self.config['trigger_max_competing'])
-        if self.config['exclude_s1_as_triggering_peaks']:
+        _is_triggering = peaks['area'] > self.trigger_min_area
+        _is_triggering &= (peaks['n_competing'] <= self.trigger_max_competing)
+        if self.exclude_s1_as_triggering_peaks:
             _is_triggering &= peaks['type'] == 2
         else:
             is_not_s1 = peaks['type'] != 1
             has_tc_large_enough = (peaks['tight_coincidence']
-                                   >= self.config['event_s1_min_coincidence'])
+                                   >= self.event_s1_min_coincidence)
             _is_triggering &= (is_not_s1 | has_tc_large_enough)
 
         triggers = peaks[_is_triggering]
@@ -135,28 +144,6 @@ class Events(strax.OverlapWindowPlugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        name='allow_posts2_s1s', default=False, infer_type=False,
-        help="Allow S1s past the main S2 to become the main S1 and S2"),
-    strax.Option(
-        name='force_main_before_alt', default=False, infer_type=False,
-        help="Make the alternate S1 (and likewise S2) the main S1 if "
-             "occurs before the main S1."),
-    strax.Option(
-        name='force_alt_s2_in_max_drift_time', default=True, infer_type=False,
-        help="Make sure alt_s2 is in max drift time starting from main S1"),
-    strax.Option(
-        name='event_s1_min_coincidence',
-        default=2, infer_type=False,
-        help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
-             "in the peaklet classification"),
-    strax.Option(
-        name='max_drift_length',
-        default=straxen.tpc_z, infer_type=False,
-        help='Total length of the TPC from the bottom of gate to the '
-             'top of cathode wires [cm]',),
-)
 class EventBasics(strax.Plugin):
     """
     Computes the basic properties of the main/alternative S1/S2 within
@@ -185,6 +172,29 @@ class EventBasics(strax.Plugin):
         cache=True,
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
+
+    allow_posts2_s1s = straxen.URLConfig(
+        default=False, infer_type=False,
+        help="Allow S1s past the main S2 to become the main S1 and S2")
+
+    force_main_before_alt = straxen.URLConfig(
+        default=False, infer_type=False,
+        help="Make the alternate S1 (and likewise S2) the main S1 if "
+             "occurs before the main S1.")
+             
+    force_alt_s2_in_max_drift_time = straxen.URLConfig(
+        default=True, infer_type=False,
+        help="Make sure alt_s2 is in max drift time starting from main S1")
+        
+    event_s1_min_coincidence= straxen.URLConfig(
+        default=2, infer_type=False,
+        help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
+             "in the peaklet classification")
+             
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z, infer_type=False,
+        help='Total length of the TPC from the bottom of gate to the '
+             'top of cathode wires [cm]',)
 
     def infer_dtype(self):
         # Basic event properties
@@ -242,7 +252,7 @@ class EventBasics(strax.Plugin):
         )
 
     def setup(self):
-        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
+        self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -345,7 +355,7 @@ class EventBasics(strax.Plugin):
         # number_of_peaks=0 selects all available s2 and sort by area
         largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
 
-        if not self.config['allow_posts2_s1s'] and len(largest_s2s):
+        if not self.allow_posts2_s1s and len(largest_s2s):
             s1_latest_time = largest_s2s[0]['time']
         else:
             s1_latest_time = np.inf
@@ -354,9 +364,9 @@ class EventBasics(strax.Plugin):
             peaks,
             s_i=1,
             s1_before_time=s1_latest_time,
-            s1_min_coincidence=self.config['event_s1_min_coincidence'])
+            s1_min_coincidence=self.event_s1_min_coincidence)
 
-        if self.config['force_alt_s2_in_max_drift_time']:
+        if self.force_alt_s2_in_max_drift_time:
             s2_idx, largest_s2s = self.find_main_alt_s2(largest_s1s,
                                                         s2_idx,
                                                         largest_s2s,
@@ -366,7 +376,7 @@ class EventBasics(strax.Plugin):
             # Select only the largest two S2s
             largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
 
-        if self.config['force_main_before_alt']:
+        if self.force_main_before_alt:
             s2_order = np.argsort(largest_s2s['time'])
             largest_s2s = largest_s2s[s2_order]
             s2_idx = s2_idx[s2_order]
@@ -490,18 +500,6 @@ class EventBasics(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        name='fdc_map', infer_type=False,
-        help='3D field distortion correction map path',
-        default_by_run=[
-            (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
-            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')), # noqa
-            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')), # noqa
-            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
-            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))], # noqa
-    ),
-)
 class EventPositions(strax.Plugin):
     """
     Computes the observed and corrected position for the main S1/S2
@@ -534,7 +532,18 @@ class EventPositions(strax.Plugin):
                 '?version=ONLINE&run_id=plugin.run_id',
         help='Electron drift time from the gate in ns',
         cache=True)
-    
+
+    fdc_map = straxen.URLConfig(
+        infer_type=False,
+        help='3D field distortion correction map path',
+        default_by_run=[
+            (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
+            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')), # noqa
+            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')), # noqa
+            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
+            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))], # noqa
+    )
+
     def infer_dtype(self):
         dtype = []
         for j in 'x y r'.split():
@@ -580,16 +589,16 @@ class EventPositions(strax.Plugin):
         return dtype + strax.time_fields
 
     def setup(self):
-        if isinstance(self.config['fdc_map'], str):
+        if isinstance(self.fdc_map, str):
             self.map = InterpolatingMap(
-                get_resource(self.config['fdc_map'], fmt='binary'))
+                get_resource(self.fdc_map, fmt='binary'))
 
-        elif is_cmt_option(self.config['fdc_map']):
+        elif is_cmt_option(self.fdc_map):
             self.map = InterpolatingMap(
                 get_cmt_resource(self.run_id,
                                  tuple(['suffix',
-                                        self.config['default_reconstruction_algorithm'],
-                                        *self.config['fdc_map']]),
+                                        self.default_reconstruction_algorithm,
+                                        *self.fdc_map]),
                                  fmt='binary'))
             self.map.scale_coordinates([1., 1., - self.electron_drift_velocity])
 
