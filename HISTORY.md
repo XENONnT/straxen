@@ -1,3 +1,69 @@
+v1.8.3 / 2022-07-18
+-------------------
+* Bootstrax file-check fix by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1064
+* Fix hanging straxer by @jmosbacher in https://github.com/XENONnT/straxen/pull/1065
+
+Notes:
+* No lineage changes
+
+Full Changelog:
+ - https://github.com/XENONnT/straxen/compare/v1.8.2...v1.8.3
+
+
+v1.8.2 / 2022-07-12
+-------------------
+* Stop tf pbar by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1063
+* Allow long runs by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1062
+
+Notes:
+* No lineage changes
+
+Full Changelog:
+- https://github.com/XENONnT/straxen/compare/v1.8.1...v1.8.2
+
+
+v1.8.1 / 2022-06-07
+-------------------
+Minor:
+* Change FDC z offset and add alternative interaction by @ftoschi in #1017
+* Plugin for online individual peak monitoring by @mflierm in #1054
+
+Notes:
+* Lineage changes for event_positions, corrected_areas, energy_estimates, event_info, event_info_double
+Added new data-kind: individual_peak_monitor
+
+Patch:
+* Version logging by @mflierm in #1055
+* update docs ev interactive display by @JoranAngevaare in #1042
+* allow dry eval of URL configs by @JoranAngevaare in #1040
+* refactor tests by @JoranAngevaare in #1030
+* start testing examples of notebooks by @JoranAngevaare in #1048
+* Bump nbsphinx from 0.8.8 to 0.8.9 in /extra_requirements by @dependabot in #1053
+* Add kicp to query by @JoranAngevaare in #1052
+* Bump sphinx from 4.5.0 to 5.0.1 in /extra_requirements by @dependabot in #1051
+* Allow constant tuple options by @JoranAngevaare in #1039
+
+Full changelog:
+- https://github.com/XENONnT/straxen/compare/v1.7.1...v1.8.0
+
+v1.7.2 / 2022-07-18
+-------------------
+Patch:
+ * Upload cherry picks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1066
+ * Fix hanging straxer by @jmosbacher in https://github.com/XENONnT/straxen/pull/1065
+ * Stop tf pbar by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1063
+ * update docs ev interactive display by @JoranAngevaare in #1042
+ * allow dry eval of URL configs by @JoranAngevaare in #1040
+ * refactor tests by @JoranAngevaare in #1030
+ * start testing examples of notebooks by @JoranAngevaare in #1048
+ * Bump nbsphinx from 0.8.8 to 0.8.9 in /extra_requirements by @dependabot in #1053
+ * Add kicp to query by @JoranAngevaare in #1052
+ * Bump sphinx from 4.5.0 to 5.0.1 in /extra_requirements by @dependabot in #1051
+ * Allow constant tuple options by @JoranAngevaare in #1039
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.7.1...v1.7.2
+
+
 v1.7.1 / 2022-05-16
 -------------------
 Patch:

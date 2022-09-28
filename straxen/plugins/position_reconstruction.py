@@ -88,7 +88,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         area_per_channel_top = area_per_channel_top.reshape(-1,
                                                             self.config['n_top_pmts']
                                                             )
-        output = model.predict(area_per_channel_top)
+        output = model.predict(area_per_channel_top, verbose=0)
 
         # writing output to the result
         result['x_' + self.algorithm][peak_mask] = output[:, 0]
