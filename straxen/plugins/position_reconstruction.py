@@ -205,7 +205,7 @@ class S2ReconPosDiff(strax.Plugin):
     provides = 's2_recon_pos_diff'
     save_when = strax.SaveWhen.EXPLICIT
 
-    recon_alg_included = straxen.URLConfig('',
+    recon_alg_included = straxen.URLConfig(
                  help='The list of all reconstruction algorithm considered.',
                  default=('_mlp', '_gcn', '_cnn'), infer_type=False,
                  )
