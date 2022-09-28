@@ -41,12 +41,12 @@ class AqmonChannels(IntEnum):
 @export
 class AqmonHits(strax.Plugin):
     """
-    Find hits in acquisition monitor data. These hits could be
-    then used by other plugins for deadtime calculations,
+    Find hits in acquisition monitor data. Create hitlets to account for hits that are split.
+    These hitlets could be then used by other plugins for deadtime calculations,
     GPS SYNC analysis, etc.
     """
     save_when = strax.SaveWhen.TARGET
-    __version__ = '1.1.2'
+    __version__ = '1.1.3'
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -87,7 +87,11 @@ class AqmonHits(strax.Plugin):
     provides = 'aqmon_hits'
     data_kind = 'aqmon_hits'
 
-    dtype = strax.hit_dtype
+    def infer_dtype(self):
+        wanted_fields = ['time', 'length', 'dt', 'channel', 'area']
+        dtype = [dt for dt in strax.hit_dtype if dt[0][1] in wanted_fields]
+        return dtype
+
 
     def compute(self, raw_records_aqmon):
         not_allowed_channels = (set(np.unique(raw_records_aqmon['channel']))
@@ -106,7 +110,13 @@ class AqmonHits(strax.Plugin):
         strax.baseline(records, baseline_samples=self.baseline_samples_aqmon, flip=True)
         aqmon_hits = self.find_aqmon_hits_per_channel(records)
         aqmon_hits = strax.sort_by_time(aqmon_hits)
-        return aqmon_hits
+
+        # in busy runs veto starts get split at chunk edges into two. we introduce hitlets:
+        aqmon_hitlets = strax.create_hitlets_from_hits(aqmon_hits, (0,0), [0, 1000])
+        to_pe = np.ones(808)  # stay in ADC units: these are NIM signals
+        aqmon_hitlets = strax.get_hitlets_data(aqmon_hitlets, records, to_pe=to_pe)
+
+        return aqmon_hitlets[list(self.dtype.names)]
 
     @property
     def aqmon_channels(self):
@@ -126,7 +136,8 @@ class AqmonHits(strax.Plugin):
 
         if np.sum(is_artificial):
             aqmon_hits = np.concatenate([
-                aqmon_hits, self.get_deadtime_hits(records[is_artificial])])
+                aqmon_hits[list(self.dtype.names)],
+                self.get_deadtime_hits(records[is_artificial])])
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
@@ -294,9 +305,10 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
         return veto_hits_start, veto_hits_stop
 
-    @staticmethod
-    def fake_hit(start, dt=1, length=1):
-        hit = np.zeros(1, strax.hit_dtype)
+
+    def fake_hit(self, start, dt=1, length=1):
+        aqmon_hit_dtype = strax.unpack_dtype(self.deps['aqmon_hits'].dtype_for('aqmon_hits'))
+        hit = np.zeros(1, aqmon_hit_dtype)
         hit['time'] = start
         hit['dt'] = dt
         hit['length'] = length
