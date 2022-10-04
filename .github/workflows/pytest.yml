@@ -96,7 +96,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
-          coverage run --source=straxen -m pytest --durations 0 -n auto
+          coverage run --source=straxen -m pytest --durations 0
           coverage report
       - name: Coveralls
         # Make the coverage report and upload
