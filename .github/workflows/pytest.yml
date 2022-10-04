@@ -96,7 +96,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
-          coverage run --source=straxen -m pytest --durations 0
+          coverage run --source=straxen -m pytest --durations 0 -n auto
           coverage report
       - name: Coveralls
         # Make the coverage report and upload
@@ -108,18 +108,18 @@ jobs:
         if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]')
         run: |
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
-          coverage run --source=straxen -m pytest -v
+          coverage run --source=straxen -m pytest -v -n auto
 
           # Test notebooks
-          coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
-          coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/ScadaInterfaceExample.ipynb
+          coverage run --append --source=straxen -m pytest -v -n auto --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
+          coverage run --append --source=straxen -m pytest -v -n auto --nbmake -n=auto notebooks/tutorials/ScadaInterfaceExample.ipynb
 
           # Run twice, once without and once with db access
           if test -f ~/.xenon_config; then
             rm ~/.xenon_config
           fi
           bash .github/scripts/create_pre_apply_function.sh $HOME
-          coverage run --append --source=straxen -m pytest -v
+          coverage run --append --source=straxen -m pytest -v -n auto
           coveralls --service=github
       - name: goodbye
         run: echo "tests done, bye bye"
