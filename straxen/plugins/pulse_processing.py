@@ -10,14 +10,6 @@ from straxen.get_corrections import is_cmt_option
 export, __all__ = strax.exporter()
 __all__ += ['NO_PULSE_COUNTS']
 
-# These are also needed in peaklets, since hitfinding is repeated
-HITFINDER_DEFAULTS = {
-    'hit_min_amplitude': 'cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
-}
-
-HITFINDER_DEFAULTS_he = {
-    'hit_min_amplitude_he': 'cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id',
-}
 
 HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
 
@@ -125,7 +117,7 @@ class PulseProcessing(strax.Plugin):
               
     hit_min_amplitude = straxen.URLConfig(
         track=True, infer_type=False,
-        default=HITFINDER_DEFAULTS['hit_min_amplitude'],
+        default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
         help='Minimum hit amplitude in ADC counts above baseline. '
                 'Specify as a tuple of length n_tpc_pmts, or a number,'
                 'or a string like "pmt_commissioning_initial" which means calling'
@@ -244,7 +236,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
                  help="Number of samples per raw_record")
                 
     hit_min_amplitude_he = straxen.URLConfig(
-        default=HITFINDER_DEFAULTS_he['hit_min_amplitude_he'], track=True, infer_type=False,
+        default='cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id', track=True, infer_type=False,
         help='Minimum hit amplitude in ADC counts above baseline. '
                 'Specify as a tuple of length n_tpc_pmts, or a number,'
                 'or a string like "pmt_commissioning_initial" which means calling'

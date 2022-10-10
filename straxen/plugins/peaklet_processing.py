@@ -4,7 +4,7 @@ import strax
 from immutabledict import immutabledict
 from strax.processing.general import _touching_windows
 import straxen
-from .pulse_processing import HITFINDER_DEFAULTS, HITFINDER_DEFAULTS_he, HE_PREAMBLE
+from .pulse_processing import HE_PREAMBLE
 
 
 export, __all__ = strax.exporter()
@@ -114,7 +114,7 @@ class Peaklets(strax.Plugin):
                       
     hit_min_amplitude = straxen.URLConfig(
         track=True, infer_type=False,
-        default=HITFINDER_DEFAULTS['hit_min_amplitude'],
+        default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
         help='Minimum hit amplitude in ADC counts above baseline. '
                 'Specify as a tuple of length n_tpc_pmts, or a number,'
                 'or a string like "pmt_commissioning_initial" which means calling'
@@ -527,7 +527,7 @@ class PeakletsHighEnergy(Peaklets):
                       ' channels')
 
     hit_min_amplitude_he = straxen.URLConfig(
-        default=HITFINDER_DEFAULTS_he['hit_min_amplitude_he'], track=True, infer_type=False,
+        default='cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id', track=True, infer_type=False,
         help='Minimum hit amplitude in ADC counts above baseline. '
                 'Specify as a tuple of length n_tpc_pmts, or a number,'
                 'or a string like "pmt_commissioning_initial" which means calling'
