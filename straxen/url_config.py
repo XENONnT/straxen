@@ -212,19 +212,25 @@ class URLConfig(strax.Config):
         kwargs = {k: self.fetch_attribute(plugin, v)
                   for k, v in url_kwargs.items()}
 
-        # construct a deterministic hash key
+        key = None
+        value = None
         try:
+            # construct a deterministic hash key
             key = strax.deterministic_hash((url, kwargs))
+                    
+            # fetch from cache if exists
+            value = self.cache.get(key, None)
         except TypeError:
-            key = uuid4()
-
-        # fetch from cache if exists
-        value = self.cache.get(key, None)
+            # kwargs contains unhashable types
+            # so we cannot cache the result
+            pass
 
         # not in cache, lets fetch it
         if value is None:
             value = self.dispatch(url, **kwargs)
-            self.cache[key] = value
+
+            if key is not None:
+                self.cache[key] = value
 
         return value
 
