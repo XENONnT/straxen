@@ -20,7 +20,7 @@ RUN_MAPPINGS = {
     ]
 }
 
-URLConfig.register('legacy-fdc')
+@URLConfig.register('legacy-fdc')
 def get_legacy_fdc(name, run_id=None):
     if run_id is None:
         raise ValueError('Must provide run_id to get legacy fdc')
@@ -37,6 +37,9 @@ def get_legacy_fdc(name, run_id=None):
         if run_id >= start_run and run_id < end_run:
             break
     else:
+        raise ValueError(f'No legacy fdc for run {run_id}')
+
+    if url is None:
         raise ValueError(f'No legacy fdc for run {run_id}')
 
     return InterpolatingMap(get_resource(url, fmt='binary'))
