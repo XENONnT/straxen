@@ -250,6 +250,7 @@ class URLConfig(strax.Config):
         """
         Utility function to quickly test and evaluate URL configs,
         without the initialization of plugins (so no plugin attributes).
+        plugin attributes can be passed as keyword arguments.
 
         example::
 
@@ -258,7 +259,7 @@ class URLConfig(strax.Config):
             URLConfig.evaluate_dry(url_string)
 
             # or similarly
-            url_string='cmt://electron_drift_velocity?version=v3'
+            url_string='cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3'
             URLConfig.evaluate_dry(url_string, run_id='027000')
 
         Please note that this has to be done outside of the plugin, so any
@@ -276,7 +277,9 @@ class URLConfig(strax.Config):
             if isinstance(v, str) and cls.PLUGIN_ATTR_PREFIX in v:
                 raise ValueError(f'The URL parameter {k} depends on the plugin'
                                 'You must specify the value for this parameter'
-                                'for this URL to be evaluated correctly.')
+                                'for this URL to be evaluated correctly.'
+                                f'Try passing {k} as a keyword argument.'
+                                f'e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`')
 
         return cls.dispatch(cls, url_arg, **combined_kwargs)
 
