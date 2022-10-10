@@ -538,6 +538,9 @@ class EventPositions(strax.Plugin):
         help='3D field distortion correction map path',
         default='legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id')
     
+    # @property
+    # def coordinate_scales(self):
+    #     return [1., 1., - self.electron_drift_velocity]
 
     def infer_dtype(self):
         dtype = []
@@ -584,6 +587,7 @@ class EventPositions(strax.Plugin):
         return dtype + strax.time_fields
 
     def setup(self):
+        self.coordinate_scales = [1., 1., - self.electron_drift_velocity]
         self.map = self.fdc_map
 
     def compute(self, events):

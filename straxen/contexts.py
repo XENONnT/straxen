@@ -56,7 +56,15 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     # Event level parameters
-    fdc_map=('fdc_map', "ONLINE", True),
+    fdc_map='itp_map://'
+            'resource://'
+            'cmt://'
+            'format://fdc_map_{alg}'
+            '?alg=plugin.default_reconstruction_algorithm'
+            '&version=ONLINE'
+            '&run_id=plugin.run_id'
+            '&fmt=binary'
+            '&scale_coordinates=plugin.coordinate_scales',
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
