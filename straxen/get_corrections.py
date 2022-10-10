@@ -6,6 +6,7 @@ from functools import wraps
 from straxen.corrections_services import corrections_w_file
 from straxen.corrections_services import single_value_corrections
 from straxen.corrections_services import arrays_corrections
+from straxen.corrections_services import dict_corrections
 
 
 export, __all__ = strax.exporter()
@@ -84,7 +85,7 @@ def get_correction_from_cmt(run_id, conf):
 
         # special case constant single value or list of values.
         elif 'constant' in model_conf:
-            if not isinstance(cte_value, (float, int, str, list)):
+            if not isinstance(cte_value, (float, int, str, list, tuple)):
                 raise ValueError(f"User specify a model type {model_conf} "
                                  "and should provide a number or list of numbers. Got: "
                                  f"{type(cte_value)}")
@@ -102,6 +103,9 @@ def get_correction_from_cmt(run_id, conf):
         if model_conf in corrections_w_file: # file's name (maps, NN, etc) 
             correction = ' '.join(map(str, correction))
             return correction
+
+        if model_conf in dict_corrections:
+            return correction[0]
 
         elif model_conf in single_value_corrections:
             if 'samples' in model_conf: # int baseline samples, etc

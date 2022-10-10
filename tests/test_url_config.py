@@ -1,12 +1,17 @@
+import os
 import json
+import tempfile
+import pandas as pd
 import strax
 import straxen
 import fsspec
+import utilix.rundb
 from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 import pickle
 import random
 import numpy as np
+from datetime import datetime
 
 
 @straxen.URLConfig.register('random')
@@ -108,10 +113,66 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
-        st2 = self.st.new_context()
-        st2.set_config({'test_config': 'bodega://g1?bodega_version=v2'})
-        p2 = st2.get_single_plugin(nt_test_run_id, 'test_data')
-        self.assertEqual(p.test_config, p2.test_config)
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    def test_itp_dict(self, ab_value=20, cd_value=21, dump_as='json'):
+        """
+        Test that we are getting ~the same value from interpolating at the central date in a dict
+
+        :param ab_value, cd_value: some values to test against
+        :param dump_as: Write as csv or as json file
+        """
+        central_datetime = utilix.rundb.xent_collection().find_one(
+            {'number': int(nt_test_run_id)},
+            projection={'start': 1}
+        ).get('start', 'QUERY FAILED!')
+        fake_file = {'time': [datetime(2000, 1, 1).timestamp() * 1e9,
+                              central_datetime.timestamp() * 1e9,
+                              datetime(2040, 1, 1).timestamp() * 1e9],
+                     'ab': [10, ab_value, 30],
+                     'cd': [11, cd_value, 31]
+                         }
+
+        temp_dir = tempfile.TemporaryDirectory()
+
+        if dump_as == 'json':
+            fake_file_name = os.path.join(temp_dir.name, 'test_seg.json')
+            with open(fake_file_name, 'w') as f:
+                json.dump(fake_file, f)
+        elif dump_as == 'csv':
+            # This example also works well with dataframes!
+            fake_file_name = os.path.join(temp_dir.name, 'test_seg.csv')
+            pd.DataFrame(fake_file).to_csv(fake_file_name)
+        else:
+            raise ValueError
+
+        self.st.set_config({'test_config':f'itp_dict://'
+                                          f'resource://'
+                                          f'{fake_file_name}'
+                                          f'?run_id=plugin.run_id'
+                                          f'&fmt={dump_as}'
+                                          f'&itp_keys=ab,cd'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertIsInstance(p.test_config, dict)
+        assert np.isclose(p.test_config['ab'], ab_value, rtol=1e-3)
+        assert np.isclose(p.test_config['cd'], cd_value, rtol=1e-3)
+        temp_dir.cleanup()
+
+    def test_itp_dict_csv(self):
+        self.test_itp_dict(dump_as='csv')
+
+    def test_rekey(self):
+        original_dict = {'a': 1, 'b': 2, 'c': 3}
+        check_dict = {'anew': 1, 'bnew': 2, 'cnew': 3}
+        test_file = 'test_dict.json'
+        with open(test_file, 'w') as f:
+            json.dump(original_dict, f)
+
+        self.st.set_config({'test_config': f'rekey_dict://resource://{test_file}?'
+                                           f'fmt=json&replace_keys=a,b,c'
+                                           f'&with_keys=anew,bnew,cnew'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, check_dict)
+
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
@@ -181,3 +242,28 @@ class TestURLConfig(unittest.TestCase):
         filtered2 = straxen.filter_kwargs(func2, all_kwargs)
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    def test_dry_evaluation(self):
+        """
+        Check that running a dry evaluation can be done outside of the
+        context of a URL config and yield the same result.
+        """
+        plugin_url = 'cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3'
+        self.st.set_config({'test_config': plugin_url})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        correct_val = p.test_config
+
+        # We can also get it from one of these methods
+        dry_val1 = straxen.URLConfig.evaluate_dry(
+            f'cmt://electron_drift_velocity?run_id={nt_test_run_id}&version=v3')
+        dry_val2 = straxen.URLConfig.evaluate_dry(
+            f'cmt://electron_drift_velocity?version=v3', run_id=nt_test_run_id)
+
+        # All methods should yield the same
+        assert correct_val == dry_val1 == dry_val2
+
+        # However dry-evaluation does NOT allow loading the plugin.run_id
+        # as in the plugin_url and should complain about that
+        with self.assertRaises(ValueError):
+            straxen.URLConfig.evaluate_dry(plugin_url)

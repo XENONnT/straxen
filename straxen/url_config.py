@@ -1,5 +1,7 @@
 import json
+import typing
 from typing import Container
+import numpy as np
 import strax
 import fsspec
 import pandas as pd
@@ -11,6 +13,9 @@ from strax.config import OMITTED
 import os
 import tempfile
 import tarfile
+import pytz
+from utilix import xent_collection
+from scipy.interpolate import interp1d
 
 export, __all__ = strax.exporter()
 
@@ -235,6 +240,38 @@ class URLConfig(strax.Config):
         df = cls.protocol_descr()
         print(df)
 
+    @classmethod
+    def evaluate_dry(cls, url: str, **kwargs):
+        """
+        Utility function to quickly test and evaluate URL configs,
+        without the initialization of plugins (so no plugin attributes).
+
+        example::
+
+            from straxen import URLConfig
+            url_string='cmt://electron_drift_velocity?run_id=027000&version=v3'
+            URLConfig.evaluate_dry(url_string)
+
+            # or similarly
+            url_string='cmt://electron_drift_velocity?version=v3'
+            URLConfig.evaluate_dry(url_string, run_id='027000')
+
+        Please note that this has to be done outside of the plugin, so any
+        attributes of the plugin are not yet note to this dry evaluation
+        of the url-string.
+
+        :param url: URL to evaluate, see above for example.
+        :keyword: any additional kwargs are passed to self.dispatch (see example)
+        :return: evaluated value of the URL.
+        """
+        if cls.PLUGIN_ATTR_PREFIX in url:
+            raise ValueError(
+                'You specified at least one parameter that depends on the '
+                'plugin. We cannot fetch this in the dry run. Try replacing '
+                'e.g. plugin.run_id=027000 with run_id=027000 (or pass as an '
+                'extra kwargs)')
+        url_arg, url_kwarg = cls.split_url_kwargs(url)
+        return cls.dispatch(cls, url_arg, **url_kwarg, **kwargs)
 
 @URLConfig.register('cmt')
 def get_correction(name: str,
@@ -329,3 +366,65 @@ def open_neural_net(model_path: str, **kwargs):
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
         return tf.keras.models.load_model(tmpdirname)
+
+
+@URLConfig.register('itp_dict')
+def get_itp_dict(loaded_json,
+                 run_id=None,
+                 time_key='time',
+                 itp_keys='correction',
+                 **kwargs) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
+    """
+    Interpolate a dictionary at the start time that is queried from
+    a run-id.
+
+    :param loaded_json: a dictionary with a time-series
+    :param run_id: run_id
+    :param time_key: key that gives the timestamps
+    :param itp_keys: which keys from the dict to read. Should be
+        comma (',') separated!
+
+    :return: Interpolated values of dict at the start time, either
+        returned as an np.ndarray (single value) or as a dict
+        (multiple itp_dict_keys)
+    """
+    keys = strax.to_str_tuple(itp_keys.split(','))
+    for key in list(keys) + [time_key]:
+        if key not in loaded_json:
+            raise KeyError(f"The json does contain the key '{key}'. Try one of: {loaded_json.keys()}")
+
+    times = loaded_json[time_key]
+
+    # get start time of this run. Need to make tz-aware
+    start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
+    start = pytz.utc.localize(start).timestamp() * 1e9
+
+    try:
+        if len(strax.to_str_tuple(keys)) > 1:
+            return {key:
+                    interp1d(times, loaded_json[key], bounds_error=True)(start)
+                    for key in keys}
+
+        else:
+            interp = interp1d(times, loaded_json[keys[0]], bounds_error=True)
+            return interp(start)
+    except ValueError as e:
+        raise ValueError(f"Correction is not defined for run {run_id}") from e
+
+
+@URLConfig.register('rekey_dict')
+def rekey_dict(d, replace_keys='', with_keys=''):
+    '''
+    :param d: dictionary that will have its keys renamed
+    :param replace_keys: comma-separated string of keys that will be replaced
+    :param with_keys:  comma-separated string of keys that will replace the replace_keys
+    :return: dictionary with renamed keys
+    '''
+    new_dict = d.copy()
+    replace_keys = strax.to_str_tuple(replace_keys.split(','))
+    with_keys = strax.to_str_tuple(with_keys.split(','))
+    if len(replace_keys) != len(with_keys):
+        raise RuntimeError("replace_keys and with_keys must have the same length")
+    for old_key, new_key in zip(replace_keys, with_keys):
+        new_dict[new_key] = new_dict.pop(old_key)
+    return new_dict

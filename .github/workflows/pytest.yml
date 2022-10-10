@@ -50,23 +50,15 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup python
-        uses: actions/setup-python@v2.3.0
+        uses: actions/setup-python@v4.2.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          cache-dependency-path: 'extra_requirements/requirements-tests.txt'
 
       - name: Install requirements
-        run: |
-           pip install -r extra_requirements/requirements-tests.txt
-
-      - name: Install strax
-        run: |
-          git clone https://github.com/AxFoundation/strax ../strax
-          pip install -e ../strax
+        run: pip install -r extra_requirements/requirements-tests.txt
 
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
+        uses: supercharge/mongodb-github-action@1.8.0
         with:
           mongodb-version: 4.2
 
@@ -117,6 +109,10 @@ jobs:
         run: |
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
           coverage run --source=straxen -m pytest -v
+
+          # Test notebooks
+          coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
+          coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/ScadaInterfaceExample.ipynb
 
           # Run twice, once without and once with db access
           if test -f ~/.xenon_config; then
