@@ -584,22 +584,8 @@ class EventPositions(strax.Plugin):
         return dtype + strax.time_fields
 
     def setup(self):
-        if isinstance(self.fdc_map, str):
-            self.map = InterpolatingMap(
-                get_resource(self.fdc_map, fmt='binary'))
+        self.map = self.fdc_map
 
-        elif is_cmt_option(self.fdc_map):
-            self.map = InterpolatingMap(
-                get_cmt_resource(self.run_id,
-                                 tuple(['suffix',
-                                        self.default_reconstruction_algorithm,
-                                        *self.fdc_map]),
-                                 fmt='binary'))
-            self.map.scale_coordinates([1., 1., - self.electron_drift_velocity])
-
-        else:
-            raise NotImplementedError('FDC map format not understood.')
-            
     def compute(self, events):
 
         result = {'time': events['time'],

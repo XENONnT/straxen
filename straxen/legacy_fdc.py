@@ -1,6 +1,8 @@
    
 import strax
-from straxen.common import pax_file, first_sr1_run
+
+from straxen.common import get_resource, pax_file, first_sr1_run
+from straxen.itp_map import InterpolatingMap
 from .url_config import URLConfig
 
 
@@ -31,11 +33,12 @@ def get_legacy_fdc(name, run_id=None):
 
     mapping = RUN_MAPPINGS[name]
 
-    for (start_run, value), (end_run, _) in zip(mapping[:-1], mapping[1:]):
-        if run_id > start_run and run_id <= end_run:
+    for (start_run, url), (end_run, _) in zip(mapping[:-1], mapping[1:]):
+        if run_id >= start_run and run_id < end_run:
             break
     else:
         raise ValueError(f'No legacy fdc for run {run_id}')
 
-    return value
+    return InterpolatingMap(get_resource(url, fmt='binary'))
+
 
