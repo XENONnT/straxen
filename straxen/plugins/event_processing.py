@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 from .position_reconstruction import DEFAULT_POSREC_ALGO
-from straxen.common import pax_file, get_resource, first_sr1_run, rotate_perp_wires
+from straxen.common import get_resource, rotate_perp_wires
 from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
 
@@ -536,13 +536,8 @@ class EventPositions(strax.Plugin):
     fdc_map = straxen.URLConfig(
         infer_type=False,
         help='3D field distortion correction map path',
-        default_by_run=[
-            (0, pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz')),  # noqa
-            (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')), # noqa
-            (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')), # noqa
-            (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
-            (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))], # noqa
-    )
+        default='legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id')
+    
 
     def infer_dtype(self):
         dtype = []

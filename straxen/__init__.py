@@ -20,7 +20,7 @@ from .plugins import *
 
 from . import storage
 from .storage import *
-
+from .legacy_fdc import *
 from . import analyses
 
 # Do not make all contexts directly available under straxen.
