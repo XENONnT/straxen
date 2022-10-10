@@ -15,8 +15,8 @@ RUN_MAPPINGS = {
     (first_sr1_run, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part1_v1.json.gz')), # noqa
     (170411_0611, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part2_v1.json.gz')), # noqa
     (170704_0556, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part3_v1.json.gz')), # noqa
-    (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz'))
-
+    (170925_0622, pax_file('XENON1T_FDC_SR1_data_driven_time_dependent_3d_correction_tf_nn_part4_v1.json.gz')), # noqa
+    (1_000_000_000_000, None), # noqa
     ]
 }
 
@@ -40,5 +40,3 @@ def get_legacy_fdc(name, run_id=None):
         raise ValueError(f'No legacy fdc for run {run_id}')
 
     return InterpolatingMap(get_resource(url, fmt='binary'))
-
-

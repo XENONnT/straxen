@@ -461,4 +461,3 @@ def get_thresholds(model: str):
     """Return a fixed value for a given model"""
     
     return straxen.hit_min_amplitude(model)
-
