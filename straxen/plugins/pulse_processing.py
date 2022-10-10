@@ -237,10 +237,10 @@ class PulseProcessingHighEnergy(PulseProcessing):
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
-    n_he_pmts = straxen.URLConfig('', track=False, default=752, infer_type=False,
+    n_he_pmts = straxen.URLConfig(track=False, default=752, infer_type=False,
                  help="Maximum channel of the he channels")
 
-    record_length = straxen.URLConfig('', default=110, track=False, type=int,
+    record_length = straxen.URLConfig(default=110, track=False, type=int,
                  help="Number of samples per raw_record")
                 
     hit_min_amplitude_he = straxen.URLConfig(
