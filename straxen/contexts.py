@@ -61,9 +61,9 @@ xnt_common_config = dict(
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model="fixed://to_pe_placeholder",
-                             gain_model_nv="fixed://adc_nv",
-                             gain_model_mv="fixed://adc_mv",
+xnt_simulation_config.update(gain_model="legacy-to-pe://to_pe_placeholder",
+                             gain_model_nv="legacy-to-pe://adc_nv",
+                             gain_model_mv="legacy-to-pe://adc_mv",
                              elife=1e6,
                              )
 
@@ -506,7 +506,7 @@ x1t_common_config = dict(
         -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    hit_min_amplitude='fixed-thresholds://XENON1T_SR1',
+    hit_min_amplitude='legacy-thresholds://XENON1T_SR1',
     tail_veto_threshold=int(1e5),
     save_outside_hits=(3, 3),
     # Peaklets
@@ -560,8 +560,8 @@ def demo():
 
     # Use configs that are always available
     st.set_config(dict(
-        hev_gain_model='fixed://1T_to_pe_placeholder',
-        gain_model='fixed://1T_to_pe_placeholder',
+        hev_gain_model='legacy-to-pe://1T_to_pe_placeholder',
+        gain_model='legacy-to-pe://1T_to_pe_placeholder',
         elife=1e6,
         electron_drift_velocity=1.3325e-4,
         se_gain=28.2,

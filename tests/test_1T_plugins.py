@@ -8,8 +8,8 @@ from immutabledict import immutabledict
 test_run_id_1T = '180423_1021'
 
 testing_config_1T = dict(
-    hev_gain_model='fixed://1T_to_pe_placeholder',
-    gain_model='fixed://1T_to_pe_placeholder',
+    hev_gain_model='legacy-to-pe://1T_to_pe_placeholder',
+    gain_model='legacy-to-pe://1T_to_pe_placeholder',
     elife=1e6,
     electron_drift_velocity=1e-4,
     electron_drift_time_gate=1700,

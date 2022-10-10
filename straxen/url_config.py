@@ -439,15 +439,15 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     return new_dict
 
 
-@URLConfig.register('fixed')
-def get_fixed(name: str):
+@URLConfig.register('legacy-to-pe')
+def get_fixed_pe(name: str):
     """Return a fixed value for a given name"""
     from .get_corrections import FIXED_TO_PE
 
     return FIXED_TO_PE[name]
 
 
-@URLConfig.register('fixed-thresholds')
+@URLConfig.register('legacy-thresholds')
 def get_thresholds(model: str):
     """Return a fixed value for a given model"""
     
