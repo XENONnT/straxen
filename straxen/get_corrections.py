@@ -10,7 +10,6 @@ from straxen.corrections_services import dict_corrections
 
 
 export, __all__ = strax.exporter()
-__all__ += ['FIXED_TO_PE']
 
 
 def correction_options(get_correction_function):
@@ -79,8 +78,8 @@ def get_correction_from_cmt(run_id, conf):
         model_conf, cte_value = conf[:2]
 
         # special case constant to_pe values 
-        if model_conf in FIXED_TO_PE:
-            correction = FIXED_TO_PE[model_conf]
+        if model_conf in straxen.legacy.FIXED_TO_PE:
+            correction = straxen.legacy.FIXED_TO_PE[model_conf]
             return correction
 
         # special case constant single value or list of values.
@@ -210,14 +209,3 @@ def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]
                                            'strax_option': opt,
                                            }
     return cmt_options
-
-
-FIXED_TO_PE = {
-    'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
-    '1T_to_pe_placeholder' : np.array([0.007, 0., 0., 0.008, 0.004, 0.008, 0.004, 0.008, 0.007, 0.005, 0.007, 0.006, 0., 0.006, 0.008, 0.007, 0.006, 0.009,0.007, 0.007, 0.007, 0.012, 0.004, 0.008, 0.005, 0.008, 0., 0., 0.007, 0.007, 0.004, 0., 0.004, 0.007, 0., 0.005,0.007, 0.007, 0.005, 0.005, 0.008, 0.006, 0.005, 0.007, 0.006, 0.007, 0.008, 0.005, 0.008, 0.008, 0.005, 0.005, 0.007, 0.008, 0.005, 0.009, 0.004, 0.005, 0.01 , 0.008, 0.006, 0.016, 0., 0.005, 0.005, 0., 0.01, 0.008, 0.004, 0.006, 0.005, 0., 0.008, 0., 0.004, 0.004, 0.006, 0.005, 0.012, 0., 0.005,0.004, 0.004, 0.008, 0.007, 0.012, 0., 0., 0., 0.007, 0.007, 0., 0.005, 0.008, 0.006, 0.004, 0.004, 0.006, 0.008,0.008, 0.008, 0.006, 0., 0.007, 0.005, 0.005, 0.005, 0.007,0.004, 0.008, 0.007, 0.008, 0.008, 0.006, 0.006, 0.01, 0.005,0.008, 0., 0.012, 0.007, 0.004, 0.008, 0.007, 0.007, 0.008,0.003, 0.004, 0.007, 0.006, 0., 0.005, 0.004, 0.005, 0., 0., 0.004, 0., 0.004, 0., 0.004, 0., 0.011, 0.005,0.006, 0.005, 0.004, 0.004, 0., 0.007, 0., 0.004, 0., 0.005, 0.006, 0.007, 0.005, 0.008, 0.004, 0.006, 0.008, 0.007,0., 0.008, 0.008, 0.007, 0.007, 0., 0.008, 0.004, 0.004,0.005, 0.004, 0.007, 0.008, 0.004, 0.006, 0.006, 0., 0.007,0.004, 0.004, 0.005, 0., 0.008, 0.004, 0.004, 0.004, 0.008,0.008, 0., 0.006, 0.005, 0.004, 0.005, 0.008, 0.008, 0.008,0., 0.005, 0.008, 0., 0.008, 0., 0.004, 0.012, 0., 0.005, 0.007, 0.009, 0.005, 0.004, 0.004, 0., 0., 0.004,0.004, 0.011, 0.004, 0.004, 0.007, 0.004, 0.005, 0.004, 0.005,0.007, 0.004, 0.006, 0.006, 0.004, 0.008, 0.005, 0.007, 0.007,0., 0.004, 0.007, 0.008, 0.004, 0., 0.007, 0.004, 0.004, 0.004, 0., 0.004, 0.005, 0.004]),
-    # Gains which will preserve all areas in adc counts.
-    # Useful for debugging and tests.
-    'adc_tpc': np.ones(straxen.n_tpc_pmts),
-    'adc_mv': np.ones(straxen.n_mveto_pmts),
-    'adc_nv': np.ones(straxen.n_nveto_pmts)
-}
