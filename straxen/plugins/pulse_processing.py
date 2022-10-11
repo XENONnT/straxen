@@ -5,7 +5,6 @@ import numpy as np
 import strax
 import straxen
 
-from straxen.get_corrections import is_cmt_option
 
 export, __all__ = strax.exporter()
 __all__ += ['NO_PULSE_COUNTS']
