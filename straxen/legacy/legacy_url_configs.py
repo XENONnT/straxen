@@ -4,7 +4,7 @@ import strax
 import straxen
 from straxen.common import get_resource, pax_file, first_sr1_run
 from straxen.itp_map import InterpolatingMap
-from straxen.straxen.url_config import URLConfig
+from straxen.url_config import URLConfig
 import numpy as np
 
 export, __all__ = strax.exporter()
