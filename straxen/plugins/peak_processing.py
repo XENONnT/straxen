@@ -20,7 +20,7 @@ class PeakBasics(strax.Plugin):
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.1.2"
+    __version__ = "0.1.3"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -56,10 +56,8 @@ class PeakBasics(strax.Plugin):
           'dt'), np.int16),
         (('Time between 10% and 50% area quantiles [ns]',
           'rise_time'), np.float32),
-        (('Hits within tight range of mean',
+        (('Number of PMTs with hits within tight range of mean',
           'tight_coincidence'), np.int16),
-        (('PMT channel within tight range of mean',
-          'tight_coincidence_channel'), np.int16),
         (('Classification of the peak(let)',
           'type'), np.int8)
     ]
