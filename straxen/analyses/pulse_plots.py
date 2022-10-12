@@ -63,13 +63,8 @@ def plot_pulses(context, raw_records, run_id, time_range,
     strax.zero_out_of_bounds(records)
 
     baseline_key = [key for key in p.config.keys() if 'baseline_samples' in key][0]
-
-    if isinstance(p.config[baseline_key], int):
-        baseline_samples = p.config[baseline_key]
-    else:
-        baseline_samples = straxen.get_correction_from_cmt(
-            run_id, p.config[baseline_key])
-
+    baseline_samples = getattr(p, baseline_key)
+    
     strax.baseline(records,
                    baseline_samples=baseline_samples,
                    flip=True)
@@ -139,9 +134,9 @@ def plot_pulses(context, raw_records, run_id, time_range,
                                    )
             if detector_ending != '_he':
                 # We don't have 'save_outside_hits_he' at all!
-                le, re = p.config['save_outside_hits' + detector_ending]
+                le, re = getattr(p, 'save_outside_hits' + detector_ending)
             else:
-                le, re = p.config['save_outside_hits']
+                le, re = getattr(p, 'save_outside_hits')
             start = (hits['time'] - r_pulse[0]['time']) / r_pulse[0]['dt'] - le
             end = (strax.endtime(hits) - r_pulse[0]['time']) / r_pulse[0]['dt'] + re
 

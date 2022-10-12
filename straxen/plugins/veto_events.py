@@ -15,12 +15,12 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     """
     Plugin which computes the boundaries of veto events.
     """
+    __version__ = '0.0.3'
+
     depends_on = 'hitlets_nv'
     provides = 'events_nv'
     data_kind = 'events_nv'
     compressor = 'zstd'
-
-    __version__ = '0.0.3'
     events_seen = 0
 
     event_left_extension_nv = straxen.URLConfig(
@@ -29,18 +29,21 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         type=int,
         help='Extends event window this many [ns] to the left.'
     )
+
     event_resolving_time_nv = straxen.URLConfig(
         default=200,
         track=True,
         type=int,
         help='Resolving time for window coincidence [ns].'
     )
+
     event_min_hits_nv = straxen.URLConfig(
         default=3,
         track=True,
         type=int,
         help='Minimum number of fully confined hitlets to define an event.'
     )
+
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
@@ -49,21 +52,21 @@ class nVETOEvents(strax.OverlapWindowPlugin):
 
     def infer_dtype(self):
         self.name_event_number = 'event_number_nv'
-        self.channel_range = self.config['channel_map']['nveto']
+        self.channel_range = self.channel_map['nveto']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_event_dtype(self.name_event_number, self.n_channel)
 
     def get_window_size(self):
-        return self.config['event_left_extension_nv'] + self.config['event_resolving_time_nv'] + 1
+        return self.event_left_extension_nv + self.event_resolving_time_nv + 1
 
     def compute(self, hitlets_nv, start, end):
 
         events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
-                                                        self.config['event_min_hits_nv'],
-                                                        self.config['event_resolving_time_nv'],
-                                                        self.config['event_left_extension_nv'],
+                                                        self.event_min_hits_nv,
+                                                        self.event_resolving_time_nv,
+                                                        self.event_left_extension_nv,
                                                         event_number_key=self.name_event_number,
-                                                        n_channel=self.n_channel, )
+                                                        n_channel=self.n_channel,)
 
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
@@ -232,39 +235,31 @@ def _make_event(hitlets: np.ndarray,
         res[ei]['endtime'] = np.max(strax.endtime(hit))
 
 
-@strax.takes_config(
-    strax.Option('position_max_time_nv', default=20, infer_type=False,
-                 help="Time [ns] within an event use to compute the azimuthal angle of the "
-                      "event."),
-    strax.Option('nveto_pmt_position_map',
-                 help="nVeto PMT position mapfile",
-                 default='nveto_pmt_position.csv', infer_type=False,),
-)
 class nVETOEventPositions(strax.Plugin):
     """
     Plugin which computes the interaction position in the nveto as an
     azimuthal angle.
     """
+    __version__ = '0.1.1'
+
     depends_on = ('events_nv', 'hitlets_nv')
     data_kind = 'events_nv'
     provides = 'event_positions_nv'
     compressor = 'zstd'
 
-    __version__ = '0.1.1'
+    position_max_time_nv = straxen.URLConfig(default=20, infer_type=False,
+                 help="Time [ns] within an event use to compute the azimuthal angle of the "
+                      "event.")
+
+    nveto_pmt_position_map = straxen.URLConfig(
+                 help="nVeto PMT position mapfile",
+                 default='resource://nveto_pmt_position.csv?fmt=csv', infer_type=False,)
 
     def infer_dtype(self):
         return veto_event_positions_dtype()
 
     def setup(self):
-        if isinstance(self.config['nveto_pmt_position_map'], str):
-            # Load PMT settings file:
-            npmt_pos = straxen.get_resource(self.config['nveto_pmt_position_map'], fmt='csv')
-        elif isinstance(self.config['nveto_pmt_position_map'], dict):
-            # Testing support
-            npmt_pos = pd.DataFrame(self.config['nveto_pmt_position_map'])
-        else:
-            raise ValueError(f"{self.config['nveto_pmt_position_map']} is not understood")
-
+        npmt_pos = self.nveto_pmt_position_map
         # Use records instead of a dataframe.
         self.pmt_properties = npmt_pos.to_records(index=False)
 
@@ -277,7 +272,7 @@ class nVETOEventPositions(strax.Plugin):
 
         # Compute hitlets within the first x ns of event:
         hits_in_events, n_prompt = first_hitlets(hits_in_events,
-                                                 self.config['position_max_time_nv'])
+                                                 self.position_max_time_nv)
         event_angles['n_prompt_hitlets'] = n_prompt
 
         # Compute azimuthal angle and xyz positions:
@@ -478,12 +473,12 @@ class muVETOEvents(nVETOEvents):
 
     def infer_dtype(self):
         self.name_event_number = 'event_number_mv'
-        self.channel_range = self.config['channel_map']['mv']
+        self.channel_range = self.channel_map['mv']
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_event_dtype(self.name_event_number, self.n_channel)
 
     def get_window_size(self):
-        return self.config['event_left_extension_mv'] + self.config['event_resolving_time_mv'] + 1
+        return self.event_left_extension_mv + self.event_resolving_time_mv + 1
 
     def compute(self, hitlets_mv, start, end):
         return super().compute(hitlets_mv, start, end)

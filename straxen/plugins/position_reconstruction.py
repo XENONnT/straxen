@@ -13,13 +13,6 @@ DEFAULT_POSREC_ALGO = "mlp"
 
 
 @export
-@strax.takes_config(
-    strax.Option('min_reconstruction_area',
-                 help='Skip reconstruction if area (PE) is less than this',
-                 default=10, infer_type=False,),
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
-                 help="Number of top PMTs")
-)
 class PeakPositionsBaseNT(strax.Plugin):
     """
     Base class for reconstructions.
@@ -27,11 +20,19 @@ class PeakPositionsBaseNT(strax.Plugin):
     algorithms. Provides x_algorithm, y_algorithm for all peaks > than
     min-reconstruction area based on the top array.
     """
+    __version__ = '0.0.0'
+
     depends_on = ('peaks',)
     algorithm = None
     compressor = 'zstd'
     parallel = True  # can set to "process" after #82
-    __version__ = '0.0.0'
+    
+    min_reconstruction_area = straxen.URLConfig(
+                 help='Skip reconstruction if area (PE) is less than this',
+                 default=10, infer_type=False,)
+
+    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
+                 help="Number of top PMTs")
 
     def infer_dtype(self):
         if self.algorithm is None:
@@ -71,7 +72,7 @@ class PeakPositionsBaseNT(strax.Plugin):
             return result
 
         # Keep large peaks only
-        peak_mask = peaks['area'] > self.config['min_reconstruction_area']
+        peak_mask = peaks['area'] > self.min_reconstruction_area
         if not np.sum(peak_mask):
             # Nothing to do, and .predict crashes on empty arrays
             return result
@@ -79,14 +80,14 @@ class PeakPositionsBaseNT(strax.Plugin):
         # Getting actual position reconstruction
         area_per_channel_top = peaks['area_per_channel'][
                                peak_mask,
-                               0:self.config['n_top_pmts']]
+                               0:self.n_top_pmts]
         with np.errstate(divide='ignore', invalid='ignore'):
             area_per_channel_top = (
                     area_per_channel_top /
                     np.max(area_per_channel_top, axis=1).reshape(-1, 1)
             )
         area_per_channel_top = area_per_channel_top.reshape(-1,
-                                                            self.config['n_top_pmts']
+                                                            self.n_top_pmts
                                                             )
         output = model.predict(area_per_channel_top, verbose=0)
 
@@ -185,30 +186,29 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
 
     def compute(self, peaks):
         result = {dtype: peaks[dtype] for dtype in peaks.dtype.names}
-        algorithm = self.config['default_reconstruction_algorithm']
+        algorithm = self.default_reconstruction_algorithm
         for xy in ('x', 'y'):
             result[xy] = peaks[f'{xy}_{algorithm}']
         return result
 
 
 @export
-@strax.takes_config(
-    strax.Option('recon_alg_included',
-                 help='The list of all reconstruction algorithm considered.',
-                 default=('_mlp', '_gcn', '_cnn'), infer_type=False,
-                 )
-)
 class S2ReconPosDiff(strax.Plugin):
     """
     Plugin that provides position reconstruction difference for S2s in events, see note:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
     """
-
     __version__ = '0.0.3'
+
     parallel = True
     depends_on = 'event_basics'
     provides = 's2_recon_pos_diff'
     save_when = strax.SaveWhen.EXPLICIT
+
+    recon_alg_included = straxen.URLConfig(
+                 help='The list of all reconstruction algorithm considered.',
+                 default=('_mlp', '_gcn', '_cnn'), infer_type=False,
+                 )
 
     def infer_dtype(self):
         dtype = [
@@ -255,7 +255,7 @@ class S2ReconPosDiff(strax.Plugin):
 
     def compute_pos_diff(self, events, result):
 
-        alg_list = self.config['recon_alg_included']
+        alg_list = self.recon_alg_included
         for peak_type in ['s2', 'alt_s2']:
             # Selecting S2s for pos diff
             # - must exist (index != -1)
@@ -263,7 +263,7 @@ class S2ReconPosDiff(strax.Plugin):
             # - must contain all alg info
             cur_s2_bool = (events[peak_type + '_index'] !=- 1)
             cur_s2_bool &= (events[peak_type + '_area_fraction_top'] > 0)
-            for name in self.config['recon_alg_included']:
+            for name in self.recon_alg_included:
                 cur_s2_bool &= ~np.isnan(events[peak_type+'_x'+name])
                 cur_s2_bool &= ~np.isnan(events[peak_type+'_y'+name])
 

@@ -65,7 +65,6 @@ class AqmonHits(strax.Plugin):
             # Fake signals, 0 meaning that we won't find hits using
             # strax but just look for starts and stops
             (0, (int(AqmonChannels.ARTIFICIAL_DEADTIME),)),
-
         ),
         track=True,
         help='Minimum hit threshold in ADC*counts above baseline. Specified '

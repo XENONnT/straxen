@@ -4,12 +4,6 @@ import straxen
 export, __all__ = strax.exporter()
 
 @export
-@strax.takes_config(
-    strax.Option('n_tpc_pmts', type=int,
-                 help='Number of TPC PMTs'),
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
-                 help="Number of top PMTs"),
-)
 class EventAreaPerChannel(strax.LoopPlugin):
     """
     Simple plugin that provides area per channel for main 
@@ -21,6 +15,9 @@ class EventAreaPerChannel(strax.LoopPlugin):
 
     compressor = 'zstd'
     save_when = strax.SaveWhen.EXPLICIT
+
+    n_tpc_pmts = straxen.URLConfig(type=int, help='Number of TPC PMTs')
+    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type = int, help="Number of top PMTs")
 
     def infer_dtype(self):
         dtype = [(("Area per channel for main S2", "s2_area_per_channel"), 
