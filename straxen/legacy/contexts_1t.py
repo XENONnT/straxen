@@ -2,24 +2,28 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from straxen.common import pax_file, aux_repo
-from straxen.contexts import common_opts
 
-x1t_context_config = {
-    **common_opts,
-    **dict(
-        check_available=('raw_records', 'records', 'peaklets',
-                         'events', 'event_info'),
-        free_options=('channel_map',),
-        use_per_run_defaults=True,
-        store_run_fields=tuple(
-            [x for x in common_opts['store_run_fields'] if x != 'mode']
-            + ['trigger.events_built', 'reader.ini.name']))}
-x1t_context_config.update(
-    dict(register=common_opts['register'] +
-                  [straxen.PeakPositions1T,
-                   straxen.RecordsFromPax,
-                   straxen.EventInfo1T,
-         ]))
+def get_x1t_context_config():
+    """wrapper to get straxen.contexts after imports"""
+    from straxen.contexts import common_opts
+
+    x1t_context_config = {
+        **common_opts,
+        **dict(
+            check_available=('raw_records', 'records', 'peaklets',
+                             'events', 'event_info'),
+            free_options=('channel_map',),
+            use_per_run_defaults=True,
+            store_run_fields=tuple(
+                [x for x in common_opts['store_run_fields'] if x != 'mode']
+                + ['trigger.events_built', 'reader.ini.name']))}
+    x1t_context_config.update(
+        dict(register=common_opts['register'] +
+                      [straxen.PeakPositions1T,
+                       straxen.RecordsFromPax,
+                       straxen.EventInfo1T,
+             ]))
+    return x1t_context_config
 
 x1t_common_config = dict(
     check_raw_record_overlaps=False,
@@ -89,7 +93,7 @@ def demo():
                                      readonly=True)],
         forbid_creation_of=straxen.daqreader.DAQReader.provides,
         config=dict(**x1t_common_config),
-        **x1t_context_config)
+        **get_x1t_context_config())
 
     # Use configs that are always available
     st.set_config(dict(
@@ -120,14 +124,14 @@ def fake_daq():
                     n_readout_threads=8,
                     daq_overlap_chunk_duration=int(2e8),
                     **x1t_common_config),
-        **x1t_context_config)
+        **get_x1t_context_config())
     st.register(straxen.Fake1TDAQReader)
     return st
 
 
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
     context_options = {
-        **x1t_context_config,
+        **get_x1t_context_config(),
         **kwargs}
 
     st = strax.Context(
@@ -155,7 +159,7 @@ def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
     st.set_context_config(
         {'check_available': ('raw_records', 'led_calibration'),
-         'free_options': list(x1t_context_config.keys())
+         'free_options': list(get_x1t_context_config().keys())
          })
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(
@@ -175,7 +179,7 @@ def xenon1t_simulation(output_folder='./strax_data'):
             fax_config='fax_config_1t.json',
             detector='XENON1T',
             **x1t_common_config),
-        **x1t_context_config)
+        **get_x1t_context_config())
     st.register(wfsim.RawRecordsFromFax1T)
     st.deregister_plugins_with_missing_dependencies()
     return st

@@ -453,17 +453,17 @@ def xenonnt_simulation(
 
 def demo():
     """Return strax context used in the straxen demo notebook"""
-    straxen.legacy.contexts_1t.demo()
+    return straxen.legacy.contexts_1t.demo()
 
 def fake_daq():
     """Context for processing fake DAQ data in the current directory"""
-    straxen.legacy.contexts_1t.fake_daq()
+    return straxen.legacy.contexts_1t.fake_daq()
 
 def xenon1t_dali(output_folder='./strax_data', build_lowlevel=False, **kwargs):
-    straxen.legacy.contexts_1t.xenon1t_dali(output_folder=output_folder, build_lowlevel=build_lowlevel, **kwargs)
+    return straxen.legacy.contexts_1t.xenon1t_dali(output_folder=output_folder, build_lowlevel=build_lowlevel, **kwargs)
 
 def xenon1t_led(**kwargs):
-    straxen.legacy.contexts_1t.xenon1t_led(**kwargs)
+    return straxen.legacy.contexts_1t.xenon1t_led(**kwargs)
 
 def xenon1t_simulation(output_folder='./strax_data'):
-    straxen.legacy.contexts_1t.xenon1t_simulation(output_folder=output_folder)
+    return straxen.legacy.contexts_1t.xenon1t_simulation(output_folder=output_folder)
