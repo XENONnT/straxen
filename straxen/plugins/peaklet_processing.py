@@ -240,7 +240,7 @@ class Peaklets(strax.Plugin):
             peak_list = peak_saturation_correction(
                 r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.saturation_reference_length,
-                min_reference_length=self.saturation_min_reference_length)
+                min_reference_length=self.saturation_min_reference_length,
                 n_top_channels=n_top_pmts)
 
             # Compute the width again for corrected peaks
