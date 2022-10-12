@@ -109,7 +109,7 @@ def _test_child_options(st, run_id):
 def test_1T(ncores=2):
     st = straxen.contexts.xenon1t_dali()
     _update_context(st, ncores)
-    st.register_all(straxen.plugins.x1t_cuts)
+    st.register_all(straxen.legacy.plugins_1t.x1t_cuts)
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS

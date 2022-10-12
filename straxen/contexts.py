@@ -12,7 +12,7 @@ from straxen.common import pax_file, aux_repo
 
 common_opts = dict(
     register_all=[
-        straxen.double_scatter,
+
     ],
     # Register all peak/pulse processing by hand as 1T does not need to have
     # the high-energy plugins.
@@ -29,6 +29,8 @@ common_opts = dict(
         straxen.EventPositions,
         straxen.CorrectedAreas,
         straxen.EnergyEstimates,
+        straxen.EventInfoDouble,
+        straxen.DistinctChannels,
     ],
     check_available=('raw_records', 'peak_basics'),
     store_run_fields=(
@@ -97,18 +99,21 @@ xnt_common_opts.update({
                                            straxen.EventwBayesClass,
                                            straxen.PeakAmbience,
                                            straxen.EventAmbience,
+                                           # straxen.nVetoRecorder,
+                                           straxen.muVETOEvents,
+
                                            ],
-    'register_all': common_opts['register_all'] + [straxen.nveto_recorder,
-                                                   straxen.veto_pulse_processing,
-                                                   straxen.veto_hitlets,
-                                                   straxen.veto_events,
-                                                   straxen.acqmon_processing,
-                                                   straxen.pulse_processing,
-                                                   straxen.peaklet_processing,
-                                                   straxen.online_monitor,
-                                                   straxen.event_area_per_channel,
-                                                   straxen.event_patternfit,
-                                                   straxen.event_processing,
+    'register_all': common_opts['register_all'] + [straxen.plugins,
+                                                   # straxen.veto_pulse_processing,
+                                                   # straxen.veto_hitlets,
+                                                   # straxen.veto_events,
+                                                   # straxen.acqmon_processing,
+                                                   # straxen.pulse_processing,
+                                                   # straxen.peaklet_processing,
+                                                   # straxen.online_monitor,
+                                                   # straxen.event_area_per_channel,
+                                                   # straxen.event_patternfit,
+                                                   # straxen.event_processing,
                                                    ],
     'use_per_run_defaults': False,
 })

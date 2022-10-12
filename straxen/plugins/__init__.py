@@ -1,64 +1,86 @@
-from . import daqreader
-from .daqreader import *
+from . import defaults
+from .defaults import *
 
-from . import pax_interface
-from .pax_interface import *
+# TPC chain first, order matters!
+from . import raw_records
+from .raw_records import *
 
-from . import pulse_processing
-from .pulse_processing import *
+from . import records
+from .records import *
 
-from . import peaklet_processing
-from .peaklet_processing import *
+from . import peaklets
+from .peaklets import *
 
-from . import bayes_peak_classification
-from .bayes_peak_classification import *
+from . import merged_s2s
+from .merged_s2s import *
 
-from . import peak_processing
-from .peak_processing import *
+from . import peaks
+from .peaks import *
 
-from .position_reconstruction import *
-from . import position_reconstruction
+from . import events
+from .events import *
 
-from . import event_area_per_channel
-from .event_area_per_channel import *
+from .aqmon_hits import *
+from . import aqmon_hits
 
-from . import event_info
-from .event_info import *
+from . import veto_intervals
+from .veto_intervals import *
 
-from . import event_patternfit
-from .event_patternfit import *
+from . import online_peak_monitor
+from .online_peak_monitor import *
 
-from . import event_processing
-from .event_processing import *
+from . import individual_peak_monitor
+from .individual_peak_monitor import *
 
-from .event_w_bayes_class import *
-from . import event_w_bayes_class
 
-from . import afterpulse_processing
-from .afterpulse_processing import *
+# NV chain
+from . import raw_records_coin_nv
+from .raw_records_coin_nv import *
 
-from . import double_scatter
-from .double_scatter import *
+from . import records_nv
+from .records_nv import *
 
-from . import led_calibration
-from .led_calibration import *
+from . import hitlets_nv
+from .hitlets_nv import *
 
-from . import x1t_cuts
+from . import detector_time_offsets
+from .detector_time_offsets import *
 
-from . import nveto_recorder
-from .nveto_recorder import *
+from . import events_nv
+from .events_nv import *
 
-from . import veto_pulse_processing
-from .veto_pulse_processing import *
+from . import online_monitor_nv
+from .online_monitor_nv import *
 
-from . import veto_hitlets
-from .veto_hitlets import *
+# MV chain
+from . import records_mv
+from .records_mv import *
 
-from . import veto_events
-from .veto_events import *
+from . import hitlets_mv
+from .hitlets_mv import *
 
-from . import acqmon_processing
-from .acqmon_processing import *
+from . import events_mv
+from .events_mv import *
 
-from . import online_monitor
-from .online_monitor import *
+from . import online_monitor_mv
+from .online_monitor_mv import *
+
+# HE
+from . import records_he
+from .records_he import *
+
+from . import merged_s2s_he
+from .merged_s2s_he import *
+
+from . import peaklets_he
+from .peaklets_he import *
+
+from .peaks_he import *
+from . import peaks_he
+
+# Misc
+from . import afterpulses
+from .afterpulses import *
+
+from . import led_cal
+from .led_cal import *
