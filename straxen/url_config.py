@@ -448,18 +448,3 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     for old_key, new_key in zip(replace_keys, with_keys):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
-
-
-@URLConfig.register('legacy-to-pe')
-def get_fixed_pe(name: str):
-    """Return a fixed value for a given name"""
-    from .get_corrections import FIXED_TO_PE
-
-    return FIXED_TO_PE[name]
-
-
-@URLConfig.register('legacy-thresholds')
-def get_thresholds(model: str):
-    """Return a fixed value for a given model"""
-    
-    return straxen.hit_min_amplitude(model)
