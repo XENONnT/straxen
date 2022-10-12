@@ -38,9 +38,9 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model=("to_pe_model", "ONLINE", True),
-    gain_model_nv=("to_pe_model_nv", "ONLINE", True),
-    gain_model_mv=("to_pe_model_mv", "ONLINE", True),
+    gain_model="cmt://to_pe_model?version=ONLINE&run_id=plugin.run_id",
+    gain_model_nv="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
+    gain_model_mv="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id",
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -56,14 +56,22 @@ xnt_common_config = dict(
         nveto_blank=(2999, 2999)),
     # Clustering/classification parameters
     # Event level parameters
-    fdc_map=('fdc_map', "ONLINE", True),
+    fdc_map='itp_map://'
+            'resource://'
+            'cmt://'
+            'format://fdc_map_{alg}'
+            '?alg=plugin.default_reconstruction_algorithm'
+            '&version=ONLINE'
+            '&run_id=plugin.run_id'
+            '&fmt=binary'
+            '&scale_coordinates=plugin.coordinate_scales',
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
 xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(gain_model=("to_pe_placeholder", True),
-                             gain_model_nv=("adc_nv", True),
-                             gain_model_mv=("adc_mv", True),
+xnt_simulation_config.update(gain_model="legacy-to-pe://to_pe_placeholder",
+                             gain_model_nv="legacy-to-pe://adc_nv",
+                             gain_model_mv="legacy-to-pe://adc_mv",
                              elife=1e6,
                              )
 
@@ -499,19 +507,19 @@ x1t_common_config = dict(
         diagnostic=(248, 253),
         aqmon=(254, 999)),
     # Records
-    hev_gain_model=('to_pe_model', "v1", False),
+    hev_gain_model='cmt://to_pe_model?version=v1&detector=1t&run_id=plugin.run_id',
     pmt_pulse_filter=(
         0.012, -0.119,
         2.435, -1.271, 0.357, -0.174, -0., -0.036,
         -0.028, -0.019, -0.025, -0.013, -0.03, -0.039,
         -0.005, -0.019, -0.012, -0.015, -0.029, 0.024,
         -0.007, 0.007, -0.001, 0.005, -0.002, 0.004, -0.002),
-    hit_min_amplitude='XENON1T_SR1',
+    hit_min_amplitude='legacy-thresholds://XENON1T_SR1',
     tail_veto_threshold=int(1e5),
     save_outside_hits=(3, 3),
     # Peaklets
     peaklet_gap_threshold=350,
-    gain_model=('to_pe_model', "v1", False),
+    gain_model='cmt://to_pe_model?version=v1&detector=1t&run_id=plugin.run_id',
     peak_split_gof_threshold=(
         None,  # Reserved
         ((0.5, 1), (3.5, 0.25)),
@@ -560,8 +568,8 @@ def demo():
 
     # Use configs that are always available
     st.set_config(dict(
-        hev_gain_model=('1T_to_pe_placeholder', False),
-        gain_model=('1T_to_pe_placeholder', False),
+        hev_gain_model='legacy-to-pe://1T_to_pe_placeholder',
+        gain_model='legacy-to-pe://1T_to_pe_placeholder',
         elife=1e6,
         electron_drift_velocity=1.3325e-4,
         se_gain=28.2,

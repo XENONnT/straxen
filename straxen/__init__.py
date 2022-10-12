@@ -5,7 +5,7 @@ from .common import *
 # contexts.py below
 from .corrections_services import *
 from .get_corrections import *
-from .hitfinder_thresholds import *
+
 from .itp_map import *
 from .matplotlib_utils import *
 from .mini_analysis import *
@@ -14,6 +14,9 @@ from .misc import *
 from .scada import *
 from .bokeh_utils import *
 from .url_config import *
+
+from . import legacy
+from .legacy import *
 
 from . import plugins
 from .plugins import *
