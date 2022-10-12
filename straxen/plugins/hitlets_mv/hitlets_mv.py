@@ -5,8 +5,8 @@ import strax
 import straxen
 from straxen.plugins.hitlets_nv.hitlets_nv import nVETOHitlets
 from straxen.plugins.defaults import MV_PREAMBLE, NV_HIT_DEFAULTS, MV_HIT_DEFAULTS
-export, __all__ = strax.exporter()
 
+export, __all__ = strax.exporter()
 
 
 @export

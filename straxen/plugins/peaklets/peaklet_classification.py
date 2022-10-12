@@ -6,8 +6,8 @@ from strax.processing.general import _touching_windows
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
-
 export, __all__ = strax.exporter()
+
 
 @export
 class PeakletClassification(strax.Plugin):
@@ -107,4 +107,3 @@ class PeakletClassification(strax.Plugin):
                     # This way S2 merging works on arrays of the same dtype.
                     channel=-1,
                     length=peaklets['length'])
-

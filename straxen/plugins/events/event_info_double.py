@@ -1,6 +1,8 @@
 import numpy as np
 import strax
+
 export, __all__ = strax.exporter()
+
 
 @export
 class EventInfoDouble(strax.MergeOnlyPlugin):

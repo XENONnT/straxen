@@ -1,6 +1,8 @@
 import numpy as np
 import strax
+
 export, __all__ = strax.exporter()
+
 
 @export
 class EventShadow(strax.Plugin):
@@ -22,8 +24,9 @@ class EventShadow(strax.Plugin):
                 type_str, tp_desc, _ = key.split('_')
                 dtype.append(((f'largest {tp_desc} shadow casting from previous {type_str} to {main_peak_desc} [PE/ns]',
                                f'{main_peak}shadow_{key}'), np.float32))
-                dtype.append(((f'time difference from the previous {type_str} casting largest {tp_desc} shadow to {main_peak_desc} [ns]',
-                               f'{main_peak}dt_{key}'), np.int64))
+                dtype.append(((
+                                  f'time difference from the previous {type_str} casting largest {tp_desc} shadow to {main_peak_desc} [ns]',
+                                  f'{main_peak}dt_{key}'), np.int64))
                 # Only previous S2 peaks have (x,y)
                 if 's2' in key:
                     dtype.append(((f'x of previous s2 peak casting largest {tp_desc} shadow on {main_peak_desc} [cm]',
@@ -32,8 +35,9 @@ class EventShadow(strax.Plugin):
                                    f'{main_peak}y_{key}'), np.float32))
                 # Only time shadow gives the nearest large peak
                 if 'time' in key:
-                    dtype.append(((f'time difference from the nearest previous large {type_str} to {main_peak_desc} [ns]',
-                                   f'{main_peak}nearest_dt_{type_str}'), np.int64))
+                    dtype.append(
+                        ((f'time difference from the nearest previous large {type_str} to {main_peak_desc} [ns]',
+                          f'{main_peak}nearest_dt_{type_str}'), np.int64))
             # Also record the PDF of HalfCauchy when calculating S2 position shadow
             dtype.append(((f'PDF describing correlation between previous s2 and {main_peak_desc}',
                            f'{main_peak}pdf_s2_position_shadow'), np.float32))

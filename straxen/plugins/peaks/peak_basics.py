@@ -9,13 +9,8 @@ from scipy.stats import halfcauchy
 import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
+
 export, __all__ = strax.exporter()
-
-
-
-
-
-
 
 
 @export
@@ -37,24 +32,24 @@ class PeakBasics(strax.Plugin):
         (('Weighted center time of the peak (ns since unix epoch)',
           'center_time'), np.int64),
         (('Peak integral in PE',
-            'area'), np.float32),
+          'area'), np.float32),
         (('Number of hits contributing at least one sample to the peak',
-            'n_hits'), np.int32),
+          'n_hits'), np.int32),
         (('Number of PMTs contributing to the peak',
-            'n_channels'), np.int16),
+          'n_channels'), np.int16),
         (('PMT number which contributes the most PE',
-            'max_pmt'), np.int16),
+          'max_pmt'), np.int16),
         (('Area of signal in the largest-contributing PMT (PE)',
-            'max_pmt_area'), np.float32),
+          'max_pmt_area'), np.float32),
         (('Total number of saturated channels',
           'n_saturated_channels'), np.int16),
         (('Width (in ns) of the central 50% area of the peak',
-            'range_50p_area'), np.float32),
+          'range_50p_area'), np.float32),
         (('Width (in ns) of the central 90% area of the peak',
-            'range_90p_area'), np.float32),
+          'range_90p_area'), np.float32),
         (('Fraction of area seen by the top array '
           '(NaN for peaks with non-positive area)',
-            'area_fraction_top'), np.float32),
+          'area_fraction_top'), np.float32),
         (('Length of the peak waveform in samples',
           'length'), np.int32),
         (('Time resolution of the peak waveform in ns',
@@ -67,14 +62,14 @@ class PeakBasics(strax.Plugin):
           'type'), np.int8)
     ]
 
-    n_top_pmts  = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
-                 help="Number of top PMTs")
+    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
+                                   help="Number of top PMTs")
 
     check_peak_sum_area_rtol = straxen.URLConfig(default=None, track=False, infer_type=False,
-                 help="Check if the sum area and the sum of area per "
-                      "channel are the same. If None, don't do the "
-                      "check. To perform the check, set to the desired "
-                      " rtol value used e.g. '1e-4' (see np.isclose).")
+                                                 help="Check if the sum area and the sum of area per "
+                                                      "channel are the same. If None, don't do the "
+                                                      "check. To perform the check, set to the desired "
+                                                      " rtol value used e.g. '1e-4' (see np.isclose).")
 
     def compute(self, peaks):
         p = peaks
@@ -97,7 +92,7 @@ class PeakBasics(strax.Plugin):
         area_total = p['area_per_channel'].sum(axis=1)
         # Negative-area peaks get NaN AFT
         m = p['area'] > 0
-        r['area_fraction_top'][m] = area_top[m]/area_total[m]
+        r['area_fraction_top'][m] = area_top[m] / area_total[m]
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
 
@@ -141,7 +136,7 @@ class PeakBasics(strax.Plugin):
         is_close = np.isclose(area_per_channel_sum[positive_area],
                               peaks[positive_area]['area'],
                               rtol=rtol,
-                             )
+                              )
 
         if not is_close.all():
             for peak in peaks[positive_area][~is_close]:
@@ -152,5 +147,5 @@ class PeakBasics(strax.Plugin):
             peak = peaks[positive_area][p_i]
             area_fraction_off = 1 - area_per_channel_sum[positive_area][p_i] / peak['area']
             message = (f'Area not calculated correctly, it\'s '
-                       f'{100*area_fraction_off} % off, time: {peak["time"]}')
+                       f'{100 * area_fraction_off} % off, time: {peak["time"]}')
             raise ValueError(message)

@@ -1,12 +1,8 @@
 import strax
 import numpy as np
-from immutabledict import immutabledict
-import straxen
-
 from straxen.plugins.online_monitor_nv.online_monitor_nv import OnlineMonitorNV, veto_monitor_dtype
 
 export, __all__ = strax.exporter()
-
 
 
 @export

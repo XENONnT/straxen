@@ -152,4 +152,4 @@ class DetectorSynchronization(strax.Plugin):
             return -self.sync_max_delay
         array = np.asarray(array)
         idx = (np.abs(array - value)).argmin()
-        return value-array[idx]
+        return value - array[idx]

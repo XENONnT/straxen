@@ -107,7 +107,7 @@ class CorrectedAreas(strax.Plugin):
         new_x, new_y = rotate_perp_wires(x, y)
         cond = new_x < self.region_linear
         cond &= new_x > -self.region_linear
-        cond &= new_x**2 + new_y**2 < self.region_circular**2
+        cond &= new_x ** 2 + new_y ** 2 < self.region_circular ** 2
         return cond
 
     def cd_region(self, x, y):
@@ -184,7 +184,7 @@ class CorrectedAreas(strax.Plugin):
                 partition_mask = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
 
                 # Correct for SEgain and extraction efficiency
-                seg_ee_corr = seg[partition ] /avg_seg[partition ] *ee[partition]
+                seg_ee_corr = seg[partition] / avg_seg[partition] * ee[partition]
 
                 # note that these are already masked!
                 cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
@@ -194,7 +194,8 @@ class CorrectedAreas(strax.Plugin):
 
                 # cs2aft doesn't need elife/time corrections as they cancel
                 result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / \
-                            (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+                                                                              (
+                                                                                      cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
                 result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * \
                                                             elife_correction[partition_mask]

@@ -5,7 +5,9 @@ import straxen
 from straxen.plugins.events_nv import nVETOEventsSync
 
 import strax
+
 export, __all__ = strax.exporter()
+
 
 class mVETOEventSync(nVETOEventsSync):
     """

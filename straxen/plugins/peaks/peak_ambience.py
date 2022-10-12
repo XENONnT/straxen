@@ -9,13 +9,8 @@ from scipy.stats import halfcauchy
 import strax
 import straxen
 from straxen.common import pax_file, get_resource, first_sr1_run
+
 export, __all__ = strax.exporter()
-
-
-
-
-
-
 
 
 @export
@@ -110,7 +105,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         # 4. Calculate number and area sum of small S0, S1, S2 before a peak
         radius = -1
         for stype, area in zip([0, 1, 2],
-                                         self.ambience_area_parameters):
+                               self.ambience_area_parameters):
             mask_pre = (peaks['type'] == stype) & (peaks['area'] < area)
             touching_windows = strax.touching_windows(peaks[mask_pre], roi)
             # Calculating ambience
@@ -189,7 +184,8 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                         sum_array[p_i] += creating_peak['area']
                     # Sometimes we may interested in sum of area / r^2
                     if ambience_divide_r and ambient_radius > 0:
-                        sum_array[p_i] /= r**2
+                        sum_array[p_i] /= r ** 2
+
 
 @numba.njit
 def distance_in_xy(peak_a, peak_b):

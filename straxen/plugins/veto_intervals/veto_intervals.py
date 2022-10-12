@@ -8,7 +8,6 @@ from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 export, __all__ = strax.exporter()
 
 
-
 # ### Veto hardware ###:
 # V1495 busy veto module:
 # Generates a 25 ns NIM pulse whenever a veto begins and a 25 ns NIM signal when it ends.

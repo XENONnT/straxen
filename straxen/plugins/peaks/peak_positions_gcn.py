@@ -8,7 +8,9 @@ import pandas as pd
 import typing as ty
 from immutabledict import immutabledict
 from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT
+
 export, __all__ = strax.exporter()
+
 
 @export
 class PeakPositionsGCN(PeakPositionsBaseNT):

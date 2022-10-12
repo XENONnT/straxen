@@ -58,13 +58,12 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         return self.event_left_extension_nv + self.event_resolving_time_nv + 1
 
     def compute(self, hitlets_nv, start, end):
-
         events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
                                                         self.event_min_hits_nv,
                                                         self.event_resolving_time_nv,
                                                         self.event_left_extension_nv,
                                                         event_number_key=self.name_event_number,
-                                                        n_channel=self.n_channel,)
+                                                        n_channel=self.n_channel, )
 
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
@@ -164,7 +163,7 @@ def find_veto_events(hitlets: np.ndarray,
     event_intervals = straxen.plugins.nveto_recorder.find_coincidence(hitlets,
                                                                       coincidence_level,
                                                                       resolving_time,
-                                                                      left_extension,)
+                                                                      left_extension, )
 
     # Find all hitlets which touch the coincidence windows:
     # (we cannot use fully_contained in here since some muon signals
@@ -231,4 +230,3 @@ def _make_event(hitlets: np.ndarray,
         hit = hitlets[ids[0]:ids[1]]
         res[ei]['time'] = hit[0]['time']
         res[ei]['endtime'] = np.max(strax.endtime(hit))
-

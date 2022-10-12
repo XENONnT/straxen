@@ -1,10 +1,10 @@
 import numpy as np
 import straxen
 
-
-
 import strax
+
 export, __all__ = strax.exporter()
+
 
 @export
 class EnergyEstimates(strax.Plugin):
@@ -14,10 +14,10 @@ class EnergyEstimates(strax.Plugin):
     __version__ = '0.1.1'
     depends_on = ['corrected_areas']
     dtype = [
-        ('e_light', np.float32, 'Energy in light signal [keVee]'),
-        ('e_charge', np.float32, 'Energy in charge signal [keVee]'),
-        ('e_ces', np.float32, 'Energy estimate [keVee]')
-    ] + strax.time_fields
+                ('e_light', np.float32, 'Energy in light signal [keVee]'),
+                ('e_charge', np.float32, 'Energy in charge signal [keVee]'),
+                ('e_ces', np.float32, 'Energy estimate [keVee]')
+            ] + strax.time_fields
     save_when = strax.SaveWhen.TARGET
 
     # config options don't double cache things from the resource cache!

@@ -11,7 +11,6 @@ import strax
 export, __all__ = strax.exporter()
 __all__ += ['ARTIFICIAL_DEADTIME_CHANNEL']
 
-
 # Just below the TPC acquisition monitor, see
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:channel_groups
 ARTIFICIAL_DEADTIME_CHANNEL = 799
@@ -80,7 +79,7 @@ class DAQReader(strax.Plugin):
         'raw_records_nv',  # nveto raw_records (will not be stored long term)
         'raw_records_aqmon_nv',
         'raw_records_aux_mv',
-        'raw_records_mv',    # mveto has to be last due to lineage
+        'raw_records_mv',  # mveto has to be last due to lineage
     )
 
     data_kind = immutabledict(zip(provides, provides))
@@ -99,7 +98,7 @@ class DAQReader(strax.Plugin):
     compressor = 'lz4'
     __version__ = '0.0.0'
     input_timeout = 300
-    
+
     def infer_dtype(self):
         return {
             d: strax.raw_record_dtype(
@@ -204,7 +203,7 @@ class DAQReader(strax.Plugin):
             # Records are sorted by (start)time and are of variable length.
             # Their end-times can differ. In the most pessimistic case we have
             # to look back one record length for each channel.
-            tot_channels = np.sum([np.diff(x)+1 for x in
+            tot_channels = np.sum([np.diff(x) + 1 for x in
                                    self.config['channel_map'].values()])
             look_n_samples = self.config["record_length"] * tot_channels
             last_end = strax.endtime(records[-look_n_samples:]).max()

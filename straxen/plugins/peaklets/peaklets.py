@@ -6,8 +6,9 @@ from strax.processing.general import _touching_windows
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
-
 export, __all__ = strax.exporter()
+
+
 @export
 class Peaklets(strax.Plugin):
     """

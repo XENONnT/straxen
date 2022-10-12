@@ -7,7 +7,9 @@ import straxen
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.peaks.peaks import Peaks
 from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
+
 export, __all__ = strax.exporter()
+
 
 @export
 class PeaksHighEnergy(Peaks):

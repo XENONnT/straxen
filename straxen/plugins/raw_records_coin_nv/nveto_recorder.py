@@ -43,17 +43,18 @@ class nVETORecorder(strax.Plugin):
     data_kind = {key: key for key in provides}
 
     coincidence_level_recorder_nv = straxen.URLConfig(type=int, default=3,
-                 help="Required coincidence level.")
+                                                      help="Required coincidence level.")
 
     pre_trigger_time_nv = straxen.URLConfig(type=int, default=150,
-                 help="Pretrigger time before coincidence window in ns.")
+                                            help="Pretrigger time before coincidence window in ns.")
 
     resolving_time_recorder_nv = straxen.URLConfig(type=int, default=600,
-                 help="Resolving time of the coincidence in ns.")
+                                                   help="Resolving time of the coincidence in ns.")
 
     baseline_samples_nv = straxen.URLConfig(infer_type=False,
-                 default='cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id', track=True,
-                 help="Number of samples used in baseline rms calculation")
+                                            default='cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id',
+                                            track=True,
+                                            help="Number of samples used in baseline rms calculation")
 
     hit_min_amplitude_nv = straxen.URLConfig(
         infer_type=False,
@@ -66,21 +67,21 @@ class nVETORecorder(strax.Plugin):
              'which means we are using cmt.')
 
     n_lone_records_nv = straxen.URLConfig(type=int, default=2, track=False,
-                 help="Number of lone hits to be stored per channel for diagnostic reasons.")
+                                          help="Number of lone hits to be stored per channel for diagnostic reasons.")
 
     channel_map = straxen.URLConfig(track=False, type=immutabledict,
-                 help="frozendict mapping subdetector to (min, max) "
-                      "channel number.")
+                                    help="frozendict mapping subdetector to (min, max) "
+                                         "channel number.")
 
     check_raw_record_overlaps_nv = straxen.URLConfig(
-                 default=True, track=False, infer_type=False,
-                 help='Crash if any of the pulses in raw_records overlap with others '
-                      'in the same channel')
+        default=True, track=False, infer_type=False,
+        help='Crash if any of the pulses in raw_records overlap with others '
+             'in the same channel')
 
     def setup(self):
         self.baseline_samples = self.baseline_samples_nv
         self.hit_thresholds = self.hit_min_amplitude_nv
-        
+
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
             self.deps['raw_records_nv'].dtype_for('raw_records_nv'))
@@ -148,7 +149,7 @@ class nVETORecorder(strax.Plugin):
         mask = pulse_in_interval(raw_records_nv,
                                  neighbors,
                                  intervals_with_bounds['time'],
-                                 intervals_with_bounds['endtime'],)
+                                 intervals_with_bounds['endtime'], )
 
         rr, lone_records = straxen.mask_and_not(raw_records_nv, mask)
 
@@ -216,7 +217,7 @@ def compute_lone_records(lone_records, nveto_channels, n):
 
     if len(lone_records):
         # Results computation of lone records:
-        res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119+1-ch0))
+        res = np.zeros(1, dtype=lone_record_statistics_dtype(ch119 + 1 - ch0))
 
         # buffer for lone_records to be stored:
         max_nfrag = np.max(lone_records['record_i'], initial=1)  # We do not know the number of fragments apriori...
@@ -225,7 +226,7 @@ def compute_lone_records(lone_records, nveto_channels, n):
         lone_ids = lone_ids.flatten()
         lone_ids = lone_ids[lone_ids >= 0]
         return res, lone_records[lone_ids]
-    return np.zeros(0, dtype=lone_record_statistics_dtype(ch119+1-ch0)), lone_records
+    return np.zeros(0, dtype=lone_record_statistics_dtype(ch119 + 1 - ch0)), lone_records
 
 
 @numba.njit(nogil=True, cache=True)
@@ -250,7 +251,7 @@ def _compute_lone_records(lone_record, res, lone_ids, n, nveto_channels):
             n_index[ch_ind] += 1
 
             # Check if the event consist out of more than one fragment:
-            n_frag = (lr['pulse_length']//fragment_max_length)
+            n_frag = (lr['pulse_length'] // fragment_max_length)
 
             if n_frag and not lr['record_i']:
                 # We have to subtract the number of higher fragments from our counter

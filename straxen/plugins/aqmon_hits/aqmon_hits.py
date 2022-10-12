@@ -3,7 +3,7 @@ import numpy as np
 import strax
 import straxen
 
-from  straxen.plugins.raw_records.daqreader import ARTIFICIAL_DEADTIME_CHANNEL
+from straxen.plugins.raw_records.daqreader import ARTIFICIAL_DEADTIME_CHANNEL
 
 export, __all__ = strax.exporter()
 
@@ -95,8 +95,8 @@ class AqmonHits(strax.Plugin):
 
         if self.check_raw_record_aqmon_overlaps:
             straxen.check_overlaps(raw_records_aqmon,
-                                   n_channels = max(AqmonChannels).value + 1
-            )
+                                   n_channels=max(AqmonChannels).value + 1
+                                   )
 
         records = strax.raw_to_records(raw_records_aqmon)
         strax.zero_out_of_bounds(records)

@@ -1,8 +1,7 @@
-'''
+"""
 Dear nT analyser, 
 if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
-'''
-import datetime
+"""
 from immutabledict import immutabledict
 import strax
 import straxen
@@ -32,30 +31,30 @@ class LEDCalibration(strax.Plugin):
         - amplitudeNOISE: amplitude of the LED on run in a window far
           from the signal one.
     """
-    
+
     __version__ = '0.2.3'
 
     depends_on = ('raw_records',)
-    data_kind = 'led_cal' 
+    data_kind = 'led_cal'
     compressor = 'zstd'
     parallel = 'process'
     rechunk_on_save = False
 
     baseline_window = straxen.URLConfig(
-                 default=(0,40), infer_type=False,
-                 help="Window (samples) for baseline calculation.")
-                 
+        default=(0, 40), infer_type=False,
+        help="Window (samples) for baseline calculation.")
+
     led_window = straxen.URLConfig(
-                 default=(78, 116), infer_type=False,
-                 help="Window (samples) where we expect the signal in LED calibration")
-                 
+        default=(78, 116), infer_type=False,
+        help="Window (samples) where we expect the signal in LED calibration")
+
     noise_window = straxen.URLConfig(
-                 default=(10, 48), infer_type=False,
-                 help="Window (samples) to analysis the noise")
-                 
+        default=(10, 48), infer_type=False,
+        help="Window (samples) to analysis the noise")
+
     channel_list = straxen.URLConfig(
-                 default=(tuple(channel_list)), infer_type=False,
-                 help="List of PMTs. Defalt value: all the PMTs")
+        default=(tuple(channel_list)), infer_type=False,
+        help="List of PMTs. Defalt value: all the PMTs")
 
     dtype = [('area', np.float32, 'Area averaged in integration windows'),
              ('amplitude_led', np.float32, 'Amplitude in LED window'),
@@ -64,22 +63,22 @@ class LEDCalibration(strax.Plugin):
              ('time', np.int64, 'Start time of the interval (ns since unix epoch)'),
              ('dt', np.int16, 'Time resolution in ns'),
              ('length', np.int32, 'Length of the interval in samples')]
-    
+
     def compute(self, raw_records):
         '''
         The data for LED calibration are build for those PMT which belongs to channel list. 
         This is used for the different ligh levels. As defaul value all the PMTs are considered.
         '''
         mask = np.where(np.in1d(raw_records['channel'], self.channel_list))[0]
-        rr   = raw_records[mask]
-        r    = get_records(rr, baseline_window=self.baseline_window)
+        rr = raw_records[mask]
+        r = get_records(rr, baseline_window=self.baseline_window)
         del rr, raw_records
 
         temp = np.zeros(len(r), dtype=self.dtype)
         strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
 
         on, off = get_amplitude(r, self.led_window, self.noise_window)
-        temp['amplitude_led']   = on['amplitude']
+        temp['amplitude_led'] = on['amplitude']
         temp['amplitude_noise'] = off['amplitude']
 
         area = get_area(r, self.led_window)
@@ -121,17 +120,19 @@ def get_amplitude(records, led_window, noise_window):
     """
     Needed for the SPE computation.
     Take the maximum in two different regions, where there is the signal and where there is not.
-    """   
+    """
     on = np.zeros((len(records)), dtype=_on_off_dtype)
     off = np.zeros((len(records)), dtype=_on_off_dtype)
     on['amplitude'] = np.max(records['data'][:, led_window[0]:led_window[1]], axis=1)
-    on['channel']   = records['channel']
+    on['channel'] = records['channel']
     off['amplitude'] = np.max(records['data'][:, noise_window[0]:noise_window[1]], axis=1)
-    off['channel']   = records['channel']
+    off['channel'] = records['channel']
     return on, off
+
 
 _area_dtype = np.dtype([('channel', 'int16'),
                         ('area', 'float32')])
+
 
 def get_area(records, led_window):
     """
@@ -140,14 +141,14 @@ def get_area(records, led_window):
     This is done in 6 integration window and it returns the average area.
     """
     left = led_window[0]
-    end_pos = [led_window[1]+2*i for i in range(6)]
-  
+    end_pos = [led_window[1] + 2 * i for i in range(6)]
+
     Area = np.zeros((len(records)), dtype=_area_dtype)
     for right in end_pos:
         Area['area'] += records['data'][:, left:right].sum(axis=1)
     Area['channel'] = records['channel']
-    Area['area']    = Area['area']/float(len(end_pos))
-        
+    Area['area'] = Area['area'] / float(len(end_pos))
+
     return Area
 
 
@@ -166,17 +167,17 @@ class nVetoExtTimings(strax.Plugin):
     data_kind = 'hitlets_nv'
 
     compressor = 'zstd'
-    
+
     channel_map = straxen.URLConfig(track=False, type=immutabledict,
-                 help="immutabledict mapping subdetector to (min, max) "
-                      "channel number.")
+                                    help="immutabledict mapping subdetector to (min, max) "
+                                         "channel number.")
 
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_dt_fields
         dtype += [(('Delta time from trigger timing [ns]', 'delta_time'), np.int16),
                   (('Index to which pulse (not record) the hitlet belongs to.', 'pulse_i'),
-                   np.int32),]
+                   np.int32), ]
         return dtype
 
     def setup(self):
@@ -219,10 +220,10 @@ class nVetoExtTimings(strax.Plugin):
         for ch in range(nv_pmt_start, nv_pmt_stop):
             mask_hitlets_in_channel = hitlets_nv['channel'] == ch
             hitlet_in_channel_index = hitlet_index[mask_hitlets_in_channel]
-            
+
             mask_pulse_in_channel = pulses['channel'] == ch
             pulse_in_channel_index = pulse_index[mask_pulse_in_channel]
-            
+
             hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
             pulses_in_channel = pulses[pulse_in_channel_index]
             hit_in_pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
@@ -230,7 +231,7 @@ class nVetoExtTimings(strax.Plugin):
                 if p_i == -1:
                     continue
                 res = ext_timings_nv_delta_time[h_i]
-                
+
                 res['delta_time'] = hitlets_nv[h_i]['time'] + hitlets_nv[h_i]['time_amplitude'] \
                                     - pulses_in_channel[p_i]['time']
                 res['pulse_i'] = pulse_in_channel_index[p_i]

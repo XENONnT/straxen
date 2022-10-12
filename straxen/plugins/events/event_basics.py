@@ -2,12 +2,14 @@ import strax
 import numpy as np
 import numba
 import straxen
+
 # from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 # from straxen.common import get_resource, rotate_perp_wires
 # from straxen.get_corrections import get_cmt_resource, is_cmt_option
 # from straxen.itp_map import InterpolatingMap
 
 export, __all__ = strax.exporter()
+
 
 @export
 class EventBasics(strax.Plugin):
@@ -363,4 +365,3 @@ class EventBasics(strax.Plugin):
             res['s2_index'] = s2_idx[0]
             if len(s2_idx) > 1:
                 res['alt_s2_index'] = s2_idx[1]
-

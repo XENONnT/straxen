@@ -13,7 +13,6 @@ from straxen.plugins.merged_s2s.merged_s2s import MergedS2s
 export, __all__ = strax.exporter()
 
 
-
 @export
 class MergedS2sHighEnergy(MergedS2s):
     __doc__ = HE_PREAMBLE + MergedS2s.__doc__

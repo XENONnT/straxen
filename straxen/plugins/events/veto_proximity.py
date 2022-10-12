@@ -2,7 +2,9 @@ import numpy as np
 import straxen
 import strax
 import numba
+
 export, __all__ = strax.exporter()
+
 
 @export
 class VetoProximity(strax.OverlapWindowPlugin):

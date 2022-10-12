@@ -5,7 +5,6 @@ import numpy as np
 import strax
 import straxen
 
-
 export, __all__ = strax.exporter()
 __all__ += ['NO_PULSE_COUNTS']
 
@@ -49,15 +48,15 @@ class PulseProcessing(strax.Plugin):
     )
 
     hev_gain_model = straxen.URLConfig(
-                 default=None, infer_type=False,
-                 help='PMT gain model used in the software high-energy veto.'
-                     )
+        default=None, infer_type=False,
+        help='PMT gain model used in the software high-energy veto.'
+    )
 
     baseline_samples = straxen.URLConfig(
         default=40, infer_type=False,
         help='Number of samples to use at the start of the pulse to determine '
              'the baseline')
-             
+
     # Tail veto options
     tail_veto_threshold = straxen.URLConfig(
         default=0, infer_type=False,
@@ -67,60 +66,57 @@ class PulseProcessing(strax.Plugin):
     tail_veto_duration = straxen.URLConfig(
         default=int(3e6), infer_type=False,
         help="Time in ns to veto after large peaks")
-        
+
     tail_veto_resolution = straxen.URLConfig(
         default=int(1e3), infer_type=False,
         help="Time resolution in ns for pass-veto waveform summation")
-        
+
     tail_veto_pass_fraction = straxen.URLConfig(
         default=0.05, infer_type=False,
         help="Pass veto if maximum amplitude above max * fraction")
-        
+
     tail_veto_pass_extend = straxen.URLConfig(
         default=3, infer_type=False,
         help="Extend pass veto by this many samples (tail_veto_resolution!)")
-        
+
     max_veto_value = straxen.URLConfig(
         default=None, infer_type=False,
         help="Optionally pass a HE peak that exceeds this absolute area. "
              "(if performing a hard veto, can keep a few statistics.)")
-             
 
     # PMT pulse processing options
     pmt_pulse_filter = straxen.URLConfig(
         default=None, infer_type=False,
         help='Linear filter to apply to pulses, will be normalized.')
-        
+
     save_outside_hits = straxen.URLConfig(
         default=(3, 20), infer_type=False,
         help='Save (left, right) samples besides hits; cut the rest')
-        
 
     n_tpc_pmts = straxen.URLConfig(
         type=int,
         help='Number of TPC PMTs')
-        
 
     check_raw_record_overlaps = straxen.URLConfig(
         default=True, track=False, infer_type=False,
         help='Crash if any of the pulses in raw_records overlap with others '
              'in the same channel')
-             
+
     allow_sloppy_chunking = straxen.URLConfig(
         default=False, track=False, infer_type=False,
         help=('Use a default baseline for incorrectly chunked fragments. '
               'This is a kludge for improperly converted XENON1T data.'))
-              
+
     hit_min_amplitude = straxen.URLConfig(
         track=True, infer_type=False,
         default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
         help='Minimum hit amplitude in ADC counts above baseline. '
-                'Specify as a tuple of length n_tpc_pmts, or a number,'
-                'or a string like "pmt_commissioning_initial" which means calling'
-                'hitfinder_thresholds.py'
-                'or a tuple like (correction=str, version=str, nT=boolean),'
-                'which means we are using cmt.'
-        )
+             'Specify as a tuple of length n_tpc_pmts, or a number,'
+             'or a string like "pmt_commissioning_initial" which means calling'
+             'hitfinder_thresholds.py'
+             'or a tuple like (correction=str, version=str, nT=boolean),'
+             'which means we are using cmt.'
+    )
 
     def infer_dtype(self):
         # Get record_length from the plugin making raw_records
@@ -141,7 +137,7 @@ class PulseProcessing(strax.Plugin):
         if self.hev_enabled:
             self.to_pe = self.hev_gain_model
         self.hit_thresholds = self.hit_min_amplitude
-        
+
     def compute(self, raw_records, start, end):
         if self.check_raw_record_overlaps:
             check_overlaps(raw_records, n_channels=3000)
@@ -325,6 +321,7 @@ def software_he_veto(records, to_pe, chunk_end,
     veto_mask = strax.fully_contained_in(records, veto) == -1
     return tuple(list(mask_and_not(records, veto_mask)) + [veto])
 
+
 @numba.njit(cache=True, nogil=True)
 def rough_sum(regions, records, to_pe, n, dt):
     """Compute ultra-rough sum waveforms for regions, assuming:
@@ -396,6 +393,8 @@ def count_pulses(records, n_channels):
 
 
 NO_PULSE_COUNTS = -9999  # Special value required by average_baseline in case counts = 0
+
+
 @numba.njit(cache=True, nogil=True)
 def _count_pulses(records, n_channels, result):
     count = np.zeros(n_channels, dtype=np.int64)
@@ -425,7 +424,7 @@ def _count_pulses(records, n_channels, result):
         if r['record_i'] == 0:
             count[ch] += 1
             baseline_buffer[ch] += r['baseline']
-            baseline_rms_buffer[ch] += r['baseline_rms'] 
+            baseline_rms_buffer[ch] += r['baseline_rms']
 
             if (r['time'] > last_end_seen
                     and r['time'] + r['pulse_length'] * r['dt'] < next_start):
@@ -448,10 +447,10 @@ def _count_pulses(records, n_channels, result):
     res['lone_pulse_count'][:] = lone_count[:]
     res['pulse_area'][:] = area[:]
     res['lone_pulse_area'][:] = lone_area[:]
-    means = (baseline_buffer/count)
+    means = (baseline_buffer / count)
     means[np.isnan(means)] = NO_PULSE_COUNTS
     res['baseline_mean'][:] = means[:]
-    res['baseline_rms_mean'][:] = (baseline_rms_buffer/count)[:]
+    res['baseline_rms_mean'][:] = (baseline_rms_buffer / count)[:]
 
 
 ##

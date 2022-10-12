@@ -12,8 +12,6 @@ from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
 export, __all__ = strax.exporter()
 
 
-
-
 @export
 class MergedS2s(strax.OverlapWindowPlugin):
     """

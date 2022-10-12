@@ -4,7 +4,9 @@ import numba
 import typing as ty
 
 import strax
+
 export, __all__ = strax.exporter()
+
 
 @export
 class nVETOEventPositions(strax.Plugin):
@@ -20,12 +22,12 @@ class nVETOEventPositions(strax.Plugin):
     compressor = 'zstd'
 
     position_max_time_nv = straxen.URLConfig(default=20, infer_type=False,
-                 help="Time [ns] within an event use to compute the azimuthal angle of the "
-                      "event.")
+                                             help="Time [ns] within an event use to compute the azimuthal angle of the "
+                                                  "event.")
 
     nveto_pmt_position_map = straxen.URLConfig(
-                 help="nVeto PMT position mapfile",
-                 default='resource://nveto_pmt_position.csv?fmt=csv', infer_type=False,)
+        help="nVeto PMT position mapfile",
+        default='resource://nveto_pmt_position.csv?fmt=csv', infer_type=False, )
 
     def infer_dtype(self):
         return veto_event_positions_dtype()
@@ -99,19 +101,19 @@ def compute_positions(event_angles: np.ndarray,
             pos_y = pmt_pos['y'][ch]
             pos_z = pmt_pos['z'][ch]
 
-            e_angles['pos_x'] = np.sum(pos_x * hitlets['area'])/prompt_event_area
-            e_angles['pos_y'] = np.sum(pos_y * hitlets['area'])/prompt_event_area
-            e_angles['pos_z'] = np.sum(pos_z * hitlets['area'])/prompt_event_area
+            e_angles['pos_x'] = np.sum(pos_x * hitlets['area']) / prompt_event_area
+            e_angles['pos_y'] = np.sum(pos_y * hitlets['area']) / prompt_event_area
+            e_angles['pos_z'] = np.sum(pos_z * hitlets['area']) / prompt_event_area
             w = hitlets['area'] / prompt_event_area  # normalized weights
             if len(hitlets) and np.sum(w) > 0:
                 e_angles['pos_x_spread'] = np.sqrt(
-                    np.sum(w * (pos_x - e_angles['pos_x'])**2)/np.sum(w)
+                    np.sum(w * (pos_x - e_angles['pos_x']) ** 2) / np.sum(w)
                 )
                 e_angles['pos_y_spread'] = np.sqrt(
-                    np.sum(w * (pos_y - e_angles['pos_y'])**2)/np.sum(w)
+                    np.sum(w * (pos_y - e_angles['pos_y']) ** 2) / np.sum(w)
                 )
                 e_angles['pos_z_spread'] = np.sqrt(
-                    np.sum(w * (pos_z - e_angles['pos_z'])**2)/np.sum(w)
+                    np.sum(w * (pos_z - e_angles['pos_z']) ** 2) / np.sum(w)
                 )
 
 

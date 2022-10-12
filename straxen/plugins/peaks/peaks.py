@@ -9,6 +9,7 @@ from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
 
 export, __all__ = strax.exporter()
 
+
 @export
 class Peaks(strax.Plugin):
     """
@@ -24,13 +25,12 @@ class Peaks(strax.Plugin):
     parallel = True
     save_when = strax.SaveWhen.EXPLICIT
 
+    diagnose_sorting = straxen.URLConfig(track=False, default=False, infer_type=False,
+                                         help="Enable runtime checks for sorting and disjointness")
 
-    diagnose_sorting = straxen.URLConfig( track=False, default=False, infer_type=False,
-                                          help="Enable runtime checks for sorting and disjointness")
-
-    merge_without_s1 = straxen.URLConfig( default=True, infer_type=False,
-                                          help="If true, S1s will be igored during the merging. "
-                                               "It's now possible for a S1 to be inside a S2 post merging")
+    merge_without_s1 = straxen.URLConfig(default=True, infer_type=False,
+                                         help="If true, S1s will be igored during the merging. "
+                                              "It's now possible for a S1 to be inside a S2 post merging")
 
     def infer_dtype(self):
         return self.deps['peaklets'].dtype_for('peaklets')

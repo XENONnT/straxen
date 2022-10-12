@@ -5,14 +5,12 @@ import numpy as np
 import strax
 import straxen
 
-
 export, __all__ = strax.exporter()
-
 
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.records.records import PulseProcessing, pulse_count_dtype
 
-    
+
 @export
 class PulseProcessingHighEnergy(PulseProcessing):
     __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
@@ -28,20 +26,20 @@ class PulseProcessingHighEnergy(PulseProcessing):
     save_when = strax.SaveWhen.TARGET
 
     n_he_pmts = straxen.URLConfig(track=False, default=752, infer_type=False,
-                 help="Maximum channel of the he channels")
+                                  help="Maximum channel of the he channels")
 
     record_length = straxen.URLConfig(default=110, track=False, type=int,
-                 help="Number of samples per raw_record")
-                
+                                      help="Number of samples per raw_record")
+
     hit_min_amplitude_he = straxen.URLConfig(
         default='cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id', track=True, infer_type=False,
         help='Minimum hit amplitude in ADC counts above baseline. '
-                'Specify as a tuple of length n_tpc_pmts, or a number,'
-                'or a string like "pmt_commissioning_initial" which means calling'
-                'hitfinder_thresholds.py'
-                'or a tuple like (correction=str, version=str, nT=boolean),'
-                'which means we are using cmt.'
-        )
+             'Specify as a tuple of length n_tpc_pmts, or a number,'
+             'or a string like "pmt_commissioning_initial" which means calling'
+             'hitfinder_thresholds.py'
+             'or a tuple like (correction=str, version=str, nT=boolean),'
+             'which means we are using cmt.'
+    )
 
     def infer_dtype(self):
         dtype = dict()
@@ -52,7 +50,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
     def setup(self):
         self.hev_enabled = False
 
-        #FIXME: This looks hacky. Maybe find a better way?
+        # FIXME: This looks hacky. Maybe find a better way?
         self.config['n_tpc_pmts'] = self.config['n_he_pmts']
 
         self.hit_thresholds = self.hit_min_amplitude_he
@@ -61,4 +59,3 @@ class PulseProcessingHighEnergy(PulseProcessing):
         result = super().compute(raw_records_he, start, end)
         return dict(records_he=result['records'],
                     pulse_counts_he=result['pulse_counts'])
-

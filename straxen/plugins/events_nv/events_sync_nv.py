@@ -3,6 +3,7 @@ import numpy as np
 
 export, __all__ = strax.exporter()
 
+
 @export
 class nVETOEventsSync(strax.OverlapWindowPlugin):
     """

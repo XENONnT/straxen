@@ -17,52 +17,52 @@ class LEDAfterpulseProcessing(strax.Plugin):
     rechunk_on_save = True
 
     gain_model = straxen.URLConfig(infer_type=False,
-                 help='PMT gain model. Specify as (model_type, model_config)',
-                 )
+                                   help='PMT gain model. Specify as (model_type, model_config)',
+                                   )
 
     n_tpc_pmts = straxen.URLConfig(
-                 type=int,
-                 help="Number of PMTs in TPC",
-                 )
+        type=int,
+        help="Number of PMTs in TPC",
+    )
 
     LED_window_left = straxen.URLConfig(
-                 default=50, infer_type=False,
-                 help='Left boundary of sample range for LED pulse integration',
-                 )
+        default=50, infer_type=False,
+        help='Left boundary of sample range for LED pulse integration',
+    )
 
     LED_window_right = straxen.URLConfig(
-                 default=100, infer_type=False,
-                 help='Right boundary of sample range for LED pulse integration',
-                 )
+        default=100, infer_type=False,
+        help='Right boundary of sample range for LED pulse integration',
+    )
 
     baseline_samples = straxen.URLConfig(
-                 default=40, infer_type=False,
-                 help='Number of samples to use at start of WF to determine the baseline',
-                 )
+        default=40, infer_type=False,
+        help='Number of samples to use at start of WF to determine the baseline',
+    )
 
     hit_min_amplitude = straxen.URLConfig(
-                 track=True, infer_type=False,
-                 default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
-                 help='Minimum hit amplitude in ADC counts above baseline. '
-                      'Specify as a tuple of length n_tpc_pmts, or a number,'
-                      'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
-                      'hitfinder_thresholds.py'
-                      'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
-                      'calling cmt.',
-                      
-                 )
+        track=True, infer_type=False,
+        default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number,'
+             'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
+             'hitfinder_thresholds.py'
+             'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
+             'calling cmt.',
+
+    )
 
     hit_min_height_over_noise = straxen.URLConfig(
-                 default=4, infer_type=False,
-                 help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
-                      'Actual threshold used is max(hit_min_amplitude, hit_min_'
-                      'height_over_noise * baseline_rms).',
-                 )
+        default=4, infer_type=False,
+        help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
+             'Actual threshold used is max(hit_min_amplitude, hit_min_'
+             'height_over_noise * baseline_rms).',
+    )
 
     save_outside_hits = straxen.URLConfig(
-                 default=(3, 20), infer_type=False,
-                 help='Save (left, right) samples besides hits; cut the rest',
-                 )
+        default=(3, 20), infer_type=False,
+        help='Save (left, right) samples besides hits; cut the rest',
+    )
 
     def infer_dtype(self):
         dtype = dtype_afterpulses()
@@ -72,9 +72,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
         self.to_pe = self.gain_model
         self.hit_thresholds = self.hit_min_amplitude
         self.hit_left_extension, self.hit_right_extension = self.save_outside_hits
-       
-    def compute(self, raw_records):
 
+    def compute(self, raw_records):
         # Convert everything to the records data type -- adds extra fields.
         records = strax.raw_to_records(raw_records)
         del raw_records

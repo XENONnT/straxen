@@ -2,7 +2,6 @@ import strax
 import straxen
 from straxen import pre_apply_function
 
-
 export, __all__ = strax.exporter()
 
 
@@ -27,6 +26,7 @@ class EventInfo(strax.MergeOnlyPlugin):
         infer_type=False,
         help="Function that must be applied to all event_info data. Do not change.",
     )
+
     def compute(self, **kwargs):
         event_info_function = self.config['event_info_function']
         event_info = super().compute(**kwargs)
@@ -37,4 +37,3 @@ class EventInfo(strax.MergeOnlyPlugin):
                                             event_info_function,
                                             )
         return event_info
-

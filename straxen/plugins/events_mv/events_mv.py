@@ -56,5 +56,3 @@ class muVETOEvents(nVETOEvents):
 
     def compute(self, hitlets_mv, start, end):
         return super().compute(hitlets_mv, start, end)
-
-

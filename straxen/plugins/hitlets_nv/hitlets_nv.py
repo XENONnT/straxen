@@ -5,6 +5,7 @@ import strax
 import straxen
 
 from straxen.plugins.defaults import MV_PREAMBLE, NV_HIT_DEFAULTS, MV_HIT_DEFAULTS
+
 export, __all__ = strax.exporter()
 
 
@@ -145,4 +146,3 @@ def remove_switched_off_channels(hits, to_pe):
     mask_off = np.isin(hits['channel'], channel_off)
     hits = hits[~mask_off]
     return hits
-

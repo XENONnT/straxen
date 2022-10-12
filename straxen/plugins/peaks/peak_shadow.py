@@ -1,19 +1,11 @@
-import json
-import os
-import tempfile
 import numpy as np
 import numba
-from enum import IntEnum
 from scipy.stats import halfcauchy
-
+from .peak_ambience import distance_in_xy
 import strax
 import straxen
-from straxen.common import pax_file, get_resource, first_sr1_run
+
 export, __all__ = strax.exporter()
-
-
-
-
 
 
 @export
@@ -40,9 +32,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
     )
 
     shadow_threshold = straxen.URLConfig(
-        default={'s1_time_shadow' : 1e3,
-                 's2_time_shadow' : 1e4,
-                 's2_position_shadow' : 1e4},
+        default={'s1_time_shadow': 1e3,
+                 's2_time_shadow': 1e4,
+                 's2_position_shadow': 1e4},
         type=dict,
         track=True,
         help='Only take S1/S2s larger than this into account when calculating Shadow [PE]'
@@ -79,7 +71,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                            f'shadow_{key}'), np.float32))
             dtype.append \
                 (((f'time difference to the previous large {type_str} peak casting largest {tp_desc} shadow [ns]',
-                           f'dt_{key}'), np.int64))
+                   f'dt_{key}'), np.int64))
             # Only previous S2 peaks have (x,y)
             if 's2' in key:
                 dtype.append(((f'x of previous large s2 peak casting largest {tp_desc} shadow [cm]',
@@ -147,9 +139,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
             # Fill results
             names = ['shadow', 'dt']
-            if 's2' in key: # Only previous S2 peaks have (x,y)
+            if 's2' in key:  # Only previous S2 peaks have (x,y)
                 names += ['x', 'y']
-            if 'time' in key: # Only time shadow gives the nearest large peak
+            if 'time' in key:  # Only time shadow gives the nearest large peak
                 names += ['nearest_dt']
             for name in names:
                 if name == 'nearest_dt':
@@ -163,7 +155,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
         distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
         # HalfCauchy PDF when calculating S2 position shadow
         result['pdf_s2_position_shadow'] = halfcauchy.pdf(distance,
-                                                          scale=self.getsigma(self.shadow_sigma_and_baseline, current_peak['area']))
+                                                          scale=self.getsigma(self.shadow_sigma_and_baseline,
+                                                                              current_peak['area']))
 
         # 6. Set time and endtime for peaks
         result['time'] = current_peak['time']

@@ -32,7 +32,6 @@ from .online_peak_monitor import *
 from . import individual_peak_monitor
 from .individual_peak_monitor import *
 
-
 # NV chain
 from . import raw_records_coin_nv
 from .raw_records_coin_nv import *

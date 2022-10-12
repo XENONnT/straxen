@@ -1,6 +1,5 @@
 import strax
 import numpy as np
-from immutabledict import immutabledict
 import straxen
 
 export, __all__ = strax.exporter()
@@ -36,17 +35,17 @@ class IndividualPeakMonitor(strax.Plugin):
 
     def infer_dtype(self):
         dtype = [
-            (('Peak integral in PE', 'area'),
-             np.float32),
-            (('Reconstructed mlp peak x-position', 'x_mlp'),
-             np.float32),
-            (('Reconstructed mlp peak y-position', 'y_mlp'),
-             np.float32),
-            (('Width (in ns) of the central 50% area of the peak', 'range_50p_area'),
-             np.float32),
-            (('Fraction of original peaks array length that is saved', 'weight'),
-             np.float32),
-        ] + strax.time_fields
+                    (('Peak integral in PE', 'area'),
+                     np.float32),
+                    (('Reconstructed mlp peak x-position', 'x_mlp'),
+                     np.float32),
+                    (('Reconstructed mlp peak y-position', 'y_mlp'),
+                     np.float32),
+                    (('Width (in ns) of the central 50% area of the peak', 'range_50p_area'),
+                     np.float32),
+                    (('Fraction of original peaks array length that is saved', 'weight'),
+                     np.float32),
+                ] + strax.time_fields
         return dtype
 
     def compute(self, peaks):

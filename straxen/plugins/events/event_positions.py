@@ -4,7 +4,9 @@ import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 import strax
+
 export, __all__ = strax.exporter()
+
 
 @export
 class EventPositions(strax.Plugin):

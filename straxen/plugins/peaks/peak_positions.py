@@ -11,6 +11,7 @@ from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
 
+
 @export
 class PeakPositionsNT(strax.MergeOnlyPlugin):
     """

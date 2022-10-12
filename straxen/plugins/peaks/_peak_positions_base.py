@@ -93,4 +93,3 @@ class PeakPositionsBaseNT(strax.Plugin):
         result['x_' + self.algorithm][peak_mask] = output[:, 0]
         result['y_' + self.algorithm][peak_mask] = output[:, 1]
         return result
-
