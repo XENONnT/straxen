@@ -1,8 +1,8 @@
 import numpy as np
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 import strax
 import straxen
 from straxen.common import get_resource, rotate_perp_wires
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
 

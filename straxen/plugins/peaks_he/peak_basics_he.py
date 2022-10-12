@@ -1,12 +1,7 @@
-import numba
-import numpy as np
 import strax
-from immutabledict import immutabledict
-from strax.processing.general import _touching_windows
-import straxen
 from straxen.plugins.defaults import HE_PREAMBLE
-
 from straxen.plugins.peaks.peak_basics import PeakBasics
+
 
 export, __all__ = strax.exporter()
 

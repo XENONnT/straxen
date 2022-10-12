@@ -1,9 +1,8 @@
-from straxen.plugins.peaklets.peaklets import Peaklets
-from straxen.plugins.defaults import HE_PREAMBLE
+import numpy as np
 import strax
 import straxen
-
-import numpy as np
+from straxen.plugins.peaklets.peaklets import Peaklets
+from straxen.plugins.defaults import HE_PREAMBLE
 
 export, __all__ = strax.exporter()
 

@@ -3,10 +3,6 @@ import numpy as np
 import numba
 import straxen
 
-# from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-# from straxen.common import get_resource, rotate_perp_wires
-# from straxen.get_corrections import get_cmt_resource, is_cmt_option
-# from straxen.itp_map import InterpolatingMap
 
 export, __all__ = strax.exporter()
 

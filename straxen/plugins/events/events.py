@@ -46,24 +46,28 @@ class Events(strax.OverlapWindowPlugin):
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
 
-    trigger_min_area = straxen.URLConfig(default=100, type=(int, float),
-                                         help='Peaks must have more area (PE) than this to '
-                                              'cause events')
+    trigger_min_area = straxen.URLConfig(
+        default=100, type=(int, float),
+        help='Peaks must have more area (PE) than this to '
+             'cause events')
 
-    trigger_max_competing = straxen.URLConfig(default=7, type=int,
-                                              help='Peaks must have FEWER nearby larger or slightly smaller'
-                                                   ' peaks to cause events')
+    trigger_max_competing = straxen.URLConfig(
+        default=7, type=int,
+        help='Peaks must have FEWER nearby larger or slightly smaller'
+             ' peaks to cause events')
 
-    left_event_extension = straxen.URLConfig(default=int(0.25e6), type=(int, float),
-                                             help='Extend events this many ns to the left from each '
-                                                  'triggering peak. This extension is added to the maximum '
-                                                  'drift time.',
-                                             )
+    left_event_extension = straxen.URLConfig(
+        default=int(0.25e6), type=(int, float),
+        help='Extend events this many ns to the left from each '
+             'triggering peak. This extension is added to the maximum '
+             'drift time.',
+    )
 
-    right_event_extension = straxen.URLConfig(default=int(0.25e6), type=(int, float),
-                                              help='Extend events this many ns to the right from each '
-                                                   'triggering peak.',
-                                              )
+    right_event_extension = straxen.URLConfig(
+        default=int(0.25e6), type=(int, float),
+        help='Extend events this many ns to the right from each '
+             'triggering peak.',
+    )
 
     max_drift_length = straxen.URLConfig(
         default=straxen.tpc_z, type=(int, float),
@@ -81,8 +85,9 @@ class Events(strax.OverlapWindowPlugin):
         help="Event level S1 min coincidence. Should be >= "
              "s1_min_coincidence in the peaklet classification")
 
-    s1_min_coincidence = straxen.URLConfig(default=2, type=int,
-                                           help="Minimum tight coincidence necessary to make an S1")
+    s1_min_coincidence = straxen.URLConfig(
+        default=2, type=int,
+        help="Minimum tight coincidence necessary to make an S1")
 
     def setup(self):
         if self.s1_min_coincidence > self.event_s1_min_coincidence:

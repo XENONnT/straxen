@@ -1,6 +1,4 @@
 import numpy as np
-from immutabledict import immutabledict
-
 import strax
 import straxen
 from straxen.plugins.hitlets_nv.hitlets_nv import nVETOHitlets

@@ -1,6 +1,5 @@
 import strax
 import numpy as np
-from immutabledict import immutabledict
 import straxen
 
 export, __all__ = strax.exporter()

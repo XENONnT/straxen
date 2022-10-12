@@ -1,5 +1,4 @@
 import numpy as np
-import strax
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 

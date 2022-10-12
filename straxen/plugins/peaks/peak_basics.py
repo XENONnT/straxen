@@ -1,14 +1,8 @@
-import json
-import os
-import tempfile
 import numpy as np
 import numba
-from enum import IntEnum
-from scipy.stats import halfcauchy
-
 import strax
 import straxen
-from straxen.common import pax_file, get_resource, first_sr1_run
+
 
 export, __all__ = strax.exporter()
 

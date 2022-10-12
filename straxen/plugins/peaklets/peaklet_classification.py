@@ -1,10 +1,7 @@
-import numba
 import numpy as np
 import strax
-from immutabledict import immutabledict
-from strax.processing.general import _touching_windows
 import straxen
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
+
 
 export, __all__ = strax.exporter()
 
@@ -20,30 +17,37 @@ class PeakletClassification(strax.Plugin):
     dtype = (strax.peak_interval_dtype
              + [('type', np.int8, 'Classification of the peak(let)')])
 
-    s1_risetime_area_parameters = straxen.URLConfig(default=(50, 80, 12), type=(list, tuple),
-                                                    help="norm, const, tau in the empirical boundary in the risetime-area plot")
+    s1_risetime_area_parameters = straxen.URLConfig(
+        default=(50, 80, 12), type=(list, tuple),
+        help="norm, const, tau in the empirical boundary in the risetime-area plot")
 
-    s1_risetime_aft_parameters = straxen.URLConfig(default=(-1, 2.6), type=(list, tuple),
-                                                   help=(
-                                                       "Slope and offset in exponential of emperical boundary in the rise time-AFT "
-                                                       "plot. Specified as (slope, offset)"))
+    s1_risetime_aft_parameters = straxen.URLConfig(
+        default=(-1, 2.6), type=(list, tuple),
+        help=(
+            "Slope and offset in exponential of emperical boundary in the rise time-AFT "
+            "plot. Specified as (slope, offset)"))
 
-    s1_flatten_threshold_aft = straxen.URLConfig(default=(0.6, 100), type=(tuple, list),
-                                                 help=(
-                                                     "Threshold for AFT, above which we use a flatted boundary for rise time"
-                                                     "Specified values: (AFT boundary, constant rise time)."))
+    s1_flatten_threshold_aft = straxen.URLConfig(
+        default=(0.6, 100), type=(tuple, list),
+        help=(
+            "Threshold for AFT, above which we use a flatted boundary for rise time"
+            "Specified values: (AFT boundary, constant rise time)."))
 
-    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int,
-                                   help="Number of top PMTs")
+    n_top_pmts = straxen.URLConfig(
+        default=straxen.n_top_pmts, type=int,
+        help="Number of top PMTs")
 
-    s1_max_rise_time_post100 = straxen.URLConfig(default=200, type=(int, float),
-                                                 help="Maximum S1 rise time for > 100 PE [ns]")
+    s1_max_rise_time_post100 = straxen.URLConfig(
+        default=200, type=(int, float),
+        help="Maximum S1 rise time for > 100 PE [ns]")
 
-    s1_min_coincidence = straxen.URLConfig(default=2, type=int,
-                                           help="Minimum tight coincidence necessary to make an S1")
+    s1_min_coincidence = straxen.URLConfig(
+        default=2, type=int,
+        help="Minimum tight coincidence necessary to make an S1")
 
-    s2_min_pmts = straxen.URLConfig(default=4, type=int,
-                                    help="Minimum number of PMTs contributing to an S2")
+    s2_min_pmts = straxen.URLConfig(
+        default=4, type=int,
+        help="Minimum number of PMTs contributing to an S2")
 
     @staticmethod
     def upper_rise_time_area_boundary(area, norm, const, tau):

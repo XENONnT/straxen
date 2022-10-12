@@ -4,7 +4,7 @@ import strax
 from immutabledict import immutabledict
 from strax.processing.general import _touching_windows
 import straxen
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
+
 
 export, __all__ = strax.exporter()
 
@@ -39,17 +39,21 @@ class Peaklets(strax.Plugin):
 
     __version__ = '0.6.0'
 
-    peaklet_gap_threshold = straxen.URLConfig(default=700, infer_type=False,
-                                              help="No hits for this many ns triggers a new peak")
+    peaklet_gap_threshold = straxen.URLConfig(
+        default=700, infer_type=False,
+        help="No hits for this many ns triggers a new peak")
 
-    peak_left_extension = straxen.URLConfig(default=30, infer_type=False,
-                                            help="Include this many ns left of hits in peaks")
+    peak_left_extension = straxen.URLConfig(
+        default=30, infer_type=False,
+        help="Include this many ns left of hits in peaks")
 
-    peak_right_extension = straxen.URLConfig(default=200, infer_type=False,
-                                             help="Include this many ns right of hits in peaks")
+    peak_right_extension = straxen.URLConfig(
+        default=200, infer_type=False,
+        help="Include this many ns right of hits in peaks")
 
-    peak_min_pmts = straxen.URLConfig(default=2, infer_type=False,
-                                      help="Minimum number of contributing PMTs needed to define a peak")
+    peak_min_pmts = straxen.URLConfig(
+        default=2, infer_type=False,
+        help="Minimum number of contributing PMTs needed to define a peak")
 
     peak_split_gof_threshold = straxen.URLConfig(
         # See https://xe1t-wiki.lngs.infn.it/doku.php?id=
@@ -63,52 +67,63 @@ class Peaklets(strax.Plugin):
         help='Natural breaks goodness of fit/split threshold to split '
              'a peak. Specify as tuples of (log10(area), threshold).')
 
-    peak_split_filter_wing_width = straxen.URLConfig(default=70, infer_type=False,
-                                                     help='Wing width of moving average filter for '
-                                                          'low-split natural breaks')
+    peak_split_filter_wing_width = straxen.URLConfig(
+        default=70, infer_type=False,
+        help='Wing width of moving average filter for '
+             'low-split natural breaks')
 
-    peak_split_min_area = straxen.URLConfig(default=40., infer_type=False,
-                                            help='Minimum area to evaluate natural breaks criterion. '
-                                                 'Smaller peaks are not split.')
+    peak_split_min_area = straxen.URLConfig(
+        default=40., infer_type=False,
+        help='Minimum area to evaluate natural breaks criterion. '
+             'Smaller peaks are not split.')
 
-    peak_split_iterations = straxen.URLConfig(default=20, infer_type=False,
-                                              help='Maximum number of recursive peak splits to do.')
+    peak_split_iterations = straxen.URLConfig(
+        default=20, infer_type=False,
+        help='Maximum number of recursive peak splits to do.')
 
-    diagnose_sorting = straxen.URLConfig(track=False, default=False, infer_type=False,
-                                         help="Enable runtime checks for sorting and disjointness")
+    diagnose_sorting = straxen.URLConfig(
+        track=False, default=False, infer_type=False,
+        help="Enable runtime checks for sorting and disjointness")
 
-    gain_model = straxen.URLConfig(infer_type=False,
-                                   help='PMT gain model. Specify as URL or explicit value'
-                                   )
+    gain_model = straxen.URLConfig(
+        infer_type=False,
+        help='PMT gain model. Specify as URL or explicit value'
+    )
 
-    tight_coincidence_window_left = straxen.URLConfig(default=50, infer_type=False,
-                                                      help="Time range left of peak center to call "
-                                                           "a hit a tight coincidence (ns)")
+    tight_coincidence_window_left = straxen.URLConfig(
+        default=50, infer_type=False,
+        help="Time range left of peak center to call a hit a tight coincidence (ns)")
 
-    tight_coincidence_window_right = straxen.URLConfig(default=50, infer_type=False,
-                                                       help="Time range right of peak center to call "
-                                                            "a hit a tight coincidence (ns)")
+    tight_coincidence_window_right = straxen.URLConfig(
+        default=50, infer_type=False,
+        help="Time range right of peak center to call a hit a tight coincidence (ns)")
 
-    n_tpc_pmts = straxen.URLConfig(type=int,
-                                   help='Number of TPC PMTs')
+    n_tpc_pmts = straxen.URLConfig(
+        type=int,
+        help='Number of TPC PMTs')
 
-    saturation_correction_on = straxen.URLConfig(default=True, infer_type=False,
-                                                 help='On off switch for saturation correction')
+    saturation_correction_on = straxen.URLConfig(
+        default=True, infer_type=False,
+        help='On off switch for saturation correction')
 
-    saturation_reference_length = straxen.URLConfig(default=100, infer_type=False,
-                                                    help="Maximum number of reference sample used "
-                                                         "to correct saturated samples")
+    saturation_reference_length = straxen.URLConfig(
+        default=100, infer_type=False,
+        help="Maximum number of reference sample used "
+             "to correct saturated samples")
 
-    saturation_min_reference_length = straxen.URLConfig(default=20, infer_type=False,
-                                                        help="Minimum number of reference sample used "
-                                                             "to correct saturated samples")
+    saturation_min_reference_length = straxen.URLConfig(
+        default=20, infer_type=False,
+        help="Minimum number of reference sample used "
+             "to correct saturated samples")
 
-    peaklet_max_duration = straxen.URLConfig(default=int(10e6), infer_type=False,
-                                             help="Maximum duration [ns] of a peaklet")
+    peaklet_max_duration = straxen.URLConfig(
+        default=int(10e6), infer_type=False,
+        help="Maximum duration [ns] of a peaklet")
 
-    channel_map = straxen.URLConfig(track=False, type=immutabledict,
-                                    help="immutabledict mapping subdetector to (min, max) "
-                                         "channel number.")
+    channel_map = straxen.URLConfig(
+        track=False, type=immutabledict,
+        help="immutabledict mapping subdetector to (min, max) "
+             "channel number.")
 
     hit_min_amplitude = straxen.URLConfig(
         track=True, infer_type=False,

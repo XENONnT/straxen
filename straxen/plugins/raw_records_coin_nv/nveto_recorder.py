@@ -42,19 +42,23 @@ class nVETORecorder(strax.Plugin):
 
     data_kind = {key: key for key in provides}
 
-    coincidence_level_recorder_nv = straxen.URLConfig(type=int, default=3,
-                                                      help="Required coincidence level.")
+    coincidence_level_recorder_nv = straxen.URLConfig(
+        type=int, default=3,
+        help="Required coincidence level.")
 
-    pre_trigger_time_nv = straxen.URLConfig(type=int, default=150,
-                                            help="Pretrigger time before coincidence window in ns.")
+    pre_trigger_time_nv = straxen.URLConfig(
+        type=int, default=150,
+        help="Pretrigger time before coincidence window in ns.")
 
-    resolving_time_recorder_nv = straxen.URLConfig(type=int, default=600,
-                                                   help="Resolving time of the coincidence in ns.")
+    resolving_time_recorder_nv = straxen.URLConfig(
+        type=int, default=600,
+        help="Resolving time of the coincidence in ns.")
 
-    baseline_samples_nv = straxen.URLConfig(infer_type=False,
-                                            default='cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id',
-                                            track=True,
-                                            help="Number of samples used in baseline rms calculation")
+    baseline_samples_nv = straxen.URLConfig(
+        infer_type=False,
+        default='cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id',
+        track=True,
+        help="Number of samples used in baseline rms calculation")
 
     hit_min_amplitude_nv = straxen.URLConfig(
         infer_type=False,
@@ -66,12 +70,14 @@ class nVETORecorder(strax.Plugin):
              'or a tuple like (correction=str, version=str, nT=boolean), '
              'which means we are using cmt.')
 
-    n_lone_records_nv = straxen.URLConfig(type=int, default=2, track=False,
-                                          help="Number of lone hits to be stored per channel for diagnostic reasons.")
+    n_lone_records_nv = straxen.URLConfig(
+        type=int, default=2, track=False,
+        help="Number of lone hits to be stored per channel for diagnostic reasons.")
 
-    channel_map = straxen.URLConfig(track=False, type=immutabledict,
-                                    help="frozendict mapping subdetector to (min, max) "
-                                         "channel number.")
+    channel_map = straxen.URLConfig(
+        track=False, type=immutabledict,
+        help="frozendict mapping subdetector to (min, max) "
+             "channel number.")
 
     check_raw_record_overlaps_nv = straxen.URLConfig(
         default=True, track=False, infer_type=False,

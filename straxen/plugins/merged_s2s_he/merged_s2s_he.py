@@ -1,12 +1,6 @@
 import strax
-import straxen
-
 import numpy as np
-import numba
-import pandas as pd
 
-import typing as ty
-from immutabledict import immutabledict
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.merged_s2s.merged_s2s import MergedS2s
 

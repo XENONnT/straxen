@@ -17,9 +17,7 @@ export, __all__ = strax.exporter()
         help='Path to JSON of neural net architecture',
         default_by_run=[
             (0, pax_file('XENON1T_tensorflow_nn_pos_20171217_sr0.json')),
-            (first_sr1_run,
-             straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json')]),
-    # noqa
+            (first_sr1_run, straxen.aux_repo + '3548132b55f81a43654dba5141366041e1daaf01/strax_files/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json')]),  # noqa
     strax.Option(
         'nn_weights', infer_type=False,
         help='Path to HDF5 of neural net weights',

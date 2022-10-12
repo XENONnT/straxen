@@ -1,0 +1,59 @@
+digraph {
+	event_info_double [fillcolor="#ffffff" href="#event-info-double" style=filled]
+	event_info_double -> event_info
+	event_info_double -> distinct_channels
+	event_info [fillcolor="#ffffff" href="#event-info" style=filled]
+	event_info -> event_basics
+	event_info -> event_positions
+	event_info -> corrected_areas
+	event_info -> energy_estimates
+	event_basics [fillcolor="#ffffff" href="#event-basics" style=filled]
+	event_basics -> events
+	event_basics -> peak_basics
+	event_basics -> peak_positions
+	event_basics -> peak_proximity
+	events [fillcolor="#ffffff" href="#events" style=filled]
+	events -> peak_basics
+	events -> peak_proximity
+	peak_basics [fillcolor="#98fb98" href="#peak-basics" style=filled]
+	peak_basics -> peaks
+	peaks [fillcolor="#98fb98" href="#peaks" style=filled]
+	peaks -> peaklets
+	peaks -> peaklet_classification
+	peaks -> merged_s2s
+	peaklets [fillcolor="#d9ff66" href="#peaklets" style=filled]
+	peaklets -> records
+	records [fillcolor="#ffa500" href="#records" style=filled]
+	records -> raw_records
+	raw_records [fillcolor="#ff4500" href="#raw-records" style=filled]
+	peaklet_classification [fillcolor="#d9ff66" href="#peaklet-classification" style=filled]
+	peaklet_classification -> peaklets
+	merged_s2s [fillcolor="#ccffcc" href="#merged-s2s" style=filled]
+	merged_s2s -> peaklets
+	merged_s2s -> peaklet_classification
+	merged_s2s -> lone_hits
+	lone_hits [fillcolor="#CAFF70" href="#lone-hits" style=filled]
+	lone_hits -> records
+	peak_proximity [fillcolor="#98fb98" href="#peak-proximity" style=filled]
+	peak_proximity -> peak_basics
+	peak_positions [fillcolor="#98fb98" href="#peak-positions" style=filled]
+	peak_positions -> peak_positions_cnn
+	peak_positions -> peak_positions_mlp
+	peak_positions -> peak_positions_gcn
+	peak_positions_cnn [fillcolor="#98fb98" href="#peak-positions-cnn" style=filled]
+	peak_positions_cnn -> peaks
+	peak_positions_mlp [fillcolor="#98fb98" href="#peak-positions-mlp" style=filled]
+	peak_positions_mlp -> peaks
+	peak_positions_gcn [fillcolor="#98fb98" href="#peak-positions-gcn" style=filled]
+	peak_positions_gcn -> peaks
+	event_positions [fillcolor="#ffffff" href="#event-positions" style=filled]
+	event_positions -> event_basics
+	corrected_areas [fillcolor="#ffffff" href="#corrected-areas" style=filled]
+	corrected_areas -> event_basics
+	corrected_areas -> event_positions
+	energy_estimates [fillcolor="#ffffff" href="#energy-estimates" style=filled]
+	energy_estimates -> corrected_areas
+	distinct_channels [fillcolor="#ffffff" href="#distinct-channels" style=filled]
+	distinct_channels -> event_basics
+	distinct_channels -> peaks
+}

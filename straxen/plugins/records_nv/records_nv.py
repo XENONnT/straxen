@@ -1,13 +1,9 @@
 import strax
-import numpy as np
-import numba
 import straxen
+from straxen.plugins.defaults import MV_PREAMBLE, NV_HIT_DEFAULTS, MV_HIT_DEFAULTS
 
-from straxen.get_corrections import is_cmt_option
 
 export, __all__ = strax.exporter()
-
-from straxen.plugins.defaults import MV_PREAMBLE, NV_HIT_DEFAULTS, MV_HIT_DEFAULTS
 
 
 @export

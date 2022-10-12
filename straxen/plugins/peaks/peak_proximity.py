@@ -1,14 +1,8 @@
-import json
-import os
-import tempfile
 import numpy as np
 import numba
-from enum import IntEnum
-from scipy.stats import halfcauchy
-
 import strax
 import straxen
-from straxen.common import pax_file, get_resource, first_sr1_run
+
 
 export, __all__ = strax.exporter()
 
@@ -35,17 +29,19 @@ class PeakProximity(strax.OverlapWindowPlugin):
                  'Smaller of t_to_prev_peak and t_to_next_peak [ns]')
             ] + strax.time_fields
 
-    min_area_fraction = straxen.URLConfig(default=0.5, infer_type=False,
-                                          help='The area of competing peaks must be at least '
-                                               'this fraction of that of the considered peak')
+    min_area_fraction = straxen.URLConfig(
+        default=0.5, infer_type=False,
+        help='The area of competing peaks must be at least '
+             'this fraction of that of the considered peak')
 
-    nearby_window = straxen.URLConfig(default=int(1e7), infer_type=False,
-                                      help='Peaks starting within this time window (on either side)'
-                                           'in ns count as nearby.')
+    nearby_window = straxen.URLConfig(
+        default=int(1e7), infer_type=False,
+        help='Peaks starting within this time window (on either side)'
+             'in ns count as nearby.')
 
-    peak_max_proximity_time = straxen.URLConfig(default=int(1e8), infer_type=False,
-                                                help='Maximum value for proximity values such as '
-                                                     't_to_next_peak [ns]')
+    peak_max_proximity_time = straxen.URLConfig(
+        default=int(1e8), infer_type=False,
+        help='Maximum value for proximity values such as t_to_next_peak [ns]')
 
     def get_window_size(self):
         return self.peak_max_proximity_time

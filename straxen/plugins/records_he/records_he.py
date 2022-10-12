@@ -1,7 +1,4 @@
 from immutabledict import immutabledict
-import numba
-import numpy as np
-
 import strax
 import straxen
 
@@ -25,11 +22,13 @@ class PulseProcessingHighEnergy(PulseProcessing):
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
-    n_he_pmts = straxen.URLConfig(track=False, default=752, infer_type=False,
-                                  help="Maximum channel of the he channels")
+    n_he_pmts = straxen.URLConfig(
+        track=False, default=752, infer_type=False,
+        help="Maximum channel of the he channels")
 
-    record_length = straxen.URLConfig(default=110, track=False, type=int,
-                                      help="Number of samples per raw_record")
+    record_length = straxen.URLConfig(
+        default=110, track=False, type=int,
+        help="Number of samples per raw_record")
 
     hit_min_amplitude_he = straxen.URLConfig(
         default='cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id', track=True, infer_type=False,

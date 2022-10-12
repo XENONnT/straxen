@@ -1,7 +1,3 @@
-import numpy as np
-import strax
-import straxen
-
 from straxen.plugins.events_nv import nVETOEventsSync
 
 import strax

@@ -3,11 +3,7 @@ import straxen
 
 import numpy as np
 import numba
-import pandas as pd
 
-import typing as ty
-from immutabledict import immutabledict
-from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
 
 export, __all__ = strax.exporter()
 
@@ -24,26 +20,30 @@ class MergedS2s(strax.OverlapWindowPlugin):
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
 
-    s2_merge_max_duration = straxen.URLConfig(default=50_000, infer_type=False,
-                                              help="Do not merge peaklets at all if the result would be a peak "
-                                                   "longer than this [ns]")
+    s2_merge_max_duration = straxen.URLConfig(
+        default=50_000, infer_type=False,
+        help="Do not merge peaklets at all if the result would be a peak "
+             "longer than this [ns]")
 
-    s2_merge_gap_thresholds = straxen.URLConfig(default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
-                                                infer_type=False,
-                                                help="Points to define maximum separation between peaklets to allow "
-                                                     "merging [ns] depending on log10 area of the merged peak\n"
-                                                     "where the gap size of the first point is the maximum gap to allow merging"
-                                                     "and the area of the last point is the maximum area to allow merging. "
-                                                     "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
-                                                )
+    s2_merge_gap_thresholds = straxen.URLConfig(
+        default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.)),
+        infer_type=False,
+        help="Points to define maximum separation between peaklets to allow "
+             "merging [ns] depending on log10 area of the merged peak\n"
+             "where the gap size of the first point is the maximum gap to allow merging"
+             "and the area of the last point is the maximum area to allow merging. "
+             "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+    )
 
-    gain_model = straxen.URLConfig(infer_type=False,
-                                   help='PMT gain model. Specify as '
-                                        '(str(model_config), str(version), nT-->boolean')
+    gain_model = straxen.URLConfig(
+        infer_type=False,
+        help='PMT gain model. Specify as '
+             '(str(model_config), str(version), nT-->boolean')
 
-    merge_without_s1 = straxen.URLConfig(default=True, infer_type=False,
-                                         help="If true, S1s will be igored during the merging. "
-                                              "It's now possible for a S1 to be inside a S2 post merging")
+    merge_without_s1 = straxen.URLConfig(
+        default=True, infer_type=False,
+        help="If true, S1s will be igored during the merging. "
+             "It's now possible for a S1 to be inside a S2 post merging")
 
     def setup(self):
         self.to_pe = self.gain_model
