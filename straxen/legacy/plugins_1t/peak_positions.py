@@ -1,7 +1,11 @@
 import strax
 import straxen
 from straxen import pax_file, first_sr1_run
+from straxen.common import get_resource
+import tempfile
 import numpy as np
+import json
+import os
 
 export, __all__ = strax.exporter()
 

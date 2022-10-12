@@ -6,6 +6,7 @@ import typing as ty
 import strax
 export, __all__ = strax.exporter()
 
+@export
 class nVETOEventPositions(strax.Plugin):
     """
     Plugin which computes the interaction position in the nveto as an
