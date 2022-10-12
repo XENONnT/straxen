@@ -2,53 +2,11 @@ import numba
 import numpy as np
 import strax
 import straxen
-from straxen.get_corrections import is_cmt_option
 
 export, __all__ = strax.exporter()
 
 
 @export
-@strax.takes_config(
-    strax.Option('gain_model', infer_type=False,
-                 help='PMT gain model. Specify as (model_type, model_config)',
-                 ),
-    strax.Option('n_tpc_pmts',
-                 type=int,
-                 help="Number of PMTs in TPC",
-                 ),
-    strax.Option('LED_window_left',
-                 default=50, infer_type=False,
-                 help='Left boundary of sample range for LED pulse integration',
-                 ),
-    strax.Option('LED_window_right',
-                 default=100, infer_type=False,
-                 help='Right boundary of sample range for LED pulse integration',
-                 ),
-    strax.Option('baseline_samples',
-                 default=40, infer_type=False,
-                 help='Number of samples to use at start of WF to determine the baseline',
-                 ),
-    strax.Option('hit_min_amplitude',
-                 track=True, infer_type=False,
-                 default=('hit_thresholds_tpc', 'ONLINE', True),
-                 help='Minimum hit amplitude in ADC counts above baseline. '
-                      'Specify as a tuple of length n_tpc_pmts, or a number,'
-                      'or a string like "pmt_commissioning_initial" which means calling'
-                      'hitfinder_thresholds.py'
-                      'or a tuple like (correction=str, version=str, nT=boolean),'
-                      'which means we are using cmt.',
-                 ),
-    strax.Option('hit_min_height_over_noise',
-                 default=4, infer_type=False,
-                 help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
-                      'Actual threshold used is max(hit_min_amplitude, hit_min_'
-                      'height_over_noise * baseline_rms).',
-                 ),
-    strax.Option('save_outside_hits',
-                 default=(3, 20), infer_type=False,
-                 help='Save (left, right) samples besides hits; cut the rest',
-                 ),
-)
 class LEDAfterpulseProcessing(strax.Plugin):
     __version__ = '0.5.1'
     depends_on = 'raw_records'
@@ -58,27 +16,63 @@ class LEDAfterpulseProcessing(strax.Plugin):
     parallel = 'process'
     rechunk_on_save = True
 
+    gain_model = straxen.URLConfig(infer_type=False,
+                 help='PMT gain model. Specify as (model_type, model_config)',
+                 )
+
+    n_tpc_pmts = straxen.URLConfig(
+                 type=int,
+                 help="Number of PMTs in TPC",
+                 )
+
+    LED_window_left = straxen.URLConfig(
+                 default=50, infer_type=False,
+                 help='Left boundary of sample range for LED pulse integration',
+                 )
+
+    LED_window_right = straxen.URLConfig(
+                 default=100, infer_type=False,
+                 help='Right boundary of sample range for LED pulse integration',
+                 )
+
+    baseline_samples = straxen.URLConfig(
+                 default=40, infer_type=False,
+                 help='Number of samples to use at start of WF to determine the baseline',
+                 )
+
+    hit_min_amplitude = straxen.URLConfig(
+                 track=True, infer_type=False,
+                 default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
+                 help='Minimum hit amplitude in ADC counts above baseline. '
+                      'Specify as a tuple of length n_tpc_pmts, or a number,'
+                      'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
+                      'hitfinder_thresholds.py'
+                      'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
+                      'calling cmt.',
+                      
+                 )
+
+    hit_min_height_over_noise = straxen.URLConfig(
+                 default=4, infer_type=False,
+                 help='Minimum hit amplitude in numbers of baseline_rms above baseline.'
+                      'Actual threshold used is max(hit_min_amplitude, hit_min_'
+                      'height_over_noise * baseline_rms).',
+                 )
+
+    save_outside_hits = straxen.URLConfig(
+                 default=(3, 20), infer_type=False,
+                 help='Save (left, right) samples besides hits; cut the rest',
+                 )
+
     def infer_dtype(self):
         dtype = dtype_afterpulses()
         return dtype
 
     def setup(self):
-        self.to_pe = straxen.get_correction_from_cmt(self.run_id, self.config['gain_model'])
-        self.hit_left_extension, self.hit_right_extension = self.config['save_outside_hits']
-
-        # Check config of `hit_min_amplitude` and define hit thresholds
-        # if cmt config
-        if is_cmt_option(self.config['hit_min_amplitude']):
-            self.hit_thresholds = straxen.get_correction_from_cmt(
-                self.run_id,
-                self.config['hit_min_amplitude'])
-        # if hitfinder_thresholds config
-        elif isinstance(self.config['hit_min_amplitude'], str):
-            self.hit_thresholds = straxen.hit_min_amplitude(
-                self.config['hit_min_amplitude'])
-        else:  # int or array
-            self.hit_thresholds = self.config['hit_min_amplitude']
-
+        self.to_pe = self.gain_model
+        self.hit_thresholds = self.hit_min_amplitude
+        self.hit_left_extension, self.hit_right_extension = self.save_outside_hits
+       
     def compute(self, raw_records):
 
         # Convert everything to the records data type -- adds extra fields.
@@ -87,21 +81,21 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
         # calculate baseline and baseline rms
         strax.baseline(records,
-                       baseline_samples=self.config['baseline_samples'],
+                       baseline_samples=self.baseline_samples,
                        flip=True)
 
         # find all hits
         hits = strax.find_hits(records,
                                min_amplitude=self.hit_thresholds,
-                               min_height_over_noise=self.config['hit_min_height_over_noise'],
+                               min_height_over_noise=self.hit_min_height_over_noise,
                                )
 
         # sort hits by record_i and time, then find LED hit and afterpulse
         # hits within the same record
         hits_ap = find_ap(hits,
                           records,
-                          LED_window_left=self.config['LED_window_left'],
-                          LED_window_right=self.config['LED_window_right'],
+                          LED_window_left=self.LED_window_left,
+                          LED_window_right=self.LED_window_right,
                           hit_left_extension=self.hit_left_extension,
                           hit_right_extension=self.hit_right_extension,
                           )

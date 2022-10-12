@@ -28,7 +28,7 @@ def load_corrected_positions(context, run_id, events, alt_s1=False, alt_s2=False
     if cmt_version is None:
         fdc_config = context.get_single_plugin(run_id, 'event_positions').config['fdc_map']
         if isinstance(fdc_config, str) and 'cmt://' in fdc_config:
-            cmt_version = straxen.URLConfig.split_url_kwargs(fdc_config)
+            cmt_version = straxen.URLConfig.split_url_kwargs(fdc_config)[1].get('version', 'ONLINE')
         elif straxen.is_cmt_option(fdc_config):
             cmt_version = fdc_config[1]
         else:

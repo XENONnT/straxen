@@ -1,19 +1,12 @@
 import strax
+import straxen
 from straxen import pre_apply_function
 
-import numpy as np
 
 export, __all__ = strax.exporter()
 
 
 @export
-@strax.takes_config(
-    strax.Option(
-        name='event_info_function',
-        default='pre_apply_function', infer_type=False,
-        help="Function that must be applied to all event_info data. Do not change.",
-    )
-)
 class EventInfo(strax.MergeOnlyPlugin):
     """
     Plugin which merges the information of all event data_kinds into a
@@ -29,6 +22,11 @@ class EventInfo(strax.MergeOnlyPlugin):
     provides = 'event_info'
     __version__ = '0.0.2'
 
+    event_info_function = straxen.URLConfig(
+        default='pre_apply_function',
+        infer_type=False,
+        help="Function that must be applied to all event_info data. Do not change.",
+    )
     def compute(self, **kwargs):
         event_info_function = self.config['event_info_function']
         event_info = super().compute(**kwargs)

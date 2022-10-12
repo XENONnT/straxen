@@ -60,10 +60,12 @@ def mini_analysis(requires=tuple(),
                     _hv_bokeh_initialized = True
 
             if 'to_pe' in parameters and 'to_pe' not in kwargs:
-                kwargs['to_pe'] = straxen.get_correction_from_cmt(
-                    run_id,
-                    context.config['gain_model'])
-
+                to_pe = context.config['gain_model']
+                if isinstance(to_pe, str):
+                    to_pe = straxen.URLConfig.evaluate_dry(to_pe,
+                                                           run_id=run_id)
+                kwargs['to_pe'] = to_pe
+             
             # Prepare selection arguments
             kwargs['time_range'] = context.to_absolute_time_range(
                 run_id,

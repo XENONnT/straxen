@@ -14,22 +14,13 @@ from .pulse_processing import HE_PREAMBLE
 
 
 @export
-@strax.takes_config(
-    strax.Option('n_top_pmts', default=straxen.n_top_pmts, infer_type=False,
-                 help="Number of top PMTs"),
-    strax.Option('check_peak_sum_area_rtol', default=None, track=False, infer_type=False,
-                 help="Check if the sum area and the sum of area per "
-                      "channel are the same. If None, don't do the "
-                      "check. To perform the check, set to the desired "
-                      " rtol value used e.g. '1e-4' (see np.isclose)."),
-)
 class PeakBasics(strax.Plugin):
     """
     Compute the basic peak-properties, thereby dropping structured
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.1.1"
+    __version__ = "0.1.3"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -42,9 +33,9 @@ class PeakBasics(strax.Plugin):
           'center_time'), np.int64),
         (('Peak integral in PE',
             'area'), np.float32),
-        (('Number of PMTs contributing to the peak',
-            'n_hits'), np.int32),
         (('Number of hits contributing at least one sample to the peak',
+            'n_hits'), np.int32),
+        (('Number of PMTs contributing to the peak',
             'n_channels'), np.int16),
         (('PMT number which contributes the most PE',
             'max_pmt'), np.int16),
@@ -65,13 +56,20 @@ class PeakBasics(strax.Plugin):
           'dt'), np.int16),
         (('Time between 10% and 50% area quantiles [ns]',
           'rise_time'), np.float32),
-        (('Hits within tight range of mean',
+        (('Number of PMTs with hits within tight range of mean',
           'tight_coincidence'), np.int16),
-        (('PMT channel within tight range of mean',
-          'tight_coincidence_channel'), np.int16),
         (('Classification of the peak(let)',
           'type'), np.int8)
     ]
+
+    n_top_pmts  = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
+                 help="Number of top PMTs")
+
+    check_peak_sum_area_rtol = straxen.URLConfig(default=None, track=False, infer_type=False,
+                 help="Check if the sum area and the sum of area per "
+                      "channel are the same. If None, don't do the "
+                      "check. To perform the check, set to the desired "
+                      " rtol value used e.g. '1e-4' (see np.isclose).")
 
     def compute(self, peaks):
         p = peaks
@@ -88,7 +86,7 @@ class PeakBasics(strax.Plugin):
         r['tight_coincidence'] = p['tight_coincidence']
         r['n_saturated_channels'] = p['n_saturated_channels']
 
-        n_top = self.config['n_top_pmts']
+        n_top = self.n_top_pmts
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Recalculate to prevent numerical inaccuracy #442
         area_total = p['area_per_channel'].sum(axis=1)
@@ -98,8 +96,8 @@ class PeakBasics(strax.Plugin):
         r['area_fraction_top'][~m] = float('nan')
         r['rise_time'] = -p['area_decile_from_midpoint'][:, 1]
 
-        if self.config['check_peak_sum_area_rtol'] is not None:
-            self.check_area(area_total, p, self.config['check_peak_sum_area_rtol'])
+        if self.check_peak_sum_area_rtol is not None:
+            self.check_area(area_total, p, self.check_peak_sum_area_rtol)
         # Negative or zero-area peaks have centertime at startime
         r['center_time'] = p['time']
         r['center_time'][m] += self.compute_center_times(peaks[m])
@@ -261,21 +259,13 @@ class PeakPositions1T(strax.Plugin):
 
 
 @export
-@strax.takes_config(
-    strax.Option('min_area_fraction', default=0.5, infer_type=False,
-                 help='The area of competing peaks must be at least '
-                      'this fraction of that of the considered peak'),
-    strax.Option('nearby_window', default=int(1e7), infer_type=False,
-                 help='Peaks starting within this time window (on either side)'
-                      'in ns count as nearby.'),
-    strax.Option('peak_max_proximity_time', default=int(1e8), infer_type=False,
-                 help='Maximum value for proximity values such as '
-                      't_to_next_peak [ns]'))
 class PeakProximity(strax.OverlapWindowPlugin):
     """
     Look for peaks around a peak to determine how many peaks are in
     proximity (in time) of a peak.
     """
+    __version__ = '0.4.0'
+
     depends_on = ('peak_basics',)
     dtype = [
         ('n_competing', np.int32,
@@ -289,23 +279,33 @@ class PeakProximity(strax.OverlapWindowPlugin):
         ('t_to_nearest_peak', np.int64,
          'Smaller of t_to_prev_peak and t_to_next_peak [ns]')
     ] + strax.time_fields
+    
+    min_area_fraction = straxen.URLConfig( default=0.5, infer_type=False,
+                 help='The area of competing peaks must be at least '
+                      'this fraction of that of the considered peak')
 
-    __version__ = '0.4.0'
+    nearby_window = straxen.URLConfig(default=int(1e7), infer_type=False,
+                 help='Peaks starting within this time window (on either side)'
+                      'in ns count as nearby.')
+
+    peak_max_proximity_time = straxen.URLConfig(default=int(1e8), infer_type=False,
+                 help='Maximum value for proximity values such as '
+                      't_to_next_peak [ns]')
 
     def get_window_size(self):
-        return self.config['peak_max_proximity_time']
+        return self.peak_max_proximity_time
 
     def compute(self, peaks):
         windows = strax.touching_windows(peaks, peaks,
-                                         window=self.config['nearby_window'])
+                                         window=self.nearby_window)
         n_left, n_tot = self.find_n_competing(
             peaks,
             windows,
-            fraction=self.config['min_area_fraction'])
+            fraction=self.min_area_fraction)
 
         t_to_prev_peak = (
                 np.ones(len(peaks), dtype=np.int64)
-                * self.config['peak_max_proximity_time'])
+                * self.peak_max_proximity_time)
         t_to_prev_peak[1:] = peaks['time'][1:] - peaks['endtime'][:-1]
 
         t_to_next_peak = t_to_prev_peak.copy()
@@ -346,6 +346,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     """
 
     __version__ = '0.1.5'
+    
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
     save_when = strax.SaveWhen.EXPLICIT
@@ -381,7 +382,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     )
 
     def get_window_size(self):
-        return 10 * self.config['shadow_time_window_backward']
+        return 10 * self.shadow_time_window_backward
 
     def infer_dtype(self):
         s1_time_shadow_dtype = []
@@ -428,7 +429,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     def compute_shadow(self, peaks, current_peak):
         # 1. Define time window for each peak, we will find previous peaks within these time windows
         roi_shadow = np.zeros(len(current_peak), dtype=strax.time_fields)
-        roi_shadow['time'] = current_peak['center_time'] - self.config['shadow_time_window_backward']
+        roi_shadow['time'] = current_peak['center_time'] - self.shadow_time_window_backward
         roi_shadow['endtime'] = current_peak['center_time']
 
         # 2. Calculate S2 position shadow, S2 time shadow, and S1 time shadow
@@ -437,30 +438,30 @@ class PeakShadow(strax.OverlapWindowPlugin):
             is_position = 'position' in key
             type_str = key.split('_')[0]
             stype = 2 if 's2' in key else 1
-            mask_pre = (peaks['type'] == stype) & (peaks['area'] > self.config['shadow_threshold'][key])
+            mask_pre = (peaks['type'] == stype) & (peaks['area'] > self.shadow_threshold[key])
             split_peaks = strax.touching_windows(peaks[mask_pre], roi_shadow)
             array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
 
             # Initialization
             array['x'] = np.nan
             array['y'] = np.nan
-            array['dt'] = self.config['shadow_time_window_backward']
+            array['dt'] = self.shadow_time_window_backward
             # The default value for shadow is set to be the lowest possible value
             if 'time' in key:
-                array['shadow'] = self.config['shadow_threshold'][key] * array['dt'] ** self.config['shadow_deltatime_exponent']
+                array['shadow'] = self.shadow_threshold[key] * array['dt'] ** self.shadow_deltatime_exponent
             else:
                 array['shadow'] = 0
-            array['nearest_dt'] = self.config['shadow_time_window_backward']
+            array['nearest_dt'] = self.shadow_time_window_backward
 
             # Calculating shadow, the Major of the plugin. Only record the previous peak casting the largest shadow
             if len(current_peak):
                 self.peaks_shadow(current_peak, 
                                   peaks[mask_pre], 
                                   split_peaks, 
-                                  self.config['shadow_deltatime_exponent'], 
+                                  self.shadow_deltatime_exponent, 
                                   array, 
                                   is_position, 
-                                  self.getsigma(self.config['shadow_sigma_and_baseline'], current_peak['area']))
+                                  self.getsigma(self.shadow_sigma_and_baseline, current_peak['area']))
             
             # Fill results
             names = ['shadow', 'dt']
@@ -480,7 +481,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
         # HalfCauchy PDF when calculating S2 position shadow
         result['pdf_s2_position_shadow'] = halfcauchy.pdf(distance, 
-                                                          scale=self.getsigma(self.config['shadow_sigma_and_baseline'], current_peak['area']))
+                                                          scale=self.getsigma(self.shadow_sigma_and_baseline, current_peak['area']))
 
         # 6. Set time and endtime for peaks
         result['time'] = current_peak['time']
@@ -579,7 +580,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     )
 
     def get_window_size(self):
-        return 10 * self.config['ambience_time_window_backward']
+        return 10 * self.ambience_time_window_backward
 
     @property
     def origin_dtype(self):
@@ -604,7 +605,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
 
         # 2. Define time window for each peak, we will find small peaks & lone hits within these time windows
         roi = np.zeros(len(current_peak), dtype=strax.time_fields)
-        roi['time'] = current_peak['center_time'] - self.config['ambience_time_window_backward']
+        roi['time'] = current_peak['center_time'] - self.ambience_time_window_backward
         roi['endtime'] = current_peak['center_time']
 
         # 3. Calculate number and area sum of lonehits before a peak
@@ -615,12 +616,12 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                                touching_windows, 
                                result['n_lh_before'],
                                result['s_lh_before'],
-                               self.config['ambience_divide_t'])
+                               self.ambience_divide_t)
 
         # 4. Calculate number and area sum of small S0, S1, S2 before a peak
         radius = -1
         for stype, area in zip([0, 1, 2], 
-                                         self.config['ambience_area_parameters']):
+                                         self.ambience_area_parameters):
             mask_pre = (peaks['type'] == stype) & (peaks['area'] < area)
             touching_windows = strax.touching_windows(peaks[mask_pre], roi)
             # Calculating ambience
@@ -630,21 +631,21 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                                 radius, 
                                 result[f'n_s{stype}_before'], 
                                 result[f's_s{stype}_before'], 
-                                self.config['ambience_divide_t'], 
-                                self.config['ambience_divide_r'])
+                                self.ambience_divide_t, 
+                                self.ambience_divide_r)
 
         # 5. Calculate number and area sum of small S2 near(in (x,y) space) a S2 peak
-        mask_pre = (peaks['type'] == 2) & (peaks['area'] < self.config['ambience_area_parameters'][2])
+        mask_pre = (peaks['type'] == 2) & (peaks['area'] < self.ambience_area_parameters[2])
         touching_windows = strax.touching_windows(peaks[mask_pre], roi)
         # Calculating ambience
         self.peaks_ambience(current_peak, 
                             peaks[mask_pre], 
                             touching_windows, 
-                            self.config['ambient_radius'], 
+                            self.ambient_radius, 
                             result['n_s2_near'], 
                             result['s_s2_near'], 
-                            self.config['ambience_divide_t'], 
-                            self.config['ambience_divide_r'])
+                            self.ambience_divide_t, 
+                            self.ambience_divide_r)
 
         # 6. Set time and endtime for peaks
         result['time'] = current_peak['time']
