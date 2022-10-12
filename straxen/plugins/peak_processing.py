@@ -20,7 +20,7 @@ class PeakBasics(strax.Plugin):
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.1.1"
+    __version__ = "0.1.2"
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
