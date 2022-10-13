@@ -4,6 +4,7 @@ from straxen.holoviews_utils import nVETOEventDisplay
 from straxen.holoviews.holoviews_peak_data import PlotPeaksTPC
 from straxen.holoviews.holoviews_pmt_array import PlotPMTArrayTPC
 from straxen.holoviews.holoviews_inspector import EventStats
+from straxen.holoviews.holoviews_tpc_event_display import InteractiveTPCEventDisplay
 import holoviews as hv
 import panel as pn
 import numpy as np
@@ -123,6 +124,7 @@ def test_pmt_array_plot():
     test = PlotPMTArrayTPC(top_pmt_array=False)
     test.plot_pmt_array(dummy_peak[0])
 
+
 def test_tpc_display_components():
     dummy_peak = np.zeros(1, dtype=strax.peak_dtype(494))
     dummy_peak['dt'] = 1
@@ -133,8 +135,20 @@ def test_tpc_display_components():
     peak_plotter = PlotPeaksTPC()
     peak_plotter.plot_peaks(dummy_peak)
 
-    st = straxen.contexts.xenonnt_online(_database_init=False)
+    array_plotter = PlotPMTArrayTPC()
+    array_plotter.plot_pmt_array(dummy_peak[0])
+
+    st = straxen.contexts.xenonnt_online()
     p = st.get_single_plugin('0', 'event_info')
     dummy_events = np.zeros(10, p.dtype)
+    dummy_events[0]['endtime'] = 10
+
     inspector = EventStats(dummy_events)
     inspector.interactive_event_stats()
+
+
+
+    display = InteractiveTPCEventDisplay(dummy_events, dummy_peak, plot_alt_peaks=True)
+    display.event_display(inspector_config={'x_bins': (50, 0, 200),
+                                            'y_bins': (50, 0, 200),
+                                            'y_field': 's1_rise_time'})
