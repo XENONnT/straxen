@@ -126,7 +126,8 @@ def test_pmt_array_plot():
 
 
 def test_tpc_display_components():
-    dummy_peak = np.zeros(1, dtype=strax.peak_dtype(494))
+    dummy_peak = np.zeros(3, dtype=strax.peak_dtype(494))
+    dummy_peak['time'] = [0, 20, 40]
     dummy_peak['dt'] = 1
     dummy_peak['data'][0,:10] = np.arange(10)
     dummy_peak['length'] = 10
@@ -143,6 +144,7 @@ def test_tpc_display_components():
     dummy_events = np.zeros(10, p.dtype)
     dummy_events[0]['endtime'] = 10
 
+    dummy_peak['type'] = [0, 1, 2]
     display = InteractiveTPCEventDisplay(dummy_events, dummy_peak, plot_alt_peaks=True)
     event_display = display.event_display(inspector_config={'x_bins': (50, 0, 200),
                                             'y_bins': (50, 0, 200),
