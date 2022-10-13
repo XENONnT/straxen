@@ -6,8 +6,15 @@ import panel as pn
 import numpy as np
 from tempfile import TemporaryDirectory
 import os
+import pandas as pd
 
-_dummy_map = straxen.test_utils._nveto_pmt_dummy_df.to_records()
+
+_nveto_pmt_dummy = {'channel': list(range(2000, 2120)),
+                    'x': list(range(120)),
+                    'y': list(range(120)),
+                    'z': list(range(120)),
+                    }
+_dummy_map = pd.DataFrame(_nveto_pmt_dummy).to_records()
 
 
 def test_hitlets_to_hv_points():
@@ -62,8 +69,8 @@ def test_nveto_event_display():
     hit['channel'] = 2000
     hit['area'] = 1
 
-    dtype = straxen.veto_events.veto_event_dtype()
-    dtype += straxen.veto_events.veto_event_positions_dtype()[2:]
+    dtype = straxen.plugins.events_nv.veto_event_dtype()
+    dtype += straxen.plugins.event_positions_nv.veto_event_positions_dtype()[2:]
     event = np.zeros(1, dtype=dtype)
     event['time'] = hit['time']
     event['endtime'] = hit['time'] + 40
@@ -78,8 +85,8 @@ def test_nveto_event_display():
 
 
 def test_array_to_df_and_make_sliders():
-    dtype = (straxen.veto_events.veto_event_dtype()
-             + straxen.veto_events.veto_event_positions_dtype()[2:])
+    dtype = (straxen.plugins.events_nv.veto_event_dtype()
+             + straxen.plugins.event_positions_nv.veto_event_positions_dtype()[2:])
     evt = np.zeros(1, dtype)
 
     nvd = nVETOEventDisplay(pmt_map=_dummy_map)

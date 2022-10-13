@@ -5,8 +5,6 @@ import io
 import os
 from warnings import warn
 from os import environ as os_environ
-from straxen import aux_repo, pax_file
-from pandas import DataFrame
 from immutabledict import immutabledict
 from importlib import import_module
 import numpy as np
@@ -16,58 +14,6 @@ export, __all__ = strax.exporter()
 
 
 nt_test_run_id = '012882'
-test_run_id_1T = '180423_1021'
-
-testing_config_1T = dict(
-    hev_gain_model=('1T_to_pe_placeholder', False),
-    gain_model=('1T_to_pe_placeholder', False),
-    elife=1e6,
-    electron_drift_velocity=1e-4,
-    electron_drift_time_gate=1700,
-)
-
-# Let's make a dummy map for NVeto
-_nveto_pmt_dummy = {'channel': list(range(2000, 2120)),
-                    'x': list(range(120)),
-                    'y': list(range(120)),
-                    'z': list(range(120)),
-                    }
-_nveto_pmt_dummy_df = DataFrame(_nveto_pmt_dummy)
-
-# Some configs are better obtained from the strax_auxiliary_files repo.
-# Let's use small files, we don't want to spend a lot of time downloading
-# some file.
-_testing_config_nT = dict(
-    nn_architecture=
-    aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.json',
-    nn_weights=
-    aux_repo + 'f0df03e1f45b5bdd9be364c5caefdaf3c74e044e/fax_files/mlp_model.h5',
-    gain_model=("to_pe_placeholder", True),
-    elife=1e6,
-    baseline_samples_nv=10,
-    fdc_map=pax_file('XENON1T_FDC_SR0_data_driven_3d_correction_tf_nn_v0.json.gz'),
-    gain_model_nv=("adc_nv", True),
-    gain_model_mv=("adc_mv", True),
-    nveto_pmt_position_map=_nveto_pmt_dummy,
-    s1_xyz_map=f'itp_map://resource://{pax_file("XENON1T_s1_xyz_lce_true_kr83m_SR1_pax-680_fdc-3d_v0.json")}?fmt=json',
-    s2_xy_map=f'itp_map://resource://{pax_file("XENON1T_s2_xy_ly_SR1_v2.2.json")}?fmt=json',
-    electron_drift_velocity=1e-4,
-    s1_aft_map=f'itp_map://resource://{aux_repo + "023cb8caf2008b289664b0fefc36b1cebb45bbe4/strax_files/s1_aft_UNITY_xyz_XENONnT.json"}?fmt=json', # noqa
-    s2_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s2_xy_unity_patterns.json.gz',  # noqa
-    s1_optical_map=aux_repo + '9891ee7a52fa00e541480c45ab7a1c9a72fcffcc/strax_files/XENONnT_s1_xyz_unity_patterns.json.gz',  # noqa
-    electron_drift_time_gate=2700,
-    hit_min_amplitude='pmt_commissioning_initial',
-    hit_min_amplitude_nv=20,
-    hit_min_amplitude_mv=80,
-    hit_min_amplitude_he='pmt_commissioning_initial_he',
-    avg_se_gain=1.0,
-    se_gain=1.0,
-    rel_extraction_eff=1.0,
-    rel_light_yield=1.0,
-    g1=0.1,
-    g2=10,
-    bayes_config_file=f'resource://{aux_repo +"2df37896923eb9ca3157befb6274cb697ac2f4f7/strax_files/dummy_bayes_model.npz"}?fmt=npy',
-)
 
 
 @export
@@ -162,13 +108,6 @@ def nt_test_context(target_context='xenonnt_online',
     assert st.is_stored(nt_test_run_id, 'raw_records'), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
-    if not straxen.utilix_is_configured(warning_message=False):
-        st.set_config(_testing_config_nT)
-        to_remove += 'peak_positions_mlp peak_positions_cnn peak_positions_gcn s2_recon_pos_diff'.split()  # noqa
-        # The test data for this plugin doesn't work
-        to_remove += ['event_pattern_fit']
-        st.set_config({'gain_model': ("to_pe_placeholder", True)})
-        st.register(straxen.PeakPositions1T)
     for plugin in to_remove:
         del st._plugin_class_registry[plugin]
     return st
@@ -216,13 +155,7 @@ class DummyRawRecords(strax.Plugin):
     """
     Provide dummy raw records for the mayor raw_record types
     """
-    provides = ('raw_records',
-                'raw_records_he',
-                'raw_records_nv',
-                'raw_records_aqmon',
-                'raw_records_aux_mv',
-                'raw_records_mv'
-                )
+    provides = straxen.daqreader.DAQReader.provides
     parallel = 'process'
     depends_on = tuple()
     data_kind = immutabledict(zip(provides, provides))
@@ -264,7 +197,13 @@ class DummyRawRecords(strax.Plugin):
                     # Channel map for 1T is different.
                     continue
                 if p.endswith(key):
-                    s, e = self.config['channel_map'][channel_key]
-                    rr['channel'] += s
+                    first_channel, last_channel = self.config['channel_map'][channel_key]
+                    rr['channel'] += first_channel
+                    if key == 'aqmon':
+                        # explicitly clip these channels as we have an additional check higher in the chain
+                        first_channel=int(min(straxen.AqmonChannels))
+                        last_channel=int(max(straxen.AqmonChannels))
+
+                    rr = rr[(rr['channel']>=first_channel) & (rr['channel']<last_channel)]
             res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res

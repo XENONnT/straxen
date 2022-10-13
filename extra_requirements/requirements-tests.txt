@@ -1,4 +1,6 @@
 # File for the requirements of straxen with the automated tests
 git+https://github.com/AxFoundation/strax
 git+https://github.com/XENONnT/ax_env
-wfsim==0.6.1
+wfsim==1.0.1
+nbmake
+pytest-xdist
