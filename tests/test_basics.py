@@ -75,3 +75,8 @@ class TestBasics(unittest.TestCase):
     def test_extract_latest_comment_lone_hits(self):
         """Run the test for some target that is not in the default availability check"""
         self.test_extract_latest_comment_nt(test_for_target='lone_hits')
+
+    def test_raw_records_lineage(self):
+        """The raw records lineage may NEVER change, if you ever do, doom ensures"""
+        st = straxen.contexts.xenonnt_online()
+        self.assertTrue(st.key_for('0', 'raw_records').lineage_hash == 'rfzvpzj4mf')
