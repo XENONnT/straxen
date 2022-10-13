@@ -6,7 +6,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class _EventS2PositionBase(strax.Plugin):
+class EventS2PositionBase(strax.Plugin):
     """
     Base pluging for S2 position reconstruction at event level
     """
