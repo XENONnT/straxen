@@ -5,6 +5,7 @@ import strax
 export, __all__ = strax.exporter()
 
 
+@export
 class mVETOEventSync(nVETOEventsSync):
     """
     Plugin which computes synchronized timestamps for the muon-veto with
