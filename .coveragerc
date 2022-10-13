@@ -2,7 +2,7 @@
 [report]
 omit =
         ./straxen/storage/rucio_remote.py
-        ./straxen/plugins/pax_interface.py
+        ./straxen/legacy/plugins_1t/pax_interface.py
 
 # Regexes for lines to exclude from consideration
 exclude_lines =

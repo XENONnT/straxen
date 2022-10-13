@@ -32,11 +32,11 @@ class DummyAqmonHits(strax.Plugin):
         help='If True, start with an ON signal, otherwise start if OFF'
     )
     channel_on = strax.Config(
-        default=straxen.acqmon_processing.AqmonChannels.BUSY_START,
+        default=straxen.AqmonChannels.BUSY_START,
         help='ON channel. Just some channel known to the VetoIntervals plugin.',
         type=int)
     channel_off = strax.Config(
-        default=straxen.acqmon_processing.AqmonChannels.BUSY_STOP,
+        default=straxen.AqmonChannels.BUSY_STOP,
         help='OFF channel. Just some channel known to the VetoIntervals plugin',
         type=int)
     veto_duration_max = strax.Config(
@@ -205,10 +205,10 @@ class TestAqmonProcessing(TestCase):
             TOTAL_DEADTIME = self.TOTAL_DEADTIME
             TOTAL_SIGNALS = self.TOTAL_SIGNALS
 
-        class DummyVi(straxen.acqmon_processing.VetoIntervals):
+        class DummyVi(straxen.VetoIntervals):
             save_when = strax.SaveWhen.ALWAYS
 
-        class DummyVp(straxen.acqmon_processing.VetoProximity):
+        class DummyVp(straxen.VetoProximity):
             save_when = strax.SaveWhen.NEVER
 
         st.register(DeadTimedDummyAqHits)

@@ -69,3 +69,5 @@ docs/_build
 docs/source/reference/datastructure*
 docs/source/reference/data_kinds*
 docs/source/reference/release_notes.rst
+
+test_dict.json

@@ -1,5 +1,5 @@
 from hypothesis import strategies, given, settings, example
-from straxen.plugins.event_patternfit import binom_test, lbinom_pmf_mode, lbinom_pmf, lbinom_pmf_inverse, binom_sf
+from straxen.plugins.events.event_pattern_fit import binom_test, lbinom_pmf_mode, lbinom_pmf, lbinom_pmf_inverse, binom_sf
 import numpy as np
 import scipy.stats as sps
 

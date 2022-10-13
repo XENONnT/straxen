@@ -53,8 +53,6 @@ RUN_MAPPINGS = {
 @URLConfig.register('legacy-to-pe')
 def get_fixed_pe(name: str):
     """Return a fixed value for a given name"""
-    from straxen.get_corrections import FIXED_TO_PE
-
     return FIXED_TO_PE[name]
 
 

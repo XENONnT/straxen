@@ -69,8 +69,8 @@ def test_nveto_event_display():
     hit['channel'] = 2000
     hit['area'] = 1
 
-    dtype = straxen.veto_events.veto_event_dtype()
-    dtype += straxen.veto_events.veto_event_positions_dtype()[2:]
+    dtype = straxen.plugins.events_nv.veto_event_dtype()
+    dtype += straxen.plugins.event_positions_nv.veto_event_positions_dtype()[2:]
     event = np.zeros(1, dtype=dtype)
     event['time'] = hit['time']
     event['endtime'] = hit['time'] + 40
@@ -85,8 +85,8 @@ def test_nveto_event_display():
 
 
 def test_array_to_df_and_make_sliders():
-    dtype = (straxen.veto_events.veto_event_dtype()
-             + straxen.veto_events.veto_event_positions_dtype()[2:])
+    dtype = (straxen.plugins.events_nv.veto_event_dtype()
+             + straxen.plugins.event_positions_nv.veto_event_positions_dtype()[2:])
     evt = np.zeros(1, dtype)
 
     nvd = nVETOEventDisplay(pmt_map=_dummy_map)
