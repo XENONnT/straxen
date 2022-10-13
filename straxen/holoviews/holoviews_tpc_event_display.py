@@ -99,13 +99,13 @@ class InteractiveTPCEventDisplay():
         
         s2_peak = hv.DynamicMap(
             self._s2_callback,
-            streams=streams).opts(framewise=True, axiswise=True)
+            streams=streams)
         s1_peak = hv.DynamicMap(
             self._s1_callback, 
-            streams=streams).opts(framewise=True, axiswise=True)
+            streams=streams)
         event_display = hv.DynamicMap(
             self._event_callback,
-            streams=streams).opts(framewise=True, axiswise=True)
+            streams=streams)
         
         return pattern, inspector_plot, inspector_widget, s2_peak, s1_peak, event_display
             
@@ -172,6 +172,7 @@ class InteractiveTPCEventDisplay():
             (self._selected_event['x'], 
              self._selected_event['y']), 
             label='S2').opts(color='red', size=5)
+        position_plot = s2_plot
         position_plot = (s2_plot * s2_point)
         
         if not self._alt_s2 is None:
@@ -184,11 +185,11 @@ class InteractiveTPCEventDisplay():
                 (self._selected_event['alt_s2_x'], 
                  self._selected_event['alt_s2_y']), 
                 label='alt. S2').opts(color='orange', size=5,) #Todo allow to cutsomize better...
-            
+            # Cannot use *= because changes plot order
             position_plot = (alt_s2_plot * alt_s2_point) * position_plot
 
         
-        return position_plot.opts(legend_opts={"click_policy": "hide"}, axiswise=True)
+        return position_plot.opts(legend_opts={"click_policy": "hide"})
    
     
     def _peak_callback(self, 
@@ -255,6 +256,7 @@ class InteractiveTPCEventDisplay():
                                    opts_curve=opts_peak_curve,
                                    amplitude_prefix='S1',
                                   ).opts(title='main/alt. S1')
+    
     def _event_callback(self, 
                         event_index,
                        ):
@@ -281,9 +283,7 @@ class InteractiveTPCEventDisplay():
                                              time_in_µs=True, 
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
-                                             _relative_start_time=rel_start).opts(axiswise=True,
-                                                                                    framewise=True,
-                                                                                   )
+                                             _relative_start_time=rel_start)
             event_plot.append(plot_s2)
 
         mask = self._peaks_in_event['type'] == 1
@@ -297,9 +297,7 @@ class InteractiveTPCEventDisplay():
                                              time_in_µs=True, 
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
-                                             _relative_start_time=rel_start).opts(axiswise=True,
-                                                                                    framewise=True,
-                                                                                   )
+                                             _relative_start_time=rel_start)
             event_plot.append(plot_s1)
 
 
@@ -314,20 +312,58 @@ class InteractiveTPCEventDisplay():
                                              time_in_µs=True, 
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
-                                             _relative_start_time=rel_start).opts(axiswise=True,
-                                                                                   
-                                                                                   )
+                                             _relative_start_time=rel_start)
             event_plot.append(plot_s0)
         
-        event_plot = hv.Overlay(event_plot)
+        shaded_regions = self._get_alt_main_shading(self._selected_event, 
+                                                    rel_start, in_µs=True)
+        event_plot = hv.Overlay(event_plot + shaded_regions)
         return event_plot.opts(legend_opts={"click_policy": "hide",}, 
                                show_legend=True,
                                xlim=((event_start-rel_start)/10**3, 
                                      (event_end-rel_start)/10**3),
                                ylim=(0, None),
-                               axiswise=True,
-                               framewise=True)
+                              )
+    
+    
+    def _get_alt_main_shading(self, event, start_time, in_µs=True):
+        """Function which shades alt./main S1/S2 with 
+        """
+        time_scaler = 1
+        if in_µs:
+            time_scaler = 1000
+
+        peak_times = dict()
+        for peak in ['s1', 's2', 'alt_s1', 'alt_s2']:
+            peak_start = event['_'.join((peak, 'time'))]
+            peak_end = event['_'.join((peak, 'endtime'))]
+            _has_peak = peak_start != -1
+            if _has_peak:
+                peak_times[peak] = ((peak_start - start_time)/time_scaler,
+                                    (peak_end - start_time)/time_scaler,
+                                    )
+            else:
+                peak_times[peak] = (-start_time, -start_time)
+
+        shaded_regions = []
+        for peak_type, (start, end) in peak_times.items():
+            span = hv.VSpan(start, end).opts(color='gray', alpha=0.4)
+            text = hv.Text(
+                start, 0, rotation=90,
+                text=peak_type, valign='bottom', halign='left').opts(text_alpha=1)
+
+            # In case peak does not exists make label transparent. (We have 
+            # to always make 4 labels as otherwise hv.Text breaks if we 
+            # start with less peaks.)
+            _no_peak = start == -start_time
+            if _no_peak:
+                text.opts(text_alpha=0)
+
+            shaded_regions += [span, text]  
+
+        return shaded_regions
         
+    
     @staticmethod
     def _add_legend_mute(options):
         options = {k: v for k, v in options.items()}
