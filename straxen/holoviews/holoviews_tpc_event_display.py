@@ -209,21 +209,21 @@ class InteractiveTPCEventDisplay():
         """Call back which plots main/alt S1/S2 for display.
         """
         peak_ploter = PlotPeaksTPC()
-        peak_plot = peak_ploter.plot_peak(main_peak, 
+        peak_plot = peak_ploter.plot_peak(main_peak,
                                           label=main_label,
                                           opts_curve=opts_curve,
                                           opts_area=opts_area,
                                           amplitude_prefix=amplitude_prefix,
-                                          time_in_µs=time_in_µs)
+                                          time_in_us=time_in_µs)
         if not alt_peak is None:
             opts_curve = self._add_legend_mute(opts_curve)
             opts_area = self._add_legend_mute(opts_area)
-            alt_peak_plot = peak_ploter.plot_peak(alt_peak, 
-                                                  label=alt_label, 
+            alt_peak_plot = peak_ploter.plot_peak(alt_peak,
+                                                  label=alt_label,
                                                   opts_curve=opts_curve,
                                                   opts_area=opts_area,
                                                   amplitude_prefix=amplitude_prefix,
-                                                  time_in_µs=time_in_µs)
+                                                  time_in_us=time_in_µs)
         
             peak_plot *= alt_peak_plot
         return peak_plot
@@ -279,12 +279,12 @@ class InteractiveTPCEventDisplay():
         mask = self._peaks_in_event['type'] == 2
         self.n_s2 = np.sum(mask)
         if np.any(mask):
-            plot_s2 = peak_ploter.plot_peaks(self._peaks_in_event[mask], 
+            plot_s2 = peak_ploter.plot_peaks(self._peaks_in_event[mask],
                                              label=f'S2 {event_index}',
                                              group_label=f'Event {event_index}',
                                              opts_curve={'color': 'purple', 'muted_alpha': 0,},
                                              opts_area={'color': 'purple', 'muted_alpha': 0,},
-                                             time_in_µs=True, 
+                                             time_in_us=True,
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
                                              _relative_start_time=rel_start)
@@ -293,12 +293,12 @@ class InteractiveTPCEventDisplay():
         mask = self._peaks_in_event['type'] == 1
         self.n_s1 = np.sum(mask)
         if np.any(mask):
-            plot_s1 = peak_ploter.plot_peaks(self._peaks_in_event[mask], 
+            plot_s1 = peak_ploter.plot_peaks(self._peaks_in_event[mask],
                                              label=f'S1 {event_index}',
                                              group_label=f'Event {event_index}',
                                              opts_curve={'color': 'orange', 'muted_alpha': 0,},
                                              opts_area={'color': 'orange', 'muted_alpha': 0,},
-                                             time_in_µs=True, 
+                                             time_in_us=True,
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
                                              _relative_start_time=rel_start)
@@ -308,12 +308,12 @@ class InteractiveTPCEventDisplay():
         mask = self._peaks_in_event['type'] == 0
         self.n_s0 = np.sum(mask)
         if np.any(mask):
-            plot_s0 = peak_ploter.plot_peaks(self._peaks_in_event[mask], 
+            plot_s0 = peak_ploter.plot_peaks(self._peaks_in_event[mask],
                                              label=f'S0 {event_index}',
                                              group_label=f'Event {event_index}',
                                              opts_curve={'color': 'gray',  'muted_alpha': 0,},
                                              opts_area={'color': 'gray', 'muted_alpha': 0,},
-                                             time_in_µs=True, 
+                                             time_in_us=True,
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
                                              _relative_start_time=rel_start)

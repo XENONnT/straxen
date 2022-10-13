@@ -1,6 +1,7 @@
 import strax
 import straxen
 from straxen.holoviews_utils import nVETOEventDisplay
+from straxen.holoviews.holoviews_pmt_array import PlotPMTArrayTPC
 import holoviews as hv
 import panel as pn
 import numpy as np
@@ -103,3 +104,19 @@ def test_static_detector_plots():
     with TemporaryDirectory() as d:
         # Have to store plot to make sure it is rendered
         hv.save(tpc * diffuer_balls * nveto_reflector, os.path.join(d, 'hitlet_matrix.html'))
+
+
+def test_pmt_array_plot():
+    """Test if PMT array can be plotted for the interactive
+    display.
+    """
+    dummy_gains = np.ones(494)
+    dummy_gains[100:120] = 0
+
+    dummy_peak = np.ones(1, dtype=strax.peak_dtype(n_channels=straxen.n_tpc_pmts))
+
+    test = PlotPMTArrayTPC(gains=dummy_gains, top_pmt_array=True)
+    test.plot_pmt_array(dummy_peak[0])
+
+    test = PlotPMTArrayTPC(top_pmt_array=False)
+    test.plot_pmt_array(dummy_peak[0])

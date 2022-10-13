@@ -4,6 +4,8 @@ from immutabledict import immutabledict
 from bokeh.models import HoverTool
 from straxen.bokeh_utils import _patches_x_y, peak_tool_tip
 
+
+# noinspection PyArgumentList
 class PlotPeakLikeData:
     """Base class to plot peak like data for any type of detector.
     """
@@ -42,7 +44,7 @@ class PlotPeakLikeData:
         """
         raise NotImplementedError()   
         
-    def _set_labels(self, peaks, peak_type):
+    def _set_labels(self, peaks, peak_type, time_prefix):
         """User defined function which should set the xlabel, ylabel and
         plot label for our peak plots. Also should define the scaler 
         which scales the time axis in desired unit e.g. µs or ns.
@@ -126,9 +128,9 @@ class PlotPeakLikeData:
             vdims.append(hv.Dimension(field_name, 
                                       label=self._vdim_labels.get(field_name, field_name)))
         self._vdims = vdims        
-        
-    
-    def _get_single_dimension_fields(self, peak):
+
+    @staticmethod
+    def _get_single_dimension_fields(peak):
         """Function which returns all single valued qunatity names for 
         a given peak.
         """
@@ -151,7 +153,7 @@ class PlotPeakLikeData:
         """Function which extracts base peaks information as a 
         dictionary. Can be further customized in sub-classes if needed.
 
-        :param peaks: Peaks to be plotted.
+        :param peak: Peaks to be plotted.
         :param relative_start: t0 from which on the peaks should be plotted.
         :return: dictionary
         """
@@ -170,9 +172,6 @@ class PlotPeakLikeData:
         :param relative_start: t0 from which on the peaks should be plotted.
         :return: dictionary
         """
-        x_p = []
-        y_p = []
-        
         x, y = self._patches_x_y(peak)
         x -= relative_start  # relative to first peak
         x = x / self._scaler # Scaler to convert ns to µs or other units
@@ -225,15 +224,15 @@ class PlotPeakLikeData:
         # baseline since we'll fill underneath
         xx = np.concatenate([[xx[0]], xx, [xx[-1]]])
         yy = np.concatenate([[0], yy, [0]])
-        return xx, yy 
-    
-    
-    
+        return xx, yy
+
+
+# noinspection PyArgumentList
 class PlotPeaksTPC(PlotPeakLikeData):
     """Class which plots single or multiple peaks for interactive 
     holoviews display.
     """
-    time_in_µs=False
+    time_in_us=False
     _never_include_fields = ('time', 
                              'endtime',
                              'center_time',
@@ -262,7 +261,7 @@ class PlotPeaksTPC(PlotPeakLikeData):
         self.keep_amplitude_per_sample = keep_amplitude_per_sample
         
     def _set_labels(self, peak, peak_type, time_prefix):
-        if self.time_in_µs:
+        if self.time_in_us:
             scaler = 1000
             xlabel = f'{time_prefix} Time [µs]'
             self._change_units()
@@ -281,45 +280,44 @@ class PlotPeaksTPC(PlotPeakLikeData):
         self._label = f'S{peak["type"]}'
         
     def _change_units(self):
-        vdim = []
         for dim in self._vdims:
             dim.label = dim.label.replace('[ns]', '[µs]')
         
     def plot_peak(self,
-                  peak, 
-                  opts_area=immutabledict(), 
+                  peak,
+                  opts_area=immutabledict(),
                   opts_curve=immutabledict(),
                   label='Peak',
-                  time_in_µs=False,
+                  time_in_us=False,
                   amplitude_prefix='',
-                 ):
+                  ):
         """Function which plots a single peak. 
         """
-        plot = self.plot_peaks(peak, 
+        plot = self.plot_peaks(peak,
                                opts_curve=opts_curve,
                                opts_area=opts_area,
-                               time_in_µs=time_in_µs,
+                               time_in_us=time_in_us,
                                label=label,
                                group_label='Peak',
                                amplitude_prefix=amplitude_prefix,
                                _relative_start_time=peak['time'],
-                              )
+                               )
         #FIY: If opts is applied only with an empty dict all previous 
         # options seem to be reseted to default. 
         return plot.opts(**self.opts_dict, legend_limit=10)
     
     
     def plot_peaks(self,
-                   peaks, 
+                   peaks,
                    label='Peaks',
                    group_label='Event',
-                   opts_area=immutabledict(), 
+                   opts_area=immutabledict(),
                    opts_curve=immutabledict(),
-                   time_in_µs=False,
+                   time_in_us=False,
                    time_prefix='',
                    amplitude_prefix='',
                    _relative_start_time=0
-                  ):
+                   ):
         if type(peaks) is np.void:
             # In case of supplying only a single peak we have to make 
             # an array again:
@@ -328,7 +326,7 @@ class PlotPeaksTPC(PlotPeakLikeData):
         if not (np.all(peaks['type'] == peaks[0]['type'])):
             raise ValueError('All peaks must be of the same type (S1, S2 or Unknown)!')
 
-        self.time_in_µs = time_in_µs  # TODO: Can we do better than setting it globally?
+        self.time_in_us = time_in_us
         area, curve = self._init_peak_plot(peaks, amplitude_prefix, time_prefix)
         for ind, peak in enumerate(peaks):
             _area, _curve = self._plot_peak(

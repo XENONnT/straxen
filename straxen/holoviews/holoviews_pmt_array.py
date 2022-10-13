@@ -74,8 +74,9 @@ class PlotPMTArrayTPC:
                            }
         self.settings = immutabledict({**default_settings, 
                                        **opt_dict})
-    
-    def _plot_tpc(self, **opts):
+
+    @staticmethod
+    def _plot_tpc(**opts):
         """Function which plots the TPC as a simple circle.
         """
         tpc = straxen.holoviews_utils.plot_tpc_circle(straxen.tpc_r)
@@ -120,6 +121,7 @@ class PlotPMTArrayTPC:
         
         :param peak: Peak for which PMT array should be plotted. Must 
             contain area per channel information.
+        :param label: Plot abel to be used as title.
         :param opts: Option which can be supplied to a holovies plot.
             E.g. you can use logz=True for a logarithmic colorscale or
             colorbar=True for adding a colorbar.
@@ -139,7 +141,6 @@ import param
 from holoviews.element.chart import Chart
 from holoviews.plotting.bokeh import PointPlot
 
-
 class Circle(Chart):
     group = param.String(default='Circle', constant=True)
     size = param.Integer()
@@ -150,21 +151,3 @@ class CirclePlot(PointPlot):
 
     style_opts = ['radius' if so == 'size' else so for so in PointPlot.style_opts if so != 'marker']
 hv.Store.register({Circle: CirclePlot}, 'bokeh')
-
-
-
-# Test for straxen implementation:
-def test_pmt_array_plot():
-    """Test if PMT array can be plotted for the interactive 
-    display.
-    """
-    dummy_gains = np.ones(494)
-    dummy_gains[100:120] = 0
-    
-    dummy_peak = np.ones(1, dtype=strax.peak_dtype(n_channels=straxen.n_tpc_pmts))
-    
-    test = TPCPMTArray(gains=dummy_gains, top_pmt_array=True)
-    test.plot_pmt_array(dummy_peak[0])
-    
-    test = TPCPMTArray(top_pmt_array=False)
-    test.plot_pmt_array(dummy_peak[0])

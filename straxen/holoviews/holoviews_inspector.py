@@ -34,8 +34,7 @@ class EventStats(param.Parameterized):
     _x_log = False
     _y_log = False
     _z_log = False
-    
-    # TODO initally selected event must be within plot range!
+
     # Static widgets used for setting plot layout.
     x_field = 'cs1'
     x_bins = param.Tuple(default=(200, 0, 50), label='x binning (#bins, min max)')
@@ -208,7 +207,8 @@ class EventStats(param.Parameterized):
             self._x_log = x_log
             self._y_log = y_log
 
-    def _get_binning(self, n_bins, bin_min, bin_max, log):
+    @staticmethod
+    def _get_binning(n_bins, bin_min, bin_max, log):
         """Function which will return an array of bin edges.
         """
         if log:
