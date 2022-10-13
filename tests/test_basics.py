@@ -75,7 +75,8 @@ class TestBasics(unittest.TestCase):
     def test_extract_latest_comment_lone_hits(self):
         """Run the test for some target that is not in the default availability check"""
         self.test_extract_latest_comment_nt(test_for_target='lone_hits')
-
+    
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_raw_records_lineage(self):
         """The raw records lineage may NEVER change, if you ever do, doom ensures"""
         st = straxen.contexts.xenonnt_online()
