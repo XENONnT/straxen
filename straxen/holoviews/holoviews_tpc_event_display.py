@@ -183,7 +183,7 @@ class InteractiveTPCEventDisplay():
             alt_s2_point = hv.Points(
                 (self._selected_event['alt_s2_x'], 
                  self._selected_event['alt_s2_y']), 
-                label='alt. S2').opts(color='orange', size=5) #Todo allow to cutsomize better...
+                label='alt. S2').opts(color='orange', size=5,) #Todo allow to cutsomize better...
             
             position_plot = (alt_s2_plot * alt_s2_point) * position_plot
 
@@ -209,23 +209,19 @@ class InteractiveTPCEventDisplay():
                                           opts_curve=opts_curve,
                                           opts_area=opts_area,
                                           amplitude_prefix=amplitude_prefix,
-                                          time_in_µs=time_in_µs).opts(axiswise=True,
-                                                                      framewise=True,
-                                                                     )
+                                          time_in_µs=time_in_µs)
         if not alt_peak is None:
+            opts_curve = self._add_legend_mute(opts_curve)
+            opts_area = self._add_legend_mute(opts_area)
             alt_peak_plot = peak_ploter.plot_peak(alt_peak, 
                                                   label=alt_label, 
                                                   opts_curve=opts_curve,
                                                   opts_area=opts_area,
                                                   amplitude_prefix=amplitude_prefix,
-                                                  time_in_µs=time_in_µs).opts(axiswise=True,
-                                                                              framewise=True,)
+                                                  time_in_µs=time_in_µs)
         
             peak_plot *= alt_peak_plot
-        return peak_plot.opts(legend_opts={"click_policy": "hide",},
-                              axiswise=True,
-                              framewise=True,
-                             )
+        return peak_plot
         
     
     def _s2_callback(self, 
@@ -267,7 +263,10 @@ class InteractiveTPCEventDisplay():
         self._selcet_current_event(event_index)
         
         # Get event start time and extend a bit to the left:
-        event_start = self._peaks_in_event['time'].min()
+        event_start = self._selected_event['time']
+        event_end = self._selected_event['endtime']
+        s1_start = self._selected_event['s1_time']
+        rel_start = max(event_start, s1_start)
         peak_ploter = PlotPeaksTPC()                
         event_plot = []
         
@@ -282,7 +281,7 @@ class InteractiveTPCEventDisplay():
                                              time_in_µs=True, 
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
-                                             _relative_start_time=event_start).opts(axiswise=True,
+                                             _relative_start_time=rel_start).opts(axiswise=True,
                                                                                     framewise=True,
                                                                                    )
             event_plot.append(plot_s2)
@@ -298,7 +297,7 @@ class InteractiveTPCEventDisplay():
                                              time_in_µs=True, 
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
-                                             _relative_start_time=event_start).opts(axiswise=True,
+                                             _relative_start_time=rel_start).opts(axiswise=True,
                                                                                     framewise=True,
                                                                                    )
             event_plot.append(plot_s1)
@@ -315,7 +314,7 @@ class InteractiveTPCEventDisplay():
                                              time_in_µs=True, 
                                              time_prefix='Event',
                                              amplitude_prefix='Event',
-                                             _relative_start_time=event_start).opts(axiswise=True,
+                                             _relative_start_time=rel_start).opts(axiswise=True,
                                                                                    
                                                                                    )
             event_plot.append(plot_s0)
@@ -323,11 +322,18 @@ class InteractiveTPCEventDisplay():
         event_plot = hv.Overlay(event_plot)
         return event_plot.opts(legend_opts={"click_policy": "hide",}, 
                                show_legend=True,
-                               xlim=(-100, None),
+                               xlim=((event_start-rel_start)/10**3, 
+                                     (event_end-rel_start)/10**3),
                                ylim=(0, None),
                                axiswise=True,
                                framewise=True)
         
+    @staticmethod
+    def _add_legend_mute(options):
+        options = {k: v for k, v in options.items()}
+        options['muted'] = True
+        options['muted_alpha'] = 0
+        return immutabledict(options)
         
     def _split_peaks_by_event(self):
         """Split provided peaks by event.
