@@ -2,8 +2,9 @@ import os
 import shutil
 import unittest
 import strax
-from straxen import download_test_data, get_resource, acqmon_processing
-from straxen.plugins.daqreader import ArtificialDeadtimeInserted, \
+import straxen
+from straxen import download_test_data, get_resource
+from straxen.plugins.raw_records.daqreader import ArtificialDeadtimeInserted, \
                                       DAQReader, \
                                       ARTIFICIAL_DEADTIME_CHANNEL
 from datetime import timezone, datetime
@@ -88,7 +89,8 @@ class TestDAQReader(unittest.TestCase):
         rr_aqmon = st.get_array(self.run_id, 'raw_records_aqmon')
         self.assertTrue(len(rr_aqmon))
 
-        st.register_all(acqmon_processing)
+        st.register(straxen.AqmonHits)
+        st.register(straxen.VetoIntervals)
         veto_intervals = st.get_array(self.run_id, 'veto_intervals')
         assert np.sum(veto_intervals['veto_interval']), "No artificial deadtime parsed!"
 

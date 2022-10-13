@@ -1,17 +1,16 @@
 from hypothesis import given, settings
-import strax
 import strax.testutils
 import straxen
 import numpy as np
 
 
-@settings(deadline=None)
+@settings(deadline=None, max_examples=10)
 @given(strax.testutils.several_fake_records)
 def test_count_pulses(records):
     _check_pulse_count(records)
 
 
-@settings(deadline=None)
+@settings(deadline=None, max_examples=10)
 @given(strax.testutils.several_fake_records_one_channel)
 def test_count_pulses_2(records):
     _check_pulse_count(records)
@@ -20,7 +19,7 @@ def test_count_pulses_2(records):
 def _check_pulse_count(records):
     # numba starts complaining if n_channels == 1, maybe file bug?
     n_ch = records['channel'].max() + 2 if len(records) else 0
-    counts = straxen.plugins.pulse_processing.count_pulses(
+    counts = straxen.plugins.records.count_pulses(
         records, n_channels=n_ch)
 
     assert counts.dtype == straxen.pulse_count_dtype(n_ch)

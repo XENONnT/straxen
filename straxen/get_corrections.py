@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import strax
 import straxen
@@ -10,7 +12,7 @@ from straxen.corrections_services import dict_corrections
 
 
 export, __all__ = strax.exporter()
-__all__ += ['FIXED_TO_PE']
+
 
 
 def correction_options(get_correction_function):
@@ -78,14 +80,16 @@ def get_correction_from_cmt(run_id, conf):
     elif isinstance(conf, tuple) and len(conf) == 2:
         model_conf, cte_value = conf[:2]
 
-        # special case constant to_pe values 
+        # special case constant to_pe values should be covered by legacy protocols?
+        from straxen.legacy.xenon1t_url_configs import FIXED_TO_PE
         if model_conf in FIXED_TO_PE:
+            warnings.warn(f'Don\'t load like this, but via legacy config')
             correction = FIXED_TO_PE[model_conf]
             return correction
 
         # special case constant single value or list of values.
         elif 'constant' in model_conf:
-            if not isinstance(cte_value, (float, int, str, list)):
+            if not isinstance(cte_value, (float, int, str, list, tuple)):
                 raise ValueError(f"User specify a model type {model_conf} "
                                  "and should provide a number or list of numbers. Got: "
                                  f"{type(cte_value)}")
@@ -210,14 +214,3 @@ def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]
                                            'strax_option': opt,
                                            }
     return cmt_options
-
-
-FIXED_TO_PE = {
-    'to_pe_placeholder': np.repeat(0.0085, straxen.n_tpc_pmts),
-    '1T_to_pe_placeholder' : np.array([0.007, 0., 0., 0.008, 0.004, 0.008, 0.004, 0.008, 0.007, 0.005, 0.007, 0.006, 0., 0.006, 0.008, 0.007, 0.006, 0.009,0.007, 0.007, 0.007, 0.012, 0.004, 0.008, 0.005, 0.008, 0., 0., 0.007, 0.007, 0.004, 0., 0.004, 0.007, 0., 0.005,0.007, 0.007, 0.005, 0.005, 0.008, 0.006, 0.005, 0.007, 0.006, 0.007, 0.008, 0.005, 0.008, 0.008, 0.005, 0.005, 0.007, 0.008, 0.005, 0.009, 0.004, 0.005, 0.01 , 0.008, 0.006, 0.016, 0., 0.005, 0.005, 0., 0.01, 0.008, 0.004, 0.006, 0.005, 0., 0.008, 0., 0.004, 0.004, 0.006, 0.005, 0.012, 0., 0.005,0.004, 0.004, 0.008, 0.007, 0.012, 0., 0., 0., 0.007, 0.007, 0., 0.005, 0.008, 0.006, 0.004, 0.004, 0.006, 0.008,0.008, 0.008, 0.006, 0., 0.007, 0.005, 0.005, 0.005, 0.007,0.004, 0.008, 0.007, 0.008, 0.008, 0.006, 0.006, 0.01, 0.005,0.008, 0., 0.012, 0.007, 0.004, 0.008, 0.007, 0.007, 0.008,0.003, 0.004, 0.007, 0.006, 0., 0.005, 0.004, 0.005, 0., 0., 0.004, 0., 0.004, 0., 0.004, 0., 0.011, 0.005,0.006, 0.005, 0.004, 0.004, 0., 0.007, 0., 0.004, 0., 0.005, 0.006, 0.007, 0.005, 0.008, 0.004, 0.006, 0.008, 0.007,0., 0.008, 0.008, 0.007, 0.007, 0., 0.008, 0.004, 0.004,0.005, 0.004, 0.007, 0.008, 0.004, 0.006, 0.006, 0., 0.007,0.004, 0.004, 0.005, 0., 0.008, 0.004, 0.004, 0.004, 0.008,0.008, 0., 0.006, 0.005, 0.004, 0.005, 0.008, 0.008, 0.008,0., 0.005, 0.008, 0., 0.008, 0., 0.004, 0.012, 0., 0.005, 0.007, 0.009, 0.005, 0.004, 0.004, 0., 0., 0.004,0.004, 0.011, 0.004, 0.004, 0.007, 0.004, 0.005, 0.004, 0.005,0.007, 0.004, 0.006, 0.006, 0.004, 0.008, 0.005, 0.007, 0.007,0., 0.004, 0.007, 0.008, 0.004, 0., 0.007, 0.004, 0.004, 0.004, 0., 0.004, 0.005, 0.004]),
-    # Gains which will preserve all areas in adc counts.
-    # Useful for debugging and tests.
-    'adc_tpc': np.ones(straxen.n_tpc_pmts),
-    'adc_mv': np.ones(straxen.n_mveto_pmts),
-    'adc_nv': np.ones(straxen.n_nveto_pmts)
-}

@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 
 import argparse
 from datetime import datetime, timedelta
@@ -75,7 +75,8 @@ def main_ajax():
     if args.number:
         remove_run_from_host(args.number, delete_live=args.delete_live,
                              force=args.force, reason='manual')
-
+        wait_on_delete_thread()
+        return
     if not args.clean:
         raise ValueError('either --number or --clean should be specified')
 
