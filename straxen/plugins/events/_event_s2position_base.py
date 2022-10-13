@@ -4,6 +4,7 @@ import numpy as np
 from warnings import warn
 export, __all__ = strax.exporter()
 
+
 @export
 class EventS2PositionBase(strax.Plugin):
     """
@@ -19,8 +20,9 @@ class EventS2PositionBase(strax.Plugin):
     min_reconstruction_area = straxen.URLConfig(
         help='Skip reconstruction if area (PE) is less than this',
         default=10, infer_type=False, )
-    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
-                                   help="Number of top PMTs")
+    n_top_pmts = straxen.URLConfig(
+        default=straxen.n_top_pmts, infer_type=False,
+        help="Number of top PMTs")
 
     def infer_dtype(self):
         if self.algorithm is None:

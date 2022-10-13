@@ -7,21 +7,21 @@ export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionCNN(EventS2PositionBase):
+class EventS2PositionGCN(EventS2PositionBase):
     """
-    CNN for position S2 reconstruction at event level
+    GCN net for position S2 reconstruction at event level
     """
-    algorithm = "cnn"
-    provides = "event_s2position_cnn"
+    algorithm = "gcn"
+    provides = "event_s2_position_gcn"
 
-    tf_event_model_cnn = straxen.URLConfig(
+    tf_event_model_gcn = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'
                 f'cmt://{algorithm}_model'
                 f'?version=ONLINE'
                 f'&run_id=plugin.run_id'
                 f'&fmt=abs_path',
-        help='CNN model. Should be opened using the "tf" descriptor. '
+        help='MLP model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
         cache=3,
     )

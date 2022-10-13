@@ -201,6 +201,9 @@ def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]
                     raise RuntimeError("Correction names should not depend on runids! "
                                        f"Please check your option for {option_key}")
 
+                if not hasattr(option, 'QUERY_SEP'):
+
+                    raise ValueError(data_type, plugin, option_key, option, opt)
                 # if there is no other protocol being called before cmt,
                 # we will get a string back including the query part
                 if option.QUERY_SEP in correction_name:

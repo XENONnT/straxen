@@ -7,14 +7,14 @@ export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionGCN(EventS2PositionBase):
+class EventS2PositionMLP(EventS2PositionBase):
     """
-    GCN net for position S2 reconstruction at event level
+    MLP neural net for S2 position reconstruction at event level
     """
-    algorithm = "gcn"
-    provides = "event_s2position_gcn"
+    algorithm = "mlp"
+    provides = "event_s2_position_mlp"
 
-    tf_event_model_gcn = straxen.URLConfig(
+    tf_event_model_mlp = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'
                 f'cmt://{algorithm}_model'
