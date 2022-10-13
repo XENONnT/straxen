@@ -1,13 +1,13 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s2position_base import EventS2PositionBase
+from straxen.plugins.events._event_s2position_base import _EventS2PositionBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionGCN(EventS2PositionBase):
+class EventS2PositionGCN(_EventS2PositionBase):
     """
     GCN net for position S2 reconstruction at event level
     """

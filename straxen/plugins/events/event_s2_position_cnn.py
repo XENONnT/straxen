@@ -1,13 +1,13 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s2position_base import EventS2PositionBase
+from straxen.plugins.events._event_s2position_base import _EventS2PositionBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionCNN(EventS2PositionBase):
+class EventS2PositionCNN(_EventS2PositionBase):
     """
     CNN for position S2 reconstruction at event level
     """
