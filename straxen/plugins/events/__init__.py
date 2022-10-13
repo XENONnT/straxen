@@ -42,3 +42,12 @@ from .s2_recon_pos_diff import *
 
 from . import veto_proximity
 from .veto_proximity import *
+
+from . import event_s2position_mlp
+from .event_s2position_mlp import *
+
+from . import event_s2position_cnn
+from .event_s2position_cnn import *
+
+from . import event_s2position_gcn
+from .event_s2position_gcn import *
