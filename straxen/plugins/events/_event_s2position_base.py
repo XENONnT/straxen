@@ -64,7 +64,8 @@ class EventS2PositionBase(strax.Plugin):
 
         for p_type in ['s2', 'alt_s2']:
             peak_mask = events[p_type+'_area'] > self.min_reconstruction_area
-            if not np.sum(peak_mask): continue
+            if not np.sum(peak_mask):
+                continue
 
             _top_pattern = events[p_type + '_area_per_channel'][peak_mask, 0:self.n_top_pmts]
             with np.errstate(divide='ignore', invalid='ignore'):
