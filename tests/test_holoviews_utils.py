@@ -143,12 +143,33 @@ def test_tpc_display_components():
     dummy_events = np.zeros(10, p.dtype)
     dummy_events[0]['endtime'] = 10
 
-    inspector = EventStats(dummy_events)
-    inspector.interactive_event_stats()
-
-
-
     display = InteractiveTPCEventDisplay(dummy_events, dummy_peak, plot_alt_peaks=True)
     display.event_display(inspector_config={'x_bins': (50, 0, 200),
                                             'y_bins': (50, 0, 200),
                                             'y_field': 's1_rise_time'})
+
+def test_inspector_plot():
+    st = straxen.contexts.xenonnt_online()
+    p = st.get_single_plugin('0', 'event_info')
+    dummy_events = np.zeros(10, p.dtype)
+    dummy_events[0]['endtime'] = 10
+    dummy_events['cs1'][::2] = 1
+    dummy_events['cs1'][::2] = 2
+    dummy_events['cs1'][1::2] = 2
+    dummy_events['cs1'][1::2] = 4
+
+    inspector = EventStats(dummy_events,
+                           )
+    inspector.interactive_event_stats()
+
+    inspector = EventStats(dummy_events,
+                           exclude_fields=['s1_area',],
+                           default_config={'x_bins': (10, 0, 10),
+                                           'y_bins': (10, 0, 10),
+                                           'y_field': 's1_rise_time'}
+                           )
+    plot, widget = inspector.interactive_event_stats()
+
+    # Trigger replotting:
+    w = widget[0]
+    w.value = 1
