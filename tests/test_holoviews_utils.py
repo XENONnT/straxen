@@ -138,7 +138,7 @@ def test_tpc_display_components():
     array_plotter = PlotPMTArrayTPC()
     array_plotter.plot_pmt_array(dummy_peak[0])
 
-    st = straxen.contexts.xenonnt_online()
+    st = straxen.contexts.xenonnt_online(_database_init=False)
     p = st.get_single_plugin('0', 'event_info')
     dummy_events = np.zeros(10, p.dtype)
     dummy_events[0]['endtime'] = 10
@@ -149,7 +149,7 @@ def test_tpc_display_components():
                                             'y_field': 's1_rise_time'})
 
 def test_inspector_plot():
-    st = straxen.contexts.xenonnt_online()
+    st = straxen.contexts.xenonnt_online(_database_init=False)
     p = st.get_single_plugin('0', 'event_info')
     dummy_events = np.zeros(10, p.dtype)
     dummy_events[0]['endtime'] = 10
