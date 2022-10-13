@@ -1,13 +1,13 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s2position_base import _EventS2PositionBase
+from straxen.plugins.events._event_s2_position_base import EventS2PositionBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionMLP(_EventS2PositionBase):
+class EventS2PositionMLP(EventS2PositionBase):
     """
     MLP neural net for S2 position reconstruction at event level
     """
