@@ -138,17 +138,22 @@ class InteractiveTPCEventDisplay():
         
         self._s2 = self._peaks_in_event[self._selected_event['s2_index']]
         self._s1 = self._peaks_in_event[self._selected_event['s1_index']]
+        other_peaks_index = np.arange(len(self._peaks_in_event))
+        mask_other_s2 = self._peaks_in_event['type'] == 2
+        mask_other_s2 &= (other_peaks_index != self._selected_event['s2_index'])
         
         self._alt_s2 = None
         _can_plot_alt_s2 = (self._selected_event['alt_s2_index'] != -1) and self._plot_alt_peaks
         if _can_plot_alt_s2:
             self._alt_s2 = self._peaks_in_event[self._selected_event['alt_s2_index']]
+            mask_other_s2 &= (other_peaks_index != self._selected_event['alt_s2_index'])
         
         self._alt_s1 = None
         _can_plot_alt_s1 = (self._selected_event['alt_s1_index'] != -1) and self._plot_alt_peaks
         if _can_plot_alt_s1:    
             self._alt_s1 = self._peaks_in_event[self._selected_event['alt_s1_index']]
-            
+        
+        self._other_s2 = self._peaks_in_event[mask_other_s2]
         self._current_event_index = event_index
         
     
@@ -187,7 +192,6 @@ class InteractiveTPCEventDisplay():
                 label='alt. S2').opts(color='orange', size=5,) #Todo allow to cutsomize better...
             # Cannot use *= because changes plot order
             position_plot = (alt_s2_plot * alt_s2_point) * position_plot
-
         
         return position_plot.opts(legend_opts={"click_policy": "hide"})
    
