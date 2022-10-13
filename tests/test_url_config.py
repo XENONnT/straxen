@@ -163,16 +163,19 @@ class TestURLConfig(unittest.TestCase):
     def test_rekey(self):
         original_dict = {'a': 1, 'b': 2, 'c': 3}
         check_dict = {'anew': 1, 'bnew': 2, 'cnew': 3}
-        test_file = 'test_dict.json'
-        with open(test_file, 'w') as f:
+
+        temp_dir = tempfile.TemporaryDirectory()
+
+        fake_file_name = os.path.join(temp_dir.name, 'test_dict.json')
+        with open(fake_file_name, 'w') as f:
             json.dump(original_dict, f)
 
-        self.st.set_config({'test_config': f'rekey_dict://resource://{test_file}?'
+        self.st.set_config({'test_config': f'rekey_dict://resource://{fake_file_name}?'
                                            f'fmt=json&replace_keys=a,b,c'
                                            f'&with_keys=anew,bnew,cnew'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, check_dict)
-
+        temp_dir.cleanup()
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()

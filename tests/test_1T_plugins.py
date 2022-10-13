@@ -8,8 +8,8 @@ from immutabledict import immutabledict
 test_run_id_1T = '180423_1021'
 
 testing_config_1T = dict(
-    hev_gain_model=('1T_to_pe_placeholder', False),
-    gain_model=('1T_to_pe_placeholder', False),
+    hev_gain_model='legacy-to-pe://1T_to_pe_placeholder',
+    gain_model='legacy-to-pe://1T_to_pe_placeholder',
     elife=1e6,
     electron_drift_velocity=1e-4,
     electron_drift_time_gate=1700,
@@ -109,7 +109,7 @@ def _test_child_options(st, run_id):
 def test_1T(ncores=2):
     st = straxen.contexts.xenon1t_dali()
     _update_context(st, ncores)
-    st.register_all(straxen.plugins.x1t_cuts)
+    st.register_all(straxen.legacy.plugins_1t.x1t_cuts)
     for _plugin, _plugin_class in st._plugin_class_registry.items():
         if 'cut' in str(_plugin).lower():
             _plugin_class.save_when = strax.SaveWhen.ALWAYS

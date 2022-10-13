@@ -4,7 +4,7 @@ import hypothesis.strategies as strat
 import strax
 from strax.testutils import fake_hits
 import straxen
-from straxen.plugins.peaklet_processing import get_tight_coin
+from straxen.plugins.peaklets.peaklets import get_tight_coin
 
 
 @settings(deadline=None)
