@@ -58,11 +58,12 @@ jobs:
         run: |
           pip install -r extra_requirements/requirements-tests.txt
           yes | pip uninstall strax
-          git clone https://github.com/DCichon/strax
-          cd strax
+          base = `pwd`
+          git clone https://github.com/DCichon/strax ~/strax
+          cd ~/strax
           git checkout separate_array_waveforms
-          cd ..
-          pip install -e strax
+          pip install -e ../strax
+          cd $base
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.8.0
