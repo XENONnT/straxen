@@ -102,16 +102,6 @@ class Peaklets(strax.Plugin):
         type=int,
         help='Number of TPC PMTs')
 
-    n_top_pmts = straxen.URLConfig(
-        type=int,
-        help="Number of top TPC array PMTs")
-
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True,
-        type=bool,
-        help='Digitize the sum waveform of the top array separately'
-    )
-
     saturation_correction_on = straxen.URLConfig(
         default=True, infer_type=False,
         help='On off switch for saturation correction')
@@ -230,9 +220,7 @@ class Peaklets(strax.Plugin):
         hitlets = strax.sort_by_time(hitlets)
         rlinks = strax.record_links(records)
 
-        # If sum_waveform_top_array is false, don't digitize the top array
-        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
-        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+        strax.sum_waveform(peaklets, hitlets, r, rlinks, self.to_pe)
 
         strax.compute_widths(peaklets)
 
@@ -246,9 +234,7 @@ class Peaklets(strax.Plugin):
             split_low=True,
             filter_wing_width=self.peak_split_filter_wing_width,
             min_area=self.peak_split_min_area,
-            do_iterations=self.peak_split_iterations,
-            n_top_channels=n_top_pmts_if_digitize_top
-        )
+            do_iterations=self.peak_split_iterations)
 
         # Saturation correction using non-saturated channels
         # similar method used in pax
@@ -263,9 +249,7 @@ class Peaklets(strax.Plugin):
             peak_list = peak_saturation_correction(
                 r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.saturation_reference_length,
-                min_reference_length=self.saturation_min_reference_length,
-                n_top_channels = n_top_pmts_if_digitize_top,
-            )
+                min_reference_length=self.saturation_min_reference_length)
 
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
@@ -364,7 +348,6 @@ def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
                                reference_length=100,
                                min_reference_length=20,
                                use_classification=False,
-                               n_top_channels=0,
                                ):
     """Correct the area and per pmt area of peaks from saturation
     :param records: Records
@@ -378,7 +361,6 @@ def peak_saturation_correction(records, rlinks, peaks, hitlets, to_pe,
     :param min_reference_length: Minimum number of reference sample used
     to correct saturated samples
     :param use_classification: Option of using classification to pick only S2
-    :param n_top_channels: Number of top array channels.
     """
 
     if not len(records):

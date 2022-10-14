@@ -45,16 +45,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help="If true, S1s will be igored during the merging. "
              "It's now possible for a S1 to be inside a S2 post merging")
 
-    n_top_pmts = straxen.URLConfig(
-        type=int,
-        help="Number of top TPC array PMTs")
-
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True,
-        type=bool,
-        help='Digitize the sum waveform of the top array separately'
-    )
-
     def setup(self):
         self.to_pe = self.gain_model
 
@@ -75,7 +65,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         gap_thresholds = self.s2_merge_gap_thresholds
         max_gap = gap_thresholds[0][1]
         max_area = 10 ** gap_thresholds[-1][0]
-        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
 
         if max_gap < 0:
             # Do not merge at all
@@ -106,10 +95,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             lh['time'] = lh['time'] - lh_time_shift
             lh['length'] = (lh['right_integration'] - lh['left_integration'])
             lh = strax.sort_by_time(lh)
-
-            # If sum_waveform_top_array is false, don't digitize the top array
-            n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
-            strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+            strax.add_lone_hits(merged_s2s, lh, self.to_pe)
 
             strax.compute_widths(merged_s2s)
 
