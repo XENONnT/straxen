@@ -1,5 +1,6 @@
 import strax
 import straxen
+from straxen.plugins.peaklets.peaklets import drop_data_top_field
 
 import numpy as np
 import numba
@@ -49,6 +50,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         type=int,
         help="Number of top TPC array PMTs")
 
+    n_tpc_pmts = straxen.URLConfig(
+        type=int,
+        help='Number of TPC PMTs')
+
     sum_waveform_top_array = straxen.URLConfig(
         default=True,
         type=bool,
@@ -75,44 +80,58 @@ class MergedS2s(strax.OverlapWindowPlugin):
         gap_thresholds = self.s2_merge_gap_thresholds
         max_gap = gap_thresholds[0][1]
         max_area = 10 ** gap_thresholds[-1][0]
-        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
 
         if max_gap < 0:
             # Do not merge at all
             return np.zeros(0, dtype=self.dtype)
-        else:
-            # Max gap and area should be set by the gap thresholds
-            # to avoid contradictions
-            start_merge_at, end_merge_at = self.get_merge_instructions(
-                peaklets['time'], strax.endtime(peaklets),
-                areas=peaklets['area'],
-                types=peaklets['type'],
-                gap_thresholds=gap_thresholds,
-                max_duration=self.s2_merge_max_duration,
-                max_gap=max_gap,
-                max_area=max_area,
-            )
-            merged_s2s = strax.merge_peaks(
-                peaklets,
-                start_merge_at, end_merge_at,
-                max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets['dt'])),
-            )
-            merged_s2s['type'] = 2
 
-            # Updated time and length of lone_hits and sort again:
-            lh = np.copy(lone_hits)
-            del lone_hits
-            lh_time_shift = (lh['left'] - lh['left_integration']) * lh['dt']
-            lh['time'] = lh['time'] - lh_time_shift
-            lh['length'] = (lh['right_integration'] - lh['left_integration'])
-            lh = strax.sort_by_time(lh)
+        if 'data_top' not in peaklets.dtype.names:
+            peaklets_w_field = np.zeros(len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True))
+            strax.copy_to_buffer(peaklets, peaklets_w_field, '_add_data_top_field')
+            del peaklets
+            peaklets = peaklets_w_field
 
-            # If sum_waveform_top_array is false, don't digitize the top array
-            n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
-            strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+        # Max gap and area should be set by the gap thresholds
+        # to avoid contradictions
+        start_merge_at, end_merge_at = self.get_merge_instructions(
+            peaklets['time'], strax.endtime(peaklets),
+            areas=peaklets['area'],
+            types=peaklets['type'],
+            gap_thresholds=gap_thresholds,
+            max_duration=self.s2_merge_max_duration,
+            max_gap=max_gap,
+            max_area=max_area,
+        )
+        assert 'data_top'  in peaklets.dtype.names
 
-            strax.compute_widths(merged_s2s)
+        merged_s2s = strax.merge_peaks(
+            peaklets,
+            start_merge_at, end_merge_at,
+            max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets['dt'])),
+        )
+        merged_s2s['type'] = 2
 
+        # Updated time and length of lone_hits and sort again:
+        lh = np.copy(lone_hits)
+        del lone_hits
+        lh_time_shift = (lh['left'] - lh['left_integration']) * lh['dt']
+        lh['time'] = lh['time'] - lh_time_shift
+        lh['length'] = (lh['right_integration'] - lh['left_integration'])
+        lh = strax.sort_by_time(lh)
+
+        # If sum_waveform_top_array is false, don't digitize the top array
+        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
+        strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+
+        strax.compute_widths(merged_s2s)
+
+        if n_top_pmts_if_digitize_top <= 0:
+            # result = np.zeros(len(merged_s2s), dtype=self.dtype)
+            # for field in result.dtype.names:
+            #     result[field] = merged_s2s[field]
+            # del merged_s2s
+            # merged_s2s = result
+            merged_s2s = drop_data_top_field(merged_s2s, self.dtype, '_drop_top_merged_s2s')
         return merged_s2s
 
     @staticmethod
