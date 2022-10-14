@@ -241,7 +241,7 @@ class Peaklets(strax.Plugin):
                 r, rlinks, peaklets, hitlets, self.to_pe,
                 reference_length=self.saturation_reference_length,
                 min_reference_length=self.saturation_min_reference_length,
-                n_top_channels=n_top_pmts)
+                n_top_channels=self.n_top_pmts)
 
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
