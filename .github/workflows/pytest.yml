@@ -55,7 +55,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install requirements
-        run: pip install -r extra_requirements/requirements-tests.txt
+        run: |
+          pip install -r extra_requirements/requirements-tests.txt
+          yes | pip uninstall strax
+          git clone https://github.com/DCichon/strax
+          cd strax
+          git checkout separate_array_waveforms
+          cd ..
+          pip install -e strax
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.8.0
