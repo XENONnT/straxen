@@ -58,7 +58,8 @@ jobs:
         run: |
           pip install -r extra_requirements/requirements-tests.txt
           yes | pip uninstall strax
-          base = `pwd`
+          pwd
+          base=`pwd`
           git clone https://github.com/DCichon/strax ~/strax
           cd ~/strax
           git checkout separate_array_waveforms
