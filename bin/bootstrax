@@ -873,7 +873,7 @@ def sufficient_diskspace():
             # Sufficient space to write to, let's continue
             return
         if i == 0 :
-            # Log it once, the first time
+            # Log it once to the database, the first time. Otherwise, just log it locally
             log_warning(f'Insufficient free disk space ({disk_pct:.1f}% full) on {hostname}. '
                         f'Waiting {i}/{wait_diskspace_n_max}',
                         priority='warning')
