@@ -12,5 +12,5 @@ numpy
 packaging
 pymongo<4.0.0
 requests
-strax>=1.1.7
+strax>=1.4.0
 utilix>=0.5.3
