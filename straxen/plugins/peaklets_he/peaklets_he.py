@@ -13,7 +13,7 @@ class PeakletsHighEnergy(Peaklets):
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
-    __version__ = '0.0.2'
+    __version__ = '0.1.0'
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
