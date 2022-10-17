@@ -2,7 +2,7 @@
 
 This subfolder holds all the plugins for the XENONnT experiment. The plugins are structured using the following rules:
 
-- Each datatype gets its own subfolder
+- Each datakind gets its own subfolder
 - Each plugin gets its own module
 - Imports of plugins are ordered by stream (TPC/Neutron Veto/Muon Veto/High Energy)
 - Shared code of several plugins is either:
