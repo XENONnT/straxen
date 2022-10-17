@@ -13,7 +13,7 @@ class PeakletsHighEnergy(Peaklets):
     depends_on = 'records_he'
     provides = 'peaklets_he'
     data_kind = 'peaklets_he'
-    __version__ = '0.0.2'
+    __version__ = '0.1.0'
     child_plugin = True
     save_when = strax.SaveWhen.TARGET
 
@@ -52,8 +52,16 @@ class PeakletsHighEnergy(Peaklets):
              'which means we are using cmt.'
     )
 
+    # We cannot, we only have the top array, so should not.
+    sum_waveform_top_array = False
+
+    @property
+    def n_tpc_pmts(self):
+        # Have to hack the url config to avoid nasty numba errors for the main Peaklets plugin
+        return self.n_he_pmts
+
     def infer_dtype(self):
-        return strax.peak_dtype(n_channels=self.n_he_pmts)
+        return strax.peak_dtype(n_channels=self.n_he_pmts, digitize_top=self.sum_waveform_top_array)
 
     def setup(self):
         self.to_pe = self.gain_model
