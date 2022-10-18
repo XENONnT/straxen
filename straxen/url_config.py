@@ -48,6 +48,12 @@ def parse_val(val: str):
     return val
 
 
+def get_item_or_attr(obj, key, default=None):
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 @export
 class URLConfig(strax.Config):
     """Dispatch on URL protocol.
@@ -449,23 +455,35 @@ def rekey_dict(d, replace_keys='', with_keys=''):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
 
+
 @URLConfig.register('objects-to-dict')
-def docs_to_dict(docs: list, key_attr=None, value_attr='value'):
-        
-    if not isinstance(docs, list):
-        raise TypeError(f'The docs-to-dict protocol expects a list of documents but received {type(docs)} instead.')
+def objects_to_dict(objects: list, key_attr=None, value_attr='value'):
+    '''Converts a list of objects/dicts to a single dictionary by taking the 
+    key and value from each of the objects/dicts. If key_attr is not provided,
+    the list index is used as the key.
+
+    :param objects: list of objects/dicts that will be converted to a dictionary
+    :param key_attr: key/attribute of the objects that will be used as key in the dictionary
+    :param value_attr: key/attribute of the objects that will be used as value in the dictionary
+    '''
+    if not isinstance(objects, list):
+        raise TypeError(f'The objects-to-dict protocol expects a list '
+                        f'of objects but received {type(objects)} instead.')
     result = {}
-    for i, doc in enumerate(docs):
-        key = i if key_attr is None else getattr(doc, key_attr)
-        result[key] = getattr(doc, value_attr)
-            
+    for i, obj in enumerate(objects):
+        key = i if key_attr is None else get_item_or_attr(obj, key_attr)
+        result[key] = get_item_or_attr(obj, value_attr)
     return result
-    
+
+
 @URLConfig.register('list-to-array')
-def docs_to_array(docs: list):
-    import numpy as np
+def objects_to_array(objects: list):
+    '''
+    Converts a list of objects/dicts to a numpy array.
+    :param objects: Any list of objects'''
         
-    if not isinstance(docs, list):
-        raise TypeError(f'The docs-to-array protocol expects a list but recieved a {type(docs)} instead')
+    if not isinstance(objects, list):
+        raise TypeError(f'The list-to-array protocol expects a '
+                        f'list but recieved a {type(objects)} instead')
         
-    return np.array(docs)
+    return np.array(objects)
