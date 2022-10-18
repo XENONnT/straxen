@@ -448,3 +448,24 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     for old_key, new_key in zip(replace_keys, with_keys):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
+
+    @URLConfig.register('objects-to-dict')
+    def docs_to_dict(docs: list, key_attr=None, value_attr='value'):
+        
+        if not isinstance(docs, list):
+            raise TypeError(f'The docs-to-dict protocol expects a list of documents but received {type(docs)} instead.')
+        result = {}
+        for i, doc in enumerate(docs):
+            key = i if key_attr is None else getattr(doc, key_attr)
+            result[key] = getattr(doc, value_attr)
+            
+        return result
+    
+    @URLConfig.register('list-to-array')
+    def docs_to_array(docs: list):
+        import numpy as np
+        
+        if not isinstance(docs, list):
+            raise TypeError(f'The docs-to-array protocol expects a list but recieved a {type(docs)} instead')
+        
+        return np.array(docs)
