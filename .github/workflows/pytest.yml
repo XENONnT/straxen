@@ -61,7 +61,7 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.8.0
         with:
-          mongodb-version: 4.2
+          mongodb-version: 4.4.1
 
       - name: patch utilix file
         # Secrets and required files
