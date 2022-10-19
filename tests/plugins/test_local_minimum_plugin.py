@@ -1,13 +1,14 @@
 import straxen
 import numpy as np
 from _core import PluginTestAccumulator, PluginTestCase
+from straxen.plugins.events import local_minimum_info
 
 
 @PluginTestAccumulator.register('test_event_local_min_info')
 def test_event_local_min_info(self: PluginTestCase):
     """Try making local minimum info"""
     st = self.st
-    st.register(straxen.local_minimum_info.LocalMinimumInfo)
+    st.register(local_minimum_info.LocalMinimumInfo)
     st.make(self.run_id, 'event_local_min_info')
 
 
@@ -18,8 +19,8 @@ def test_identify_local_extrema(self: PluginTestCase):
     Tests whether the local extrema are identified properly
     """
     test_peak_1, test_peak_2, _ = _get_test_peaks()
-    max1, min1 = straxen.local_minimum_info.identify_local_extrema(test_peak_1)
-    max2, min2 = straxen.local_minimum_info.identify_local_extrema(test_peak_2)
+    max1, min1 = local_minimum_info.identify_local_extrema(test_peak_1)
+    max2, min2 = local_minimum_info.identify_local_extrema(test_peak_2)
 
     assert np.all(min1 == min2)
     assert len(max2)-len(min2) == 1
@@ -36,13 +37,13 @@ def test_full_gap_percent_valley(self: PluginTestCase):
     Tests if the gaps and valleys are identified properly
     """
     test_peak_1, test_peak_2, test_peak_3 = _get_test_peaks()
-    max1, min1 = straxen.local_minimum_info.identify_local_extrema(test_peak_1)
-    max2, min2 = straxen.local_minimum_info.identify_local_extrema(test_peak_2)
-    max3, min3 = straxen.local_minimum_info.identify_local_extrema(test_peak_3)
+    max1, min1 = local_minimum_info.identify_local_extrema(test_peak_1)
+    max2, min2 = local_minimum_info.identify_local_extrema(test_peak_2)
+    max3, min3 = local_minimum_info.identify_local_extrema(test_peak_3)
 
-    valley_gap1, valley1 = straxen.local_minimum_info.full_gap_percent_valley(test_peak_1, max1, min1, 0.9, 1)
-    valley_gap2, valley2 = straxen.local_minimum_info.full_gap_percent_valley(test_peak_2, max2, min2, 0.9, 1)
-    valley_gap3, valley3 = straxen.local_minimum_info.full_gap_percent_valley(test_peak_3, max3, min3, 0.9, 1)
+    valley_gap1, valley1 = local_minimum_info.full_gap_percent_valley(test_peak_1, max1, min1, 0.9, 1)
+    valley_gap2, valley2 = local_minimum_info.full_gap_percent_valley(test_peak_2, max2, min2, 0.9, 1)
+    valley_gap3, valley3 = local_minimum_info.full_gap_percent_valley(test_peak_3, max3, min3, 0.9, 1)
 
     #peak 2 should have the shortest gap and the shortest valley
     #peak 3 should have the deepest valley
