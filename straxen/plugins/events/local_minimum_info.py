@@ -80,15 +80,15 @@ class LocalMinimumInfo(strax.LoopPlugin):
             p = peaks[event['s2_index']]
             
             smoothing_number = p['width'][9] / p['dt']
-            smoothing_number = np.ceil(smoothing_number / divide_90p_width_localmin)
+            smoothing_number = np.ceil(smoothing_number / self.divide_90p_width_localmin)
             smoothed_peak = power_smooth(p['data'][:p['length']],
                                          int(smoothing_number),
-                                         smoothing_power_localmin)
+                                         self.smoothing_power_localmin)
             
             if len(smoothed_peak)>0:
                 # Set data below percentage threshold on both side to zeros
                 left, right = bounds_above_percentage_height(smoothed_peak,
-                                                             percentage_threshold_localmin)
+                                                             self.percentage_threshold_localmin)
 
                 # Maximum GOS calculation for data above percentage
                 max_gos = np.max(natural_breaks_gof(p['data'][left: right],
@@ -105,7 +105,7 @@ class LocalMinimumInfo(strax.LoopPlugin):
                 valley_gap, valley = full_gap_percent_valley(smoothed_peak,
                                                              maxes,
                                                              mins,
-                                                             percent_valley_height,
+                                                             self.percent_valley_height,
                                                              p['dt'])
 
                 valley_height_ratio = valley / np.max(smoothed_peak)
