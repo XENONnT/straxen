@@ -1,6 +1,6 @@
 import straxen
 import numpy as np
-from _core import PluginTestAccumulator, PluginTestCase
+from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 from straxen.plugins.events import local_minimum_info
 
 
@@ -66,3 +66,6 @@ def _get_test_peaks():
     test_peak_2 = np.exp(-(test_time-75)**2/(2*std2**2))+np.exp(-(test_time-125)**2/(2*std2**2))
     test_peak_3 = np.exp(-(test_time-50)**2/(2*std2**2))+np.exp(-(test_time-150)**2/(2*std2**2))
     return test_peak_1, test_peak_2, test_peak_3
+
+if __name__ == '__main__':
+    run_pytest_from_main()
