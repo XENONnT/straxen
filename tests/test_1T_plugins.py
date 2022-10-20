@@ -63,7 +63,7 @@ def _update_context(st, max_workers):
             'allow_multiprocess': True,
             'allow_lazy': False,
             'timeout': 120,  # we don't want to build travis for ever
-            'allow_shm': strax.processor.SHMExecutor is None,
+            'allow_shm': strax.processor.SHMExecutor is not None,
         })
 
 
