@@ -1,3 +1,19 @@
+v2.0.1 / 2022-10-20
+-------------------
+* Use mongodb v4.4.1 when testing to match real version used in production by @jmosbacher in https://github.com/XENONnT/straxen/pull/1103
+* Pass tests from remote forks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1105
+* Local minimum info 2 by @JYangQi00 in https://github.com/XENONnT/straxen/pull/1106
+* Don't test without `strax.processor.SHMExecutor` by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1107
+* Lower the default config value of online_max_bytes by @mflierm in https://github.com/XENONnT/straxen/pull/1108
+
+
+New Contributors
+* @JYangQi00 made their first contribution in https://github.com/XENONnT/straxen/pull/1106
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.0...v2.0.1
+
+
 v2.0.0 / 2022-10-17
 -------------------
 * Fix acqmon veto field by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1072
@@ -21,6 +37,7 @@ Notes:
  * Breaking changes induced in strax [v1.4.0](https://github.com/AxFoundation/strax/releases/tag/v1.4.0)
  * Changed signatures of plugins in [#1094](https://github.com/XENONnT/straxen/pull/1094)
  * New plugins for event level processing by [#1097](https://github.com/XENONnT/straxen/pull/1097)
+
 
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.8.3...v2.0.0
 
