@@ -32,32 +32,31 @@ class LocalMinimumInfo(strax.LoopPlugin):
                                    's2_valley_height_ratio'), np.float32)]
 
     divide_90p_width_localmin = straxen.URLConfig(
-        default = 7., type = float,
-        help = "The peak is smoothed by dividing the 90p width by"
-               "this number, and coverting it into number of samples."
-               "This is then the 'n' used in the smoothing kernel"
-               "shown below."
+        default=7., type=float,
+        help="The peak is smoothed by dividing the 90p width by"
+             "this number, and coverting it into number of samples."
+             "This is then the 'n' used in the smoothing kernel"
+             "shown below."
     )
 
     smoothing_power_localmin = straxen.URLConfig(
-        default = 3., type = float,
-        help = "The power used in the smoothing filter with a kernel of"
-               "(1-(x/n)^p)^p, where p is the power"
+        default=3., type=float,
+        help="The power used in the smoothing filter with a kernel of"
+             "(1-(x/n)^p)^p, where p is the power"
     )
 
     percentage_threshold_localmin = straxen.URLConfig(
-        default = 0.1, type = float,
-        help = "The height threshold for the peak as a percentage"
-               "of the maximum, used to reject the low parts"
-               "of the peak in order to find the local extrema."
+        default=0.1, type=float,
+        help="The height threshold for the peak as a percentage"
+             "of the maximum, used to reject the low parts"
+             "of the peak in order to find the local extrema."
     )
 
     percent_valley_height = straxen.URLConfig(
-        default = 0.9, type = float,
-        help = "The percentage of the valley height of the deepest"
-               "valley for which to calculate the valley width"
+        default=0.9, type=float,
+        help="The percentage of the valley height of the deepest"
+             "valley for which to calculate the valley width"
     )
-
 
     def compute_loop(self, event, peaks):
         """
@@ -78,14 +77,14 @@ class LocalMinimumInfo(strax.LoopPlugin):
 
         if event['s2_area'] > 0:
             p = peaks[event['s2_index']]
-            
+
             smoothing_number = p['width'][9] / p['dt']
             smoothing_number = np.ceil(smoothing_number / self.divide_90p_width_localmin)
             smoothed_peak = power_smooth(p['data'][:p['length']],
                                          int(smoothing_number),
                                          self.smoothing_power_localmin)
-            
-            if len(smoothed_peak)>0:
+
+            if len(smoothed_peak) > 0:
                 # Set data below percentage threshold on both side to zeros
                 left, right = bounds_above_percentage_height(smoothed_peak,
                                                              self.percentage_threshold_localmin)
@@ -135,7 +134,7 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     """
     n_gap = len(min_loc)
     p_length = len(smoothp)
-    if ~np.logical_and((len(max_loc) - n_gap == 1),(len(min_loc)>0)):
+    if ~np.logical_and((len(max_loc) - n_gap == 1), (len(min_loc) > 0)):
         return 0, 0
     else:
         gaps = np.zeros(n_gap)
@@ -143,9 +142,9 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
         for j in range(n_gap):
             gh = np.min(smoothp[max_loc[j:j + 2]])
             gh -= smoothp[min_loc[j]]
-            
+
             height_pv = (smoothp[min_loc[j]] + gh * pv)
-            
+
             above_hpv = smoothp > height_pv
             above_hpv |= np.arange(p_length) < max_loc[j]
             left_crossing = np.argmin(above_hpv)
@@ -160,6 +159,7 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
         max_gap = gaps[np.argmax(gap_heights)]
         valley_depth = gap_heights[np.argmax(gap_heights)]
         return max_gap * dt, valley_depth
+
 
 def bounds_above_percentage_height(p, percent):
     """

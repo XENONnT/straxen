@@ -1,4 +1,3 @@
-import straxen
 import numpy as np
 from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 from straxen.plugins.events import local_minimum_info
@@ -10,7 +9,6 @@ def test_event_local_min_info(self: PluginTestCase):
     st = self.st
     st.register(local_minimum_info.LocalMinimumInfo)
     st.make(self.run_id, 'event_local_min_info')
-
 
 @PluginTestAccumulator.register('test_identify_local_extrema')
 def test_identify_local_extrema(self: PluginTestCase):
@@ -28,7 +26,6 @@ def test_identify_local_extrema(self: PluginTestCase):
     assert min1[0]==100
     assert len(max1) == 2
     assert len(max2) == 2
-
 
 @PluginTestAccumulator.register('test_full_gap_percent_valley')
 def test_full_gap_percent_valley(self: PluginTestCase):
