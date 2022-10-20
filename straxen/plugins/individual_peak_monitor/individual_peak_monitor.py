@@ -23,7 +23,7 @@ class IndividualPeakMonitor(strax.Plugin):
     """
 
     online_max_bytes = straxen.URLConfig(
-        default=10e6,
+        default=6e6,
         track=True,
         help='Maximum amount of bytes of data for MongoDB document'
     )
