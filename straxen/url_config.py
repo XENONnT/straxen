@@ -1,6 +1,6 @@
 import json
 import typing
-from typing import Container
+from typing import Container, Iterable
 from uuid import uuid4
 import numpy as np
 import strax
@@ -9,6 +9,8 @@ import pandas as pd
 import straxen
 import inspect
 from urllib.parse import urlparse, parse_qs
+from immutabledict import immutabledict
+
 from ast import literal_eval
 from strax.config import OMITTED
 import os
@@ -46,6 +48,12 @@ def parse_val(val: str):
     except SyntaxError:
         pass
     return val
+
+
+def get_item_or_attr(obj, key, default=None):
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
 
 @export
@@ -448,3 +456,40 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     for old_key, new_key in zip(replace_keys, with_keys):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
+
+
+@URLConfig.register('objects-to-dict')
+def objects_to_dict(objects: list, key_attr=None, value_attr='value', immutable=False):
+    '''Converts a list of objects/dicts to a single dictionary by taking the 
+    key and value from each of the objects/dicts. If key_attr is not provided,
+    the list index is used as the key.
+
+    :param objects: list of objects/dicts that will be converted to a dictionary
+    :param key_attr: key/attribute of the objects that will be used as key in the dictionary
+    :param value_attr: key/attribute of the objects that will be used as value in the dictionary
+    '''
+    if not isinstance(objects, Iterable):
+        raise TypeError(f'The objects-to-dict protocol expects an iterable '
+                        f'of objects but received {type(objects)} instead.')
+    result = {}
+    for i, obj in enumerate(objects):
+        key = i if key_attr is None else get_item_or_attr(obj, key_attr)
+        result[key] = get_item_or_attr(obj, value_attr)
+
+    if immutable:
+        result = immutabledict(result)
+        
+    return result
+
+
+@URLConfig.register('list-to-array')
+def objects_to_array(objects: list):
+    '''
+    Converts a list of objects/dicts to a numpy array.
+    :param objects: Any list of objects'''
+        
+    if not isinstance(objects, Iterable):
+        raise TypeError(f'The list-to-array protocol expects an '
+                        f'iterable but recieved a {type(objects)} instead')
+        
+    return np.array(objects)
