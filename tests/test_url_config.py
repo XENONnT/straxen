@@ -283,13 +283,13 @@ class TestURLConfig(unittest.TestCase):
             straxen.URLConfig.evaluate_dry(plugin_url)
 
     def test_objects_to_dict(self):
-        N = 3
-        self.st.set_config({'test_config': f'objects-to-dict://object-list://{N}?key_attr=a&value_attr=b'})
+        n = 3
+        self.st.set_config({'test_config': f'objects-to-dict://object-list://{n}?key_attr=a&value_attr=b'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-        self.assertEqual(p.test_config, {i:i+1 for i in range(3)})
+        self.assertEqual(p.test_config, {i:i+1 for i in range(n)})
 
     def test_list_to_array(self):
-        N = 3
-        self.st.set_config({'test_config': f'list-to-array://object-list://{N}'})
+        n = 3
+        self.st.set_config({'test_config': f'list-to-array://object-list://{n}'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertIsInstance(p.test_config, np.ndarray)
