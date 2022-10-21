@@ -106,7 +106,7 @@ def _test_child_options(st, run_id):
                                f'"{option_name}"!')
 
 
-def test_1T(ncores=2):
+def test_1T(ncores=1):
     st = straxen.contexts.xenon1t_dali()
     _update_context(st, ncores)
     st.register_all(straxen.legacy.plugins_1t.x1t_cuts)
@@ -121,3 +121,7 @@ def test_1T(ncores=2):
     _test_child_options(st, test_run_id_1T)
 
     print(st.context_config)
+
+def test_1T_mc():
+    # Run multicore
+    test_1T(2)
