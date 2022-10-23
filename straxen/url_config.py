@@ -378,14 +378,20 @@ class URLConfig(strax.Config):
         arg, url_kwargs = cls.split_url_kwargs(path)
         kwargs.update(url_kwargs)
 
-        kwargs = straxen.filter_kwargs(meth, kwargs)
-        kwargs = dict(sorted(kwargs.items()))
 
         if cls.SCHEME_SEP in arg:
             # url contains a nested protocol
             # first parsce sub-protocol
             arg = cls.url_to_ast(arg, **kwargs)
+
+        # Filter unused kwargs for this method.
+        # This is done also at the eval level but
+        # probably better to be safe.
+        kwargs = straxen.filter_kwargs(meth, kwargs)
         
+        # Always sort kwargs for consistent ASTs
+        kwargs = dict(sorted(kwargs.items()))
+
         return protocol, arg, kwargs
 
     @classmethod
@@ -436,9 +442,10 @@ class URLConfig(strax.Config):
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
         """
-        url_arg, url_kwarg = cls.split_url_kwargs(url)
+        protocol, url_arg, url_kwarg = cls.url_to_ast(url)
 
         combined_kwargs = dict(url_kwarg, **kwargs)
+
         for k,v in combined_kwargs.items():
             if isinstance(v, str) and cls.PLUGIN_ATTR_PREFIX in v:
                 raise ValueError(f'The URL parameter {k} depends on the plugin'
@@ -447,7 +454,7 @@ class URLConfig(strax.Config):
                                 f'Try passing {k} as a keyword argument.'
                                 f'e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`')
 
-        return cls.dispatch(cls, url_arg, **combined_kwargs)
+        return cls.eval(protocol, url_arg, combined_kwargs)
 
 @URLConfig.register('cmt')
 def get_correction(name: str,
