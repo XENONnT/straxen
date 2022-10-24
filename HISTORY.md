@@ -1,3 +1,16 @@
+v2.0.2 / 2022-10-24
+-------------------
+## What's Changed
+* New URLConfig protocols - list-to-array and list-to-dict by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1104
+* Single core 1T test by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1109
+
+New Contributors
+* @LuisSanchez25 made their first contribution in https://github.com/XENONnT/straxen/pull/1104
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.1...v2.0.2
+
+
 v2.0.1 / 2022-10-20
 -------------------
 * Use mongodb v4.4.1 when testing to match real version used in production by @jmosbacher in https://github.com/XENONnT/straxen/pull/1103
