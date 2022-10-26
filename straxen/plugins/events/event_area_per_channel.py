@@ -24,7 +24,7 @@ class EventAreaPerChannel(strax.LoopPlugin):
     def infer_dtype(self):
         # setting data type from peak dtype
         peak_dtype_dict = {}
-        for t_ in strax.peak_dtype(n_channels=494, digitize_top=True):
+        for t_ in strax.peak_dtype(n_channels=self.config['n_tpc_pmts'], digitize_top=True):
             peak_dtype_dict[t_[0][1]]=t_
 
         ## Populating data type
