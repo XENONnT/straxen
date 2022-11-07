@@ -232,6 +232,17 @@ class URLConfig(strax.Config):
                 
         return value
 
+    @classmethod
+    def deref_ast(cls, protocol, arg, kwargs, **namespace):
+        '''Dereference an AST by looking up values in namespace
+        '''
+        if isinstance(arg, tuple):
+            arg = cls.deref_ast(*arg, **namespace)
+        else:
+            arg = cls.lookup_value(arg, **namespace)
+        kwargs = {k: cls.lookup_value(v, **namespace) for k, v in kwargs.items()}
+        return protocol, arg, kwargs
+
     def validate(self, config,
                  run_id=None,   # TODO: will soon be removed
                  run_defaults=None, set_defaults=True):
@@ -299,12 +310,11 @@ class URLConfig(strax.Config):
 
         # not in cache, lets fetch it
         if value is None:
-            # resolve any referenced to plugin attributes
-            kwargs = {k: self.lookup_value(v, 
-                                        config=plugin.config, 
-                                        plugin=plugin)
-                  for k, v in kwargs.items()}
-
+            # resolve any referenced to plugin or config attributes
+            protocol, arg, kwargs = self.deref_ast(protocol, arg, kwargs,
+                                                config=plugin.config, 
+                                                plugin=plugin)
+                                                
             value = self.eval(protocol, arg, kwargs)
             self.cache[key] = value
 
