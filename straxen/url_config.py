@@ -62,6 +62,7 @@ class URLConfig(strax.Config):
 
     SCHEME_SEP = '://'
     QUERY_SEP = '?'
+    NAMESPACE_SEP = '.'
     PLUGIN_ATTR_PREFIX = 'plugin.'
 
     def __init__(self, cache=0, **kwargs):
@@ -209,8 +210,8 @@ class URLConfig(strax.Config):
         if isinstance(value, list):
             return [cls.lookup_value(v, **namespace) for v in value]
 
-        if isinstance(value, str) and '.' in value:
-            name, _, key = value.partition('.')
+        if isinstance(value, str) and cls.NAMESPACE_SEP in value:
+            name, _, key = value.partition(cls.NAMESPACE_SEP)
             if name in namespace:
                 obj = namespace[name]
                 if isinstance(obj, Mapping):
@@ -276,17 +277,10 @@ class URLConfig(strax.Config):
             # as string-literal config and returned as is
             return url
 
-        # separate out the query part of the URL which
-        # will become the method kwargs
-        url, kwargs = self.split_url_kwargs(url)
-        
-        # resolve any referenced to plugin attributes
-        kwargs = {k: self.lookup_value(v, config=plugin.config, plugin=plugin)
-                  for k, v in kwargs.items()}
+        # evaluate the url as AST
+        protocol, arg, kwargs = self.url_to_ast(url)
 
-        protocol, arg, kwargs = self.url_to_ast(url, **kwargs)
-
-        # construct a deterministic hash key
+        # construct a deterministic hash key from AST
         key = strax.deterministic_hash((protocol, arg, kwargs))
 
         # fetch from cache if exists
@@ -294,6 +288,12 @@ class URLConfig(strax.Config):
 
         # not in cache, lets fetch it
         if value is None:
+            # resolve any referenced to plugin attributes
+            kwargs = {k: self.lookup_value(v, 
+                                        config=plugin.config, 
+                                        plugin=plugin)
+                  for k, v in kwargs.items()}
+
             value = self.eval(protocol, arg, kwargs)
             self.cache[key] = value
 
