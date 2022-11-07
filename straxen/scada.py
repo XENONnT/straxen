@@ -1,4 +1,5 @@
 import urllib
+import posixpath
 import requests
 
 import pandas as pd
@@ -41,9 +42,8 @@ class SCADAInterface:
         self._token = None
         self.pmt_file_found = True
         try:
-            self.SCLogin_url = straxen.uconfig.get('scada', 'sclogin_url')
-            self.SCData_URL = straxen.uconfig.get('scada', 'scdata_url')
-            self.SCLastValue_URL = straxen.uconfig.get('scada', 'sclastvalue_url')
+            self.url = straxen.uconfig.get('scada', 'url')
+            self._set_urls()
 
         except ValueError as e:
             raise ValueError(f'Cannot load SCADA information, from your xenon'
@@ -62,7 +62,7 @@ class SCADAInterface:
         self.context = context
 
         self.we_are_straxen = True
-        self.get_new_token()
+        #self.get_new_token()
 
     def get_scada_values(self,
                          parameters,
@@ -555,9 +555,17 @@ class SCADAInterface:
         login_query = {'username': username,
                        'password': password,
                        }
-        res = requests.post(self.SCLogin_url,
-                            data=login_query)
-
+        try:
+            res = requests.post(self.SCLogin_url,
+                                data=login_query)
+            res.raise_for_status()
+        except requests.HTTPError:
+            self._switch_to_backup_url()
+            res = requests.post(self.SCLogin_url,
+                                data=login_query)
+            res.raise_for_status()
+            
+        self._login_response = res
         res = res.json()
         if 'token' not in res.keys():
             raise ValueError('Cannot get security token from Slow Control web API. '
@@ -581,7 +589,18 @@ class SCADAInterface:
         username = getpass.getpass('Xenon Username: ')
         password = getpass.getpass('Xenon Password: ')
         return username, password
-
+    
+    def _switch_to_backup_url(self):
+        warnings.warn('Regular URL not reachable switch to back-up url.')
+        self.url = straxen.uconfig.get('scada', 'backup_url')
+        self._set_urls()
+        
+    def _set_urls(self):
+        url = self.url
+        self.SCLogin_url = posixpath.join(url, 'Login')
+        self.SCData_URL = posixpath.join(url, 'GetSCData?')
+        self.SCLastValue_URL = posixpath.join(url, 'getLastMeasuredValue?')
+    
     def token_expires_in(self):
         """
         Function which displays how long until the current token expires.
