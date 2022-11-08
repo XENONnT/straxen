@@ -1,4 +1,3 @@
-from straxen.plugins.peak_processing import PeakBasics
 import straxen
 import strax
 import numpy as np
