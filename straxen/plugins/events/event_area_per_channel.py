@@ -18,7 +18,6 @@ class EventAreaPerChannel(strax.LoopPlugin):
     compressor = 'zstd'
     save_when = strax.SaveWhen.EXPLICIT
 
-    n_tpc_pmts = straxen.URLConfig(type=int, help='Number of TPC PMTs')
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
 
     def infer_dtype(self):
