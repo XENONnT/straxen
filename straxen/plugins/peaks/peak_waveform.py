@@ -3,8 +3,7 @@ import straxen
 import strax
 import numpy as np
 import numba
-from straxen.plugins.peaklet_processing import hit_max_sample
-from straxen.plugins.pulse_processing import HITFINDER_OPTIONS, HITFINDER_OPTIONS_he, HE_PREAMBLE
+from ..peaklets.peaklets import hit_max_sample
 export, __all__ = strax.exporter()
 
 
@@ -17,7 +16,6 @@ export, __all__ = strax.exporter()
                       '(str(model_config), str(version), nT-->boolean'),
     strax.Option('peak_waveform_max_s1_area', default=100, infer_type=False,
                  help='Maximum area of S1 we do hit analysis'),
-    *HITFINDER_OPTIONS,
 )
 class HitsS1(strax.OverlapWindowPlugin):
     """
@@ -39,13 +37,24 @@ class HitsS1(strax.OverlapWindowPlugin):
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
 
+    hit_min_amplitude = straxen.URLConfig(
+        track=True, infer_type=False,
+        default='cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id',
+        help='Minimum hit amplitude in ADC counts above baseline. '
+             'Specify as a tuple of length n_tpc_pmts, or a number,'
+             'or a string like "pmt_commissioning_initial" which means calling'
+             'hitfinder_thresholds.py'
+             'or a tuple like (correction=str, version=str, nT=boolean),'
+             'which means we are using cmt.'
+    )
+
 
     def setup(self):
         self.drift_time_max = int(straxen.tpc_z / self.electron_drift_velocity)
         self.to_pe = straxen.get_correction_from_cmt(self.run_id,
                                                      self.config['gain_model'])
         self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
-                                                              self.config['hit_min_amplitude'])
+                                                              hit_min_amplitude)
 
         return
 
@@ -118,7 +127,6 @@ class HitsS1(strax.OverlapWindowPlugin):
                  help='Minimum PMT areas we consider a shadow casting PMT'),
     strax.Option('hit_shadow_casting_time_backward', default=1000e6, infer_type=False,
                  help='Maximum of searching time for a casting shadow hit'),
-    *HITFINDER_OPTIONS,
 )
 class PeakWaveformS1(strax.OverlapWindowPlugin):
     """
