@@ -23,10 +23,7 @@ class EventAreaPerChannel(strax.LoopPlugin):
 
     def infer_dtype(self):
         # setting data type from peak dtype
-        peak_dtype_dict = {}
-        for t_ in strax.peak_dtype(n_channels=self.config['n_tpc_pmts'], digitize_top=True):
-            peak_dtype_dict[t_[0][1]]=t_
-
+        pfields_=self.deps['peaks'].dtype_for('peaks').fields
         ## Populating data type
         infoline = {'s1': 'main S1', 
                     's2': 'main S2', 
@@ -37,16 +34,16 @@ class EventAreaPerChannel(strax.LoopPlugin):
         # populating APC and waveform samples
         ptypes = ['s1', 's2', 'alt_s1', 'alt_s2']
         for type_ in ptypes:
-            dtype +=[((f'Area per channel for {infoline[type_]}', f'{type_}_area_per_channel'),)+
-                     peak_dtype_dict['area_per_channel'][1:]]
-            dtype +=[((f'Waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data'),)+
-                     peak_dtype_dict['data'][1:]]
-            dtype +=[((f'Top waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data_top'),)+
-                     peak_dtype_dict['data_top'][1:]]
-            dtype +=[((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),)+
-                     peak_dtype_dict['length'][1:]]
-            dtype +=[((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),)+
-                     peak_dtype_dict['dt'][1:]]
+            dtype +=[((f'Area per channel for {infoline[type_]}', f'{type_}_area_per_channel'),
+                     pfields_['area_per_channel'][0])]
+            dtype +=[((f'Waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data'),
+                     pfields_['data'][0])]
+            dtype +=[((f'Top waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data_top'),
+                     pfields_['data_top'][0])]
+            dtype +=[((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),
+                     pfields_['length'][0])]
+            dtype +=[((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),
+                     pfields_['dt'][0])]
         # populating S1 n channel properties
         dtype += [(("Main S1 count of contributing PMTs", "s1_n_channels"),
                   np.int16),
