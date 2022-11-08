@@ -54,3 +54,6 @@ from .event_s2_position_gcn import *
 
 from . import local_minimum_info
 from .local_minimum_info import *
+
+from . import event_waveform
+from .event_waveform import *

@@ -27,3 +27,6 @@ from .peak_shadow import *
 
 from . import peaks
 from .peaks import *
+
+from . import peak_waveform
+from .peak_waveform import *
