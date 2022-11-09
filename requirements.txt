@@ -1,7 +1,7 @@
 # datashader         # Optional, to enable wf display
 # holoviews          # Optional, to enable wf display
 # tensorflow>=2.3.0  # Optional, to (re)do posrec
-bokeh>=2.2.3
+bokeh>=2.2.3,<3
 commentjson
 gitpython
 immutabledict
