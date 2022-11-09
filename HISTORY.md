@@ -1,6 +1,16 @@
+v2.0.3 / 2022-11-09
+-------------------
+* Adding peak waveforms at event level by @terliuk in https://github.com/XENONnT/straxen/pull/1112
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.2...v2.0.3
+
+Notes:
+ * lineage changes for event_area_per_channel
+
+
 v2.0.2 / 2022-10-24
 -------------------
-## What's Changed
 * New URLConfig protocols - list-to-array and list-to-dict by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1104
 * Single core 1T test by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1109
 
