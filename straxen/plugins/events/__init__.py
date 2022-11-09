@@ -51,3 +51,6 @@ from .event_s2_position_cnn import *
 
 from . import event_s2_position_gcn
 from .event_s2_position_gcn import *
+
+from . import local_minimum_info
+from .local_minimum_info import *

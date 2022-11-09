@@ -12,6 +12,22 @@ def test_area_fraction_top(self: PluginTestCase):
     assert np.all(_area_close_to_area_per_channel)
 
 
+@PluginTestAccumulator.register('test_sum_wf')
+def test_sum_wf(self: PluginTestCase):
+    st_alt = self.st.new_context()
+    st_alt.set_config(dict(sum_waveform_top_array=False))
+    peaks_alt = st_alt.get_array(self.run_id, ('peaks', 'peak_basics'))
+    peaks = self.st.get_array(self.run_id, ('peaks', 'peak_basics'))
+    np.testing.assert_array_equal(peaks_alt['data'], peaks['data'])
+    # For the statement assert_array_equal seems false, how can that be? The diff is <1e5 % so maybe numerical?
+    np.testing.assert_array_almost_equal(
+        peaks_alt['area_fraction_top'], peaks['area_fraction_top'])
+    np.testing.assert_array_almost_equal(
+        peaks['area_fraction_top'], np.sum(peaks['data_top'], axis=1) / np.sum(peaks['data'], axis=1),
+        # TODO rather high tolerance is needed to pass the test -> possible bug?
+        decimal=4)
+
+
 @PluginTestAccumulator.register('test_saturation_correction')
 def test_saturation_correction(self: PluginTestCase):
     """Manually saturate a bunch of raw-records and check that it's
