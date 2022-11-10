@@ -31,6 +31,9 @@ class PeakTopBottomParams(strax.Plugin):
             dtype+=[((f'Width (in ns) of the central 90% area of the peak for {arr_} PMTs',
                       f'range_90p_area_{arr_}'),
                       peak_basics_fields['range_90p_area'][0])]
+        dtype+=[((f'Difference between center times of top and bottom arrays [ ns ]',
+                  f'center_time_diff_top_bot'),
+                  peak_basics_fields[f'center_time'][0])]
         dtype += strax.time_fields
         return dtype
 
@@ -70,6 +73,6 @@ class PeakTopBottomParams(strax.Plugin):
             result[f'range_50p_area_{arr_}'][mask] = fpeaks_['width'][mask][:, 5]
             result[f'range_90p_area_{arr_}'][:]=np.nan
             result[f'range_90p_area_{arr_}'][mask] = fpeaks_['width'][mask][:, 9]
+        result['center_time_diff_top_bot'] = (result[f'center_time_top'] - result[f'center_time_bot'])
         result['time'], result['endtime'] = peaks['time'], strax.endtime(peaks)
-
         return result

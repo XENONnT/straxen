@@ -13,7 +13,6 @@ class EventTopBottomParams(strax.Plugin):
     depends_on = ('event_info', 'event_area_per_channel')
     provides = 'event_top_bottom_params'
     __version__ = '0.0.0'
-    n_tpc_pmts = straxen.URLConfig(type=int, help='Number of TPC PMTs')
     def infer_dtype(self):
         ## Populating data type information
         infoline = {'s1': 'main S1',
@@ -40,6 +39,9 @@ class EventTopBottomParams(strax.Plugin):
                 dtype+=[((f'Width (in ns) of the central 90% area of the peak for {arr_} PMTs of {infoline[type_]}',
                           f'{type_}_range_90p_area_{arr_}'),
                           ev_info_fields[f'{type_}_range_90p_area'][0])]
+            dtype+=[((f'Difference between center times of top and bottom arrays for {infoline[type_]} [ ns ]',
+                      f'{type_}_center_time_diff_top_bot'),
+                      ev_info_fields[f'{type_}_center_time'][0])]
         dtype += strax.time_fields
         return dtype
 
@@ -86,4 +88,7 @@ class EventTopBottomParams(strax.Plugin):
                 result[f'{type_}_range_50p_area_{arr_}'][mask] = fpeaks_['width'][mask][:, 5]
                 result[f'{type_}_range_90p_area_{arr_}'][:]=np.nan
                 result[f'{type_}_range_90p_area_{arr_}'][mask] = fpeaks_['width'][mask][:, 9]
+            # Difference between center times of top and bottom arrays
+            result[f'{type_}_center_time_diff_top_bot'] = (result[f'{type_}_center_time_top'] -
+                                                            result[f'{type_}_center_time_bot'])
         return result
