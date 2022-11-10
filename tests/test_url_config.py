@@ -14,6 +14,11 @@ import numpy as np
 from datetime import datetime
 
 
+class DummyObject:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
 @straxen.URLConfig.register('random')
 def generate_random(_):
     return random.random()
@@ -27,6 +32,12 @@ def return_lamba(_):
 @straxen.URLConfig.register('large-array')
 def large_array(_):
     return np.ones(1_000_000).tolist()
+
+
+@straxen.URLConfig.register('object-list')
+def object_list(length):
+    length = int(length)
+    return [DummyObject(a=i, b=i+1) for i in range(length)]
 
 
 class ExamplePlugin(strax.Plugin):
@@ -163,16 +174,19 @@ class TestURLConfig(unittest.TestCase):
     def test_rekey(self):
         original_dict = {'a': 1, 'b': 2, 'c': 3}
         check_dict = {'anew': 1, 'bnew': 2, 'cnew': 3}
-        test_file = 'test_dict.json'
-        with open(test_file, 'w') as f:
+
+        temp_dir = tempfile.TemporaryDirectory()
+
+        fake_file_name = os.path.join(temp_dir.name, 'test_dict.json')
+        with open(fake_file_name, 'w') as f:
             json.dump(original_dict, f)
 
-        self.st.set_config({'test_config': f'rekey_dict://resource://{test_file}?'
+        self.st.set_config({'test_config': f'rekey_dict://resource://{fake_file_name}?'
                                            f'fmt=json&replace_keys=a,b,c'
                                            f'&with_keys=anew,bnew,cnew'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, check_dict)
-
+        temp_dir.cleanup()
 
     def test_print_protocol_desc(self):
         straxen.URLConfig.print_protocols()
@@ -267,3 +281,15 @@ class TestURLConfig(unittest.TestCase):
         # as in the plugin_url and should complain about that
         with self.assertRaises(ValueError):
             straxen.URLConfig.evaluate_dry(plugin_url)
+
+    def test_objects_to_dict(self):
+        n = 3
+        self.st.set_config({'test_config': f'objects-to-dict://object-list://{n}?key_attr=a&value_attr=b'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, {i:i+1 for i in range(n)})
+
+    def test_list_to_array(self):
+        n = 3
+        self.st.set_config({'test_config': f'list-to-array://object-list://{n}'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertIsInstance(p.test_config, np.ndarray)

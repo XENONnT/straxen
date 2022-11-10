@@ -108,13 +108,11 @@ def test_nveto_event_building(hitlets,
                               coincidence):
     """
     In this test we test the code of
-    straxen.plugins.veto_evnets.find_veto_events
+    straxen.plugins.events_nv.find_veto_events
     """
     hitlets = strax.sort_by_time(hitlets)
 
-    event_intervals = straxen.plugins.nveto_recorder.find_coincidence(hitlets,
-                                                                      coincidence,
-                                                                      300)
+    event_intervals = straxen.plugins.raw_records_coin_nv.find_coincidence(hitlets, coincidence, 300)
 
     mes = 'Found overlapping events returned by "coincidence".'
     assert np.all(event_intervals['endtime'][:-1] - event_intervals['time'][1:] < 0), mes
@@ -128,7 +126,7 @@ def test_nveto_event_building(hitlets,
 
     # Solve ambiguities (merge overlapping intervals)
     interval_truth = _test_ambiguity(hitlets_ids_in_event)
-    hitlets_ids_in_event = straxen.plugins.veto_events._solve_ambiguity(hitlets_ids_in_event)
+    hitlets_ids_in_event = straxen.plugins.events_nv._solve_ambiguity(hitlets_ids_in_event)
 
     mes = f'Found ambigious event for {hitlets_ids_in_event} with turth {interval_truth}'
     assert np.all(hitlets_ids_in_event == interval_truth), mes
@@ -173,15 +171,10 @@ def _test_ambiguity(hitlets_ids_in_event):
 def test_nveto_event_plugin(hitlets, area):
     hitlets['area'] = area
     hitlets = strax.sort_by_time(hitlets)
-    events, hitlets_ids_in_event = straxen.find_veto_events(hitlets,
-                                                            3,
-                                                            300,
-                                                            0)
+    events, hitlets_ids_in_event = straxen.find_veto_events(hitlets, 3, 300, 0)
 
-    straxen.plugins.veto_events.compute_nveto_event_properties(events,
-                                                               hitlets,
-                                                               hitlets_ids_in_event,
-                                                               start_channel=2000)
+    straxen.plugins.events_nv.compute_nveto_event_properties(events, hitlets, hitlets_ids_in_event,
+                                                             start_channel=2000)
     # Test some of the parameters:
     for e, hit_ids in zip(events, hitlets_ids_in_event):
         hits = hitlets[hit_ids[0]:hit_ids[1]]
@@ -219,16 +212,14 @@ def test_nveto_event_plugin(hitlets, area):
                                        ('z', np.float64)])
 
     events_angle = np.zeros(len(events),
-                            dtype=straxen.plugins.veto_events.veto_event_positions_dtype())
+                            dtype=straxen.plugins.event_positions_nv.veto_event_positions_dtype())
 
-    straxen.plugins.veto_events.compute_positions(events_angle,
-                                                  split_hitlets,
-                                                  npmt_pos,
-                                                  start_channel=2000)
+    straxen.plugins.event_positions_nv.compute_positions(
+        events_angle, split_hitlets, npmt_pos, start_channel=2000)
 
-    angle = straxen.plugins.veto_events.get_average_angle(split_hitlets,
-                                                          npmt_pos,
-                                                          start_channel=2000)
+    angle = straxen.plugins.event_positions_nv.get_average_angle(
+        split_hitlets, npmt_pos, start_channel=2000)
+
     # Compute truth angles:
     truth_angle = np.angle(events_angle['pos_x']+events_angle['pos_y']*1j)
     # Replace not defined angles, into zeros to match np.angles return

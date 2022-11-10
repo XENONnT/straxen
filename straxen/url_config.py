@@ -1,6 +1,7 @@
 import json
 import typing
-from typing import Container
+from typing import Container, Iterable
+from uuid import uuid4
 import numpy as np
 import strax
 import fsspec
@@ -8,6 +9,8 @@ import pandas as pd
 import straxen
 import inspect
 from urllib.parse import urlparse, parse_qs
+from immutabledict import immutabledict
+
 from ast import literal_eval
 from strax.config import OMITTED
 import os
@@ -45,6 +48,12 @@ def parse_val(val: str):
     except SyntaxError:
         pass
     return val
+
+
+def get_item_or_attr(obj, key, default=None):
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
 
 @export
@@ -207,19 +216,29 @@ class URLConfig(strax.Config):
         # will become the method kwargs
         url, url_kwargs = self.split_url_kwargs(url)
 
+
         kwargs = {k: self.fetch_attribute(plugin, v)
                   for k, v in url_kwargs.items()}
 
-        # construct a deterministic hash key
-        key = strax.deterministic_hash((url, kwargs))
-
-        # fetch from cache if exists
-        value = self.cache.get(key, None)
+        key = None
+        value = None
+        try:
+            # construct a deterministic hash key
+            key = strax.deterministic_hash((url, kwargs))
+                    
+            # fetch from cache if exists
+            value = self.cache.get(key, None)
+        except TypeError:
+            # kwargs contains unhashable types
+            # so we cannot cache the result
+            pass
 
         # not in cache, lets fetch it
         if value is None:
             value = self.dispatch(url, **kwargs)
-            self.cache[key] = value
+
+            if key is not None:
+                self.cache[key] = value
 
         return value
 
@@ -245,6 +264,7 @@ class URLConfig(strax.Config):
         """
         Utility function to quickly test and evaluate URL configs,
         without the initialization of plugins (so no plugin attributes).
+        plugin attributes can be passed as keyword arguments.
 
         example::
 
@@ -253,7 +273,7 @@ class URLConfig(strax.Config):
             URLConfig.evaluate_dry(url_string)
 
             # or similarly
-            url_string='cmt://electron_drift_velocity?version=v3'
+            url_string='cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3'
             URLConfig.evaluate_dry(url_string, run_id='027000')
 
         Please note that this has to be done outside of the plugin, so any
@@ -264,14 +284,18 @@ class URLConfig(strax.Config):
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
         """
-        if cls.PLUGIN_ATTR_PREFIX in url:
-            raise ValueError(
-                'You specified at least one parameter that depends on the '
-                'plugin. We cannot fetch this in the dry run. Try replacing '
-                'e.g. plugin.run_id=027000 with run_id=027000 (or pass as an '
-                'extra kwargs)')
         url_arg, url_kwarg = cls.split_url_kwargs(url)
-        return cls.dispatch(cls, url_arg, **url_kwarg, **kwargs)
+
+        combined_kwargs = dict(url_kwarg, **kwargs)
+        for k,v in combined_kwargs.items():
+            if isinstance(v, str) and cls.PLUGIN_ATTR_PREFIX in v:
+                raise ValueError(f'The URL parameter {k} depends on the plugin'
+                                'You must specify the value for this parameter'
+                                'for this URL to be evaluated correctly.'
+                                f'Try passing {k} as a keyword argument.'
+                                f'e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`')
+
+        return cls.dispatch(cls, url_arg, **combined_kwargs)
 
 @URLConfig.register('cmt')
 def get_correction(name: str,
@@ -280,8 +304,10 @@ def get_correction(name: str,
                    detector: str = 'nt',
                    **kwargs):
     """Get value for name from CMT"""
+
     if run_id is None:
-        raise ValueError('Attempting to fetch a correction without a run id.')
+        raise ValueError('Attempting to fetch a correction without a run id.')    
+
     return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
 
 
@@ -341,10 +367,12 @@ def format_arg(arg: str, **kwargs):
 
 
 @URLConfig.register('itp_map')
-def load_map(some_map, method='WeightedNearestNeighbors', **kwargs):
+def load_map(some_map, method='WeightedNearestNeighbors', scale_coordinates=None, **kwargs):
     """Make an InterpolatingMap"""
-    return straxen.InterpolatingMap(some_map, method=method, **kwargs)
-
+    itp_map = straxen.InterpolatingMap(some_map, method=method, **kwargs)
+    if scale_coordinates is not None:
+        itp_map.scale_coordinates(scale_coordinates)
+    return itp_map
 
 @URLConfig.register('bodega')
 def load_value(name: str, bodega_version=None):
@@ -356,7 +384,7 @@ def load_value(name: str, bodega_version=None):
 
 
 @URLConfig.register('tf')
-def open_neural_net(model_path: str, **kwargs):
+def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
     import tensorflow as tf
@@ -365,7 +393,7 @@ def open_neural_net(model_path: str, **kwargs):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
-        return tf.keras.models.load_model(tmpdirname)
+        return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
 
 
 @URLConfig.register('itp_dict')
@@ -428,3 +456,40 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     for old_key, new_key in zip(replace_keys, with_keys):
         new_dict[new_key] = new_dict.pop(old_key)
     return new_dict
+
+
+@URLConfig.register('objects-to-dict')
+def objects_to_dict(objects: list, key_attr=None, value_attr='value', immutable=False):
+    '''Converts a list of objects/dicts to a single dictionary by taking the 
+    key and value from each of the objects/dicts. If key_attr is not provided,
+    the list index is used as the key.
+
+    :param objects: list of objects/dicts that will be converted to a dictionary
+    :param key_attr: key/attribute of the objects that will be used as key in the dictionary
+    :param value_attr: key/attribute of the objects that will be used as value in the dictionary
+    '''
+    if not isinstance(objects, Iterable):
+        raise TypeError(f'The objects-to-dict protocol expects an iterable '
+                        f'of objects but received {type(objects)} instead.')
+    result = {}
+    for i, obj in enumerate(objects):
+        key = i if key_attr is None else get_item_or_attr(obj, key_attr)
+        result[key] = get_item_or_attr(obj, value_attr)
+
+    if immutable:
+        result = immutabledict(result)
+        
+    return result
+
+
+@URLConfig.register('list-to-array')
+def objects_to_array(objects: list):
+    '''
+    Converts a list of objects/dicts to a numpy array.
+    :param objects: Any list of objects'''
+        
+    if not isinstance(objects, Iterable):
+        raise TypeError(f'The list-to-array protocol expects an '
+                        f'iterable but recieved a {type(objects)} instead')
+        
+    return np.array(objects)

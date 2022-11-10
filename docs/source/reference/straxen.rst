@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    straxen.analyses
+   straxen.legacy
    straxen.plugins
    straxen.storage
 
@@ -50,14 +51,6 @@ straxen.get\_corrections module
 -------------------------------
 
 .. automodule:: straxen.get_corrections
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.hitfinder\_thresholds module
-------------------------------------
-
-.. automodule:: straxen.hitfinder_thresholds
    :members:
    :undoc-members:
    :show-inheritance:
