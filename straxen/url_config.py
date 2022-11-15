@@ -275,7 +275,8 @@ class URLConfig(strax.Config):
 
         for _, preprocessor in sorted_preprocessors:
             kwargs = filter_kwargs(preprocessor, full_kwargs)
-            cfg = preprocessor(cfg, **kwargs)
+            new_cfg = preprocessor(cfg, **kwargs)
+            cfg = new_cfg if new_cfg is not None else cfg
         
         config[self.name] = cfg
 
