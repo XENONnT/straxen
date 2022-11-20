@@ -15,7 +15,7 @@ class EventInfoMS(strax.Plugin):
     Get the sum of cs2 inside the drift length. 
     """
     __version__ = '0.0.1'
-    depends_on = ('events', 'peak_basics','peaks_per_event','peaks_corrections')
+    depends_on = ('event_info', 'peak_basics','peaks_per_event','peaks_corrections')
     provides = 'event_MS_naive'
 
 
