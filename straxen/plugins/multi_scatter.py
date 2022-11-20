@@ -14,8 +14,8 @@ class EventPeaks(strax.Plugin):
     Add event number for peaks and drift times of all s2 depending on the largest s1.
     Link - https://xe1t-wiki.lngs.infn.it/doku.php?id=weiss:analysis:ms_plugin
     """
-    __version__ = '0.0.57'
-    depends_on = ('event_info', 'peak_basics','peak_positions')
+    __version__ = '0.0.1'
+    depends_on = ('event_basics', 'peak_basics','peak_positions')
     provides = 'peaksevent'
     data_kind = 'peaks'
 
@@ -26,7 +26,6 @@ class EventPeaks(strax.Plugin):
         dtype += [
             ((f'event_number'), np.float32),
             ((f'drift_time'), np.float32),
-            ((f'correction'), np.float32),
              ]
         dtype += strax.time_fields
         return dtype
@@ -35,7 +34,6 @@ class EventPeaks(strax.Plugin):
  
         
     def compute(self, events, peaks):
-        EB = straxen.EventBasics()      
         split_peaks = strax.split_by_containment(peaks, events)
         split_peaks_ind = strax.fully_contained_in(peaks, events)
         result = np.zeros(len(peaks), self.infer_dtype())
@@ -63,9 +61,9 @@ class PeakCorrectedAreas(strax.Plugin):
     Future work needed:
     Energy as a function of cs2.
     """
-    __version__ = '0.0.13'
+    __version__ = '0.0.1'
 
-    depends_on = ['peak_basics','peak_positions','peaksevent']
+    depends_on = ['peak_basics','peak_positions','peaks_per_event']
     data_kind = 'peaks'
     provides = 'peaks_corrections'
     # Descriptor configs
@@ -240,20 +238,13 @@ class PeakCorrectedAreas(strax.Plugin):
    
 
 @export
-@strax.takes_config(
-    strax.Option(
-        name='max_drift_length',
-        default=straxen.tpc_z, infer_type=False,
-        help='Total length of the TPC from the bottom of gate to the '
-             'top of cathode wires [cm]',),
-)
 class EventInfoMS(strax.Plugin):
     """
     Get the sum of s2 and s1,
     Get the sum of cs2 inside the drift length. 
     """
-    __version__ = '0.0.9'
-    depends_on = ('event_info', 'peak_basics','peaksevent','peaks_corrections')
+    version = '0.0.1'
+    depends_on = ('events', 'peak_basics','peaks_per_event','peaks_corrections')
     provides = 'event_MS_naive'
 
 
@@ -263,11 +254,12 @@ class EventInfoMS(strax.Plugin):
         dtype += [
             ((f's1_sum'), np.float32),
             ((f's2_sum'), np.float32),
-            ((f'cs1_sum'), np.float32),
             ((f'cs2_sum'), np.float32),
+            ((f'cs2_wo_timecorr_sum'), np.float32),
+            ((f'cs2_wo_elifecorr_sum'), np.float32),
+            ((f'cs2_area_fraction_sum'), np.float32),
             ((f'ces_sum'), np.float32),
             ((f'e_charge_sum'), np.float32),
-            ((f'e_light_sum'), np.float32),
              ]
         dtype += strax.time_fields
         return dtype
@@ -294,8 +286,12 @@ class EventInfoMS(strax.Plugin):
         cache=True,
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z, infer_type=False,
+        help='Total length of the TPC from the bottom of gate to the '
+             'top of cathode wires [cm]', )
     def setup(self):
-        self.drift_time_max = int(self.config['max_drift_length'] / self.electron_drift_velocity)
+        self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
     def cs1_to_e(self, x):
         return self.lxe_w * x / self.g1
 
@@ -313,13 +309,14 @@ class EventInfoMS(strax.Plugin):
             cond = (sp["type"]==2)&(sp["drift_time"]>0)&(sp["drift_time"]< 1.01 * self.drift_time_max)
             result[f's2_sum'][event_i] = np.sum(sp[cond]['area'])
             result[f'cs2_sum'][event_i] = np.sum(sp[cond]['cs2'])
+            result[f'cs2_wo_timecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_timecorr'])
+            result[f'cs2_wo_elifecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_elifecorr'])
+            result[f'cs2_area_fraction_sum'][event_i] = np.sum(sp[cond]['cs2_area_fraction_top'])            
             result[f's1_sum'][event_i] = np.sum(sp[sp["type"]==1]['area'])
-            #result[f'cs1_sum'] = result[f's1_sum']*events['cs1']/events['s1_area']
-        el = self.cs1_to_e(result[f'cs1_sum'])
+        el = self.cs1_to_e(events[f'cs1'])
         ec = self.cs2_to_e(result[f'cs2_sum'])
         result[f'ces_sum'] = el+ec
         result[f'e_charge_sum'] = ec
-        result[f'e_light_sum'] = el 
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
         return result
