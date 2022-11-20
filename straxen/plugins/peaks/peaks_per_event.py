@@ -1,5 +1,5 @@
 import numba
-from straxen.plugins.position_reconstruction import DEFAULT_POSREC_ALGO
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 from straxen.common import pax_file, get_resource, first_sr1_run, rotate_perp_wires
 from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
