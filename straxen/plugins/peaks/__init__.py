@@ -27,3 +27,7 @@ from .peak_shadow import *
 
 from . import peaks
 from .peaks import *
+
+
+from . import peaks_per_event
+from .peaks_per_event import *
