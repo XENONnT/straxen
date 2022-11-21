@@ -25,8 +25,6 @@ class OnlinePeakMonitor(strax.Plugin):
     provides = 'online_peak_monitor'
     data_kind = 'online_peak_monitor'
 
-    rechunk_on_save = False
-
     area_vs_width_nbins = straxen.URLConfig(
         type=int, default=60,
         help='Number of bins for area vs width histogram for online monitor. '
