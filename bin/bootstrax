@@ -35,7 +35,6 @@ import pymongo
 from psutil import pid_exists, disk_usage, Process
 import pytz
 import strax
-strax.default_chunk_size_mb = 800
 import straxen
 import threading
 import pandas as pd
