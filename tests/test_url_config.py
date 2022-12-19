@@ -14,6 +14,10 @@ import numpy as np
 from datetime import datetime
 import xedocs
 
+try:
+    import xedocs
+except ImportError:
+    xedocs_installed = None
 
 class DummyObject:
     def __init__(self, **kwargs):
@@ -80,6 +84,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertTrue(abs(p.test_config-219203.49884000001) < 1e-2)
         
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
+    @unittest.skipIf(xedocs_installed is None, "Xedocs is not installed")
     def test_xedocs_protocol(self):
         self.st.set_config({'test_config': 'xedocs://electron_lifetimes?version=v1&run_id=plugin.run_id&attr=value'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
