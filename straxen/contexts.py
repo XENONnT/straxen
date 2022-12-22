@@ -271,7 +271,7 @@ def xenonnt_simulation(
                 _config_overlap=immutabledict(
                             drift_time_gate='electron_drift_time_gate',
                             drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife',
+                            # electron_lifetime_liquid='elife', # switched to xedocs
                 ),
                 **kwargs):
     """
