@@ -149,7 +149,9 @@ class TestSimContextNT(unittest.TestCase):
         """Some examples of how to run with a custom WFSim context"""
         self.context(cmt_run_id_sim='008000', cmt_run_id_proc='008001')
         self.context(cmt_run_id_sim='008000',
-                     cmt_option_overwrite_sim={'elife': 1e6})
+                    _config_overlap={},
+                    #  cmt_option_overwrite_sim={'elife': 1e6}
+                     )
 
         self.context(cmt_run_id_sim='008000',
                      overwrite_fax_file_sim={'elife': 1e6})
@@ -170,7 +172,8 @@ class TestSimContextNT(unittest.TestCase):
                      cmt_option_overwrite_proc={'elife': ('elife_constant', 1e5, True)},
                      overwrite_from_fax_file_proc=True,
                      overwrite_from_fax_file_sim=True,
-                     _config_overlap={'electron_lifetime_liquid': 'elife'},
+                     _config_overlap={},
+                    #  _config_overlap={'electron_lifetime_liquid': 'elife'},
                      )
 
     def test_nt_sim_context_bad_inits(self):

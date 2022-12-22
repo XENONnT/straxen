@@ -363,6 +363,9 @@ def xenonnt_simulation(
                         ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
     fax_config_override_from_cmt = dict()
     for fax_field, cmt_field in _config_overlap.items():
+        if cmt_field not in cmt_options:
+            continue
+
         value = cmt_options[cmt_field]
 
         # URL configs need to be converted to the expected format
