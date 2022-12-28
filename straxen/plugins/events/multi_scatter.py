@@ -77,7 +77,7 @@ class EventInfoMS(strax.Plugin):
    
          #1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
-            cond = (sp["type"]==2)&(sp["drift_time"]>0)&(sp["drift_time"]< 1.01 * self.drift_time_max)
+            cond = (sp["type"]==2)&(sp["drift_time"]>0)&(sp["drift_time"]< 1.01 * self.drift_time_max)&(sp["cs2"]>0)
             result[f's2_sum'][event_i] = np.sum(sp[cond]['area'])
             result[f'cs2_sum'][event_i] = np.sum(sp[cond]['cs2'])
             result[f'cs2_wo_timecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_timecorr'])
