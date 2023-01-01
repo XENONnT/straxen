@@ -402,10 +402,14 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
 
 
 @strax.Context.add_method
-def apply_xedocs_configs(context: strax.Context, version: str) -> None:
+def apply_xedocs_configs(context: strax.Context, 
+                         version: str, db='straxen_db') -> None:
     import xedocs
 
-    docs = xedocs.find_docs('context_configs', version=version)
+    docs = xedocs.find_docs('context_configs', 
+                            datasource=db, 
+                            version=version)
+
     global_config = {doc.config_name: doc.value for doc in docs}
     if len(global_config):
         context.set_config(global_config)
