@@ -2,6 +2,8 @@ import straxen
 import strax
 import numpy as np
 import numba
+from straxen.plugins.peaks.peak_basics import PeakBasics
+
 
 export, __all__ = strax.exporter()
 
@@ -139,7 +141,7 @@ class EventWaveformS2(strax.OverlapWindowPlugin):
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
         for i in range(len(split_peaklets)):
-            peaklets_head = split_peaklets[i][:selfpeaklet_number_event_waveform_s2]
+            peaklets_head = split_peaklets[i][:self.peaklet_number_event_waveform_s2]
             result[i]['s2_peaklet_area'] = np.pad(peaklets_head['area'],
                                                   (0, self.peaklet_number_event_waveform_s2 - len(peaklets_head)))
             result[i]['s2_peaklet_center_time'] = np.pad(
