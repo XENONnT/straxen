@@ -8,15 +8,6 @@ export, __all__ = strax.exporter()
 
 
 
-
-@export
-@strax.takes_config(
-    strax.Option('gain_model', infer_type=False,
-                 help='PMT gain model. Specify as '
-                      '(str(model_config), str(version), nT-->boolean'),
-    strax.Option('peak_waveform_max_s1_area', default=100, infer_type=False,
-                 help='Maximum area of S1 we do hit analysis'),
-)
 class HitsS1(strax.OverlapWindowPlugin):
     """
     Return timing and area for single hits in S1s.
@@ -28,6 +19,13 @@ class HitsS1(strax.OverlapWindowPlugin):
     provides = 'hits_s1'
     data_kind = 'hits'
     save_when = strax.SaveWhen.ALWAYS
+
+    peak_waveform_max_s1_area = straxen.URLConfig(default=100, infer_type=False,
+                                                  help='Maximum area of S1 we do hit analysis')
+
+    gain_model = straxen.URLConfig(infer_type=False,
+                                   help='PMT gain model. Specify as (model_type, model_config)',
+                                   )
 
     electron_drift_velocity = straxen.URLConfig(
         default='cmt://'
@@ -51,11 +49,8 @@ class HitsS1(strax.OverlapWindowPlugin):
 
     def setup(self):
         self.drift_time_max = int(straxen.tpc_z / self.electron_drift_velocity)
-        self.to_pe = straxen.get_correction_from_cmt(self.run_id,
-                                                     self.config['gain_model'])
-        self.hit_thresholds = straxen.get_correction_from_cmt(self.run_id,
-                                                              hit_min_amplitude)
-
+        self.to_pe = self.gain_model
+        self.hit_thresholds = self.hit_min_amplitude
         return
 
     def infer_dtype(self):
@@ -103,7 +98,7 @@ class HitsS1(strax.OverlapWindowPlugin):
 
     def compute(self, peaks, records):
         # Perform waveform analysis only on records contained in small S1s
-        mask = (peaks['type'] == 1) & (peaks['area'] <= self.config['peak_waveform_max_s1_area'])
+        mask = (peaks['type'] == 1) & (peaks['area'] <= self.peak_waveform_max_s1_area)
         records_in_s1 = strax.split_touching_windows(records, peaks[mask])
         if records_in_s1:
             # if there is any records contained in S1
