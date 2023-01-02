@@ -167,6 +167,7 @@ def test_event_waveform(self):
     if _is_empty_data_test(self.st, self.run_id):
         return
     from straxen.plugins.events.event_waveform import EventAmbienceS1, EventWaveformS1, EventWaveformS2, EventAmbienceS2
+    self.st.register([EventAmbienceS1, EventWaveformS1, EventWaveformS2, EventAmbienceS2])
     df_1 = self.st.get_df(self.run_id, 'event_waveform_s1')
     df_2 = self.st.get_df(self.run_id, 'event_waveform_s2')
     df_3 = self.st.get_df(self.run_id, 'event_ambience_s1')
