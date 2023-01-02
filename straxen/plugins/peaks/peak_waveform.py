@@ -207,7 +207,7 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
 
         # Searching window is from hit_shadow_casting_time_backward to hits_max_time
         roi_shadow = np.zeros(len(hitlet), dtype=strax.time_fields)
-        roi_shadow['time'] = hitlet['hits_max_time'] - selfhit_shadow_casting_time_backward
+        roi_shadow['time'] = hitlet['hits_max_time'] - self.hit_shadow_casting_time_backward
         roi_shadow['endtime'] = hitlet['hits_max_time']
         # Use temp_peaks endtime as time to search, to avoid the hits' own peak to join the shadow
         temp_peaks = np.zeros(len(peaks), dtype=strax.time_fields)
