@@ -13,6 +13,9 @@ from .event_ambience import *
 from . import event_area_per_channel
 from .event_area_per_channel import *
 
+from . import event_top_bottom_params
+from .event_top_bottom_params import *
+
 from . import event_basics
 from .event_basics import *
 
