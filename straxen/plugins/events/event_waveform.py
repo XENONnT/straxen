@@ -140,7 +140,7 @@ class EventWaveformS2(strax.OverlapWindowPlugin):
         result = np.zeros(len(events), self.dtype)
         result['time'] = events['time']
         result['endtime'] = strax.endtime(events)
-        for i in range(len(split_peaklets)):
+        for i, _ in enumerate(split_peaklets):
             peaklets_head = split_peaklets[i][:self.peaklet_number_event_waveform_s2]
             result[i]['s2_peaklet_area'] = np.pad(peaklets_head['area'],
                                                   (0, self.peaklet_number_event_waveform_s2 - len(peaklets_head)))
