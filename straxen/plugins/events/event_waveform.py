@@ -2,7 +2,7 @@ import straxen
 import strax
 import numpy as np
 import numba
-from straxen.plugins.peaks.peak_basics import PeakBasics
+from ..peaks.peak_basics import PeakBasics
 
 
 export, __all__ = strax.exporter()
