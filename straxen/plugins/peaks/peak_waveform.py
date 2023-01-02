@@ -4,8 +4,8 @@ import strax
 import numpy as np
 import numba
 from ..peaklets.peaklets import hit_max_sample
-export, __all__ = strax.exporter()
 
+export, __all__ = strax.exporter()
 
 
 class HitsS1(strax.OverlapWindowPlugin):
@@ -46,7 +46,6 @@ class HitsS1(strax.OverlapWindowPlugin):
              'which means we are using cmt.'
     )
 
-
     def setup(self):
         self.drift_time_max = int(straxen.tpc_z / self.electron_drift_velocity)
         self.to_pe = self.gain_model
@@ -55,12 +54,12 @@ class HitsS1(strax.OverlapWindowPlugin):
 
     def infer_dtype(self):
         self.hits1_dtype = [
-                            # name                dtype       comment
-                            ('hits_max_time',     np.int64,   'Hits max_time'),
-                            ('hits_area',         np.float64, 'Hits area'),
-                            ('hits_channel',      np.int16,   'Hits channel'),
-                            ('hits_height',       np.float64, 'Hits height'),
-                            ]
+            # name                dtype       comment
+            ('hits_max_time', np.int64, 'Hits max_time'),
+            ('hits_area', np.float64, 'Hits area'),
+            ('hits_channel', np.int16, 'Hits channel'),
+            ('hits_height', np.float64, 'Hits height'),
+        ]
         dtype = strax.time_fields + self.hits1_dtype
         return dtype
 
@@ -107,22 +106,6 @@ class HitsS1(strax.OverlapWindowPlugin):
             return hitlets
 
 
-
-
-@export
-@strax.takes_config(
-    strax.Option('gain_model', infer_type=False,
-                 help='PMT gain model. Specify as '
-                      '(str(model_config), str(version), nT-->boolean'),
-    strax.Option('peak_waveform_max_s1_area', default=100, infer_type=False,
-                 help='Maximum area of S1 we do hit analysis'),
-    strax.Option('hit_number_peak_waveform_s1', default=10, type=int,
-                 help='Number of hits we stored in peaks'),
-    strax.Option('hit_shadow_casting_pmt_pe_threshold', default=2, infer_type=False,
-                 help='Minimum PMT areas we consider a shadow casting PMT'),
-    strax.Option('hit_shadow_casting_time_backward', default=1000e6, infer_type=False,
-                 help='Maximum of searching time for a casting shadow hit'),
-)
 class PeakWaveformS1(strax.OverlapWindowPlugin):
     """
     Return timing and area for single hits in S1s.
@@ -136,6 +119,17 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
     data_kind = 'peaks'
     save_when = strax.SaveWhen.ALWAYS
 
+    peak_waveform_max_s1_area = straxen.URLConfig(default=100, infer_type=False,
+                                                  help='Maximum area of S1 we do hit analysis')
+    hit_number_peak_waveform_s1 = straxen.URLConfig(default=10, type=int,
+                                                    help='Number of hits we stored in peaks')
+    hit_shadow_casting_pmt_pe_threshold = straxen.URLConfig(default=2, infer_type=False,
+                                                            help='Minimum PMT areas we consider a shadow casting PMT')
+    hit_shadow_casting_time_backward = straxen.URLConfig(default=1000e6, infer_type=False,
+                                                         help='Maximum of searching time for a casting shadow hit')
+    gain_model = straxen.URLConfig(infer_type=False,
+                                   help='PMT gain model. Specify as (model_type, model_config)',
+                                   )
     electron_drift_velocity = straxen.URLConfig(
         default='cmt://'
                 'electron_drift_velocity'
@@ -146,23 +140,24 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
 
     def infer_dtype(self):
         self.hits1_dtype_hit = [
-                            # name                dtype       comment
-                            ('hits_max_time',     np.int64,   'Hits max_time'),
-                            ('hits_area',         np.float64, 'Hits area'),
-                            ('hits_channel',      np.int16,   'Hits channel'),
-                            ('hits_height',       np.float64, 'Hits height'),
-                            ]
+            # name                dtype       comment
+            ('hits_max_time', np.int64, 'Hits max_time'),
+            ('hits_area', np.float64, 'Hits area'),
+            ('hits_channel', np.int16, 'Hits channel'),
+            ('hits_height', np.float64, 'Hits height'),
+        ]
         self.hits1_dtype_shadow = [
-                            # name                dtype       comment
-                            ('hits_shadow_dt',     np.int64,   'Hits time difference to prehits'),
-                            ('hits_shadow',        np.float64, 'Hits shadow'),
-                            ('hits_prehits_area',  np.float64, 'Hits prehits area'),
-                            ]
+            # name                dtype       comment
+            ('hits_shadow_dt', np.int64, 'Hits time difference to prehits'),
+            ('hits_shadow', np.float64, 'Hits shadow'),
+            ('hits_prehits_area', np.float64, 'Hits prehits area'),
+        ]
         self.hits1_dtype = self.hits1_dtype_shadow + self.hits1_dtype_hit
         dtype = strax.time_fields
         for item in self.hits1_dtype:
             (_name, _dtype, _comment) = item
-            dtype = dtype + [((f'{_comment} in peak level', f'peak_{_name}'), _dtype, (self.config['hit_number_peak_waveform_s1']))]
+            dtype = dtype + [
+                ((f'{_comment} in peak level', f'peak_{_name}'), _dtype, (self.hit_number_peak_waveform_s1))]
         return dtype
 
     def setup(self):
@@ -170,7 +165,7 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
         return
 
     def get_window_size(self):
-        return self.config['hit_shadow_casting_time_backward']
+        return self.hit_shadow_casting_time_backward
 
     @staticmethod
     @numba.njit
@@ -189,7 +184,7 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
             for idx in range(indices[0], indices[1]):
                 casting_peak = pre_peaks[idx]
                 dt = suspicious_hit['hits_max_time'] - casting_peak['center_time']
-                if dt<=0:
+                if dt <= 0:
                     continue
                 # We only need the specific channel area for hit shadow
                 casting_pmt_pe = casting_peak['area_per_channel'][suspicious_hit['hits_channel']]
@@ -200,20 +195,19 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
                         hits['hits_shadow_dt'][p_i] = dt
                         hits['hits_prehits_area'][p_i] = casting_pmt_pe
 
-
     def compute(self, peaks, hits):
         result = np.zeros(len(peaks), self.dtype)
         result['time'] = peaks['time']
         result['endtime'] = peaks['endtime']
         result['peak_hits_channel'] = -1
 
-        hitlet = np.zeros(len(hits), dtype=[(elem[0], elem[1]) for elem in self.hits1_dtype+strax.time_fields])
+        hitlet = np.zeros(len(hits), dtype=[(elem[0], elem[1]) for elem in self.hits1_dtype + strax.time_fields])
         for dtype in self.hits1_dtype_hit:
             hitlet[dtype[0]] = hits[dtype[0]]
 
         # Searching window is from hit_shadow_casting_time_backward to hits_max_time
         roi_shadow = np.zeros(len(hitlet), dtype=strax.time_fields)
-        roi_shadow['time'] = hitlet['hits_max_time'] - self.config['hit_shadow_casting_time_backward']
+        roi_shadow['time'] = hitlet['hits_max_time'] - selfhit_shadow_casting_time_backward
         roi_shadow['endtime'] = hitlet['hits_max_time']
         # Use temp_peaks endtime as time to search, to avoid the hits' own peak to join the shadow
         temp_peaks = np.zeros(len(peaks), dtype=strax.time_fields)
@@ -223,10 +217,10 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
                         pre_peaks=peaks,
                         touching_windows=split_shadow_window,
                         exponent=int(-1),
-                        pmt_area_threshold=self.config['hit_shadow_casting_pmt_pe_threshold'])
+                        pmt_area_threshold=self.hit_shadow_casting_pmt_pe_threshold)
 
         # Perform waveform analysis only on records contained in small S1s
-        mask = (peaks['type'] == 1) & (peaks['area'] <= self.config['peak_waveform_max_s1_area'])
+        mask = (peaks['type'] == 1) & (peaks['area'] <= self.peak_waveform_max_s1_area)
         # Search for hit-s1 matching with maxtime
         temp = np.zeros(len(hitlet), dtype=strax.time_fields)
         temp['time'] = temp['endtime'] = hitlet['hits_max_time']
@@ -234,23 +228,18 @@ class PeakWaveformS1(strax.OverlapWindowPlugin):
         for i, index in zip(range(mask.sum()),
                             np.arange(len(mask))[mask]):
             left_i, right_i = split_hits_window[i]
-            hitlet_head = hitlet[left_i:right_i][:self.config['hit_number_peak_waveform_s1']]
+            hitlet_head = hitlet[left_i:right_i][:self.hit_number_peak_waveform_s1]
             for name in [elem[0] for elem in self.hits1_dtype]:
                 if 'channel' in name:
                     constant_values = -1
                 else:
                     constant_values = 0
                 result[index][f'peak_{name}'] = np.pad(hitlet_head[name],
-                                                       (0, self.config['hit_number_peak_waveform_s1'] - len(hitlet_head)),
+                                                       (0, self.hit_number_peak_waveform_s1 - len(hitlet_head)),
                                                        constant_values=constant_values)
         return result
 
 
-@export
-@strax.takes_config(
-    strax.Option('hit_number_peak_ambience_s1', default=20, type=int,
-                 help='Number of hits we stored in peaks for ambience'),
-)
 class PeakAmbienceS1(strax.OverlapWindowPlugin):
     """
     Return the first peak_number lone_hits information in a window near S1
@@ -262,6 +251,8 @@ class PeakAmbienceS1(strax.OverlapWindowPlugin):
     data_kind = 'peaks'
     save_when = strax.SaveWhen.ALWAYS
 
+    hit_number_peak_ambience_s1 = straxen.URLConfig(default=20, type=int,
+                                                    help='Number of hits we stored in peaks for ambience')
     electron_drift_velocity = straxen.URLConfig(
         default='cmt://'
                 'electron_drift_velocity'
@@ -269,11 +260,12 @@ class PeakAmbienceS1(strax.OverlapWindowPlugin):
         cache=True,
         help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
+
     def infer_dtype(self):
         dtype = strax.time_fields + [
-            (('Lone hits time in peak level', 'lone_hits_time'), np.int64, (self.config['hit_number_peak_ambience_s1'])),
-            (('Lone hits area in peak level', 'lone_hits_area'), np.float64, (self.config['hit_number_peak_ambience_s1'])),
-            (('Lone hits channel in peak level', 'lone_hits_channel'), np.int16, (self.config['hit_number_peak_ambience_s1']))]
+            (('Lone hits time in peak level', 'lone_hits_time'), np.int64, (self.hit_number_peak_ambience_s1)),
+            (('Lone hits area in peak level', 'lone_hits_area'), np.float64, (self.hit_number_peak_ambience_s1)),
+            (('Lone hits channel in peak level', 'lone_hits_channel'), np.int16, (self.hit_number_peak_ambience_s1))]
         return dtype
 
     def setup(self):
@@ -316,6 +308,5 @@ class PeakAmbienceS1(strax.OverlapWindowPlugin):
                              container=peaks,
                              things_time_only=lone_hits['time'],
                              things_dtype_only=lone_hits[_dtype],
-                             peak_number=self.config['hit_number_peak_ambience_s1'])
+                             peak_number=self.hit_number_peak_ambience_s1)
         return result
-
