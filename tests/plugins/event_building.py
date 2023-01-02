@@ -161,6 +161,19 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     _ = self.st.get_array(self.run_id, 'corrected_areas')
     temp_dir.cleanup()
 
+@PluginTestAccumulator.register('test_event_waveform')
+def test_event_waveform(self):
+    """Do a dummy check on event-info that it loads"""
+    if _is_empty_data_test(self.st, self.run_id):
+        return
+    from straxen.plugins.events.event_waveform import EventAmbienceS1, EventWaveformS1, EventWaveformS2, EventAmbienceS2
+    df_1 = self.st.get_df(self.run_id, 'event_waveform_s1')
+    df_2 = self.st.get_df(self.run_id, 'event_waveform_s2')
+    df_3 = self.st.get_df(self.run_id, 'event_ambience_s1')
+    df_4 = self.st.get_df(self.run_id, 'event_ambience_s2')
+
+
+
 
 def _is_empty_data_test(st, run_id):
     return str(st.key_for(run_id, 'raw_records')) == f'{run_id}-raw_records-5uvrrzwhnl'

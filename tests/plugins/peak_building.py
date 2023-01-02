@@ -3,6 +3,13 @@ from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 import numpy as np
 import strax
 
+@PluginTestAccumulator.register('test_peak_waveform')
+def test_peak_waveform(self: PluginTestCase):
+    from straxen.plugins.peaks.peak_waveform import HitsS1, PeakWaveformS1, PeakAmbienceS1
+    self.st.register([HitsS1, PeakWaveformS1, PeakAmbienceS1])
+    df = self.st.get_array(self.run_id, 'hits_s1', progress_bar=False)
+    df = self.st.get_array(self.run_id, 'peak_waveform_s1', progress_bar=False)
+    df = self.st.get_array(self.run_id, 'peak_ambience_s1', progress_bar=False)
 
 @PluginTestAccumulator.register('test_area_fraction_top')
 def test_area_fraction_top(self: PluginTestCase):
@@ -54,6 +61,8 @@ def test_saturation_correction(self: PluginTestCase):
                                     end=np.max(strax.endtime(rr)))
     assert len(peaklets)
     # TODO add more tests to see if results make sense
+
+
 
 
 if __name__ == '__main__':
