@@ -548,7 +548,10 @@ def infer_target(rd: dict) -> dict:
 
     # Special modes override target for these
     led_modes = ['pmtgain']
-    diagnostic_modes = ['exttrig', 'noise']
+    diagnostic_modes = ['exttrig', 'noise', 
+                        'nVeto_LASER_calibration', 
+                        'mv_diffuserballs', 'mv_fibres',  'mv_darkrate',
+                       ]
     ap_modes = ['pmtap']
     mode = str(rd.get('mode'))
     detectors = list(rd.get('detectors'))
