@@ -411,6 +411,7 @@ def apply_xedocs_configs(context: strax.Context,
                             version=version)
 
     global_config = {doc.config_name: doc.value for doc in docs}
+    
     if len(global_config):
         context.set_config(global_config)
     else:
