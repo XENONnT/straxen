@@ -5,6 +5,6 @@ m2r==0.2.1
 mistune==0.8.4 
 nbsphinx==0.8.9
 recommonmark==0.7.1
-sphinx==5.3.0
+sphinx==6.1.2
 sphinx_rtd_theme==1.0.0
 Jinja2==3.0.3
