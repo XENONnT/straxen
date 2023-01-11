@@ -298,7 +298,7 @@ class Peaklets(strax.Plugin):
 
         peaklets['tight_coincidence'] = tight_coincidence_channel
 
-        self.hit_time_diff(hits, hit_max_times, peaklets)
+        self.hit_time_diff(hitlets, hit_max_times, peaklets)
 
         if self.diagnose_sorting and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
@@ -369,13 +369,13 @@ class Peaklets(strax.Plugin):
         outside_peaks[-1]['endtime'] = end
         return outside_peaks
 
-    def hit_time_diff(self, hits, hit_max_times, peaklets):
+    def hit_time_diff(self, hitlets, hit_max_times, peaklets):
         hits_w_max = np.zeros(
-            len(hits),
+            len(hitlets),
             strax.merged_dtype(
                 [np.dtype([('max_time', np.int64)]), np.dtype(strax.time_fields)]))
-        hits_w_max['time'] = hits['time']
-        hits_w_max['endtime'] = strax.endtime(hits)
+        hits_w_max['time'] = hitlets['time']
+        hits_w_max['endtime'] = strax.endtime(hitlets)
         hits_w_max['max_time'] = hit_max_times
         split_hits = strax.split_by_containment(hits_w_max, peaklets)
         for peaklet, sh in zip(peaklets, split_hits):
