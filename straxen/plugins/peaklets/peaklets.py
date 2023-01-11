@@ -37,7 +37,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '1.0.1'
+    __version__ = '1.0.2'
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False,
@@ -192,6 +192,8 @@ class Peaklets(strax.Plugin):
             result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True),
             max_duration=self.peaklet_max_duration,
         )
+
+        self.hit_time_diff(hits, peaklets)
 
         # Make sure peaklets don't extend out of the chunk boundary
         # This should be very rare in normal data due to the ADC pretrigger
@@ -366,6 +368,17 @@ class Peaklets(strax.Plugin):
         outside_peaks[-1]['time'] = strax.endtime(peaklets[-1])
         outside_peaks[-1]['endtime'] = end
         return outside_peaks
+
+    def hit_time_diff(self, hits, peaklets):
+        split_hits = strax.split_by_containment(hits, peaklets)
+        for peaklet, sh in zip(peaklets, split_hits):
+            max_time_diff = np.diff(np.sort(sh['max_time']))
+            if len(max_time_diff):
+                peaklet['max_diff'] = max_time_diff.max()
+                peaklet['min_diff'] = max_time_diff.min()
+            else:
+                peaklet['max_diff'] = -1
+                peaklet['min_diff'] = -1
 
 def drop_data_top_field(peaklets, goal_dtype, _name_function= '_drop_data_top_field'):
     """Return peaklets without the data_top field"""

@@ -14,7 +14,7 @@ class Peaks(strax.Plugin):
     (replacing all peaklets that were later re-merged as S2s). As this
     step is computationally trivial, never save this plugin.
     """
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
 
     depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
     data_kind = 'peaks'
