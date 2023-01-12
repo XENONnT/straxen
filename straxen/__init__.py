@@ -38,3 +38,8 @@ try:
     from .holoviews_utils import *
 except ModuleNotFoundError:
     pass
+
+from .entry_points import load_entry_points
+
+load_entry_points()
+del load_entry_points
