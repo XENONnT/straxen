@@ -82,13 +82,13 @@ class EventBasics(strax.Plugin):
             (f'alt_s1_max_gap', np.int32,
              f'Alternate S1 largest gap between hits [ns]'),
             (f's1_max_diff', np.int32,
-             f'Main S1 largest time difference between hits [ns]'),
+             f'Main S1 largest time difference between apexes of hits [ns]'),
             (f'alt_s1_max_diff', np.int32,
-             f'Alternate S1 largest time difference between hits [ns]'),
+             f'Alternate S1 largest time difference between apexes of hits [ns]'),
             (f's1_min_diff', np.int32,
-             f'Main S1 smallest time difference between hits [ns]'),
+             f'Main S1 smallest time difference between apexes of hits [ns]'),
             (f'alt_s1_min_diff', np.int32,
-             f'Alternate S1 smallest time difference between hits [ns]')
+             f'Alternate S1 smallest time difference between apexes of hits [ns]')
         ]
 
         dtype += [

@@ -56,9 +56,9 @@ class PeakBasics(strax.Plugin):
           'type'), np.int8),
         (('Largest gap between hits inside peak [ns]',
           'max_gap'), np.int32),
-        (('Largest difference between hits max_time inside peak [ns]',
+        (('Largest time difference between apexes of hits inside peak [ns]',
           'max_diff'), np.int32),
-        (('Smallest difference between hits max_time inside peak [ns]',
+        (('Smallest time difference between apexes of hits inside peak [ns]',
           'min_diff'), np.int32),
     ]
 
