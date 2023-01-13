@@ -19,7 +19,7 @@ class EventBasics(strax.Plugin):
     alternative S2 is selected as the largest S2 other than main S2
     in the time window [main S1 time, main S1 time + max drift time].
     """
-    __version__ = '1.3.2'
+    __version__ = '1.3.3'
 
     depends_on = ('events',
                   'peak_basics',
@@ -80,7 +80,15 @@ class EventBasics(strax.Plugin):
             (f's1_max_gap', np.int32,
              f'Main S1 largest gap between hits [ns]'),
             (f'alt_s1_max_gap', np.int32,
-             f'Alternate S1 largest gap between hits [ns]')
+             f'Alternate S1 largest gap between hits [ns]'),
+            (f's1_max_diff', np.int32,
+             f'Main S1 largest time difference between hits [ns]'),
+            (f'alt_s1_max_diff', np.int32,
+             f'Alternate S1 largest time difference between hits [ns]'),
+            (f's1_min_diff', np.int32,
+             f'Main S1 smallest time difference between hits [ns]'),
+            (f'alt_s1_min_diff', np.int32,
+             f'Alternate S1 smallest time difference between hits [ns]')
         ]
 
         dtype += [
@@ -261,7 +269,7 @@ class EventBasics(strax.Plugin):
             for largest_index, main_or_alt in enumerate(['s', 'alt_s']):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
                 if s_i == 1:
-                    peak_properties_to_save += ['max_gap']
+                    peak_properties_to_save += ['max_gap', 'max_diff', 'min_diff']
                 elif s_i == 2:
                     peak_properties_to_save += ['x', 'y']
                     peak_properties_to_save += self.posrec_save
