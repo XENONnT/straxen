@@ -13,7 +13,6 @@ import tempfile
 import numpy as np
 import pandas as pd
 
-from uuid import uuid4
 from urllib.parse import urlparse, parse_qs
 from immutabledict import immutabledict
 
