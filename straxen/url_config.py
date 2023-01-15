@@ -23,7 +23,6 @@ from strax.config import OMITTED
 from utilix import xent_collection
 from scipy.interpolate import interp1d
 from straxen.misc import filter_kwargs
-from urllib.parse import urlparse, parse_qs
 from typing import Container, Mapping, Union, Iterable
 
 export, __all__ = strax.exporter()
