@@ -320,25 +320,7 @@ class URLConfig(strax.Config):
             self.cache[key] = value
 
         return value
-
-    @classmethod
-    def format_url_kwargs(cls, url, **kwargs):
-        """Add keyword arguments to a URL.
-        Sorts all arguments by key for hash consistency
-        """
-        url, extra_kwargs = cls.split_url_kwargs(url)
-        kwargs = dict(extra_kwargs, **kwargs)
-        arg_list = []
-        for k, v in sorted(kwargs.items()):
-            if isinstance(v, list):
-                # lists are passed as multiple arguments with the same key
-                arg_list.extend([f"{k}={vi}" for vi in v])
-            else:
-                arg_list.append(f"{k}={v}")
-        arg_str = "&".join(arg_list)
-        arg_str = cls.QUERY_SEP + arg_str if arg_str else ''
-        return url + arg_str
-
+        
     @classmethod
     def ast_to_url(cls,
                    protocol: Union[str, tuple],
