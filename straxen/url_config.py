@@ -3,7 +3,6 @@ import json
 import pytz
 import typing
 import strax
-import typing
 import fsspec
 import numbers
 import straxen
@@ -14,7 +13,6 @@ import tempfile
 import numpy as np
 import pandas as pd
 
-from uuid import uuid4
 from urllib.parse import urlparse, parse_qs
 from immutabledict import immutabledict
 
@@ -23,7 +21,6 @@ from strax.config import OMITTED
 from utilix import xent_collection
 from scipy.interpolate import interp1d
 from straxen.misc import filter_kwargs
-from urllib.parse import urlparse, parse_qs
 from typing import Container, Mapping, Union, Iterable
 
 export, __all__ = strax.exporter()
