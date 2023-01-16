@@ -344,3 +344,17 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'fake://url?version=global_v1'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 'fake://url?version=v0')
+    
+    def test_global_version_not_changed(self):
+        """
+          - if no global version is matched, the url version should not be changed
+          - if config is not matched, the url version should not be changed
+        """
+        assert 'global_v2' not in GLOBAL_VERSIONS
+        self.st.set_config({'test_config': 'fake://url?version=global_v2'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 'fake://url?version=global_v2')
+        
+        self.st.set_config({'test_config_new': 'fake://url?version=global_v1'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config_new, 'fake://url?version=global_v1')
