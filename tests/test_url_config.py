@@ -354,7 +354,11 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'fake://url?version=global_v2'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 'fake://url?version=global_v2')
-        
+           
+        class ExamplePluginNew(ExamplePlugin):
+            test_config_new = straxen.URLConfig(default='rootisthesourceofallevil',)
+
+        self.st.register(ExamplePluginNew)
         self.st.set_config({'test_config_new': 'fake://url?version=global_v1'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config_new, 'fake://url?version=global_v1')
