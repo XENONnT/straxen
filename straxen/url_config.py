@@ -405,10 +405,15 @@ class URLConfig(strax.Config):
     def protocol_descr(cls):
         rows = []
         for k, v in cls._LOOKUP.items():
+            descr = v.__doc__
+            if descr is not None:
+                descr = descr.split('\n')[0]
+
             row = {
                 'name': f"{k}://",
-                'description': v.__doc__,
+                'description': descr, 
                 'signature': str(inspect.signature(v)),
+                'location': v.__module__,
             }
             rows.append(row)
         return pd.DataFrame(rows)
@@ -416,7 +421,41 @@ class URLConfig(strax.Config):
     @classmethod
     def print_protocols(cls):
         df = cls.protocol_descr()
-        print(df)
+        if len(df):
+            print(df)
+        else:
+            print('No protocols registered.')
+
+    @classmethod
+    def preprocessor_descr(cls):
+        rows = []
+        for k,v in cls._PREPROCESSORS:
+            descr = v.__doc__
+            if descr is not None:
+                descr = descr.split('\n')[0]
+            row = {
+                'precedence': k,
+                'description': descr,
+                'signature': str(inspect.signature(v)),
+                'location': v.__module__,
+            }
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    @classmethod
+    def print_preprocessors(cls):
+        df = cls.preprocessor_descr()
+        if len(df):
+            print(df)
+        else:
+            print('No Preprocessors registered.')
+
+    @classmethod
+    def print_status(cls):
+        print('='*30+' Protocols '+ '='*30)
+        cls.print_protocols()
+        print('='*30+' Preprocessors '+ '='*30)
+        cls.print_preprocessors()
 
     @classmethod
     def evaluate_dry(cls, url: str, **kwargs):
@@ -477,7 +516,6 @@ def get_resource(name: str,
                  **kwargs):
     """
     Fetch a straxen resource
-
     Allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource.
     """
@@ -505,7 +543,7 @@ def read_json(content: str, **kwargs):
 
 @URLConfig.register('take')
 def get_key(container: Container, take=None, **kwargs):
-    """ return a single element of a container
+    """return a single element of a container
     """
     if take is None:
         return container
@@ -545,6 +583,8 @@ def load_value(name: str, bodega_version=None):
 
 @URLConfig.register('tf')
 def open_neural_net(model_path: str, custom_objects=None, **kwargs):
+    '''Open a tensorflow file and return a keras model.
+    '''
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
     import tensorflow as tf
@@ -602,7 +642,7 @@ def get_itp_dict(loaded_json,
 
 @URLConfig.register('rekey_dict')
 def rekey_dict(d, replace_keys='', with_keys=''):
-    '''
+    '''Replace the keys of a dictionary.
     :param d: dictionary that will have its keys renamed
     :param replace_keys: comma-separated string of keys that will be replaced
     :param with_keys:  comma-separated string of keys that will replace the replace_keys

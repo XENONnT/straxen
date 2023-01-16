@@ -191,3 +191,12 @@ Higher precedence functions are run first.
 
 * Using the run_id to set the value of the config will result in a different lineage_hash for each run. This may be useful in some cases but can be very difficult to keep track of with data managment tools.
 * Preprocessor functions will run on **all** configs. If you want to only affect a specific config, make sure your function accepts the ``name`` keyword argument and that the function checks the name matches before it runs its logic.
+
+Helper functions
+----------------
+
+There are a number of helper functions to help you writing URLs:
+
+* ``straxen.URLConfig.print_protocols()`` - prints out the registered protocols, their description and call signature.
+* ``straxen.URLConfig.print_preprocessors()`` -  prints out the registered preprocessor precedence, their description and call signature.
+* ``straxen.URLConfig.print_status()`` - Calls both ``print_protocols()`` and ``print_preprocessors()``
