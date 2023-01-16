@@ -40,7 +40,7 @@ def object_list(length):
     return [DummyObject(a=i, b=i+1) for i in range(length)]
 
 
-@straxen.URLConfig.register_preprocessor('format')
+@straxen.URLConfig.preprocessor
 def formatter(config, **kwargs):
     if not isinstance(config, str):
         return config

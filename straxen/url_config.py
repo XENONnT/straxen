@@ -116,7 +116,7 @@ class URLConfig(strax.Config):
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
-    def register_preprocessor(cls, func=None, precedence=0):
+    def preprocessor(cls, func=None, precedence=0):
         '''Register a new processor to modify the config values
         before they are used.
         '''
@@ -253,16 +253,6 @@ class URLConfig(strax.Config):
 
         cfg = config[self.name]
 
-        if not isinstance(cfg, str) or self.SCHEME_SEP not in cfg:
-            # if the value is not a url config it is validated against
-            # its intended type (final_type)
-            if self.final_type is not OMITTED and not isinstance(cfg, self.final_type):
-                # TODO replace back with InvalidConfiguration
-                UserWarning(
-                    f"Invalid type for option {self.name}. "
-                    f"Excepted a {self.final_type}, got a {type(cfg)}")
-            return
-
         sorted_preprocessors = reversed(sorted(self._PREPROCESSORS,
                                                key=lambda x: x[0]))
 
@@ -277,6 +267,15 @@ class URLConfig(strax.Config):
             cfg = new_cfg if new_cfg is not None else cfg
         
         config[self.name] = cfg
+
+        if not isinstance(cfg, str) or self.SCHEME_SEP not in cfg:
+            # if the value is not a url config it is validated against
+            # its intended type (final_type)
+            if self.final_type is not OMITTED and not isinstance(cfg, self.final_type):
+                # TODO replace back with InvalidConfiguration
+                UserWarning(
+                    f"Invalid type for option {self.name}. "
+                    f"Excepted a {self.final_type}, got a {type(cfg)}")
 
     def fetch(self, plugin):
         """override the Config.fetch method
