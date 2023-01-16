@@ -122,7 +122,7 @@ timeouts = {
     'retry_run': 60,
     # Maximum time [s] for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    'max_processing_time': 24*36000,
+    'max_processing_time': 48*3600,
     # Max processing time [s] for bootstrax to finish processing after run ended
     'max_processing_time_after_completion': 13*3600,
     # Every this many [s] we should have at least one new file written to disk
@@ -1499,8 +1499,9 @@ def process_run(rd, send_heartbeats=args.production):
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
 
                 # Fail because we are taking a very long time to process despite the run having ended
-                if (get_end_time(rd) is not None
-                    and t0 < now(-timeouts['max_processing_time_after_completion'])):
+                if (endtime := get_end_time(rd) is not None
+                    and endtime < now(-timeouts['max_processing_time_after_completion'])
+                   ):
                         kill_process(strax_proc.pid)
                         fail(f"After the run ended, processing did not succeed in "
                              f"{timeouts['max_processing_time_after_completion']} sec.")
