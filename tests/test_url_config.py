@@ -40,6 +40,17 @@ def object_list(length):
     return [DummyObject(a=i, b=i+1) for i in range(length)]
 
 
+@straxen.URLConfig.register_preprocessor('format')
+def formatter(config, **kwargs):
+    if not isinstance(config, str):
+        return config
+    try:
+        config = config.format(**kwargs)
+    except:
+        pass
+    return config
+
+
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
     dtype = strax.time_fields
@@ -293,3 +304,9 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': f'list-to-array://object-list://{n}'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertIsInstance(p.test_config, np.ndarray)
+
+    def test_format_preprocessor(self):
+        self.st.set_config({'test_config': '{name}:{run_id}'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, f'test_config:{nt_test_run_id}')
+        self.assertEqual(p.test_config, p.config['test_config'])

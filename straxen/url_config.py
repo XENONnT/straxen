@@ -266,7 +266,8 @@ class URLConfig(strax.Config):
         sorted_preprocessors = reversed(sorted(self._PREPROCESSORS,
                                                key=lambda x: x[0]))
 
-        full_kwargs = dict(run_id=run_id, 
+        full_kwargs = dict(name=self.name, 
+                           run_id=run_id, 
                            run_defaults=run_defaults, 
                            set_defaults=set_defaults)
 
