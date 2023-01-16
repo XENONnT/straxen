@@ -451,7 +451,7 @@ class URLConfig(strax.Config):
             print('No Preprocessors registered.')
 
     @classmethod
-    def print_status(cls):
+    def print_summary(cls):
         print('='*30+' Protocols '+ '='*30)
         cls.print_protocols()
         print('='*30+' Preprocessors '+ '='*30)
