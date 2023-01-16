@@ -46,7 +46,7 @@ def formatter(config, **kwargs):
         return config
     try:
         config = config.format(**kwargs)
-    except:
+    except KeyError:
         pass
     return config
 
