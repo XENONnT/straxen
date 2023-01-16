@@ -70,7 +70,7 @@ def replace_global_version(config, name=None, **kwargs):
         return config
 
     version = straxen.URLConfig.kwarg_from_url(config, 'version')
-    
+
     if version is None:
         return config
 
