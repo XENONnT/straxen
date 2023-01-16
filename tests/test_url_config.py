@@ -51,6 +51,35 @@ def formatter(config, **kwargs):
     return config
 
 
+GLOBAL_VERSIONS = {
+    'global_v1': {
+        'test_config': 'v0'
+    }
+}
+
+
+@straxen.URLConfig.preprocessor
+def replace_global_version(config, name=None, **kwargs):
+    if name is None:
+        return
+
+    if not isinstance(config, str):
+        return config
+
+    if not straxen.URLConfig.SCHEME_SEP in config:
+        return config
+
+    version = straxen.URLConfig.kwarg_from_url(config, 'version')
+    
+    if version is None:
+        return config
+
+    if version.startswith('global_') and version in GLOBAL_VERSIONS:
+        version = GLOBAL_VERSIONS[version].get(name, version)
+        config = straxen.URLConfig.format_url_kwargs(config, version=version)
+    return config
+
+
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
     dtype = strax.time_fields
@@ -310,3 +339,8 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, f'test_config:{nt_test_run_id}')
         self.assertEqual(p.test_config, p.config['test_config'])
+
+    def test_global_version_preprocessor(self):
+        self.st.set_config({'test_config': 'fake://url?version=global_v1'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 'fake://url?version=v0')
