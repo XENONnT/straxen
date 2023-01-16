@@ -1499,12 +1499,13 @@ def process_run(rd, send_heartbeats=args.production):
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
 
                 # Fail because we are taking a very long time to process despite the run having ended
-                if (endtime := get_end_time(rd) is not None
+                endtime = get_end_time(rd)
+                if (endtime is not None
                     and endtime < now(-timeouts['max_processing_time_after_completion'])
                    ):
-                        kill_process(strax_proc.pid)
-                        fail(f"After the run ended, processing did not succeed in "
-                             f"{timeouts['max_processing_time_after_completion']} sec.")
+                   kill_process(strax_proc.pid)
+                   fail(f"After the run ended, processing did not succeed in "
+                        f"{timeouts['max_processing_time_after_completion']} sec.")
 
                 # Fail because for some reason, we are not writing any new files to disk.
                 if (t0 < now(-timeouts['max_no_write_time'])
