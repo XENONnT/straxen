@@ -1501,7 +1501,7 @@ def process_run(rd, send_heartbeats=args.production):
                 # Fail because we are taking a very long time to process despite the run having ended
                 endtime = get_end_time(rd)
                 if (endtime is not None
-                    and endtime < now(-timeouts['max_processing_time_after_completion'])
+                    and endtime.replace(tzinfo=pytz.utc) < now(-timeouts['max_processing_time_after_completion'])
                    ):
                    kill_process(strax_proc.pid)
                    fail(f"After the run ended, processing did not succeed in "
