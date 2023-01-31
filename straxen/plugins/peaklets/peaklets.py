@@ -37,7 +37,7 @@ class Peaklets(strax.Plugin):
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '1.0.2'
+    __version__ = '1.0.4'
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False,
@@ -298,7 +298,7 @@ class Peaklets(strax.Plugin):
 
         peaklets['tight_coincidence'] = tight_coincidence_channel
 
-        self.hit_time_diff(hitlets, hit_max_times, peaklets)
+        self.add_hit_features(hitlets, hit_max_times, peaklets, self.to_pe)
 
         if self.diagnose_sorting and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
@@ -369,7 +369,7 @@ class Peaklets(strax.Plugin):
         outside_peaks[-1]['endtime'] = end
         return outside_peaks
 
-    def hit_time_diff(self, hitlets, hit_max_times, peaklets):
+    def add_hit_features(self, hitlets, hit_max_times, peaklets, adc_to_pe):
         hits_w_max = np.zeros(
             len(hitlets),
             strax.merged_dtype(
@@ -377,9 +377,17 @@ class Peaklets(strax.Plugin):
         hits_w_max['time'] = hitlets['time']
         hits_w_max['endtime'] = strax.endtime(hitlets)
         hits_w_max['max_time'] = hit_max_times
-        split_hits = strax.split_by_containment(hits_w_max, peaklets)
-        for peaklet, sh in zip(peaklets, split_hits):
-            max_time_diff = np.diff(np.sort(sh['max_time']))
+        split_hits = strax.split_by_containment(hitlets, peaklets)
+        split_hits_w_max = strax.split_by_containment(hits_w_max, peaklets)
+        for peaklet, h, h_w in zip(peaklets, split_hits, split_hits_w_max):
+            if len(h):
+                idx = np.argmin(h['area'])
+                peaklet['min_hit_area'] = h['area'][idx] * adc_to_pe[h['channel'][idx]]
+                idx = np.argmax(h['area'])
+                peaklet['max_hit_area'] = h['area'][idx] * adc_to_pe[h['channel'][idx]]
+                peaklet['min_hit_height'] = np.min(h['height'])
+                peaklet['max_hit_height'] = np.max(h['height'])
+            max_time_diff = np.diff(np.sort(h_w['max_time']))
             if len(max_time_diff):
                 peaklet['max_diff'] = max_time_diff.max()
                 peaklet['min_diff'] = max_time_diff.min()
