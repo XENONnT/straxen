@@ -89,14 +89,6 @@ class EventBasics(strax.Plugin):
              f'Main S1 smallest time difference between apexes of hits [ns]'),
             (f'alt_s1_min_diff', np.int32,
              f'Alternate S1 smallest time difference between apexes of hits [ns]'),
-            (f's1_max_hit_area', np.float32,
-             f'Main S1 largest area of hits inside peak [PE]'),
-            (f'alt_s1_max_hit_area', np.float32,
-             f'Alternate S1 largest area of hits inside peak [PE]'),
-            (f's1_min_hit_area', np.float32,
-             f'Main S1 smallest area of hits inside peak [PE]'),
-            (f'alt_s1_min_hit_area', np.float32,
-             f'Alternate S1 smallest area of hits inside peak [PE]'),
             (f's1_max_hit_height', np.float32,
              f'Main S1 largest height of hits inside peak [ADC counts]'),
             (f'alt_s1_max_hit_height', np.float32,
@@ -286,7 +278,6 @@ class EventBasics(strax.Plugin):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
                 if s_i == 1:
                     peak_properties_to_save += ['max_gap', 'max_diff', 'min_diff']
-                    peak_properties_to_save += ['max_hit_area', 'min_hit_area']
                     peak_properties_to_save += ['max_hit_height', 'min_hit_height']
                 elif s_i == 2:
                     peak_properties_to_save += ['x', 'y']

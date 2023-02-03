@@ -381,10 +381,6 @@ class Peaklets(strax.Plugin):
         split_hits_w_max = strax.split_by_containment(hits_w_max, peaklets)
         for peaklet, h, h_w in zip(peaklets, split_hits, split_hits_w_max):
             if len(h):
-                idx = np.argmin(h['area'])
-                peaklet['min_hit_area'] = h['area'][idx] * adc_to_pe[h['channel'][idx]]
-                idx = np.argmax(h['area'])
-                peaklet['max_hit_area'] = h['area'][idx] * adc_to_pe[h['channel'][idx]]
                 peaklet['min_hit_height'] = np.min(h['height'])
                 peaklet['max_hit_height'] = np.max(h['height'])
             max_time_diff = np.diff(np.sort(h_w['max_time']))
