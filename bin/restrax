@@ -30,27 +30,27 @@ import fnmatch
 from straxen import daq_core
 from memory_profiler import memory_usage
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="XENONnT rechunking manager")
     parser.add_argument('--production', action='store_true',
                         help="Run restrax in production mode.")
-    parser.add_argument('--process', type=int,
-                        help="Run for single run")
     parser.add_argument('--ignore_checks', action='store_true',
                         help="Do not use! Skip checks before changing documents there be dragons.")
     parser.add_argument('--input_folder', type=str, default=daq_core.pre_folder,
                         help="Where to read the data from, should only be used when testing", )
     parser.add_argument('--max_threads', type=int, default=1,
-                        help='max number of threads to simultaniously work on one run'
+                        help='max number of threads to simultaneously work on one run'
                         )
     parser.add_argument('--skip_compression', nargs='*',
-                        default = ['*event*', '*peak*'],
+                        default=['*event*', '*peak*'],
                         help='skip recompression of any datatype that fnmatches'
-                       )
+                        )
     actions = parser.add_mutually_exclusive_group()
-    actions.add_argument(
-        '--undying', action='store_true',
-        help="Except any error and ignore it")
+    actions.add_argument('--undying', action='store_true',
+                         help="Except any error and ignore it")
+    actions.add_argument('--process', type=int,
+                         help="Handle a single run")
     args = parser.parse_args()
     if args.input_folder != '/data/pre_processed/' and args.production:
         raise ValueError(
@@ -66,7 +66,7 @@ def main():
             if args.process:
                 break
         except (KeyboardInterrupt, SystemExit):
-            raise
+            break
         except Exception as fatal_error:
             # Open a class, just to log the error
             re_temp = ReStrax(args=args)
@@ -75,8 +75,7 @@ def main():
             try:
                 re_temp.log_warning(
                     f'Fatal warning:\tran into {fatal_error}',
-                    priority='error',
-                    user=f'restrax_{re_temp.hostname}')
+                    priority='error', )
             except Exception as warning_error:
                 re_temp.error(f'Fatal warning:\tcould not log {warning_error}')
 
@@ -89,14 +88,14 @@ def main():
 
 
 def run_restrax(args):
-    """Run the inifinite loop of restrax"""
+    """Run the infinite loop of restrax"""
     restrax = ReStrax(args=args)
     restrax.infinite_loop(close=bool(args.process))
 
 
 class ReStrax(daq_core.DataBases):
     """
-    Restrex: rechunking the data from bootstrax and prepare it for redax
+    Restrax: rechunking the data from bootstrax and prepare it for admix/rucio
     """
     log: logging.Logger
     nap_time = 300  # s
@@ -106,12 +105,12 @@ class ReStrax(daq_core.DataBases):
         test_out='/data/test_processed')
 
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
-        'records', 'records_nv', 'records_mv')
+                        'records', 'records_nv', 'records_mv')
     deep_compare = True
 
     def __init__(self, args):
         super().__init__(production=args.production)
-        
+
         self.hostname = socket.getfqdn()
         self.set_logger()
         if args.production:
@@ -142,11 +141,11 @@ class ReStrax(daq_core.DataBases):
     def find_work(self):
         if self.production:
             query = {'status': 'eb_finished_pre',
-                 'bootstrax.state': 'done',
-                 'bootstrax.host': self.hostname
-                 }
+                     'bootstrax.state': 'done',
+                     'bootstrax.host': self.hostname
+                     }
             if self.process:
-                query['number']=int(self.process)
+                query['number'] = int(self.process)
             rund_doc = self.run_coll.find_one(
                 query,
                 sort=[('_id', -1)],
@@ -174,7 +173,6 @@ class ReStrax(daq_core.DataBases):
                 if run_id != first_run:
                     continue
                 self.log.info(f'Do {folder}')
-                # TODO check if these were indeed the correct keys!
                 ddocs.append({'host': self.hostname,
                               'location': os.path.join(self.read_from, folder),
                               'type': data_type,
@@ -207,19 +205,20 @@ class ReStrax(daq_core.DataBases):
     def _do_work_per_ddoc(self, ddoc):
         dir_in = ddoc['location']
         dir_out = self.renamed_path(dir_in)
-        if dir_in == '/data/pre_processed/050335-events_nv-6wj7qmzqg2':
-            return
+
         if not os.path.exists(dir_in):
             raise FileNotFoundError(ddoc)
 
         if self.should_skip_compression(ddoc):
             # Just copy, don't read convert write
-            # We could do shutil.move here, but... what if we fail while moving? Also, a bit harder with doing the datadocs right
+            # We could do shutil.move here, but... what if we fail while moving?
+            # Also, a bit harder with doing the datadocs right
             self.log.info(f'Copy (skip recompression) for {dir_in}')
             if os.path.exists(dir_out):
                 self.remove_dir(dir_out)
             shutil.copytree(dir_in, dir_out, dirs_exist_ok=True)
             return
+
         self.log.info(f'Start {dir_in} -> {dir_out}')
         compressor, target_size_mb = self.get_compressor_and_size(ddoc)
 
@@ -247,8 +246,8 @@ class ReStrax(daq_core.DataBases):
         """Should we skip recompressing this data? For example if the data is already so small that it's not worth recompressing"""
         if ddoc['type'] == 'live_data':
             return True
-        return any(fnmatch.fnmatch(ddoc['type'], delete) 
-            for delete in self.skip_compression)
+        return any(fnmatch.fnmatch(ddoc['type'], delete)
+                   for delete in self.skip_compression)
 
     def do_checks(self, ddoc):
         if self.trump_mode:
@@ -271,13 +270,13 @@ class ReStrax(daq_core.DataBases):
             if sum(chunk['n'] for chunk in md_in['chunks']) != sum(chunk['n'] for chunk in md_out['chunks']):
                 errors.append('Rechunked data has fewer entries?!')
             if self.deep_compare:
-                
+
                 is_large_dset = sum(chunk['nbytes'] for chunk in md_in['chunks']) > 5e9
-                
+
                 self.log.info(f'Checking {dir_in} vs {dir_out}. Is large {is_large_dset}')
                 kw = dict(keep_column='time' if is_large_dset else None, progress_bar=is_large_dset)
                 data_in = self.get_data_from_dir(dir_in, **kw)
-                data_out = self.get_data_from_dir(dir_out, **kw) 
+                data_out = self.get_data_from_dir(dir_out, **kw)
                 if data_in.dtype.names:
                     for field in data_in.dtype.names:
                         if 'str' in data_in.dtype[field].name:
@@ -291,14 +290,14 @@ class ReStrax(daq_core.DataBases):
         if errors:
             raise ValueError(f'Doc {doc} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
-    
-    @staticmethod
-    def get_data_from_dir(folder, keep_column=None, progress_bar=False):
+
+    def get_data_from_dir(self, folder, keep_column=None, progress_bar=False):
+        self.log.debug(f'Load {folder}, keep_column = "{keep_column if keep_column else "ALL"}"')
         loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar)
         if keep_column:
             return np.concatenate([chunk.data[keep_column] for chunk in loader])
         return np.concatenate([chunk.data for chunk in loader])
-    
+
     def finalize_execute(self, ddocs):
         # Maybe could merge this with do checks? -> Avoid opening metadate twice?
         # Then again, that is SO minor in the grand scheme of things, that I just leave it like this for the moment
@@ -320,29 +319,31 @@ class ReStrax(daq_core.DataBases):
             compressor = md['compressor']
 
             if self.production:
+                self.log.info(f'Update ddoc {dir_out}')
                 self.run_coll.update_one(
-                {'number': int(run_id),
-                 'data': {
-                     '$elemMatch': {
-                         'location': ddoc['location'],
-                         'host': ddoc['host']}}},
-                {'$set':
-                 # TODO check that this new location is correct!
-                     {'data.$.location': dir_out,
-                      'data.$.file_count': file_count,
-                      'data.$.meta.strax_version': strax.__version__,
-                      'data.$.meta.straxen_version': straxen.__version__,
-                      'data.$.meta.size_mb': data_size_mb,
-                      'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash,
-                      'data.$.meta.compressor': compressor,
-                      }
-                 })
+                    {'number': int(run_id),
+                     'data': {
+                         '$elemMatch': {
+                             'location': ddoc['location'],
+                             'host': ddoc['host']}}},
+                    {'$set':
+                     # TODO check that this new location is correct!
+                         {'data.$.location': dir_out,
+                          'data.$.file_count': file_count,
+                          'data.$.meta.strax_version': strax.__version__,
+                          'data.$.meta.straxen_version': straxen.__version__,
+                          'data.$.meta.size_mb': data_size_mb,
+                          'data.$.meta.avg_chunk_mb': avg_data_size_mb,
+                          'data.$.meta.lineage_hash': lineage_hash,
+                          'data.$.meta.compressor': compressor,
+                          }
+                     })
         # Mark as ready for upload
         if self.production:
             self.run_coll.update_one(
-            {'number': int(run_id)},
-            {'$set': {'status': 'eb_ready_to_upload'}})
+                {'number': int(run_id)},
+                {'$set': {'status': 'eb_ready_to_upload'}})
+        self.log.info('Rundoc updated')
 
     def take_a_nap(self, dt=None):
         time.sleep(dt if dt is not None else self.nap_time)
@@ -364,9 +365,16 @@ class ReStrax(daq_core.DataBases):
             opening_message=f'Welcome to restrax\n{versions}')
 
     def remove_dir(self, directory):
+        """Remove directory (when in production mode)"""
         self.log.info(f'Remove {directory}')
         if self.production:
             shutil.rmtree(directory)
+
+    def log_warning(self, message, **kw):
+        self.log.warning(message)
+        for key, value in dict(production=self.production, user=f'restrax_{self.hostname}').items():
+            kw.setdefault(key, value)
+        super().log_warning(message, **kw)
 
 
 if __name__ == '__main__':
