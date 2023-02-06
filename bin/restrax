@@ -105,6 +105,7 @@ class ReStrax(daq_core.DataBases):
         test_out='/data/test_processed')
 
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
+                        'raw_records_he',
                         'records', 'records_nv', 'records_mv')
     deep_compare = True
 
@@ -186,10 +187,10 @@ class ReStrax(daq_core.DataBases):
         if self.max_threads > 1:
             threads = []
             for next_doc in ddocs:
-                self._sleep_while_n_threads_alive(threads, self.max_threads)
+                self._sleep_while_n_threads_alive(threads, self.max_threads-1)
                 thread = threading.Thread(
                     target=self._do_work_per_ddoc,
-                    args=(self, next_doc))
+                    args=(next_doc,))
                 thread.start()
                 threads.append(thread)
             # Wait until all threads have finished
@@ -199,7 +200,9 @@ class ReStrax(daq_core.DataBases):
                 self._do_work_per_ddoc(ddoc)
 
     def _sleep_while_n_threads_alive(self, threads, n):
-        while sum(t.is_alive() for t in threads) >= n:
+        while (n_alive := sum(t.is_alive() for t in threads)) > n:
+            if n == 0:
+                self.log.debug(f'{n_alive} threads alive, sleep')
             self.take_a_nap(self.nap_time_short)
 
     def _do_work_per_ddoc(self, ddoc):
@@ -234,12 +237,18 @@ class ReStrax(daq_core.DataBases):
 
     def get_compressor_and_size(self, ddoc):
         # This is where we might do some fancy coding
-        if ddoc['type'] in self.raw_record_types:
-            compressor = 'lz4'
+        dtype=ddoc['type']
+        if dtype in self.raw_record_types:
+            compressor = 'bz2'
             target_size_mb = 5000
-        else:
+        elif dtype in ddoc['type']:
             compressor = 'zstd'
             target_size_mb = 1000
+        else:
+            # Use default compressor
+            compressor = None
+            target_size_mb = 1000
+        self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
 
     def should_skip_compression(self, ddoc) -> bool:
@@ -293,7 +302,7 @@ class ReStrax(daq_core.DataBases):
 
     def get_data_from_dir(self, folder, keep_column=None, progress_bar=False):
         self.log.debug(f'Load {folder}, keep_column = "{keep_column if keep_column else "ALL"}"')
-        loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar)
+        loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar, desc=folder.split('/')[-1])
         if keep_column:
             return np.concatenate([chunk.data[keep_column] for chunk in loader])
         return np.concatenate([chunk.data for chunk in loader])
