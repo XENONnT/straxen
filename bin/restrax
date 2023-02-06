@@ -34,6 +34,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="XENONnT rechunking manager")
     parser.add_argument('--production', action='store_true',
                         help="Run restrax in production mode.")
+    parser.add_argument('--process', type=int,
+                        help="Run for single run")
     parser.add_argument('--ignore_checks', action='store_true',
                         help="Do not use! Skip checks before changing documents there be dragons.")
     parser.add_argument('--input_folder', type=str, default=daq_core.pre_folder,
@@ -61,6 +63,8 @@ def main():
     while True:
         try:
             run_restrax(args)
+            if args.process:
+                break
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as fatal_error:
@@ -87,7 +91,7 @@ def main():
 def run_restrax(args):
     """Run the inifinite loop of restrax"""
     restrax = ReStrax(args=args)
-    restrax.infinite_loop()
+    restrax.infinite_loop(close=bool(args.process))
 
 
 class ReStrax(daq_core.DataBases):
@@ -103,6 +107,7 @@ class ReStrax(daq_core.DataBases):
 
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
         'records', 'records_nv', 'records_mv')
+    deep_compare = True
 
     def __init__(self, args):
         super().__init__(production=args.production)
@@ -118,27 +123,37 @@ class ReStrax(daq_core.DataBases):
         self.max_threads = args.max_threads
         self.trump_mode = args.ignore_checks
         self.skip_compression = args.skip_compression
+        self.process = args.process
 
-    def infinite_loop(self):
+    def infinite_loop(self, close=False):
         while True:
             ddocs = self.find_work()
             if not ddocs:
+                if close:
+                    return
+                self.log.info('No work to do, sleep')
                 self.take_a_nap()
                 continue
             self.do_work(ddocs)
             self.do_checks(ddocs)
             self.finalize_execute(ddocs)
+            self.log.info('Loop done')
 
     def find_work(self):
         if self.production:
-            rund_doc = self.run_coll.find_one(
-                {'status': 'eb_finished_pre',
+            query = {'status': 'eb_finished_pre',
                  'bootstrax.state': 'done',
                  'bootstrax.host': self.hostname
-                 },
+                 }
+            if self.process:
+                query['number']=int(self.process)
+            rund_doc = self.run_coll.find_one(
+                query,
                 sort=[('_id', -1)],
                 projection={'data': 1, 'number': 1}
             )
+            if rund_doc is None:
+                return None
             ddocs = [doc for doc in rund_doc['data'] if
                      doc.get('host') == self.hostname
                      ]
@@ -150,6 +165,8 @@ class ReStrax(daq_core.DataBases):
         first_run = None
         ddocs = []
         for folder in folders:
+            if os.path.exists(os.path.join(self.write_to, folder)):
+                continue
             if len(split := folder.split('-')) and len(split[0]) == 6:
                 run_id, data_type, lineage = split
                 if first_run is None:
@@ -160,7 +177,7 @@ class ReStrax(daq_core.DataBases):
                 # TODO check if these were indeed the correct keys!
                 ddocs.append({'host': self.hostname,
                               'location': os.path.join(self.read_from, folder),
-                              'data_type': data_type,
+                              'type': data_type,
                               'linage_hash': lineage,
                               })
         self.log.info(f'Total of {len(ddocs)} data documents')
@@ -190,6 +207,8 @@ class ReStrax(daq_core.DataBases):
     def _do_work_per_ddoc(self, ddoc):
         dir_in = ddoc['location']
         dir_out = self.renamed_path(dir_in)
+        if dir_in == '/data/pre_processed/050335-events_nv-6wj7qmzqg2':
+            return
         if not os.path.exists(dir_in):
             raise FileNotFoundError(ddoc)
 
@@ -199,7 +218,7 @@ class ReStrax(daq_core.DataBases):
             self.log.info(f'Copy (skip recompression) for {dir_in}')
             if os.path.exists(dir_out):
                 self.remove_dir(dir_out)
-            shutil.copytree(dir_in, dir_out)
+            shutil.copytree(dir_in, dir_out, dirs_exist_ok=True)
             return
         self.log.info(f'Start {dir_in} -> {dir_out}')
         compressor, target_size_mb = self.get_compressor_and_size(ddoc)
@@ -217,7 +236,7 @@ class ReStrax(daq_core.DataBases):
     def get_compressor_and_size(self, ddoc):
         # This is where we might do some fancy coding
         if ddoc['type'] in self.raw_record_types:
-            compressor = 'bz2'
+            compressor = 'lz4'
             target_size_mb = 5000
         else:
             compressor = 'zstd'
@@ -235,7 +254,7 @@ class ReStrax(daq_core.DataBases):
         if self.trump_mode:
             # One does not just venture into Mar a lago!
             return
-        storage_backend = strax.FileSytemBackend(self.write_to)
+        storage_backend = strax.FileSytemBackend()
         for doc in ddoc:
             dir_in = doc['location']
             dir_out = self.renamed_path(dir_in)
@@ -249,18 +268,43 @@ class ReStrax(daq_core.DataBases):
             if 'exception' in md_out:
                 errors.append('Writing error!')
 
-            # TODO was this the right format of the metadata
-            if sum(chunk['n'] for chunk in md_in['data']) != sum(chunk['n'] for chunk in md_out['chunks']):
+            if sum(chunk['n'] for chunk in md_in['chunks']) != sum(chunk['n'] for chunk in md_out['chunks']):
                 errors.append('Rechunked data has fewer entries?!')
-            if errors:
-                raise ValueError(f'Doc {doc} had errors: ' + ' and '.join(errors))
-
+            if self.deep_compare:
+                
+                is_large_dset = sum(chunk['nbytes'] for chunk in md_in['chunks']) > 5e9
+                
+                self.log.info(f'Checking {dir_in} vs {dir_out}. Is large {is_large_dset}')
+                kw = dict(keep_column='time' if is_large_dset else None, progress_bar=is_large_dset)
+                data_in = self.get_data_from_dir(dir_in, **kw)
+                data_out = self.get_data_from_dir(dir_out, **kw) 
+                if data_in.dtype.names:
+                    for field in data_in.dtype.names:
+                        if 'str' in data_in.dtype[field].name:
+                            if not np.array_equal(data_in[field], data_out[field]):
+                                errors.append(f'Field "{field}" different for {dir_in} vs {dir_out}')
+                        else:
+                            if not np.array_equal(data_in[field], data_out[field], equal_nan=True):
+                                errors.append(f'Field "{field}" different for {dir_in} vs {dir_out}')
+                elif not np.array_equal(data_in, data_out, equal_nan=True):
+                    errors.append(f'{dir_in} vs {dir_out} different')
+        if errors:
+            raise ValueError(f'Doc {doc} had errors: ' + ' and '.join(errors))
+        self.log.info('All checks passed')
+    
+    @staticmethod
+    def get_data_from_dir(folder, keep_column=None, progress_bar=False):
+        loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar)
+        if keep_column:
+            return np.concatenate([chunk.data[keep_column] for chunk in loader])
+        return np.concatenate([chunk.data for chunk in loader])
+    
     def finalize_execute(self, ddocs):
         # Maybe could merge this with do checks? -> Avoid opening metadate twice?
         # Then again, that is SO minor in the grand scheme of things, that I just leave it like this for the moment
         if not self.production or not len(ddocs):
             return
-        storage_backend = strax.FileSytemBackend(self.write_to)
+        storage_backend = strax.FileSytemBackend()
         for ddoc in ddocs:
             if self.hostname != ddoc['host']:
                 continue
