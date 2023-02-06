@@ -259,13 +259,13 @@ class ReStrax(daq_core.DataBases):
         if dtype in self.raw_record_types:
             compressor = 'bz2'
             target_size_mb = 5000
-        elif dtype in ddoc['type']:
+        elif 'peak' in dtype:
             compressor = 'zstd'
-            target_size_mb = 1000
+            target_size_mb = 1500
         else:
             # Use default compressor
             compressor = None
-            target_size_mb = 1000
+            target_size_mb = 1500
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
 
