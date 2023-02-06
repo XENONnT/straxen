@@ -1,3 +1,7 @@
+"""
+Core functions of the DAQ, mostly used in straxen/bin
+"""
+
 import pymongo
 import utilix
 from utilix import uconfig

@@ -42,7 +42,7 @@ import typing as ty
 import daqnt
 import fnmatch
 from glob import glob
-import daq_core
+from straxen import daq_core
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")

@@ -29,8 +29,8 @@ import time
 import re
 import numpy as np
 import straxen
+from straxen import daq_core
 from daq_core import ceph_folder, output_folder, pre_folder, non_registered_folder
-import daq_core
 
 ##
 # Parameters
