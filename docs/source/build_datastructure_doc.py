@@ -175,7 +175,7 @@ def get_context(is_nt):
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
     else:
         st = straxen.contexts.xenon1t_dali()
-        st.register_all(straxen.plugins.x1t_cuts)
+        st.register_all(straxen.legacy.plugins_1t.x1t_cuts)
         st.context_config['forbid_creation_of'] = straxen.daqreader.DAQReader.provides
     return st
 

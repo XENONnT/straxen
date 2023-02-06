@@ -50,17 +50,18 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup python
-        uses: actions/setup-python@v2.3.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install requirements
-        run: pip install -r extra_requirements/requirements-tests.txt
+        run: |
+          pip install -r extra_requirements/requirements-tests.txt
 
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.7.0
+        uses: supercharge/mongodb-github-action@1.8.0
         with:
-          mongodb-version: 4.2
+          mongodb-version: 4.4.1
 
       - name: patch utilix file
         # Secrets and required files
@@ -105,7 +106,7 @@ jobs:
           ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]')
+        if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECTETS != null
         run: |
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
           coverage run --source=straxen -m pytest -v
