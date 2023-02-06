@@ -28,7 +28,7 @@ import threading
 import daqnt
 import fnmatch
 from straxen import daq_core
-
+from memory_profiler import memory_usage
 
 def parse_args():
     parser = argparse.ArgumentParser(description="XENONnT rechunking manager")
@@ -41,12 +41,16 @@ def parse_args():
     parser.add_argument('--max_threads', type=int, default=1,
                         help='max number of threads to simultaniously work on one run'
                         )
+    parser.add_argument('--skip_compression', nargs='*',
+                        default = ['*event*', '*peak*'],
+                        help='skip recompression of any datatype that fnmatches'
+                       )
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument(
         '--undying', action='store_true',
         help="Except any error and ignore it")
     args = parser.parse_args()
-    if args.input_folder != '/data/pre_processed' and args.production:
+    if args.input_folder != '/data/pre_processed/' and args.production:
         raise ValueError(
             "Thou shall not pass, don't upload files from non production folders, what are you thinking you're doing?!!")
     return args
@@ -96,9 +100,9 @@ class ReStrax(daq_core.DataBases):
     folders = immutabledict.immutabledict(
         production_out='/data/xenonnt_processed',
         test_out='/data/test_processed')
-    # TODO probably this should be an argument?
-    skip_compression = ('*event*', '*peak*')
-    raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv', 'records', 'records_nv', 'records_mv')
+
+    raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
+        'records', 'records_nv', 'records_mv')
 
     def __init__(self, args):
         super().__init__(production=args.production)
@@ -113,6 +117,7 @@ class ReStrax(daq_core.DataBases):
             self.write_to = self.folders['test_out']
         self.max_threads = args.max_threads
         self.trump_mode = args.ignore_checks
+        self.skip_compression = args.skip_compression
 
     def infinite_loop(self):
         while True:
@@ -210,7 +215,7 @@ class ReStrax(daq_core.DataBases):
 
     def get_compressor_and_size(self, ddoc):
         # This is where we might do some fancy coding
-        if ddoc['data_type'] in self.raw_record_types:
+        if ddoc['type'] in self.raw_record_types:
             compressor = 'bz2'
             target_size_mb = 5000
         else:
@@ -220,7 +225,10 @@ class ReStrax(daq_core.DataBases):
 
     def should_skip_compression(self, ddoc) -> bool:
         """Should we skip recompressing this data? For example if the data is already so small that it's not worth recompressing"""
-        return any(fnmatch.fnmatch(ddoc['data_type'], delete) for delete in self.skip_compression)
+        if ddoc['type'] == 'live_data':
+            return True
+        return any(fnmatch.fnmatch(ddoc['type'], delete) 
+            for delete in self.skip_compression)
 
     def do_checks(self, ddoc):
         if self.trump_mode:
@@ -312,4 +320,8 @@ class ReStrax(daq_core.DataBases):
 
 
 if __name__ == '__main__':
-    main()
+    start = time.time()
+    mem = memory_usage(proc=(main,))
+    print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
+    print(f'Took {time.time() - start:.1f} s = {(time.time() - start) / 3600:.2f} h ')
+    print('Bye, bye')
