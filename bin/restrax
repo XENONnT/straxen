@@ -12,7 +12,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 import argparse
 import logging
@@ -27,6 +27,7 @@ import straxen
 import threading
 import daqnt
 import fnmatch
+import typing as ty
 from straxen import daq_core
 from memory_profiler import memory_usage
 
@@ -34,9 +35,9 @@ from memory_profiler import memory_usage
 def parse_args():
     parser = argparse.ArgumentParser(description="XENONnT rechunking manager")
     parser.add_argument('--production', action='store_true',
-                        help="Run restrax in production mode.")
+                        help="Run restrax in production mode, otherwise run in a test mode.")
     parser.add_argument('--ignore_checks', action='store_true',
-                        help="Do not use! Skip checks before changing documents there be dragons.")
+                        help="Do not use! Skip checks before changing documents, there be dragons.", )
     parser.add_argument('--input_folder', type=str, default=daq_core.pre_folder,
                         help="Where to read the data from, should only be used when testing", )
     parser.add_argument('--max_threads', type=int, default=1,
@@ -45,6 +46,9 @@ def parse_args():
     parser.add_argument('--skip_compression', nargs='*',
                         default=['*event*', '*peak*'],
                         help='skip recompression of any datatype that fnmatches'
+                        )
+    parser.add_argument('--deep_compare', action='store_true',
+                        help='open all the data of the old and the new format and check that they are the same'
                         )
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--undying', action='store_true',
@@ -100,6 +104,7 @@ class ReStrax(daq_core.DataBases):
     log: logging.Logger
     nap_time = 300  # s
     nap_time_short = 5  # s
+
     folders = immutabledict.immutabledict(
         production_out=daq_core.output_folder,
         test_out='/data/test_processed')
@@ -107,25 +112,25 @@ class ReStrax(daq_core.DataBases):
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
                         'raw_records_he',
                         'records', 'records_nv', 'records_mv')
-    deep_compare = True
+
+    # If a dataset is larger than this many bites, only compare a single field
+    large_data_compare_threshold = 5e9
 
     def __init__(self, args):
         super().__init__(production=args.production)
 
         self.hostname = socket.getfqdn()
-        self.set_logger()
-        if args.production:
-            self.read_from = None  # get from the database
-            self.write_to = self.folders['production_out']
-        else:
-            self.read_from = args.input_folder
-            self.write_to = self.folders['test_out']
+        self._set_logger()
+        # Get from the database unless testing
+        self.read_from = None if args.production else args.input_folder
+        self.write_to = self.folders['production_out'] if args.production else self.folders['test_out']
         self.max_threads = args.max_threads
-        self.trump_mode = args.ignore_checks
+        self.ignore_checks = args.ignore_checks
         self.skip_compression = args.skip_compression
         self.process = args.process
 
-    def infinite_loop(self, close=False):
+    def infinite_loop(self, close=False) -> None:
+        """Core of restrax, recompress the data followed by several validation steps"""
         while True:
             ddocs = self.find_work()
             if not ddocs:
@@ -134,12 +139,15 @@ class ReStrax(daq_core.DataBases):
                 self.log.info('No work to do, sleep')
                 self.take_a_nap()
                 continue
-            self.do_work(ddocs)
+            self.rechunk_docs(ddocs)
             self.do_checks(ddocs)
+            if self.deep_compare:
+                self.do_work(ddocs, function=self._validate_data_per_doc)
             self.finalize_execute(ddocs)
             self.log.info('Loop done')
 
-    def find_work(self):
+    def find_work(self) -> ty.Optional[ty.List[dict]]:
+        """Get a list of documents to recompress"""
         if self.production:
             query = {'status': 'eb_finished_pre',
                      'bootstrax.state': 'done',
@@ -160,7 +168,7 @@ class ReStrax(daq_core.DataBases):
             self.log.info(f'{rund_doc["number"]} -> doing {len(ddocs)}')
             return ddocs
 
-        # Just try to do all the folders, we are just doing a test
+        # Just try to do all the folders, we are doing a test
         folders = os.listdir(self.read_from)
         first_run = None
         ddocs = []
@@ -182,22 +190,26 @@ class ReStrax(daq_core.DataBases):
         self.log.info(f'Total of {len(ddocs)} data documents')
         return ddocs
 
-    def do_work(self, ddocs):
-        """ For each of the data documents, rechunk/recompress/move the data """
+    def rechunk_docs(self, docs: ty.List[dict]) -> None:
+        """
+        For each of the data documents, rechunk/recompress/move/check the data,
+        if multi-threading is allowed, use that
+        :param docs: list of data documents to rechunk
+        """
         if self.max_threads > 1:
             threads = []
-            for next_doc in ddocs:
-                self._sleep_while_n_threads_alive(threads, self.max_threads-1)
+            for next_doc in docs:
+                self._sleep_while_n_threads_alive(threads, self.max_threads - 1)
                 thread = threading.Thread(
-                    target=self._do_work_per_ddoc,
+                    target=self._rechunk_per_doc,
                     args=(next_doc,))
                 thread.start()
                 threads.append(thread)
             # Wait until all threads have finished
             self._sleep_while_n_threads_alive(threads, 0)
         else:
-            for ddoc in ddocs:
-                self._do_work_per_ddoc(ddoc)
+            for ddoc in docs:
+                self._rechunk_per_doc(ddoc)
 
     def _sleep_while_n_threads_alive(self, threads, n):
         while (n_alive := sum(t.is_alive() for t in threads)) > n:
@@ -205,7 +217,8 @@ class ReStrax(daq_core.DataBases):
                 self.log.debug(f'{n_alive} threads alive, sleep')
             self.take_a_nap(self.nap_time_short)
 
-    def _do_work_per_ddoc(self, ddoc):
+    def _rechunk_per_doc(self, ddoc):
+        """Do the rechunking document by document"""
         dir_in = ddoc['location']
         dir_out = self.renamed_path(dir_in)
 
@@ -218,7 +231,7 @@ class ReStrax(daq_core.DataBases):
             # Also, a bit harder with doing the datadocs right
             self.log.info(f'Copy (skip recompression) for {dir_in}')
             if os.path.exists(dir_out):
-                self.remove_dir(dir_out)
+                self._remove_dir(dir_out)
             shutil.copytree(dir_in, dir_out, dirs_exist_ok=True)
             return
 
@@ -235,9 +248,14 @@ class ReStrax(daq_core.DataBases):
         )
         self.log.info(f'{dir_out} written {summary}')
 
-    def get_compressor_and_size(self, ddoc):
+    def get_compressor_and_size(self, ddoc: dict) -> ty.Tuple[str, ty.Optional[int]]:
+        """
+        For a given data document infer the desired compressor, and target size
+
+        :param ddoc: data document
+        """
         # This is where we might do some fancy coding
-        dtype=ddoc['type']
+        dtype = ddoc['type']
         if dtype in self.raw_record_types:
             compressor = 'bz2'
             target_size_mb = 5000
@@ -252,21 +270,31 @@ class ReStrax(daq_core.DataBases):
         return compressor, target_size_mb
 
     def should_skip_compression(self, ddoc) -> bool:
-        """Should we skip recompressing this data? For example if the data is already so small that it's not worth recompressing"""
+        """Should we skip recompressing this data? For example if the data is
+        already so small that it's not worth recompressing
+
+        :param ddoc: data document
+        """
         if ddoc['type'] == 'live_data':
             return True
         return any(fnmatch.fnmatch(ddoc['type'], delete)
                    for delete in self.skip_compression)
 
-    def do_checks(self, ddoc):
-        if self.trump_mode:
+    def do_checks(self, docs: ty.List[dict]) -> None:
+        """
+        Open the metadata of the old and the new file to check if everything
+        is consistent and no exceptions were encountered during recompression
+
+        :param docs: list of data documents to rechunk
+        """
+        if self.ignore_checks:
             # One does not just venture into Mar a lago!
             return
         storage_backend = strax.FileSytemBackend()
-        for doc in ddoc:
-            dir_in = doc['location']
+        errors = []
+        for ddoc in docs:
+            dir_in = ddoc['location']
             dir_out = self.renamed_path(dir_in)
-            errors = []
 
             if not os.path.exists(dir_in): errors.append(f'{dir_in} does not exists.')
             if not os.path.exists(dir_out): errors.append(f'{dir_out} does not exists.')
@@ -278,42 +306,72 @@ class ReStrax(daq_core.DataBases):
 
             if sum(chunk['n'] for chunk in md_in['chunks']) != sum(chunk['n'] for chunk in md_out['chunks']):
                 errors.append('Rechunked data has fewer entries?!')
-            if self.deep_compare:
-
-                is_large_dset = sum(chunk['nbytes'] for chunk in md_in['chunks']) > 5e9
-
-                self.log.info(f'Checking {dir_in} vs {dir_out}. Is large {is_large_dset}')
-                kw = dict(keep_column='time' if is_large_dset else None, progress_bar=is_large_dset)
-                data_in = self.get_data_from_dir(dir_in, **kw)
-                data_out = self.get_data_from_dir(dir_out, **kw)
-                if data_in.dtype.names:
-                    for field in data_in.dtype.names:
-                        if 'str' in data_in.dtype[field].name:
-                            if not np.array_equal(data_in[field], data_out[field]):
-                                errors.append(f'Field "{field}" different for {dir_in} vs {dir_out}')
-                        else:
-                            if not np.array_equal(data_in[field], data_out[field], equal_nan=True):
-                                errors.append(f'Field "{field}" different for {dir_in} vs {dir_out}')
-                elif not np.array_equal(data_in, data_out, equal_nan=True):
-                    errors.append(f'{dir_in} vs {dir_out} different')
         if errors:
-            raise ValueError(f'Doc {doc} had errors: ' + ' and '.join(errors))
+            raise ValueError(f'Doc {ddoc} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
 
-    def get_data_from_dir(self, folder, keep_column=None, progress_bar=False):
+    def _validate_data_per_doc(self, ddoc):
+        """Open the data from the old and new source, compare to assert it's the same"""
+        storage_backend = strax.FileSytemBackend()
+        dir_in = ddoc['location']
+        dir_out = self.renamed_path(dir_in)
+
+        md_in = storage_backend.get_metadata(dir_in)
+        is_large_dset = sum(chunk['nbytes'] for chunk in md_in['chunks']) > self.large_data_compare_threshold
+
+        self.log.info(f'Checking {dir_in} vs {dir_out}. Is large {is_large_dset}')
+        kw = dict(keep_column='time' if is_large_dset else None, progress_bar=is_large_dset)
+        data_in = self._get_data_from_dir(dir_in, **kw)
+        data_out = self._get_data_from_dir(dir_out, **kw)
+        errors = self._compare_data(data_in, data_out)
+        if errors:
+            raise ValueError(f'Data was not the same when comparing {dir_in} {dir_out}. See:\n' + '\n'.join(errors))
+        self.log.debug('Compare done')
+
+    @staticmethod
+    def _compare_data(data_in, data_out):
+        """Compare structured/simple numpy arrays"""
+        errors = []
+        if data_in.dtype.names:
+            for field in data_in.dtype.names:
+                if 'str' in data_in.dtype[field].name:
+                    # NB! The equal_nan compare does not work for string fields!
+                    if not np.array_equal(data_in[field], data_out[field]):
+                        errors.append(f'Error for "{field}"')
+                elif not np.array_equal(data_in[field], data_out[field], equal_nan=True):
+                    errors.append(f'Error for "{field}"')
+        elif not np.array_equal(data_in, data_out, equal_nan=True):
+            errors.append('Data not the same')
+        return errors
+
+    def _get_data_from_dir(self, folder, keep_column=None, progress_bar=False) -> np.ndarray:
+        """
+        Load data from a specified folder
+        :param folder: absolute path to folder
+        :param keep_column: columns to keep from structured array (if None, get all)
+        :param progress_bar: show a tqdm progressbar
+        :return: concatenated numpy array
+        """
         self.log.debug(f'Load {folder}, keep_column = "{keep_column if keep_column else "ALL"}"')
-        loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar, desc=folder.split('/')[-1])
+        loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar,
+                                  desc=folder.split('/')[-1])
         if keep_column:
             return np.concatenate([chunk.data[keep_column] for chunk in loader])
         return np.concatenate([chunk.data for chunk in loader])
 
-    def finalize_execute(self, ddocs):
+    def finalize_execute(self, docs: ty.List[dict]) -> None:
+        """
+        Update the database according to the operation and update the metadata
+
+        :param docs: list of data documents that have been rechunk
+        :return:
+        """
         # Maybe could merge this with do checks? -> Avoid opening metadate twice?
         # Then again, that is SO minor in the grand scheme of things, that I just leave it like this for the moment
-        if not self.production or not len(ddocs):
+        if not self.production or not len(docs):
             return
         storage_backend = strax.FileSytemBackend()
-        for ddoc in ddocs:
+        for ddoc in docs:
             if self.hostname != ddoc['host']:
                 continue
             dir_in = ddoc.get('location', '')
@@ -327,27 +385,29 @@ class ReStrax(daq_core.DataBases):
             lineage_hash = md['lineage_hash']
             compressor = md['compressor']
 
-            if self.production:
-                self.log.info(f'Update ddoc {dir_out}')
-                self.run_coll.update_one(
-                    {'number': int(run_id),
-                     'data': {
-                         '$elemMatch': {
-                             'location': ddoc['location'],
-                             'host': ddoc['host']}}},
-                    {'$set':
-                     # TODO check that this new location is correct!
-                         {'data.$.location': dir_out,
-                          'data.$.file_count': file_count,
-                          'data.$.meta.strax_version': strax.__version__,
-                          'data.$.meta.straxen_version': straxen.__version__,
-                          'data.$.meta.size_mb': data_size_mb,
-                          'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                          'data.$.meta.lineage_hash': lineage_hash,
-                          'data.$.meta.compressor': compressor,
-                          }
-                     })
-        # Mark as ready for upload
+            if not self.production:
+                continue
+
+            self.log.info(f'Update ddoc {dir_out}')
+            self.run_coll.update_one(
+                {'number': int(run_id),
+                 'data': {
+                     '$elemMatch': {
+                         'location': ddoc['location'],
+                         'host': ddoc['host']}}},
+                {'$set':
+                 # TODO check that this new location is correct!
+                     {'data.$.location': dir_out,
+                      'data.$.file_count': file_count,
+                      'data.$.meta.strax_version': strax.__version__,
+                      'data.$.meta.straxen_version': straxen.__version__,
+                      'data.$.meta.size_mb': data_size_mb,
+                      'data.$.meta.avg_chunk_mb': avg_data_size_mb,
+                      'data.$.meta.lineage_hash': lineage_hash,
+                      'data.$.meta.compressor': compressor,
+                      }
+                 })
+        # Mark as ready for upload such that admix can take over from here
         if self.production:
             self.run_coll.update_one(
                 {'number': int(run_id)},
@@ -360,7 +420,7 @@ class ReStrax(daq_core.DataBases):
     def renamed_path(self, path):
         return os.path.join(self.write_to, os.path.split(path)[-1])
 
-    def set_logger(self):
+    def _set_logger(self) -> None:
         versions = straxen.print_versions(
             modules='strax straxen utilix daqnt numpy tensorflow numba'.split(),
             include_git=True,
@@ -373,7 +433,7 @@ class ReStrax(daq_core.DataBases):
             level=logging.DEBUG,
             opening_message=f'Welcome to restrax\n{versions}')
 
-    def remove_dir(self, directory):
+    def _remove_dir(self, directory):
         """Remove directory (when in production mode)"""
         self.log.info(f'Remove {directory}')
         if self.production:
