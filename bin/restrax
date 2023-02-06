@@ -136,6 +136,7 @@ class ReStrax(daq_core.DataBases):
                  'bootstrax.state': 'done',
                  'bootstrax.host': self.hostname
                  },
+                sort=[('_id', -1)],
                 projection={'data': 1, 'number': 1}
             )
             ddocs = [doc for doc in rund_doc['data'] if
