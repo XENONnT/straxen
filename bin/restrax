@@ -98,7 +98,7 @@ class ReStrax(daq_core.DataBases):
     nap_time = 300  # s
     nap_time_short = 5  # s
     folders = immutabledict.immutabledict(
-        production_out='/data/xenonnt_processed',
+        production_out=daq_core.output_folder,
         test_out='/data/test_processed')
 
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
@@ -307,12 +307,17 @@ class ReStrax(daq_core.DataBases):
         return os.path.join(self.write_to, os.path.split(path)[-1])
 
     def set_logger(self):
+        versions = straxen.print_versions(
+            modules='strax straxen utilix daqnt numpy tensorflow numba'.split(),
+            include_git=True,
+            return_string=True,
+        )
         log_name = 'restrax' + self.hostname + ('' if self.production else '_TESTING')
         self.log = daqnt.get_daq_logger(
             log_name,
             log_name,
             level=logging.DEBUG,
-            opening_message=f'Welcome to restrax-the script that saved computing')
+            opening_message=f'Welcome to restrax\n{versions}')
 
     def remove_dir(self, directory):
         self.log.info(f'Remove {directory}')
