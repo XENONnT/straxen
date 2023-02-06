@@ -48,7 +48,7 @@ class DataBases:
         mongo_database = uconfig.get('rundb_admin', 'mongo_rdb_database')
 
         collection = utilix.rundb.xent_collection(
-            dict=mongo_url, user= mongo_user, password=mongo_password, database=mongo_database)
+            url=mongo_url, user= mongo_user, password=mongo_password, database=mongo_database)
 
         # Do not delete the client!
         return collection.database.client

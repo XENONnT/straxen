@@ -12,7 +12,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
-__version__ = '0.0.0'
+__version__ = '0.0.1'
 
 import argparse
 import logging
@@ -27,7 +27,7 @@ import straxen
 import threading
 import daqnt
 import fnmatch
-import daq_core
+from straxen import daq_core
 
 
 def parse_args():
@@ -100,10 +100,11 @@ class ReStrax(daq_core.DataBases):
     skip_compression = ('*event*', '*peak*')
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv', 'records', 'records_nv', 'records_mv')
 
-    def __int__(self, args):
+    def __init__(self, args):
         super().__init__(production=args.production)
-
+        
         self.hostname = socket.getfqdn()
+        self.set_logger()
         if args.production:
             self.read_from = None  # get from the database
             self.write_to = self.folders['production_out']
@@ -186,17 +187,19 @@ class ReStrax(daq_core.DataBases):
         if not os.path.exists(dir_in):
             raise FileNotFoundError(ddoc)
 
-        if self.skip_compression(ddoc):
+        if self.should_skip_compression(ddoc):
             # Just copy, don't read convert write
             # We could do shutil.move here, but... what if we fail while moving? Also, a bit harder with doing the datadocs right
             self.log.info(f'Copy (skip recompression) for {dir_in}')
-            shutil.copy(dir_in, dir_out)
+            if os.path.exists(dir_out):
+                self.remove_dir(dir_out)
+            shutil.copytree(dir_in, dir_out)
             return
         self.log.info(f'Start {dir_in} -> {dir_out}')
         compressor, target_size_mb = self.get_compressor_and_size(ddoc)
 
         summary = strax.rechunker(
-            source=dir_in,
+            source_directory=dir_in,
             dest_directory=self.write_to,
             replace=False,
             compressor=compressor,
@@ -215,7 +218,7 @@ class ReStrax(daq_core.DataBases):
             target_size_mb = 1000
         return compressor, target_size_mb
 
-    def skip_compression(self, ddoc) -> bool:
+    def should_skip_compression(self, ddoc) -> bool:
         """Should we skip recompressing this data? For example if the data is already so small that it's not worth recompressing"""
         return any(fnmatch.fnmatch(ddoc['data_type'], delete) for delete in self.skip_compression)
 
@@ -223,7 +226,7 @@ class ReStrax(daq_core.DataBases):
         if self.trump_mode:
             # One does not just venture into Mar a lago!
             return
-        storage_backend = strax.FileSytemBackend()
+        storage_backend = strax.FileSytemBackend(self.write_to)
         for doc in ddoc:
             dir_in = doc['location']
             dir_out = self.renamed_path(dir_in)
@@ -231,9 +234,11 @@ class ReStrax(daq_core.DataBases):
 
             if not os.path.exists(dir_in): errors.append(f'{dir_in} does not exists.')
             if not os.path.exists(dir_out): errors.append(f'{dir_out} does not exists.')
-            md_in = storage_backend.get_metadat(dir_in)
-            md_out = storage_backend.get_metadat(dir_out)
-            if 'exception' in md_out: errors.append('Writing error!')
+            md_in = storage_backend.get_metadata(dir_in)
+            md_out = storage_backend.get_metadata(dir_out)
+
+            if 'exception' in md_out:
+                errors.append('Writing error!')
 
             # TODO was this the right format of the metadata
             if sum(chunk['n'] for chunk in md_in['data']) != sum(chunk['n'] for chunk in md_out['chunks']):
@@ -246,14 +251,14 @@ class ReStrax(daq_core.DataBases):
         # Then again, that is SO minor in the grand scheme of things, that I just leave it like this for the moment
         if not self.production or not len(ddocs):
             return
-        storage_backend = strax.FileSytemBackend()
+        storage_backend = strax.FileSytemBackend(self.write_to)
         for ddoc in ddocs:
             if self.hostname != ddoc['host']:
                 continue
             dir_in = ddoc.get('location', '')
             dir_out = self.renamed_path(dir_in)
             file_count = len(os.listdir(dir_out))
-            md = storage_backend.get_metadat(dir_out)
+            md = storage_backend.get_metadata(dir_out)
             run_id = md['run_id']
             chunk_mb = [chunk['nbytes'] / 1e6 for chunk in md['chunks']]
             data_size_mb = int(np.sum(chunk_mb))
@@ -261,7 +266,8 @@ class ReStrax(daq_core.DataBases):
             lineage_hash = md['lineage_hash']
             compressor = md['compressor']
 
-            self.run_coll.update_one(
+            if self.production:
+                self.run_coll.update_one(
                 {'number': int(run_id),
                  'data': {
                      '$elemMatch': {
@@ -280,7 +286,8 @@ class ReStrax(daq_core.DataBases):
                       }
                  })
         # Mark as ready for upload
-        self.run_coll.update_one(
+        if self.production:
+            self.run_coll.update_one(
             {'number': int(run_id)},
             {'$set': {'status': 'eb_ready_to_upload'}})
 
@@ -297,6 +304,11 @@ class ReStrax(daq_core.DataBases):
             log_name,
             level=logging.DEBUG,
             opening_message=f'Welcome to restrax-the script that saved computing')
+
+    def remove_dir(self, directory):
+        self.log.info(f'Remove {directory}')
+        if self.production:
+            shutil.rmtree(directory)
 
 
 if __name__ == '__main__':
