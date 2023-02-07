@@ -147,7 +147,7 @@ class ReStrax(daq_core.DataBases):
 
     def find_work(self,
                   projection: ty.Optional[dict] = None
-                  ) -> ty.Optional[ty.Tuple[ty.List[dict]], ty.Dict]:
+                  ) -> ty.Optional[dict]:
         """
         Get a list of documents to recompress and the associated rundoc
 
