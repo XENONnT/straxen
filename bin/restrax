@@ -128,6 +128,7 @@ class ReStrax(daq_core.DataBases):
         self.ignore_checks = args.ignore_checks
         self.skip_compression = args.skip_compression
         self.process = args.process
+        self.deep_compare = args.deep_compare
 
     def infinite_loop(self, close=False) -> None:
         """Core of restrax, recompress the data followed by several validation steps"""
@@ -140,7 +141,7 @@ class ReStrax(daq_core.DataBases):
                 self.take_a_nap()
                 continue
             t0 = time.time()
-            mem_for_doc = memory_usage(proc=(self.handle_run,), args=(run_doc,))
+            mem_for_doc = memory_usage(proc=(self.handle_run, (run_doc,), dict()))
             self.log.debug(f"Memory profiler says peak RAM usage was: {max(mem_for_doc):.1f} MB")
             self.log.debug(f'Took {(time.time() - t0) / 3600:.2f} h')
             self.log.info('Loop done')
