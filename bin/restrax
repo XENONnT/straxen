@@ -12,7 +12,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 import argparse
 import logging
@@ -132,63 +132,96 @@ class ReStrax(daq_core.DataBases):
     def infinite_loop(self, close=False) -> None:
         """Core of restrax, recompress the data followed by several validation steps"""
         while True:
-            ddocs = self.find_work()
-            if not ddocs:
+            run_doc = self.find_work()
+            if run_doc is None:
                 if close:
                     return
                 self.log.info('No work to do, sleep')
                 self.take_a_nap()
                 continue
-            self.rechunk_docs(ddocs)
-            self.do_checks(ddocs)
-            if self.deep_compare:
-                self.do_work(ddocs, function=self._validate_data_per_doc)
-            self.finalize_execute(ddocs)
+            t0 = time.time()
+            mem_for_doc = memory_usage(proc=(self.handle_run,), args=(run_doc,))
+            self.log.debug(f"Memory profiler says peak RAM usage was: {max(mem_for_doc):.1f} MB")
+            self.log.debug(f'Took {(time.time() - t0) / 3600:.2f} h')
             self.log.info('Loop done')
 
-    def find_work(self) -> ty.Optional[ty.List[dict]]:
-        """Get a list of documents to recompress"""
-        if self.production:
-            query = {'status': 'eb_finished_pre',
-                     'bootstrax.state': 'done',
-                     'bootstrax.host': self.hostname
-                     }
-            if self.process:
-                query['number'] = int(self.process)
-            rund_doc = self.run_coll.find_one(
-                query,
-                sort=[('_id', -1)],
-                projection={'data': 1, 'number': 1}
-            )
-            if rund_doc is None:
-                return None
-            ddocs = [doc for doc in rund_doc['data'] if
-                     doc.get('host') == self.hostname
-                     ]
-            self.log.info(f'{rund_doc["number"]} -> doing {len(ddocs)}')
-            return ddocs
+    def find_work(self,
+                  projection: ty.Optional[dict] = None
+                  ) -> ty.Optional[ty.Tuple[ty.List[dict]], ty.Dict]:
+        """
+        Get a list of documents to recompress and the associated rundoc
 
-        # Just try to do all the folders, we are doing a test
+        :param projection: optional, which fields from the run document to query
+        :return: list of data documents, and the run-document that
+        """
+        if projection is None:
+            projection = {k: 1 for k in 'data number mode detectors'.split()}
+        if self.production:
+            return self._find_production_work(projection)
+        return self._find_testing_work(projection)
+
+    def _find_production_work(self, projection) -> ty.Optional[dict]:
+        """Query the database for work"""
+        query = {'status': 'eb_finished_pre',
+                 'bootstrax.state': 'done',
+                 'bootstrax.host': self.hostname
+                 }
+        if self.process:
+            query['number'] = int(self.process)
+        run_doc = self.run_coll.find_one(
+            query,
+            sort=[('_id', -1)],
+            projection=projection
+        )
+        return run_doc
+
+    def _find_testing_work(self, projection: dict) -> ty.Optional[dict]:
+        """Find work from the pre-dir if we are testing"""
         folders = os.listdir(self.read_from)
         first_run = None
-        ddocs = []
+        data_docs = []
         for folder in folders:
             if os.path.exists(os.path.join(self.write_to, folder)):
+                # Don't do work twice
                 continue
             if len(split := folder.split('-')) and len(split[0]) == 6:
                 run_id, data_type, lineage = split
+
                 if first_run is None:
                     first_run = run_id
                 if run_id != first_run:
                     continue
                 self.log.info(f'Do {folder}')
-                ddocs.append({'host': self.hostname,
-                              'location': os.path.join(self.read_from, folder),
-                              'type': data_type,
-                              'linage_hash': lineage,
-                              })
-        self.log.info(f'Total of {len(ddocs)} data documents')
-        return ddocs
+                data_docs.append({'host': self.hostname,
+                                  'location': os.path.join(self.read_from, folder),
+                                  'type': data_type,
+                                  'linage_hash': lineage,
+                                  })
+        if not len(data_docs):
+            return None
+        run_doc = self.run_col.find_one({'number': int(first_run)}, projection=projection)
+        run_doc['data'] = data_docs
+        return run_doc
+
+    def handle_run(self, run_doc):
+        """For a given batch of data_docs of a given run, do all the rechunking steps"""
+        # Filter data documents that are only on this host
+        data_docs = [data_doc for data_doc in run_doc['data'] if
+                     data_doc.get('host') == self.hostname
+                     ]
+        run_doc['data'] = data_docs
+        self.log.info(f'{run_doc["number"]} -> doing {len(data_docs)}')
+        # self.run_software_veto(run_doc)
+        self.rechunk_docs(data_docs)
+        self.do_checks(data_docs)
+        if self.deep_compare:
+            self.do_work(data_docs, function=self._validate_data_per_doc)
+        self.finalize_execute(data_docs)
+
+    def run_software_veto(self, run_doc):
+        """This is where we can add a software veto for specific runs"""
+        # Currently nothing is implemented
+        pass
 
     def rechunk_docs(self, docs: ty.List[dict]) -> None:
         """
@@ -211,21 +244,15 @@ class ReStrax(daq_core.DataBases):
             for ddoc in docs:
                 self._rechunk_per_doc(ddoc)
 
-    def _sleep_while_n_threads_alive(self, threads, n):
-        while (n_alive := sum(t.is_alive() for t in threads)) > n:
-            if n == 0:
-                self.log.debug(f'{n_alive} threads alive, sleep')
-            self.take_a_nap(self.nap_time_short)
-
-    def _rechunk_per_doc(self, ddoc):
+    def _rechunk_per_doc(self, data_doc):
         """Do the rechunking document by document"""
-        dir_in = ddoc['location']
+        dir_in = data_doc['location']
         dir_out = self.renamed_path(dir_in)
 
         if not os.path.exists(dir_in):
-            raise FileNotFoundError(ddoc)
+            raise FileNotFoundError(data_doc)
 
-        if self.should_skip_compression(ddoc):
+        if self.should_skip_compression(data_doc):
             # Just copy, don't read convert write
             # We could do shutil.move here, but... what if we fail while moving?
             # Also, a bit harder with doing the datadocs right
@@ -236,7 +263,7 @@ class ReStrax(daq_core.DataBases):
             return
 
         self.log.info(f'Start {dir_in} -> {dir_out}')
-        compressor, target_size_mb = self.get_compressor_and_size(ddoc)
+        compressor, target_size_mb = self.get_compressor_and_size(data_doc)
 
         summary = strax.rechunker(
             source_directory=dir_in,
@@ -248,14 +275,20 @@ class ReStrax(daq_core.DataBases):
         )
         self.log.info(f'{dir_out} written {summary}')
 
-    def get_compressor_and_size(self, ddoc: dict) -> ty.Tuple[str, ty.Optional[int]]:
+    def _sleep_while_n_threads_alive(self, threads, n):
+        while (n_alive := sum(t.is_alive() for t in threads)) > n:
+            if n == 0:
+                self.log.debug(f'{n_alive} threads alive, sleep')
+            self.take_a_nap(self.nap_time_short)
+
+    def get_compressor_and_size(self, data_doc: dict) -> ty.Tuple[str, ty.Optional[int]]:
         """
         For a given data document infer the desired compressor, and target size
 
-        :param ddoc: data document
+        :param data_doc: data document
         """
         # This is where we might do some fancy coding
-        dtype = ddoc['type']
+        dtype = data_doc['type']
         if dtype in self.raw_record_types:
             compressor = 'bz2'
             target_size_mb = 5000
@@ -269,31 +302,31 @@ class ReStrax(daq_core.DataBases):
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
 
-    def should_skip_compression(self, ddoc) -> bool:
+    def should_skip_compression(self, data_doc) -> bool:
         """Should we skip recompressing this data? For example if the data is
         already so small that it's not worth recompressing
 
-        :param ddoc: data document
+        :param data_doc: data document
         """
-        if ddoc['type'] == 'live_data':
+        if data_doc['type'] == 'live_data':
             return True
-        return any(fnmatch.fnmatch(ddoc['type'], delete)
+        return any(fnmatch.fnmatch(data_doc['type'], delete)
                    for delete in self.skip_compression)
 
-    def do_checks(self, docs: ty.List[dict]) -> None:
+    def do_checks(self, data_docs: ty.List[dict]) -> None:
         """
         Open the metadata of the old and the new file to check if everything
         is consistent and no exceptions were encountered during recompression
 
-        :param docs: list of data documents to rechunk
+        :param data_docs: list of data documents to rechunk
         """
         if self.ignore_checks:
             # One does not just venture into Mar a lago!
             return
         storage_backend = strax.FileSytemBackend()
         errors = []
-        for ddoc in docs:
-            dir_in = ddoc['location']
+        for data_doc in data_docs:
+            dir_in = data_doc['location']
             dir_out = self.renamed_path(dir_in)
 
             if not os.path.exists(dir_in): errors.append(f'{dir_in} does not exists.')
@@ -307,13 +340,13 @@ class ReStrax(daq_core.DataBases):
             if sum(chunk['n'] for chunk in md_in['chunks']) != sum(chunk['n'] for chunk in md_out['chunks']):
                 errors.append('Rechunked data has fewer entries?!')
         if errors:
-            raise ValueError(f'Doc {ddoc} had errors: ' + ' and '.join(errors))
+            raise ValueError(f'Doc {data_docs} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
 
-    def _validate_data_per_doc(self, ddoc):
+    def _validate_data_per_doc(self, data_doc):
         """Open the data from the old and new source, compare to assert it's the same"""
         storage_backend = strax.FileSytemBackend()
-        dir_in = ddoc['location']
+        dir_in = data_doc['location']
         dir_out = self.renamed_path(dir_in)
 
         md_in = storage_backend.get_metadata(dir_in)
@@ -359,52 +392,47 @@ class ReStrax(daq_core.DataBases):
             return np.concatenate([chunk.data[keep_column] for chunk in loader])
         return np.concatenate([chunk.data for chunk in loader])
 
-    def finalize_execute(self, docs: ty.List[dict]) -> None:
+    def finalize_execute(self, data_docs: ty.List[dict]) -> None:
         """
         Update the database according to the operation and update the metadata
 
-        :param docs: list of data documents that have been rechunk
+        :param data_docs: list of data documents that have been rechunk
         :return:
         """
         # Maybe could merge this with do checks? -> Avoid opening metadate twice?
         # Then again, that is SO minor in the grand scheme of things, that I just leave it like this for the moment
-        if not self.production or not len(docs):
+        if not self.production or not len(data_docs):
             return
         storage_backend = strax.FileSytemBackend()
-        for ddoc in docs:
-            if self.hostname != ddoc['host']:
+        for data_doc in data_docs:
+            if self.hostname != data_doc['host']:
                 continue
-            dir_in = ddoc.get('location', '')
+            dir_in = data_doc.get('location', '')
             dir_out = self.renamed_path(dir_in)
-            file_count = len(os.listdir(dir_out))
-            md = storage_backend.get_metadata(dir_out)
-            run_id = md['run_id']
-            chunk_mb = [chunk['nbytes'] / 1e6 for chunk in md['chunks']]
-            data_size_mb = int(np.sum(chunk_mb))
-            avg_data_size_mb = int(np.average(chunk_mb))
-            lineage_hash = md['lineage_hash']
-            compressor = md['compressor']
+
+            new_metadata = storage_backend.get_metadata(dir_out)
+            run_id = new_metadata['run_id']
+            chunk_mb = [chunk['nbytes'] / 1e6 for chunk in new_metadata['chunks']]
 
             if not self.production:
                 continue
 
-            self.log.info(f'Update ddoc {dir_out}')
+            self.log.info(f'Update data doc {dir_out}')
             self.run_coll.update_one(
                 {'number': int(run_id),
                  'data': {
                      '$elemMatch': {
-                         'location': ddoc['location'],
-                         'host': ddoc['host']}}},
+                         'location': data_doc['location'],
+                         'host': data_doc['host']}}},
                 {'$set':
-                 # TODO check that this new location is correct!
                      {'data.$.location': dir_out,
-                      'data.$.file_count': file_count,
+                      'data.$.file_count': len(os.listdir(dir_out)),
                       'data.$.meta.strax_version': strax.__version__,
                       'data.$.meta.straxen_version': straxen.__version__,
-                      'data.$.meta.size_mb': data_size_mb,
-                      'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash,
-                      'data.$.meta.compressor': compressor,
+                      'data.$.meta.size_mb': int(np.sum(chunk_mb)),
+                      'data.$.meta.avg_chunk_mb': int(np.average(chunk_mb)),
+                      'data.$.meta.lineage_hash': new_metadata['lineage_hash'],
+                      'data.$.meta.compressor': new_metadata['compressor'],
                       }
                  })
         # Mark as ready for upload such that admix can take over from here
