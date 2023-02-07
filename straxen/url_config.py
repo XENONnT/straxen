@@ -707,9 +707,12 @@ def read_rundoc(path, run_id=None, default=None):
         raise ValueError(f'No rundoc found for run {run_id}')
 
     for part in path.split('.'):
-        if part not in rundoc:
-            if default is None:
-                raise ValueError(f'No path {path} found in rundoc for run {run_id}')
+        if isinstance(rundoc, list) and part.isdigit() and len(rundoc)>int(part):
+            rundoc = rundoc[int(part)]
+        elif isinstance(rundoc, dict) and part in rundoc:
+            rundoc = rundoc[part]
+        elif default is not None:
             return default
-        rundoc = rundoc[part]
+        else:
+            raise ValueError(f'No path {path} found in rundoc for run {run_id}')
     return rundoc
