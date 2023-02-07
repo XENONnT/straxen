@@ -803,20 +803,20 @@ def infer_records_compressor(rd, datarate, n_fails):
     """
     if n_fails or datarate is None:
         # Cannot infer datarate or failed before, go for fast & safe
-        return 'lz4' if n_fails > 1 else 'zstd'
+        return 'lz4' if n_fails > 1 else 'blosc'
 
     chunk_length = (rd['daq_config']['strax_chunk_overlap'] +
                     rd['daq_config']['strax_chunk_length'])
     chunk_size_mb = datarate*chunk_length
     if datarate < 65:
         # Low data rate, we can do very large compression
-        return 'zstd'
+        return 'blosc'
     if chunk_size_mb > 1800:
         # Extremely large chunks, let's use LZ4 because we know that it
         # can handle this.
         return 'lz4'
     # High datarate and reasonable chunk size.
-    return 'zstd'
+    return 'blosc'
 
 
 ##
@@ -1197,7 +1197,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                          timeout=timeout,
                          )
 
-        for t in ('raw_records', 'records'):
+        for t in ('raw_records', 'records', 'records_nv', 'hitlets_nv'):
             # Set the (raw)records processor to the inferred one
             st._plugin_class_registry[t].compressor = records_compressor
 
