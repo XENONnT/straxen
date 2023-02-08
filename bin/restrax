@@ -44,8 +44,8 @@ def parse_args():
                         help='max number of threads to simultaneously work on one run'
                         )
     parser.add_argument('--skip_compression', nargs='*',
-                        default=['*event*', '*peak*'],
-                        help='skip recompression of any datatype that fnmatches'
+                        default=[],
+                        help='skip recompression of any datatype that fnmatches. For example: "*event* *peak*"'
                         )
     parser.add_argument('--deep_compare', action='store_true',
                         help='open all the data of the old and the new format and check that they are the same'
@@ -206,10 +206,8 @@ class ReStrax(daq_core.DataBases):
 
     def handle_run(self, run_doc):
         """For a given batch of data_docs of a given run, do all the rechunking steps"""
-        # Filter data documents that are only on this host
-        data_docs = [data_doc for data_doc in run_doc['data'] if
-                     data_doc.get('host') == self.hostname
-                     ]
+        
+        data_docs = self._get_data_docs(run_doc)
         run_doc['data'] = data_docs
         self.log.info(f'{run_doc["number"]} -> doing {len(data_docs)}')
         # self.run_software_veto(run_doc)
@@ -218,7 +216,21 @@ class ReStrax(daq_core.DataBases):
         if self.deep_compare:
             self.do_work(data_docs, function=self._validate_data_per_doc)
         self.finalize_execute(data_docs)
-
+    
+    def _get_data_docs(self, run_doc):
+        """Extract data doc from rundoc and sort by largest first"""
+        # Filter data documents that are only on this host
+        data_docs = [data_doc for data_doc in run_doc['data'] if
+                     data_doc.get('host') == self.hostname
+                     ]
+        storage_backend = strax.FileSytemBackend()
+        size = lambda data_doc: sum(
+            chunk.get('nbytes', 0) for chunk in 
+            storage_backend.get_metadata(data_doc['location']).get('chunks', [dict()])
+        )
+        data_docs = sorted(data_docs, key=size, reverse=True)
+        return data_docs
+        
     def run_software_veto(self, run_doc):
         """This is where we can add a software veto for specific runs"""
         # Currently nothing is implemented
@@ -278,8 +290,6 @@ class ReStrax(daq_core.DataBases):
 
     def _sleep_while_n_threads_alive(self, threads, n):
         while (n_alive := sum(t.is_alive() for t in threads)) > n:
-            if n == 0:
-                self.log.debug(f'{n_alive} threads alive, sleep')
             self.take_a_nap(self.nap_time_short)
 
     def get_compressor_and_size(self, data_doc: dict) -> ty.Tuple[str, ty.Optional[int]]:
