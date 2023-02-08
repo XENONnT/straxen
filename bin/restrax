@@ -285,6 +285,11 @@ class ReStrax(daq_core.DataBases):
             compressor=compressor,
             target_size_mb=target_size_mb,
             rechunk=True,
+            
+            # TODO, might do with some optimization here / make configurable
+            parallel=True,
+            max_workers=2,
+            _timeout= 24 * 3600
         )
         self.log.info(f'{dir_out} written {summary}')
 
