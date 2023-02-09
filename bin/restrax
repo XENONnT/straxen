@@ -214,7 +214,7 @@ class ReStrax(daq_core.DataBases):
         self.rechunk_docs(data_docs)
         self.do_checks(data_docs)
         if self.deep_compare:
-            self.do_work(data_docs, function=self._validate_data_per_doc)
+            self.validate_data(data_docs)
         self.finalize_execute(data_docs)
     
     def _get_data_docs(self, run_doc):
@@ -288,7 +288,7 @@ class ReStrax(daq_core.DataBases):
             
             # TODO, might do with some optimization here / make configurable
             parallel=True,
-            max_workers=2,
+            max_workers=8,
             _timeout= 24 * 3600
         )
         self.log.info(f'{dir_out} written {summary}')
@@ -358,6 +358,10 @@ class ReStrax(daq_core.DataBases):
         if errors:
             raise ValueError(f'Doc {data_docs} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
+    
+    def validate_data(self, data_docs):
+        for data_doc in data_docs:
+            self._validate_data_per_doc(data_doc)
 
     def _validate_data_per_doc(self, data_doc):
         """Open the data from the old and new source, compare to assert it's the same"""
