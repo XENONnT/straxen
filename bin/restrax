@@ -30,6 +30,8 @@ import fnmatch
 import typing as ty
 from straxen import daq_core
 from memory_profiler import memory_usage
+import glob
+from ast import literal_eval
 
 
 def parse_args():
@@ -48,8 +50,8 @@ def parse_args():
     # deep_compare is meant only for testing
     parser.add_argument('--deep_compare', action='store_true',
                         help='Open all the data of the old and the new format and check that they are the same')
-    parser.add_argument('--recompress_min_chunks', type=int, default = 3,
-                        help ='Only bother with doing the recompression if there are more than this many chunks')
+    parser.add_argument('--recompress_min_chunks', type=int, default=3,
+                        help='Only bother with doing the recompression if there are more than this many chunks')
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--undying', action='store_true',
                          help="Except any error and ignore it")
@@ -112,8 +114,8 @@ class ReStrax(daq_core.DataBases):
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
                         'raw_records_he',
                         'records', 'records_nv', 'records_mv')
-    
-    exclude_modes = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration', 
+
+    exclude_modes = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
                      'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
     # If a dataset is larger than this many bites, only compare a single field (time)
     large_data_compare_threshold = 5e9
@@ -212,7 +214,7 @@ class ReStrax(daq_core.DataBases):
 
     def handle_run(self, run_doc):
         """For a given batch of data_docs of a given run, do all the rechunking steps"""
-        
+
         data_docs = self._get_data_docs(run_doc)
         run_doc['data'] = data_docs
         self.log.info(f'{run_doc["number"]} -> doing {len(data_docs)}')
@@ -222,7 +224,7 @@ class ReStrax(daq_core.DataBases):
         if self.deep_compare:
             self.validate_data(data_docs)
         self.finalize_execute(data_docs)
-    
+
     def _get_data_docs(self, run_doc):
         """Extract data doc from rundoc and sort by largest first"""
         # Filter data documents that are only on this host
@@ -231,12 +233,12 @@ class ReStrax(daq_core.DataBases):
                      ]
         storage_backend = strax.FileSytemBackend()
         size = lambda data_doc: sum(
-            chunk.get('nbytes', 0) for chunk in 
+            chunk.get('nbytes', 0) for chunk in
             storage_backend.get_metadata(data_doc['location']).get('chunks', [dict()])
         )
         data_docs = sorted(data_docs, key=size, reverse=True)
         return data_docs
-        
+
     def run_software_veto(self, run_doc):
         """This is where we can add a software veto for specific runs"""
         raise NotImplementedError
@@ -245,6 +247,7 @@ class ReStrax(daq_core.DataBases):
         """
         For each of the data documents, rechunk/recompress/move/check the data,
         if multi-threading is allowed, use that
+        :param run_doc: run document
         :param docs: list of data documents to rechunk
         """
         if self.max_threads > 1:
@@ -291,10 +294,10 @@ class ReStrax(daq_core.DataBases):
             compressor=compressor,
             target_size_mb=target_size_mb,
             rechunk=True,
-            
+
             # TODO, might do with some optimization here / make configurable
             parallel=True,
-            max_workers=8,
+            max_workers=4,
             _timeout=3600
         )
         self.log.info(f'{dir_out} written {summary}')
@@ -332,7 +335,7 @@ class ReStrax(daq_core.DataBases):
         """Should we skip recompressing this data? For example if the data is
         already so small that it's not worth recompressing
         
-        :run_doc: run document
+        :param run_doc: run document
         :param data_doc: data document
         """
         data_type = data_doc['type']
@@ -383,7 +386,7 @@ class ReStrax(daq_core.DataBases):
             locs = [d['location'] for d in data_docs]
             raise ValueError(f'Doc {locs} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
-    
+
     def validate_data(self, data_docs):
         for data_doc in data_docs:
             self._validate_data_per_doc(data_doc)
@@ -422,7 +425,7 @@ class ReStrax(daq_core.DataBases):
             errors.append('Data not the same')
         return errors
 
-    def _get_data_from_dir(folder, keep_column=None, progress_bar=False, _compare_sum=False) -> np.ndarray:
+    def _get_data_from_dir(self, folder, keep_column=None, progress_bar=False, _compare_sum=False) -> np.ndarray:
         """
         Load data from a specified folder
         :param folder: absolute path to folder
@@ -433,26 +436,28 @@ class ReStrax(daq_core.DataBases):
             Will be overwritten for too large arrays.
         :return: concatenated numpy array
         """
-        md = strax.FileSytemBackend()._get_metadata(folder)
-        files = strax.utils.tqdm(sorted(glob.glob(os.path.join(folder, '*')))[:-1], 
+        meta_data = strax.FileSytemBackend()._get_metadata(folder)
+        files = strax.utils.tqdm(sorted(glob.glob(os.path.join(folder, '*')))[:-1],
                                  desc=folder.split('/')[-1],
-                                 disable = not progress_bar)
+                                 disable=not progress_bar)
 
-        dtype = literal_eval(md['dtype'])
+        dtype = literal_eval(meta_data['dtype'])
 
         if keep_column:
             res_dtype = [d for d in dtype if d[0][1] in strax.to_str_tuple(keep_column)]
             if len(res_dtype) == 1:
                 res_dtype = res_dtype[0][-1]
         else:
-            res_dtype=dtype
+            res_dtype = dtype
 
-        data_len = sum(d['n'] for d in md['chunks'])
+        data_len = sum(d['n'] for d in meta_data['chunks'])
 
-        if np.zeros(1, dtype=res_dtype).nbytes * data_len / 1e9 > 2.0 or _compare_sum:
+        if np.zeros(1, dtype=res_dtype).nbytes * data_len / 1e6 > self.max_compare_buffer_mb or _compare_sum:
+            if not _compare_sum:
+                self.log.info(f'Memory footprint for loading {folder} would be too large, only compare sum.')
             # Larger than 5 GB, only computing total sum of fields
             _compare_sum = True
-            # We might get interger overflows, but that shouldn't be much of a problem 
+            # We might get integer overflows, but that shouldn't be much of a problem
             # as long as we get the same number of overflows for both datasets
             result = np.zeros(1, dtype=res_dtype)
         else:
@@ -460,7 +465,7 @@ class ReStrax(daq_core.DataBases):
 
         n_seen = 0
         for file in files:
-            chunk = strax.io.load_file(file, compressor=md['compressor'], dtype=dtype)
+            chunk = strax.io.load_file(file, compressor=meta_data['compressor'], dtype=dtype)
 
             if _compare_sum and keep_column:
                 result += np.sum(chunk[keep_column])
@@ -474,7 +479,7 @@ class ReStrax(daq_core.DataBases):
             if keep_column:
                 new = chunk[keep_column].copy()
 
-            result[n_seen: n_seen+len(new)] = new
+            result[n_seen: n_seen + len(new)] = new
             n_seen += len(new)
         return result
 
