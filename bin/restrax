@@ -48,7 +48,7 @@ def parse_args():
     # deep_compare is meant only for testing
     parser.add_argument('--deep_compare', action='store_true',
                         help='Open all the data of the old and the new format and check that they are the same')
-    parser.add_argument('recompress_min_chunks', type=int, default = 3,
+    parser.add_argument('--recompress_min_chunks', type=int, default = 3,
                         help ='Only bother with doing the recompression if there are more than this many chunks')
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--undying', action='store_true',
@@ -112,7 +112,9 @@ class ReStrax(daq_core.DataBases):
     raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
                         'raw_records_he',
                         'records', 'records_nv', 'records_mv')
-
+    
+    exclude_modes = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration', 
+                     'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
     # If a dataset is larger than this many bites, only compare a single field (time)
     large_data_compare_threshold = 5e9
 
@@ -160,7 +162,7 @@ class ReStrax(daq_core.DataBases):
         :return: list of data documents, and the run-document that
         """
         if projection is None:
-            projection = {k: 1 for k in 'data number mode detectors'.split()}
+            projection = {k: 1 for k in 'data number mode detectors rate'.split()}
         if self.production:
             return self._find_production_work(projection)
         return self._find_testing_work(projection)
@@ -215,7 +217,7 @@ class ReStrax(daq_core.DataBases):
         run_doc['data'] = data_docs
         self.log.info(f'{run_doc["number"]} -> doing {len(data_docs)}')
         # self.run_software_veto(run_doc)
-        self.rechunk_docs(data_docs)
+        self.rechunk_docs(run_doc, data_docs)
         self.do_checks(data_docs)
         if self.deep_compare:
             self.validate_data(data_docs)
@@ -239,7 +241,7 @@ class ReStrax(daq_core.DataBases):
         """This is where we can add a software veto for specific runs"""
         raise NotImplementedError
 
-    def rechunk_docs(self, docs: ty.List[dict]) -> None:
+    def rechunk_docs(self, run_doc, docs: ty.List[dict]) -> None:
         """
         For each of the data documents, rechunk/recompress/move/check the data,
         if multi-threading is allowed, use that
@@ -251,14 +253,14 @@ class ReStrax(daq_core.DataBases):
                 self._sleep_while_n_threads_alive(threads, self.max_threads - 1)
                 thread = threading.Thread(
                     target=self._rechunk_per_doc,
-                    args=(next_doc,))
+                    args=(run_doc, next_doc,))
                 thread.start()
                 threads.append(thread)
             # Wait until all threads have finished
             self._sleep_while_n_threads_alive(threads, 0)
         else:
             for ddoc in docs:
-                self._rechunk_per_doc(ddoc)
+                self._rechunk_per_doc(run_doc, ddoc)
 
     def _rechunk_per_doc(self, run_doc, data_doc):
         """Do the rechunking document by document"""
@@ -268,7 +270,7 @@ class ReStrax(daq_core.DataBases):
         if not os.path.exists(dir_in):
             raise FileNotFoundError(data_doc)
 
-        if self.should_skip_compression(data_doc):
+        if self.should_skip_compression(run_doc, data_doc):
             # Just copy, don't read convert write
             # We could do shutil.move here, but... what if we fail while moving?
             # Also, a bit harder with doing the datadocs right
@@ -276,6 +278,7 @@ class ReStrax(daq_core.DataBases):
             if os.path.exists(dir_out):
                 self._remove_dir(dir_out)
             shutil.copytree(dir_in, dir_out, dirs_exist_ok=True)
+            self.log.debug(f'Done {dir_in}')
             return
 
         self.log.info(f'Start {dir_in} -> {dir_out}')
@@ -292,7 +295,7 @@ class ReStrax(daq_core.DataBases):
             # TODO, might do with some optimization here / make configurable
             parallel=True,
             max_workers=8,
-            _timeout= 24 * 3600
+            _timeout=3600
         )
         self.log.info(f'{dir_out} written {summary}')
 
@@ -313,6 +316,8 @@ class ReStrax(daq_core.DataBases):
             rate = sum(detector.get('avg', 100) for detector in run_doc.get('rate', {'none': {}}).values())
             compressor = 'bz2' if rate < self.bz2_compression_threshold_mbs else 'zstd'
             target_size_mb = 5000
+            # Temporary
+            compressor = 'zstd'
         elif 'peak' in dtype:
             compressor = 'zstd'
             target_size_mb = 1500
@@ -323,20 +328,28 @@ class ReStrax(daq_core.DataBases):
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
 
-    def should_skip_compression(self, data_doc) -> bool:
+    def should_skip_compression(self, run_doc, data_doc) -> bool:
         """Should we skip recompressing this data? For example if the data is
         already so small that it's not worth recompressing
-
+        
+        :run_doc: run document
         :param data_doc: data document
         """
-        if data_doc['type'] == 'live_data':
+        data_type = data_doc['type']
+        run_mode = run_doc['mode']
+        if any([m in run_mode for m in self.exclude_modes]):
+            self.log.debug(f'Skip mode {run_mode}')
             return True
-        if any(fnmatch.fnmatch(data_doc['type'], delete)
+        if data_type == 'live_data':
+            return True
+        if any(fnmatch.fnmatch(data_type, delete)
                for delete in self.skip_compression):
+            self.log.debug(f'Skip {data_type} -> matches skip_compression')
             return True
         n_chunks = len(strax.FileSytemBackend().get_metadata(data_doc['location']).get('chunks', []))
-        if n_chunks <= self.recompress_min_chunks:
+        if n_chunks <= self.recompress_min_chunks and data_type not in self.raw_record_types:
             # no need to recompress data if it's only one chunk
+            self.log.debug(f'Skip {data_type} -> only {n_chunks} chunks')
             return True
         return False
 
@@ -367,7 +380,8 @@ class ReStrax(daq_core.DataBases):
             if sum(chunk['n'] for chunk in md_in['chunks']) != sum(chunk['n'] for chunk in md_out['chunks']):
                 errors.append('Rechunked data has fewer entries?!')
         if errors:
-            raise ValueError(f'Doc {data_docs} had errors: ' + ' and '.join(errors))
+            locs = [d['location'] for d in data_docs]
+            raise ValueError(f'Doc {locs} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
     
     def validate_data(self, data_docs):
@@ -408,20 +422,61 @@ class ReStrax(daq_core.DataBases):
             errors.append('Data not the same')
         return errors
 
-    def _get_data_from_dir(self, folder, keep_column=None, progress_bar=False) -> np.ndarray:
+    def _get_data_from_dir(folder, keep_column=None, progress_bar=False, _compare_sum=False) -> np.ndarray:
         """
         Load data from a specified folder
         :param folder: absolute path to folder
         :param keep_column: columns to keep from structured array (if None, get all)
         :param progress_bar: show a tqdm progressbar
+        :param _compare_sum: compare only the sum of each field per chunk to 
+            prevent keeping too much memory occoupied.
+            Will be overwritten for too large arrays.
         :return: concatenated numpy array
         """
-        self.log.debug(f'Load {folder}, keep_column = "{keep_column if keep_column else "ALL"}"')
-        loader = strax.utils.tqdm(strax.FileSytemBackend().loader(folder), disable=not progress_bar,
-                                  desc=folder.split('/')[-1])
+        md = strax.FileSytemBackend()._get_metadata(folder)
+        files = strax.utils.tqdm(sorted(glob.glob(os.path.join(folder, '*')))[:-1], 
+                                 desc=folder.split('/')[-1],
+                                 disable = not progress_bar)
+
+        dtype = literal_eval(md['dtype'])
+
         if keep_column:
-            return np.concatenate([chunk.data[keep_column] for chunk in loader])
-        return np.concatenate([chunk.data for chunk in loader])
+            res_dtype = [d for d in dtype if d[0][1] in strax.to_str_tuple(keep_column)]
+            if len(res_dtype) == 1:
+                res_dtype = res_dtype[0][-1]
+        else:
+            res_dtype=dtype
+
+        data_len = sum(d['n'] for d in md['chunks'])
+
+        if np.zeros(1, dtype=res_dtype).nbytes * data_len / 1e9 > 2.0 or _compare_sum:
+            # Larger than 5 GB, only computing total sum of fields
+            _compare_sum = True
+            # We might get interger overflows, but that shouldn't be much of a problem 
+            # as long as we get the same number of overflows for both datasets
+            result = np.zeros(1, dtype=res_dtype)
+        else:
+            result = np.zeros(data_len, dtype=res_dtype)
+
+        n_seen = 0
+        for file in files:
+            chunk = strax.io.load_file(file, compressor=md['compressor'], dtype=dtype)
+
+            if _compare_sum and keep_column:
+                result += np.sum(chunk[keep_column])
+                continue
+            elif _compare_sum:
+                for field in result.dtype.names:
+                    result[field] += np.sum(chunk[field])
+                continue
+
+            new = chunk
+            if keep_column:
+                new = chunk[keep_column].copy()
+
+            result[n_seen: n_seen+len(new)] = new
+            n_seen += len(new)
+        return result
 
     def finalize_execute(self, data_docs: ty.List[dict]) -> None:
         """
@@ -506,8 +561,4 @@ class ReStrax(daq_core.DataBases):
 
 
 if __name__ == '__main__':
-    start = time.time()
-    mem = memory_usage(proc=(main,))
-    print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
-    print(f'Took {time.time() - start:.1f} s = {(time.time() - start) / 3600:.2f} h ')
-    print('Bye, bye')
+    main()
