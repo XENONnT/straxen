@@ -15,9 +15,10 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.3.3'
+__version__ = '0.4.0'
 
 import argparse
+import warnings
 from datetime import datetime, timedelta
 import logging
 import os
@@ -84,6 +85,7 @@ def main_ajax():
               'high_level_data': clean_high_level_data,
               'non_latest': clean_non_latest,
               'unregistered': clean_unregistered,
+              'production': clean_production_folder,
               'abandoned': clean_abandoned,
               'old_hash': clean_old_hash,
               'database': clean_database}
@@ -270,17 +272,25 @@ def clean_non_latest():
                     delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 reason='non latest')
 
+def clean_production_folder():
+    warnings.warn('Running clean of production folder is a bad idea if you '
+                  'are running restrax at the same time (restrax does not '
+                  'register data while writing it)')
+    for _ in strax.utils.tqdm(list(range(30)), desc = 'Continue in 30 seconds'):
+        pass
+    clean_unregistered(delete_live=False, _clean_from=output_folder)
 
-def clean_unregistered(delete_live=False):
+def clean_unregistered(delete_live=False, _clean_from=pre_folder):
     """
     Clean data that is not in the database. To do this check the output folder and remove
     files if there is no corresponding entry in the rundoc.
     :param delete_live: bool, if true delete unregistered live data.
+    :param _clean_from: which production (not live) folder to clean from
     """
     set_state('clean_unregistered')
     # We should only do this for the pre-folder since the production folder does have unregistered data when
     # we are still trying to recompress the data
-    folder_to_check = pre_folder if delete_live is False else ceph_folder
+    folder_to_check = _clean_from if delete_live is False else ceph_folder
     all_data = os.listdir(folder_to_check)
     run_ids = []
     for f in all_data:
@@ -290,7 +300,7 @@ def clean_unregistered(delete_live=False):
              f'{folder_to_check}. Checking that each is in the runs-database')
     for run_id in run_ids:
         run_number = int(run_id)
-        remove_if_unregistered(run_number, delete_live=delete_live)
+        remove_if_unregistered(run_number, delete_live=delete_live, clean_from=_clean_from)
 
 
 def clean_old_hash():
@@ -618,7 +628,7 @@ def remove_run_from_host(number, delete_live=False, force=False, reason=''):
                                      ignore_low_data_check=True, reason=reason)
 
 
-def remove_if_unregistered(number, delete_live=False):
+def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
     """
     Given a run number delete data on this machine that matches that number
     :param number: int! the run_number (not run_id)
@@ -643,7 +653,7 @@ def remove_if_unregistered(number, delete_live=False):
                     priority='error')
         if not delete_live:
             # Check the local ebs disk for data.
-            _remove_unregistered_run(pre_folder, run_id, checked_db=True)
+            _remove_unregistered_run(clean_from, run_id, checked_db=True)
         else:
             # Check ceph for data associated to this run (which is apparently not in the
             # runDB)
@@ -801,6 +811,7 @@ if __name__ == '__main__':
     '"non_latest": remove data on this host if it was not the last to process a given run \n'
     '"database": check if all the entries that the database claims are actually here \n'
     '"old_hash": remove high level data if the hash doesnt equal the latest for this datatype \n'
+    '"production": clean the production folder (bad idea if restrax is running since it writes there) \n'
     '"all": Clean everything that AJAX can get its hands on: unregistered data, high level '
     'data')
 
