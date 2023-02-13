@@ -104,24 +104,27 @@ class ReStrax(daq_core.DataBases):
     Restrax: rechunking the data from bootstrax and prepare it for admix/rucio
     """
     log: logging.Logger
-    nap_time = 300  # s
-    nap_time_short = 5  # s
+    nap_time: int = 300  # s
+    nap_time_short: int = 5  # s
 
     folders = immutabledict.immutabledict(
         production_out=daq_core.output_folder,
         test_out='/data/test_processed')
 
-    raw_record_types = ('raw_records', 'raw_records_nv', 'raw_records_mv',
-                        'raw_records_he',
-                        'records', 'records_nv', 'records_mv')
+    raw_record_types: tuple = ('raw_records', 'raw_records_nv', 'raw_records_mv',
+                               'raw_records_he',
+                               'records', 'records_nv', 'records_mv')
 
-    exclude_modes = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
-                     'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
-    # If a dataset is larger than this many bites, only compare a single field (time)
-    large_data_compare_threshold = 5e9
+    exclude_modes: tuple = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
+                            'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
+    # If a dataset is larger than this many bytes, only compare a single field (time)
+    large_data_compare_threshold: int = int(5e9)
 
     # If the total data rate is lower than this, use bz2 for the compression of raw records.
-    bz2_compression_threshold_mbs = 50  # MB/s
+    bz2_compression_threshold_mbs: int = 50  # MB/s
+
+    # Prevent using more than this much MB when doing data validation
+    max_compare_buffer_mb: int = 5000
 
     def __init__(self, args):
         super().__init__(production=args.production)
@@ -222,7 +225,9 @@ class ReStrax(daq_core.DataBases):
         self.rechunk_docs(run_doc, data_docs)
         self.do_checks(data_docs)
         if self.deep_compare:
-            self.validate_data(data_docs)
+            self.validate_data([d for d in data_docs if
+                               self.should_skip_compression(run_doc, d)
+                               ])
         self.finalize_execute(data_docs)
 
     def _get_data_docs(self, run_doc):
@@ -276,7 +281,10 @@ class ReStrax(daq_core.DataBases):
         if self.should_skip_compression(run_doc, data_doc):
             # Just copy, don't read convert write
             # We could do shutil.move here, but... what if we fail while moving?
-            # Also, a bit harder with doing the datadocs right
+            # Also, a bit harder with doing the data docs right
+            # TODO actually, this should just go outside of this loop and be a final
+            #  step in finalize_execute to just shutil.move and update the doc accordingly,
+            #  no need to copy and check (as long as we are moving to the same drive!).
             self.log.info(f'Copy (skip recompression) for {dir_in}')
             if os.path.exists(dir_out):
                 self._remove_dir(dir_out)
@@ -319,8 +327,9 @@ class ReStrax(daq_core.DataBases):
             rate = sum(detector.get('avg', 100) for detector in run_doc.get('rate', {'none': {}}).values())
             compressor = 'bz2' if rate < self.bz2_compression_threshold_mbs else 'zstd'
             target_size_mb = 5000
-            # Temporary
-            compressor = 'zstd'
+            if self.deep_compare:
+                self.log.info('Setting compressor to zstd since deep_compare is slow')
+                compressor = 'zstd'
         elif 'peak' in dtype:
             compressor = 'zstd'
             target_size_mb = 1500
@@ -334,7 +343,7 @@ class ReStrax(daq_core.DataBases):
     def should_skip_compression(self, run_doc, data_doc) -> bool:
         """Should we skip recompressing this data? For example if the data is
         already so small that it's not worth recompressing
-        
+
         :param run_doc: run document
         :param data_doc: data document
         """
@@ -431,7 +440,7 @@ class ReStrax(daq_core.DataBases):
         :param folder: absolute path to folder
         :param keep_column: columns to keep from structured array (if None, get all)
         :param progress_bar: show a tqdm progressbar
-        :param _compare_sum: compare only the sum of each field per chunk to 
+        :param _compare_sum: compare only the sum of each field per chunk to
             prevent keeping too much memory occoupied.
             Will be overwritten for too large arrays.
         :return: concatenated numpy array
@@ -532,6 +541,11 @@ class ReStrax(daq_core.DataBases):
                 {'number': int(run_id)},
                 {'$set': {'status': 'eb_ready_to_upload'}})
         self.log.info('Rundoc updated')
+
+        for data_doc in data_docs:
+            loc = data_doc.get('location', '??')
+            assert 'pre_processed' in loc
+            self._remove_dir(loc)
 
     def take_a_nap(self, dt=None):
         time.sleep(dt if dt is not None else self.nap_time)
