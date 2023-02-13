@@ -85,7 +85,7 @@ class DAQReader(strax.Plugin):
     data_kind = immutabledict(zip(provides, provides))
     depends_on = tuple()
     parallel = 'process'
-    chunk_target_size_mb = 1000
+    chunk_target_size_mb = 50
     rechunk_on_save = immutabledict(
         raw_records=False,
         raw_records_he=True,
