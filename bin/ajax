@@ -643,7 +643,7 @@ def remove_if_unregistered(number, delete_live=False):
                     priority='error')
         if not delete_live:
             # Check the local ebs disk for data.
-            _remove_unregistered_run(output_folder, run_id, checked_db=True)
+            _remove_unregistered_run(pre_folder, run_id, checked_db=True)
         else:
             # Check ceph for data associated to this run (which is apparently not in the
             # runDB)
