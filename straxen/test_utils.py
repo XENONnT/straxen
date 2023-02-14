@@ -201,8 +201,8 @@ class DummyRawRecords(strax.Plugin):
                     rr['channel'] += first_channel
                     if key == 'aqmon':
                         # explicitly clip these channels as we have an additional check higher in the chain
-                        first_channel=int(min(straxen.plugins.acqmon_processing.AqmonChannels))
-                        last_channel=int(max(straxen.plugins.acqmon_processing.AqmonChannels))
+                        first_channel=int(min(straxen.AqmonChannels))
+                        last_channel=int(max(straxen.AqmonChannels))
 
                     rr = rr[(rr['channel']>=first_channel) & (rr['channel']<last_channel)]
             res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)

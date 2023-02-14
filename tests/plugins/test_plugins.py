@@ -2,6 +2,8 @@ import strax
 import straxen
 import unittest
 from _core import PluginTestAccumulator, SetupContextNt
+import os
+import inspect
 
 # Need import to attach new tests to the PluginTestAccumulator
 import bayes_plugin
@@ -10,7 +12,7 @@ import peak_building
 import posrec_plugins
 import pulse_processing
 import nv_processing
-
+import local_minimum_plugin
 
 # Don't bother with remote tests
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
@@ -45,3 +47,18 @@ class TestEmptyRecords(PluginTest):
         super().setUpClass()
         cls.st.register(straxen.test_utils.DummyRawRecords)
         cls.st.set_context_config(dict(forbid_creation_of=()))
+
+
+def test_only_one_test_file_in_this_directory():
+    """See the README.md the specific tests should NOT start with test_<something>!"""
+    files_in_this_dir = os.listdir(
+        os.path.dirname(
+            os.path.abspath(
+                inspect.getfile(
+                    inspect.currentframe()
+                ))))
+    if any(file.startswith('test_') and file != 'test_plugins.py'
+           for file in files_in_this_dir):
+        raise ValueError(
+            'Bad naming convention, please read the README for details. '
+            'Your new test file should NOT start with "test_"')

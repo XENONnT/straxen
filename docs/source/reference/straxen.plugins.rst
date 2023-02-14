@@ -1,165 +1,47 @@
 straxen.plugins package
 =======================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   straxen.plugins.afterpulses
+   straxen.plugins.aqmon_hits
+   straxen.plugins.detector_time_offsets
+   straxen.plugins.events
+   straxen.plugins.events_mv
+   straxen.plugins.events_nv
+   straxen.plugins.hitlets_mv
+   straxen.plugins.hitlets_nv
+   straxen.plugins.individual_peak_monitor
+   straxen.plugins.led_cal
+   straxen.plugins.merged_s2s
+   straxen.plugins.merged_s2s_he
+   straxen.plugins.online_monitor_mv
+   straxen.plugins.online_monitor_nv
+   straxen.plugins.online_peak_monitor
+   straxen.plugins.peaklets
+   straxen.plugins.peaklets_he
+   straxen.plugins.peaks
+   straxen.plugins.peaks_he
+   straxen.plugins.raw_records
+   straxen.plugins.raw_records_coin_nv
+   straxen.plugins.records
+   straxen.plugins.records_he
+   straxen.plugins.records_mv
+   straxen.plugins.records_nv
+   straxen.plugins.strax_data
+   straxen.plugins.veto_intervals
+
 Submodules
 ----------
 
-straxen.plugins.acqmon\_processing module
------------------------------------------
+straxen.plugins.defaults module
+-------------------------------
 
-.. automodule:: straxen.plugins.acqmon_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.afterpulse\_processing module
----------------------------------------------
-
-.. automodule:: straxen.plugins.afterpulse_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.daqreader module
---------------------------------
-
-.. automodule:: straxen.plugins.daqreader
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.double\_scatter module
---------------------------------------
-
-.. automodule:: straxen.plugins.double_scatter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.event\_area\_per\_channel module
-------------------------------------------------
-
-.. automodule:: straxen.plugins.event_area_per_channel
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.event\_info module
-----------------------------------
-
-.. automodule:: straxen.plugins.event_info
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.event\_patternfit module
-----------------------------------------
-
-.. automodule:: straxen.plugins.event_patternfit
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.event\_processing module
-----------------------------------------
-
-.. automodule:: straxen.plugins.event_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.led\_calibration module
----------------------------------------
-
-.. automodule:: straxen.plugins.led_calibration
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.nveto\_recorder module
---------------------------------------
-
-.. automodule:: straxen.plugins.nveto_recorder
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.online\_monitor module
---------------------------------------
-
-.. automodule:: straxen.plugins.online_monitor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.pax\_interface module
--------------------------------------
-
-.. automodule:: straxen.plugins.pax_interface
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.peak\_processing module
----------------------------------------
-
-.. automodule:: straxen.plugins.peak_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.peaklet\_processing module
-------------------------------------------
-
-.. automodule:: straxen.plugins.peaklet_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.position\_reconstruction module
------------------------------------------------
-
-.. automodule:: straxen.plugins.position_reconstruction
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.pulse\_processing module
-----------------------------------------
-
-.. automodule:: straxen.plugins.pulse_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.veto\_events module
------------------------------------
-
-.. automodule:: straxen.plugins.veto_events
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.veto\_hitlets module
-------------------------------------
-
-.. automodule:: straxen.plugins.veto_hitlets
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.veto\_pulse\_processing module
-----------------------------------------------
-
-.. automodule:: straxen.plugins.veto_pulse_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-straxen.plugins.x1t\_cuts module
---------------------------------
-
-.. automodule:: straxen.plugins.x1t_cuts
+.. automodule:: straxen.plugins.defaults
    :members:
    :undoc-members:
    :show-inheritance:
