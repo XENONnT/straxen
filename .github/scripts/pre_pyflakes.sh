@@ -13,7 +13,7 @@ echo $start
 cd straxen
 sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
 
-sub_dirs="$(ls -d */ | grep -v '.py\|plugins"
+sub_dirs="$(ls -d */ | grep -v '.py\|plugins')"
 for folder in $sub_dirs;
  do cd $folder;
  sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py;
@@ -22,7 +22,7 @@ done
 
 cd plugins
 data_kinds="$(ls -d */)"
-for folder in $sub_dirs;
+for folder in $data_kinds;
  do cd $folder;
  sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py;
  cd ..;
