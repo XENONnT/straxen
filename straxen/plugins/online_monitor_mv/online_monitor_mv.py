@@ -11,7 +11,6 @@ class OnlineMonitorMV(OnlineMonitorNV):
     depends_on = ('hitlets_mv', 'events_mv')
     provides = 'online_monitor_mv'
     data_kind = 'online_monitor_mv'
-    rechunk_on_save = False
 
     # Needed in case we make again an muVETO child.
     ends_with = '_mv'
