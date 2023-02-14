@@ -13,14 +13,26 @@ echo $start
 cd straxen
 sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
 
+# Get all the sub directories (but not plugins, those are doubly nested)
+sub_dirs="$(ls -d */ | grep -v '.py\|plugins')"
+for folder in $sub_dirs;
+ do cd $folder;
+ sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py;
+ cd ..;
+done
+
 cd plugins
-sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
+data_kinds="$(ls -d */)"
+for folder in $data_kinds;
+ do cd $folder;
+ sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py;
+ cd ..;
+done
+cd ..
 
-cd ../analyses
+cd legacy/plugins_1t
 sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
-
-cd ../storage
-sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
+cd ../..
 
 cd $start
 echo "done"
