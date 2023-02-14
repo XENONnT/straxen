@@ -8,6 +8,7 @@ name: Python style
 on:
   pull_request:
     types: [opened]
+  workflow_dispatch:
 jobs:
   qa:
     name: Quality check
