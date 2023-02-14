@@ -31,7 +31,7 @@ cd ..
 
 cd legacy/plugins_1t
 sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
-cd ..
+cd ../..
 
 cd $start
 echo "done"
