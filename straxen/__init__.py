@@ -1,4 +1,4 @@
-__version__ = '2.0.2'
+__version__ = '2.0.4'
 
 from utilix import uconfig
 from .common import *
@@ -38,3 +38,8 @@ try:
     from .holoviews_utils import *
 except ModuleNotFoundError:
     pass
+
+from .entry_points import load_entry_points
+
+load_entry_points()
+del load_entry_points
