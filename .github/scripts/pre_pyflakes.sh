@@ -13,6 +13,7 @@ echo $start
 cd straxen
 sed -e '/__all__ +=/ s/^#*/#/' -i ./*.py
 
+# Get all the sub directories (but not plugins, those are doubly nested)
 sub_dirs="$(ls -d */ | grep -v '.py\|plugins')"
 for folder in $sub_dirs;
  do cd $folder;
