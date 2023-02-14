@@ -1,3 +1,18 @@
+v2.0.4 / 2023-01-16
+-------------------
+* Top and bottom timing parameters at event and peak level by @terliuk in https://github.com/XENONnT/straxen/pull/1119
+* Allow use of xedocs context configs by @jmosbacher in https://github.com/XENONnT/straxen/pull/1125
+* Bump actions/setup-python from 4.3.0 to 4.4.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1128
+* Add entry points by @jmosbacher in https://github.com/XENONnT/straxen/pull/1120
+* URLConfig preprocessor by @jmosbacher in https://github.com/XENONnT/straxen/pull/1110
+* Fix bootstrax timeouts by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1133
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.3...v2.1.0
+
+Notes:
+ - new data types: `peak_top_bottom_params`, `event_top_bottom_params`
+
 v2.0.3 / 2022-11-09
 -------------------
 * Adding peak waveforms at event level by @terliuk in https://github.com/XENONnT/straxen/pull/1112
