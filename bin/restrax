@@ -12,12 +12,13 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 import argparse
-import datetime
 import logging
 import os
+import typing
+
 import immutabledict
 import socket
 import shutil
@@ -54,6 +55,8 @@ def parse_args():
                         help='Open all the data of the old and the new format and check that they are the same')
     parser.add_argument('--recompress_min_chunks', type=int, default=3,
                         help='Only bother with doing the recompression if there are more than this many chunks')
+    parser.add_argument('--bypass_mode', action='store_true',
+                        help='Stop recompression and just rename folders. Use with care!')
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--undying', action='store_true',
                          help="Except any error and ignore it")
@@ -145,6 +148,7 @@ class ReStrax(daq_core.DataBases):
         self.process = args.process
         self.deep_compare = args.deep_compare
         self.recompress_min_chunks = args.recompress_min_chunks
+        self.bypass_mode = args.bypass_mode
 
     def infinite_loop(self, close=False) -> None:
         """Core of restrax, recompress the data followed by several validation steps"""
@@ -184,6 +188,35 @@ class ReStrax(daq_core.DataBases):
             return self._find_production_work(projection)
         return self._find_testing_work(projection)
 
+
+    def _find_testing_work(self, projection: dict) -> ty.Optional[dict]:
+        """Find work from the pre-dir if we are testing"""
+        folders = os.listdir(self.read_from)
+        first_run = self.process
+        data_docs = []
+        for folder in folders:
+            if os.path.exists(os.path.join(self.write_to, folder)):
+                # Don't do work twice
+                continue
+            if len(split := folder.split('-')) and len(split[0]) == 6:
+                run_id, data_type, lineage = split
+
+                if first_run is None:
+                    first_run = run_id
+                if run_id != first_run:
+                    continue
+                self.log.info(f'Do {folder}')
+                data_docs.append({'host': self.hostname,
+                                  'location': os.path.join(self.read_from, folder),
+                                  'type': data_type,
+                                  'linage_hash': lineage,
+                                  })
+        if not len(data_docs):
+            return None
+        run_doc = self.run_col.find_one({'number': int(first_run)}, projection=projection)
+        run_doc['data'] = data_docs
+        return run_doc
+
     def _find_production_work(self, projection) -> ty.Optional[dict]:
         """Query the database for work"""
         query = {'status': 'eb_finished_pre',
@@ -202,6 +235,8 @@ class ReStrax(daq_core.DataBases):
             query.pop('restrax')
             query.update({'restrax.n_tries': {"$lt": self.max_tries+1}})
             run_doc = self.run_coll.find_one(query, **kw)
+        # Update data field in place
+        run_doc['data'] = self._get_data_docs(run_doc)
         return run_doc
     def set_restrax_busy(self, run_doc:dict)-> None:
         self.log.info(f'Update/create restrax doc')
@@ -245,51 +280,51 @@ class ReStrax(daq_core.DataBases):
             self.log_warning(f'Failed too many times for {run_doc["number"]}! '
                              f'I stop trying, manual help is needed.')
 
+    def bypass_run(self, run_doc: dict) -> None:
+        """Simply move all the data associate in the rundoc to the production folder"""
+        # TODO perhaps add some heavy try-except here to not allow interruption of moving data to end up with splined datasets
+        self.log.warning(f'Move {run_doc["number"]} to production. DO NOT INTERRUPT!')
+        for data_doc in run_doc.get('data', []):
+            self._bypass_for_data_doc(data_doc)
 
-    def _find_testing_work(self, projection: dict) -> ty.Optional[dict]:
-        """Find work from the pre-dir if we are testing"""
-        folders = os.listdir(self.read_from)
-        first_run = self.process
-        data_docs = []
-        for folder in folders:
-            if os.path.exists(os.path.join(self.write_to, folder)):
-                # Don't do work twice
-                continue
-            if len(split := folder.split('-')) and len(split[0]) == 6:
-                run_id, data_type, lineage = split
+    def _bypass_for_data_doc(self, data_doc: dict) -> None:
+        source = data_doc['loc']
+        self._move_dir(source, self.renamed_path(source))
 
-                if first_run is None:
-                    first_run = run_id
-                if run_id != first_run:
-                    continue
-                self.log.info(f'Do {folder}')
-                data_docs.append({'host': self.hostname,
-                                  'location': os.path.join(self.read_from, folder),
-                                  'type': data_type,
-                                  'linage_hash': lineage,
-                                  })
-        if not len(data_docs):
-            return None
-        run_doc = self.run_col.find_one({'number': int(first_run)}, projection=projection)
-        run_doc['data'] = data_docs
-        return run_doc
-
-    def handle_run(self, run_doc):
+    def handle_run(self, run_doc: dict) -> None:
         """For a given batch of data_docs of a given run, do all the rechunking steps"""
-
         data_docs = self._get_data_docs(run_doc)
-        run_doc['data'] = data_docs
         self.log.info(f'{run_doc["number"]} -> doing {len(data_docs)}')
         # self.run_software_veto(run_doc)
-        self.rechunk_docs(run_doc, data_docs)
-        self.do_checks(data_docs)
+
+        # Split the work in files that we will compress and files that will skip compression
+        compress_docs = [
+            d for d in data_docs if
+            not self.should_skip_compression(run_doc, d)]
+        skip_docs = [
+            d for d in data_docs if
+            self.should_skip_compression(run_doc, d)
+        ]
+        self.log.debug(f'Compressing {len(compress_docs)} docs and skipping (i.e. move) {len(skip_docs)} docs')
+        assert len(compress_docs) + len(skip_docs) == len(data_docs), "one and one is three?! "
+
+        self.rechunk_docs(run_doc, compress_docs)
+        self.do_checks(compress_docs)
         if self.deep_compare:
-            self.validate_data([d for d in data_docs if
-                               self.should_skip_compression(run_doc, d)
-                               ])
+            self.validate_data(compress_docs)
+
+        # In the final bookkeeping we move documents, move them only if all
+        # checks above are good and update the rundoc in the  finalize_execute
+        for move_doc in skip_docs:
+            self._bypass_for_data_doc(move_doc)
+
         self.finalize_execute(data_docs)
 
-    def _get_data_docs(self, run_doc):
+        # Only remove the data that we rechunked (there are now two copies),
+        # the moved data is always just a single copy
+        self.remove_old_docs(compress_docs)
+
+    def _get_data_docs(self, run_doc: dict):
         """Extract data doc from rundoc and sort by largest first"""
         # Filter data documents that are only on this host
         data_docs = [data_doc for data_doc in run_doc['data'] if
@@ -303,20 +338,22 @@ class ReStrax(daq_core.DataBases):
         data_docs = sorted(data_docs, key=size, reverse=True)
         return data_docs
 
-    def run_software_veto(self, run_doc):
+    def run_software_veto(self, run_doc: dict):
         """This is where we can add a software veto for specific runs"""
         raise NotImplementedError
 
-    def rechunk_docs(self, run_doc, docs: ty.List[dict]) -> None:
+    def rechunk_docs(self, run_doc: dict, data_docs: ty.List[dict]) -> None:
         """
         For each of the data documents, rechunk/recompress/move/check the data,
         if multi-threading is allowed, use that
         :param run_doc: run document
-        :param docs: list of data documents to rechunk
+        :param data_docs: list of data documents. NB! Will work on ALL these documents
+            so these data documents don't have to be the same as the data field in the
+            run_doc.
         """
         if self.max_threads > 1:
             threads = []
-            for next_doc in docs:
+            for next_doc in data_docs:
                 self._sleep_while_n_threads_alive(threads, self.max_threads - 1)
                 thread = threading.Thread(
                     target=self._rechunk_per_doc,
@@ -326,30 +363,16 @@ class ReStrax(daq_core.DataBases):
             # Wait until all threads have finished
             self._sleep_while_n_threads_alive(threads, 0)
         else:
-            for ddoc in docs:
+            for ddoc in data_docs:
                 self._rechunk_per_doc(run_doc, ddoc)
 
-    def _rechunk_per_doc(self, run_doc, data_doc):
+    def _rechunk_per_doc(self, run_doc: dict, data_doc: dict) -> None:
         """Do the rechunking document by document"""
         dir_in = data_doc['location']
         dir_out = self.renamed_path(dir_in)
 
         if not os.path.exists(dir_in):
             raise FileNotFoundError(data_doc)
-
-        if self.should_skip_compression(run_doc, data_doc):
-            # Just copy, don't read convert write
-            # We could do shutil.move here, but... what if we fail while moving?
-            # Also, a bit harder with doing the data docs right
-            # TODO actually, this should just go outside of this loop and be a final
-            #  step in finalize_execute to just shutil.move and update the doc accordingly,
-            #  no need to copy and check (as long as we are moving to the same drive!).
-            self.log.info(f'Copy (skip recompression) for {dir_in}')
-            if os.path.exists(dir_out):
-                self._remove_dir(dir_out)
-            shutil.copytree(dir_in, dir_out, dirs_exist_ok=True)
-            self.log.debug(f'Done {dir_in}')
-            return
 
         self.log.info(f'Start {dir_in} -> {dir_out}')
         compressor, target_size_mb = self.get_compressor_and_size(run_doc, data_doc)
@@ -399,13 +422,18 @@ class ReStrax(daq_core.DataBases):
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
 
-    def should_skip_compression(self, run_doc, data_doc) -> bool:
+    def should_skip_compression(self, run_doc: dict, data_doc: dict) -> bool:
         """Should we skip recompressing this data? For example if the data is
         already so small that it's not worth recompressing
 
         :param run_doc: run document
         :param data_doc: data document
         """
+
+        # Skipp all when in bypass mode - don't log messages for each data_doc separately
+        if self.is_in_bypass_mode:
+            return True
+
         data_type = data_doc['type']
         run_mode = run_doc['mode']
         if any([m in run_mode for m in self.exclude_modes]):
@@ -455,11 +483,11 @@ class ReStrax(daq_core.DataBases):
             raise ValueError(f'Doc {locs} had errors: ' + ' and '.join(errors))
         self.log.info('All checks passed')
 
-    def validate_data(self, data_docs):
+    def validate_data(self, data_docs: ty.List[dict]):
         for data_doc in data_docs:
             self._validate_data_per_doc(data_doc)
 
-    def _validate_data_per_doc(self, data_doc):
+    def _validate_data_per_doc(self, data_doc: dict) -> None:
         """Open the data from the old and new source, compare to assert it's the same"""
         storage_backend = strax.FileSytemBackend()
         dir_in = data_doc['location']
@@ -478,7 +506,7 @@ class ReStrax(daq_core.DataBases):
         self.log.debug('Compare done')
 
     @staticmethod
-    def _compare_data(data_in, data_out):
+    def _compare_data(data_in: str, data_out: str):
         """Compare structured/simple numpy arrays"""
         errors = []
         if data_in.dtype.names:
@@ -493,7 +521,10 @@ class ReStrax(daq_core.DataBases):
             errors.append('Data not the same')
         return errors
 
-    def _get_data_from_dir(self, folder, keep_column=None, progress_bar=False, _compare_sum=False) -> np.ndarray:
+    def _get_data_from_dir(self, folder: str,
+                           keep_column: typing.Optional[ty.Union[str, list]] = None,
+                           progress_bar: bool =False,
+                           _compare_sum: bool =False) -> np.ndarray:
         """
         Load data from a specified folder
         :param folder: absolute path to folder
@@ -566,8 +597,7 @@ class ReStrax(daq_core.DataBases):
         for data_doc in data_docs:
             if self.hostname != data_doc['host']:
                 continue
-            dir_in = data_doc.get('location', '')
-            dir_out = self.renamed_path(dir_in)
+            dir_out = self.renamed_path(data_doc.get('location', ''))
 
             new_metadata = storage_backend.get_metadata(dir_out)
             run_id = new_metadata['run_id']
@@ -601,15 +631,16 @@ class ReStrax(daq_core.DataBases):
                 {'$set': {'status': 'eb_ready_to_upload'}})
         self.log.info('Rundoc updated')
 
-        for data_doc in data_docs:
+    def remove_old_docs(self, done_data_docs: ty.List[dict]):
+        for data_doc in done_data_docs:
             loc = data_doc.get('location', '??')
             assert 'pre_processed' in loc
             self._remove_dir(loc)
 
-    def take_a_nap(self, dt=None):
+    def take_a_nap(self, dt: ty.Optional[int]=None):
         time.sleep(dt if dt is not None else self.nap_time)
 
-    def renamed_path(self, path):
+    def renamed_path(self, path: str) -> str:
         return os.path.join(self.write_to, os.path.split(path)[-1])
 
     def _set_logger(self) -> None:
@@ -625,18 +656,26 @@ class ReStrax(daq_core.DataBases):
             level=logging.DEBUG,
             opening_message=f'Welcome to restrax\n{versions}')
 
-    def _remove_dir(self, directory):
+    def _move_dir(self, source:str, dest: str) -> None:
+        self.log.info(f'Move {source} -> {dest}')
+        if self.production:
+            os.rename(source, dest)
+
+    def _remove_dir(self, directory: str) -> None:
         """Remove directory (when in production mode)"""
         self.log.info(f'Remove {directory}')
         if self.production:
             shutil.rmtree(directory)
 
-    def log_warning(self, message, **kw):
+    def log_warning(self, message: str, **kw) -> None:
         self.log.warning(message)
         for key, value in dict(production=self.production, user=f'restrax_{self.hostname}').items():
             kw.setdefault(key, value)
         super().log_warning(message, **kw)
 
+    @property
+    def is_in_bypass_mode(self) -> bool:
+        return self._bypass_mode
 
 if __name__ == '__main__':
     main()
