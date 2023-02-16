@@ -376,4 +376,4 @@ class TestURLConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.st.set_config({ 'test_config': "rundoc://mode?run_id=plugin.run_id" })
             p = self.st.get_single_plugin(999999999, 'test_data')
-            p.test_config
+            return p.test_config
