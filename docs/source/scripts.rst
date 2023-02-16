@@ -86,7 +86,7 @@ From left to right:
    with a selection of the data (see `the online monitor <https://straxen.readthedocs.io/en/latest/online_monitor.html>`_).
    All data is also written to a ``pre_processed`` directory. The data in the ``pre_processed`` directory
    is not yet considered by the data management tools.
- - The data is rechunked and recompressed by ``redax`` and stored in the production folder
+ - The data is rechunked and recompressed by ``restrax`` and stored in the production folder
    ``/data/xenonnt_processed``. We will elaborate on the rechunking and recompressing below.
  - Finally, the data is uploaded in the datamanagement tools by `admix <https://github.com/XENONnT/admix>`_
    which reads the data from the production folder and uploads it into ``rucio`` (our data management
