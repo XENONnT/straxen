@@ -1062,7 +1062,7 @@ def set_status_finished(rd):
     elif rd.get('status') == ready_for_restrax.get('status'):
         # This is strange, bootstrax already finished this run before
         log_warning('WARNING: bootstax has already marked this run as ready '
-                    'for upload. Doing nothing.',
+                    'for restrax. Doing nothing.',
                     priority='warning',
                     run_id=f'{rd["number"]:06}')
     else:
