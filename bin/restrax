@@ -122,6 +122,7 @@ class ReStrax(daq_core.DataBases):
 
     exclude_modes: tuple = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
                             'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
+
     # If a dataset is larger than this many bytes, only compare a single field (time)
     large_data_compare_threshold: int = int(5e9)
 
@@ -149,10 +150,12 @@ class ReStrax(daq_core.DataBases):
         self.deep_compare = args.deep_compare
         self.recompress_min_chunks = args.recompress_min_chunks
         self.bypass_mode = args.bypass_mode
+        self.overwrite_settings()
 
     def infinite_loop(self, close=False) -> None:
         """Core of restrax, recompress the data followed by several validation steps"""
         while True:
+            self.overwrite_settings()
             run_doc = self.find_work()
             if run_doc is None:
                 if close:
@@ -675,6 +678,21 @@ class ReStrax(daq_core.DataBases):
     @property
     def is_in_bypass_mode(self) -> bool:
         return self._bypass_mode
+
+    def overwrite_settings(self):
+        """Overwrite current settings with values from the database"""
+        update_config = self.daq_db['restrax_config'].find_one({'name': 'restrax_config'})
+
+        for field, value in update_config:
+            if hasattr(self, field):
+                current = getattr(self, field)
+                if current == value:
+                    continue
+                current_type = type(current)
+                if isinstance(current_type, type(value)) or (isinstance(current_type, tuple) and isinstance(value, list)):
+                    self.log.info(f'Update self.{field} from {current} -> {value}. User {update_config.get("user", "??")}')
+                    setattr(self, field, value)
+        self.log.info(f'Done updating defaults (if any)')
 
 
 if __name__ == '__main__':
