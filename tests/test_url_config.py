@@ -363,17 +363,17 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config_new, 'fake://url?version=global_v1')
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test rundoc protocol.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test run_doc protocol.")
     def test_run_doc_protocol(self):
-        self.st.set_config({ 'test_config': "rundoc://mode?run_id=plugin.run_id" })
+        self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 'tpc_commissioning')
 
-        self.st.set_config({ 'test_config': "rundoc://fake_key?run_id=plugin.run_id&default=42" })
+        self.st.set_config({ 'test_config': "run_doc://fake_key?run_id=plugin.run_id&default=42" })
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 42)
 
         with self.assertRaises(ValueError):
-            self.st.set_config({ 'test_config': "rundoc://mode?run_id=plugin.run_id" })
+            self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
             p = self.st.get_single_plugin(999999999, 'test_data')
             return p.test_config

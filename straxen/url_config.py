@@ -695,7 +695,7 @@ def objects_to_array(objects: list):
     return np.array(objects)
 
 
-@URLConfig.register('rundoc')
+@URLConfig.register('run_doc')
 def read_rundoc(path, run_id=None, default=None):
     """Read a path from the rundoc.
     """
