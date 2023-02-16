@@ -6,6 +6,8 @@ import pymongo
 import utilix
 from utilix import uconfig
 import straxen
+from datetime import datetime, timedelta
+import pytz
 
 ceph_folder = '/live_data/xenonnt/'
 output_folder = '/data/xenonnt_processed/'
@@ -81,3 +83,8 @@ class DataBases:
         if run_id is not None:
             warning_message.update({'runid': int(run_id)})
         self.log_coll.insert_one(warning_message)
+
+
+def now(plus=0):
+    """Now in utc time"""
+    return datetime.now(pytz.utc) + timedelta(seconds=plus)

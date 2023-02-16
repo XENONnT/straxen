@@ -15,6 +15,7 @@ https://straxen.readthedocs.io/en/latest/scripts.html
 __version__ = '0.1.0'
 
 import argparse
+import datetime
 import logging
 import os
 import immutabledict
@@ -32,6 +33,7 @@ from straxen import daq_core
 from memory_profiler import memory_usage
 import glob
 from ast import literal_eval
+from straxen.daq_core import now
 
 
 def parse_args():
@@ -126,6 +128,9 @@ class ReStrax(daq_core.DataBases):
     # Prevent using more than this much MB when doing data validation
     max_compare_buffer_mb: int = 5000
 
+    # Try recompressing this many times, inform the log database otherwise about failures
+    max_tries = 5
+
     def __init__(self, args):
         super().__init__(production=args.production)
 
@@ -152,10 +157,17 @@ class ReStrax(daq_core.DataBases):
                 self.take_a_nap()
                 continue
             t0 = time.time()
-            mem_for_doc = memory_usage(proc=(self.handle_run, (run_doc,), dict()))
+            self.set_restrax_busy(run_doc)
+            try:
+                mem_for_doc = memory_usage(proc=(self.handle_run, (run_doc,), dict()))
+            except Exception as exception:
+                self.set_restrax_failed(run_doc, str(exception))
+                raise exception
             self.log.debug(f"Memory profiler says peak RAM usage was: {max(mem_for_doc):.1f} MB")
             self.log.debug(f'Took {(time.time() - t0) / 3600:.2f} h')
+            self.set_restrax_done(run_doc)
             self.log.info('Loop done')
+
 
     def find_work(self,
                   projection: ty.Optional[dict] = None
@@ -175,17 +187,64 @@ class ReStrax(daq_core.DataBases):
     def _find_production_work(self, projection) -> ty.Optional[dict]:
         """Query the database for work"""
         query = {'status': 'eb_finished_pre',
+                 'restrax': None,
                  'bootstrax.state': 'done',
                  'bootstrax.host': self.hostname
                  }
         if self.process:
             query['number'] = int(self.process)
-        run_doc = self.run_coll.find_one(
-            query,
-            sort=[('_id', -1)],
-            projection=projection
-        )
+        kw = dict(sort=[('_id', -1)], projection=projection)
+        run_doc = self.run_coll.find_one(query, **kw)
+
+        if run_doc is None:
+            self.log.info()
+            # Look for work which we tried before (and has a restrax field)
+            query.pop('restrax')
+            query.update({'restrax.n_tries': {"$lt": self.max_tries+1}})
+            run_doc = self.run_coll.find_one(query, **kw)
         return run_doc
+    def set_restrax_busy(self, run_doc:dict)-> None:
+        self.log.info(f'Update/create restrax doc')
+        restrax_doc = {
+            'n_tries': 1 if 'restrax' not in run_doc else run_doc['restrax']['n_tries']+1,
+            'state': 'busy',
+            'started_processing': now(),
+            'host': self.hostname,
+            'ended': None,
+            'memory_usage_mb': None,
+        }
+        self.run_coll.update_one(
+            {'_id': run_doc['_id']},
+            {'$set': {'restrax': restrax_doc}},
+        )
+
+    def set_restrax_done(self, run_doc: dict, memory_usage_mb: list) -> None:
+        """Update the rundoc with the restrax state"""
+        update = {'restrax.state': 'done',
+                  'restrax.ended': now(),
+                  'restrax.memory_usage_mb': {'avg': np.average(memory_usage_mb), 'max': np.max(memory_usage_mb)}
+                  }
+        self.run_coll.update_one(
+            {'_id': run_doc['_id']},
+            {'$set': update},
+        )
+        self.log.debug(f'Finished {run_doc["number"]}, set to {update}')
+
+    def set_restrax_failed(self, run_doc: dict, reason: str) -> None:
+        """Update the rundoc with the restrax fail state"""
+        update = {'restrax.state': 'failed',
+                  'restrax.ended': now(),
+                  'restrax.reason': reason,
+                  }
+        self.run_coll.update_one(
+            {'_id': run_doc['_id']},
+            {'$set': update},
+        )
+        self.log.debug(f'Fail {run_doc["number"]} with {update}')
+        if run_doc.get('restrax', {}).get('n_tries', 0) >= self.max_tries:
+            self.log_warning(f'Failed too many times for {run_doc["number"]}! '
+                             f'I stop trying, manual help is needed.')
+
 
     def _find_testing_work(self, projection: dict) -> ty.Optional[dict]:
         """Find work from the pre-dir if we are testing"""

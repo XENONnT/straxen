@@ -43,6 +43,7 @@ import daqnt
 import fnmatch
 from glob import glob
 from straxen import daq_core
+from straxen.daq_core import now
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -440,10 +441,6 @@ def main_loop():
 ##
 # General helpers
 ##
-
-
-def now(plus=0):
-    return datetime.now(pytz.utc) + timedelta(seconds=plus)
 
 
 def kill_process(pid):
