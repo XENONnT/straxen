@@ -127,7 +127,23 @@ class ReStrax(daq_core.DataBases):
     large_data_compare_threshold: int = int(5e9)
 
     # If the total data rate is lower than this, use bz2 for the compression of raw records.
-    bz2_compression_threshold_mbs: int = 50  # MB/s
+    is_heavy_rate_mbs: int = 50  # MB/s
+
+    # Default compressors / target sizes. Fn matches the datatype to the keys in the dict to get the
+    target_compressor = immutabledict.immutabledict(
+        {'peak*': 'zstd',
+         '_raw_record_compressor_light': 'bz2',
+         '_raw_record_compressor_heavy': 'zstd',
+         '_other': None,  # use the default compressor
+         }
+    )
+    target_size = immutabledict.immutabledict(
+        {
+            'peak*': 1_500,
+            '_other': 1_500,
+            '_raw_records': 1500,
+        }
+    )
 
     # Prevent using more than this much MB when doing data validation
     max_compare_buffer_mb: int = 5000
@@ -409,20 +425,26 @@ class ReStrax(daq_core.DataBases):
         dtype = data_doc['type']
         if dtype in self.raw_record_types:
             rate = sum(detector.get('avg', 100) for detector in run_doc.get('rate', {'none': {}}).values())
-            compressor = 'bz2' if rate < self.bz2_compression_threshold_mbs else 'zstd'
-            target_size_mb = 5000
-            if self.deep_compare:
-                self.log.info('Setting compressor to zstd since deep_compare is slow')
-                compressor = 'zstd'
-        elif 'peak' in dtype:
-            compressor = 'zstd'
-            target_size_mb = 1500
+            _go_fast = rate < self.is_heavy_rate_mbs or run_doc.get('restrax', {}).get('n_tries',
+                                                                                       0) > self.max_tries // 2
+            compressor = self.target_compressor['_raw_record_compressor_heavy'] if _go_fast else self.target_compressor[
+                '_raw_record_compressor_light']
+            self.log.debug(f'Use {compressor}, we have to go fast: {_go_fast} (rate~{rate:.1f} MB/s)')
+            target_size_mb = self.target_size['_raw_records']
         else:
-            # Use default compressor
-            compressor = None
-            target_size_mb = 1500
+            # Extract the compressor from the settings
+            compressor = self._fnmatch_from_doc(self.target_compressor, dtype)
+            target_size_mb = self._fnmatch_from_doc(self.target_size, dtype)
+
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
+
+    @staticmethod
+    def _fnmatch_from_doc(some_dict, target_key):
+        for target, value in some_dict.items():
+            if fnmatch.fnmatch(target, target_key):
+                return value
+        return some_dict['_other']
 
     def should_skip_compression(self, run_doc: dict, data_doc: dict) -> bool:
         """Should we skip recompressing this data? For example if the data is
@@ -689,9 +711,16 @@ class ReStrax(daq_core.DataBases):
                 if current == value:
                     continue
                 current_type = type(current)
-                if isinstance(current_type, type(value)) or (isinstance(current_type, tuple) and isinstance(value, list)):
-                    self.log.info(f'Update self.{field} from {current} -> {value}. User {update_config.get("user", "??")}')
+                is_same = isinstance(current_type, type(value))
+                both_list = isinstance(current_type, tuple) and isinstance(value, list)
+                both_dict = isinstance(current_type, immutabledict.immutabledict) and isinstance(value, dict)
+                if is_same or both_list or both_dict:
+                    self.log.info(
+                        f'Update self.{field} from {current} -> {value}. User {update_config.get("user", "??")}')
                     setattr(self, field, value)
+                else:
+                    self.log.warning(f'Not updating {field} to {value} because the type is inconsistent '
+                                     f'(got {type(value)}, expected {current_type}).')
         self.log.info(f'Done updating defaults (if any)')
 
 
