@@ -63,9 +63,9 @@ def parse_args():
     actions.add_argument('--process', type=int,
                          help="Handle a single run")
     args = parser.parse_args()
-    if args.input_folder != '/data/pre_processed/' and args.production:
-        raise ValueError(
-            "Thou shall not pass, don't upload files from non production folders, what are you thinking you're doing?!!")
+    if args.input_folder != daq_core.pre_folder and args.production:
+        raise ValueError("Thou shall not pass, don't upload files from non production"
+                         " folders, what are you thinking you're doing?!!")
     return args
 
 
@@ -172,7 +172,6 @@ class ReStrax(daq_core.DataBases):
             self.set_restrax_done(run_doc)
             self.log.info('Loop done')
 
-
     def find_work(self,
                   projection: ty.Optional[dict] = None
                   ) -> ty.Optional[dict]:
@@ -187,7 +186,6 @@ class ReStrax(daq_core.DataBases):
         if self.production:
             return self._find_production_work(projection)
         return self._find_testing_work(projection)
-
 
     def _find_testing_work(self, projection: dict) -> ty.Optional[dict]:
         """Find work from the pre-dir if we are testing"""
@@ -233,15 +231,16 @@ class ReStrax(daq_core.DataBases):
             self.log.info()
             # Look for work which we tried before (and has a restrax field)
             query.pop('restrax')
-            query.update({'restrax.n_tries': {"$lt": self.max_tries+1}})
+            query.update({'restrax.n_tries': {"$lt": self.max_tries + 1}})
             run_doc = self.run_coll.find_one(query, **kw)
         # Update data field in place
         run_doc['data'] = self._get_data_docs(run_doc)
         return run_doc
-    def set_restrax_busy(self, run_doc:dict)-> None:
+
+    def set_restrax_busy(self, run_doc: dict) -> None:
         self.log.info(f'Update/create restrax doc')
         restrax_doc = {
-            'n_tries': 1 if 'restrax' not in run_doc else run_doc['restrax']['n_tries']+1,
+            'n_tries': 1 if 'restrax' not in run_doc else run_doc['restrax']['n_tries'] + 1,
             'state': 'busy',
             'started_processing': now(),
             'host': self.hostname,
@@ -523,8 +522,8 @@ class ReStrax(daq_core.DataBases):
 
     def _get_data_from_dir(self, folder: str,
                            keep_column: typing.Optional[ty.Union[str, list]] = None,
-                           progress_bar: bool =False,
-                           _compare_sum: bool =False) -> np.ndarray:
+                           progress_bar: bool = False,
+                           _compare_sum: bool = False) -> np.ndarray:
         """
         Load data from a specified folder
         :param folder: absolute path to folder
@@ -637,7 +636,7 @@ class ReStrax(daq_core.DataBases):
             assert 'pre_processed' in loc
             self._remove_dir(loc)
 
-    def take_a_nap(self, dt: ty.Optional[int]=None):
+    def take_a_nap(self, dt: ty.Optional[int] = None):
         time.sleep(dt if dt is not None else self.nap_time)
 
     def renamed_path(self, path: str) -> str:
@@ -656,7 +655,7 @@ class ReStrax(daq_core.DataBases):
             level=logging.DEBUG,
             opening_message=f'Welcome to restrax\n{versions}')
 
-    def _move_dir(self, source:str, dest: str) -> None:
+    def _move_dir(self, source: str, dest: str) -> None:
         self.log.info(f'Move {source} -> {dest}')
         if self.production:
             os.rename(source, dest)
@@ -676,6 +675,7 @@ class ReStrax(daq_core.DataBases):
     @property
     def is_in_bypass_mode(self) -> bool:
         return self._bypass_mode
+
 
 if __name__ == '__main__':
     main()
