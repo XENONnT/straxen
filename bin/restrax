@@ -177,6 +177,7 @@ class ReStrax(daq_core.DataBases):
         while True:
             self.overwrite_settings()
             run_doc = self.find_work()
+            self.log.info('Start')
             if run_doc is None:
                 if close:
                     return
@@ -186,7 +187,7 @@ class ReStrax(daq_core.DataBases):
             t0 = time.time()
             self.set_restrax_busy(run_doc)
             try:
-                mem_for_doc = memory_usage(proc=(self.handle_run, (run_doc,), dict()))
+                mem_for_doc = memory_usage((self.handle_run, (run_doc, )), max_iterations=1, interval=60)
             except Exception as exception:
                 self.set_restrax_failed(run_doc, str(exception))
                 self.log.error(f'Ran into {exception}')
@@ -254,10 +255,12 @@ class ReStrax(daq_core.DataBases):
         run_doc = self.run_coll.find_one(query, **kw)
 
         if run_doc is None:
-            self.log.info()
+            self.log.info('No new work, looking for previously failed runs')
             # Look for work which we tried before (and has a restrax field)
             query.pop('restrax')
-            query.update({'restrax.n_tries': {"$lt": self.max_tries + 1}})
+            query.update({'restrax.n_tries': {"$lt": self.max_tries + 1},
+                          'restrax.state': {'$ne': 'done'}
+                         })
             run_doc = self.run_coll.find_one(query, **kw)
         # Update data field in place
         run_doc['data'] = self._get_data_docs(run_doc)
@@ -338,6 +341,7 @@ class ReStrax(daq_core.DataBases):
 
     def handle_run(self, run_doc: dict) -> None:
         """For a given batch of data_docs of a given run, do all the rechunking steps"""
+        self.log.debug('start handle_run')
         data_docs = self._get_data_docs(run_doc)
         self.log.info(f'{run_doc["number"]} -> doing {len(data_docs)}')
         # self.run_software_veto(run_doc)
@@ -368,6 +372,7 @@ class ReStrax(daq_core.DataBases):
         # Only remove the data that we rechunked (there are now two copies),
         # the moved data is always just a single copy
         self.remove_old_docs(compress_docs)
+        self.log.info(f'{run_doc["number"]} succes')
 
     def _get_data_docs(self, run_doc: dict):
         """Extract data doc from rundoc and sort by largest first"""
