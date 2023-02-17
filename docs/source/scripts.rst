@@ -131,6 +131,7 @@ times the number of (raw-records) threads so ``4 * target_size_mb``, which usual
 maxes out at 20GB for a raw-records target size of 5 GB.
 
 **Restrax configuration**
+
 Most of the restrax configurations are set as class variables. These can be overwritten by a document in the
 daq-database. For example, the sniplet below sets the ``max_workers`` to 5.
 
@@ -142,7 +143,7 @@ daq-database. For example, the sniplet below sets the ``max_workers`` to 5.
         {'name': 'restrax_config'},
         {'$set': {'user': 'angevaare',
                   'last_modified': daq_core.now(),
-                  'max_workers': 5,
+                  'max_workers': 5,  # <-- Increase the number of workers
                   }
         })
 
@@ -166,6 +167,7 @@ Additionally setting ``process=False`` stops the multithreaded processing (``pro
 
 
 **Bypass mode**
+
 If needed, restrax can be bypassed by passing the ``--bypass_mode`` argument. This will skipp all compression
 and rechunking steps, and will complete a run within ~0.5s. It's advised to only do this in conjunction with
 the ``--process RUN_ID`` argument, and use it for single runs, but this is not required. Bypass mode can be
