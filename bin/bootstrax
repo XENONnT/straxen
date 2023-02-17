@@ -124,7 +124,7 @@ timeouts = {
     'retry_run': 60,
     # Maximum time [s] for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    'max_processing_time': 48*3600,
+    'max_processing_time': 72*3600,
     # Max processing time [s] for bootstrax to finish processing after run ended
     'max_processing_time_after_completion': 13*3600,
     # Every this many [s] we should have at least one new file written to disk
@@ -1401,10 +1401,11 @@ def process_run(rd, send_heartbeats=args.production):
                 endtime = get_end_time(rd)
                 if (endtime is not None
                     and endtime.replace(tzinfo=pytz.utc) < now(-timeouts['max_processing_time_after_completion'])
+                    and t0 < now(-timeouts['max_processing_time_after_completion'])
                    ):
-                   kill_process(strax_proc.pid)
-                   fail(f"After the run ended, processing did not succeed in "
-                        f"{timeouts['max_processing_time_after_completion']} sec.")
+                    kill_process(strax_proc.pid)
+                    fail(f"After the run ended, processing did not succeed in "
+                         f"{timeouts['max_processing_time_after_completion']} sec.")
 
                 # Fail because for some reason, we are not writing any new files to disk.
                 if (t0 < now(-timeouts['max_no_write_time'])
