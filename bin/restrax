@@ -190,7 +190,7 @@ class ReStrax(daq_core.DataBases):
             t0 = time.time()
             self.set_restrax_busy(run_doc)
             try:
-                mem_for_doc = memory_usage((self.handle_run, (run_doc, )), max_iterations=1, interval=60)
+                mem_for_doc = memory_usage((self.handle_run, (run_doc,)), max_iterations=1, interval=60)
             except Exception as exception:
                 self.set_restrax_failed(run_doc, str(exception))
                 self.log.error(f'Ran into {exception}')
@@ -263,7 +263,7 @@ class ReStrax(daq_core.DataBases):
             query.pop('restrax')
             query.update({'restrax.n_tries': {"$lt": self.max_tries + 1},
                           'restrax.state': {'$ne': 'done'}
-                         })
+                          })
             run_doc = self.run_coll.find_one(query, **kw)
         # Update data field in place
         run_doc['data'] = self._get_data_docs(run_doc)
@@ -753,9 +753,9 @@ class ReStrax(daq_core.DataBases):
                 if current == value:
                     continue
                 current_type = type(current)
-                is_same = isinstance(current_type, type(value))
-                both_list = isinstance(current_type, tuple) and isinstance(value, list)
-                both_dict = isinstance(current_type, immutabledict.immutabledict) and isinstance(value, dict)
+                is_same = isinstance(current, type(value))
+                both_list = isinstance(current, tuple) and isinstance(value, list)
+                both_dict = isinstance(current, immutabledict.immutabledict) and isinstance(value, dict)
                 if is_same or both_list or both_dict:
                     self.log.info(
                         f'Update self.{field} from {current} -> {value}. User {update_config.get("user", "??")}')
