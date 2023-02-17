@@ -204,7 +204,7 @@ max_timetamp_diff = 5
 
 # The maximum number of retries for processing a run. After this many times of retrying
 # to process a run, the DAQ-group has to either manually fix this run or manually fail it.
-max_n_retry = 20
+max_n_retry = 10
 
 # Check that there are runs that are waiting to be processed. If there are few,
 # an eventbuilder should not process new data.
