@@ -189,11 +189,14 @@ class ReStrax(daq_core.DataBases):
                 mem_for_doc = memory_usage(proc=(self.handle_run, (run_doc,), dict()))
             except Exception as exception:
                 self.set_restrax_failed(run_doc, str(exception))
+                self.log.error(f'Ran into {exception}')
                 raise exception
             self.log.debug(f"Memory profiler says peak RAM usage was: {max(mem_for_doc):.1f} MB")
             self.log.debug(f'Took {(time.time() - t0) / 3600:.2f} h')
-            self.set_restrax_done(run_doc)
+            self.set_restrax_done(run_doc, mem_for_doc)
             self.log.info('Loop done')
+            if close:
+                break
 
     def find_work(self,
                   projection: ty.Optional[dict] = None
@@ -278,12 +281,12 @@ class ReStrax(daq_core.DataBases):
 
     def set_restrax_done(self, run_doc: dict, memory_usage_mb: list) -> None:
         """Update the rundoc with the restrax state"""
-        if not self.production: return
         update = {'restrax.state': 'done',
                   'restrax.ended': now(),
                   'restrax.memory_usage_mb': {'avg': np.average(memory_usage_mb), 'max': np.max(memory_usage_mb)}
                   }
-        self.run_coll.update_one(
+        if self.production:
+            self.run_coll.update_one(
             {'_id': run_doc['_id']},
             {'$set': update},
         )
@@ -291,12 +294,12 @@ class ReStrax(daq_core.DataBases):
 
     def set_restrax_failed(self, run_doc: dict, reason: str) -> None:
         """Update the rundoc with the restrax fail state"""
-        if not self.production: return
         update = {'restrax.state': 'failed',
                   'restrax.ended': now(),
                   'restrax.reason': reason,
                   }
-        self.run_coll.update_one(
+        if self.production: 
+            self.run_coll.update_one(
             {'_id': run_doc['_id']},
             {'$set': update},
         )
@@ -313,8 +316,25 @@ class ReStrax(daq_core.DataBases):
             self._bypass_for_data_doc(data_doc)
 
     def _bypass_for_data_doc(self, data_doc: dict) -> None:
-        source = data_doc['loc']
-        self._move_dir(source, self.renamed_path(source))
+        source = data_doc['location']
+        dest = self.renamed_path(source)
+        if os.path.exists(dest):
+            # Honestly don't know how this could happen, but we have to be carefull here
+            # We are dealing with single copies, so this is a tricky operation.
+            # Just to be sure we are not losing the only copy, let's make a backup
+            # at the unregistered folder.
+            move_to = self.renamed_path(source, _move_to = daq_core.non_registered_folder)
+            self._move_dir(dest, move_to)
+            message = f'{dest} already exists?! Backing up to {move_to}'
+            self.log.error(message)
+            self.log_warning(message)
+        if not os.path.exists(source):
+            # Complete chaos - this should never happen!
+            message = f'Trying to move {source}->{dest} but {source} does not exist?!'
+            self.log.error(message)
+            self.log_warning(message)
+            return
+        self._move_dir(source, dest)
 
     def handle_run(self, run_doc: dict) -> None:
         """For a given batch of data_docs of a given run, do all the rechunking steps"""
@@ -532,7 +552,7 @@ class ReStrax(daq_core.DataBases):
         is_large_dset = sum(chunk['nbytes'] for chunk in md_in['chunks']) > self.large_data_compare_threshold
 
         self.log.info(f'Checking {dir_in} vs {dir_out}. Is large {is_large_dset}')
-        kw = dict(keep_column='time' if is_large_dset else None, progress_bar=is_large_dset)
+        kw = dict(keep_column='time' if is_large_dset else None, progress_bar=len(md_in['chunks'])>4)
         data_in = self._get_data_from_dir(dir_in, **kw)
         data_out = self._get_data_from_dir(dir_out, **kw)
         errors = self._compare_data(data_in, data_out)
@@ -675,8 +695,10 @@ class ReStrax(daq_core.DataBases):
     def take_a_nap(self, dt: ty.Optional[int] = None):
         time.sleep(dt if dt is not None else self.nap_time)
 
-    def renamed_path(self, path: str) -> str:
-        return os.path.join(self.write_to, os.path.split(path)[-1])
+    def renamed_path(self, path: str, _move_to: ty.Optional[str] = None) -> str:
+        if _move_to is None:
+            _move_to = self.write_to
+        return os.path.join(_move_to, os.path.split(path)[-1])
 
     def _set_logger(self) -> None:
         versions = straxen.print_versions(
