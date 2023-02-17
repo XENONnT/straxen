@@ -141,7 +141,7 @@ class ReStrax(daq_core.DataBases):
         {
             'peak*': 1_500,
             '_other': 1_500,
-            '_raw_records': 1500,
+            '_raw_records': 5_000,
         }
     )
 
