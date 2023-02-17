@@ -204,7 +204,7 @@ max_timetamp_diff = 5
 
 # The maximum number of retries for processing a run. After this many times of retrying
 # to process a run, the DAQ-group has to either manually fix this run or manually fail it.
-max_n_retry = 10
+max_n_retry = 20
 
 # Check that there are runs that are waiting to be processed. If there are few,
 # an eventbuilder should not process new data.
@@ -353,8 +353,7 @@ def main():
 
         set_state('busy')
         process_run(rd)
-        log.info(
-            f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
+        log.info(f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).total_seconds()} seconds')
         wait_on_delete_thread()
 
     else:
@@ -384,7 +383,7 @@ def main_loop():
     # keep track of the ith run that we have seen when we are not in production mode
     new_runs_seen, failed_runs_seen = 0, 1
     while True:
-        log.info(f'bootstrax running for {(now() - t_start).seconds} seconds')
+        log.info(f'bootstrax running for {(now() - t_start).total_seconds()} seconds')
         # Check resources are still OK, otherwise crash / reboot program
         sufficient_diskspace()
         log.info("Looking for work")
@@ -717,7 +716,7 @@ def infer_mode(rd):
     try:
         started_looking = time.time()
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
-                tzinfo=timezone.utc) - now()).seconds
+                tzinfo=timezone.utc) - now()).total_seconds()
         if time_to_wait > 0:
             log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
             time.sleep(time_to_wait)
@@ -1468,13 +1467,13 @@ def process_run(rd, send_heartbeats=args.production):
                                       md['chunks']])) / 1e9)
                     log.info(f"Compute runtime")
                     run_duration = end_time - rd['start']
-                    if not (0 < t_covered.seconds < float('inf')):
+                    if not (0 < t_covered.total_seconds() < float('inf')):
                         fail(f"Processed data covers {t_covered} sec")
                     if not (timedelta(seconds=-max_timetamp_diff)
                             < (run_duration - t_covered)
                             < timedelta(seconds=max_timetamp_diff)):
-                        fail(f"Processing covered {t_covered.seconds}, "
-                             f"but run lasted {run_duration.seconds}!")
+                        fail(f"Processing covered {t_covered.total_seconds()}, "
+                             f"but run lasted {run_duration.total_seconds()}!")
                     if args.production:
                         # Only check rundoc for files written in production mode
                         log.info(f"Check files saved")
