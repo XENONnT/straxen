@@ -153,7 +153,10 @@ class ReStrax(daq_core.DataBases):
 
     # Settings for rechunking
     parallel = True  # (either True, False or 'process')
-    max_workers = 8
+    max_workers = 4
+
+    # Timeout for the mailboxes responsible for saving the data (including compression!)
+    _saver_timeout = 3600  # s
 
     def __init__(self, args):
         super().__init__(production=args.production)
@@ -435,11 +438,9 @@ class ReStrax(daq_core.DataBases):
             compressor=compressor,
             target_size_mb=target_size_mb,
             rechunk=True,
-
-            # TODO, might do with some optimization here / make configurable
             parallel=self.parallel,
             max_workers=self.max_workers,
-            _timeout=3600
+            _timeout=self._saver_timeout
         )
         self.log.info(f'{dir_out} written {summary}')
 

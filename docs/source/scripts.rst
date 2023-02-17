@@ -78,7 +78,7 @@ This means that the DAQ data flow is:
 .. image:: figures/restrax.svg
 
 From left to right:
- - The digitizers readout the PMTs, and `redax https://github.com/AxFoundation/redax/>`_ reads
+ - The digitizers readout the PMTs, and `redax <https://github.com/AxFoundation/redax/>`_ reads
    from the digitizers. ``redax`` also converts the data (which we call ``live_data``) to a format
    that bootstrax can read. This data is stored to ``CEPH`` (see `<https://arxiv.org/abs/2212.11032>`_).
  - ``bootstrax`` reads the ``live_data`` from ``CEPH`` and processes it to the strax-datatypes
@@ -130,6 +130,46 @@ The maximum memory usage can be approximated by the 2x``target_size_mb`` from ``
 times the number of (raw-records) threads so ``4 * target_size_mb``, which usually
 maxes out at 20GB for a raw-records target size of 5 GB.
 
+**Restrax configuration**
+Most of the restrax configurations are set as class variables. These can be overwritten by a document in the
+daq-database. For example, the sniplet below sets the ``max_workers`` to 5.
+
+.. code-block:: python
+
+    from straxen import daq_core
+    db = daq_core.DataBases()
+    db.daq_db['restrax_config'].update_one(
+        {'name': 'restrax_config'},
+        {'$set': {'user': 'angevaare',
+                  'last_modified': daq_core.now(),
+                  'max_workers': 5,
+                  }
+        })
+
+There are several methods to make
+
+Several settings make ``restrax`` go faster:
+  - increase ``max_workers``, this increases the number of workers / data type. More workers uses more memory.
+  - increase ``max_threads``, this increases the number of concurrent data types that are handled. More workers
+    increases memory footprint.
+  - decrease ``is_heavy_rate_mbs`` to a lower value. If the data rate is higher than this number, restrax will use
+    faster (but less squeezy) compression algorithms for raw records.
+  - disable ``deep_compare``, this is a slow and over-engineered check that should only be used during testing.
+  - change ``target_compressor`` to faster compression algorithms.
+  - expend the ``skip_compression`` list of targets that are skipped during compression. Since most time in raw-records
+    (re)compression, this option only saves time if
+
+Similarly, decreasing the options above often leads to a lower memory footprint. So does decreasing the ``target_size``
+to lower values, as restrax has to keep a ``2x target_size`` for each datatype it is handling at a given time.
+Additionally setting ``process=False`` stops the multithreaded processing (``process=True``). Setting
+``process='process'`` changes the processing to multicore instead of multithreaded.
+
+
+**Bypass mode**
+If needed, restrax can be bypassed by passing the ``--bypass_mode`` argument. This will skipp all compression
+and rechunking steps, and will complete a run within ~0.5s. It's advised to only do this in conjunction with
+the ``--process RUN_ID`` argument, and use it for single runs, but this is not required. Bypass mode can be
+activated as by the configuration example above.
 
 
 
