@@ -14,6 +14,7 @@ output_folder = '/data/xenonnt_processed/'
 pre_folder = '/data/pre_processed/'
 non_registered_folder = '/data/xenonnt_unregistered/'
 
+
 class DataBases:
     def __init__(self, production=False):
         self.production = production
@@ -50,7 +51,7 @@ class DataBases:
         mongo_database = uconfig.get('rundb_admin', 'mongo_rdb_database')
 
         collection = utilix.rundb.xent_collection(
-            url=mongo_url, user= mongo_user, password=mongo_password, database=mongo_database)
+            url=mongo_url, user=mongo_user, password=mongo_password, database=mongo_database)
 
         # Do not delete the client!
         return collection.database.client
@@ -61,7 +62,7 @@ class DataBases:
                     run_id=None,
                     production=True,
                     user='daq_process',
-    ):
+                    ):
         """Report a warning to the terminal (using the logging module)
         and the DAQ log DB.
         :param message: insert string into log_coll
@@ -79,7 +80,7 @@ class DataBases:
         warning_message = {
             'message': message,
             'user': user,
-            'priority': dict(debug=0, info=1, warning=2, error=3, fatal=4,).get(priority.lower(), 3)}
+            'priority': dict(debug=0, info=1, warning=2, error=3, fatal=4, ).get(priority.lower(), 3)}
         if run_id is not None:
             warning_message.update({'runid': int(run_id)})
         self.log_coll.insert_one(warning_message)

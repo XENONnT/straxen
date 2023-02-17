@@ -150,7 +150,7 @@ class ReStrax(daq_core.DataBases):
 
     # Try recompressing this many times, inform the log database otherwise about failures
     max_tries = 5
-    
+
     # Settings for rechunking
     parallel = True  # (either True, False or 'process')
     max_workers = 8
@@ -287,9 +287,9 @@ class ReStrax(daq_core.DataBases):
                   }
         if self.production:
             self.run_coll.update_one(
-            {'_id': run_doc['_id']},
-            {'$set': update},
-        )
+                {'_id': run_doc['_id']},
+                {'$set': update},
+            )
         self.log.debug(f'Finished {run_doc["number"]}, set to {update}')
 
     def set_restrax_failed(self, run_doc: dict, reason: str) -> None:
@@ -298,11 +298,11 @@ class ReStrax(daq_core.DataBases):
                   'restrax.ended': now(),
                   'restrax.reason': reason,
                   }
-        if self.production: 
+        if self.production:
             self.run_coll.update_one(
-            {'_id': run_doc['_id']},
-            {'$set': update},
-        )
+                {'_id': run_doc['_id']},
+                {'$set': update},
+            )
         self.log.debug(f'Fail {run_doc["number"]} with {update}')
         if run_doc.get('restrax', {}).get('n_tries', 0) >= self.max_tries:
             self.log_warning(f'Failed too many times for {run_doc["number"]}! '
@@ -323,7 +323,7 @@ class ReStrax(daq_core.DataBases):
             # We are dealing with single copies, so this is a tricky operation.
             # Just to be sure we are not losing the only copy, let's make a backup
             # at the unregistered folder.
-            move_to = self.renamed_path(source, _move_to = daq_core.non_registered_folder)
+            move_to = self.renamed_path(source, _move_to=daq_core.non_registered_folder)
             self._move_dir(dest, move_to)
             message = f'{dest} already exists?! Backing up to {move_to}'
             self.log.error(message)
@@ -421,7 +421,7 @@ class ReStrax(daq_core.DataBases):
 
         self.log.info(f'Start {dir_in} -> {dir_out}')
         compressor, target_size_mb = self.get_compressor_and_size(run_doc, data_doc)
-        
+
         self.log.debug(f'Running with parallel {self.parallel} and max_workers {self.max_workers}')
         summary = strax.rechunker(
             source_directory=dir_in,
@@ -456,8 +456,8 @@ class ReStrax(daq_core.DataBases):
             _go_fast = rate > self.is_heavy_rate_mbs or run_doc.get('restrax', {}).get('n_tries',
                                                                                        0) > self.max_tries // 2
             compressor = (
-                self.target_compressor['_raw_record_compressor_heavy'] 
-                if _go_fast else 
+                self.target_compressor['_raw_record_compressor_heavy']
+                if _go_fast else
                 self.target_compressor['_raw_record_compressor_light']
             )
             self.log.debug(f'Use {compressor}, we have to go fast: {_go_fast} (rate~{rate:.1f} MB/s)')
@@ -552,7 +552,7 @@ class ReStrax(daq_core.DataBases):
         is_large_dset = sum(chunk['nbytes'] for chunk in md_in['chunks']) > self.large_data_compare_threshold
 
         self.log.info(f'Checking {dir_in} vs {dir_out}. Is large {is_large_dset}')
-        kw = dict(keep_column='time' if is_large_dset else None, progress_bar=len(md_in['chunks'])>4)
+        kw = dict(keep_column='time' if is_large_dset else None, progress_bar=len(md_in['chunks']) > 4)
         data_in = self._get_data_from_dir(dir_in, **kw)
         data_out = self._get_data_from_dir(dir_out, **kw)
         errors = self._compare_data(data_in, data_out)
