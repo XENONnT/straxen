@@ -265,8 +265,10 @@ class ReStrax(daq_core.DataBases):
                           'restrax.state': {'$ne': 'done'}
                           })
             run_doc = self.run_coll.find_one(query, **kw)
-        # Update data field in place
-        run_doc['data'] = self._get_data_docs(run_doc)
+
+        if run_doc is not None:
+            # Update data field in place
+            run_doc['data'] = self._get_data_docs(run_doc)
         return run_doc
 
     def set_restrax_busy(self, run_doc: dict) -> None:
@@ -380,6 +382,8 @@ class ReStrax(daq_core.DataBases):
     def _get_data_docs(self, run_doc: dict):
         """Extract data doc from rundoc and sort by largest first"""
         # Filter data documents that are only on this host
+        if run_doc.get('data') is None:
+            return []
         data_docs = [data_doc for data_doc in run_doc['data'] if
                      data_doc.get('host') == self.hostname
                      ]
