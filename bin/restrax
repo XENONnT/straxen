@@ -456,16 +456,18 @@ class ReStrax(daq_core.DataBases):
             _go_fast = rate > self.is_heavy_rate_mbs or run_doc.get('restrax', {}).get('n_tries',
                                                                                        0) > self.max_tries // 2
             compressor = (
-                self.target_compressor['_raw_record_compressor_heavy']
+                self.target_compressor.get('_raw_record_compressor_heavy', 'bz2')
                 if _go_fast else
-                self.target_compressor['_raw_record_compressor_light']
+                self.target_compressor.get('_raw_record_compressor_light', 'zstd')
             )
             self.log.debug(f'Use {compressor}, we have to go fast: {_go_fast} (rate~{rate:.1f} MB/s)')
-            target_size_mb = self.target_size['_raw_records']
+            target_size_mb = self.target_size.get('_raw_records', 5000)
         else:
             # Extract the compressor from the settings
             compressor = self._fnmatch_from_doc(self.target_compressor, dtype)
             target_size_mb = self._fnmatch_from_doc(self.target_size, dtype)
+            if target_size_mb is None:
+                target_size_mb = 1_500
 
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
         return compressor, target_size_mb
@@ -475,7 +477,7 @@ class ReStrax(daq_core.DataBases):
         for target, value in some_dict.items():
             if fnmatch.fnmatch(target, target_key):
                 return value
-        return some_dict['_other']
+        return some_dict.get('_other', None)
 
     def should_skip_compression(self, run_doc: dict, data_doc: dict) -> bool:
         """Should we skip recompressing this data? For example if the data is
@@ -576,7 +578,8 @@ class ReStrax(daq_core.DataBases):
             errors.append('Data not the same')
         return errors
 
-    def _get_data_from_dir(self, folder: str,
+    def _get_data_from_dir(self,
+                           folder: str,
                            keep_column: typing.Optional[ty.Union[str, list]] = None,
                            progress_bar: bool = False,
                            _compare_sum: bool = False) -> np.ndarray:
