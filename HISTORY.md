@@ -1,3 +1,15 @@
+v2.0.5 / 2023-02-24
+-------------------
+## What's Changed
+* fix xedocs for testing by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1139
+* Restart python style guide by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1138
+* Decrease number of chunks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1123
+* Restrax by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1074
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.4...v2.0.5
+
+
 v2.0.4 / 2023-01-16
 -------------------
 * Top and bottom timing parameters at event and peak level by @terliuk in https://github.com/XENONnT/straxen/pull/1119
