@@ -715,8 +715,8 @@ def infer_mode(rd):
         data_rate = float(sum([detector['max'] for detector in rd['rate'].values()]))
     try:
         started_looking = time.time()
-        time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
-                tzinfo=timezone.utc) - now()).total_seconds()
+        time_to_wait = timeouts['min_data_rate_infer_time'] - (now() - rd['start'].replace(
+                tzinfo=timezone.utc)).total_seconds()
         if time_to_wait > 0:
             log.debug(f'Waiting {time_to_wait:.1f} s to infer datarate')
             time.sleep(time_to_wait)
