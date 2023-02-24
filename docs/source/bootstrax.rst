@@ -1,7 +1,10 @@
 Bootstrax: XENONnT online processing manager
 =============================================
 The ``bootstrax`` script watches for new runs to appear from the DAQ, then starts a
-strax process to process them. If a run fails, it will retry it with
+strax process to process them.
+``Restrax`` handles the output of bootstrax and stores it in a computing-friendly
+manner (not too many, but few large files). The restrax documentation is on
+If a run fails, it will retry it with
 exponential backoff, each time waiting a little longer before retying.
 After 10 failures, ``bootstrax`` stops trying to reprocess a run.
 Additionally, every new time it is restarted it tries to process fewer plugins.
@@ -13,7 +16,7 @@ If you start a second one on the same machine, it will try to kill the
 first one.
 
 
-Philosophy
+Bootstrax philosophy
 ----------------
 Bootstrax has a crash-only / recovery first philosophy. Any error in
 the core code causes a crash; there is no nice exit or mandatory
@@ -68,4 +71,4 @@ what ``bootstrax`` is thinking of at the moment.
   - **disk_used**: used part of the disk whereto this ``bootstrax`` instance
     is writing to (in percent).
 
-*Last updated 2021-05-07. Joran Angevaare*
+*Last updated 2023-02-14. Joran Angevaare*

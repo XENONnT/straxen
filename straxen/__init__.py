@@ -33,6 +33,8 @@ from . import contexts
 from . import test_utils
 from .test_utils import *
 
+from . import daq_core
+
 try:
     from . import holoviews_utils
     from .holoviews_utils import *

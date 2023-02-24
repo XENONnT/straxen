@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.3.2'
+__version__ = '2.0.0'
 
 import argparse
 import typing
@@ -42,6 +42,8 @@ import typing as ty
 import daqnt
 import fnmatch
 from glob import glob
+from straxen import daq_core
+from straxen.daq_core import now
 
 parser = argparse.ArgumentParser(
     description="XENONnT online processing manager")
@@ -122,7 +124,7 @@ timeouts = {
     'retry_run': 60,
     # Maximum time [s] for strax to complete a processing
     # if exceeded, strax will be killed by bootstrax
-    'max_processing_time': 48*3600,
+    'max_processing_time': 72*3600,
     # Max processing time [s] for bootstrax to finish processing after run ended
     'max_processing_time_after_completion': 13*3600,
     # Every this many [s] we should have at least one new file written to disk
@@ -239,7 +241,7 @@ log_name = 'bootstrax_' + hostname + ('' if args.production else '_TESTING')
 log = daqnt.get_daq_logger(log_name, log_name, level=logging.DEBUG, opening_message=f'I am processing with these software versions: {versions}')
 
 # Set the output folder
-output_folder = '/data/xenonnt_processed/' if args.production else test_data_folder
+output_folder = daq_core.pre_folder if args.production else test_data_folder
 
 if not args.production:
     # This means we are in some test mode
@@ -298,29 +300,13 @@ def new_context(cores=args.cores,
 
 st = new_context()
 
-# DAQ database
-daq_db_name = 'daq'
-daq_uri = straxen.get_mongo_uri(header='rundb_admin',
-                                user_key='mongo_daq_username',
-                                pwd_key='mongo_daq_password',
-                                url_key='mongo_daq_url')
-daq_client = pymongo.MongoClient(daq_uri)
-daq_db = daq_client[daq_db_name]
-bs_coll = daq_db['eb_monitor']
-ag_stat_coll = daq_db['aggregate_status']
-log_coll = daq_db['log']
-
-# Runs database
-run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
-run_collname = 'runs'
-if args.production:
-    run_db = st.storage[0].client[run_dbname]
-else:
-    # Please note, this is a read only account on the rundb
-    run_uri = straxen.get_mongo_uri()
-    run_client = pymongo.MongoClient(run_uri)
-    run_db = run_client[run_dbname]
-run_coll = run_db[run_collname]
+databases = daq_core.DataBases(production=args.production)
+run_db = databases.run_db
+daq_db = databases.daq_db
+run_coll = databases.run_coll
+log_coll = databases.log_coll
+ag_stat_coll = databases.ag_stat_coll
+bs_coll = databases.bs_coll
 run_db.command('ping')
 
 # Ping the databases to ensure the mongo connections are working
@@ -367,8 +353,7 @@ def main():
 
         set_state('busy')
         process_run(rd)
-        log.info(
-            f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).seconds} seconds')
+        log.info(f'bootstrax ({hostname}) finished run {number} in {(now() - t_start).total_seconds()} seconds')
         wait_on_delete_thread()
 
     else:
@@ -398,7 +383,7 @@ def main_loop():
     # keep track of the ith run that we have seen when we are not in production mode
     new_runs_seen, failed_runs_seen = 0, 1
     while True:
-        log.info(f'bootstrax running for {(now() - t_start).seconds} seconds')
+        log.info(f'bootstrax running for {(now() - t_start).total_seconds()} seconds')
         # Check resources are still OK, otherwise crash / reboot program
         sufficient_diskspace()
         log.info("Looking for work")
@@ -455,10 +440,6 @@ def main_loop():
 ##
 # General helpers
 ##
-
-
-def now(plus=0):
-    return datetime.now(pytz.utc) + timedelta(seconds=plus)
 
 
 def kill_process(pid):
@@ -662,34 +643,8 @@ def send_heartbeat(update_fields=None):
 
 
 def log_warning(message, priority='warning', run_id=None):
-    """Report a warning to the terminal (using the logging module)
-    and the DAQ log DB.
-    :param message: insert string into log_coll
-    :param priority: severity of warning. Can be:
-        info: 1,
-        warning: 2,
-        <any other valid python logging level, e.g. error or fatal>: 3
-    :param run_id: optional run id.
-    """
-    if not args.production:
-        return
     getattr(log, priority.lower())(message)
-    # Log according to redax rules
-    # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
-    warning_message = {
-        'message': message,
-        'user': f'bootstrax_{hostname}',
-        'priority':
-            dict(debug=0,
-                 info=1,
-                 warning=2,
-                 error=3,
-                 fatal=4,
-                 ).get(priority.lower(), 3)}
-    if run_id is not None:
-        warning_message.update({'runid': int(run_id)})
-    log_coll.insert_one(warning_message)
-
+    databases.log_warning(message, priority=priority, run_id=run_id, production=args.production, user=f'bootstrax_{hostname}',)
 
 def eb_can_process():
     """"The new ebs (eb3-5) should be sufficient to process all data. In exceptional
@@ -761,9 +716,9 @@ def infer_mode(rd):
     try:
         started_looking = time.time()
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
-                tzinfo=timezone.utc) - now()).seconds
+                tzinfo=timezone.utc) - now()).total_seconds()
         if time_to_wait > 0:
-            log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
+            log.debug(f'Waiting {time_to_wait:.1f} s to infer datarate')
             time.sleep(time_to_wait)
         while data_rate == 0:
             # For runs that are still running, we should be able to get the
@@ -844,20 +799,20 @@ def infer_records_compressor(rd, datarate, n_fails):
     """
     if n_fails or datarate is None:
         # Cannot infer datarate or failed before, go for fast & safe
-        return 'lz4' if n_fails > 1 else 'zstd'
+        return 'lz4' if n_fails > 1 else 'blosc'
 
     chunk_length = (rd['daq_config']['strax_chunk_overlap'] +
                     rd['daq_config']['strax_chunk_length'])
     chunk_size_mb = datarate*chunk_length
     if datarate < 65:
         # Low data rate, we can do very large compression
-        return 'bz2'
+        return 'blosc'
     if chunk_size_mb > 1800:
         # Extremely large chunks, let's use LZ4 because we know that it
         # can handle this.
         return 'lz4'
     # High datarate and reasonable chunk size.
-    return 'zstd'
+    return 'blosc'
 
 
 ##
@@ -1080,63 +1035,6 @@ def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
         time.sleep(wait_per_cycle)
     return True
 
-
-def upload_file_metadata(rd):
-    """
-    Update the data-field in the rundoc with a portion of the metadata. Also count the
-    number of files on the location on the basis of the data entry in the rundoc. The
-    filecount info is used for Admix to checksum that all the files are correctly uploaded
-    to Rucio.
-    :param rd: rundoc
-    """
-    try:
-        st_meta = new_context(cores=args.cores, max_messages=args.max_messages, timeout=100)
-        st_meta.set_context_config({'forbid_creation_of': '*'})
-    except Exception as e:
-        log_warning(f"Cannot create context to read the metadata: {e}", priority='warning')
-        st_meta = None
-
-    for ddoc in rd['data']:
-        if hostname != ddoc['host']:
-            continue
-        loc = ddoc.get('location', '')
-
-        if os.path.exists(loc):
-            file_count = len(os.listdir(loc))
-            # Can also get the latter from st.lineage_for but too lazy for that
-            data_size_mb, avg_data_size_mb, lineage_hash, compressor = None, None, None, None
-            run_id = '%06d' % rd['number']
-            if st_meta is not None:
-                try:
-                    md = st.get_meta(run_id, ddoc['type'])
-                    chunk_mb = [chunk['nbytes'] / (1e6) for chunk in md['chunks']]
-                    data_size_mb = int(np.sum(chunk_mb))
-                    avg_data_size_mb = int(np.average(chunk_mb))
-                    lineage_hash = md['lineage_hash']
-                    compressor = md['compressor']
-                except Exception as e:
-                    log_warning(f"Cannot load metadata of {ddoc['type']}: {e}",
-                                priority='warning',
-                                run_id=f'{rd["number"]:06}')
-
-            run_coll.update_one(
-                {'_id': rd['_id'],
-                'data': {
-                    '$elemMatch': {
-                        'location': ddoc['location'],
-                        'host': ddoc['host']}}},
-                {'$set':
-                     {'data.$.file_count': file_count,
-                      'data.$.meta.strax_version': strax.__version__,
-                      'data.$.meta.straxen_version': straxen.__version__,
-                      'data.$.meta.size_mb': data_size_mb,
-                      'data.$.meta.avg_chunk_mb': avg_data_size_mb,
-                      'data.$.meta.lineage_hash': lineage_hash,
-                      'data.$.meta.compressor': compressor,
-                      }
-                 })
-
-
 def get_end_time(rd) -> typing.Optional[datetime]:
     return run_coll.find_one({'_id': rd['_id']}, projection={'end': 1}).get('end', None)
 
@@ -1155,21 +1053,21 @@ def set_status_finished(rd):
     all_files_saved(rd)
 
     # Only update the status if it does not exist or if it needs to be uploaded
-    ready_to_upload = {'status': 'eb_ready_to_upload'}
+    ready_for_restrax = {'status': 'eb_finished_pre'}
     if rd.get('status') in [None, 'needs_upload']:
         run_coll.update_one(
             {'_id': rd['_id']},
-            {'$set': ready_to_upload})
-    elif rd.get('status') == ready_to_upload.get('status'):
+            {'$set': ready_for_restrax})
+    elif rd.get('status') == ready_for_restrax.get('status'):
         # This is strange, bootstrax already finished this run before
         log_warning('WARNING: bootstax has already marked this run as ready '
-                    'for upload. Doing nothing.',
+                    'for restrax. Doing nothing.',
                     priority='warning',
                     run_id=f'{rd["number"]:06}')
     else:
         # Do not override this field for runs already uploaded in admix
         message = (f'Trying to set set the status {rd.get("status")} to '
-                   f'{ready_to_upload}! One should not override this field.')
+                   f'{ready_for_restrax}! One should not override this field.')
         log_warning(message, priority='fatal')
         raise ValueError(message)
 
@@ -1295,7 +1193,7 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
                          timeout=timeout,
                          )
 
-        for t in ('raw_records', 'records'):
+        for t in ('raw_records', 'records', 'records_nv', 'hitlets_nv'):
             # Set the (raw)records processor to the inferred one
             st._plugin_class_registry[t].compressor = records_compressor
 
@@ -1502,10 +1400,11 @@ def process_run(rd, send_heartbeats=args.production):
                 endtime = get_end_time(rd)
                 if (endtime is not None
                     and endtime.replace(tzinfo=pytz.utc) < now(-timeouts['max_processing_time_after_completion'])
+                    and t0 < now(-timeouts['max_processing_time_after_completion'])
                    ):
-                   kill_process(strax_proc.pid)
-                   fail(f"After the run ended, processing did not succeed in "
-                        f"{timeouts['max_processing_time_after_completion']} sec.")
+                    kill_process(strax_proc.pid)
+                    fail(f"After the run ended, processing did not succeed in "
+                         f"{timeouts['max_processing_time_after_completion']} sec.")
 
                 # Fail because for some reason, we are not writing any new files to disk.
                 if (t0 < now(-timeouts['max_no_write_time'])
@@ -1568,13 +1467,13 @@ def process_run(rd, send_heartbeats=args.production):
                                       md['chunks']])) / 1e9)
                     log.info(f"Compute runtime")
                     run_duration = end_time - rd['start']
-                    if not (0 < t_covered.seconds < float('inf')):
+                    if not (0 < t_covered.total_seconds() < float('inf')):
                         fail(f"Processed data covers {t_covered} sec")
                     if not (timedelta(seconds=-max_timetamp_diff)
                             < (run_duration - t_covered)
                             < timedelta(seconds=max_timetamp_diff)):
-                        fail(f"Processing covered {t_covered.seconds}, "
-                             f"but run lasted {run_duration.seconds}!")
+                        fail(f"Processing covered {t_covered.total_seconds()}, "
+                             f"but run lasted {run_duration.total_seconds()}!")
                     if args.production:
                         # Only check rundoc for files written in production mode
                         log.info(f"Check files saved")
@@ -1586,7 +1485,6 @@ def process_run(rd, send_heartbeats=args.production):
                     set_run_state(rd, 'done', **info)
 
                     set_status_finished(rd)
-                    upload_file_metadata(rd)
 
                     if args.delete_live:
                         delete_live_data(rd, loc)
