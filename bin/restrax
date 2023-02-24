@@ -818,6 +818,9 @@ class ReStrax(daq_core.DataBases):
         isinstance(dict(), _get_instance_from_hint(ty.Optional[ty.Union[str, int]])),
         ```
         """
+        if isinstance(hint, type):
+            return hint
+
         if args := ty.get_args(hint):
             return args
 
