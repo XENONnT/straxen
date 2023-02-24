@@ -12,7 +12,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 
 import argparse
 import logging
@@ -435,6 +435,9 @@ class ReStrax(daq_core.DataBases):
         compressor, target_size_mb = self.get_compressor_and_size(run_doc, data_doc)
 
         self.log.debug(f'Running with parallel {self.parallel} and max_workers {self.max_workers}')
+        # If ever performance is a too big an issue, we can easily change
+        # `strax.rechunker` to work on multiple tartes at the same time
+        # using the mailbox system.
         summary = strax.rechunker(
             source_directory=dir_in,
             dest_directory=self.write_to,

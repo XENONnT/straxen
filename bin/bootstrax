@@ -15,7 +15,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
-__version__ = '1.3.2'
+__version__ = '2.0.0'
 
 import argparse
 import typing
@@ -718,7 +718,7 @@ def infer_mode(rd):
         time_to_wait = timeouts['min_data_rate_infer_time'] - (rd['start'].replace(
                 tzinfo=timezone.utc) - now()).total_seconds()
         if time_to_wait > 0:
-            log.debug(f'Waiting {time_to_wait:1.f} s to infer datarate')
+            log.debug(f'Waiting {time_to_wait:.1f} s to infer datarate')
             time.sleep(time_to_wait)
         while data_rate == 0:
             # For runs that are still running, we should be able to get the

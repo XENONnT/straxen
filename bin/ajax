@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 
 import argparse
 import warnings
