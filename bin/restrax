@@ -108,36 +108,46 @@ class ReStrax(daq_core.DataBases):
     """
     Restrax: rechunking the data from bootstrax and prepare it for admix/rucio
     """
+    # Typing is important because of the overwrite_settings
     log: logging.Logger
-    nap_time: int = 300  # s
-    nap_time_short: int = 5  # s
+    max_threads: int
+    ignore_checks: bool
+    skip_compression: bool
+    process: ty.Union[str, int]
+    deep_compare: bool
+    recompress_min_chunks: int
+    bypass_mode: bool
 
-    folders = immutabledict.immutabledict(
+    nap_time: ty.Union[int, float] = 300  # s
+    nap_time_short: ty.Union[int, float] = 5  # s
+
+    folders : ty.Mapping = immutabledict.immutabledict(
         production_out=daq_core.output_folder,
         test_out='/data/test_processed')
 
-    raw_record_types: tuple = ('raw_records', 'raw_records_nv', 'raw_records_mv',
-                               'raw_records_he',
-                               'records', 'records_nv', 'records_mv')
+    raw_record_types: ty.Iterable = (
+        'raw_records', 'raw_records_nv', 'raw_records_mv', 'raw_records_he',
+        'records', 'records_nv', 'records_mv')
 
-    exclude_modes: tuple = ('pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
-                            'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
+    exclude_modes: ty.Iterable = (
+        'pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
+        'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
 
     # If a dataset is larger than this many bytes, only compare a single field (time)
-    large_data_compare_threshold: int = int(5e9)
+    large_data_compare_threshold: ty.Union[int, float] = int(5e9)
 
     # If the total data rate is lower than this, use bz2 for the compression of raw records.
-    is_heavy_rate_mbs: int = 50  # MB/s
+    is_heavy_rate_mbs: ty.Union[int, float] = 50  # MB/s
 
     # Default compressors / target sizes. Fn matches the datatype to the keys in the dict to get the
-    target_compressor = immutabledict.immutabledict(
+    target_compressor: ty.Mapping = immutabledict.immutabledict(
         {'peak*': 'zstd',
          '_raw_record_compressor_light': 'bz2',
          '_raw_record_compressor_heavy': 'zstd',
          '_other': None,  # use the default compressor
          }
     )
-    target_size = immutabledict.immutabledict(
+    target_size: ty.Mapping = immutabledict.immutabledict(
         {
             'peak*': 1_500,
             '_other': 1_500,
@@ -146,17 +156,17 @@ class ReStrax(daq_core.DataBases):
     )
 
     # Prevent using more than this much MB when doing data validation
-    max_compare_buffer_mb: int = 5000
+    max_compare_buffer_mb: ty.Union[float, int] = 5000
 
     # Try recompressing this many times, inform the log database otherwise about failures
-    max_tries = 5
+    max_tries: int = 5
 
     # Settings for rechunking
-    parallel = True  # (either True, False or 'process')
-    max_workers = 4
+    parallel: ty.Optional[ty.Union[str, bool]] = True  # (either True, False or 'process')
+    max_workers: int = 4
 
     # Timeout for the mailboxes responsible for saving the data (including compression!)
-    _saver_timeout = 3600  # s
+    _saver_timeout: ty.Union[float, int] = 3600  # s
 
     def __init__(self, args):
         super().__init__(production=args.production)
@@ -754,16 +764,25 @@ class ReStrax(daq_core.DataBases):
         """Overwrite current settings with values from the database"""
         update_config = self.daq_db['restrax_config'].find_one({'name': 'restrax_config'})
 
+        type_hints = ty.get_type_hints(self.__class__)
+
         for field, value in update_config.items():
+
+
             if hasattr(self, field):
                 current = getattr(self, field)
                 if current == value:
                     continue
                 current_type = type(current)
+
+                # Match the type hinting from the class to the set value
+                matches_type_hints = (field in type_hints and
+                                      isinstance(value, self._get_instance_from_hint(type_hints[field])))
+
                 is_same = isinstance(current, type(value))
                 both_list = isinstance(current, tuple) and isinstance(value, list)
                 both_dict = isinstance(current, immutabledict.immutabledict) and isinstance(value, dict)
-                if is_same or both_list or both_dict:
+                if matches_type_hints or is_same or both_list or both_dict:
                     self.log.info(
                         f'Update self.{field} from {current} -> {value}. User {update_config.get("user", "??")}')
                     setattr(self, field, value)
@@ -772,6 +791,38 @@ class ReStrax(daq_core.DataBases):
                                      f'(got {type(value)}, expected {current_type}).')
         self.log.info(f'Done updating defaults (if any)')
 
+    @staticmethod
+    def _get_instance_from_hint(hint):
+        """
+        Get instances consistent with type hint
+
+        Searched in vain for a coherent way to typecheck generally in python 3.8.
+        Python 3.11 has some nifty features (typing.reveal_type).
+
+        Some examples:
+
+        ```
+        # Gives True
+        isinstance(dict(), _get_instance_from_hint(ty.Mapping)),
+        isinstance([], _get_instance_from_hint(ty.Sequence)),
+        isinstance(tuple(), _get_instance_from_hint(ty.Sequence)),
+        isinstance(1, _get_instance_from_hint(ty.Union[str, int])),
+        isinstance(None, _get_instance_from_hint(ty.Optional[ty.Union[str, int]])),
+        isinstance(1, _get_instance_from_hint(ty.Optional[ty.Union[str, int]])),
+
+        # Gives False
+        isinstance([], _get_instance_from_hint(ty.Mapping)),
+        isinstance(dict(), _get_instance_from_hint(ty.Sequence)),
+        isinstance(0.1, _get_instance_from_hint(ty.Sequence)),
+        isinstance(0.1, _get_instance_from_hint(ty.Union[str, int])),
+        isinstance(dict(), _get_instance_from_hint(ty.Optional[ty.Union[str, int]])),
+        ```
+        """
+        if args := ty.get_args(hint):
+            return args
+
+        if origin := ty.get_origin(hint):
+            return origin
 
 if __name__ == '__main__':
     main()
