@@ -45,7 +45,7 @@ def parse_args():
                         help="Do not use! Skip checks before changing documents, there be dragons.", )
     parser.add_argument('--input_folder', type=str, default=daq_core.pre_folder,
                         help="Where to read the data from, should only be used when testing", )
-    parser.add_argument('--max_threads', type=int, default=1,
+    parser.add_argument('--max_threads', type=int, default=2,
                         help='max number of threads to simultaneously work on one run'
                         )
     parser.add_argument('--skip_compression', nargs='*', default=['*event*'],
@@ -53,7 +53,7 @@ def parse_args():
     # deep_compare is meant only for testing
     parser.add_argument('--deep_compare', action='store_true',
                         help='Open all the data of the old and the new format and check that they are the same')
-    parser.add_argument('--recompress_min_chunks', type=int, default=3,
+    parser.add_argument('--recompress_min_chunks', type=int, default=2,
                         help='Only bother with doing the recompression if there are more than this many chunks')
     parser.add_argument('--bypass_mode', action='store_true',
                         help='Stop recompression and just rename folders. Use with care!')
