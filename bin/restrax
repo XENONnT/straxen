@@ -12,7 +12,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 import argparse
 import logging
@@ -552,6 +552,11 @@ class ReStrax(daq_core.DataBases):
             if not os.path.exists(dir_out): errors.append(f'{dir_out} does not exists.')
             md_in = storage_backend.get_metadata(dir_in)
             md_out = storage_backend.get_metadata(dir_out)
+
+            if any((chunk['n'] and not chunk['filesize'])
+                   for chunk in md_out['chunks']):
+                # E.g. you tried compressing >2 GB chunk using blosc
+                errors.append(f'For {dir_out}, at least one doc failed to write')
 
             if 'exception' in md_out:
                 errors.append('Writing error!')
