@@ -5,7 +5,11 @@ import matplotlib.cm as cm
 from copy import deepcopy
 
 sys.path.insert(0, r"/dali/lgrandi/guidam/GITHUB_XENON/CNN_S1_XYZ_DATADRIVEN/")
-import plot_patterns
+try:
+    import plot_patterns
+    make_plot = True
+expect ImportError:
+    make_plot = False
 
 colormap = deepcopy(cm.YlGn)
 colormap.set_under("w")
@@ -55,22 +59,23 @@ print("===========================================================  \n")
 
 np.random.seed(14)
 
-for i in range(2):
-    # Random events for checking.
-    ind=np.random.randint(0, areas.shape[0]) 
-    pmtpos=straxen.pmt_positions()
+if make_plot == True:
+    for i in range(2):
+        # Random events for checking.
+        ind=np.random.randint(0, areas.shape[0]) 
+        pmtpos=straxen.pmt_positions()
 
-    fig, axes = plot_patterns.plot_pattern(areas[ind], 
-                                      pmtpositions=pmtpos,
-                                      cmap = colormap,cbar_lim =[1e-10],cbar_scie=True)
-    axes['ax_top'].plot(reco_pos_x[ind], reco_pos_y[ind], marker = "+",ms=30, color="orange",mew=6,label="S1 CNN Pos Rec\nz = "+str(round(reco_pos_z[ind],1))+ " cm")
-    axes['ax_bottom'].plot(reco_pos_x[ind], reco_pos_y[ind], marker = "+",ms=30, color="orange",mew=6)
-  
-    axes['ax_top'].set_title("S1 - Top Array - Area per Channel (in PE)",fontsize=26)
-    axes['ax_bottom'].set_title("S1 - Bottom Array - Area per Channel (in PE)",fontsize=26)
+        fig, axes = plot_patterns.plot_pattern(areas[ind], 
+                                          pmtpositions=pmtpos,
+                                          cmap = colormap,cbar_lim =[1e-10],cbar_scie=True)
+        axes['ax_top'].plot(reco_pos_x[ind], reco_pos_y[ind], marker = "+",ms=30, color="orange",mew=6,label="S1 CNN Pos Rec\nz = "+str(round(reco_pos_z[ind],1))+ " cm")
+        axes['ax_bottom'].plot(reco_pos_x[ind], reco_pos_y[ind], marker = "+",ms=30, color="orange",mew=6)
 
-    axes['ax_top'].legend(fontsize=16)
-    print("s1_area [PE] : ",areas[ind].sum())
-    fig.savefig('/dali/lgrandi/guidam/s1_posrec_pr1/straxen/tests/plugins/temp_s1_posrec_test/plots_to_delate/example'+str(i)+'.png', bbox_inches='tight')
+        axes['ax_top'].set_title("S1 - Top Array - Area per Channel (in PE)",fontsize=26)
+        axes['ax_bottom'].set_title("S1 - Bottom Array - Area per Channel (in PE)",fontsize=26)
 
-    # print("reconstructed position : ",recopos[['x_cnn_s1','y_cnn_s1','z_cnn_s1']][mask_area][ind])
+        axes['ax_top'].legend(fontsize=16)
+        print("s1_area [PE] : ",areas[ind].sum())
+        fig.savefig('/dali/lgrandi/guidam/s1_posrec_pr1/straxen/tests/plugins/temp_s1_posrec_test/plots_to_delate/example'+str(i)+'.png', bbox_inches='tight')
+
+        # print("reconstructed position : ",recopos[['x_cnn_s1','y_cnn_s1','z_cnn_s1']][mask_area][ind])
