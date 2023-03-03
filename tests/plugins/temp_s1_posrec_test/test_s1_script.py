@@ -9,7 +9,7 @@ try:
     import plot_patterns
     make_plot = True
     
-expect ImportError:
+except ImportError as error:
     make_plot = False
 
 
