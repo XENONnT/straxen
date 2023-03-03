@@ -1,4 +1,4 @@
-import straxen, strax,ntauxfiles,sys
+import straxen, strax,sys
 from time import time
 import numpy as np
 import matplotlib.cm as cm
@@ -10,7 +10,7 @@ import plot_patterns
 colormap = deepcopy(cm.YlGn)
 colormap.set_under("w")
 
-version_info = straxen.print_versions(modules=("straxen","strax","ntauxfiles"))
+version_info = straxen.print_versions(modules=("straxen","strax"))
 
 print(version_info)
 
