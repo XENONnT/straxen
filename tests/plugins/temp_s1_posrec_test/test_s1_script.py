@@ -8,8 +8,10 @@ sys.path.insert(0, r"/dali/lgrandi/guidam/GITHUB_XENON/CNN_S1_XYZ_DATADRIVEN/")
 try:
     import plot_patterns
     make_plot = True
+    
 expect ImportError:
     make_plot = False
+
 
 colormap = deepcopy(cm.YlGn)
 colormap.set_under("w")
@@ -59,7 +61,9 @@ print("===========================================================  \n")
 
 np.random.seed(14)
 
+
 if make_plot == True:
+
     for i in range(2):
         # Random events for checking.
         ind=np.random.randint(0, areas.shape[0]) 
