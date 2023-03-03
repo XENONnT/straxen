@@ -493,6 +493,11 @@ class ReStrax(daq_core.DataBases):
                 target_size_mb = 1_500
 
         self.log.debug(f'Setting {dtype}: {compressor}, {target_size_mb} MB')
+        if compressor == 'blosc' and target_size_mb > 1_500:
+            # We really want to stay away from the 2 GB limit!
+            self.log_warning(f'blosc fails compressing > 2 GB chunks, got instructed to do {target_size_mb} MB. '
+                             f'Forcing a lower value!')
+            target_size_mb = 1_500
         return compressor, target_size_mb
 
     @staticmethod
