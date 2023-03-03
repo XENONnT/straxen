@@ -12,19 +12,16 @@ class CorrectedAreas(strax.Plugin):
     """
     Plugin which applies light collection efficiency maps and electron
     life time to the data.
-
     Computes the cS1/cS2 for the main/alternative S1/S2 as well as the
     corrected life time.
-
     Note:
         Please be aware that for both, the main and alternative S1, the
         area is corrected according to the xy-position of the main S2.
-
         There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.3.0'
+    __version__ = '0.3.1'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -112,7 +109,45 @@ class CorrectedAreas(strax.Plugin):
 
     def cd_region(self, x, y):
         return ~self.ab_region(x, y)
+    
+    def s2_map_names(self):
+        
+        # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
+        # figure out the map name
+        if len(self.s2_xy_map.map_names) > 1:
+            s2_top_map_name = "map_top"
+            s2_bottom_map_name = "map_bottom"
+        else:
+            s2_top_map_name = "map"
+            s2_bottom_map_name = "map"
+        
+        return s2_top_map_name, s2_bottom_map_name
+    
+    def SEG_EE_correction_preparation(self):
+        
+        self.regions = {'ab': self.ab_region, 'cd': self.cd_region}
+        
+        # setup SEG and EE corrections
+        # if they are dicts, we just leave them as is
+        # if they are not, we assume they are floats and
+        # create a dict with the same correction in each region
+        if isinstance(self.se_gain, dict):
+            seg = self.se_gain
+        else:
+            seg = {key: self.se_gain for key in self.regions}
 
+        if isinstance(self.avg_se_gain, dict):
+            avg_seg = self.avg_se_gain
+        else:
+            avg_seg = {key: self.avg_se_gain for key in self.regions}
+
+        if isinstance(self.rel_extraction_eff, dict):
+            ee = self.rel_extraction_eff
+        else:
+            ee = {key: self.rel_extraction_eff for key in self.regions}
+        
+        return seg, avg_seg, ee
+    
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result['time'] = events['time']
@@ -128,35 +163,10 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
         # s2 corrections
-        # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
-        # figure out the map name
-        if len(self.s2_xy_map.map_names) > 1:
-            s2_top_map_name = "map_top"
-            s2_bottom_map_name = "map_bottom"
-        else:
-            s2_top_map_name = "map"
-            s2_bottom_map_name = "map"
+         # s2 corrections
+        s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
 
-        regions = {'ab': self.ab_region, 'cd': self.cd_region}
-
-        # setup SEG and EE corrections
-        # if they are dicts, we just leave them as is
-        # if they are not, we assume they are floats and
-        # create a dict with the same correction in each region
-        if isinstance(self.se_gain, dict):
-            seg = self.se_gain
-        else:
-            seg = {key: self.se_gain for key in regions}
-
-        if isinstance(self.avg_se_gain, dict):
-            avg_seg = self.avg_se_gain
-        else:
-            avg_seg = {key: self.avg_se_gain for key in regions}
-
-        if isinstance(self.rel_extraction_eff, dict):
-            ee = self.rel_extraction_eff
-        else:
-            ee = {key: self.rel_extraction_eff for key in regions}
+        seg, avg_seg, ee = self.SEG_EE_correction_preparation()
 
         # now can start doing corrections
         for peak_type in ["", "alt_"]:
@@ -179,7 +189,7 @@ class CorrectedAreas(strax.Plugin):
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
             result[f"{peak_type}cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
 
-            for partition, func in regions.items():
+            for partition, func in self.regions.items():
                 # partitioned SE and EE
                 partition_mask = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
 

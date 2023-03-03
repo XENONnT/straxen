@@ -3,6 +3,7 @@ from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 from straxen.common import pax_file, get_resource, first_sr1_run, rotate_perp_wires
 from straxen.get_corrections import get_cmt_resource, is_cmt_option
 from straxen.itp_map import InterpolatingMap
+from straxen.plugins.events.corrected_areas import CorrectedAreas
 import strax
 import straxen
 import numpy as np
@@ -19,8 +20,6 @@ class EventPeaks(strax.Plugin):
     provides = 'peaks_per_event'
     data_kind = 'peaks'
 
-
-    
     def infer_dtype(self):
         dtype = []
         dtype += [
@@ -32,7 +31,6 @@ class EventPeaks(strax.Plugin):
 
     save_when = strax.SaveWhen.TARGET
  
-        
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
         split_peaks_ind = strax.fully_contained_in(peaks, events)
@@ -51,76 +49,14 @@ class EventPeaks(strax.Plugin):
 
 
 @export
-class PeakCorrectedAreas(strax.Plugin):
-    """
-    Plugin which applies light collection efficiency maps and electron
-    life time to the data.
-    Computes the cS2 for all s2 peaks inside drift length. 
-    Note:
-    Assumes main s1 is the only valid one. 
-    Future work needed:
-    Energy as a function of cs2.
-    """
-    __version__ = '0.0.1'
+class PeakCorrectedAreas(CorrectedAreas):
+    
+    __version__ = '0.0.0'
 
     depends_on = ['peak_basics','peak_positions','peaks_per_event']
     data_kind = 'peaks'
     provides = 'peaks_corrections'
-    # Descriptor configs
-    elife = straxen.URLConfig(
-        default='cmt://elife?version=ONLINE&run_id=plugin.run_id',
-        help='electron lifetime in [ns]')
-
-    # default posrec, used to determine which LCE map to use
-    default_reconstruction_algorithm = straxen.URLConfig(
-        default=DEFAULT_POSREC_ALGO,
-        help="default reconstruction algorithm that provides (x,y)"
-    )
-    s1_xyz_map = straxen.URLConfig(
-        default='itp_map://resource://cmt://format://'
-                's1_xyz_map_{algo}?version=ONLINE&run_id=plugin.run_id'
-                '&fmt=json&algo=plugin.default_reconstruction_algorithm',
-        cache=True)
-    s2_xy_map = straxen.URLConfig(
-        default='itp_map://resource://cmt://format://'
-                's2_xy_map_{algo}?version=ONLINE&run_id=plugin.run_id'
-                '&fmt=json&algo=plugin.default_reconstruction_algorithm',
-        cache=True)
-
-    # average SE gain for a given time period. default to the value of this run in ONLINE model
-    # thus, by default, there will be no time-dependent correction according to se gain
-    avg_se_gain = straxen.URLConfig(
-        default='cmt://avg_se_gain?version=ONLINE&run_id=plugin.run_id',
-        help='Nominal single electron (SE) gain in PE / electron extracted. '
-             'Data will be corrected to this value')
-
-    # se gain for this run, allowing for using CMT. default to online
-    se_gain = straxen.URLConfig(
-        default='cmt://se_gain?version=ONLINE&run_id=plugin.run_id',
-        help='Actual SE gain for a given run (allows for time dependence)')
-
-    # relative extraction efficiency which can change with time and modeled by CMT.
-    rel_extraction_eff = straxen.URLConfig(
-        default='cmt://rel_extraction_eff?version=ONLINE&run_id=plugin.run_id',
-        help='Relative extraction efficiency for this run (allows for time dependence)')
-
-    # relative light yield
-    # defaults to no correction
-    rel_light_yield = straxen.URLConfig(
-        default='cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id',
-        help='Relative light yield (allows for time dependence)'
-    )
     
-    region_linear = straxen.URLConfig(
-        default=28,
-        help='linear cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
-    )
-    
-    region_circular = straxen.URLConfig(
-        default=60,
-        help='circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
-    )
-
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
@@ -139,60 +75,18 @@ class PeakCorrectedAreas(strax.Plugin):
                       (f'cs2', np.float32, f'Corrected area of  S2 [PE]'), ]
         return dtype
     
-    def ab_region(self, x, y):
-        new_x, new_y = rotate_perp_wires(x, y)
-        cond = new_x < self.region_linear
-        cond &= new_x > -self.region_linear
-        cond &= new_x**2 + new_y**2 < self.region_circular**2
-        return cond
-    
-    def cd_region(self, x, y):
-        return ~self.ab_region(x, y)
-
     def compute(self, peaks):
         result = np.zeros(len(peaks), self.dtype)
         result['time'] = peaks['time']
         result['endtime'] = peaks['endtime']
 
-        # S1 corrections depend on the actual corrected event position.
-        # We use this also for the alternate S1; for e.g. Kr this is
-        # fine as the S1 correction varies slowly.
- 
-
         # s2 corrections
-        # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
-        # figure out the map name
-        if len(self.s2_xy_map.map_names) > 1:
-            s2_top_map_name = "map_top"
-            s2_bottom_map_name = "map_bottom"
-        else:
-            s2_top_map_name = "map"
-            s2_bottom_map_name = "map"
-
-        regions = {'ab': self.ab_region, 'cd': self.cd_region}
-
-        # setup SEG and EE corrections
-        # if they are dicts, we just leave them as is
-        # if they are not, we assume they are floats and
-        # create a dict with the same correction in each region
-        if isinstance(self.se_gain, dict):
-            seg = self.se_gain
-        else:
-            seg = {key: self.se_gain for key in regions}
-
-        if isinstance(self.avg_se_gain, dict):
-            avg_seg = self.avg_se_gain
-        else:
-            avg_seg = {key: self.avg_se_gain for key in regions}
-
-        if isinstance(self.rel_extraction_eff, dict):
-            ee = self.rel_extraction_eff
-        else:
-            ee = {key: self.rel_extraction_eff for key in regions}
-
+        s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
+        
+        seg, avg_seg, ee = self.SEG_EE_correction_preparation()
         # now can start doing corrections
 
-            # S2(x,y) corrections use the observed S2 positions
+        # S2(x,y) corrections use the observed S2 positions
         s2_positions = np.vstack([peaks[f'x'], peaks[f'y']]).T
 
         # corrected s2 with s2 xy map only, i.e. no elife correction
@@ -211,7 +105,7 @@ class PeakCorrectedAreas(strax.Plugin):
         elife_correction = np.exp(peaks[f'drift_time'] / self.elife)
         result[f"cs2_wo_timecorr"] = ((cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction)
 
-        for partition, func in regions.items():
+        for partition, func in self.regions.items():
             # partitioned SE and EE
             partition_mask = func(peaks[f'x'], peaks[f'y'])
 
