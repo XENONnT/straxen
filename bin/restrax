@@ -558,7 +558,7 @@ class ReStrax(daq_core.DataBases):
             md_in = storage_backend.get_metadata(dir_in)
             md_out = storage_backend.get_metadata(dir_out)
 
-            if any((chunk['n'] and not chunk['filesize'])
+            if any((chunk.get('n', 0) and not chunk.get('filesize', 0))
                    for chunk in md_out['chunks']):
                 # E.g. you tried compressing >2 GB chunk using blosc
                 errors.append(f'For {dir_out}, at least one doc failed to write')
