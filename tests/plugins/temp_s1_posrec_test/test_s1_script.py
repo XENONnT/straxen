@@ -1,10 +1,10 @@
-import straxen, strax,sys
+import straxen,sys
 from time import time
 import numpy as np
 import matplotlib.cm as cm
 from copy import deepcopy
 
-sys.path.insert(0, r"/dali/lgrandi/guidam/GITHUB_XENON/CNN_S1_XYZ_DATADRIVEN/")
+sys.path.insert(0, r"/project2/lgrandi/guidam/GITHUB_XENON/CNN_S1_XYZ_DATADRIVEN/")
 try:
     import plot_patterns
     make_plot = True
@@ -23,7 +23,7 @@ print(version_info)
 st = straxen.contexts.xenonnt_online()
 
 import sys
-sys.path.insert(0, r"/dali/lgrandi/guidam/s1_posrec_pr1/straxen/straxen/plugins/events/")
+sys.path.insert(0, r"/project2/lgrandi/guidam/s1_posrec_pr1/straxen/straxen/plugins/events/")
 import event_s1_position_cnn
 
 st.register(event_s1_position_cnn.EventS1PositionCNN)
@@ -80,6 +80,6 @@ if make_plot == True:
 
         axes['ax_top'].legend(fontsize=16)
         print("s1_area [PE] : ",areas[ind].sum())
-        fig.savefig('/dali/lgrandi/guidam/s1_posrec_pr1/straxen/tests/plugins/temp_s1_posrec_test/plots_to_delate/example'+str(i)+'.png', bbox_inches='tight')
+        fig.savefig('/project2/lgrandi/guidam/s1_posrec_pr1/straxen/tests/plugins/temp_s1_posrec_test/plots_to_delate/example'+str(i)+'.png', bbox_inches='tight')
 
         # print("reconstructed position : ",recopos[['x_cnn_s1','y_cnn_s1','z_cnn_s1']][mask_area][ind])

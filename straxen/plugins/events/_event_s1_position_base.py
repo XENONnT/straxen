@@ -5,7 +5,6 @@ from warnings import warn
 import time
 export, __all__ = strax.exporter()
 
-
 @export
 class EventS1PositionBase(strax.Plugin):
     """
@@ -67,47 +66,26 @@ class EventS1PositionBase(strax.Plugin):
         result['event_y_' + self.algorithm] *= float('nan')
         result['event_z_' + self.algorithm] *= float('nan')
 
-        start_time = time.time()
         model = self.get_tf_model()
-        method1_time = time.time() - start_time
 
         # Reconstruct position only for large peaks, otherwise severe inaccuracy.
-        start_time = time.time()
         event_mask = events['s1_area_per_channel'].sum(axis=1) > self.config['min_s1_area_s1_posrec']
-        method2_time = time.time() - start_time
-        print("event_mask.shape:",event_mask.shape)
         
         if not np.sum(event_mask):
             # No peaks fulfilling the conditions, return nan array.
             return result
         
-        start_time = time.time()
         _in = events['s1_area_per_channel'][event_mask]
-        method3_time = time.time() - start_time
-        print("_in.shape:",_in.shape)
 
-        start_time = time.time()
         with np.errstate(divide='ignore', invalid='ignore'):
         # Normalise patters by dividing by largest PMT output between the two arrays. 
             _in = _in / _in.max(axis=1,keepdims=True)
-        method4_time = time.time() - start_time
 
         # Getting actual position reconstruction
-        start_time = time.time()
         _out = model.predict(_in)
-        method5_time = time.time() - start_time
 
         # writing output to the result
-        start_time = time.time()        
         result['event_x_' + self.algorithm][event_mask] = _out[:, 0]
         result['event_y_' + self.algorithm][event_mask] = _out[:, 1]
-        result['event_z_' + self.algorithm][event_mask] = _out[:, 2]
-        method6_time = time.time() - start_time
-        print("Method 1 execution time: ", method1_time)
-        print("Method 2 execution time: ", method2_time)
-        print("Method 3 execution time: ", method3_time)
-        print("Method 4 execution time: ", method4_time)
-        print("Method 5 execution time: ", method5_time)
-        print("Method 6 execution time: ", method6_time)
-    
+        result['event_z_' + self.algorithm][event_mask] = _out[:, 2]    
         return result

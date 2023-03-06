@@ -13,7 +13,7 @@ class EventS1PositionCNN(EventS1PositionBase):
     """
     algorithm = "s1_cnn"
     provides = "event_s1_position_cnn"
-#     tf_event_model_s1_cnn = straxen.URLConfig.evaluate_dry(f'tf:///dali/lgrandi/guidam/CNN_S1_XYZ_SAVED_MODELS/xnt_s1_posrec_cnn_datadriven_00_080921.tar.gz')
+    # tf_event_model_s1_cnn = straxen.URLConfig.evaluate_dry(f'tf:///project2/lgrandi/guidam/CNN_S1_XYZ_SAVED_MODELS/xnt_s1_posrec_cnn_datadriven_00_080921.tar.gz')
     tf_event_model_s1_cnn = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'
