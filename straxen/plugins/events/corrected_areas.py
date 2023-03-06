@@ -123,8 +123,8 @@ class CorrectedAreas(strax.Plugin):
         
         return s2_top_map_name, s2_bottom_map_name
     
-    def SEG_EE_correction_preparation(self):
-        
+    def seg_ee_correction_preparation(self):
+        """Get single electron gain and extraction efficiency options"""
         self.regions = {'ab': self.ab_region, 'cd': self.cd_region}
         
         # setup SEG and EE corrections
@@ -166,7 +166,7 @@ class CorrectedAreas(strax.Plugin):
          # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
 
-        seg, avg_seg, ee = self.SEG_EE_correction_preparation()
+        seg, avg_seg, ee = self.seg_ee_correction_preparation()
 
         # now can start doing corrections
         for peak_type in ["", "alt_"]:

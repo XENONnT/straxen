@@ -1,13 +1,9 @@
-import numba
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-from straxen.common import pax_file, get_resource, first_sr1_run, rotate_perp_wires
-from straxen.get_corrections import get_cmt_resource, is_cmt_option
-from straxen.itp_map import InterpolatingMap
 from straxen.plugins.events.corrected_areas import CorrectedAreas
 import strax
-import straxen
 import numpy as np
+
 export, __all__ = strax.exporter()
+
 
 @export
 class EventPeaks(strax.Plugin):
@@ -21,10 +17,9 @@ class EventPeaks(strax.Plugin):
     data_kind = 'peaks'
 
     def infer_dtype(self):
-        dtype = []
-        dtype += [
-            ((f'event_number'), np.float32),
-            ((f'drift_time'), np.float32),
+        dtype = [
+            ('drift_time', np.float32, 'Drift time between main S1 and S2 in ns'),
+            ('event_number', np.int64, 'Event number in this dataset'),
              ]
         dtype += strax.time_fields
         return dtype
@@ -34,9 +29,8 @@ class EventPeaks(strax.Plugin):
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
         split_peaks_ind = strax.fully_contained_in(peaks, events)
-        result = np.zeros(len(peaks), self.infer_dtype())
+        result = np.zeros(len(peaks), self.dtype)
         result.fill(np.nan)
-        #result['s2_sum'] = np.zeros(len(events))
    
          #1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
@@ -60,7 +54,6 @@ class PeakCorrectedAreas(CorrectedAreas):
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
-
         dtype += [
                       (f'cs2_wo_elifecorr', np.float32,
                        f'Corrected area of S2 before elife correction '
@@ -83,7 +76,7 @@ class PeakCorrectedAreas(CorrectedAreas):
         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
         
-        seg, avg_seg, ee = self.SEG_EE_correction_preparation()
+        seg, avg_seg, ee = self.seg_ee_correction_preparation()
         # now can start doing corrections
 
         # S2(x,y) corrections use the observed S2 positions
