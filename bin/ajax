@@ -643,7 +643,7 @@ def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
                             'data.host': hostname if not delete_live else 'daq'})
     run_id = '%06d' % number
 
-    if rd and any(ddoc.get('location').startwith(clean_from) for ddoc in rd.get('data', [])):
+    if rd and any(ddoc.get('location', '').startswith(clean_from) for ddoc in rd.get('data', [])):
         # Just for explicitness, this is where we want to end up. If we have a rundoc,
         # the data is registered and we don't have to do anything.
         return
