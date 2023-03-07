@@ -18,12 +18,12 @@ class EventInfoMS(strax.Plugin):
     depends_on = ('event_info', 'peak_basics','peaks_per_event','peaks_corrections')
     provides = 'event_MS_naive'
 
-
-    
     def infer_dtype(self):
         dtype = []
         dtype += [
             ((f's1_sum'), np.float32),
+            ((f'cs1_multi'), np.float32),
+            ((f'cs1_multi_wo_timecorr'), np.float32),
             ((f's2_sum'), np.float32),
             ((f'cs2_sum'), np.float32),
             ((f'cs2_wo_timecorr_sum'), np.float32),
@@ -84,7 +84,10 @@ class EventInfoMS(strax.Plugin):
             result[f'cs2_wo_elifecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_elifecorr'])
             result[f'cs2_area_fraction_sum'][event_i] = np.sum(sp[cond]['cs2_area_fraction_top'])            
             result[f's1_sum'][event_i] = np.sum(sp[sp["type"]==1]['area'])
-        el = self.cs1_to_e(events[f'cs1'])
+            if np.sum(sp[cond]['cs2']) > 0: 
+                result[f'cs1_multi_wo_timecorr'][event_i] = event["s1_area"] * np.average(sp[cond]['s1_xyz_correction_factor'], weights = sp[cond]['cs2'])
+                result[f'cs1_multi'][event_i] = result[f'cs1_multi_wo_timecorr'][event_i] * np.average(sp[cond]['s1_rel_light_yield_correction_factor'], weights = sp[cond]['cs2'])
+        el = self.cs1_to_e(result[f'cs1_multi'])
         ec = self.cs2_to_e(result[f'cs2_sum'])
         result[f'ces_sum'] = el+ec
         result[f'e_charge_sum'] = ec
