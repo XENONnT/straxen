@@ -1,3 +1,19 @@
+v2.0.6 / 2023-03-08
+-------------------
+## What's Changed
+* Bump supercharge/mongodb-github-action from 1.8.0 to 1.9.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1140
+* Small patches to restrax module by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1143
+* Ms events by @michaweiss89 and @HenningSE in https://github.com/XENONnT/straxen/pull/1080
+
+## New Contributors
+* @michaweiss89 made their first contribution in https://github.com/XENONnT/straxen/pull/1080
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.5...v2.0.6
+
+Notes:
+ - new data types: `peaks_per_event`, `event_top_bottom_params`
+
+
 v2.0.5 / 2023-02-24
 -------------------
 ## What's Changed
