@@ -11,7 +11,7 @@ v2.0.6 / 2023-03-08
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.5...v2.0.6
 
 Notes:
- - new data types: `peaks_per_event`, `event_top_bottom_params`
+ - new data types: `peaks_per_event`, `event_top_bottom_params`, `peaks_corrections` (see #1080)
 
 
 v2.0.5 / 2023-02-24
