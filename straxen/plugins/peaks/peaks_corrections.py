@@ -5,12 +5,12 @@ import straxen
 
 export, __all__ = strax.exporter()
 
+
 @export
 class PeakCorrectedAreas(CorrectedAreas):
-
     __version__ = '0.0.0'
 
-    depends_on = ['peak_basics','peak_positions','peaks_per_event']
+    depends_on = ['peak_basics', 'peak_positions', 'peaks_per_event']
     data_kind = 'peaks'
     provides = 'peaks_corrections'
 
@@ -55,12 +55,12 @@ class PeakCorrectedAreas(CorrectedAreas):
         result['time'] = peaks['time']
         result['endtime'] = peaks['endtime']
 
-        #Get S1 correction factors
+        # Get S1 correction factors
         z_obs = - self.electron_drift_velocity * peaks[f'drift_time']
         z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
         peak_positions = np.vstack([peaks['x'], peaks['y'], z_obs]).T
-        result["s1_xyz_correction_factor"] = 1/self.s1_xyz_map(peak_positions)
-        result["s1_rel_light_yield_correction_factor"] = 1/self.rel_light_yield
+        result["s1_xyz_correction_factor"] = 1 / self.s1_xyz_map(peak_positions)
+        result["s1_rel_light_yield_correction_factor"] = 1 / self.rel_light_yield
 
         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
@@ -93,7 +93,7 @@ class PeakCorrectedAreas(CorrectedAreas):
             partition_mask = func(peaks[f'x'], peaks[f'y'])
 
             # Correct for SEgain and extraction efficiency
-            seg_ee_corr = seg[partition]/avg_seg[partition]*ee[partition]
+            seg_ee_corr = seg[partition] / avg_seg[partition] * ee[partition]
 
             # note that these are already masked!
             cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
@@ -102,15 +102,17 @@ class PeakCorrectedAreas(CorrectedAreas):
             result[f"cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
             # cs2aft doesn't need elife/time corrections as they cancel
-            result[f"cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+            result[f"cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (
+                        cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
-            result[f"cs2"][partition_mask] = result[f"cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
+            result[f"cs2"][partition_mask] = result[f"cs2_wo_elifecorr"][partition_mask] * elife_correction[
+                partition_mask]
             result[f"cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
-        result[f"cs2_wo_timecorr"][peaks["type"]!=2] = np.nan
-        result[f"cs2_wo_elifecorr"][peaks["type"]!=2] = np.nan
-        result[f"cs2_area_fraction_top"][peaks["type"]!=2] = np.nan
-        result[f"cs2"][peaks["type"]!=2] = np.nan
-        result[f"cs2_bottom"][peaks["type"]!=2] = np.nan
-        result["s1_xyz_correction_factor"][peaks["type"]!=2] = np.nan
-        result["s1_rel_light_yield_correction_factor"][peaks["type"]!=2] = np.nan
+        result[f"cs2_wo_timecorr"][peaks["type"] != 2] = np.nan
+        result[f"cs2_wo_elifecorr"][peaks["type"] != 2] = np.nan
+        result[f"cs2_area_fraction_top"][peaks["type"] != 2] = np.nan
+        result[f"cs2"][peaks["type"] != 2] = np.nan
+        result[f"cs2_bottom"][peaks["type"] != 2] = np.nan
+        result["s1_xyz_correction_factor"][peaks["type"] != 2] = np.nan
+        result["s1_rel_light_yield_correction_factor"][peaks["type"] != 2] = np.nan
         return result
