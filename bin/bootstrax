@@ -1449,7 +1449,7 @@ def process_run(rd, send_heartbeats=args.production):
                     if not len(md['chunks']):
                         fail("Processing succeeded, but no chunks were written!")
 
-                    if any((chunk['n'] and not chunk['filesize'])
+                    if any((chunk['n'] and 'filesize' in chunk and not chunk['filesize'])
                            for chunk in md['chunks']):
                         # E.g. you tried compressing >2 GB chunk using blosc
                         fail("At least one chunk failed writing!")
