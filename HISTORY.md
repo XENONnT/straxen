@@ -2,7 +2,7 @@ v2.0.6 / 2023-03-08
 -------------------
 ## What's Changed
 * Bump supercharge/mongodb-github-action from 1.8.0 to 1.9.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1140
-* Small patches to restrax module by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1143
+* Small patches to restrax module by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1143, d04a3428c52c159577b61af2a28ddd0af5652027, 602b807291211f083c8f54df6768b8198fbf6b55
 * Ms events by @michaweiss89 and @HenningSE in https://github.com/XENONnT/straxen/pull/1080
 
 ## New Contributors
