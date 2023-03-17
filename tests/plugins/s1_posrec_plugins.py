@@ -31,11 +31,14 @@ def test_posrec_set_path(self,
     set_to_config = f'tf://{file_name}'
     print(f'Setting option to {set_to_config}')
     st_fixed_path.set_config({config_name: set_to_config})
-    default_result = self.st.get_array(self.run_id, target)[field]
+    # Temporarily set min_s1_area_s1_posrec to 0 to allow more events calculated
+    default_result = self.st.get_array(
+        self.run_id, target, config=dict(min_s1_area_s1_posrec=0))[field]
     print("default_result.shape:",default_result.shape)
     print("default_result[0]:",default_result[0])
-    alt_result = st_fixed_path.get_array(self.run_id, target)[field]
-    self.assertTrue(np.all(np.isclose(default_result, alt_result)))
+    alt_result = st_fixed_path.get_array(
+        self.run_id, target, config=dict(min_s1_area_s1_posrec=0))[field]
+    self.assertTrue(np.all(np.isclose(default_result, alt_result, equal_nan=True)))
 
 
 @PluginTestAccumulator.register('test_posrec_set_to_none')
