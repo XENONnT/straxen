@@ -14,4 +14,4 @@ pymongo<4.0.0
 requests
 strax>=1.4.0
 utilix>=0.5.3
-xedocs>=0.2.14
+xedocs
