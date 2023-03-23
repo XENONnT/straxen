@@ -29,6 +29,7 @@ custom_data
 test_input_data
 *.zip
 last_bootstrax_exception.txt
+bootstrax_exceptions
 
 # cProfile output
 *.prof
