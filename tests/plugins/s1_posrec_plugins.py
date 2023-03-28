@@ -1,4 +1,4 @@
-"""Run with python tests/plugins/posrec_processing.py"""
+"""Run with python tests/plugins/s1_posrec_plugins.py.py"""
 import os
 import strax
 import straxen
@@ -34,8 +34,6 @@ def test_posrec_set_path(self,
     # Temporarily set min_s1_area_s1_posrec to 0 to allow more events calculated
     default_result = self.st.get_array(
         self.run_id, target, config=dict(min_s1_area_s1_posrec=0))[field]
-    print("default_result.shape:",default_result.shape)
-    print("default_result[0]:",default_result[0])
     alt_result = st_fixed_path.get_array(
         self.run_id, target, config=dict(min_s1_area_s1_posrec=0))[field]
     self.assertTrue(np.all(np.isclose(default_result, alt_result, equal_nan=True)))
@@ -80,5 +78,5 @@ def test_posrec_bad_configs_raising_errors(self,
 
 
 if __name__ == '__main__':
-    """Run with python tests/plugins/peak_building.py"""
+    """Run with python tests/plugins/s1_posrec_plugins.py"""
     run_pytest_from_main()
