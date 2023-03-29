@@ -1,4 +1,4 @@
-"""Run with python tests/plugins/s1_posrec_plugins.py.py"""
+# Run with python tests/plugins/s1_posrec_plugins.py.py 
 import os
 import strax
 import straxen
@@ -78,5 +78,5 @@ def test_posrec_bad_configs_raising_errors(self,
 
 
 if __name__ == '__main__':
-    """Run with python tests/plugins/s1_posrec_plugins.py"""
+    # Run with python tests/plugins/s1_posrec_plugins.py
     run_pytest_from_main()
