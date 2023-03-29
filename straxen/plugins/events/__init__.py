@@ -60,3 +60,6 @@ from .event_s1_position_cnn import *
 
 from . import local_minimum_info
 from .local_minimum_info import *
+
+from . import multi_scatter
+from .multi_scatter import *
