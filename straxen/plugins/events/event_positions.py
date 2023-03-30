@@ -50,7 +50,7 @@ class EventPositions(strax.Plugin):
         infer_type=False,
         help='Map of Z bias due to non uniform drift velocity/field',
         default='itp_map://resource://XnT_z_bias_map_chargeup_20230329.json.gz?'
-                 'fmt=json.gz&method=RegularGridInterpolator')
+                'fmt=json.gz&method=RegularGridInterpolator')
     def infer_dtype(self):
         dtype = []
         for j in 'x y r'.split():
@@ -142,7 +142,7 @@ class EventPositions(strax.Plugin):
             z_cor[invalid] = z_obs[invalid]
             delta_z = z_cor - z_obs
             # correction of z bias due to non-uniform field
-            z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T,map_name='z_bias_map')
+            z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T, map_name='z_bias_map')
 
             pre_field = '' if s_i == 0 else f'alt_s{s_i}_'
             post_field = '' if s_i == 0 else '_fdc'
@@ -157,6 +157,6 @@ class EventPositions(strax.Plugin):
                            # the FDC for z (z_cor) is found to be not reliable (see #527)
                            f'{pre_field}z': z_obs,
                            f'{pre_field}z_field_distortion_correction': delta_z,
-                           f'{pre_field}z_dv_corr': z_obs - z_dv_delta
+                           f'{pre_field}z_dv_corr': z_obs - z_dv_delta,
                            })
         return result
