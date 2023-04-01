@@ -122,10 +122,10 @@ def xenonnt_online(output_folder: str = './strax_data',
                    download_heavy: bool = False,
                    _rucio_path: str = '/dali/lgrandi/rucio/',
                    _rucio_local_path: ty.Optional[str] = None,
-                   _raw_paths: ty.Optional[str] = ['/dali/lgrandi/xenonnt/raw',],
-                   _processed_paths: ty.Optional[ty.List[str]] = ['/dali/lgrandi/xenonnt/processed', 
+                   _raw_paths: ty.Optional[str] = ['/dali/lgrandi/xenonnt/raw'],
+                   _processed_paths: ty.Optional[ty.List[str]] = ['/dali/lgrandi/xenonnt/processed',
                                                                   '/project2/lgrandi/xenonnt/processed',
-                                                                  '/project/lgrandi/xenonnt/processed',],
+                                                                  '/project/lgrandi/xenonnt/processed'],
 
                    # Testing options
                    _context_config_overwrite: ty.Optional[dict] = None,
@@ -189,11 +189,11 @@ def xenonnt_online(output_folder: str = './strax_data',
                 strax.DataDirectory(
                     _raw_path,
                     readonly=True,
-                    take_only=straxen.DAQReader.provides),]
+                    take_only=straxen.DAQReader.provides)]
         for _processed_path in _processed_paths:
             st.storage += [strax.DataDirectory(
                 _processed_path,
-                readonly=True),]
+                readonly=True)]
             
         if output_folder:
             st.storage += [strax.DataDirectory(output_folder,
