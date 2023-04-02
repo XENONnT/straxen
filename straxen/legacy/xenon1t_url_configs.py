@@ -89,9 +89,9 @@ def get_legacy_fdc(name, run_id=None):
 
 
 @URLConfig.register('legacy-z_bias')
-def get_z_bias():
-    """Return a lambda function return zeros as placeholder"""
+def get_z_bias(offset: str):
+    """Return a lambda function return offset as placeholder"""
     def fake_z_bias(rz, **kwargs):
-        return np.zeros(len(rz))
+        return np.zeros(len(rz)) * int(offset)
 
     return fake_z_bias

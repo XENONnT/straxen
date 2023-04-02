@@ -49,7 +49,7 @@ class EventPositions(strax.Plugin):
     z_bias_map = straxen.URLConfig(
         infer_type=False,
         help='Map of Z bias due to non uniform drift velocity/field',
-        default='legacy-z_bias')
+        default='legacy-z_bias://0')
 
     def infer_dtype(self):
         dtype = []
