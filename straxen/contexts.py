@@ -63,6 +63,11 @@ xnt_common_config = dict(
             '&run_id=plugin.run_id'
             '&fmt=binary'
             '&scale_coordinates=plugin.coordinate_scales',
+    z_bias_map='itp_map://'
+               'resource://'
+               'XnT_z_bias_map_chargeup_20230329.json.gz?'
+               'fmt=json.gz'
+               '&method=RegularGridInterpolator',
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
