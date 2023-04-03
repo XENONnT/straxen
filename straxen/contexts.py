@@ -215,7 +215,7 @@ def xenonnt_online(output_folder: str = './strax_data',
     if _database_init and (include_online_monitor or we_are_the_daq):
         st.storage += [straxen.OnlineMonitor(
             readonly=not we_are_the_daq,
-            take_only=('veto_intervals',
+            take_only=(#'veto_intervals',
                        'online_peak_monitor',
                        'event_basics',
                        'online_monitor_nv',
