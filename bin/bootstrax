@@ -555,6 +555,12 @@ def infer_target(rd: dict) -> dict:
         # also use source field, outcome is the same)
         if 'event_info' in targets or 'event_info' in post_process:
             targets = list(targets) + ['event_info_double']
+    elif 'ambe' in mode:
+        # rates are very high, to ensure smooth operation let's just do this
+        # based on calibrations of Apr 2023 this is the only safe working solution
+        log.debug('ambe-mode')
+        targets = 'raw_records'
+        post_process = 'veto_intervals'
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
