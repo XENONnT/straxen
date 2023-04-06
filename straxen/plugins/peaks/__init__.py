@@ -36,3 +36,6 @@ from .peaks_per_event import *
 
 from . import peaks_corrections
 from .peaks_corrections import *
+
+from . import peaks_subtyping
+from .peaks_subtyping import *
