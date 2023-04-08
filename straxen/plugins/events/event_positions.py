@@ -19,7 +19,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics',)
 
-    __version__ = '0.1.5'
+    __version__ = '0.2.0'
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
@@ -46,6 +46,11 @@ class EventPositions(strax.Plugin):
         help='3D field distortion correction map path',
         default='legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id')
 
+    z_bias_map = straxen.URLConfig(
+        infer_type=False,
+        help='Map of Z bias due to non uniform drift velocity/field',
+        default='legacy-z_bias://0')
+
     def infer_dtype(self):
         dtype = []
         for j in 'x y r'.split():
@@ -59,10 +64,17 @@ class EventPositions(strax.Plugin):
         for j in ['z']:
             comment = 'Interaction z-position, using mean drift velocity only (cm)'
             dtype += [(j, np.float32, comment)]
+            comment = 'Interaction z-position corrected to non-uniform drift velocity [ cm ]'
+            dtype += [(j + "_dv_corr", np.float32, comment)]
             for s_i in [1, 2]:
                 comment = f'Alternative S{s_i} z-position (rel. main S{int(2 * (1.5 - s_i) + s_i)}), using mean drift velocity only (cm)'
                 field = f'alt_s{s_i}_z'
                 dtype += [(field, np.float32, comment)]
+                # values for corrected Z position
+                comment = f'Alternative S{s_i} z-position (rel. main S{[1 if s_i==2 else 2]}), corrected for non-uniform field (cm)'
+                field = f'alt_s{s_i}_z_dv_corr'
+                dtype += [(field, np.float32, comment)]
+
 
         naive_pos = []
         fdc_pos = []
@@ -129,6 +141,8 @@ class EventPositions(strax.Plugin):
                 invalid |= z_obs >= 0
             z_cor[invalid] = z_obs[invalid]
             delta_z = z_cor - z_obs
+            # correction of z bias due to non-uniform field
+            z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T, map_name='z_bias_map')
 
             pre_field = '' if s_i == 0 else f'alt_s{s_i}_'
             post_field = '' if s_i == 0 else '_fdc'
@@ -142,7 +156,7 @@ class EventPositions(strax.Plugin):
                            # using z_obs in agreement with the dtype description
                            # the FDC for z (z_cor) is found to be not reliable (see #527)
                            f'{pre_field}z': z_obs,
-                           f'{pre_field}z_field_distortion_correction': delta_z
+                           f'{pre_field}z_field_distortion_correction': delta_z,
+                           f'{pre_field}z_dv_corr': z_obs - z_dv_delta,
                            })
-
         return result
