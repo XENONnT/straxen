@@ -15,22 +15,24 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.3.3'
+__version__ = '0.5.0'
 
 import argparse
+import warnings
 from datetime import datetime, timedelta
 import logging
 import os
 import socket
 import shutil
-import pymongo
 import pytz
 import threading
 import time
 import re
 import numpy as np
-import sys
 import straxen
+from straxen import daq_core
+from straxen.daq_core import ceph_folder, output_folder, pre_folder, non_registered_folder
+import strax
 
 ##
 # Parameters
@@ -84,6 +86,7 @@ def main_ajax():
               'high_level_data': clean_high_level_data,
               'non_latest': clean_non_latest,
               'unregistered': clean_unregistered,
+              'production': clean_production_folder,
               'abandoned': clean_abandoned,
               'old_hash': clean_old_hash,
               'database': clean_database}
@@ -120,7 +123,7 @@ def main_ajax():
             # time of writing.
             # clean_unregistered()
             # clean_database()
-            if not args.execute:
+            if not args.production:
                 break
             log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
             time.sleep(ajax_thresholds['nap_time'])
@@ -170,7 +173,7 @@ def clean_ceph():
         time.sleep(ajax_thresholds['short_nap'])
 
         # Repeat.
-        if args.execute:
+        if args.production:
             wait_on_delete_thread()
             clean_ceph()
 
@@ -217,12 +220,12 @@ def clean_high_level_data():
                                      'your regex syntax fails!')
                 elif os.path.exists(loc):
                     log.info(f'delete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                    delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 reason='high level data')
                 else:
                     loc = loc + '_temp'
                     log.info(f'delete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                    delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 reason='high level data')
 
 
@@ -262,23 +265,33 @@ def clean_non_latest():
                 loc = ddoc['location']
                 if os.path.exists(loc):
                     log.info(f'clean_non_latest::\tdelete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                    delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 reason='non latest')
                 else:
                     loc = loc + '_temp'
                     log.info(f'clean_non_latest::\tdelete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                    delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 reason='non latest')
 
+def clean_production_folder():
+    warnings.warn('Running clean of production folder is a bad idea if you '
+                  'are running restrax at the same time (restrax does not '
+                  'register data while writing it)')
+    for _ in strax.utils.tqdm(list(range(30)), desc = 'Continue in 30 seconds'):
+        pass
+    clean_unregistered(delete_live=False, _clean_from=output_folder)
 
-def clean_unregistered(delete_live=False):
+def clean_unregistered(delete_live=False, _clean_from=pre_folder):
     """
     Clean data that is not in the database. To do this check the output folder and remove
     files if there is no corresponding entry in the rundoc.
     :param delete_live: bool, if true delete unregistered live data.
+    :param _clean_from: which production (not live) folder to clean from
     """
     set_state('clean_unregistered')
-    folder_to_check = output_folder if delete_live is False else ceph_folder
+    # We should only do this for the pre-folder since the production folder does have unregistered data when
+    # we are still trying to recompress the data
+    folder_to_check = _clean_from if delete_live is False else ceph_folder
     all_data = os.listdir(folder_to_check)
     run_ids = []
     for f in all_data:
@@ -288,7 +301,7 @@ def clean_unregistered(delete_live=False):
              f'{folder_to_check}. Checking that each is in the runs-database')
     for run_id in run_ids:
         run_number = int(run_id)
-        remove_if_unregistered(run_number, delete_live=delete_live)
+        remove_if_unregistered(run_number, delete_live=delete_live, clean_from=_clean_from)
 
 
 def clean_old_hash():
@@ -323,7 +336,7 @@ def clean_old_hash():
                 raise ValueError(f'You did some sloppy regex on the data-type, almost '
                                  f'deleted {data_type}!')
             if rd:
-                delete_data(rd, loc, data_type, test=not args.execute,
+                delete_data(rd, loc, data_type, test=not args.production,
                             reason='old lineage hash')
             else:
                 log.info(f'{data_type} at {loc} not registered as done for {run_id}. '
@@ -374,7 +387,7 @@ def clean_abandoned(delete_live=False):
         return
 
     # Repeat
-    if args.execute:
+    if args.production:
         if delete_live:
             wait_on_delete_thread()
         return clean_abandoned(delete_live=delete_live)
@@ -412,7 +425,7 @@ def clean_database(delete_live=False):
                 if not os.path.exists(loc):
                     log.info(f'clean_database::\tdelete entry of data from '
                              f'{rd["number"]} at {loc} as it does not exist')
-                    delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                    delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 reason='reason already removed from eb?!')
 
 
@@ -425,12 +438,12 @@ def _rmtree(path):
     """
     Wrapper for shutil.rmtree. All deletion statements in this script go
         through this function in order to make sure that the
-        args.execute statement is always double (tripple) checked
+        args.production statement is always double (tripple) checked
         before deleting data.
     :param path: path to delete
     :return:
     """
-    if args.execute:
+    if args.production:
         if confirm(f'delete {path}?'):
             shutil.rmtree(path)
     else:
@@ -519,7 +532,7 @@ def delete_data(rd, path, data_type,
 
         ddoc.update({'at': now(), 'by': f'ajax.{hostname}', 'reason': reason})
         log.info(f'update with {ddoc}')
-        if args.execute and not test:
+        if args.production and not test:
             if confirm('update rundoc?'):
                 run_coll.update_one({'_id': rd['_id']},
                                     {"$addToSet": {'deleted_data': ddoc},
@@ -582,13 +595,13 @@ def remove_run_from_host(number, delete_live=False, force=False, reason=''):
                          f' been removed')
             else:
                 log.info(f'delete data at {loc}')
-                delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                delete_data(rd, loc, ddoc['type'], test=not args.production,
                             ignore_low_data_check=force, reason=reason)
 
                 loc = loc + '_temp'
                 if os.path.exists(loc):
                     log.info(f'delete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                    delete_data(rd, loc, ddoc['type'], test=not args.production,
                                 ignore_low_data_check=force, reason=reason)
         elif 'host' in ddoc and ddoc['host'] == 'daq':
             # This is the live_data
@@ -607,16 +620,16 @@ def remove_run_from_host(number, delete_live=False, force=False, reason=''):
                     f'--force', priority='info')
             elif not force and have_raw_records:
                 log.info(f'Deleting {loc} since we have raw_records registered.')
-                threaded_delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                threaded_delete_data(rd, loc, ddoc['type'], test=not args.production,
                                      ignore_low_data_check=False, reason=reason)
             # Redundant elif but let's double check the force nonetheless.
             elif force:
                 log.info(f'Forcefully delete {loc}, but no raw_records registered!')
-                threaded_delete_data(rd, loc, ddoc['type'], test=not args.execute,
+                threaded_delete_data(rd, loc, ddoc['type'], test=not args.production,
                                      ignore_low_data_check=True, reason=reason)
 
 
-def remove_if_unregistered(number, delete_live=False):
+def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
     """
     Given a run number delete data on this machine that matches that number
     :param number: int! the run_number (not run_id)
@@ -630,7 +643,7 @@ def remove_if_unregistered(number, delete_live=False):
                             'data.host': hostname if not delete_live else 'daq'})
     run_id = '%06d' % number
 
-    if rd:
+    if rd and any(ddoc.get('location', '').startswith(clean_from) for ddoc in rd.get('data', [])):
         # Just for explicitness, this is where we want to end up. If we have a rundoc,
         # the data is registered and we don't have to do anything.
         return
@@ -641,7 +654,7 @@ def remove_if_unregistered(number, delete_live=False):
                     priority='error')
         if not delete_live:
             # Check the local ebs disk for data.
-            _remove_unregistered_run(output_folder, run_id, checked_db=True)
+            _remove_unregistered_run(clean_from, run_id, checked_db=True)
         else:
             # Check ceph for data associated to this run (which is apparently not in the
             # runDB)
@@ -685,7 +698,7 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
                 raise ValueError(message)
 
             # OK, we still have live_data somewhere or we have raw_records (elsewhere)
-            if args.execute:
+            if args.production:
                 # Double check returns True automatically if not args.ask_confirm
                 if confirm(
                         f'Should we really move {os.path.join(base_folder, folder)} '
@@ -743,36 +756,8 @@ def wait_on_delete_thread():
 
 
 def log_warning(message, priority='warning', run_id=None):
-    """Report a warning to the terminal (using the logging module)
-    and the DAQ log DB.
-    :param message: insert string into log_coll
-    :param priority: severity of warning. Can be:
-        info: 1,
-        warning: 2,
-        <any other valid python logging level, e.g. error or fatal>: 3
-    :param run_id: optional run id.
-    """
-    if not args.execute:
-        return
-    getattr(log, priority)(message)
-    # Log according to redax rules
-    # https://github.com/coderdj/redax/blob/master/MongoLog.hh#L22
-    warning_message = {
-        'message': message,
-        'user': f'ajax_{hostname}',
-        'priority':
-            dict(debug=0,
-                 info=1,
-                 warning=2,
-                 error=3,
-                 fatal=4,
-                 ).get(priority.lower(), 3)}
-    if run_id is not None:
-        warning_message.update({'runid': run_id})
-    if args.execute:
-        # Only upload warning if we would actually execute the script
-        log_coll.insert_one(warning_message)
-    log.info(message)
+    getattr(log, priority.lower())(message)
+    databases.log_warning(message, priority=priority, run_id=run_id, production=args.production, user=f'ajax_{hostname}',)
 
 
 def set_state(state):
@@ -786,7 +771,7 @@ def set_state(state):
         time=now(),
         state=state,
         mode=f'clean {args.clean}',
-        production_mode=args.execute
+        production_mode=args.production
     )
     bs_coll.insert_one(ajax_state)
 
@@ -808,7 +793,7 @@ if __name__ == '__main__':
                              " the rundoc")
     parser.add_argument('--delete_live', action='store_true',
                         help="delete live data for this run")
-    parser.add_argument('--execute', action='store_true',
+    parser.add_argument('--production', action='store_true',
                         help="Execute the deletion commands. If not specified, ajax "
                              "assumes you want to test")
     parser.add_argument('--logging', default='DEBUG',
@@ -827,18 +812,20 @@ if __name__ == '__main__':
     '"non_latest": remove data on this host if it was not the last to process a given run \n'
     '"database": check if all the entries that the database claims are actually here \n'
     '"old_hash": remove high level data if the hash doesnt equal the latest for this datatype \n'
+    '"production": clean the production folder (bad idea if restrax is running since it writes there) \n'
     '"all": Clean everything that AJAX can get its hands on: unregistered data, high level '
     'data')
 
     args = parser.parse_args()
     hostname = socket.getfqdn()
+    databases = daq_core.DataBases(production=args.production)
 
     if not hasattr(logging, args.logging):
         raise AttributeError(f'Set --logging to a logging level like DEBUG or INFO')
     logging_level = getattr(logging, args.logging)
     try:
         import daqnt
-        log_name = 'ajax_' + hostname + ('' if args.execute else '_TESTING')
+        log_name = 'ajax_' + hostname + ('' if args.production else '_TESTING')
         log = daqnt.get_daq_logger('main', log_name, level=logging_level)
     except ModuleNotFoundError:
         logging.basicConfig(
@@ -853,8 +840,8 @@ if __name__ == '__main__':
     if args.force:
         log.warning(f'main::\tDANGER ZONE you are forcefully deleting data that may '
                     f'result in an irrecoverable loss of data.')
-        log.info(f'main::\tPlease note that execute argument is {args.execute} which '
-                 f'means you are {"" if not args.execute else "!NOT!"} safe')
+        log.info(f'main::\tPlease note that execute argument is {args.production} which '
+                 f'means you are {"" if not args.production else "!NOT!"} safe')
         if not args.ask_confirm:
             raise NotImplementedError(
                 f'main::\tI cannot let your forcefully delete data without asking for '
@@ -871,37 +858,20 @@ if __name__ == '__main__':
         # Need the context for the latest hash
         st = straxen.contexts.xenonnt_online()
 
-    # Set the folders
-    ceph_folder = '/live_data/xenonnt/'
-    output_folder = '/data/xenonnt_processed/'
-    non_registered_folder = '/data/xenonnt_unregistered/'
     for f in (output_folder, non_registered_folder):
         if os.access(f, os.W_OK) is not True:
             log_warning(f'main::\tNo writing access to {f}', priority='fatal')
             raise IOError(f'main::\tNo writing access to {f}')
 
     # Runs database
-    run_collname = 'runs'
-    run_dbname = straxen.uconfig.get('rundb_admin', 'mongo_rdb_database')
-    run_uri = straxen.get_mongo_uri(header='rundb_admin',
-                                    user_key='mongo_rdb_username',
-                                    pwd_key='mongo_rdb_password',
-                                    url_key='mongo_rdb_url')
-    run_client = pymongo.MongoClient(run_uri)
-    run_db = run_client[run_dbname]
-    run_coll = run_db[run_collname]
+    run_db = databases.run_db
+    run_coll = databases.run_coll
     run_db.command('ping')
 
     # DAQ database
-    daq_db_name = 'daq'
-    daq_uri = straxen.get_mongo_uri(header='rundb_admin',
-                                    user_key='mongo_daq_username',
-                                    pwd_key='mongo_daq_password',
-                                    url_key='mongo_daq_url')
-    daq_client = pymongo.MongoClient(daq_uri)
-    daq_db = daq_client[daq_db_name]
-    log_coll = daq_db['log']
-    bs_coll = daq_db['eb_monitor']
+    daq_db = databases.daq_db
+    log_coll = databases.log_coll
+    bs_coll = databases.bs_coll
     daq_db.command('ping')
 
     try:

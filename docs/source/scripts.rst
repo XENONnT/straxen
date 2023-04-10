@@ -62,6 +62,119 @@ that can be deleted because at least one of the following reasons:
    This sanity check catches any potential issues in the data handling by admix.
 
 
+restrax [DAQ-only]
+--------------------
+Bootstrax creates many files when processing the data live. To prevent aggregating too much
+data in memory, it stores each datatype as soon as 200 MB (see ``strax.default_chunk_size_mb``)
+of a datatype has been aggregated.
+Furthermore, it does not rechunk the ``raw-records`` (i.e. just saves it as they come from redax).
+This leads to **many small files**, which is an issue for the data-management, as each datatype may
+create a single file every few seconds, and the data-management has to bookkeep all the seperate files.
+
+``Restrax`` rechunks and recompresses the files after bootstrax is done with processing.
+This means that the DAQ data flow is:
+
+
+.. image:: figures/restrax.svg
+
+From left to right:
+ - The digitizers readout the PMTs, and `redax <https://github.com/AxFoundation/redax/>`_ reads
+   from the digitizers. ``redax`` also converts the data (which we call ``live_data``) to a format
+   that bootstrax can read. This data is stored to ``CEPH`` (see `<https://arxiv.org/abs/2212.11032>`_).
+ - ``bootstrax`` reads the ``live_data`` from ``CEPH`` and processes it to the strax-datatypes
+   (``raw_records``, ``peaks``, ``events``) and so on. Additionally, it fills the ``online_monitor`` collection
+   with a selection of the data (see `the online monitor <https://straxen.readthedocs.io/en/latest/online_monitor.html>`_).
+   All data is also written to a ``pre_processed`` directory. The data in the ``pre_processed`` directory
+   is not yet considered by the data management tools.
+ - The data is rechunked and recompressed by ``restrax`` and stored in the production folder
+   ``/data/xenonnt_processed``. We will elaborate on the rechunking and recompressing below.
+ - Finally, the data is uploaded in the datamanagement tools by `admix <https://github.com/XENONnT/admix>`_
+   which reads the data from the production folder and uploads it into ``rucio`` (our data management
+   tool).
+
+The first three steps are on the ``DAQ``, the last step is on ``datamanager`` which is
+a server from the computing group that is also on the LNGS network.
+
+
+**Rechunking & recompression**
+
+Restrax does rechunking, which is the process of combining multiple blocks of data into one.
+Additionally it recompresses the data, which is the storing of the data with heavier compression
+algorithms. These take more CPU, but reduce the overall disksize of a given datatype, which is
+especially useful for long-term storage.
+
+
+**Why not have bootstrax do the rechunking/compression?**
+
+In principle, ``bootstrax`` could also do the recompression and rechunking. However, there are
+several issues with ``bootstrax`` doing this while also live-processing the data.
+First of all, the memory usage would blow up massively if ``bootstrax`` would rechunk all
+data types up to a chunk size of ~1000 MB, as it would buffer data for each data type up until that
+chunk size, concatenate the data and than store it. If ~50 data types are stored, this
+would give a memory consumption of up to 50x1000 MB = 50 GB. If you also account for the
+concatenating (which doubles the memory consumption) you quicly allocate 100GB just for
+saving data - not taking into account the requirements for the actual processing.
+
+Additionally, for high rates, we do not always have the time for heavy compression algorithms, as
+these take a lot of CPU. Doing those at a later time can assure we stay processing live while
+still doing heavy compression later.
+
+
+**Restrax philosophy**
+
+Restrax is designed as a lazy algorithm, doing one thing at a time and only update the runs-database
+after the job is done.
+It does allow for parallelization, but this should be used with caution as it also increases the memory
+footprint.
+The maximum memory usage can be approximated by the 2x``target_size_mb`` from ``Restrax.get_compressor_and_size``
+times the number of (raw-records) threads so ``4 * target_size_mb``, which usually
+maxes out at 20GB for a raw-records target size of 5 GB.
+
+**Restrax configuration**
+
+Most of the restrax configurations are set as class variables. These can be overwritten by a document in the
+daq-database. For example, the sniplet below sets the ``max_workers`` to 5.
+
+.. code-block:: python
+
+    from straxen import daq_core
+    db = daq_core.DataBases()
+    db.daq_db['restrax_config'].update_one(
+        {'name': 'restrax_config'},
+        {'$set': {'user': 'angevaare',
+                  'last_modified': daq_core.now(),
+                  'max_workers': 5,  # <-- Increase the number of workers
+                  }
+        })
+
+There are several methods to make
+
+Several settings make ``restrax`` go faster:
+  - increase ``max_workers``, this increases the number of workers / data type. More workers uses more memory.
+  - increase ``max_threads``, this increases the number of concurrent data types that are handled. More workers
+    increases memory footprint.
+  - decrease ``is_heavy_rate_mbs`` to a lower value. If the data rate is higher than this number, restrax will use
+    faster (but less squeezy) compression algorithms for raw records.
+  - disable ``deep_compare``, this is a slow and over-engineered check that should only be used during testing.
+  - change ``target_compressor`` to faster compression algorithms.
+  - expend the ``skip_compression`` list of targets that are skipped during compression. Since most time in raw-records
+    (re)compression, this option only saves time if
+
+Similarly, decreasing the options above often leads to a lower memory footprint. So does decreasing the ``target_size``
+to lower values, as restrax has to keep a ``2x target_size`` for each datatype it is handling at a given time.
+Additionally setting ``process=False`` stops the multithreaded processing (``process=True``). Setting
+``process='process'`` changes the processing to multicore instead of multithreaded.
+
+
+**Bypass mode**
+
+If needed, restrax can be bypassed by passing the ``--bypass_mode`` argument. This will skipp all compression
+and rechunking steps, and will complete a run within ~0.5s. It's advised to only do this in conjunction with
+the ``--process RUN_ID`` argument, and use it for single runs, but this is not required. Bypass mode can be
+activated as by the configuration example above.
+
+
+
 bootstrax [DAQ-only]
 --------------------
 As the main DAQ processing script. This is discussed separately. It is only used for XENONnT.
@@ -84,4 +197,4 @@ Updates raw-records from old strax versions. This data is of a different
 format and needs to be refreshed before it can be opened with more recent
 versions of strax.
 
-*Last updated 2021-05-07. Joran Angevaare*
+*Last updated 2023-02-14. Joran Angevaare*

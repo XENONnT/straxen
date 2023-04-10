@@ -63,6 +63,11 @@ xnt_common_config = dict(
             '&run_id=plugin.run_id'
             '&fmt=binary'
             '&scale_coordinates=plugin.coordinate_scales',
+    z_bias_map='itp_map://'
+               'resource://'
+               'XnT_z_bias_map_chargeup_20230329.json.gz?'
+               'fmt=json.gz'
+               '&method=RegularGridInterpolator',
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -122,8 +127,10 @@ def xenonnt_online(output_folder: str = './strax_data',
                    download_heavy: bool = False,
                    _rucio_path: str = '/dali/lgrandi/rucio/',
                    _rucio_local_path: ty.Optional[str] = None,
-                   _raw_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/raw',
-                   _processed_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/processed',
+                   _raw_paths: ty.Optional[str] = ['/dali/lgrandi/xenonnt/raw'],
+                   _processed_paths: ty.Optional[ty.List[str]] = ['/dali/lgrandi/xenonnt/processed',
+                                                                  '/project2/lgrandi/xenonnt/processed',
+                                                                  '/project/lgrandi/xenonnt/processed'],
 
                    # Testing options
                    _context_config_overwrite: ty.Optional[dict] = None,
@@ -152,8 +159,8 @@ def xenonnt_online(output_folder: str = './strax_data',
     :param _rucio_path: str, path of rucio
     :param _rucio_local_path: str, path of local RSE of rucio. Only use
         for testing!
-    :param _raw_path: str, common path of the raw-data
-    :param _processed_path: str. common path of output data
+    :param _raw_paths: list[str], common path of the raw-data
+    :param _processed_paths: list[str]. common paths of output data
     :param _context_config_overwrite: dict, overwrite config
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
@@ -182,15 +189,17 @@ def xenonnt_online(output_folder: str = './strax_data',
             rucio_path=_rucio_path,
         )] if _database_init else []
     if not we_are_the_daq:
-        st.storage += [
-            strax.DataDirectory(
-                _raw_path,
-                readonly=True,
-                take_only=straxen.DAQReader.provides),
-            strax.DataDirectory(
+        for _raw_path in _raw_paths:
+            st.storage += [
+                strax.DataDirectory(
+                    _raw_path,
+                    readonly=True,
+                    take_only=straxen.DAQReader.provides)]
+        for _processed_path in _processed_paths:
+            st.storage += [strax.DataDirectory(
                 _processed_path,
-                readonly=True,
-            )]
+                readonly=True)]
+            
         if output_folder:
             st.storage += [strax.DataDirectory(output_folder,
                                                provide_run_metadata=True,
