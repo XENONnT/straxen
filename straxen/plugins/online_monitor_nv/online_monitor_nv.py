@@ -25,7 +25,6 @@ class OnlineMonitorNV(strax.Plugin):
     depends_on = ('hitlets_nv', 'events_nv')
     provides = 'online_monitor_nv'
     data_kind = 'online_monitor_nv'
-    rechunk_on_save = False
 
     # Needed in case we make again an muVETO child.
     ends_with = '_nv'
