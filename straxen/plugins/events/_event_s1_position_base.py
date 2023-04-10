@@ -45,7 +45,7 @@ class EventS1PositionBase(strax.Plugin):
 
         dtype += strax.time_fields
         return dtype
-    
+
     def get_tf_model(self):
         """
         Simple wrapper to have several tf_event_model_s1_cnn, ..
@@ -71,12 +71,12 @@ class EventS1PositionBase(strax.Plugin):
         model = self.get_tf_model()
 
         # Reconstruct position only for large peaks, otherwise severe inaccuracy.
-        event_mask = events['s1_area_per_channel'].sum(axis=1) > self.config['min_s1_area_s1_posrec']
-        
+        event_mask = events['s1_area_per_channel'].sum(axis=1) > self.min_s1_area_s1_posrec
+
         if not np.sum(event_mask):
             # No peaks fulfilling the conditions, return nan array.
             return result
-        
+
         _in = events['s1_area_per_channel'][event_mask]
 
         with np.errstate(divide='ignore', invalid='ignore'):

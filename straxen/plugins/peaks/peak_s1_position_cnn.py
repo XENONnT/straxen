@@ -11,9 +11,11 @@ class PeakS1PositionCNN(PeakS1PositionBase):
     """
     S1 CNN for (x,y,z) position S1 reconstruction at peak level
     """
-    algorithm = "s1_cnn"
     provides = "peak_s1_position_cnn"
-#     tf_peak_model_s1_cnn = straxen.URLConfig.evaluate_dry(f'tf:///project2/lgrandi/guidam/CNN_S1_XYZ_SAVED_MODELS/xnt_s1_posrec_cnn_datadriven_00_080921.tar.gz')
+    algorithm = "s1_cnn"
+    __version__ = '0.0.1'
+
+    # tf_peak_model_s1_cnn = straxen.URLConfig.evaluate_dry(f'tf:///project2/lgrandi/guidam/CNN_S1_XYZ_SAVED_MODELS/xnt_s1_posrec_cnn_datadriven_00_080921.tar.gz')
     tf_peak_model_s1_cnn = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'

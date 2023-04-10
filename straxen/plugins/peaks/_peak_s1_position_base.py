@@ -24,7 +24,7 @@ class PeakS1PositionBase(strax.Plugin):
 
     min_s1_area_s1_posrec = straxen.URLConfig(
         help='Skip reconstruction if area (PE) is less than this',
-        default=1000, infer_type=False, )
+        default=1000, infer_type=False)
 
     def infer_dtype(self):
         if self.algorithm is None:
@@ -71,18 +71,18 @@ class PeakS1PositionBase(strax.Plugin):
         model = self.get_tf_model()
 
         # Reconstruct position only for large peaks, otherwise severe inaccuracy.
-        peak_mask = (peaks['area_per_channel'].sum(axis=1) > self.config['min_s1_area_s1_posrec'])&(peaks['type']<2)
-        
-        
+        peak_mask = peaks['area_per_channel'].sum(axis=1) > self.min_s1_area_s1_posrec
+        peak_mask &= peaks['type'] < 2
+
         if not np.sum(peak_mask):
             # No peaks fulfilling the conditions, return nan array.
             return result
-        
+
         _in = peaks['area_per_channel'][peak_mask]
 
         with np.errstate(divide='ignore', invalid='ignore'):
         # Normalise patters by dividing by largest PMT output between the two arrays. 
-            _in = _in / _in.max(axis=1,keepdims=True)
+            _in = _in / _in.max(axis=1, keepdims=True)
 
         # Getting actual position reconstruction
         _out = model.predict(_in)
