@@ -27,7 +27,7 @@ class CorrectedAreas(strax.Plugin):
 
     # Descriptor configs
     elife = straxen.URLConfig(
-        default='cmt://elife?version=ONLINE&run_id=plugin.run_id',
+        default='xedocs://electron_lifetimes?version=ONLINE&run_id=plugin.run_id&attr=value',
         help='electron lifetime in [ns]')
 
     default_reconstruction_algorithm = straxen.URLConfig(
