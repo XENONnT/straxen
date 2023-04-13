@@ -301,13 +301,9 @@ class PeaksSubtypes(strax.Plugin):
                       self.other_ls2,
                       self.s1_s2_window)
         
-        '''self.register_livetime()
-        self.toss_de_outside_range()
-        self.toss_bad_s2s()
-        self.discard_de_after_merge()'''
-        
         return dict(
             time=peaks['time'],
             endtime=strax.endtime(peaks),
             subtype = self.mask
         )
+    
