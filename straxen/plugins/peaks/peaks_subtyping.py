@@ -6,7 +6,7 @@ import numba
 class PeaksSubtypes(strax.Plugin):
     
     '''
-    checkout https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_few_electron_ps2_picking
+    checkout https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_study
     '''
     
     __version__ = '0.2.0'
@@ -23,20 +23,18 @@ class PeaksSubtypes(strax.Plugin):
         default='bodega://se_spread?bodega_version=v0',
         help = "SE spread value"
     )
-    
-    FV_r = straxen.URLConfig(
-        default = 50., type = float, #cm
-        help = "fiducial volume"
+    electron_drift_velocity = straxen.URLConfig(
+        default='cmt://'
+                'electron_drift_velocity'
+                '?version=ONLINE&run_id=plugin.run_id',
+        cache=True,
+        help='Vertical electron drift velocity in cm/ns (1e4 m/ms)'
     )
-    full_dt = straxen.URLConfig(
-        default = 2300e3, type = float,#ns
-        help = "maximum drift time from cathode"
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z, type=(int, float),
+        help='Total length of the TPC from the bottom of gate to the '
+             'top of cathode wires [cm]',
     )
-    max_area = straxen.URLConfig(
-        default = 1e6, type=float,#PE
-        help="maximum S2 area we trust"
-    )
-    
     ls2_threshold_ne = straxen.URLConfig(
         default = 5, type=int, # e-
         help="cutoff between small S2 and large S2, 5e- for now"
@@ -61,12 +59,15 @@ class PeaksSubtypes(strax.Plugin):
         
     def set_vals(self):
         
+        self.full_dt = int(self.max_drift_length / self.electron_drift_velocity)
+        
         self.se_gain = self.ref_se_gain['all_tpc']
         self.se_span = self.ref_se_span['all_tpc']
         self.ls2_threshold = self.ls2_threshold_ne*self.se_gain+np.sqrt(self.ls2_threshold_ne)*self.se_span
         self.s1_s2_window = self.s1_s2_window_fac*self.full_dt
         self.s2_merge_window = self.s2_merge_window_fac*self.full_dt
         self.s2_discard_window = self.s2_discard_window_fac*self.full_dt
+        
         
     @staticmethod
     @numba.njit()
