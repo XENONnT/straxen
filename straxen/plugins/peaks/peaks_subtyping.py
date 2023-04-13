@@ -5,9 +5,13 @@ import numba
 
 class PeaksSubtypes(strax.Plugin):
     
-    '''
-    checkout https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_study
-    '''
+    """
+    Subtyping Peaks
+    
+    This plugin scans forward in time and catagorize peaks into subtypes based on their correlations with nearby peaks. Reference note: https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_study
+
+    :returns: an integer index for each peak. Please refer to this note: https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_dictionary
+    """
     
     __version__ = '0.2.0'
     provides = 'subtype_mask'
@@ -98,18 +102,17 @@ class PeaksSubtypes(strax.Plugin):
                     ):
         
         '''
-        Easiest step: look after each S1s and classify:
+        Look after each S1s and classify:
         
         1. mark the largest peak within s1_s2_window as pS2 (exceeding ls2_threshold)
         2. extend window after pS2
         3. mark all other large S2s as olS2. 
         4. mark all other small S2s as photoionization (PH)
         
-        Only dealing with unclassified peaks, should be all
+        if pS2 identified, extend the window to 2fdt after such pS2 and mark S2s:
         
-        Potentially in multiple S1 events we could have multiple pS2s within a window 
-        (instead of 1pS2 and 1 other lS2).
-        This needs to be dealt with later with care
+        1. other large S2 if an S2 is larger than ls2_threshold and half the pS2 size
+        2. photoionization if not olS2
         '''
         
         dmask = mask[mask == 6]
@@ -198,7 +201,9 @@ class PeaksSubtypes(strax.Plugin):
                  s1_s2_window):
         
         '''
-        After marking all peaks after S1s, all that's left are S2s.  
+        After marking all peaks after S1s, all that's left are S2s. 
+        
+        One extra occasion is the "fakeS2". If a small S2 is identified and a pS2 can be paired up with it, such small S2 is marked "fake S2". 
         '''
         
         dmask = mask[mask == 6] 
