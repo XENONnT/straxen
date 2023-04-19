@@ -20,6 +20,7 @@ class Peaks(strax.Plugin):
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
+    compressor = 'zstd'
     save_when = strax.SaveWhen.EXPLICIT
 
     diagnose_sorting = straxen.URLConfig(
