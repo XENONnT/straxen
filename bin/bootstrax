@@ -758,6 +758,17 @@ def infer_mode(rd):
         'timeout': [1200, 1200, None, None, None, None, None, None, None, None, None, 2400]
     }
     if data_rate and args.infer_mode:
+
+        # Temporary solution
+        # It is a patch to try to process some ambe data without failing for memory 
+        # If we are doing ambe -> consider the maximum rate
+        # so that we have 10 cores and 12 messages for new ebs
+        # and we have     8 cores and 6 messages for old ebs
+        # added by Carlo on 19 April 2023
+        mode = str(rd.get('mode'))
+        if 'ambe' in mode:
+            data_rate = 550
+
         df = pd.DataFrame(benchmark)
         if data_rate not in benchmark['mbs']:
             df.loc[len(df.index)] = [data_rate, None, None, None, None, None]
