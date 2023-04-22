@@ -121,9 +121,9 @@ class PeaksSubtypes(strax.Plugin):
 
         undefined_mask = (mask == PeakSubtyping.Undefined)
         dmask = mask[undefined_mask]
-        ts = peaks['time'][undefined_mask]  #time
-        tps = peaks['type'][undefined_mask]  #type
-        pas = peaks['area'][undefined_mask]  #area
+        ts = peaks['time'][undefined_mask]  # time
+        tps = peaks['type'][undefined_mask]  # type
+        pas = peaks['area'][undefined_mask]  # area
         s1s_t = ts[tps == 1]  # s1 time
         s1s_a = pas[tps == 1]  # s1 area
         s2s_t = ts[tps == 2]  # s2 time
@@ -160,7 +160,7 @@ class PeaksSubtypes(strax.Plugin):
                     s1_mask[i] = PeakSubtyping.S1
                     s2_mask[whole_window_cond] = s2_mask_tmp
                 else:
-                    #no pS2, loneS1 spotted
+                    # no pS2, loneS1 spotted
                     whole_window_cond = (s2s_t > s1_t)
                     whole_window_cond &= (s2s_t <= s1_t + drift_time_max)
                     if s1s_a[i] < self.mis_s2_threshold:
@@ -195,8 +195,8 @@ class PeaksSubtypes(strax.Plugin):
 
         undefined_mask = (mask == PeakSubtyping.Undefined)
         dmask = mask[undefined_mask]
-        pt = peaks['time'][undefined_mask]  #time
-        pa = peaks['area'][undefined_mask]  #area
+        pt = peaks['time'][undefined_mask]  # time
+        pa = peaks['area'][undefined_mask]  # area
 
         # load only the ones not being classified
         while (dmask == PeakSubtyping.Undefined).sum() > 0:
