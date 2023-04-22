@@ -1,6 +1,6 @@
 import strax
 import straxen
-from straxen.plugins.peaks._peak_s1_position_base import PeakS1PositionBase
+from straxen.plugins.peaks._peak_s1_positions_base import PeakS1PositionBase
 
 
 export, __all__ = strax.exporter()
@@ -11,7 +11,7 @@ class PeakS1PositionCNN(PeakS1PositionBase):
     """
     S1 CNN for (x,y,z) position S1 reconstruction at peak level
     """
-    provides = "peak_s1_position_cnn"
+    provides = "peak_s1_positions_cnn"
     algorithm = "s1_cnn"
     __version__ = '0.0.1'
 

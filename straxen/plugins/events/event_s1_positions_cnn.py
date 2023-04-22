@@ -1,6 +1,6 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s1_position_base import EventS1PositionBase
+from straxen.plugins.events._event_s1_positions_base import EventS1PositionBase
 
 
 export, __all__ = strax.exporter()
@@ -12,7 +12,7 @@ class EventS1PositionCNN(EventS1PositionBase):
     CNN for (x,y,z) position S1 reconstruction at event level
     """
     algorithm = "s1_cnn"
-    provides = "event_s1_position_cnn"
+    provides = "event_s1_positions_cnn"
 
     tf_event_model_s1_cnn = straxen.URLConfig(
         default=f'tf://'
