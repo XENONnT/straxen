@@ -73,12 +73,12 @@ class EventInfoMS(strax.Plugin):
          #1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
             cond = (sp["type"]==2)&(sp["drift_time"]>0)&(sp["drift_time"]< 1.01 * self.drift_time_max)&(sp["cs2"]>0)
-            result[f's2_sum'][event_i] = np.sum(sp[cond]['area'])
-            result[f'cs2_sum'][event_i] = np.sum(sp[cond]['cs2'])
-            result[f'cs2_wo_timecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_timecorr'])
-            result[f'cs2_wo_elifecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_elifecorr'])
-            result[f'cs2_area_fraction_sum'][event_i] = np.sum(sp[cond]['cs2_area_fraction_top'])            
-            result[f's1_sum'][event_i] = np.sum(sp[sp["type"]==1]['area'])
+            result[f's2_sum'][event_i] = np.nansum(sp[cond]['area'])
+            result[f'cs2_sum'][event_i] = np.nansum(sp[cond]['cs2'])
+            result[f'cs2_wo_timecorr_sum'][event_i] = np.nansum(sp[cond]['cs2_wo_timecorr'])
+            result[f'cs2_wo_elifecorr_sum'][event_i] = np.nansum(sp[cond]['cs2_wo_elifecorr'])
+            result[f'cs2_area_fraction_sum'][event_i] = np.nansum(sp[cond]['cs2_area_fraction_top'])            
+            result[f's1_sum'][event_i] = np.nansum(sp[sp["type"]==1]['area'])
             if np.sum(sp[cond]['cs2']) > 0: 
                 result[f'cs1_multi_wo_timecorr'][event_i] = event["s1_area"] * np.average(sp[cond]['s1_xyz_correction_factor'], weights = sp[cond]['cs2'])
                 result[f'cs1_multi'][event_i] = result[f'cs1_multi_wo_timecorr'][event_i] * np.average(sp[cond]['s1_rel_light_yield_correction_factor'], weights = sp[cond]['cs2'])
