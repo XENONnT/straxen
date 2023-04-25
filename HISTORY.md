@@ -1,3 +1,23 @@
+v2.0.7 / 2023-04-25
+-------------------
+## What's Changed
+* Bootstrax target removal after failures by @cfuselli in https://github.com/XENONnT/straxen/pull/1145
+* reforming _raw_path and _processed_path by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1149
+* Adding correction of Z position due to non-uniform drift velocity by @terliuk in https://github.com/XENONnT/straxen/pull/1148
+* Bump the versions of peaklets and quality check runs-on by @dachengx in https://github.com/XENONnT/straxen/pull/1153
+* S1-Based 3D Position Reconstruction by @matteoguida in https://github.com/XENONnT/straxen/pull/1146
+* Bump xedocs from 0.2.14 to 0.2.16 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1158
+* Use zstd as compressor of peaks by @dachengx in https://github.com/XENONnT/straxen/pull/1154
+* Bump sphinx from 5.3.0 to 6.2.0 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1161
+
+## New Contributors
+* @cfuselli made their first contribution in https://github.com/XENONnT/straxen/pull/1145
+* @matteoguida made their first contribution in https://github.com/XENONnT/straxen/pull/1146
+* @hmdyt made their first contribution in https://github.com/XENONnT/straxen/pull/1159
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.6...v2.0.7
+
+
 v2.0.6 / 2023-03-08
 -------------------
 ## What's Changed
