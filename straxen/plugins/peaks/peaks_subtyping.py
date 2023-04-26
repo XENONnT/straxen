@@ -210,7 +210,11 @@ class PeaksSubtypes(strax.Plugin):
         pa = peaks['area'][undefined_mask]  # area
 
         # load only the ones not being classified
-        while (dmask == PeakSubtyping.Undefined).sum() > 0:
+        # add a termination number of while loops
+        max_iter = int(9e9)
+        current_step = 0
+        while (dmask == PeakSubtyping.Undefined).sum() > 0 and current_step < max_iter:
+            current_step += 1
             start_s2_t = pt[dmask == PeakSubtyping.Undefined][0]
             start_s2_a = pa[dmask == PeakSubtyping.Undefined][0]
 
