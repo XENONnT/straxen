@@ -90,12 +90,12 @@ class PeaksSubtypes(strax.Plugin):
         default=0.5, type=(int, float),
         help="threshold to consider potential misclassified SE"
     )
-    
+
     after_s1_window_ext_fac = straxen.URLConfig(
         default=1, type=(int, float),
         help="extend scanning window after identified large S1s by this much full drift time, if no S2 is found in s1_s2_window"
     )
-    
+
     after_s2_window_ext_fac = straxen.URLConfig(
         default=2, type=(int, float),
         help="extend scanning window after identified primary S2 by this much full drift time"
@@ -115,8 +115,8 @@ class PeaksSubtypes(strax.Plugin):
         peaks,
         mask,
         drift_time_max, ls2_threshold, other_ls2_fac,
-        s1_s2_window, se_gain,
-        after_s1_window_ext_fac,after_s2_window_ext_fac
+        s1_s2_window,
+        after_s1_window_ext_fac, after_s2_window_ext_fac
         ):
         '''
         Look after each S1s and classify:
@@ -196,7 +196,7 @@ class PeaksSubtypes(strax.Plugin):
         peaks,
         mask,
         drift_time_max, ls2_threshold, other_ls2_fac,
-        s1_s2_window, after_s1_window_ext_fac,after_s2_window_ext_fac
+        s1_s2_window, after_s2_window_ext_fac
         ):
         '''
         After marking all peaks after S1s, all that's left are S2s.
@@ -211,7 +211,7 @@ class PeaksSubtypes(strax.Plugin):
 
         # load only the ones not being classified
         # add a termination number of while loops
-        max_iter = int(9e9)
+        max_iter = len(peaks)
         current_step = 0
         while (dmask == PeakSubtyping.Undefined).sum() > 0 and current_step < max_iter:
             current_step += 1
@@ -275,11 +275,12 @@ class PeaksSubtypes(strax.Plugin):
         self.mark_with_s1(
             peaks, mask,
             self.drift_time_max, self.ls2_threshold, self.other_ls2_fac,
-            self.s1_s2_window, self.se_gain)
+            self.s1_s2_window, self.after_s1_window_ext_fac, self.after_s2_window_ext_fac)
 
         self.mark_s2s(
             peaks, mask,
-            self.drift_time_max, self.ls2_threshold, self.other_ls2_fac, self.s1_s2_window)
+            self.drift_time_max, self.ls2_threshold, self.other_ls2_fac,
+            self.s1_s2_window, self.after_s2_window_ext_fac)
 
         n_undefined = (mask == PeakSubtyping.Undefined).sum()
         if n_undefined:
