@@ -90,6 +90,16 @@ class PeaksSubtypes(strax.Plugin):
         default=0.5, type=(int, float),
         help="threshold to consider potential misclassified SE"
     )
+    
+    after_s1_window_ext_fac = straxen.URLConfig(
+        default=1, type=(int, float),
+        help="extend scanning window after identified large S1s by this much full drift time, if no S2 is found in s1_s2_window"
+    )
+    
+    after_s2_window_ext_fac = straxen.URLConfig(
+        default=2, type=(int, float),
+        help="extend scanning window after identified primary S2 by this much full drift time"
+    )
 
     def setup(self):
         self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
@@ -105,7 +115,8 @@ class PeaksSubtypes(strax.Plugin):
         peaks,
         mask,
         drift_time_max, ls2_threshold, other_ls2_fac,
-        s1_s2_window, se_gain
+        s1_s2_window, se_gain,
+        after_s1_window_ext_fac,after_s2_window_ext_fac
         ):
         '''
         Look after each S1s and classify:
@@ -142,7 +153,7 @@ class PeaksSubtypes(strax.Plugin):
                 if max_val >= ls2_threshold:
                     # pS2 located
                     whole_window_cond = (s2s_t > s1_t)
-                    whole_window_cond &= (s2s_t <= s2s_t[ps2_cand_cond][max_ind] + 2 * drift_time_max)
+                    whole_window_cond &= (s2s_t <= s2s_t[ps2_cand_cond][max_ind] + after_s2_window_ext_fac * drift_time_max)
                     s2_mask_tmp = s2_mask[whole_window_cond]
                     small_s2s_a = s2s_a[whole_window_cond] < np.max([ls2_threshold, other_ls2_fac * max_val])
                     not_pS2 = s2_mask_tmp != PeakSubtyping.pS2
@@ -162,7 +173,7 @@ class PeaksSubtypes(strax.Plugin):
                 else:
                     # no pS2, loneS1 spotted
                     whole_window_cond = (s2s_t > s1_t)
-                    whole_window_cond &= (s2s_t <= s1_t + drift_time_max)
+                    whole_window_cond &= (s2s_t <= s1_t + after_s1_window_ext_fac * drift_time_max)
                     if s1s_a[i] < self.mis_s2_threshold:
                         # Potential misclassified SE signal
                         s2_mask[whole_window_cond] = PeakSubtyping.slS1PH
@@ -185,7 +196,7 @@ class PeaksSubtypes(strax.Plugin):
         peaks,
         mask,
         drift_time_max, ls2_threshold, other_ls2_fac,
-        s1_s2_window
+        s1_s2_window, after_s1_window_ext_fac,after_s2_window_ext_fac
         ):
         '''
         After marking all peaks after S1s, all that's left are S2s.
@@ -210,7 +221,7 @@ class PeaksSubtypes(strax.Plugin):
                 dmask_tmp[0] = PeakSubtyping.lonepS2
                 dmask[dmask == PeakSubtyping.Undefined] = dmask_tmp
                 # mark upto 2 fdt into olS2 or PH
-                whole_window_cond = (pt > start_s2_t) & (pt <= start_s2_t + 2 * drift_time_max)
+                whole_window_cond = (pt > start_s2_t) & (pt <= start_s2_t + after_s2_window_ext_fac * drift_time_max)
                 mask_tmp = dmask[whole_window_cond]
                 small_ps = pa[whole_window_cond] < ls2_threshold
                 mask_tmp[~small_ps] = PeakSubtyping.S2olS2
@@ -229,7 +240,7 @@ class PeaksSubtypes(strax.Plugin):
                         dmask_tmp = dmask[dmask == PeakSubtyping.Undefined]
                         dmask_tmp[0] = PeakSubtyping.fakeS2
                         dmask[dmask == PeakSubtyping.Undefined] = dmask_tmp
-                        whole_window_cond = (pt > start_s2_t) & (pt <= max_time + 2 * drift_time_max)
+                        whole_window_cond = (pt > start_s2_t) & (pt <= max_time + after_s2_window_ext_fac * drift_time_max)
                         mask_tmp = dmask[whole_window_cond]
                         small_pa = pa[whole_window_cond] < np.max([ls2_threshold, other_ls2_fac * max_val])
                         within_dt_pt = pt[whole_window_cond] < max_time
