@@ -6,11 +6,10 @@ export, __all__ = strax.exporter()
 @export
 class EventInfoMS(strax.Plugin):
     """
-    Get the sum of s2 and s1,
-    Get the sum of cs2 inside the drift length. 
+    Plugin to collect MS event observables
     """
     __version__ = '0.0.1'
-    depends_on = ('event_info', 'peak_basics','peaks_per_event','peaks_corrections')
+    depends_on = ('event_info', 'peak_basics','peaks_per_event','peaks_corrections', 'peak_positions')
     provides = 'event_MS_naive'
 
     def infer_dtype(self):
@@ -23,9 +22,12 @@ class EventInfoMS(strax.Plugin):
             ((f'cs2_sum'), np.float32),
             ((f'cs2_wo_timecorr_sum'), np.float32),
             ((f'cs2_wo_elifecorr_sum'), np.float32),
-            ((f'cs2_area_fraction_sum'), np.float32),
+            ((f'cs2_area_fraction_top_avg'), np.float32),
             ((f'ces_sum'), np.float32),
             ((f'e_charge_sum'), np.float32),
+            ((f'x_avg'), np.float32),
+            ((f'y_avg'), np.float32),
+            ((f'z_obs_avg'), np.float32),
              ]
         dtype += strax.time_fields
         return dtype
@@ -76,12 +78,17 @@ class EventInfoMS(strax.Plugin):
             result[f's2_sum'][event_i] = np.sum(sp[cond]['area'])
             result[f'cs2_sum'][event_i] = np.sum(sp[cond]['cs2'])
             result[f'cs2_wo_timecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_timecorr'])
-            result[f'cs2_wo_elifecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_elifecorr'])
-            result[f'cs2_area_fraction_sum'][event_i] = np.sum(sp[cond]['cs2_area_fraction_top'])            
+            result[f'cs2_wo_elifecorr_sum'][event_i] = np.sum(sp[cond]['cs2_wo_elifecorr'])         
             result[f's1_sum'][event_i] = np.sum(sp[sp["type"]==1]['area'])
+            
             if np.sum(sp[cond]['cs2']) > 0: 
                 result[f'cs1_multi_wo_timecorr'][event_i] = event["s1_area"] * np.average(sp[cond]['s1_xyz_correction_factor'], weights = sp[cond]['cs2'])
                 result[f'cs1_multi'][event_i] = result[f'cs1_multi_wo_timecorr'][event_i] * np.average(sp[cond]['s1_rel_light_yield_correction_factor'], weights = sp[cond]['cs2'])
+                result[f'x_avg'][event_i] = np.average(sp[cond]['x'], weights = sp[cond]['cs2'])
+                result[f'y_avg'][event_i] = np.average(sp[cond]['y'], weights = sp[cond]['cs2'])
+                result[f'z_obs_avg'][event_i] = np.average(sp[cond]['z_obs_ms'], weights = sp[cond]['cs2'])
+                result[f'cs2_area_fraction_top_avg'][event_i] = np.average(sp[cond]['cs2_area_fraction_top'], weights = sp[cond]['cs2'])   
+        
         el = self.cs1_to_e(result[f'cs1_multi'])
         ec = self.cs2_to_e(result[f'cs2_sum'])
         result[f'ces_sum'] = el+ec
