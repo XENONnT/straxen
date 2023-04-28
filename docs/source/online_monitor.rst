@@ -10,7 +10,7 @@ TPC.
 
 Loading data via the online monitor
 -----------------------------------
-In order to load this data in straxen, one can use the following setup
+To load this data in straxen, one can use the following setup
 and start developing live-displays!
 
 
