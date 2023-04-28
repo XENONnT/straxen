@@ -1664,6 +1664,10 @@ def cleanup_db():
 
 
 if __name__ == '__main__':
+
+    # to avoid warnings pymongo fork
+    multiprocessing.set_start_method('spawn')
+
     if not args.undying:
         main()
     else:
