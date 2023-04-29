@@ -20,6 +20,7 @@ common_opts = dict(
         straxen.Peaks,
         straxen.PeakBasics,
         straxen.PeakProximity,
+        straxen.PeakTiming,
         straxen.Events,
         straxen.EventBasics,
         straxen.EventPositions,
