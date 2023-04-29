@@ -6,9 +6,8 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakTiming(Peaks):
-    """
-    Merge peaklet_timing and merged S2s
-    """
+    """Merge peaklet_timing and merged S2s"""
+
     __version__ = '0.0.0'
 
     depends_on = ('peaklet_timing', 'peaklet_classification', 'merged_s2s')

@@ -10,13 +10,12 @@ import straxen
 export, __all__ = strax.exporter()
 
 
-
 peaklet_timing_dtype = [
     # For peaklets this is likely to be overwritten:
     (('Largest time difference between apexes of hits inside peak [ns]',
       'max_diff'), np.int32),
     (('Smallest time difference between apexes of hits inside peak [ns]',
-      'min_diff'), np.int32)
+      'min_diff'), np.int32),
 ]
 
 
@@ -165,7 +164,7 @@ class Peaklets(strax.Plugin):
                 digitize_top=self.sum_waveform_top_array,
             ),
             lone_hits=strax.hit_dtype,
-            peaklet_timing=strax.peak_interval_dtype + peaklet_timing_dtype
+            peaklet_timing=strax.peak_interval_dtype + peaklet_timing_dtype,
         )
 
     def setup(self):
@@ -397,18 +396,25 @@ class Peaklets(strax.Plugin):
         return outside_peaks
 
     def add_hit_features(self, hitlets_max, peaklets):
+        """
+        Create hits timing features
+
+        :param hitlets_max: hitlets with only max height time.
+        :param peaklets: Peaklets for which intervals should be computed.
+        :return: array of peaklet_timing dtype.
+        """
         split_hits = strax.split_by_containment(hitlets_max, peaklets)
         peaklet_timing = np.zeros(
             len(peaklets), self.infer_dtype()['peaklet_timing'])
         for timing, h in zip(peaklet_timing, split_hits):
             max_time_diff = np.diff(np.sort(h['max_time']))
-            if len(max_time_diff):
+            if len(max_time_diff) > 0:
                 timing['max_diff'] = max_time_diff.max()
                 timing['min_diff'] = max_time_diff.min()
             else:
                 timing['max_diff'] = -1
                 timing['min_diff'] = -1
-        return 
+        return peaklet_timing
 
 def drop_data_top_field(peaklets, goal_dtype, _name_function= '_drop_data_top_field'):
     """Return peaklets without the data_top field"""
