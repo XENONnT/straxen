@@ -42,3 +42,6 @@ from .peaks_corrections import *
 
 from . import peaks_subtyping
 from .peaks_subtyping import *
+
+from . import peak_timing
+from .peak_timing import *
