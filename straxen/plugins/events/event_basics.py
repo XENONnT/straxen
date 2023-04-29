@@ -77,10 +77,6 @@ class EventBasics(strax.Plugin):
         dtype += self._get_si_dtypes(self.peak_properties)
 
         dtype += [
-            (f's1_max_gap', np.int32,
-             f'Main S1 largest gap between hits [ns]'),
-            (f'alt_s1_max_gap', np.int32,
-             f'Alternate S1 largest gap between hits [ns]'),
             (f's1_max_diff', np.int32,
              f'Main S1 largest time difference between apexes of hits [ns]'),
             (f'alt_s1_max_diff', np.int32,
@@ -269,7 +265,7 @@ class EventBasics(strax.Plugin):
             for largest_index, main_or_alt in enumerate(['s', 'alt_s']):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
                 if s_i == 1:
-                    peak_properties_to_save += ['max_gap', 'max_diff', 'min_diff']
+                    peak_properties_to_save += ['max_diff', 'min_diff']
                 elif s_i == 2:
                     peak_properties_to_save += ['x', 'y']
                     peak_properties_to_save += self.posrec_save

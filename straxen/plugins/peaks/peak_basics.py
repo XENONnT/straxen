@@ -54,8 +54,6 @@ class PeakBasics(strax.Plugin):
           'tight_coincidence'), np.int16),
         (('Classification of the peak(let)',
           'type'), np.int8),
-        (('Largest gap between hits inside peak [ns]',
-          'max_gap'), np.int32),
         (('Largest time difference between apexes of hits inside peak [ns]',
           'max_diff'), np.int32),
         (('Smallest time difference between apexes of hits inside peak [ns]',
@@ -74,7 +72,7 @@ class PeakBasics(strax.Plugin):
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
-        needed_fields = 'time length dt area type max_gap max_diff min_diff'
+        needed_fields = 'time length dt area type max_diff min_diff'
         for q in needed_fields.split():
             r[q] = p[q]
         r['endtime'] = p['time'] + p['dt'] * p['length']
