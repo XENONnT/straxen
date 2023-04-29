@@ -60,10 +60,6 @@ class PeakBasics(strax.Plugin):
           'max_diff'), np.int32),
         (('Smallest time difference between apexes of hits inside peak [ns]',
           'min_diff'), np.int32),
-        (('Largest height of hits inside peak [ADC counts]',
-          'max_hit_height'), np.float32),
-        (('Smallest height of hits inside peak [ADC counts]',
-          'min_hit_height'), np.float32),
     ]
 
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
@@ -78,8 +74,7 @@ class PeakBasics(strax.Plugin):
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
-        needed_fields = 'time length dt area type max_gap max_diff min_diff '
-        needed_fields += 'max_hit_height min_hit_height'
+        needed_fields = 'time length dt area type max_gap max_diff min_diff'
         for q in needed_fields.split():
             r[q] = p[q]
         r['endtime'] = p['time'] + p['dt'] * p['length']
