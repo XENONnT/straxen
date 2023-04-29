@@ -3,6 +3,7 @@ import strax
 import straxen
 
 from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
+from straxen.plugins.peaklets import peaklet_timing_dtype
 
 export, __all__ = strax.exporter()
 
@@ -14,9 +15,9 @@ class Peaks(strax.Plugin):
     (replacing all peaklets that were later re-merged as S2s). As this
     step is computationally trivial, never save this plugin.
     """
-    __version__ = '0.1.2'
+    __version__ = '0.2.0'
 
-    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
+    depends_on = ('peaklets', 'peaklet_classification', 'peaklet_timing', 'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
@@ -33,7 +34,7 @@ class Peaks(strax.Plugin):
              "It's now possible for a S1 to be inside a S2 post merging")
 
     def infer_dtype(self):
-        return self.deps['peaklets'].dtype_for('peaklets')
+        return self.deps['peaklets'].dtype_for('peaklets') + peaklet_timing_dtype
 
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above

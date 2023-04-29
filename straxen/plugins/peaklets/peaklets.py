@@ -11,7 +11,7 @@ export, __all__ = strax.exporter()
 
 
 
-peaklets_timing_dtype = [
+peaklet_timing_dtype = [
     # For peaklets this is likely to be overwritten:
     (('Largest time difference between apexes of hits inside peak [ns]',
       'max_diff'), np.int32),
@@ -42,9 +42,9 @@ class Peaklets(strax.Plugin):
     extension overlaps with any peaks or other hits.
     """
     depends_on = ('records',)
-    provides = ('peaklets', 'peaklets_timing', 'lone_hits')
+    provides = ('peaklets', 'peaklet_timing', 'lone_hits')
     data_kind = dict(peaklets='peaklets',
-                     peaklets_timing='peaklets_timing',
+                     peaklet_timing='peaklet_timing',
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
@@ -165,7 +165,7 @@ class Peaklets(strax.Plugin):
                 digitize_top=self.sum_waveform_top_array,
             ),
             lone_hits=strax.hit_dtype,
-            peaklets_timing=strax.peak_interval_dtype + peaklets_timing_dtype
+            peaklet_timing=strax.peak_interval_dtype + peaklet_timing_dtype
         )
 
     def setup(self):
@@ -318,7 +318,7 @@ class Peaklets(strax.Plugin):
         hitlets_max['time'] = hitlets['time']
         hitlets_max['endtime'] = strax.endtime(hitlets)
         hitlets_max['max_time'] = hit_max_times
-        peaklets_timing = self.add_hit_features(hitlets_max, peaklets)
+        peaklet_timing = self.add_hit_features(hitlets_max, peaklets)
 
         if self.diagnose_sorting and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
@@ -342,7 +342,7 @@ class Peaklets(strax.Plugin):
                 f'Found channel number of peaklets other than {DIGITAL_SUM_WAVEFORM_CHANNEL}')
 
         return dict(peaklets=peaklets,
-                    peaklets_timing=peaklets_timing,
+                    peaklet_timing=peaklet_timing,
                     lone_hits=lone_hits)
 
     def natural_breaks_threshold(self, peaks):
@@ -398,9 +398,9 @@ class Peaklets(strax.Plugin):
 
     def add_hit_features(self, hitlets_max, peaklets):
         split_hits = strax.split_by_containment(hitlets_max, peaklets)
-        peaklets_timing = np.zeros(
-            len(peaklets), self.infer_dtype()['peaklets_timing'])
-        for timing, h in zip(peaklets_timing, split_hits):
+        peaklet_timing = np.zeros(
+            len(peaklets), self.infer_dtype()['peaklet_timing'])
+        for timing, h in zip(peaklet_timing, split_hits):
             max_time_diff = np.diff(np.sort(h['max_time']))
             if len(max_time_diff):
                 timing['max_diff'] = max_time_diff.max()
