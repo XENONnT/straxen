@@ -10,7 +10,7 @@ class PeakTiming(Peaks):
 
     __version__ = '0.0.0'
 
-    depends_on = ('peaklet_timing', 'peaklet_classification', 'merged_s2s')
+    depends_on = ('peaklet_timing', 'peaklet_classification', 'merged_s2s_timing')
     provides = 'peak_timing'
 
     def infer_dtype(self):

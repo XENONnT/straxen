@@ -43,7 +43,7 @@ class Peaklets(strax.Plugin):
     depends_on = ('records',)
     provides = ('peaklets', 'peaklet_timing', 'lone_hits')
     data_kind = dict(peaklets='peaklets',
-                     peaklet_timing='peaklet_timing',
+                     peaklet_timing='peaklets',
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
@@ -406,6 +406,8 @@ class Peaklets(strax.Plugin):
         split_hits = strax.split_by_containment(hitlets_max, peaklets)
         peaklet_timing = np.zeros(
             len(peaklets), self.infer_dtype()['peaklet_timing'])
+        for q in 'time length dt channel'.split():
+            peaklet_timing[q] = peaklets[q]
         for timing, h in zip(peaklet_timing, split_hits):
             max_time_diff = np.diff(np.sort(h['max_time']))
             if len(max_time_diff) > 0:
