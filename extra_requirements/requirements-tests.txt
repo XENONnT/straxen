@@ -5,3 +5,4 @@ wfsim==1.0.2
 nbmake
 pytest-xdist
 xedocs==0.2.16
+ipython==8.12.1
