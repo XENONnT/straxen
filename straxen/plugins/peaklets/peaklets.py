@@ -3,10 +3,21 @@ import numpy as np
 import strax
 from immutabledict import immutabledict
 from strax.processing.general import _touching_windows
+from strax.dtypes import DIGITAL_SUM_WAVEFORM_CHANNEL
 import straxen
 
 
 export, __all__ = strax.exporter()
+
+
+
+peaklets_timing_dtype = [
+    # For peaklets this is likely to be overwritten:
+    (('Largest time difference between apexes of hits inside peak [ns]',
+      'max_diff'), np.int32),
+    (('Smallest time difference between apexes of hits inside peak [ns]',
+      'min_diff'), np.int32)
+]
 
 
 @export
@@ -31,13 +42,14 @@ class Peaklets(strax.Plugin):
     extension overlaps with any peaks or other hits.
     """
     depends_on = ('records',)
-    provides = ('peaklets', 'lone_hits')
+    provides = ('peaklets', 'peaklets_timing', 'lone_hits')
     data_kind = dict(peaklets='peaklets',
+                     peaklets_timing='peaklets_timing',
                      lone_hits='lone_hits')
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '1.0.1'
+    __version__ = '1.1.0'
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False,
@@ -153,6 +165,7 @@ class Peaklets(strax.Plugin):
                 digitize_top=self.sum_waveform_top_array,
             ),
             lone_hits=strax.hit_dtype,
+            peaklets_timing=strax.peak_interval_dtype + peaklets_timing_dtype
         )
 
     def setup(self):
@@ -298,6 +311,15 @@ class Peaklets(strax.Plugin):
 
         peaklets['tight_coincidence'] = tight_coincidence_channel
 
+        hitlets_max = np.zeros(
+            len(hitlets),
+            strax.merged_dtype(
+                [np.dtype([('max_time', np.int64)]), np.dtype(strax.time_fields)]))
+        hitlets_max['time'] = hitlets['time']
+        hitlets_max['endtime'] = strax.endtime(hitlets)
+        hitlets_max['max_time'] = hit_max_times
+        peaklets_timing = self.add_hit_features(hitlets_max, peaklets)
+
         if self.diagnose_sorting and len(r):
             assert np.diff(r['time']).min(initial=1) >= 0, "Records not sorted"
             assert np.diff(hitlets['time']).min(initial=1) >= 0, "Hits/Hitlets not sorted"
@@ -313,7 +335,14 @@ class Peaklets(strax.Plugin):
         if n_top_pmts_if_digitize_top <= 0:
             peaklets = drop_data_top_field(peaklets, self.dtype_for('peaklets'))
 
+        # Check channel of peaklets
+        peaklets_unique_channel = np.unique(peaklets['channel'])
+        if (peaklets_unique_channel == DIGITAL_SUM_WAVEFORM_CHANNEL).sum() > 1:
+            raise ValueError(
+                f'Found channel number of peaklets other than {DIGITAL_SUM_WAVEFORM_CHANNEL}')
+
         return dict(peaklets=peaklets,
+                    peaklets_timing=peaklets_timing,
                     lone_hits=lone_hits)
 
     def natural_breaks_threshold(self, peaks):
@@ -366,6 +395,20 @@ class Peaklets(strax.Plugin):
         outside_peaks[-1]['time'] = strax.endtime(peaklets[-1])
         outside_peaks[-1]['endtime'] = end
         return outside_peaks
+
+    def add_hit_features(self, hitlets_max, peaklets):
+        split_hits = strax.split_by_containment(hitlets_max, peaklets)
+        peaklets_timing = np.zeros(
+            len(peaklets), self.infer_dtype()['peaklets_timing'])
+        for timing, h in zip(peaklets_timing, split_hits):
+            max_time_diff = np.diff(np.sort(h['max_time']))
+            if len(max_time_diff):
+                timing['max_diff'] = max_time_diff.max()
+                timing['min_diff'] = max_time_diff.min()
+            else:
+                timing['max_diff'] = -1
+                timing['min_diff'] = -1
+        return 
 
 def drop_data_top_field(peaklets, goal_dtype, _name_function= '_drop_data_top_field'):
     """Return peaklets without the data_top field"""
