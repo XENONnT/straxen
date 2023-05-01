@@ -276,21 +276,20 @@ class Peaklets(strax.Plugin):
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
+        hit_max_times = hitlets['time'] + hitlets['dt'] * hit_max_sample(records, hitlets)
+        hit_max_times += hitlet_time_shift  # add time shift again to get correct maximum
+
         # Compute tight coincidence level.
         # Making this a separate plugin would
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
-        hit_max_times = np.sort(
-            hitlets['time']
-            + hitlets['dt'] * hit_max_sample(records, hitlets)
-            + hitlet_time_shift  # add time shift again to get correct maximum
-        )
+        sorted_hit_max_times = np.sort(hit_max_times)
         peaklet_max_times = (
-                peaklets['time']
-                + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
+            peaklets['time']
+            + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
         tight_coincidence_channel = get_tight_coin(
-            hit_max_times,
+            sorted_hit_max_times,
             hitlets['channel'],
             peaklet_max_times,
             self.tight_coincidence_window_left,
@@ -299,6 +298,7 @@ class Peaklets(strax.Plugin):
 
         peaklets['tight_coincidence'] = tight_coincidence_channel
 
+        # Add max and min time difference between apexes of hits
         self.add_hit_features(hitlets, hit_max_times, peaklets)
 
         if self.diagnose_sorting and len(r):
