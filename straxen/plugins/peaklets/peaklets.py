@@ -229,8 +229,7 @@ class Peaklets(strax.Plugin):
         hitlets = hits
         del hits
 
-        hitlet_time_shift = (hitlets['left'] - hitlets['left_integration']) * hitlets['dt']
-        hitlets['time'] = hitlets['time'] - hitlet_time_shift
+        hitlets['time'] -= (hitlets['left'] - hitlets['left_integration']) * hitlets['dt']
         hitlets['length'] = (hitlets['right_integration'] - hitlets['left_integration'])
         hitlets = strax.sort_by_time(hitlets)
         rlinks = strax.record_links(records)
@@ -275,22 +274,22 @@ class Peaklets(strax.Plugin):
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
+        hitlet_time_shift = (hitlets['left'] - hitlets['left_integration']) * hitlets['dt']
+        hit_max_times = hitlets['time'] + hitlet_time_shift  # add time shift again to get correct maximum
+        hit_max_times += hitlets['dt'] * hit_max_sample(records, hitlets)
+
         # Compute tight coincidence level.
         # Making this a separate plugin would
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
-        hit_max_times = np.sort(
-            hitlets['time']
-            + hitlets['dt'] * hit_max_sample(records, hitlets)
-            + hitlet_time_shift  # add time shift again to get correct maximum
-        )
+        hit_max_times_argsort = np.argsort(hit_max_times)
         peaklet_max_times = (
-                peaklets['time']
-                + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
+            peaklets['time']
+            + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
         tight_coincidence_channel = get_tight_coin(
-            hit_max_times,
-            hitlets['channel'],
+            hit_max_times[hit_max_times_argsort],
+            hitlets['channel'][hit_max_times_argsort],
             peaklet_max_times,
             self.tight_coincidence_window_left,
             self.tight_coincidence_window_right,
