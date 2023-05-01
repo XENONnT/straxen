@@ -284,12 +284,14 @@ class Peaklets(strax.Plugin):
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
         hit_max_times_argsort = np.argsort(hit_max_times)
+        sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
+        sorted_hit_channels = hitlets['channel'][hit_max_times_argsort]
         peaklet_max_times = (
             peaklets['time']
             + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
         tight_coincidence_channel = get_tight_coin(
-            hit_max_times[hit_max_times_argsort],
-            hitlets['channel'][hit_max_times_argsort],
+            sorted_hit_max_times,
+            sorted_hit_channels,
             peaklet_max_times,
             self.tight_coincidence_window_left,
             self.tight_coincidence_window_right,
