@@ -290,15 +290,13 @@ class Peaklets(strax.Plugin):
         peaklet_max_times = (
             peaklets['time']
             + np.argmax(peaklets['data'], axis=1) * peaklets['dt'])
-        tight_coincidence_channel = get_tight_coin(
+        peaklets['tight_coincidence'] = get_tight_coin(
             sorted_hit_max_times,
             sorted_hit_channels,
             peaklet_max_times,
             self.tight_coincidence_window_left,
             self.tight_coincidence_window_right,
             self.channel_range)
-
-        peaklets['tight_coincidence'] = tight_coincidence_channel
 
         # Add max and min time difference between apexes of hits
         self.add_hit_features(hitlets, hit_max_times, peaklets)
