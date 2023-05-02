@@ -56,5 +56,13 @@ def test_saturation_correction(self: PluginTestCase):
     # TODO add more tests to see if results make sense
 
 
+@PluginTestAccumulator.register('test_tight_coincidence')
+def test_tight_coincidence(self: PluginTestCase):
+    """Test whether tight_coincidence is correctly reconstructed"""
+    peaklets = self.st.get_array(self.run_id, 'peaklets', progress_bar=False)
+    message = 'There might be some issue in tight_coincidence.'
+    assert np.sum(peaklets['tight_coincidence']) == 1992, message
+
+
 if __name__ == '__main__':
     run_pytest_from_main()
