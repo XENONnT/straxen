@@ -12,7 +12,6 @@ numpy
 packaging
 pymongo<4.0.0
 requests
-# strax>=1.4.0
-git+https://github.com/dachengx/strax
+strax>=1.5.0
 utilix>=0.5.3
 xedocs
