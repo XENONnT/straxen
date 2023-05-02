@@ -62,7 +62,7 @@ def test_tight_coincidence(self: PluginTestCase):
     peaklets = self.st.get_array(self.run_id, 'peaklets', progress_bar=False)
     message = 'There might be some issue in tight_coincidence.'
     sum_tight_coincidence = np.sum(peaklets['tight_coincidence'])
-    assert sum_tight_coincidence == 1992, message + str(sum_tight_coincidence)
+    assert sum_tight_coincidence == 1992, message + f' {sum_tight_coincidence}'
 
 
 if __name__ == '__main__':
