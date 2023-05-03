@@ -34,11 +34,11 @@ from .peak_shadow import *
 from . import peaks
 from .peaks import *
 
-from . import peaks_per_event
-from .peaks_per_event import *
+from . import peak_per_event
+from .peak_per_event import *
 
-from . import peaks_corrections
-from .peaks_corrections import *
+from . import peak_corrections
+from .peak_corrections import *
 
 from . import peaks_subtyping
 from .peaks_subtyping import *

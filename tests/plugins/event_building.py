@@ -73,12 +73,12 @@ def test_event_info_double(self):
     assert df['cs2_a'].sum() > 0
     assert len(df) > 0
 
-@PluginTestAccumulator.register('test_event_MS_naive')
+@PluginTestAccumulator.register('test_event_ms_naive')
 def test_event_info_double(self):
     """Do a dummy check on event-info that it loads"""
     if _is_empty_data_test(self.st, self.run_id):
         return
-    df = self.st.get_df(self.run_id, targets=('event_info','event_MS_naive'))
+    df = self.st.get_df(self.run_id, targets=('event_info', 'event_ms_naive'))
     assert 'cs2_sum' in df.columns
     assert 'cs2_wo_timecorr_sum' in df.columns
     assert 'cs2_wo_elifecorr_sum' in df.columns
