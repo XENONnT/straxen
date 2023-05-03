@@ -28,6 +28,7 @@ class EventInfoMS(strax.Plugin):
             ((f'x_avg'), np.float32),
             ((f'y_avg'), np.float32),
             ((f'z_obs_avg'), np.float32),
+            ((f'multiplicity'), np.int32),
              ]
         dtype += strax.time_fields
         return dtype
@@ -66,11 +67,9 @@ class EventInfoMS(strax.Plugin):
     def cs2_to_e(self, x):
         return self.lxe_w * x / self.g2
 
-    
     def compute(self, events, peaks):
         split_peaks = strax.split_by_containment(peaks, events)
         result = np.zeros(len(events), self.infer_dtype())
-        #result['s2_sum'] = np.zeros(len(events))
    
          #1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
@@ -80,7 +79,7 @@ class EventInfoMS(strax.Plugin):
             result[f'cs2_wo_timecorr_sum'][event_i] = np.nansum(sp[cond]['cs2_wo_timecorr'])
             result[f'cs2_wo_elifecorr_sum'][event_i] = np.nansum(sp[cond]['cs2_wo_elifecorr'])         
             result[f's1_sum'][event_i] = np.nansum(sp[sp["type"]==1]['area'])
-            
+
             if np.sum(sp[cond]['cs2']) > 0: 
                 result[f'cs1_multi_wo_timecorr'][event_i] = event["s1_area"] * np.average(sp[cond]['s1_xyz_correction_factor'], weights = sp[cond]['cs2'])
                 result[f'cs1_multi'][event_i] = result[f'cs1_multi_wo_timecorr'][event_i] * np.average(sp[cond]['s1_rel_light_yield_correction_factor'], weights = sp[cond]['cs2'])
@@ -88,7 +87,8 @@ class EventInfoMS(strax.Plugin):
                 result[f'y_avg'][event_i] = np.average(sp[cond]['y'], weights = sp[cond]['cs2'])
                 result[f'z_obs_avg'][event_i] = np.average(sp[cond]['z_obs_ms'], weights = sp[cond]['cs2'])
                 result[f'cs2_area_fraction_top_avg'][event_i] = np.average(sp[cond]['cs2_area_fraction_top'], weights = sp[cond]['cs2'])   
-        
+                result[f"multiplicity"][event_i] = len(sp[cond]['area'])
+                
         el = self.cs1_to_e(result[f'cs1_multi'])
         ec = self.cs2_to_e(result[f'cs2_sum'])
         result[f'ces_sum'] = el+ec
