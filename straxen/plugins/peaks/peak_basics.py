@@ -14,7 +14,7 @@ class PeakBasics(strax.Plugin):
     arrays.
     NB: This plugin can therefore be loaded as a pandas DataFrame.
     """
-    __version__ = "0.1.3"
+    __version__ = '0.1.4'
     parallel = True
     depends_on = ('peaks',)
     provides = 'peak_basics'
@@ -53,7 +53,11 @@ class PeakBasics(strax.Plugin):
         (('Number of PMTs with hits within tight range of mean',
           'tight_coincidence'), np.int16),
         (('Classification of the peak(let)',
-          'type'), np.int8)
+          'type'), np.int8),
+        (('Largest time difference between apexes of hits inside peak [ns]',
+          'max_diff'), np.int32),
+        (('Smallest time difference between apexes of hits inside peak [ns]',
+          'min_diff'), np.int32),
     ]
 
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, infer_type=False,
@@ -68,7 +72,8 @@ class PeakBasics(strax.Plugin):
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
-        for q in 'time length dt area type'.split():
+        needed_fields = 'time length dt area type max_diff min_diff'
+        for q in needed_fields.split():
             r[q] = p[q]
         r['endtime'] = p['time'] + p['dt'] * p['length']
         r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
