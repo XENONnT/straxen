@@ -47,6 +47,8 @@ class PeakCorrectedAreas(CorrectedAreas):
                    f'Correction factor for the S1 area based on S2 position'),
                   (f's1_rel_light_yield_correction_factor', np.float32,
                    f'Relative light yield correction factor for the S1 area'),
+                  (f'z_obs_ms', np.float32,
+                   f'z position of the multiscatter peak'),
                   ]
         return dtype
 
@@ -54,10 +56,14 @@ class PeakCorrectedAreas(CorrectedAreas):
         result = np.zeros(len(peaks), self.dtype)
         result['time'] = peaks['time']
         result['endtime'] = peaks['endtime']
-
-        # Get S1 correction factors
+        
+        #Get z position of the peak
         z_obs = - self.electron_drift_velocity * peaks[f'drift_time']
         z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
+        result["z_obs_ms"] = z_obs
+        
+        # Get S1 correction factors
+        
         peak_positions = np.vstack([peaks['x'], peaks['y'], z_obs]).T
         result["s1_xyz_correction_factor"] = 1 / self.s1_xyz_map(peak_positions)
         result["s1_rel_light_yield_correction_factor"] = 1 / self.rel_light_yield
@@ -108,10 +114,12 @@ class PeakCorrectedAreas(CorrectedAreas):
             result[f"cs2"][partition_mask] = result[f"cs2_wo_elifecorr"][partition_mask] * elife_correction[
                 partition_mask]
             result[f"cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
+        
         result[f"cs2_wo_timecorr"][peaks["type"] != 2] = np.nan
         result[f"cs2_wo_elifecorr"][peaks["type"] != 2] = np.nan
         result[f"cs2_area_fraction_top"][peaks["type"] != 2] = np.nan
         result[f"cs2"][peaks["type"] != 2] = np.nan
+        result[f"z_obs_ms"][peaks["type"] != 2] = np.nan
         result[f"cs2_bottom"][peaks["type"] != 2] = np.nan
         result["s1_xyz_correction_factor"][peaks["type"] != 2] = np.nan
         result["s1_rel_light_yield_correction_factor"][peaks["type"] != 2] = np.nan
