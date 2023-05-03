@@ -82,11 +82,11 @@ def test_event_info_double(self):
     assert 'cs2_sum' in df.columns
     assert 'cs2_wo_timecorr_sum' in df.columns
     assert 'cs2_wo_elifecorr_sum' in df.columns
-    assert 'cs2_area_fraction_sum' in df.columns
+    assert 'cs2_area_fraction_top_avg' in df.columns
     assert df['cs2_sum'].sum() > 0
     assert df['cs2_wo_timecorr_sum'].sum() > 0
     assert df['cs2_wo_elifecorr_sum'].sum() > 0
-    assert df['cs2_area_fraction_sum'].sum() > 0
+    assert df['cs2_area_fraction_top_avg'].sum() > 0
 
 
 
