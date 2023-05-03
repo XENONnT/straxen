@@ -64,7 +64,7 @@ class EventPositions(strax.Plugin):
         for j in ['z']:
             comment = 'Interaction z-position, using mean drift velocity only (cm)'
             dtype += [(j, np.float32, comment)]
-            comment = 'Interaction z-position corrected to non-uniform drift velocity [ cm ]'
+            comment = 'Interaction z-position corrected to non-uniform drift velocity (cm)'
             dtype += [(j + "_dv_corr", np.float32, comment)]
             for s_i in [1, 2]:
                 comment = f'Alternative S{s_i} z-position (rel. main S{int(2 * (1.5 - s_i) + s_i)}), using mean drift velocity only (cm)'
