@@ -149,7 +149,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         peaklet_start_index = np.arange(len(peaklet_starts))
         peaklet_end_index = np.arange(len(peaklet_starts))
 
-        for gap_i in np.argsort(peaklet_gaps):
+        for gap_i in np.argsort(peaklet_gaps, kind='mergesort'):
             start_idx = peaklet_start_index[gap_i]
             inclusive_end_idx = peaklet_end_index[gap_i + 1]
             sum_area = np.sum(areas[start_idx:inclusive_end_idx + 1])
