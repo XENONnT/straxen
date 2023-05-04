@@ -133,7 +133,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
     @numba.njit(cache=True, nogil=True)
     def get_merge_instructions(
             peaklet_starts, peaklet_ends, areas, types,
-            gap_thresholds, max_duration, max_gap, max_area):
+            gap_thresholds, max_duration, max_gap, max_area,
+            sort_kind='mergesort'):
         """
         Finding the group of peaklets to merge. To do this start with the
         smallest gaps and keep merging until the new, merged S2 has such a
@@ -149,7 +150,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         peaklet_start_index = np.arange(len(peaklet_starts))
         peaklet_end_index = np.arange(len(peaklet_starts))
 
-        for gap_i in np.argsort(peaklet_gaps, kind='mergesort'):
+        for gap_i in np.argsort(peaklet_gaps, kind=sort_kind):
             start_idx = peaklet_start_index[gap_i]
             inclusive_end_idx = peaklet_end_index[gap_i + 1]
             sum_area = np.sum(areas[start_idx:inclusive_end_idx + 1])
