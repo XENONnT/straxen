@@ -35,23 +35,23 @@ class PeakCorrectedAreas(CorrectedAreas):
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
-            ('cs2_wo_elifecorr', np.float32,
-             'Corrected area of S2 before elife correction '
-             '(s2 xy correction + SEG/EE correction applied) [PE]'),
-            ('cs2_wo_timecorr', np.float32,
-             'Corrected area of S2 before SEG/EE and elife corrections'
-             '(s2 xy correction applied) [PE]'),
-            ('cs2_area_fraction_top', np.float32,
-             'Fraction of area seen by the top PMT array for corrected S2'),
-            ('cs2_bottom', np.float32,
-             'Corrected area of S2 in the bottom PMT array [PE]'),
-            ('cs2', np.float32, 'Corrected area of S2 [PE]'),
-            ('s1_xyz_correction_factor', np.float32,
-             'Correction factor for the S1 area based on S2 position'),
-            ('s1_rel_light_yield_correction_factor', np.float32,
-             'Relative light yield correction factor for the S1 area'),
-            ('z_obs_ms', np.float32,
-             'z position of the multiscatter peak'),
+            (('Corrected area of S2 before elife correction '
+              '(s2 xy correction + SEG/EE correction applied) [PE]',
+              'cs2_wo_elifecorr'), np.float32),
+            (('Corrected area of S2 before SEG/EE and elife corrections'
+              '(s2 xy correction applied) [PE]',
+              'cs2_wo_timecorr'), np.float32),
+            (('Fraction of area seen by the top PMT array for corrected S2',
+              'cs2_area_fraction_top'), np.float32),
+            (('Corrected area of S2 in the bottom PMT array [PE]',
+              'cs2_bottom'), np.float32),
+            (('Corrected area of S2 [PE]', 'cs2'), np.float32),
+            (('Correction factor for the S1 area based on S2 position',
+              's1_xyz_correction_factor'), np.float32),
+            (('Relative light yield correction factor for the S1 area',
+              's1_rel_light_yield_correction_factor'), np.float32),
+            (('z position of the multiscatter peak',
+              'z_obs_ms'), np.float32),
         ]
         return dtype
 
