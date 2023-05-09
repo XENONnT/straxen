@@ -15,7 +15,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     Merge together peaklets if peak finding favours that they would
     form a single peak instead.
     """
-    __version__ = '1.0.1'
+    __version__ = '1.0.2'
 
     depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
     data_kind = 'merged_s2s'
@@ -102,7 +102,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
             max_gap=max_gap,
             max_area=max_area,
         )
-        assert 'data_top'  in peaklets.dtype.names
+        if (end_merge_at - start_merge_at).min() <= 1:
+            raise ValueError('Found merging only 1 peak')
+
+        assert 'data_top' in peaklets.dtype.names
 
         merged_s2s = strax.merge_peaks(
             peaklets,
