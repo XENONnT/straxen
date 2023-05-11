@@ -8,7 +8,7 @@ import numpy as np
 
 @PluginTestAccumulator.register('test_posrec_set_path')
 def test_posrec_set_path(self,
-                         target='event_s1_position_cnn',
+                         target='event_s1_positions_cnn',
                          config_name='tf_event_model_s1_cnn',
                          field='event_x_s1_cnn',
                          ):
@@ -41,7 +41,7 @@ def test_posrec_set_path(self,
 
 @PluginTestAccumulator.register('test_posrec_set_to_none')
 def test_posrec_set_to_none(self,
-                            target='event_s1_position_cnn',
+                            target='event_s1_positions_cnn',
                             config_name='tf_event_model_s1_cnn',
                             field='event_x_s1_cnn',
                             ):
@@ -54,7 +54,7 @@ def test_posrec_set_to_none(self,
 
 @PluginTestAccumulator.register('test_posrec_bad_configs_raising_errors')
 def test_posrec_bad_configs_raising_errors(self,
-                                           target='event_s1_position_cnn',
+                                           target='event_s1_positions_cnn',
                                            config_name='tf_event_model_s1_cnn',
                                            ):
     """Test that we get the right errors when we set invalid options"""

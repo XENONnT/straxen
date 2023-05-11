@@ -1,6 +1,5 @@
 import strax
 import straxen
-
 from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT
 
 

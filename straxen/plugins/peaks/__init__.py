@@ -10,8 +10,8 @@ from .peak_basics import *
 from . import peak_classification_bayes
 from .peak_classification_bayes import *
 
-from . import peak_s1_position_cnn
-from .peak_s1_position_cnn import *
+from . import peak_s1_positions_cnn
+from .peak_s1_positions_cnn import *
 
 from . import peak_positions
 from .peak_positions import *
