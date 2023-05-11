@@ -1,20 +1,20 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s2_position_base import EventS2PositionBase
+from straxen.plugins.events._event_s2_positions_base import EventS2PositionBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionMLP(EventS2PositionBase):
+class EventS2PositionGCN(EventS2PositionBase):
     """
-    MLP neural net for S2 position reconstruction at event level
+    GCN net for position S2 reconstruction at event level
     """
-    algorithm = "mlp"
-    provides = "event_s2_position_mlp"
+    algorithm = "gcn"
+    provides = "event_s2_positions_gcn"
 
-    tf_event_model_mlp = straxen.URLConfig(
+    tf_event_model_gcn = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'
                 f'cmt://{algorithm}_model'
