@@ -1,20 +1,21 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s1_position_base import EventS1PositionBase
+from straxen.plugins.peaks._peak_s1_positions_base import PeakS1PositionBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventS1PositionCNN(EventS1PositionBase):
+class PeakS1PositionCNN(PeakS1PositionBase):
     """
-    CNN for (x,y,z) position S1 reconstruction at event level
+    S1 CNN for (x,y,z) position S1 reconstruction at peak level
     """
+    provides = "peak_s1_positions_cnn"
     algorithm = "s1_cnn"
-    provides = "event_s1_position_cnn"
-    # tf_event_model_s1_cnn = straxen.URLConfig.evaluate_dry(f'tf:///project2/lgrandi/guidam/CNN_S1_XYZ_SAVED_MODELS/xnt_s1_posrec_cnn_datadriven_00_080921.tar.gz')
-    tf_event_model_s1_cnn = straxen.URLConfig(
+    __version__ = '0.0.1'
+
+    tf_peak_model_s1_cnn = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'
                 f'xedocs://posrec_models'
@@ -26,4 +27,4 @@ class EventS1PositionCNN(EventS1PositionBase):
         help='s1 position 3d reconstruction cnn model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
         cache=3,
-)
+    )
