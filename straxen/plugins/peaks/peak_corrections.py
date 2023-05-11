@@ -38,7 +38,7 @@ class PeakCorrectedAreas(CorrectedAreas):
             (('Corrected area of S2 before elife correction '
               '(s2 xy correction + SEG/EE correction applied) [PE]',
               'cs2_wo_elifecorr'), np.float32),
-            (('Corrected area of S2 before SEG/EE and elife corrections'
+            (('Corrected area of S2 before SEG/EE and elife corrections '
               '(s2 xy correction applied) [PE]',
               'cs2_wo_timecorr'), np.float32),
             (('Fraction of area seen by the top PMT array for corrected S2',
