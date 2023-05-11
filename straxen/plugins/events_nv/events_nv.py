@@ -13,9 +13,9 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     """
     Plugin which computes the boundaries of veto events.
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
 
-    depends_on = 'hitlets_nv'
+    depends_on = 'hitlets_nv', 'records_nv'
     provides = 'events_nv'
     data_kind = 'events_nv'
     compressor = 'zstd'
@@ -41,6 +41,10 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         type=int,
         help='Minimum number of fully confined hitlets to define an event.'
     )
+    
+    gain_model_nv = straxen.URLConfig(
+        default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id", infer_type=False,
+        help='PMT gain model. Specify as (model_type, model_config, nT = True)')
 
     channel_map = straxen.URLConfig(
         track=False,
@@ -56,15 +60,40 @@ class nVETOEvents(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         return self.event_left_extension_nv + self.event_resolving_time_nv + 1
+    
+    def setup(self):
+        self.channel_range = self.channel_map['nveto']
+        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
 
-    def compute(self, hitlets_nv, start, end):
+        to_pe = self.gain_model_nv
+
+        # Create to_pe array of size max channel:
+        self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
+        self.to_pe[self.channel_range[0]:] = to_pe[:]
+
+    def compute(self, hitlets_nv, records_nv, start, end):
         events, hitlets_ids_in_event = find_veto_events(hitlets_nv,
                                                         self.event_min_hits_nv,
                                                         self.event_resolving_time_nv,
                                                         self.event_left_extension_nv,
                                                         event_number_key=self.name_event_number,
                                                         n_channel=self.n_channel, )
-
+        
+        # Compute summed waveform and shape like properties:
+        _tmp_events = np.zeros(len(events), dtype=temp_event_data_type())
+        strax.copy_to_buffer(events, _tmp_events, '_temp_nv_evts_cpy')
+        strax.simple_summed_waveform(records_nv, _tmp_events, self.to_pe)
+        strax.compute_widths(_tmp_events)
+        
+        strax.copy_to_buffer(
+            _tmp_events, events, '_temp_nv_evts_cpy', ['dt', 'length', 'data'])
+        
+        events['range_50p_area'] = _tmp_events['width'][:, 5]
+        events['range_90p_area'] = _tmp_events['width'][:, 9]
+        events['rise_time'] = -_tmp_events['area_decile_from_midpoint'][:, 1]
+        del _tmp_events
+        
+        # Compute remaining properties:
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(events,
                                            hitlets_nv,
@@ -75,19 +104,17 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         n_events = len(events)
         events[self.name_event_number] = np.arange(n_events) + self.events_seen
         self.events_seen += n_events
-
-        # Don't extend beyond the chunk boundaries
-        # This will often happen for events near the invalid boundary of the
-        # overlap processing (which should be thrown away)
-        events['time'] = np.clip(events['time'], start, end)
-        events['endtime'] = np.clip(events['endtime'], start, end)
+        
+        
         return events
 
 
 def veto_event_dtype(name_event_number: str = 'event_number_nv',
-                     n_pmts: int = 120) -> list:
+                     n_pmts: int = 120,
+                     n_samples_wf: int = 200,
+                    ) -> list:
     dtype = []
-    dtype += strax.time_fields  # because mutable
+    dtype += strax.time_dt_fields  # because mutable
     dtype += [(('Veto event number in this dataset', name_event_number), np.int64),
               (('Total area of all hitlets in event [pe]', 'area'), np.float32),
               (('Total number of hitlets in events', 'n_hits'), np.int32),
@@ -96,8 +123,35 @@ def veto_event_dtype(name_event_number: str = 'event_number_nv',
               (('Area weighted mean time of the event relative to the event start [ns]',
                 'center_time'), np.float32),
               (('Weighted variance of time [ns]', 'center_time_spread'), np.float32),
+              (('Waveform data in PE/sample (not PE/ns!)', 'data'), np.float32, n_samples_wf),
+              (('Width (in ns) of the central 50% area of the peak', 'range_50p_area'), np.float32),
+              (('Width (in ns) of the central 90% area of the peak', 'range_90p_area'), np.float32),
+              (('Time between 10% and 50% area quantiles [ns]', 'rise_time'), np.float32),
               ]
     return dtype
+
+
+def temp_event_data_type(n_samples_wf: int = 200, 
+                         n_pmts: int = 120,
+                         n_widths: int = 11,
+                        ) -> list:
+    """Temp. data type which adds field required to use some of the functions
+    used to build the summed waveform for the TPC.
+    """
+    dtype = veto_event_dtype()
+    dtype += [(('Dummy top waveform data in PE/sample (not PE/ns!)', 'data_top'), np.float32, n_samples_wf),
+              (('Peak widths in range of central area fraction [ns]', 'width'), np.float32, n_widths),
+              (('Peak widths: time between nth and 5th area decile [ns]', 
+                'area_decile_from_midpoint'), np.float32, n_widths),
+              # Following two omly needed if TPC summed waveform method should be used:
+#               (('Total number of saturated channels', 'n_saturated_channels'), np.int16),
+              # Only needed for downsampled waveform..... 
+#               (('Does the channel reach ADC saturation?',
+#           'saturated_channel'), np.int8, n_channels),
+             ]
+              
+    return dtype
+
 
 
 @numba.njit(cache=True, nogil=True)
@@ -229,4 +283,6 @@ def _make_event(hitlets: np.ndarray,
     for ei, ids in enumerate(hitlet_ids):
         hit = hitlets[ids[0]:ids[1]]
         res[ei]['time'] = hit[0]['time']
-        res[ei]['endtime'] = np.max(strax.endtime(hit))
+        endtime = np.max(strax.endtime(hit))
+        res[ei]['length'] = (endtime - res[ei]['time'])//2
+        res[ei]['dt'] = 2
