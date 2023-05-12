@@ -37,10 +37,12 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
     config_storage
     online_monitor
     cmt
+    context_configs
     url_configs
     scada_interface
     tutorials/ScadaInterfaceExample.ipynb
     tutorials/EventDisplayInteractive
+    extending_straxen
 
 
 .. toctree::

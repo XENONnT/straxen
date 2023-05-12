@@ -14,6 +14,11 @@ import numpy as np
 from datetime import datetime
 
 
+class DummyObject:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
 @straxen.URLConfig.register('random')
 def generate_random(_):
     return random.random()
@@ -27,6 +32,52 @@ def return_lamba(_):
 @straxen.URLConfig.register('large-array')
 def large_array(_):
     return np.ones(1_000_000).tolist()
+
+
+@straxen.URLConfig.register('object-list')
+def object_list(length):
+    length = int(length)
+    return [DummyObject(a=i, b=i+1) for i in range(length)]
+
+
+@straxen.URLConfig.preprocessor
+def formatter(config, **kwargs):
+    if not isinstance(config, str):
+        return config
+    try:
+        config = config.format(**kwargs)
+    except KeyError:
+        pass
+    return config
+
+
+GLOBAL_VERSIONS = {
+    'global_v1': {
+        'test_config': 'v0'
+    }
+}
+
+
+@straxen.URLConfig.preprocessor
+def replace_global_version(config, name=None, **kwargs):
+    if name is None:
+        return
+
+    if not isinstance(config, str):
+        return config
+
+    if not straxen.URLConfig.SCHEME_SEP in config:
+        return config
+
+    version = straxen.URLConfig.kwarg_from_url(config, 'version')
+
+    if version is None:
+        return config
+
+    if version.startswith('global_') and version in GLOBAL_VERSIONS:
+        version = GLOBAL_VERSIONS[version].get(name, version)
+        config = straxen.URLConfig.format_url_kwargs(config, version=version)
+    return config
 
 
 class ExamplePlugin(strax.Plugin):
@@ -270,3 +321,44 @@ class TestURLConfig(unittest.TestCase):
         # as in the plugin_url and should complain about that
         with self.assertRaises(ValueError):
             straxen.URLConfig.evaluate_dry(plugin_url)
+
+    def test_objects_to_dict(self):
+        n = 3
+        self.st.set_config({'test_config': f'objects-to-dict://object-list://{n}?key_attr=a&value_attr=b'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, {i:i+1 for i in range(n)})
+
+    def test_list_to_array(self):
+        n = 3
+        self.st.set_config({'test_config': f'list-to-array://object-list://{n}'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertIsInstance(p.test_config, np.ndarray)
+
+    def test_format_preprocessor(self):
+        self.st.set_config({'test_config': '{name}:{run_id}'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, f'test_config:{nt_test_run_id}')
+        self.assertEqual(p.test_config, p.config['test_config'])
+
+    def test_global_version_preprocessor(self):
+        self.st.set_config({'test_config': 'fake://url?version=global_v1'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 'fake://url?version=v0')
+    
+    def test_global_version_not_changed(self):
+        """
+          - if no global version is matched, the url version should not be changed
+          - if config is not matched, the url version should not be changed
+        """
+        assert 'global_v2' not in GLOBAL_VERSIONS
+        self.st.set_config({'test_config': 'fake://url?version=global_v2'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 'fake://url?version=global_v2')
+           
+        class ExamplePluginNew(ExamplePlugin):
+            test_config_new = straxen.URLConfig(default='rootisthesourceofallevil',)
+
+        self.st.register(ExamplePluginNew)
+        self.st.set_config({'test_config_new': 'fake://url?version=global_v1'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config_new, 'fake://url?version=global_v1')

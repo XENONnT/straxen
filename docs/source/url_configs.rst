@@ -155,3 +155,48 @@ As an example lets look at some actual protocols in `url_config.py`
             return tf.keras.models.load_model(tmpdirname)
 
 As you can see its very easy to define new protocols, once its defined you can use it in any URL!
+
+
+Config preprocessors
+--------------------
+
+In some cases it makes sense to run some code and maybe modify a config value during 
+the plugin configuration initialization. This will result in the config being replaced 
+completely in the ``plugin.config`` dictionary and the modified value being hashed instead of the original value.
+The preprocessor function you register can accept any or all of the following keyword arguments: name, run_id, run_defaults, set_defaults.
+These keyword arguments will be passed their values when the function is invoked.
+
+A simple example would be if you want to support string formatting in configs:
+
+.. code-block:: python
+
+    @straxen.URLConfig.preprocessor
+    def formatter(config, **kwargs):
+        if not isinstance(config, str):
+            return config
+        try:
+            config = config.format(**kwargs)
+        except:
+            pass
+        return config
+
+This preprocessor will run on all configs and if any of them are strings it will 
+attempt to run the builtin ``format`` function on them with all the keyword arguments available at that time.
+
+You can also control the order in which preprocessors are run in cases where multiple 
+functions are registered by passing the ``precedence=N`` argument to the decroator, where N is the priority. 
+Higher precedence functions are run first.
+
+**WARNINGS**:
+
+* Using the run_id to set the value of the config will result in a different lineage_hash for each run. This may be useful in some cases but can be very difficult to keep track of with data managment tools.
+* Preprocessor functions will run on **all** configs. If you want to only affect a specific config, make sure your function accepts the ``name`` keyword argument and that the function checks the name matches before it runs its logic.
+
+Helper functions
+----------------
+
+There are a number of helper functions to help you writing URLs:
+
+* ``straxen.URLConfig.print_protocols()`` - prints out the registered protocols, their description and call signature.
+* ``straxen.URLConfig.print_preprocessors()`` -  prints out the registered preprocessor precedence, their description and call signature.
+* ``straxen.URLConfig.print_status()`` - Calls both ``print_protocols()`` and ``print_preprocessors()``

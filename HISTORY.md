@@ -1,3 +1,130 @@
+v2.0.7 / 2023-04-25
+-------------------
+* Bootstrax target removal after failures by @cfuselli in https://github.com/XENONnT/straxen/pull/1145
+* reforming _raw_path and _processed_path by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1149
+* Adding correction of Z position due to non-uniform drift velocity by @terliuk in https://github.com/XENONnT/straxen/pull/1148
+* Bump the versions of peaklets and quality check runs-on by @dachengx in https://github.com/XENONnT/straxen/pull/1153
+* S1-Based 3D Position Reconstruction by @matteoguida in https://github.com/XENONnT/straxen/pull/1146
+* Bump xedocs from 0.2.14 to 0.2.16 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1158
+* Use zstd as compressor of peaks by @dachengx in https://github.com/XENONnT/straxen/pull/1154
+* Bump sphinx from 5.3.0 to 6.2.0 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1161
+
+New Contributors
+* @cfuselli made their first contribution in https://github.com/XENONnT/straxen/pull/1145
+* @matteoguida made their first contribution in https://github.com/XENONnT/straxen/pull/1146
+* @hmdyt made their first contribution in https://github.com/XENONnT/straxen/pull/1159
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.6...v2.0.7
+
+
+v2.0.6 / 2023-03-08
+-------------------
+* Bump supercharge/mongodb-github-action from 1.8.0 to 1.9.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1140
+* Small patches to restrax module by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1143, d04a3428c52c159577b61af2a28ddd0af5652027, 602b807291211f083c8f54df6768b8198fbf6b55
+* Ms events by @michaweiss89 and @HenningSE in https://github.com/XENONnT/straxen/pull/1080
+
+New Contributors
+* @michaweiss89 made their first contribution in https://github.com/XENONnT/straxen/pull/1080
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.5...v2.0.6
+
+Notes:
+ - new data types: `peaks_per_event`, `event_top_bottom_params`, `peaks_corrections` (see #1080)
+
+
+v2.0.5 / 2023-02-24
+-------------------
+* fix xedocs for testing by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1139
+* Restart python style guide by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1138
+* Decrease number of chunks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1123
+* Restrax by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1074
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.4...v2.0.5
+
+
+v2.0.4 / 2023-01-16
+-------------------
+* Top and bottom timing parameters at event and peak level by @terliuk in https://github.com/XENONnT/straxen/pull/1119
+* Allow use of xedocs context configs by @jmosbacher in https://github.com/XENONnT/straxen/pull/1125
+* Bump actions/setup-python from 4.3.0 to 4.4.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1128
+* Add entry points by @jmosbacher in https://github.com/XENONnT/straxen/pull/1120
+* URLConfig preprocessor by @jmosbacher in https://github.com/XENONnT/straxen/pull/1110
+* Fix bootstrax timeouts by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1133
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.3...v2.1.0
+
+Notes:
+ - new data types: `peak_top_bottom_params`, `event_top_bottom_params`
+
+v2.0.3 / 2022-11-09
+-------------------
+* Adding peak waveforms at event level by @terliuk in https://github.com/XENONnT/straxen/pull/1112
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.2...v2.0.3
+
+Notes:
+ * lineage changes for event_area_per_channel
+
+
+v2.0.2 / 2022-10-24
+-------------------
+* New URLConfig protocols - list-to-array and list-to-dict by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1104
+* Single core 1T test by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1109
+
+New Contributors
+* @LuisSanchez25 made their first contribution in https://github.com/XENONnT/straxen/pull/1104
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.1...v2.0.2
+
+
+v2.0.1 / 2022-10-20
+-------------------
+* Use mongodb v4.4.1 when testing to match real version used in production by @jmosbacher in https://github.com/XENONnT/straxen/pull/1103
+* Pass tests from remote forks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1105
+* Local minimum info 2 by @JYangQi00 in https://github.com/XENONnT/straxen/pull/1106
+* Don't test without `strax.processor.SHMExecutor` by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1107
+* Lower the default config value of online_max_bytes by @mflierm in https://github.com/XENONnT/straxen/pull/1108
+
+
+New Contributors
+* @JYangQi00 made their first contribution in https://github.com/XENONnT/straxen/pull/1106
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.0...v2.0.1
+
+
+v2.0.0 / 2022-10-17
+-------------------
+* Fix acqmon veto field by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1072
+* Use self.dtype also for empty peaks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1058
+* Re Start style guide by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1084
+* Transition plugins to URLConfig by @jmosbacher in https://github.com/XENONnT/straxen/pull/1079
+* Fix help of peak basics. by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1081
+* Remove `tight_coincidence_channel` fix #1078 by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1092
+* Add new `s1_pattern_map`, fix #1070 by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1093
+* Restructure plugins by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1094
+* Return on single delele by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1095
+* Never change raw_records by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1096
+* fix missing export by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1098
+* Event level S2 posrec by @terliuk in https://github.com/XENONnT/straxen/pull/1097
+* New tpc event display by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1043
+* Change timeouts by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1101
+* Option to add top bottom wf by @petergaemers @DCichon @FaroutYLq @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1099
+
+Notes:
+ * Lineage changes for all data except raw-records due to #1079
+ * Breaking changes induced in strax [v1.4.0](https://github.com/AxFoundation/strax/releases/tag/v1.4.0)
+ * Changed signatures of plugins in [#1094](https://github.com/XENONnT/straxen/pull/1094)
+ * New plugins for event level processing by [#1097](https://github.com/XENONnT/straxen/pull/1097)
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.8.3...v2.0.0
+
+
 v1.8.3 / 2022-07-18
 -------------------
 * Bootstrax file-check fix by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1064
@@ -853,7 +980,7 @@ patches and fixes:
 - Bugfix in clean_up_empty_records (#210)
 
 
-0.10.0 / 2020-08-187
+0.10.0 / 2020-08-18
 --------------------
 - Neutron-veto integration (#86)
 - Processing for high energy channels (#161, #176)
