@@ -77,28 +77,27 @@ class nVETOEvents(strax.OverlapWindowPlugin):
                                                         self.event_resolving_time_nv,
                                                         self.event_left_extension_nv,
                                                         event_number_key=self.name_event_number,
-                                                        n_channel=self.n_channel, )
+                                                        n_channel=self.n_channel, )    
         
-        # Compute summed waveform and shape like properties:
+        # Compute basic properties:
+        if len(hitlets_ids_in_event):
+            compute_nveto_event_properties(events,
+                                           hitlets_nv,
+                                           hitlets_ids_in_event,
+                                           start_channel=self.channel_range[0])
+            
+        # Compute shape like properties:
         _tmp_events = np.zeros(len(events), dtype=temp_event_data_type())
         strax.copy_to_buffer(events, _tmp_events, '_temp_nv_evts_cpy')
         strax.simple_summed_waveform(records_nv, _tmp_events, self.to_pe)
         strax.compute_widths(_tmp_events)
         
         strax.copy_to_buffer(
-            _tmp_events, events, '_temp_nv_evts_cpy', ['dt', 'length', 'data'])
-        
+            _tmp_events, events, '_temp_nv_evts_cpy')
         events['range_50p_area'] = _tmp_events['width'][:, 5]
         events['range_90p_area'] = _tmp_events['width'][:, 9]
         events['rise_time'] = -_tmp_events['area_decile_from_midpoint'][:, 1]
         del _tmp_events
-        
-        # Compute remaining properties:
-        if len(hitlets_ids_in_event):
-            compute_nveto_event_properties(events,
-                                           hitlets_nv,
-                                           hitlets_ids_in_event,
-                                           start_channel=self.channel_range[0])
 
         # Get eventids:
         n_events = len(events)
