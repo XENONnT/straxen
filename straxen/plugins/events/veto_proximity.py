@@ -91,11 +91,32 @@ class VetoProximity(strax.OverlapWindowPlugin):
         selected_intervals = veto_intervals[veto_intervals['veto_type'] == f'{veto_name}_veto']
         if not len(selected_intervals):
             return
-
+        
+        print('tw')
         vetos_during_event = strax.touching_windows(selected_intervals,
                                                     event_window)
-
+        
+        print('overlap')
         # Figure out the vetos *during* an event
+        res = self.get_overlapping_window_time(vetos_during_event, selected_intervals, event_window, result_buffer)
+        result_buffer[f'veto_{veto_name}_overlap'] = res
+        
+        print('abs time')
+        # Find the next and previous veto's
+        times_to_prev, times_to_next = self.abs_time_to_prev_next(event_window, selected_intervals)
+        mask_prev = times_to_prev > 0
+        result_buffer[f'time_to_previous_{veto_name}'][mask_prev] = times_to_prev[mask_prev]
+
+        max_next = times_to_next > 0
+        result_buffer[f'time_to_next_{veto_name}'][max_next] = times_to_next[max_next]
+      
+    @staticmethod
+    @numba.njit
+    def get_overlapping_window_time(vetos_during_event, selected_intervals, event_window, result_buffer):
+        """Computes total time each event overlaps with the corresponding veto.
+        """
+        res = np.zeros(len(vetos_during_event), np.int64)
+        
         for event_i, veto_window in enumerate(vetos_during_event):
             if veto_window[1] - veto_window[0]:
                 vetos_in_window = selected_intervals[veto_window[0]:
@@ -106,41 +127,77 @@ class VetoProximity(strax.OverlapWindowPlugin):
                 stops = np.clip(vetos_in_window['endtime'],
                                 event_window[event_i]['time'],
                                 event_window[event_i]['endtime'])
-                # Now sum over all the stops-starts that are clipped
-                # within the duration of the event
-                result_buffer[event_i][f'veto_{veto_name}_overlap'] = np.sum(stops -
-                                                                             starts)
+                
+                res[event_i] = np.sum(stops - starts)
+        return res
+        
 
-        # Find the next and previous veto's
-        times_to_prev, times_to_next = self.abs_time_to_prev_next(event_window, selected_intervals)
-        mask_prev = times_to_prev > 0
-        result_buffer[f'time_to_previous_{veto_name}'][mask_prev] = times_to_prev[mask_prev]
-
-        max_next = times_to_next > 0
-        result_buffer[f'time_to_next_{veto_name}'][max_next] = times_to_next[max_next]
-
+#    @staticmethod
+#    @numba.njit
+#    def abs_time_to_prev_next(event_window, selected_intervals):
+#        """Get the absolute time to the previous and the next interval"""
+#        times_to_prev = np.ones(len(event_window)) * -1
+#        times_to_next = np.ones(len(event_window)) * -1
+#        for event_i, ev_wind in enumerate(event_window):
+#            # Two cases left, either veto's are before or after the event window
+#            interval_before = selected_intervals['endtime'] < ev_wind['time']
+#            interval_after = selected_intervals['time'] > ev_wind['endtime']
+#
+#            if np.sum(interval_before):
+#                prev_intervals = selected_intervals[interval_before]
+#                time_to_prev = np.abs(ev_wind['time'] - prev_intervals['endtime'])
+#                prev_idx = np.argmin(time_to_prev)
+#                times_to_prev[event_i] = time_to_prev[prev_idx]
+#
+#            if np.sum(interval_after):
+#                next_intervals = selected_intervals[interval_after]
+#                time_to_next = np.abs(next_intervals['endtime'] - ev_wind['endtime'])
+#                next_idx = np.argmin(time_to_next)
+#                times_to_next[event_i] = time_to_next[next_idx]
+#        return times_to_prev, times_to_next
+    
+    
     @staticmethod
     @numba.njit
     def abs_time_to_prev_next(event_window, selected_intervals):
         """Get the absolute time to the previous and the next interval"""
-        times_to_prev = np.ones(len(event_window)) * -1
-        times_to_next = np.ones(len(event_window)) * -1
+        times_to_prev = np.ones(len(event_window), dtype=np.int64) * -1
+        times_to_next = np.ones(len(event_window), dtype=np.int64) * -1
+        
+        veto_inetrvals_seen = 0
         for event_i, ev_wind in enumerate(event_window):
-            # Two cases left, either veto's are before or after the event window
-            interval_before = selected_intervals['endtime'] < ev_wind['time']
-            interval_after = selected_intervals['time'] > ev_wind['endtime']
-
-            if np.sum(interval_before):
-                prev_intervals = selected_intervals[interval_before]
-                time_to_prev = np.abs(ev_wind['time'] - prev_intervals['endtime'])
-                prev_idx = np.argmin(time_to_prev)
-                times_to_prev[event_i] = time_to_prev[prev_idx]
-
-            if np.sum(interval_after):
-                next_intervals = selected_intervals[interval_after]
-                time_to_next = np.abs(next_intervals['endtime'] - ev_wind['endtime'])
-                next_idx = np.argmin(time_to_next)
-                times_to_next[event_i] = time_to_next[next_idx]
+            current_event_time = ev_wind['time']
+            current_event_endtime = ev_wind['endtime']
+            
+            # Exploit the fact that events cannot overlap...
+            # Loop over veto intervals until current veto interval time 
+            # is larger than event time. Then we know current -1 is closest veto
+            # before current event:
+            for veto_interval in selected_intervals[veto_inetrvals_seen:]:
+                if veto_interval['time'] < current_event_time:
+                    veto_inetrvals_seen += 1
+                    continue
+                
+                # Now current event time is larger than event time, thus store time
+                # of previous event:
+                _no_prev_interval = (veto_inetrvals_seen-1) < 0
+                if _no_prev_interval:
+                    # Edge case there is no previous event so keep buffer as is
+                    break
+                    
+                times_to_prev[event_i] = current_event_time - selected_intervals[veto_inetrvals_seen-1]['endtime']
+                break
+            
+            # Now check if current veto is still within event or already after it:
+            for veto_interval in selected_intervals[veto_inetrvals_seen:]:
+                if veto_interval['time'] < current_event_endtime:
+                    veto_inetrvals_seen += 1
+                    continue
+            
+                # Now current event is after event so store time:
+                # ToDo: Somehow old code uses endtime of veto-interval should not it be time?
+                times_to_next[event_i] = veto_interval['endtime']  - current_event_endtime 
+            
         return times_to_prev, times_to_next
 
     def compute(self, events, veto_intervals):
@@ -154,5 +211,6 @@ class VetoProximity(strax.OverlapWindowPlugin):
         event_window['endtime'] = events[self.event_window_fields[1]]
 
         for veto_name in self.veto_names:
+            print(veto_name)
             self.set_result_for_veto(result, event_window, veto_intervals, veto_name)
         return result
