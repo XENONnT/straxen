@@ -7,6 +7,8 @@ import os
 import warnings
 import typing as ty
 from pandas.util._decorators import deprecate_kwarg
+import socket
+
 
 common_opts = dict(
     register_all=[],
@@ -109,6 +111,23 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
     return st
 
 
+def find_rucio_local_path():
+    """Check the hostname to determine which rucio local path to use. Note that access to /dali/lgrandi/rucio/ 
+    is possible only if you are on dali compute node or login node. 
+    """
+    hostname = socket.gethostname()
+    if ('dali' in hostname) and ('login' not in hostname):
+        rucio_local_path = '/dali/lgrandi/rucio/'
+    # Assumed the only other option is 'midway' or login nodes, 
+    # where we have full access to dali and project space. 
+    # This doesn't make sense outside XENON but we don't care.
+    else: 
+        rucio_local_path = '/project/lgrandi/rucio/'
+    
+    print('You specified _auto_append_rucio_local=True, so we will use the following rucio local path: ', rucio_local_path)
+    return rucio_local_path
+
+
 @deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
 @deprecate_kwarg('_maximum_run_number', 'maximum_run_number')
 @deprecate_kwarg('_include_rucio_remote', 'include_rucio_remote')
@@ -125,6 +144,7 @@ def xenonnt_online(output_folder: str = './strax_data',
 
                    # Frontend options
                    download_heavy: bool = False,
+                   _auto_append_rucio_local: bool = True,
                    _rucio_path: str = '/dali/lgrandi/rucio/',
                    _rucio_local_path: ty.Optional[str] = None,
                    _raw_paths: ty.Optional[str] = ['/dali/lgrandi/xenonnt/raw'],
@@ -178,6 +198,10 @@ def xenonnt_online(output_folder: str = './strax_data',
     st.register([straxen.DAQReader,
                  straxen.LEDCalibration,
                  straxen.LEDAfterpulseProcessing])
+
+    if _auto_append_rucio_local:
+        _rucio_local_path = find_rucio_local_path()
+        include_rucio_local = True
 
     st.storage = [
         straxen.RunDB(
