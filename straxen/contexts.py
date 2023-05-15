@@ -176,6 +176,7 @@ def xenonnt_online(output_folder: str = './strax_data',
     :param download_heavy: bool, whether or not to allow downloads of
         heavy data (raw_records*, less the aqmon)
 
+    :param _auto_append_rucio_local: bool, whether or not to automatically append the rucio local path
     :param _rucio_path: str, path of rucio
     :param _rucio_local_path: str, path of local RSE of rucio. Only use
         for testing!
