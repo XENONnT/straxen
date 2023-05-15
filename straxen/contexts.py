@@ -210,7 +210,8 @@ def xenonnt_online(output_folder: str = './strax_data',
                  straxen.LEDAfterpulseProcessing])
 
     if _auto_append_rucio_local:
-        _rucio_local_path, include_rucio_local = find_rucio_local_path(_rucio_local_path, include_rucio_local)
+        _rucio_local_path, include_rucio_local = find_rucio_local_path(_rucio_local_path, 
+                                                                       include_rucio_local)
 
     st.storage = [
         straxen.RunDB(
