@@ -13,7 +13,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     when a busy happens during an event.
     """
 
-    __version__ = '2.1.0'
+    __version__ = '2.2.0'
     # Strictly speaking, we could depend on 'events', but then you couldn't
     # change the event_window_fields to e.g. s1_time and s2_endtime.
     depends_on = ('event_basics', 'veto_intervals')
