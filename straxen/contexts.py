@@ -111,21 +111,29 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
     return st
 
 
-def find_rucio_local_path():
-    """Check the hostname to determine which rucio local path to use. Note that access to /dali/lgrandi/rucio/ 
-    is possible only if you are on dali compute node or login node. 
+def find_rucio_local_path(include_rucio_local, _rucio_local_path):
+    """Check the hostname to determine which rucio local path to use. Note that access to 
+    /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node. 
+    :param include_rucio_local: add the rucio local storage frontend.
+        This is only needed if one wants to do a fuzzy search in the
+        data the runs database is out of sync with rucio
+    :param _rucio_local_path: str, path of local RSE of rucio. Only use
+        for testing!
     """
     hostname = socket.gethostname()
+    # if you are on dali compute node, do nothing
     if ('dali' in hostname) and ('login' not in hostname):
-        rucio_local_path = '/dali/lgrandi/rucio/'
+        _rucio_local_path = _rucio_local_path
+        include_rucio_local = include_rucio_local
     # Assumed the only other option is 'midway' or login nodes, 
     # where we have full access to dali and project space. 
     # This doesn't make sense outside XENON but we don't care.
     else: 
-        rucio_local_path = '/project/lgrandi/rucio/'
-    
-    print('You specified _auto_append_rucio_local=True, so we will use the following rucio local path: ', rucio_local_path)
-    return rucio_local_path
+        _rucio_local_path = '/project/lgrandi/rucio/'
+        include_rucio_local = True
+        print('You specified _auto_append_rucio_local=True and you are not on dali compute nodes, so we will add the following rucio local path: ', _rucio_local_path)
+
+    return _rucio_local_path, include_rucio_local
 
 
 @deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
@@ -201,8 +209,7 @@ def xenonnt_online(output_folder: str = './strax_data',
                  straxen.LEDAfterpulseProcessing])
 
     if _auto_append_rucio_local:
-        _rucio_local_path = find_rucio_local_path()
-        include_rucio_local = True
+        _rucio_local_path, include_rucio_local = find_rucio_local_path(_rucio_local_path, include_rucio_local)
 
     st.storage = [
         straxen.RunDB(
