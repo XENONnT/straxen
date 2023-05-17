@@ -112,8 +112,10 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
 
 
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
-    """Check the hostname to determine which rucio local path to use. Note that access to 
-    /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node. 
+    """
+    Check the hostname to determine which rucio local path to use. Note that access to
+    /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
+
     :param include_rucio_local: add the rucio local storage frontend.
         This is only needed if one wants to do a fuzzy search in the
         data the runs database is out of sync with rucio
@@ -131,7 +133,8 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     else: 
         __rucio_local_path = '/project/lgrandi/rucio/'
         _include_rucio_local = True
-        print('You specified _auto_append_rucio_local=True and you are not on dali compute nodes, so we will add the following rucio local path: ', __rucio_local_path)
+        print('You specified _auto_append_rucio_local=True and you are not on dali compute nodes,'
+              'so we will add the following rucio local path: ', __rucio_local_path)
 
     return __rucio_local_path, _include_rucio_local
 
