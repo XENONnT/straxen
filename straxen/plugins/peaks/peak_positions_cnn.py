@@ -20,5 +20,7 @@ class PeakPositionsCNN(PeakPositionsBaseNT):
                 f'?version=ONLINE'
                 f'&run_id=plugin.run_id'
                 f'&fmt=abs_path',
+        help='CNN model. Should be opened using the "tf" descriptor. '
+             'Set to "None" to skip computation',
         cache=3,
     )
