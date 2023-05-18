@@ -32,7 +32,7 @@ class PeakSubtyping(IntEnum):
     fakeS2_PH = 20    # Photoionization after the fakeS2 and before the associated pS2
 
 
-class PeaksSubtypes(strax.Plugin):
+class PeaksSubtypes(strax.OverlapWindowPlugin):
     """
     Subtyping Peaks
     This plugin scans forward in time and catagorize peaks into subtypes
@@ -120,6 +120,9 @@ class PeaksSubtypes(strax.Plugin):
         self.after_s1_window_ext = self.after_s1_window_ext_fac * self.drift_time_max
         self.after_s2_window_ext = self.after_s2_window_ext_fac * self.drift_time_max
 
+    def get_window_size(self):
+        return 10 * max(self.s1_s2_window, self.after_s1_window_ext, self.after_s2_window_ext)
+
     @staticmethod
     def mark_with_s1(
         peaks, subtype_dtype,
@@ -148,13 +151,13 @@ class PeaksSubtypes(strax.Plugin):
         s1_subtype = np.ones(type_1_mask.sum(), dtype=subtype_dtype) * PeakSubtyping.Undefined
         s2_subtype = np.ones(type_2_mask.sum(), dtype=subtype_dtype) * PeakSubtyping.Undefined
 
-        _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
-
         # Define S1-S2 pairing window
         _peaks = peaks[type_2_mask].copy()
         _peaks['time'] = _peaks['center_time']
         _peaks['endtime'] = _peaks['time']
+        _peaks = np.sort(_peaks, order='time')
 
+        _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
         _window['time'] = peaks['center_time'][type_1_mask]
         _window['endtime'] = _window['time'] + s1_s2_window
         tw_s1_s2 = strax.touching_windows(_peaks, _window)
@@ -176,7 +179,6 @@ class PeaksSubtypes(strax.Plugin):
         s2_max_area = s2_area[s2_max_index]
         s2_max_area[no_pS2_mask] = np.nan
         s2_max_time = _peaks['center_time'][s2_max_index]
-        s2_max_time[no_pS2_mask] = _window['time'][no_pS2_mask]
 
         # Identify the loneS1, S1 and potential misclassified SE
         lone_s1 = tw_s1_s2[:, 1] - tw_s1_s2[:, 0] == 0
@@ -188,9 +190,11 @@ class PeaksSubtypes(strax.Plugin):
 
         # Assign S1PH and slS1PH if pS2 not found
         # S1 following window after S1 if pS2 not found
+        _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
         _window['time'] = peaks['center_time'][type_1_mask]
         _window['endtime'] = _window['time'] + after_s1_window_ext
         tw_after_s1 = strax.touching_windows(_peaks, _window)
+
         S1PH_index = np.hstack([
             np.arange(tw_a1[0], tw_a1[1]) for tw_a1 in tw_after_s1[~large_ps2_mask & ~mis_s1_mask]])
         slS1PH_index = np.hstack([
@@ -202,14 +206,17 @@ class PeaksSubtypes(strax.Plugin):
 
         # Assign S1PH and S1olS2 after S1 before pS2
         # S1 following window, to identify S1 photoionization
-        _window['time'] = peaks['center_time'][type_1_mask]
-        _window['endtime'] = s2_max_time.copy()
+        _window = np.zeros((~no_pS2_mask).sum(), dtype=strax.time_fields)
+        _window['time'] = peaks['center_time'][type_1_mask][~no_pS2_mask]
+        _window['endtime'] = s2_max_time[~no_pS2_mask]
         tw_after_s1_before_s2 = strax.touching_windows(_peaks, _window)
 
+        new_s2_max_area = s2_max_area[~no_pS2_mask]
+        large_ps2_mask = new_s2_max_area >= large_s2_threshold
         small_s2s = np.hstack([
             s2_area[tw_a1b2[0]:tw_a1b2[1]] < np.max([
                 large_s2_threshold, other_large_s2_fac * s2_a]) for tw_a1b2, s2_a in zip(
-            tw_after_s1_before_s2[large_ps2_mask], s2_max_area[large_ps2_mask])])
+            tw_after_s1_before_s2[large_ps2_mask], new_s2_max_area[large_ps2_mask])])
         after_s1_before_s2_index = np.hstack([
             np.arange(tw_a1b2[0], tw_a1b2[1]) for tw_a1b2 in tw_after_s1_before_s2[large_ps2_mask]])
         S1PH_index = np.unique(after_s1_before_s2_index[small_s2s])
@@ -219,14 +226,18 @@ class PeaksSubtypes(strax.Plugin):
 
         # Assign S2PH and S2olS2 after pS2
         # S2 following window, to identify S2 photoionization
-        _window['time'] = s2_max_time
-        _window['endtime'] = s2_max_time + after_s2_window_ext
+        s2_max_time_argsort = np.argsort(s2_max_time[~no_pS2_mask])
+        _window = np.zeros((~no_pS2_mask).sum(), dtype=strax.time_fields)
+        _window['time'] = s2_max_time[~no_pS2_mask][s2_max_time_argsort]
+        _window['endtime'] = _window['time'] + after_s2_window_ext
         tw_after_s1_after_s2 = strax.touching_windows(_peaks, _window)
 
+        sorted_s2_max_area = s2_max_area[~no_pS2_mask][s2_max_time_argsort]
+        large_ps2_mask = sorted_s2_max_area >= large_s2_threshold
         small_s2s = np.hstack([
             s2_area[tw_a1a2[0]:tw_a1a2[1]] < np.max([
                 large_s2_threshold, other_large_s2_fac * s2_a]) for tw_a1a2, s2_a in zip(
-            tw_after_s1_after_s2[large_ps2_mask], s2_max_area[large_ps2_mask])])
+            tw_after_s1_after_s2[large_ps2_mask], sorted_s2_max_area[large_ps2_mask])])
         after_s1_after_s2_index = np.hstack([
             np.arange(tw_a1a2[0], tw_a1a2[1]) for tw_a1a2 in tw_after_s1_after_s2[large_ps2_mask]])
         S2PH_index = np.unique(after_s1_after_s2_index[small_s2s])
