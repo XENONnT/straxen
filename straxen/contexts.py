@@ -125,18 +125,18 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     hostname = socket.gethostname()
     # if you are on dali compute node, do nothing
     if ('dali' in hostname) and ('login' not in hostname):
-        __rucio_local_path = _rucio_local_path
         _include_rucio_local = include_rucio_local
+        __rucio_local_path = _rucio_local_path
     # Assumed the only other option is 'midway' or login nodes, 
     # where we have full access to dali and project space. 
     # This doesn't make sense outside XENON but we don't care.
-    else: 
-        __rucio_local_path = '/project/lgrandi/rucio/'
+    else:
         _include_rucio_local = True
+        __rucio_local_path = '/project/lgrandi/rucio/'
         print('You specified _auto_append_rucio_local=True and you are not on dali compute nodes,'
               'so we will add the following rucio local path: ', __rucio_local_path)
 
-    return __rucio_local_path, _include_rucio_local
+    return _include_rucio_local, __rucio_local_path
 
 
 @deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
@@ -213,8 +213,8 @@ def xenonnt_online(output_folder: str = './strax_data',
                  straxen.LEDAfterpulseProcessing])
 
     if _auto_append_rucio_local:
-        _rucio_local_path, include_rucio_local = find_rucio_local_path(_rucio_local_path, 
-                                                                       include_rucio_local)
+        include_rucio_local, _rucio_local_path = find_rucio_local_path(
+            include_rucio_local, _rucio_local_path)
 
     st.storage = [
         straxen.RunDB(
