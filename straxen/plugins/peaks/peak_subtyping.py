@@ -227,6 +227,7 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         # Assign S2PH and S2olS2 after pS2
         # S2 following window, to identify S2 photoionization
         s2_max_time_argsort = np.argsort(s2_max_time[~no_pS2_mask])
+        # Need to make sure that the container is sorted in time
         _window = np.zeros((~no_pS2_mask).sum(), dtype=strax.time_fields)
         _window['time'] = s2_max_time[~no_pS2_mask][s2_max_time_argsort]
         _window['endtime'] = _window['time'] + after_s2_window_ext
