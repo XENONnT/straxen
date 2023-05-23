@@ -42,6 +42,10 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
     :returns: an integer index for each peak.
       Please refer to this note:
       https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_dictionary
+
+    Note: 
+      In this plugin, the timing of peak is only defined by their center_time.
+      And the length of peaks are zero.
     """
 
     __version__ = '0.2.1'
@@ -116,9 +120,10 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         self.large_s2_threshold = self.large_s2_threshold_ne * self.se_gain
         self.large_s2_threshold += np.sqrt(self.large_s2_threshold_ne) * self.se_span
         self.mis_s2_threshold = self.mis_s2_fac * self.se_gain
-        self.s1_s2_window = self.s1_s2_window_fac * self.drift_time_max
-        self.after_s1_window_ext = self.after_s1_window_ext_fac * self.drift_time_max
-        self.after_s2_window_ext = self.after_s2_window_ext_fac * self.drift_time_max
+        # we need to set those window sizes as integers because they are used to define containers
+        self.s1_s2_window = int(self.s1_s2_window_fac * self.drift_time_max)
+        self.after_s1_window_ext = int(self.after_s1_window_ext_fac * self.drift_time_max)
+        self.after_s2_window_ext = int(self.after_s2_window_ext_fac * self.drift_time_max)
 
     def get_window_size(self):
         return 10 * max(self.s1_s2_window, self.after_s1_window_ext, self.after_s2_window_ext)
@@ -143,111 +148,116 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         and reveals the priorities of the subtypings
         '''
 
-        mask = np.ones(len(peaks), dtype=subtype_dtype)
+        # prepare for referred variables
+        mask = np.ones(len(peaks), dtype=subtype_dtype) * PeakSubtyping.Undefined
         type_1_mask = (peaks['type'] == 1)
         type_2_mask = (peaks['type'] == 2)
-        s1_area = peaks['area'][type_1_mask]
-        s2_area = peaks['area'][type_2_mask]
-        s1_subtype = np.ones(type_1_mask.sum(), dtype=subtype_dtype) * PeakSubtyping.Undefined
-        s2_subtype = np.ones(type_2_mask.sum(), dtype=subtype_dtype) * PeakSubtyping.Undefined
 
-        # Define S1-S2 pairing window
+        _s1_area = peaks['area'][type_1_mask]
+        _s2_area = peaks['area'][type_2_mask]
+
+        base_times = peaks['center_time']
+        base_areas = peaks['area']
+        base_indices = np.arange(len(peaks))
+
+        # find S1-pS2 pairing
         _peaks = peaks[type_2_mask].copy()
+        # Only use center_time because we used center_time to define the drift time
         _peaks['time'] = _peaks['center_time']
         _peaks['endtime'] = _peaks['time']
-        _peaks = np.sort(_peaks, order='time')
 
         _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
         _window['time'] = peaks['center_time'][type_1_mask]
         _window['endtime'] = _window['time'] + s1_s2_window
+        # Here the _window can be overlapping
         tw_s1_s2 = strax.touching_windows(_peaks, _window)
 
-        # Find index of max S2 following S1
-        s2_max_index = np.zeros(len(_window), dtype=np.int32)
+        # Find index of max S2 of each group of S2s following S1
+        _ps2_max_indices = np.ones(len(_window), dtype=np.int32) * -1
         for i, tw_12 in enumerate(tw_s1_s2):
-            if tw_12[1] - tw_12[0] == 0 or np.all(np.isnan(s2_area[tw_12[0]:tw_12[1]])):
-                s2_max_index[i] = -1
+            if tw_12[1] - tw_12[0] == 0:
+                continue
             else:
                 # do we have pS2 or a bunch of small S2s
-                s2_max_index[i] = np.nanargmax(s2_area[tw_12[0]:tw_12[1]]) + tw_12[0]
+                _ps2_max_indices[i] = np.argmax(_s2_area[tw_12[0]:tw_12[1]]) + tw_12[0]
+        _no_pS2_mask = (_ps2_max_indices == -1)
+        _ps2_area = _s2_area[_ps2_max_indices]
+        # if there is no pS2, set the area to be nan
+        _ps2_area[_no_pS2_mask] = np.nan
 
-        # Assign the pS2 first, this might be overwritten by other subtyping later
-        pS2_index = np.arange(type_2_mask.sum())[s2_max_index[s2_max_index != -1]]
-        s2_subtype[pS2_index] = PeakSubtyping.pS2
+        # identify the loneS1, S1 and potential misclassified SE,
+        # if the S2 is not large enough to be a pS2
+        _large_ps2_mask = _ps2_area >= large_s2_threshold
+        # if the S1 is a lone S1, it has no pS2 or no large enough pS2
+        lone_s1 = _no_pS2_mask | ~_large_ps2_mask
+        # if the S1 is a misclassified S2
+        _mis_s1_mask = _s1_area < mis_s2_threshold
+        # get indices of loneS1, sloneS2, S1, pS2
+        loneS1_indices = base_indices[type_1_mask][lone_s1 & ~_mis_s1_mask]
+        sloneS1_indices = base_indices[type_1_mask][lone_s1 & _mis_s1_mask]
+        S1_indices = base_indices[type_1_mask][~lone_s1]
+        # sometimes the same pS2 can be paired up with multiple S1s
+        # also need to make sure that the pS2_indices are sorted, but np.unique does that
+        _ps2_max_indices = np.unique(_ps2_max_indices[~lone_s1])
+        pS2_indices = np.unique(base_indices[type_2_mask][_ps2_max_indices])
 
-        no_pS2_mask = (s2_max_index == -1)
-        s2_max_area = s2_area[s2_max_index]
-        s2_max_area[no_pS2_mask] = np.nan
-        s2_max_time = _peaks['center_time'][s2_max_index]
+        # limitation of window size
+        # when we see a leading peak who can cause the correlation,
+        # the search of photon-ionization should stop
+        limitation = np.sort(np.hstack(
+            [loneS1_indices, sloneS1_indices, S1_indices, pS2_indices]))
 
-        # Identify the loneS1, S1 and potential misclassified SE
-        lone_s1 = tw_s1_s2[:, 1] - tw_s1_s2[:, 0] == 0
-        mis_s1_mask = s1_area < mis_s2_threshold
-        large_ps2_mask = s2_max_area >= large_s2_threshold
-        s1_subtype[~lone_s1] = PeakSubtyping.S1
-        s1_subtype[(mis_s1_mask & lone_s1) | (mis_s1_mask & ~large_ps2_mask)] = PeakSubtyping.sloneS1
-        s1_subtype[(~mis_s1_mask & lone_s1) | (~mis_s1_mask & ~large_ps2_mask)] = PeakSubtyping.loneS1
+        # containers triggered by each leading peaks
+        # here we start to divide the time line by non-overlapping containers
+        loneS1_containers = limited_containers(
+            base_times[loneS1_indices], after_s1_window_ext, limitation)
+        sloneS1_containers = limited_containers(
+            base_times[sloneS1_indices], after_s1_window_ext, limitation)
+        S1_containers = limited_containers(
+            base_times[S1_indices], s1_s2_window, limitation)
+        pS2_containers = limited_containers(
+            base_times[pS2_indices], after_s2_window_ext, limitation)
 
-        # Assign S1PH and slS1PH if pS2 not found
-        # S1 following window after S1 if pS2 not found
-        _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
-        _window['time'] = peaks['center_time'][type_1_mask]
-        _window['endtime'] = _window['time'] + after_s1_window_ext
-        tw_after_s1 = strax.touching_windows(_peaks, _window)
+        _peaks = peaks.copy()
+        # assign loneS1's & sloneS1's following peaks
+        tw_after_s1 = strax.touching_windows(_peaks, loneS1_containers)
+        S1PH_indices = combine_indices(tw_after_s1)
+        mask[S1PH_indices] = PeakSubtyping.S1PH
+        tw_after_s1 = strax.touching_windows(_peaks, sloneS1_containers)
+        slS1PH_indices = S1PH_indices = combine_indices(tw_after_s1)
+        mask[slS1PH_indices] = PeakSubtyping.slS1PH
 
-        S1PH_index = np.hstack([
-            np.arange(tw_a1[0], tw_a1[1]) for tw_a1 in tw_after_s1[~large_ps2_mask & ~mis_s1_mask]])
-        slS1PH_index = np.hstack([
-            np.arange(tw_a1[0], tw_a1[1]) for tw_a1 in tw_after_s1[~large_ps2_mask & mis_s1_mask]])
-        S1PH_index = np.unique(S1PH_index)
-        slS1PH_index = np.unique(slS1PH_index)
-        s2_subtype[S1PH_index] = PeakSubtyping.S1PH
-        s2_subtype[slS1PH_index] = PeakSubtyping.slS1PH
+        # assign S1's following peaks
+        tw_after_s1_before_s2 = strax.touching_windows(_peaks, S1_containers)
+        _S1_small_s2s_thresholds = np.vstack(
+            [
+                np.full(len(S1_containers), large_s2_threshold),
+                other_large_s2_fac * _ps2_area[~lone_s1],
+            ]
+        ).max(axis=0)
+        S1PH_indices, S1olS2_indices = combine_indices_ref(
+            tw_after_s1_before_s2, base_areas, _S1_small_s2s_thresholds)
+        mask[S1PH_indices] = PeakSubtyping.S1PH
+        mask[S1olS2_indices] = PeakSubtyping.S1olS2
 
-        # Assign S1PH and S1olS2 after S1 before pS2
-        # S1 following window, to identify S1 photoionization
-        _window = np.zeros((~no_pS2_mask).sum(), dtype=strax.time_fields)
-        _window['time'] = peaks['center_time'][type_1_mask][~no_pS2_mask]
-        _window['endtime'] = s2_max_time[~no_pS2_mask]
-        tw_after_s1_before_s2 = strax.touching_windows(_peaks, _window)
+        # assign pS2's following peaks
+        tw_after_s1_after_s2 = strax.touching_windows(_peaks, pS2_containers)
+        _pS2_small_s2s_thresholds = np.vstack(
+            [
+                np.full(len(pS2_containers), large_s2_threshold),
+                other_large_s2_fac * _s2_area[_ps2_max_indices],
+            ]
+        ).max(axis=0)
+        S2PH_indices, S2olS2_indices = combine_indices_ref(
+            tw_after_s1_after_s2, base_areas, _pS2_small_s2s_thresholds)
+        mask[S2PH_indices] = PeakSubtyping.S2PH
+        mask[S2olS2_indices] = PeakSubtyping.S2olS2
 
-        new_s2_max_area = s2_max_area[~no_pS2_mask]
-        large_ps2_mask = new_s2_max_area >= large_s2_threshold
-        small_s2s = np.hstack([
-            s2_area[tw_a1b2[0]:tw_a1b2[1]] < np.max([
-                large_s2_threshold, other_large_s2_fac * s2_a]) for tw_a1b2, s2_a in zip(
-            tw_after_s1_before_s2[large_ps2_mask], new_s2_max_area[large_ps2_mask])])
-        after_s1_before_s2_index = np.hstack([
-            np.arange(tw_a1b2[0], tw_a1b2[1]) for tw_a1b2 in tw_after_s1_before_s2[large_ps2_mask]])
-        S1PH_index = np.unique(after_s1_before_s2_index[small_s2s])
-        S1olS2_index = np.unique(after_s1_before_s2_index[~small_s2s])
-        s2_subtype[S1PH_index] = PeakSubtyping.S1PH
-        s2_subtype[S1olS2_index] = PeakSubtyping.S1olS2
-
-        # Assign S2PH and S2olS2 after pS2
-        # S2 following window, to identify S2 photoionization
-        s2_max_time_argsort = np.argsort(s2_max_time[~no_pS2_mask])
-        # Need to make sure that the container is sorted in time
-        _window = np.zeros((~no_pS2_mask).sum(), dtype=strax.time_fields)
-        _window['time'] = s2_max_time[~no_pS2_mask][s2_max_time_argsort]
-        _window['endtime'] = _window['time'] + after_s2_window_ext
-        tw_after_s1_after_s2 = strax.touching_windows(_peaks, _window)
-
-        sorted_s2_max_area = s2_max_area[~no_pS2_mask][s2_max_time_argsort]
-        large_ps2_mask = sorted_s2_max_area >= large_s2_threshold
-        small_s2s = np.hstack([
-            s2_area[tw_a1a2[0]:tw_a1a2[1]] < np.max([
-                large_s2_threshold, other_large_s2_fac * s2_a]) for tw_a1a2, s2_a in zip(
-            tw_after_s1_after_s2[large_ps2_mask], sorted_s2_max_area[large_ps2_mask])])
-        after_s1_after_s2_index = np.hstack([
-            np.arange(tw_a1a2[0], tw_a1a2[1]) for tw_a1a2 in tw_after_s1_after_s2[large_ps2_mask]])
-        S2PH_index = np.unique(after_s1_after_s2_index[small_s2s])
-        S2olS2_index = np.unique(after_s1_after_s2_index[~small_s2s])
-        s2_subtype[S2PH_index] = PeakSubtyping.S2PH
-        s2_subtype[S2olS2_index] = PeakSubtyping.S2olS2
-
-        mask[type_1_mask] = s1_subtype
-        mask[type_2_mask] = s2_subtype
+        # assign loneS1, S1, sloneS2, pS2
+        mask[loneS1_indices] = PeakSubtyping.loneS1
+        mask[sloneS1_indices] = PeakSubtyping.sloneS1
+        mask[S1_indices] = PeakSubtyping.S1
+        mask[pS2_indices] = PeakSubtyping.pS2
         return mask
 
     def mark_s2s(self, peaks, mask):
@@ -325,11 +335,16 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         mask[undefined_mask] = dmask
 
     def compute(self, peaks):
+        # Sort the peaks first by center_time
+        peaks = np.sort(peaks, order='center_time')
+
         result = np.zeros(len(peaks), self.dtype)
         result['time'] = peaks['time']
         result['endtime'] = strax.endtime(peaks)
         result['subtype'] = np.ones(len(peaks)) * PeakSubtyping.Undefined
-        result['subtype'][peaks['type'] == 0] = PeakSubtyping.Junk
+        junk_mask = (peaks['type'] != 1) & (peaks['type'] != 2)
+        junk_mask |= np.isnan(peaks['area'])
+        result['subtype'][junk_mask] = PeakSubtyping.Junk
 
         undefined_mask = result['subtype'] == PeakSubtyping.Undefined
         result['subtype'][undefined_mask] = self.mark_with_s1(
@@ -346,3 +361,73 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         #     raise RuntimeError(f'We still find {n_undefined} peaks undefined!')
 
         return result
+
+
+def limited_containers(start, length, limitation):
+    """
+    Build container given start, length and limitation of end time.
+    The retuned containers should not be overlapping
+    :param start: sorted array of interval start points
+    :param length: length of each interval, len(start) == len(length)
+    """
+    assert np.all(length >= 0)
+    if not hasattr(length, '__len__'):
+        length = np.full(len(start), length)
+    # limitations must be sorted,
+    # and it is a combination of given limitation and start
+    # because we need to make sure the returned containers are not overlapping
+    limitation = np.unique(np.hstack([start, limitation]))
+    containers = np.zeros(len(start), dtype=strax.time_fields)
+    containers['time'] = start
+    containers['endtime'] = _limited_containers(start, length, limitation)
+    assert np.all(containers['time'][1:] - containers['endtime'][:-1] >= 0)
+    return containers
+
+
+@numba.njit
+def _limited_containers(start, length, limitation):
+    """
+    Construct the endtime in jit accelerated way
+    """
+    endtime = start + length
+    n = len(limitation)
+    i = 0
+    for container_i, (time_i, endtime_i) in enumerate(zip(start, endtime)):
+        while i < n - 1 and time_i >= limitation[i]:
+            i += 1
+        if limitation[i] < endtime_i:
+            endtime[container_i] = limitation[i]
+    return endtime
+
+
+def combine_indices(result):
+    """
+    Combine the indices from touching_windows results
+    :param result: touching_windows results, each row is a pair of indices
+    """
+    indices = []
+    for r in result:
+        indices.append(np.arange(r[0], r[1]))
+    indices = np.unique(np.hstack(indices))
+    return indices
+
+
+def combine_indices_ref(result, areas, reference_areas):
+    """
+    Combine the indices from touching_windows results, based on the areas.
+    If the areas larger than the reference areas, combine them into large_indices,
+    if not, combine them into small_indices.
+    :param result: touching_windows results, each row is a pair of indices
+    :param areas: areas of the peaks of the cooresponding indices
+    :param reference_areas: reference areas to compare with for each pair of indices
+    """
+    assert len(result) == len(reference_areas), ''\
+        + 'result and reference_areas must have the same length'
+    small_indices = []
+    large_indices = []
+    for r, ref in zip(result, reference_areas):
+        small_indices.append(np.arange(r[0], r[1])[areas[r[0]:r[1]] <= ref])
+        large_indices.append(np.arange(r[0], r[1])[areas[r[0]:r[1]] > ref])
+    small_indices = np.unique(np.hstack(small_indices))
+    large_indices = np.unique(np.hstack(large_indices))
+    return small_indices, large_indices
