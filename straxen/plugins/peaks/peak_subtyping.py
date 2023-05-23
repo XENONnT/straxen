@@ -164,7 +164,8 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         _peaks = peaks[type_2_mask].copy()
         # Only use center_time because we used center_time to define the drift time
         _peaks['time'] = _peaks['center_time']
-        _peaks['endtime'] = _peaks['time']
+        # touchng_windows needs non-zero length of things
+        _peaks['endtime'] = _peaks['time'] + 1
 
         _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
         _window['time'] = peaks['center_time'][type_1_mask]
@@ -234,6 +235,9 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
                     + 'triggering containers should not be overlapping'
 
         _peaks = peaks.copy()
+        _peaks['time'] = _peaks['center_time']
+        # touchng_windows needs non-zero length of things
+        _peaks['endtime'] = _peaks['time'] + 1
         # assign loneS1's & sloneS1's following peaks
         tw_after_s1 = strax.touching_windows(_peaks, loneS1_containers)
         S1PH_indices = combine_indices(tw_after_s1)
