@@ -205,7 +205,13 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         # when we see a leading peak who can cause the correlation,
         # the search of photon-ionization should stop
         limitation = np.sort(np.hstack(
-            [loneS1_indices, sloneS1_indices, S1_indices, pS2_indices]))
+            [
+                base_times[loneS1_indices],
+                base_times[sloneS1_indices],
+                base_times[S1_indices],
+                base_times[pS2_indices],
+            ]
+        ))
 
         # containers triggered by each leading peaks
         # here we start to divide the time line by non-overlapping containers
@@ -217,6 +223,15 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
             base_times[S1_indices], s1_s2_window, limitation)
         pS2_containers = limited_containers(
             base_times[pS2_indices], after_s2_window_ext, limitation)
+
+        # extra check, will be deleted after debugging
+        for i_a, a in enumerate([loneS1_containers, sloneS1_containers, S1_containers, pS2_containers]):
+            for i_b, b in enumerate([loneS1_containers, sloneS1_containers, S1_containers, pS2_containers]):
+                if i_a == i_b:
+                    continue
+                r = strax.touching_windows(a, b)
+                assert (r[:, 1] - r[:, 0]).max() == 0, ''\
+                    + 'triggering containers should not be overlapping'
 
         _peaks = peaks.copy()
         # assign loneS1's & sloneS1's following peaks
