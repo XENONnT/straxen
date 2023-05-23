@@ -21,9 +21,9 @@ class TestRucioRemote(unittest.TestCase):
             include_rucio_remote=True,
             download_heavy=download_heavy,
             _rucio_path=self.staging_dir,
-            _raw_path=os.path.join(self.staging_dir, 'raw'),
+            _raw_paths=[os.path.join(self.staging_dir, 'raw')],
             _database_init=False,
-            _processed_path=os.path.join(self.staging_dir, 'processed'),
+            _processed_paths=[os.path.join(self.staging_dir, 'processed')],
         )
         return context
 

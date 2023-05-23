@@ -214,17 +214,33 @@ max_queue_new_runs = 3
 # this many times. If high level data is hitting some edge case, we
 # might want to be able to keep the intermediate level data.
 # NB: fnmatch so event* applies e.g. to event_basics, peak* to e.g. peaklets
+# See https://xe1t-wiki.lngs.infn.it/doku.php?id=cfuselli:bootstrax_fail_targets
 remove_target_after_fails = {
-    'event*': 2,
-    'hitlets*': 2,
+    'event*':            2,
+    'corrected_areas':   2,
+    'energy_estimates':  2,
+    'distinct_channels': 2,
+    
+    '*pos*':             3,
+    'individual_peak*':  3,
     'online_monitor_*v': 3,
-    'online_peak': 5,
-    'peaks*': 4,
-    'peak_basics': 5,
-    'peaklets': 6,
-    'veto_*': 4,
-    '*': 7,
-}
+    
+    'peak_*':            4,
+    'online_peak*':      4,
+    '*hit*':             4,
+    'veto_*':            4,
+    '*pulse*':           4,
+    'led_*':             4,
+    'ext_timings_nv':    4,
+    
+    'merged_s2s*':       5,
+    
+    'peak*':             6,
+    'lone_*':            6,
+    'detector_time_*':   6,
+    
+    '*':                 7,
+} 
 
 ##
 # Initialize globals (e.g. rundb connection)
