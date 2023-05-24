@@ -229,7 +229,7 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         # extra check, will be deleted after debugging
         for i_a, a in enumerate([loneS1_containers, sloneS1_containers, S1_containers, pS2_containers]):
             for i_b, b in enumerate([loneS1_containers, sloneS1_containers, S1_containers, pS2_containers]):
-                if i_a == i_b:
+                if i_a == i_b or len(a) == 0 or len(b) == 0:
                     continue
                 r = strax.touching_windows(a, b)
                 assert (r[:, 1] - r[:, 0]).max() == 0, ''\
@@ -367,7 +367,7 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         # extra check, will be deleted after debugging
         for i_a, a in enumerate([fakeS2_containers, pS2_containers, lonepS2_containers]):
             for i_b, b in enumerate([fakeS2_containers, pS2_containers, lonepS2_containers]):
-                if i_a == i_b:
+                if i_a == i_b or len(a) == 0 or len(b) == 0:
                     continue
                 r = strax.touching_windows(a, b)
                 assert (r[:, 1] - r[:, 0]).max() == 0, ''\
