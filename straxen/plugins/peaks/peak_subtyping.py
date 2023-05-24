@@ -8,6 +8,7 @@ import straxen
 
 class PeakSubtyping(IntEnum):
     """Peak Subtyping Dictionary"""
+
     Undefined = 6
     # Unknown (0)
     Junk = 0
