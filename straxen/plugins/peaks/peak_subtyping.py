@@ -501,6 +501,8 @@ def combine_indices(result):
     Combine the indices from touching_windows results
     :param result: touching_windows results, each row is a pair of indices
     """
+    if len(result) == 0:
+        return np.array([], dtype=np.int)
     indices = []
     for r in result:
         indices.append(np.arange(r[0], r[1]))
@@ -517,6 +519,8 @@ def combine_indices_ref(result, areas, reference_areas):
     :param areas: areas of the peaks of the cooresponding indices
     :param reference_areas: reference areas to compare with for each pair of indices
     """
+    if len(result) == 0:
+        return np.array([], dtype=np.int), np.array([], dtype=np.int)
     if not hasattr(reference_areas, '__len__'):
         reference_areas = np.full(len(result), reference_areas)
     assert len(result) == len(reference_areas), ''\
