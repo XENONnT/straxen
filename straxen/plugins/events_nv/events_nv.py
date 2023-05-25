@@ -126,6 +126,10 @@ def veto_event_dtype(name_event_number: str = 'event_number_nv',
               (('Width (in ns) of the central 50% area of the peak', 'range_50p_area'), np.float32),
               (('Width (in ns) of the central 90% area of the peak', 'range_90p_area'), np.float32),
               (('Time between 10% and 50% area quantiles [ns]', 'rise_time'), np.float32),
+              (('Minimal amplitude-to-amplitude gap between neighboring hitlets [ns]', 'min_gap'),
+               np.int16),
+              (('Maximal amplitude-to-amplitude gap between neighboring hitlets [ns]',
+                'max_gap'), np.int16),
               ]
     return dtype
 
@@ -170,24 +174,29 @@ def compute_nveto_event_properties(events: np.ndarray,
         for nveto.
     """
     for e, (s_i, e_i) in zip(events, contained_hitlets_ids):
-        hitlet = hitlets[s_i:e_i]
-        event_area = np.sum(hitlet['area'])
+        hitlets_in_event = hitlets[s_i:e_i]
+        event_area = np.sum(hitlets_in_event['area'])
         e['area'] = event_area
-        e['n_hits'] = len(hitlet)
-        e['n_contributing_pmt'] = len(np.unique(hitlet['channel']))
+        e['n_hits'] = len(hitlets_in_event)
+        e['n_contributing_pmt'] = len(np.unique(hitlets_in_event['channel']))
 
-        t = hitlet['time'] - hitlet[0]['time']
+        t = hitlets_in_event['time'] - hitlets_in_event[0]['time']
+
+        dt = np.diff(hitlets_in_event['time'] + hitlets_in_event['time_amplitude'])
+        e['min_gap'] = np.min(dt)
+        e['max_gap'] = np.max(dt)
+
         if event_area:
-            e['center_time'] = np.sum(t * hitlet['area']) / event_area
+            e['center_time'] = np.sum(t * hitlets_in_event['area']) / event_area
             if e['n_hits'] > 1 and e['center_time']:
-                w = hitlet['area'] / e['area']  # normalized weights
+                w = hitlets_in_event['area'] / e['area']  # normalized weights
                 # Definition of variance
                 e['center_time_spread'] = np.sqrt(np.sum(w * np.power(t - e['center_time'], 2)) / np.sum(w))
             else:
                 e['center_time_spread'] = np.inf
 
         # Compute per channel properties:
-        for hit in hitlet:
+        for hit in hitlets_in_event:
             ch = hit['channel'] - start_channel
             e['area_per_channel'][ch] += hit['area']
 
