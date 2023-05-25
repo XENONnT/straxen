@@ -198,9 +198,28 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         loneS1_indices = base_indices[type_1_mask][lone_s1 & ~_mis_s1_mask]
         sloneS1_indices = base_indices[type_1_mask][lone_s1 & _mis_s1_mask]
         S1_indices = base_indices[type_1_mask][~lone_s1]
+        _no_lones1_ps2_max_indices =  _ps2_max_indices[~lone_s1]
+
         # sometimes the same pS2 can be paired up with multiple S1s
         # also need to make sure that the pS2_indices are sorted, but np.unique does that
-        _ps2_max_indices = np.unique(_ps2_max_indices[~lone_s1])
+        _ps2_max_indices = np.unique(_no_lones1_ps2_max_indices)
+        # if pS2 sits between an S1-pS2 pair, it is not a pS2
+        _peaks = np.zeros(len(_ps2_max_indices), dtype=strax.time_fields)
+        # peaks' times are the pS2s' times
+        _peaks['time'] = base_times[type_2_mask][_ps2_max_indices]
+        _peaks['endtime'] = _peaks['time'] + 1
+        _window = np.zeros(len(S1_indices), dtype=strax.time_fields)
+        # window's times are the S1s' times
+        _window['time'] = base_times[type_1_mask][~lone_s1]
+        # window's endtimes are the pS2s' times
+        _window['endtime'] = base_times[type_2_mask][_no_lones1_ps2_max_indices]
+        tw_s1_s2 = strax.touching_windows(_peaks, _window)
+        _not_pS2_indices = combine_indices(tw_s1_s2)
+        _pS2_base_indices = np.arange(len(_ps2_max_indices))
+        _are_pS2_indices = _pS2_base_indices[
+            ~np.isin(_pS2_base_indices, _not_pS2_indices)]
+        # update the pS2 indices, remove the ones that covered by S1-pS2 pair
+        _ps2_max_indices = _ps2_max_indices[_are_pS2_indices]
         pS2_indices = base_indices[type_2_mask][_ps2_max_indices]
 
         # limitation of window size
@@ -253,6 +272,8 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         _S1_small_s2s_thresholds = np.vstack(
             [
                 np.full(len(S1_containers), large_s2_threshold),
+                # here the areas are fractions of potential pS2s, but not the real pS2s
+                # because some pS2s are filtered out
                 other_large_s2_fac * ps2_area[~lone_s1],
             ]
         ).max(axis=0)
