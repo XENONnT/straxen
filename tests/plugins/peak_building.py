@@ -2,6 +2,7 @@
 from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 import numpy as np
 import strax
+from straxen.plugins.peaks.peak_subtyping import PeakSubtyping
 
 
 @PluginTestAccumulator.register('test_area_fraction_top')
@@ -66,6 +67,17 @@ def test_tight_coincidence(self: PluginTestCase):
     message = 'There might be some issue in tight_coincidence.'
     sum_tight_coincidence = np.sum(peaklets['tight_coincidence'])
     assert sum_tight_coincidence == 1992, message
+
+
+@PluginTestAccumulator.register('test_peak_subtyping')
+def test_peak_subtyping(self: PluginTestCase):
+    """Test whether PeaksSubtypes is correctly reconstructed"""
+    result = self.st.key_for(self.run_id, 'subtype_mask')
+    # check if there is any undefined peaks
+    n_undefined = (result['subtype'] == PeakSubtyping.Undefined).sum()
+    if n_undefined:
+        raise RuntimeError(f'We still find {n_undefined} peaks'\
+                           + ' undefined in PeaksSubtypes!')
 
 
 if __name__ == '__main__':
