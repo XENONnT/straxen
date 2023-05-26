@@ -131,6 +131,68 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         return 10 * max(self.s1_s2_window, self.after_s1_window_ext, self.after_s2_window_ext)
 
     @staticmethod
+    def pair_lone_s1_and_ps2(peaks, type_1_mask, type_2_mask, extension, large_s2_threshold):
+        # find S1-pS2 pairing
+        s1_window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
+        s1_window['time'] = peaks['center_time'][type_1_mask]
+        s1_window['endtime'] = s1_window['time'] + extension
+
+        s2_peaks = peaks[type_2_mask].copy()
+        # Only use center_time because we used center_time to define the drift time
+        s2_peaks['time'] = s2_peaks['center_time']
+        # touchng_windows needs non-zero length of things
+        s2_peaks['endtime'] = s2_peaks['time'] + 1
+
+        # Here the s1_window can be overlapping
+        tw_s1_ps2 = strax.touching_windows(s2_peaks, s1_window)
+        # Find index of max S2 of each group of S2s following S1
+        _ps2_max_indices = np.ones(len(s1_window), dtype=np.int32) * -1
+        for i, tw_12 in enumerate(tw_s1_ps2):
+            if tw_12[1] - tw_12[0] == 0:
+                continue
+            else:
+                # do we have pS2 or a bunch of small S2s
+                index_s2_with_max_area = np.argmax(
+                    s2_peaks['area'][tw_12[0]:tw_12[1]]) + tw_12[0]
+                _ps2_max_indices[i] = index_s2_with_max_area
+        _no_pS2_mask = (_ps2_max_indices == -1)
+        ps2_area = s2_peaks['area'][_ps2_max_indices]
+        # if there is no pS2, set the area to be nan
+        ps2_area[_no_pS2_mask] = np.nan
+
+        # identify the loneS1, S1 and potential misclassified SE,
+        # if the S2 is not large enough to be a pS2
+        _large_ps2_mask = ps2_area >= large_s2_threshold
+        # if the S1 is a lone S1, it has no pS2 or no large enough pS2
+        lone_S1_mask = _no_pS2_mask | ~_large_ps2_mask
+        max_areas_after_S1 = ps2_area[~lone_S1_mask]
+
+        # sometimes the same pS2 can be paired up with multiple S1s
+        _no_lones1_ps2_max_indices = _ps2_max_indices[~lone_S1_mask]
+        # also need to make sure that the pS2_indices are sorted, but np.unique does that
+        _ps2_max_indices = np.unique(_no_lones1_ps2_max_indices)
+
+        # if pS2 sits between an S1-pS2 pair, it is not a pS2!
+        _ps2_peaks = np.zeros(len(_ps2_max_indices), dtype=strax.time_fields)
+        # peaks' times are the pS2s' times
+        _ps2_peaks['time'] = s2_peaks['time'][_ps2_max_indices]
+        _ps2_peaks['endtime'] = _ps2_peaks['time'] + 1
+        _window = np.zeros((~lone_S1_mask).sum(), dtype=strax.time_fields)
+        # window's times are the S1s' times
+        _window['time'] = s1_window['time'][~lone_S1_mask]
+        # window's endtimes are the pS2s' times
+        _window['endtime'] = s2_peaks['time'][_no_lones1_ps2_max_indices]
+        tw_s1_ps2 = strax.touching_windows(_ps2_peaks, _window)
+        _not_pS2_indices = combine_indices(tw_s1_ps2)
+        _pS2_base_indices = np.arange(len(_ps2_max_indices))
+        _are_pS2_indices = _pS2_base_indices[
+            ~np.isin(_pS2_base_indices, _not_pS2_indices)]
+
+        # update the pS2 indices, remove the ones that covered by S1-pS2 pair
+        pS2_indices = _ps2_max_indices[_are_pS2_indices]
+        return lone_S1_mask, max_areas_after_S1, pS2_indices
+
+    @staticmethod
     def mark_peaks_after_s1s(
         peaks, subtype_dtype,
         mis_s2_threshold, large_s2_threshold, other_large_s2_fac,
@@ -155,74 +217,27 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         type_1_mask = (peaks['type'] == 1)
         type_2_mask = (peaks['type'] == 2)
 
-        _s1_area = peaks['area'][type_1_mask]
-        _s2_area = peaks['area'][type_2_mask]
-
         base_times = peaks['center_time']
         base_areas = peaks['area']
         base_indices = np.arange(len(peaks))
 
-        # find S1-pS2 pairing
-        _s2_peaks = peaks[type_2_mask].copy()
-        # Only use center_time because we used center_time to define the drift time
-        _s2_peaks['time'] = _s2_peaks['center_time']
-        # touchng_windows needs non-zero length of things
-        _s2_peaks['endtime'] = _s2_peaks['time'] + 1
+        lone_S1_mask, max_areas_after_S1, pS2_indices = PeaksSubtypes.pair_lone_s1_and_ps2(
+            peaks, type_1_mask, type_2_mask, s1_s2_window, large_s2_threshold)
 
-        _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
-        _window['time'] = peaks['center_time'][type_1_mask]
-        _window['endtime'] = _window['time'] + s1_s2_window
-        # Here the _window can be overlapping
-        tw_s1_ps2 = strax.touching_windows(_s2_peaks, _window)
+        # get indices of pS2, loneS1, sloneS1, S1
+        pS2_indices = base_indices[type_2_mask][pS2_indices]
 
-        # Find index of max S2 of each group of S2s following S1
-        _ps2_max_indices = np.ones(len(_window), dtype=np.int32) * -1
-        for i, tw_12 in enumerate(tw_s1_ps2):
-            if tw_12[1] - tw_12[0] == 0:
-                continue
-            else:
-                # do we have pS2 or a bunch of small S2s
-                index_s2_with_max_area = np.argmax(_s2_area[tw_12[0]:tw_12[1]]) + tw_12[0]
-                _ps2_max_indices[i] = index_s2_with_max_area
-        _no_pS2_mask = (_ps2_max_indices == -1)
-        ps2_area = _s2_area[_ps2_max_indices]
-        # if there is no pS2, set the area to be nan
-        ps2_area[_no_pS2_mask] = np.nan
-
-        # identify the loneS1, S1 and potential misclassified SE,
-        # if the S2 is not large enough to be a pS2
-        _large_ps2_mask = ps2_area >= large_s2_threshold
-        # if the S1 is a lone S1, it has no pS2 or no large enough pS2
-        lone_s1 = _no_pS2_mask | ~_large_ps2_mask
         # if the S1 is a misclassified S2
-        _mis_s1_mask = _s1_area < mis_s2_threshold
+        _mis_s1_mask = peaks['area'][type_1_mask] < mis_s2_threshold
         # get indices of loneS1, sloneS2, S1, pS2
-        loneS1_indices = base_indices[type_1_mask][lone_s1 & ~_mis_s1_mask]
-        sloneS1_indices = base_indices[type_1_mask][lone_s1 & _mis_s1_mask]
-        S1_indices = base_indices[type_1_mask][~lone_s1]
+        loneS1_indices = base_indices[type_1_mask][lone_S1_mask & ~_mis_s1_mask]
+        sloneS1_indices = base_indices[type_1_mask][lone_S1_mask & _mis_s1_mask]
+        S1_indices = base_indices[type_1_mask][~lone_S1_mask]
 
-        # sometimes the same pS2 can be paired up with multiple S1s
-        _no_lones1_ps2_max_indices = _ps2_max_indices[~lone_s1]
-        # also need to make sure that the pS2_indices are sorted, but np.unique does that
-        _ps2_max_indices = np.unique(_no_lones1_ps2_max_indices)
-        # if pS2 sits between an S1-pS2 pair, it is not a pS2
-        _ps2_peaks = np.zeros(len(_ps2_max_indices), dtype=strax.time_fields)
-        # peaks' times are the pS2s' times
-        _ps2_peaks['time'] = base_times[type_2_mask][_ps2_max_indices]
-        _ps2_peaks['endtime'] = _ps2_peaks['time'] + 1
-        _window = np.zeros(len(S1_indices), dtype=strax.time_fields)
-        # window's times are the S1s' times
-        _window['time'] = base_times[type_1_mask][~lone_s1]
-        # window's endtimes are the pS2s' times
-        _window['endtime'] = base_times[type_2_mask][_no_lones1_ps2_max_indices]
-        tw_s1_ps2 = strax.touching_windows(_ps2_peaks, _window)
-        _not_pS2_indices = combine_indices(tw_s1_ps2)
-        _pS2_base_indices = np.arange(len(_ps2_max_indices))
-        _are_pS2_indices = _pS2_base_indices[
-            ~np.isin(_pS2_base_indices, _not_pS2_indices)]
-        # update the pS2 indices, remove the ones that covered by S1-pS2 pair
-        _ps2_max_indices = _ps2_max_indices[_are_pS2_indices]
-        pS2_indices = base_indices[type_2_mask][_ps2_max_indices]
+        _peaks = peaks.copy()
+        _peaks['time'] = _peaks['center_time']
+        # touchng_windows needs non-zero length of things
+        _peaks['endtime'] = _peaks['time'] + 1
 
         # limitation of window size
         # when we see a leading peak who can cause the correlation,
@@ -238,57 +253,32 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
 
         # containers triggered by each leading peaks
         # here we start to divide the time line by non-overlapping containers
-        loneS1_containers = limited_containers(
-            base_times[loneS1_indices], after_s1_window_ext, limitation)
-        sloneS1_containers = limited_containers(
-            base_times[sloneS1_indices], after_s1_window_ext, limitation)
-        S1_containers = limited_containers(
-            base_times[S1_indices], s1_s2_window, limitation)
-        pS2_containers = limited_containers(
-            base_times[pS2_indices], after_s2_window_ext, limitation)
-
-        _peaks = peaks.copy()
-        _peaks['time'] = _peaks['center_time']
-        # touchng_windows needs non-zero length of things
-        _peaks['endtime'] = _peaks['time'] + 1
-
         # assign loneS1's & sloneS1's following peaks
-        tw_after_s1 = strax.touching_windows(_peaks, loneS1_containers)
-        S1PH_indices = combine_indices(tw_after_s1)
+        S1PH_indices = find_indices_after(
+            base_times[loneS1_indices], _peaks, after_s1_window_ext, limitation)
         mask[S1PH_indices] = PeakSubtyping.S1PH
-        tw_after_s1 = strax.touching_windows(_peaks, sloneS1_containers)
-        slS1PH_indices = combine_indices(tw_after_s1)
+        slS1PH_indices = find_indices_after(
+            base_times[sloneS1_indices], _peaks, after_s1_window_ext, limitation)
         mask[slS1PH_indices] = PeakSubtyping.slS1PH
 
         # assign S1's following peaks
-        tw_after_s1_before_ps2 = strax.touching_windows(_peaks, S1_containers)
-        _S1_small_s2s_thresholds = np.vstack(
-            [
-                np.full(len(S1_containers), large_s2_threshold),
-                # here the areas are fractions of potential pS2s, but not the real pS2s
-                # because some pS2s are filtered out
-                other_large_s2_fac * ps2_area[~lone_s1],
-            ]
-        ).max(axis=0)
-        S1PH_indices, S1olS2_indices = combine_indices_ref(
-            tw_after_s1_before_ps2, base_areas, _S1_small_s2s_thresholds)
+        # here the areas are fractions of potential pS2s, but not the real pS2s
+        # because some pS2s are filtered out
+        S1PH_indices, S1olS2_indices = find_indices_after_ref(
+            base_times[S1_indices], peaks, s1_s2_window,
+            limitation, large_s2_threshold, other_large_s2_fac * max_areas_after_S1)
         mask[S1PH_indices] = PeakSubtyping.S1PH
         mask[S1olS2_indices] = PeakSubtyping.S1olS2
 
+        max_areas_after_pS2 = base_areas[pS2_indices]
         # assign pS2's following peaks
-        tw_after_s1_after_ps2 = strax.touching_windows(_peaks, pS2_containers)
-        _pS2_small_s2s_thresholds = np.vstack(
-            [
-                np.full(len(pS2_containers), large_s2_threshold),
-                other_large_s2_fac * _s2_area[_ps2_max_indices],
-            ]
-        ).max(axis=0)
-        S2PH_indices, S2olS2_indices = combine_indices_ref(
-            tw_after_s1_after_ps2, base_areas, _pS2_small_s2s_thresholds)
+        S2PH_indices, S2olS2_indices = find_indices_after_ref(
+            base_times[pS2_indices], peaks, after_s2_window_ext,
+            limitation, large_s2_threshold, other_large_s2_fac * max_areas_after_pS2)
         mask[S2PH_indices] = PeakSubtyping.S2PH
         mask[S2olS2_indices] = PeakSubtyping.S2olS2
 
-        # assign loneS1, S1, sloneS2, pS2
+        # assign loneS1, sloneS1, S1, pS2
         mask[loneS1_indices] = PeakSubtyping.loneS1
         mask[sloneS1_indices] = PeakSubtyping.sloneS1
         mask[S1_indices] = PeakSubtyping.S1
@@ -303,7 +293,8 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         '''
         After marking all peaks after S1s, all that's left are S2s.
         One extra occasion is the fakeS2.
-        If a small S2 is identified and a pS2 can be paired up with it, such small S2 is marked fakeS2.
+        If a small S2 is identified and a pS2 can be paired up with it,
+        such small S2 is marked fakeS2.
         '''
         # prepare for referred variables
         mask = np.ones(len(peaks), dtype=subtype_dtype) * PeakSubtyping.Undefined
@@ -325,7 +316,8 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
 
         # fakeS2s should not live within after_s2_window_ext after a large S2
         fakeS2_containers = limited_containers(
-            base_times[_ps2_mask], s1_s2_window, base_times[_ps2_mask] + after_s2_window_ext, forward=False)
+            base_times[_ps2_mask], s1_s2_window,
+            base_times[_ps2_mask] + after_s2_window_ext, forward=False)
 
         tw_fakes2_ps2 = strax.touching_windows(_fakes2_peaks, fakeS2_containers)
 
@@ -338,65 +330,12 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         type_1_mask = _fakes2_mask & np.isin(np.arange(len(peaks)), _fakes2_indices)
         type_2_mask = ~type_1_mask
 
-        _s2_area = peaks['area'][type_2_mask]
+        lone_fakeS2_mask, max_areas_after_fakeS2, pS2_indices = PeaksSubtypes.pair_lone_s1_and_ps2(
+            peaks, type_1_mask, type_2_mask, s1_s2_window, large_s2_threshold)
 
-        # find fakeS2-pS2 pairing
-        _s2_peaks = peaks[type_2_mask].copy()
-        # Only use center_time because we used center_time to define the drift time
-        _s2_peaks['time'] = _s2_peaks['center_time']
-        # touchng_windows needs non-zero length of things
-        _s2_peaks['endtime'] = _s2_peaks['time'] + 1
-
-        _window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
-        _window['time'] = peaks['center_time'][type_1_mask]
-        _window['endtime'] = _window['time'] + s1_s2_window
-        # Here the _window can be overlapping
-        tw_fakes2_ps2 = strax.touching_windows(_s2_peaks, _window)
-
-        # Find index of max S2 of each group of S2s following fakeS2
-        _ps2_max_indices = np.ones(len(_window), dtype=np.int32) * -1
-        for i, tw_22 in enumerate(tw_fakes2_ps2):
-            if tw_22[1] - tw_22[0] == 0:
-                continue
-            else:
-                # do we have pS2 or a bunch of small S2s
-                index_s2_with_max_area = np.argmax(_s2_area[tw_22[0]:tw_22[1]]) + tw_22[0]
-                _ps2_max_indices[i] = index_s2_with_max_area
-        _no_pS2_mask = (_ps2_max_indices == -1)
-        ps2_area = _s2_area[_ps2_max_indices]
-        # if there is no pS2, set the area to be nan
-        ps2_area[_no_pS2_mask] = np.nan
-
-        # identify the lonepS2,
-        # if the S2 is not large enough to be a pS2
-        _large_ps2_mask = ps2_area >= large_s2_threshold
-        # if the pS2 is a lone pS2, it has no pS2 or no large enough pS2
-        lone_fakes2 = _no_pS2_mask | ~_large_ps2_mask
-        # get indices of fakeS2, pS2
-        fakeS2_indices = base_indices[type_1_mask][~lone_fakes2]
-
-        # sometimes the same pS2 can be paired up with multiple fakeS2s
-        _no_lones1_ps2_max_indices = _ps2_max_indices[~lone_fakes2]
-        # also need to make sure that the pS2_indices are sorted, but np.unique does that
-        _ps2_max_indices = np.unique(_no_lones1_ps2_max_indices)
-        # if pS2 sits between an S1-pS2 pair, it is not a pS2
-        _ps2_peaks = np.zeros(len(_ps2_max_indices), dtype=strax.time_fields)
-        # peaks' times are the pS2s' times
-        _ps2_peaks['time'] = base_times[type_2_mask][_ps2_max_indices]
-        _ps2_peaks['endtime'] = _ps2_peaks['time'] + 1
-        _window = np.zeros(len(fakeS2_indices), dtype=strax.time_fields)
-        # window's times are the S1s' times
-        _window['time'] = base_times[type_1_mask][~lone_fakes2]
-        # window's endtimes are the pS2s' times
-        _window['endtime'] = base_times[type_2_mask][_no_lones1_ps2_max_indices]
-        tw_s1_ps2 = strax.touching_windows(_ps2_peaks, _window)
-        _not_pS2_indices = combine_indices(tw_s1_ps2)
-        _pS2_base_indices = np.arange(len(_ps2_max_indices))
-        _are_pS2_indices = _pS2_base_indices[
-            ~np.isin(_pS2_base_indices, _not_pS2_indices)]
-        # update the pS2 indices, remove the ones that covered by S1-pS2 pair
-        _ps2_max_indices = _ps2_max_indices[_are_pS2_indices]
-        pS2_indices = base_indices[type_2_mask][_ps2_max_indices]
+        # get indices of pS2, loneS1, sloneS1, S1
+        pS2_indices = base_indices[type_2_mask][pS2_indices]
+        fakeS2_indices = base_indices[type_1_mask][~lone_fakeS2_mask]
         assert np.all(base_areas[pS2_indices] > large_s2_threshold)
 
         # limitation of window size
@@ -409,52 +348,33 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
             ]
         ))
 
-        # containers triggered by each leading peaks
-        # here we start to divide the time line by non-overlapping containers
-        fakeS2_containers = limited_containers(
-            base_times[fakeS2_indices], s1_s2_window, limitation)
-        pS2_containers = limited_containers(
-            base_times[pS2_indices], after_s2_window_ext, limitation)
-
         _peaks = peaks.copy()
         _peaks['time'] = _peaks['center_time']
         # touchng_windows needs non-zero length of things
         _peaks['endtime'] = _peaks['time'] + 1
 
         # assign fakeS2's following peaks
-        tw_after_fakes2_before_s2 = strax.touching_windows(_peaks, fakeS2_containers)
-        _fakeS2_small_s2s_thresholds = np.vstack(
-            [
-                np.full(len(fakeS2_containers), large_s2_threshold),
-                other_large_s2_fac * ps2_area[~lone_fakes2],
-            ]
-        ).max(axis=0)
-        fakeS2_PH_indices, fakeS2_olS2_indices = combine_indices_ref(
-            tw_after_fakes2_before_s2, base_areas, _fakeS2_small_s2s_thresholds)
+        fakeS2_PH_indices, fakeS2_olS2_indices = find_indices_after_ref(
+            base_times[fakeS2_indices], peaks, s1_s2_window,
+            limitation, large_s2_threshold, other_large_s2_fac * max_areas_after_fakeS2)
         mask[fakeS2_PH_indices] = PeakSubtyping.fakeS2_PH
         mask[fakeS2_olS2_indices] = PeakSubtyping.fakeS2_olS2
 
+        max_areas_after_pS2 = base_areas[pS2_indices]
         # assign pS2's following peaks
-        tw_after_fakes2_after_s2 = strax.touching_windows(_peaks, pS2_containers)
-        _pS2_small_s2s_thresholds = np.vstack(
-            [
-                np.full(len(pS2_containers), large_s2_threshold),
-                other_large_s2_fac * _s2_area[_ps2_max_indices],
-            ]
-        ).max(axis=0)
-        S2PH_indices, S2olS2_indices = combine_indices_ref(
-            tw_after_fakes2_after_s2, base_areas, _pS2_small_s2s_thresholds)
+        S2PH_indices, S2olS2_indices = find_indices_after_ref(
+            base_times[pS2_indices], peaks, after_s2_window_ext,
+            limitation, large_s2_threshold, other_large_s2_fac * max_areas_after_pS2)
         mask[S2PH_indices] = PeakSubtyping.S2PH
         mask[S2olS2_indices] = PeakSubtyping.S2olS2
 
         # what else? undefined large peaks are lonepS2
         lonepS2_indices = (mask == PeakSubtyping.Undefined) & _ps2_mask
-        lonepS2_containers = limited_containers(
-            base_times[lonepS2_indices], after_s2_window_ext, limitation)
+
         # assign lonepS2's following peaks
-        tw_after_loneps2 = strax.touching_windows(_peaks, lonepS2_containers)
-        S2PH_indices, S2olS2_indices = combine_indices_ref(
-            tw_after_loneps2, base_areas, large_s2_threshold)
+        S2PH_indices, S2olS2_indices = find_indices_after_ref(
+            base_times[lonepS2_indices], peaks, after_s2_window_ext,
+            limitation, large_s2_threshold, large_s2_threshold)
         mask[S2PH_indices] = PeakSubtyping.S2PH
         mask[S2olS2_indices] = PeakSubtyping.S2olS2
 
@@ -470,6 +390,8 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
 
     def compute(self, peaks):
         # Sort the peaks first by center_time
+        # but remember the original order
+        argsort = np.argsort(peaks['center_time'])
         peaks = np.sort(peaks, order='center_time')
 
         result = np.zeros(len(peaks), self.dtype)
@@ -497,9 +419,39 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
             self.s1_s2_window, self.after_s2_window_ext)
 
         # sort the result by time
-        result = np.sort(result, order='time')
+        _result = result.copy()
+        result[argsort] = _result
 
         return result
+
+
+def find_indices_after(anchor, peaks, extension, limitation):
+    containers = limited_containers(
+        anchor, extension, limitation)
+    indices_widows = strax.touching_windows(peaks, containers)
+    peaks_indices = combine_indices(indices_widows)
+    return peaks_indices
+
+
+def find_indices_after_ref(
+        anchor, peaks, extension, 
+        limitation, common_threshold, reference_areas):
+    # assign S1's following peaks
+    containers = limited_containers(
+        anchor, extension, limitation)
+    if not hasattr(reference_areas, '__len__'):
+        reference_areas = np.full(len(anchor), reference_areas)
+    else:
+        reference_areas = np.vstack(
+            [
+                np.full(len(containers), common_threshold),
+                reference_areas,
+            ]
+        ).max(axis=0)
+    indices_widows = strax.touching_windows(peaks, containers)
+    small_indices, large_indices = combine_indices_ref(
+        indices_widows, peaks['area'], reference_areas)
+    return small_indices, large_indices
 
 
 def limited_containers(anchor, length, limitation, forward=True):
