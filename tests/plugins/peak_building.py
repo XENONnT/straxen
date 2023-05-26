@@ -72,7 +72,7 @@ def test_tight_coincidence(self: PluginTestCase):
 @PluginTestAccumulator.register('test_peak_subtyping')
 def test_peak_subtyping(self: PluginTestCase):
     """Test whether PeaksSubtypes is correctly reconstructed"""
-    result = self.st.key_for(self.run_id, 'subtype_mask')
+    result = self.st.get_array(self.run_id, 'subtype_mask')
     # check if there is any undefined peaks
     n_undefined = (result['subtype'] == PeakSubtyping.Undefined).sum()
     if n_undefined:
