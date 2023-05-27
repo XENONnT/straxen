@@ -45,8 +45,8 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
       https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_dictionary
 
     Note: 
-      In this plugin, the timing of peak is only defined by their center_time.
-      And the length of peaks are zero.
+      In this plugin, the timing of peak is only defined by their center_time
+      And the length of peaks are zero
     """
 
     __version__ = '0.2.1'
@@ -131,7 +131,17 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         return 10 * max(self.s1_s2_window, self.after_s1_window_ext, self.after_s2_window_ext)
 
     @staticmethod
-    def pair_lone_s1_and_ps2(peaks, type_1_mask, type_2_mask, extension, large_s2_threshold):
+    def pair_s1_and_ps2(peaks, type_1_mask, type_2_mask, extension, large_s2_threshold):
+        """
+        Pair S1s and pS2s, and return the mask of loneS1s and pS2s' indices
+        Search for pS2s after S1 in extension-size window after S1
+        Also pS2 should not leave between other S1-pS2 pairs
+        :param peaks: peaks waiting for calculation
+        :param type_1_mask: S1 mask in peaks
+        :param type_2_mask: S2 mask in peaks
+        :param extension: window size of S1-pS2 pairing
+        :param large_s2_threshold: threshold to identify as a valid pS2
+        """
         # find S1-pS2 pairing
         s1_window = np.zeros(type_1_mask.sum(), dtype=strax.time_fields)
         s1_window['time'] = peaks['center_time'][type_1_mask]
@@ -177,12 +187,12 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         # peaks' times are the pS2s' times
         _ps2_peaks['time'] = s2_peaks['time'][_ps2_max_indices]
         _ps2_peaks['endtime'] = _ps2_peaks['time'] + 1
-        _window = np.zeros((~lone_S1_mask).sum(), dtype=strax.time_fields)
+        _s1_ps2_window = np.zeros((~lone_S1_mask).sum(), dtype=strax.time_fields)
         # window's times are the S1s' times
-        _window['time'] = s1_window['time'][~lone_S1_mask]
+        _s1_ps2_window['time'] = s1_window['time'][~lone_S1_mask]
         # window's endtimes are the pS2s' times
-        _window['endtime'] = s2_peaks['time'][_no_lones1_ps2_max_indices]
-        tw_s1_ps2 = strax.touching_windows(_ps2_peaks, _window)
+        _s1_ps2_window['endtime'] = s2_peaks['time'][_no_lones1_ps2_max_indices]
+        tw_s1_ps2 = strax.touching_windows(_ps2_peaks, _s1_ps2_window)
         _not_pS2_indices = combine_indices(tw_s1_ps2)
         _pS2_base_indices = np.arange(len(_ps2_max_indices))
         _are_pS2_indices = _pS2_base_indices[
@@ -221,7 +231,7 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         base_areas = peaks['area']
         base_indices = np.arange(len(peaks))
 
-        lone_S1_mask, max_areas_after_S1, pS2_indices = PeaksSubtypes.pair_lone_s1_and_ps2(
+        lone_S1_mask, max_areas_after_S1, pS2_indices = PeaksSubtypes.pair_s1_and_ps2(
             peaks, type_1_mask, type_2_mask, s1_s2_window, large_s2_threshold)
 
         # get indices of pS2, loneS1, sloneS1, S1
@@ -292,7 +302,7 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         s1_s2_window, after_s2_window_ext):
         '''
         After marking all peaks after S1s, all that's left are S2s.
-        One extra occasion is the fakeS2.
+        But one extra occasion is the fakeS2.
         If a small S2 is identified and a pS2 can be paired up with it,
         such small S2 is marked fakeS2.
         '''
@@ -330,7 +340,7 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
         type_1_mask = _fakes2_mask & np.isin(np.arange(len(peaks)), _fakes2_indices)
         type_2_mask = ~type_1_mask
 
-        lone_fakeS2_mask, max_areas_after_fakeS2, pS2_indices = PeaksSubtypes.pair_lone_s1_and_ps2(
+        lone_fakeS2_mask, max_areas_after_fakeS2, pS2_indices = PeaksSubtypes.pair_s1_and_ps2(
             peaks, type_1_mask, type_2_mask, s1_s2_window, large_s2_threshold)
 
         # get indices of pS2, loneS1, sloneS1, S1
@@ -426,6 +436,13 @@ class PeaksSubtypes(strax.OverlapWindowPlugin):
 
 
 def find_indices_after(anchor, peaks, extension, limitation):
+    """
+    Get indices of peaks within the limited containers
+    :param anchor: start time of the window
+    :param peaks: peaks with unknown subtypes
+    :param extension: max length of the window
+    :param limitation: no window can extend after it meets the limitation
+    """
     containers = limited_containers(
         anchor, extension, limitation)
     indices_widows = strax.touching_windows(peaks, containers)
@@ -436,6 +453,17 @@ def find_indices_after(anchor, peaks, extension, limitation):
 def find_indices_after_ref(
         anchor, peaks, extension, 
         limitation, common_threshold, reference_areas):
+    """
+    Get indices of peaks within the limited containers.
+    Return small and large peaks separately
+    :param anchor: start time of the window
+    :param peaks: peaks with unknown subtypes
+    :param extension: max length of the window
+    :param limitation: no window can extend after it meets the limitation
+    :param common_threshold: common thresholds for all windows
+    :param reference_areas: specified threshold for each window,
+        when common_threshold is less than reference_area, use reference_area
+    """
     # assign S1's following peaks
     containers = limited_containers(
         anchor, extension, limitation)
@@ -456,7 +484,7 @@ def find_indices_after_ref(
 
 def limited_containers(anchor, length, limitation, forward=True):
     """
-    Build container given anchor, length and limitation of end time.
+    Build container given anchor, length and limitation of end time
     The retuned containers should not be overlapping
     :param anchor: sorted array of interval anchor points
     :param length: length of each interval, len(anchor) == len(length)
@@ -535,9 +563,9 @@ def combine_indices(result):
 
 def combine_indices_ref(result, areas, reference_areas):
     """
-    Combine the indices from touching_windows results, based on the areas.
+    Combine the indices from touching_windows results, based on the areas
     If the areas larger than the reference areas, combine them into large_indices,
-    if not, combine them into small_indices.
+    if not, combine them into small_indices
     :param result: touching_windows results, each row is a pair of indices
     :param areas: areas of the peaks of the cooresponding indices
     :param reference_areas: reference areas to compare with for each pair of indices
