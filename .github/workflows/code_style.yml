@@ -19,7 +19,7 @@ jobs:
         run: |
              bash .github/scripts/pre_pyflakes.sh
       - name: Set up Python
-        uses: actions/setup-python@v4.6.0
+        uses: actions/setup-python@v4.6.1
         with:
           python-version: 3.8
       - name: patch reviewdog
