@@ -6,13 +6,13 @@ export, __all__ = strax.exporter()
 
 
 @export
-class EventAreaPerChannel(strax.LoopPlugin):
+class EventWaveform(strax.LoopPlugin):
     """
-    Simple plugin that provides area per channel for main and alternative S1/S2 in the event. 
+    Simple plugin that provides total (data) and top (data_top) waveforms for main and alternative S1/S2 in the event. 
     """
     depends_on = ('event_basics', 'peaks')
-    provides = "event_area_per_channel"
-    __version__ = '0.0.3'
+    provides = "event_waveform"
+    __version__ = '0.0.1'
 
     compressor = 'zstd'
     save_when = strax.SaveWhen.EXPLICIT
@@ -29,11 +29,13 @@ class EventAreaPerChannel(strax.LoopPlugin):
                     'alt_s2': 'alternative S2',
                    }
         dtype = []
-        # populating APC
+        # populating waveform samples
         ptypes = ['s1', 's2', 'alt_s1', 'alt_s2']
         for type_ in ptypes:
-            dtype +=[((f'Area per channel for {infoline[type_]}', f'{type_}_area_per_channel'),
-                     pfields_['area_per_channel'][0])]
+            dtype +=[((f'Waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data'),
+                     pfields_['data'][0])]
+            dtype +=[((f'Top waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data_top'),
+                     pfields_['data_top'][0])]
             dtype +=[((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),
                      pfields_['length'][0])]
             dtype +=[((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),
@@ -58,8 +60,9 @@ class EventAreaPerChannel(strax.LoopPlugin):
             type_index = event[f'{type_}_index']
             if type_index != -1:
                 type_area_per_channel = peaks['area_per_channel'][type_index]
-                result[f'{type_}_area_per_channel'] = type_area_per_channel
                 result[f'{type_}_length'] = peaks['length'][type_index]
+                result[f'{type_}_data'] = peaks['data'][type_index]
+                result[f'{type_}_data_top'] = peaks['data_top'][type_index]
                 result[f'{type_}_dt'] = peaks['dt'][type_index]
                 if type_ == 's1':
                     result['s1_n_channels'] = len(type_area_per_channel[type_area_per_channel > 0])
