@@ -8,8 +8,9 @@ export, __all__ = strax.exporter()
 @export
 class EventAreaPerChannel(strax.LoopPlugin):
     """
-    Simple plugin that provides area per channel for main and alternative S1/S2 in the event. 
+    Simple plugin that provides area per channel for main and alternative S1/S2 in the event.
     """
+    
     depends_on = ('event_basics', 'peaks')
     provides = "event_area_per_channel"
     __version__ = '0.0.3'
@@ -21,10 +22,10 @@ class EventAreaPerChannel(strax.LoopPlugin):
 
     def infer_dtype(self):
         # setting data type from peak dtype
-        pfields_=self.deps['peaks'].dtype_for('peaks').fields
+        pfields_ = self.deps['peaks'].dtype_for('peaks').fields
         # populating data type
-        infoline = {'s1': 'main S1', 
-                    's2': 'main S2', 
+        infoline = {'s1': 'main S1',
+                    's2': 'main S2',
                     'alt_s1': 'alternative S1',
                     'alt_s2': 'alternative S2',
                    }
@@ -32,11 +33,11 @@ class EventAreaPerChannel(strax.LoopPlugin):
         # populating APC
         ptypes = ['s1', 's2', 'alt_s1', 'alt_s2']
         for type_ in ptypes:
-            dtype +=[((f'Area per channel for {infoline[type_]}', f'{type_}_area_per_channel'),
+            dtype += [((f'Area per channel for {infoline[type_]}', f'{type_}_area_per_channel'),
                      pfields_['area_per_channel'][0])]
-            dtype +=[((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),
+            dtype += [((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),
                      pfields_['length'][0])]
-            dtype +=[((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),
+            dtype += [((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),
                      pfields_['dt'][0])]
         # populating S1 n channel properties
         dtype += [(("Main S1 count of contributing PMTs", "s1_n_channels"),
@@ -50,7 +51,7 @@ class EventAreaPerChannel(strax.LoopPlugin):
         return dtype
 
     def compute_loop(self, event, peaks):
-        result = dict()
+        result = {}
         result['time'] = event['time']
         result['endtime'] = strax.endtime(event)
 

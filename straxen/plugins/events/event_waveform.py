@@ -8,7 +8,8 @@ export, __all__ = strax.exporter()
 @export
 class EventWaveform(strax.LoopPlugin):
     """
-    Simple plugin that provides total (data) and top (data_top) waveforms for main and alternative S1/S2 in the event. 
+    Simple plugin that provides total (data) and top (data_top) waveforms for 
+    main and alternative S1/S2 in the event.
     """
     depends_on = ('event_basics', 'peaks')
     provides = "event_waveform"
@@ -21,10 +22,10 @@ class EventWaveform(strax.LoopPlugin):
 
     def infer_dtype(self):
         # setting data type from peak dtype
-        pfields_=self.deps['peaks'].dtype_for('peaks').fields
+        pfields_ = self.deps['peaks'].dtype_for('peaks').fields
         # populating data type
-        infoline = {'s1': 'main S1', 
-                    's2': 'main S2', 
+        infoline = {'s1': 'main S1',
+                    's2': 'main S2',
                     'alt_s1': 'alternative S1',
                     'alt_s2': 'alternative S2',
                    }
@@ -32,13 +33,13 @@ class EventWaveform(strax.LoopPlugin):
         # populating waveform samples
         ptypes = ['s1', 's2', 'alt_s1', 'alt_s2']
         for type_ in ptypes:
-            dtype +=[((f'Waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data'),
+            dtype += [((f'Waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data'),
                      pfields_['data'][0])]
-            dtype +=[((f'Top waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data_top'),
+            dtype += [((f'Top waveform for {infoline[type_]} [ PE / sample ]', f'{type_}_data_top'),
                      pfields_['data_top'][0])]
-            dtype +=[((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),
+            dtype += [((f'Length of the interval in samples for {infoline[type_]}', f'{type_}_length'),
                      pfields_['length'][0])]
-            dtype +=[((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),
+            dtype += [((f'Width of one sample for {infoline[type_]} [ns]', f'{type_}_dt'),
                      pfields_['dt'][0])]
         # populating S1 n channel properties
         dtype += [(("Main S1 count of contributing PMTs", "s1_n_channels"),
@@ -52,7 +53,7 @@ class EventWaveform(strax.LoopPlugin):
         return dtype
 
     def compute_loop(self, event, peaks):
-        result = dict()
+        result = {}
         result['time'] = event['time']
         result['endtime'] = strax.endtime(event)
 
