@@ -9,6 +9,12 @@ import straxen
 
 export, __all__ = strax.exporter()
 
+from strax.dtypes import interval_dtype
+small_hit_dtype = interval_dtype + [
+    (('Time of index of the maximum sample for hits',
+        'max_time'), np.int64),
+]
+
 
 @export
 class Peaklets(strax.Plugin):
@@ -32,13 +38,14 @@ class Peaklets(strax.Plugin):
     extension overlaps with any peaks or other hits.
     """
     depends_on = ('records',)
-    provides = ('peaklets', 'lone_hits')
+    provides = ('peaklets', 'lone_hits', 'small_hits')
     data_kind = dict(peaklets='peaklets',
-                     lone_hits='lone_hits')
+                     lone_hits='lone_hits',
+                     small_hits='small_hits')
     parallel = 'process'
     compressor = 'zstd'
 
-    __version__ = '1.1.0'
+    __version__ = '1.2.0'
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False,
@@ -147,6 +154,12 @@ class Peaklets(strax.Plugin):
              'which means we are using cmt.'
     )
 
+    small_n_hits_threshold = straxen.URLConfig(
+        default=4,
+        type=int,
+        help='Largest number of hits in peaklets to be considered as small hits.'
+    )
+
     def infer_dtype(self):
         return dict(
             peaklets=strax.peak_dtype(
@@ -154,6 +167,7 @@ class Peaklets(strax.Plugin):
                 digitize_top=self.sum_waveform_top_array,
             ),
             lone_hits=strax.hit_dtype,
+            small_hits=small_hit_dtype,
         )
 
     def setup(self):
@@ -309,8 +323,15 @@ class Peaklets(strax.Plugin):
 
         # Update nhits of peaklets:
         counts = strax.touching_windows(hitlets, peaklets)
-        counts = np.diff(counts, axis=1).flatten()
-        peaklets['n_hits'] = counts
+        peaklets['n_hits'] = np.diff(counts, axis=1).flatten()
+
+        # Save the minimum necessary information of small hits
+        small_hits_indices = combine_indices(counts[peaklets['n_hits'] <= self.small_n_hits_threshold])
+        small_hits_copy = hitlets[small_hits_indices]
+        small_hits = np.zeros(len(small_hits_copy), dtype=small_hit_dtype)
+        for field in ['time', 'length', 'dt', 'channel']:
+            small_hits[field] = small_hits_copy[field]
+        small_hits['max_time'] = hit_max_times[small_hits_indices]
 
         # Drop the data_top field
         if n_top_pmts_if_digitize_top <= 0:
@@ -327,7 +348,8 @@ class Peaklets(strax.Plugin):
                 f'Found n_hits less than tight_coincidence')
 
         return dict(peaklets=peaklets,
-                    lone_hits=lone_hits)
+                    lone_hits=lone_hits,
+                    small_hits=small_hits)
 
     def natural_breaks_threshold(self, peaks):
         rise_time = -peaks['area_decile_from_midpoint'][:, 1]
@@ -639,3 +661,22 @@ def hit_max_sample(records, hits):
         w = r['data'][h['left']:h['right']]
         result[i] = np.argmax(w)
     return result
+
+
+def combine_indices(result):
+    """
+    Combine the indices from touching_windows results
+    :param result: touching_windows results, each row is a pair of indices
+    """
+    if len(result) == 0:
+        return np.empty(0, dtype=np.int)
+    length = np.sum(result[:, 1] - result[:, 0])
+    indices = np.zeros(length, dtype=np.int64)
+    i = 0
+    for r in result:
+        l = r[1] - r[0]
+        segment = np.arange(r[0], r[1])
+        indices[i : i + l] = segment
+        i += l
+    indices = np.unique(indices[:i])
+    return indices
