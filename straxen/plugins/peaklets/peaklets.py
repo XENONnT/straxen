@@ -10,9 +10,11 @@ import straxen
 export, __all__ = strax.exporter()
 
 from strax.dtypes import interval_dtype
-small_hit_dtype = interval_dtype + [
-    (('Time of index of the maximum sample for hits',
+small_hitlet_dtype = interval_dtype + [
+    (('Time of index of the maximum sample for hits [ns]',
         'max_time'), np.int64),
+    (('Integral per channel [PE]',
+        'area'), np.float32),
 ]
 
 
@@ -38,10 +40,10 @@ class Peaklets(strax.Plugin):
     extension overlaps with any peaks or other hits.
     """
     depends_on = ('records',)
-    provides = ('peaklets', 'lone_hits', 'small_hits')
+    provides = ('peaklets', 'lone_hits', 'small_hitlets')
     data_kind = dict(peaklets='peaklets',
                      lone_hits='lone_hits',
-                     small_hits='small_hits')
+                     small_hitlets='small_hitlets')
     parallel = 'process'
     compressor = 'zstd'
 
@@ -167,7 +169,7 @@ class Peaklets(strax.Plugin):
                 digitize_top=self.sum_waveform_top_array,
             ),
             lone_hits=strax.hit_dtype,
-            small_hits=small_hit_dtype,
+            small_hitlets=small_hitlet_dtype,
         )
 
     def setup(self):
@@ -322,16 +324,12 @@ class Peaklets(strax.Plugin):
                           >= strax.endtime(peaklets)[:-1]), "Peaks not disjoint"
 
         # Update nhits of peaklets:
-        counts = strax.touching_windows(hitlets, peaklets)
-        peaklets['n_hits'] = np.diff(counts, axis=1).flatten()
+        split_hitlets = strax.touching_windows(hitlets, peaklets)
+        peaklets['n_hits'] = np.diff(split_hitlets, axis=1).flatten()
 
-        # Save the minimum necessary information of small hits
-        small_hits_indices = combine_indices(counts[peaklets['n_hits'] <= self.small_n_hits_threshold])
-        small_hits_copy = hitlets[small_hits_indices]
-        small_hits = np.zeros(len(small_hits_copy), dtype=small_hit_dtype)
-        for field in ['time', 'length', 'dt', 'channel']:
-            small_hits[field] = small_hits_copy[field]
-        small_hits['max_time'] = hit_max_times[small_hits_indices]
+        small_hitlets = get_small_hitlets(
+            peaklets[peaklets['n_hits'] <= self.small_n_hits_threshold],
+            hitlets, hit_max_times)
 
         # Drop the data_top field
         if n_top_pmts_if_digitize_top <= 0:
@@ -349,7 +347,7 @@ class Peaklets(strax.Plugin):
 
         return dict(peaklets=peaklets,
                     lone_hits=lone_hits,
-                    small_hits=small_hits)
+                    small_hitlets=small_hitlets)
 
     def natural_breaks_threshold(self, peaks):
         rise_time = -peaks['area_decile_from_midpoint'][:, 1]
@@ -680,3 +678,22 @@ def combine_indices(result):
         i += l
     indices = np.unique(indices[:i])
     return indices
+
+
+def get_small_hitlets(peaklets, hitlets, hit_max_times):
+    split_hitlets = strax.touching_windows(hitlets, peaklets)
+    # Save the minimum necessary information of small hitlets
+    small_hitlets_indices = combine_indices(split_hitlets)
+    small_hitlets_copy = hitlets[small_hitlets_indices]
+    # Assign information to small hitlets
+    small_hitlets = np.zeros(len(small_hitlets_copy), dtype=small_hitlet_dtype)
+    for field in ['time', 'length', 'dt', 'channel']:
+        small_hitlets[field] = small_hitlets_copy[field]
+    small_hitlets['max_time'] = hit_max_times[small_hitlets_indices]
+    # Assign area from peaklets area_per_channel
+    split_small_hitlets = strax.touching_windows(small_hitlets, peaklets)
+    for i_sp, sp_h in enumerate(split_small_hitlets):
+        area_per_channel = peaklets['area_per_channel'][i_sp]
+        channel = small_hitlets['channel'][sp_h[0]:sp_h[1]]
+        small_hitlets['area'][sp_h[0]:sp_h[1]] = area_per_channel[channel]
+    return small_hitlets
