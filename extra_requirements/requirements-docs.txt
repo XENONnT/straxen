@@ -2,7 +2,7 @@
 commonmark==0.9.1
 graphviz==0.20.1
 m2r==0.2.1
-mistune==0.8.4 
+mistune==3.0.0 
 nbsphinx==0.8.9
 recommonmark==0.7.1
 sphinx==6.2.1
