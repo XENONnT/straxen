@@ -57,10 +57,10 @@ class TestBasics(unittest.TestCase):
         st.extract_latest_comment()
         assert st.runs is not None, "No registry build?"
         assert 'comments' in st.runs.keys()
-        st.select_runs(available=test_for_target)
+        runs = st.select_runs(available=test_for_target)
         if context == 'demo':
             assert len(st.runs)
-        assert f'{test_for_target}_available' in st.runs.keys()
+        assert f'{test_for_target}_available' in runs.keys()
 
     def test_extract_latest_comment_nt(self, **opt):
         """Run the test for nt (but only 2000 runs"""
