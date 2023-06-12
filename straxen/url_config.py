@@ -693,3 +693,16 @@ def objects_to_array(objects: list):
                         f'iterable but recieved a {type(objects)} instead')
         
     return np.array(objects)
+
+@URLConfig.preprocessor
+def alphabetize_url_kwargs(url):
+    """
+    Reorders queries for urlconfigs to avoid hashing issues
+    """
+    breakpoint()
+    print('Hello you are using the URLConfig Protocol!!!')
+    if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
+        print(URLConfig.format_url_kwargs(url))
+        return URLConfig.format_url_kwargs(url)
+    elif isinstance(url, tuple):
+        return URLConfig.ast_to_url(url)

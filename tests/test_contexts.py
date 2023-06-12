@@ -189,3 +189,16 @@ def test_sim_context():
 def test_offline():
     st = xenonnt('latest')
     st.provided_dtypes()
+
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+def test_xedocs_global_version_hash_coinsistency():
+    st = xenonnt_online()
+    # Same URLs but the quesries are in different order
+    st.apply_xedocs_configs(version = 'v_test1', db='development_db')
+    hash1 = st._context_hash()
+    
+    st.apply_xedocs_configs(version = 'v_test2', db='development_db')
+    hash2 = st._context_hash()
+    assert hash1 == hash2
+    
+    

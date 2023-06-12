@@ -344,6 +344,12 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'fake://url?version=global_v1'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 'fake://url?version=v0')
+        
+    def alphabetize_url_kwargs(self):
+        url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
+        intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
+        preprocessed_url = straxen.URLConfig.alphabetize_url_kwargs(url)
+        self.assertEqual(intended_url, preprocessed_url)
     
     def test_global_version_not_changed(self):
         """
