@@ -46,8 +46,6 @@ class EventWaveform(strax.LoopPlugin):
                   np.int16),
                  (("Main S1 top count of contributing PMTs", "s1_top_n_channels"),
                   np.int16),
-                 (("Main S1 bottom count of contributing PMTs", "s1_bottom_n_channels"),
-                  np.int16),
                  ]
         dtype += strax.time_fields
         return dtype
@@ -69,6 +67,4 @@ class EventWaveform(strax.LoopPlugin):
                     result['s1_n_channels'] = len(type_area_per_channel[type_area_per_channel > 0])
                     result['s1_top_n_channels'] = len(type_area_per_channel[:self.config['n_top_pmts']][
                                                           type_area_per_channel[:self.config['n_top_pmts']] > 0])
-                    result['s1_bottom_n_channels'] = len(type_area_per_channel[self.config['n_top_pmts']:][
-                                                             type_area_per_channel[self.config['n_top_pmts']:] > 0])
         return result
