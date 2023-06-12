@@ -6,7 +6,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class EventWaveform(strax.LoopPlugin):
+class EventWaveform(strax.Plugin):
     """
     Simple plugin that provides total (data) and top (data_top) waveforms for 
     main and alternative S1/S2 in the event.
@@ -50,21 +50,24 @@ class EventWaveform(strax.LoopPlugin):
         dtype += strax.time_fields
         return dtype
 
-    def compute_loop(self, event, peaks):
-        result = {}
-        result['time'] = event['time']
-        result['endtime'] = strax.endtime(event)
+    def compute(self, events, peaks):
+        result = np.zeros(len(events), self.dtype)
+        result['time'] = events['time']
+        result['endtime'] = strax.endtime(events)
 
-        for type_ in ['s1', 's2', 'alt_s1', 'alt_s2']:
-            type_index = event[f'{type_}_index']
-            if type_index != -1:
-                type_area_per_channel = peaks['area_per_channel'][type_index]
-                result[f'{type_}_length'] = peaks['length'][type_index]
-                result[f'{type_}_data'] = peaks['data'][type_index]
-                result[f'{type_}_data_top'] = peaks['data_top'][type_index]
-                result[f'{type_}_dt'] = peaks['dt'][type_index]
-                if type_ == 's1':
-                    result['s1_n_channels'] = len(type_area_per_channel[type_area_per_channel > 0])
-                    result['s1_top_n_channels'] = len(type_area_per_channel[:self.config['n_top_pmts']][
-                                                          type_area_per_channel[:self.config['n_top_pmts']] > 0])
+        split_peaks = strax.split_by_containment(peaks, events)
+        
+        for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
+            for type_ in ['s1', 's2', 'alt_s1', 'alt_s2']:
+                type_index = event[f'{type_}_index']
+                if type_index != -1:
+                    type_area_per_channel = sp['area_per_channel'][type_index]
+                    result[f'{type_}_length'][event_i] = sp['length'][type_index]
+                    result[f'{type_}_data'][event_i] = peaks['data'][type_index]
+                    result[f'{type_}_data_top'][event_i] = peaks['data_top'][type_index]
+                    result[f'{type_}_dt'][event_i] = peaks['dt'][type_index]
+                    if type_ == 's1':
+                        result['s1_n_channels'][event_i] = len(type_area_per_channel[type_area_per_channel > 0])
+                        result['s1_top_n_channels'][event_i] = len(type_area_per_channel[:self.config['n_top_pmts']][
+                                                                   type_area_per_channel[:self.config['n_top_pmts']] > 0])
         return result
