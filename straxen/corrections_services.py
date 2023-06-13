@@ -413,13 +413,7 @@ def apply_xedocs_configs(context: strax.Context,
     global_config = {doc.config_name: doc.value for doc in docs}
     
     if len(global_config):
-        new_dict = dict({})
-        dict_keys = list(global_config.keys())
-        for i in np.arange(len(global_config)):
-            new_dict[dict_keys[i]] = straxen.URLConfig.format_url_kwargs(global_config[dict_keys[i]])
-            print(new_dict[dict_keys[i]])
-        
-        context.set_config(new_dict)
+        context.set_config(global_config)
     else:
         warnings.warn(f"Could not find any context configs for version {version}")
 
