@@ -193,12 +193,10 @@ def test_offline():
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_xedocs_global_version_hash_coinsistency():
-    st = xenonnt_online()
+    st1 = xenonnt_online()
+    st2 = xenonnt_online()
     # Same URLs but the quesries are in different order
-    st.apply_xedocs_configs(version = 'v_test1', db='development_db')
-    hash1 = st._context_hash()
-
-    st.apply_xedocs_configs(version = 'v_test2', db='development_db')
-    hash2 = st._context_hash()
-    assert hash1 == hash2
+    st1.apply_xedocs_configs(version = 'v_test1', db='development_db')
+    st2.apply_xedocs_configs(version = 'v_test2', db='development_db')
+    assert st1.key_for(25000, 'corrected_areas').lineage_hash == st2.key_for(25000, 'corrected_areas').lineage_hash 
 
