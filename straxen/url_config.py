@@ -702,6 +702,5 @@ def alphabetize_url_kwargs(url: str):
     """
 
     if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
-        print(URLConfig.format_url_kwargs(url))
         return URLConfig.format_url_kwargs(url)
 
