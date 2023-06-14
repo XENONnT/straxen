@@ -294,6 +294,19 @@ class EventPatternFit(strax.Plugin):
             arg2 = s1_area_per_channel / self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
             norm_llh_val = (neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2))
             result['s1_2llh'][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+            
+            # for i in range(len(result['s1_2llh'][cur_s1_bool])):
+            #     if np.isinf(result['s1_2llh'][cur_s1_bool][i]):
+            #         print ('#### INF found: event', i, ', min(arg1[0]):', np.min(arg1[0][i]), ', min(arg2[0]):', np.min(arg1[1][i]), ', (x, y, z): (%.2f, %.2f, %.2f)'%(x[i], y[i], z[i]))
+                    # print ('#### LLH:', result['s1_2llh'][cur_s1_bool][i])
+                    # print ('### NORM:', len(norm_llh_val[i]), norm_llh_val[i][np.isinf(norm_llh_val[i])])
+                    # print ('### ARG1:', len(neg2llh_modpoisson(*arg1)[i]), neg2llh_modpoisson(*arg1)[i][np.isinf(norm_llh_val[i])])
+                    # print ('### ARG2:', len(neg2llh_modpoisson(*arg2)[i]), neg2llh_modpoisson(*arg2)[i][np.isinf(norm_llh_val[i])])
+                    # print ('### ARG1[0]:', len(arg1[0]), arg1[0][i])
+                    # print ('### ARG1[1]:', len(arg1[1]), arg1[1][i])
+                    # print ('### ARG1[2]:', arg1[2])
+                # else: 
+                    # print ('#### NON-INF:   event', i, 'min(arg1[0]):', np.min(arg1[0][i]), 'min(arg2[0]):', np.min(arg1[1][i]))
 
             # If needed to stire - store only top and bottom array, but not together
             if self.store_per_channel:
