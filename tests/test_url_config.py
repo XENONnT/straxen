@@ -358,8 +358,8 @@ class TestURLConfig(unittest.TestCase):
         st1 = xenonnt_online()
         st2 = xenonnt_online()
         # Same URLs but the queries are in a different order
-        st1.apply_xedocs_configs(version = 'v_test1', db='development_db')
-        st2.apply_xedocs_configs(version = 'v_test2', db='development_db')
+        st1.set_config({"elife":"xedocs://electron_lifetimes?run_id=25000&version=v5&attr=value"})
+        st2.set_config({"elife":"xedocs://electron_lifetimes?attr=value&run_id=25000&version=v5"})
         assert st1.key_for(25000, 'corrected_areas').lineage_hash == st2.key_for(25000, 'corrected_areas').lineage_hash 
     
     def test_global_version_not_changed(self):
