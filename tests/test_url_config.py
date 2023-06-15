@@ -352,6 +352,15 @@ class TestURLConfig(unittest.TestCase):
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
         preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_xedocs_global_version_hash_coinsistency():
+        st1 = xenonnt_online()
+        st2 = xenonnt_online()
+        # Same URLs but the queries are in a different order
+        st1.apply_xedocs_configs(version = 'v_test1', db='development_db')
+        st2.apply_xedocs_configs(version = 'v_test2', db='development_db')
+        assert st1.key_for(25000, 'corrected_areas').lineage_hash == st2.key_for(25000, 'corrected_areas').lineage_hash 
     
     def test_global_version_not_changed(self):
         """
