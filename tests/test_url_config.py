@@ -354,7 +354,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(intended_url, preprocessed_url)
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-    def test_xedocs_global_version_hash_coinsistency():
+    def test_xedocs_global_version_hash_coinsistency(self):
         st1 = xenonnt_online()
         st2 = xenonnt_online()
         # Same URLs but the queries are in a different order
