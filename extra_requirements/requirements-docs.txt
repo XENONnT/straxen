@@ -6,6 +6,6 @@ mistune==0.8.4
 nbsphinx==0.8.9
 recommonmark==0.7.1
 sphinx==6.2.1
-sphinx_rtd_theme==1.2.0
+sphinx_rtd_theme==1.2.2
 Jinja2==3.0.3
-urllib3==1.26.15
+urllib3==2.0.3
