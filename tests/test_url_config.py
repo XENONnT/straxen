@@ -355,8 +355,8 @@ class TestURLConfig(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_xedocs_global_version_hash_coinsistency(self):
-        st1 = self.nt_test_context()
-        st2 = self.nt_test_context()
+        st1 = straxen.contexts.xenonnt_online()
+        st2 = straxen.contexts.xenonnt_online()
         # Same URLs but the queries are in a different order
         st1.set_config({"elife":"xedocs://electron_lifetimes?run_id=25000&version=v5&attr=value"})
         st2.set_config({"elife":"xedocs://electron_lifetimes?attr=value&run_id=25000&version=v5"})
