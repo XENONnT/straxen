@@ -350,7 +350,7 @@ class TestURLConfig(unittest.TestCase):
         url to ensure the same url with a different hash order gives the same hash"""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
-        preprocessed_url = straxen.URLConfig.alphabetize_url_kwargs(url)
+        preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
     
     def test_global_version_not_changed(self):
