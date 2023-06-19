@@ -10,7 +10,7 @@ class EventTopBottomParams(strax.Plugin):
     Pluging that computes timing characteristics of top and bottom waveforms 
     based on waveforms stored at event level for main/alt S1/S2
     """
-    depends_on = ('event_info', 'event_area_per_channel')
+    depends_on = ('event_info', 'event_waveform')
     provides = 'event_top_bottom_params'
     __version__ = '0.0.0'
     def infer_dtype(self):
@@ -55,38 +55,38 @@ class EventTopBottomParams(strax.Plugin):
                 # based only on data from corresponding array
                 fpeaks_ = np.zeros(events.shape[0], dtype=peak_dtype)
                 if arr_ == 'top':
-                    fpeaks_['data']=events[f'{type_}_data_top']
-                    fpeaks_['area']=events[f'{type_}_area']*events[f'{type_}_area_fraction_top']
+                    fpeaks_['data'] = events[f'{type_}_data_top']
+                    fpeaks_['area'] = events[f'{type_}_area'] * events[f'{type_}_area_fraction_top']
                 elif arr_ == 'bot':
-                    fpeaks_['data']=(events[f'{type_}_data']-events[f'{type_}_data_top'])
-                    fpeaks_['area']=events[f'{type_}_area']*(1.-events[f'{type_}_area_fraction_top'])
+                    fpeaks_['data'] = (events[f'{type_}_data'] - events[f'{type_}_data_top'])
+                    fpeaks_['area'] = events[f'{type_}_area'] * (1.-events[f'{type_}_area_fraction_top'])
                 elif arr_ == 'tot':
                     # This one is ony
-                    fpeaks_['data']=events[f'{type_}_data']
-                    fpeaks_['area']=events[f'{type_}_area']
+                    fpeaks_['data'] = events[f'{type_}_data']
+                    fpeaks_['area'] = events[f'{type_}_area']
                 else:
-                    raise RuntimeError(f'Received unknown array type : '+ arr_)
-                fpeaks_['length']=events[f'{type_}_length']
-                fpeaks_['dt']=events[f'{type_}_dt']
+                    raise RuntimeError(f'Received unknown array type : ' + arr_)
+                fpeaks_['length'] = events[f'{type_}_length']
+                fpeaks_['dt'] = events[f'{type_}_dt']
                 # computing central times
                 # note that here we ignore 1/2 sample length to be consistent with other definitions
                 with np.errstate(divide='ignore', invalid='ignore'):
-                    recalc_ctime = np.sum(fpeaks_['data']*(np.arange(0, fpeaks_['data'].shape[1])), axis=1 )
-                    recalc_ctime/=fpeaks_['area']
-                    recalc_ctime*=fpeaks_['dt']
-                    recalc_ctime[~(fpeaks_['area']>0)]=0.0
+                    recalc_ctime = np.sum(fpeaks_['data'] * (np.arange(0, fpeaks_['data'].shape[1])), axis=1)
+                    recalc_ctime /= fpeaks_['area']
+                    recalc_ctime *= fpeaks_['dt']
+                    recalc_ctime[~(fpeaks_['area'] > 0)] = 0.0
                 # setting central times in the same way as inside peak processing
-                mask=(fpeaks_['area']>0)
-                result[f'{type_}_center_time_{arr_}']=events[f'{type_}_time']
-                result[f'{type_}_center_time_{arr_}'][mask]+=recalc_ctime[mask].astype(int)
+                mask = (fpeaks_['area'] > 0)
+                result[f'{type_}_center_time_{arr_}'] = events[f'{type_}_time']
+                result[f'{type_}_center_time_{arr_}'][mask] += recalc_ctime[mask].astype(int)
                 # computing widths ##
                 # zero or undefined area peaks should have nans
                 strax.compute_widths(fpeaks_)
-                result[f'{type_}_rise_time_{arr_}'][:]=np.nan
-                result[f'{type_}_rise_time_{arr_}'][mask]= -fpeaks_['area_decile_from_midpoint'][mask][:, 1]
-                result[f'{type_}_range_50p_area_{arr_}'][:]=np.nan
+                result[f'{type_}_rise_time_{arr_}'][:] = np.nan
+                result[f'{type_}_rise_time_{arr_}'][mask] = -fpeaks_['area_decile_from_midpoint'][mask][:, 1]
+                result[f'{type_}_range_50p_area_{arr_}'][:] = np.nan
                 result[f'{type_}_range_50p_area_{arr_}'][mask] = fpeaks_['width'][mask][:, 5]
-                result[f'{type_}_range_90p_area_{arr_}'][:]=np.nan
+                result[f'{type_}_range_90p_area_{arr_}'][:] = np.nan
                 result[f'{type_}_range_90p_area_{arr_}'][mask] = fpeaks_['width'][mask][:, 9]
             # Difference between center times of top and bottom arrays
             result[f'{type_}_center_time_diff_top_bot'] = (result[f'{type_}_center_time_top'] -
