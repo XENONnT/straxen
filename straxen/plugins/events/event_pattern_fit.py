@@ -169,7 +169,10 @@ class EventPatternFit(strax.Plugin):
 
         # Getting gain model to get dead PMTs
         self.dead_PMTs = np.where(self.to_pe == 0)[0]
+        np.savetxt('/home/minzhong/S1OpticalMapCheck/dead_PMT.txt', self.dead_PMTs)
         self.pmtbool = ~np.in1d(np.arange(0, self.n_tpc_pmts), self.dead_PMTs)
+        print ('#### Number of TPC PMTs:', self.n_tpc_pmts)
+        print ('#### Mean PE Photon:', self.mean_pe_photon)
         self.pmtbool_top = self.pmtbool[:self.n_top_pmts]
         self.pmtbool_bottom = self.pmtbool[self.n_top_pmts:self.n_tpc_pmts]
 
@@ -307,6 +310,15 @@ class EventPatternFit(strax.Plugin):
                     # print ('### ARG1[2]:', arg1[2])
                 # else: 
                     # print ('#### NON-INF:   event', i, 'min(arg1[0]):', np.min(arg1[0][i]), 'min(arg2[0]):', np.min(arg1[1][i]))
+
+            with open('/home/minzhong/S1OpticalMapCheck/patterns_newmap.txt', 'a') as f:                
+                for i in range(len(result['s1_2llh'][cur_s1_bool])):
+                    if (i==12 or i==23 or i==29 or i==33 or i==40):
+                        # f.write(str(i)+'\n')
+                        data = np.row_stack((arg1[0][i], arg2[0][i], norm_llh_val[i]))
+                        np.savetxt(f, data)
+            # f.close()
+                    
 
             # If needed to stire - store only top and bottom array, but not together
             if self.store_per_channel:
