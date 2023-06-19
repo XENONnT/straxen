@@ -54,7 +54,6 @@ class EventAreaPerChannel(strax.Plugin):
         result['endtime'] = strax.endtime(events)
 
         split_peaks = strax.split_by_containment(peaks, events)
-        
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
             for type_ in ['s1', 's2', 'alt_s1', 'alt_s2']:
                 type_index = event[f'{type_}_index']
@@ -64,8 +63,8 @@ class EventAreaPerChannel(strax.Plugin):
                     result[f'{type_}_length'][event_i] = sp['length'][type_index]
                     result[f'{type_}_dt'][event_i] = sp['dt'][type_index]
                     if type_ == 's1':
-                        result['s1_n_channels'][event_i] = len(type_area_per_channel[type_area_per_channel > 0])
-                        result['s1_top_n_channels'][event_i] = len(type_area_per_channel[:self.config['n_top_pmts']][
-                                                                   type_area_per_channel[:self.config['n_top_pmts']] > 0])
-
+                        result['s1_n_channels'][event_i] = (
+                            type_area_per_channel > 0).sum()
+                        result['s1_top_n_channels'][event_i] = (
+                            type_area_per_channel[:self.config['n_top_pmts']] > 0).sum()
         return result
