@@ -1,4 +1,4 @@
-__version__ = '2.0.4'
+__version__ = '2.0.7'
 
 from utilix import uconfig
 from .common import *
@@ -32,6 +32,8 @@ from . import contexts
 
 from . import test_utils
 from .test_utils import *
+
+from . import daq_core
 
 try:
     from . import holoviews_utils

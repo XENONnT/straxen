@@ -51,7 +51,7 @@ def test_n_hits():
 @given(fake_hits,
        strat.lists(elements=strat.integers(0, 9), min_size=20))
 @settings(deadline=None)
-def test_tight_coincidence(hits, channel):
+def test_get_tight_coin(hits, channel):
     hits['area'] = 1
     hits['channel'] = channel[:len(hits)]  # In case there are less channel then hits (unlikely)
     gap_threshold = 10
@@ -68,11 +68,10 @@ def test_tight_coincidence(hits, channel):
     left = 5
     right = 5
     tight_coin_channel = get_tight_coin(hits_max_time,
-                                                    hits['channel'],
-                                                    peaks_max_time,
-                                                    left,
-                                                    right,
-                                                    )
+                                        hits['channel'],
+                                        peaks_max_time,
+                                        left,
+                                        right)
     for ind, p_max_t in enumerate(peaks_max_time):
         m_hits_in_peak = (hits_max_time >= (p_max_t - left))
         m_hits_in_peak &= (hits_max_time <= (p_max_t + right))

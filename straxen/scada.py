@@ -30,7 +30,7 @@ class SCADAInterface:
 
     def __init__(self, context=None, use_progress_bar=True):
         """
-        Interface to excess the XENONnT slow control data via python.
+        Interface to access the XENONnT slow control data via python.
 
         :param context: Context you are using e.g. st. This is needed
             if you would like to query data via run_ids.

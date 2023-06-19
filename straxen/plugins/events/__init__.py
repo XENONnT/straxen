@@ -46,14 +46,20 @@ from .s2_recon_pos_diff import *
 from . import veto_proximity
 from .veto_proximity import *
 
-from . import event_s2_position_mlp
-from .event_s2_position_mlp import *
+from . import event_s2_positions_mlp
+from .event_s2_positions_mlp import *
 
-from . import event_s2_position_cnn
-from .event_s2_position_cnn import *
+from . import event_s2_positions_cnn
+from .event_s2_positions_cnn import *
 
-from . import event_s2_position_gcn
-from .event_s2_position_gcn import *
+from . import event_s2_positions_gcn
+from .event_s2_positions_gcn import *
+
+from . import event_s1_positions_cnn
+from .event_s1_positions_cnn import *
 
 from . import local_minimum_info
 from .local_minimum_info import *
+
+from . import multi_scatter
+from .multi_scatter import *

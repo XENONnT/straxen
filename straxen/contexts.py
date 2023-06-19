@@ -7,6 +7,8 @@ import os
 import warnings
 import typing as ty
 from pandas.util._decorators import deprecate_kwarg
+import socket
+
 
 common_opts = dict(
     register_all=[],
@@ -63,6 +65,11 @@ xnt_common_config = dict(
             '&run_id=plugin.run_id'
             '&fmt=binary'
             '&scale_coordinates=plugin.coordinate_scales',
+    z_bias_map='itp_map://'
+               'resource://'
+               'XnT_z_bias_map_chargeup_20230329.json.gz?'
+               'fmt=json.gz'
+               '&method=RegularGridInterpolator',
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -104,6 +111,34 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
     return st
 
 
+def find_rucio_local_path(include_rucio_local, _rucio_local_path):
+    """
+    Check the hostname to determine which rucio local path to use. Note that access to
+    /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
+
+    :param include_rucio_local: add the rucio local storage frontend.
+        This is only needed if one wants to do a fuzzy search in the
+        data the runs database is out of sync with rucio
+    :param _rucio_local_path: str, path of local RSE of rucio. Only use
+        for testing!
+    """
+    hostname = socket.gethostname()
+    # if you are on dali compute node, do nothing
+    if ('dali' in hostname) and ('login' not in hostname):
+        _include_rucio_local = include_rucio_local
+        __rucio_local_path = _rucio_local_path
+    # Assumed the only other option is 'midway' or login nodes, 
+    # where we have full access to dali and project space. 
+    # This doesn't make sense outside XENON but we don't care.
+    else:
+        _include_rucio_local = True
+        __rucio_local_path = '/project/lgrandi/rucio/'
+        print('You specified _auto_append_rucio_local=True and you are not on dali compute nodes,'
+              'so we will add the following rucio local path: ', __rucio_local_path)
+
+    return _include_rucio_local, __rucio_local_path
+
+
 @deprecate_kwarg('_minimum_run_number', 'minimum_run_number')
 @deprecate_kwarg('_maximum_run_number', 'maximum_run_number')
 @deprecate_kwarg('_include_rucio_remote', 'include_rucio_remote')
@@ -120,10 +155,13 @@ def xenonnt_online(output_folder: str = './strax_data',
 
                    # Frontend options
                    download_heavy: bool = False,
+                   _auto_append_rucio_local: bool = True,
                    _rucio_path: str = '/dali/lgrandi/rucio/',
                    _rucio_local_path: ty.Optional[str] = None,
-                   _raw_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/raw',
-                   _processed_path: ty.Optional[str] = '/dali/lgrandi/xenonnt/processed',
+                   _raw_paths: ty.Optional[str] = ['/dali/lgrandi/xenonnt/raw'],
+                   _processed_paths: ty.Optional[ty.List[str]] = ['/dali/lgrandi/xenonnt/processed',
+                                                                  '/project2/lgrandi/xenonnt/processed',
+                                                                  '/project/lgrandi/xenonnt/processed'],
 
                    # Testing options
                    _context_config_overwrite: ty.Optional[dict] = None,
@@ -149,11 +187,13 @@ def xenonnt_online(output_folder: str = './strax_data',
     :param download_heavy: bool, whether or not to allow downloads of
         heavy data (raw_records*, less the aqmon)
 
+    :param _auto_append_rucio_local: bool, whether or not to automatically append the 
+        rucio local path
     :param _rucio_path: str, path of rucio
     :param _rucio_local_path: str, path of local RSE of rucio. Only use
         for testing!
-    :param _raw_path: str, common path of the raw-data
-    :param _processed_path: str. common path of output data
+    :param _raw_paths: list[str], common path of the raw-data
+    :param _processed_paths: list[str]. common paths of output data
     :param _context_config_overwrite: dict, overwrite config
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form
@@ -172,6 +212,10 @@ def xenonnt_online(output_folder: str = './strax_data',
                  straxen.LEDCalibration,
                  straxen.LEDAfterpulseProcessing])
 
+    if _auto_append_rucio_local:
+        include_rucio_local, _rucio_local_path = find_rucio_local_path(
+            include_rucio_local, _rucio_local_path)
+
     st.storage = [
         straxen.RunDB(
             readonly=not we_are_the_daq,
@@ -182,15 +226,17 @@ def xenonnt_online(output_folder: str = './strax_data',
             rucio_path=_rucio_path,
         )] if _database_init else []
     if not we_are_the_daq:
-        st.storage += [
-            strax.DataDirectory(
-                _raw_path,
-                readonly=True,
-                take_only=straxen.DAQReader.provides),
-            strax.DataDirectory(
+        for _raw_path in _raw_paths:
+            st.storage += [
+                strax.DataDirectory(
+                    _raw_path,
+                    readonly=True,
+                    take_only=straxen.DAQReader.provides)]
+        for _processed_path in _processed_paths:
+            st.storage += [strax.DataDirectory(
                 _processed_path,
-                readonly=True,
-            )]
+                readonly=True)]
+            
         if output_folder:
             st.storage += [strax.DataDirectory(output_folder,
                                                provide_run_metadata=True,
