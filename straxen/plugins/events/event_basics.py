@@ -19,7 +19,7 @@ class EventBasics(strax.Plugin):
     alternative S2 is selected as the largest S2 other than main S2
     in the time window [main S1 time, main S1 time + max drift time].
     """
-    __version__ = '1.3.2'
+    __version__ = '1.3.3'
 
     depends_on = ('events',
                   'peak_basics',
@@ -289,8 +289,8 @@ class EventBasics(strax.Plugin):
             # The selection avoids main_S2
             mask[0] = True
             # Take main and the largest valid alt_S2
-            s2_idx, largest_s2s = s2_idx[mask][:2], largest_s2s[mask][:2]
-        return s2_idx, largest_s2s
+            s2_idx, largest_s2s = s2_idx[mask], largest_s2s[mask]
+        return s2_idx[:2], largest_s2s[:2]
 
     @staticmethod
     @numba.njit

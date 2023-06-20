@@ -708,6 +708,7 @@ def alphabetize_url_kwargs(url: str):
         return URLConfig.format_url_kwargs(url)
     return url
 
+
 @URLConfig.register('run_doc')
 def read_rundoc(path, run_id=None, default=None):
     """Read a path from the rundoc.
