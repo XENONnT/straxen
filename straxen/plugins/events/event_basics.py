@@ -19,7 +19,7 @@ class EventBasics(strax.Plugin):
     alternative S2 is selected as the largest S2 other than main S2
     in the time window [main S1 time, main S1 time + max drift time].
     """
-    __version__ = '1.3.2'
+    __version__ = '1.3.3'
 
     depends_on = ('events',
                   'peak_basics',
