@@ -44,6 +44,8 @@ class EventAreaPerChannel(strax.Plugin):
                   np.int16),
                  (("Main S1 top count of contributing PMTs", "s1_top_n_channels"),
                   np.int16),
+                 (("Main S1 bottom count of contributing PMTs", "s1_bottom_n_channels"),
+                  np.int16),
                  ]
         dtype += strax.time_fields
         return dtype
@@ -67,4 +69,6 @@ class EventAreaPerChannel(strax.Plugin):
                             type_area_per_channel > 0).sum()
                         result['s1_top_n_channels'][event_i] = (
                             type_area_per_channel[:self.config['n_top_pmts']] > 0).sum()
+                        result['s1_bottom_n_channels'] = (
+                            type_area_per_channel[self.config['n_top_pmts']:] > 0).sum()
         return result
