@@ -210,14 +210,16 @@ def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
 
     peaks_for_event_1 = np.zeros(5, dtype=peaks_dtype)
     peaks_for_event_1['time'] = np.arange(10, 105, 20)
-    peaks_for_event_1['center_time'] = np.arange(11, 106, 20)
+    peaks_for_event_1['center_time'] = peaks_for_event_1['time'] + 1
+    peaks_for_event_1['endtime'] = peaks_for_event_1['time'] + 2
     peaks_for_event_1['type'] = 2 
     peaks_for_event_1['tight_coincidence'] = 5
     peaks_for_event_1['area'] = np.array([10, 20, 70, 100, 50])
 
     peaks_for_event_2 = np.zeros(5, dtype=peaks_dtype)
     peaks_for_event_2['time'] = np.arange(110, 205, 20)
-    peaks_for_event_2['center_time'] = np.arange(111, 206, 20)
+    peaks_for_event_2['center_time'] = peaks_for_event_2['time'] + 1
+    peaks_for_event_2['endtime'] = peaks_for_event_2['time'] + 2
     peaks_for_event_2['type'] = 2
     peaks_for_event_2['type'][1] = 1
     peaks_for_event_2['tight_coincidence'] = 5
