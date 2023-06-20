@@ -693,3 +693,26 @@ def objects_to_array(objects: list):
                         f'iterable but recieved a {type(objects)} instead')
         
     return np.array(objects)
+
+
+@URLConfig.register('run_doc')
+def read_rundoc(path, run_id=None, default=None):
+    """Read a path from the rundoc.
+    """
+    if run_id is None:
+        raise ValueError('rundoc protocol: missing run_id.')
+    runs = xent_collection()
+    rundoc = runs.find_one({'number': int(run_id)}, {'_id': 0, path: 1})
+    if rundoc is None:
+        raise ValueError(f'No rundoc found for run {run_id}')
+
+    for part in path.split('.'):
+        if isinstance(rundoc, list) and part.isdigit() and len(rundoc)>int(part):
+            rundoc = rundoc[int(part)]
+        elif isinstance(rundoc, dict) and part in rundoc:
+            rundoc = rundoc[part]
+        elif default is not None:
+            return default
+        else:
+            raise ValueError(f'No path {path} found in rundoc for run {run_id}')
+    return rundoc

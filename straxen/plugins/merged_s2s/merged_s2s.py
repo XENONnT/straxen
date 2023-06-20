@@ -102,8 +102,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             max_gap=max_gap,
             max_area=max_area,
         )
-        if (end_merge_at - start_merge_at).min() <= 1:
-            raise ValueError('Found merging only 1 peak')
 
         assert 'data_top' in peaklets.dtype.names
 
