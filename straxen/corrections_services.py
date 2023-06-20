@@ -411,8 +411,8 @@ def apply_xedocs_configs(context: strax.Context,
         db_kwargs = straxen.filter_kwargs(func, kwargs)
         db = func(**db_kwargs)
 
-    filter_kwargs = {k: v for k,v in kwargs.items() 
-                     if k in db.context_configs.schema.__fields__}
+    filter_kwargs = {k: v for k, v in kwargs.items()
+                        if k in db.context_configs.schema.__fields__}
 
     docs = db.context_configs.find_docs(**filter_kwargs)
 
@@ -421,7 +421,8 @@ def apply_xedocs_configs(context: strax.Context,
     if len(global_config):
         context.set_config(global_config)
     else:
-        warnings.warn(f"Could not find any context configs matchin {filter_kwargs}")
+        warnings.warn(f"Could not find any context configs matchin {filter_kwargs}",
+                      RuntimeWarning, stacklevel=2)
 
 
 def replace_url_version(url, version):
