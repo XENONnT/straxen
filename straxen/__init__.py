@@ -43,9 +43,5 @@ except ModuleNotFoundError:
 
 from .entry_points import load_entry_points
 
-import warnings
-
-warnings.warn("From version 2.0.8 forward in straxen the URLs will be sorted alphabetically before hashing, If you wish to access data the was processed using pervious versions of straxen, its recomended you use a previous version, otherwise you will have to reprocess your data.", FutureWarning)
-
 load_entry_points()
 del load_entry_points
