@@ -353,7 +353,7 @@ class TestURLConfig(unittest.TestCase):
         preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
 
-        def test_xedocs_global_version_hash_coinsistency(self):
+    def test_xedocs_global_version_hash_coinsistency(self):
         st1 = self.st
         st2 = self.st
         # Same URLs but the queries are in a different order
