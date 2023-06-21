@@ -704,7 +704,7 @@ def alphabetize_url_kwargs(url: str):
 
     if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
         if url != URLConfig.format_url_kwargs(url):
-            warnings.warn("From version 2.1.0 forward in straxen the URLs will be sorted alphabetically before hashing, If you wish to access data the was processed using pervious versions of straxen, its recomended you use a previous version, otherwise you will have to reprocess your data. Nothing changed in the usage of URL configs or how one overwrites a default setting.", FutureWarning)
+            warnings.warn("From straxen version 2.1.0 onward, URLConfig parameters will be sorted alphabetically before being passed to the plugins, this will change the lineage hash for non-sorted URLs. To load data processed with non-sorted URLs, you will need to use an older version.", FutureWarning)
         return URLConfig.format_url_kwargs(url)
     return url
 
