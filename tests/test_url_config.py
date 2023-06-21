@@ -354,7 +354,6 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(intended_url, preprocessed_url)
 
     def test_xedocs_global_version_hash_coinsistency(self):
-        st2 = self.st
         # Same URLs but the queries are in a different order
         st1.set_config({"test_config":"fake://electron_lifetimes?run_id=25000&version=v5&attr=value"})
         st2.set_config({"test_config":"fake://electron_lifetimes?attr=value&run_id=25000&version=v5"})
