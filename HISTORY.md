@@ -1,3 +1,34 @@
+v2.1.70 / 2023-06-22
+-------------------
+* Added peaks subtyping by @Jianyu010 in https://github.com/XENONnT/straxen/pull/1152
+* Fix ipython version by @dachengx in https://github.com/XENONnT/straxen/pull/1169
+* Fix bug in hitlets time ordering by @dachengx in https://github.com/XENONnT/straxen/pull/1173
+* Bump actions/setup-python from 4.5.0 to 4.6.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1170
+* Save hits level information(hits height and time difference) in peak and event level by @dachengx in https://github.com/XENONnT/straxen/pull/1155
+* Fix argsort inside numba.jit using kind='mergesort' by @dachengx in https://github.com/XENONnT/straxen/pull/1176
+* Bump merged_s2s version following `strax.merge_peaks` by @dachengx in https://github.com/XENONnT/straxen/pull/1179
+* Use same files names for peak and event level pos-rec by @dachengx in https://github.com/XENONnT/straxen/pull/1160
+* Update multi scatter Ignore nan in the sum of peaks. by @michaweiss89 in https://github.com/XENONnT/straxen/pull/1162
+* Add dynamic event display docs by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1077
+* Lower the titles in the same notebook by @dachengx in https://github.com/XENONnT/straxen/pull/1183
+* No longer test `st.runs` in `test_extract_latest_comment_lone_hits` by @dachengx in https://github.com/XENONnT/straxen/pull/1199
+* Remove unnecessary check in `merged_s2s` by @dachengx in https://github.com/XENONnT/straxen/pull/1195
+* automatically appending local rucio path by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1182
+* Performance boost veto proximity by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1181
+* Update build_datastructure_doc.py by @PeterGy in https://github.com/XENONnT/straxen/pull/1202
+* Add rundoc URLConfig protocol by @jmosbacher in https://github.com/XENONnT/straxen/pull/1135
+* Split event_area_per_channel into two plugins: event_area_per_channel… by @minzhong98 in https://github.com/XENONnT/straxen/pull/1191
+* Fix event basics time ordering by @jjakob03 in https://github.com/XENONnT/straxen/pull/1194
+* Make apply_xedocs_configs more flexible by @jmosbacher in https://github.com/XENONnT/straxen/pull/1204
+* Try to make hashing more coinsistent by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1201
+
+New Contributors
+* @PeterGy made their first contribution in https://github.com/XENONnT/straxen/pull/1202
+* @minzhong98 made their first contribution in https://github.com/XENONnT/straxen/pull/1191
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.7...v2.1.0
+
+
 v2.0.7 / 2023-04-25
 -------------------
 * Bootstrax target removal after failures by @cfuselli in https://github.com/XENONnT/straxen/pull/1145
