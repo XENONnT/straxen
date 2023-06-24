@@ -1,7 +1,7 @@
 import numpy as np
 import numba
 from scipy.stats import halfcauchy
-from .peak_ambience import distance_in_xy
+from .peak_ambience import distance_in_xy, _quick_assign
 import strax
 import straxen
 
@@ -18,7 +18,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         * v0.1.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
 
-    __version__ = '0.1.5'
+    __version__ = '0.1.6'
 
     depends_on = ('peak_basics', 'peak_positions')
     provides = 'peak_shadow'
@@ -98,7 +98,11 @@ class PeakShadow(strax.OverlapWindowPlugin):
         return dtype
 
     def compute(self, peaks):
-        return self.compute_shadow(peaks, peaks)
+        argsort = np.argsort(peaks['center_time'], kind='mergesort')
+        _peaks = np.sort(peaks, order='center_time')
+        result = np.zeros(len(peaks), self.dtype)
+        _quick_assign(argsort, result, self.compute_shadow(peaks, _peaks))
+        return result
 
     def compute_shadow(self, peaks, current_peak):
         # 1. Define time window for each peak, we will find previous peaks within these time windows
