@@ -60,6 +60,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help='Digitize the sum waveform of the top array separately'
     )
 
+    merged_s2s_get_window_size_factor = straxen.URLConfig(
+        default=5,
+        type=int,
+        track=False,
+        help='Factor of the window size for the merged_s2s plugin'
+    )
+
     def setup(self):
         self.to_pe = self.gain_model
 
@@ -67,8 +74,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return strax.unpack_dtype(self.deps['peaklets'].dtype_for('peaklets'))
 
     def get_window_size(self):
-        return 5 * (int(self.s2_merge_gap_thresholds[0][1])
-                    + self.s2_merge_max_duration)
+        return self.merged_s2s_get_window_size_factor * (
+            int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration)
 
     def compute(self, peaklets, lone_hits):
         if self.merge_without_s1:
