@@ -169,10 +169,11 @@ class EventPatternFit(strax.Plugin):
 
         # Getting gain model to get dead PMTs
         self.dead_PMTs = np.where(self.to_pe == 0)[0]
-        np.savetxt('/home/minzhong/S1OpticalMapCheck/dead_PMT.txt', self.dead_PMTs)
+        # np.savetxt('/home/minzhong/S1OpticalMapCheck/dead_PMT.txt', self.dead_PMTs)
         self.pmtbool = ~np.in1d(np.arange(0, self.n_tpc_pmts), self.dead_PMTs)
         print ('#### Number of TPC PMTs:', self.n_tpc_pmts)
         print ('#### Mean PE Photon:', self.mean_pe_photon)
+        print ('#### S1 AFT Map:', self.s1_aft_map)
         self.pmtbool_top = self.pmtbool[:self.n_top_pmts]
         self.pmtbool_bottom = self.pmtbool[self.n_top_pmts:self.n_tpc_pmts]
 
