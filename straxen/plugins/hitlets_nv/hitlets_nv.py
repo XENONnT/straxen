@@ -133,7 +133,7 @@ class nVETOHitlets(strax.Plugin):
         # Remove data field:
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
         strax.copy_to_buffer(temp_hitlets, hitlets, '_copy_hitlets')
-        return hitlets
+        return strax.sort_by_time(hitlets)
 
 
 def remove_switched_off_channels(hits, to_pe):
