@@ -704,7 +704,7 @@ def alphabetize_url_kwargs(url: str):
 
     if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
         if url != URLConfig.format_url_kwargs(url):
-            function_that_might_warn()
+            warn_change_in_protocol()
         return URLConfig.format_url_kwargs(url)
     return url
 
@@ -731,13 +731,18 @@ def read_rundoc(path, run_id=None, default=None):
             raise ValueError(f'No path {path} found in rundoc for run {run_id}')
     return rundoc
 
+
 class WarningFlag:
+    """
+    Class made to ensure certain warnings are only printed out once while the module is
+    imported and not constantly with every function call.
+    """
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
             print("Creating the object")
-            cls._instance = super(WarningFlag, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._warning_shown = False
         return cls._instance
 
@@ -750,13 +755,15 @@ class WarningFlag:
         self._warning_shown = value
 
 
-def function_that_might_warn():
+def warn_change_in_protocol():
+    """
+    Here we can prepare any warnings we decide to use relating to URL configurations.
+    """
     flag = WarningFlag()
     if not flag.warning_shown:
-        print("From straxen version 2.1.0 onward, URLConfig parameters..."
-               "will be sorted alphabetically before being passed to the plugins,..."
-               " this will change the lineage hash for non-sorted URLs. To load..."
-               " data processed with non-sorted URLs, you will need to use an..."
-               " older version.")
+        print("From straxen version 2.1.0 onward, URLConfig parameters"
+              "will be sorted alphabetically before being passed to the plugins,"
+              " this will change the lineage hash for non-sorted URLs. To load"
+              " data processed with non-sorted URLs, you will need to use an"
+              " older version.")
         flag.warning_shown = True
-
