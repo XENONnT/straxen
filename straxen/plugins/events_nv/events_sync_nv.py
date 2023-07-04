@@ -1,6 +1,6 @@
 import strax
 import numpy as np
-from straxen.plugins.detector_time_offsets import ERRORVALUE_GPS_NIM_SIGNAL_NOT_FOUND 
+from straxen.plugins.detector_time_offsets import ERRORVALUE_GPS_NIM_SIGNAL_NOT_FOUND
 
 export, __all__ = strax.exporter()
 
@@ -41,7 +41,7 @@ class nVETOEventsSync(strax.OverlapWindowPlugin):
         assert np.sum(_has_delay) >= 0, f'Missing the GPS sync signal for run {self.run_id}.'
         delay = np.median(delay[_has_delay])
         delay = delay.astype(np.int64)
-        
+
         events_sync_nv = np.zeros(len(events_nv), self.dtype)
         events_sync_nv['time'] = events_nv['time']
         events_sync_nv['endtime'] = events_nv['endtime']
