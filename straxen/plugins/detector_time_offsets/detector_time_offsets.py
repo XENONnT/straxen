@@ -3,6 +3,7 @@ import straxen
 import numpy as np
 from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
+ERRORVALUE_GPS_NIM_SIGNAL_NOT_FOUND = -10000000000
 
 class DetectorSynchronization(strax.Plugin):
     """
@@ -12,7 +13,7 @@ class DetectorSynchronization(strax.Plugin):
     Reference:
         * xenon:xenonnt:dsg:mveto:sync_monitor
     """
-    __version__ = '0.0.3'
+    __version__ = '0.0.4'
     depends_on = ('raw_records_aqmon',
                   'raw_records_aqmon_nv',
                   'raw_records_aux_mv')
@@ -122,7 +123,7 @@ class DetectorSynchronization(strax.Plugin):
         """
         Function to estimate the average offset between two hits.
         """
-        err_value = -10000000000
+        err_value = ERRORVALUE_GPS_NIM_SIGNAL_NOT_FOUND
 
         offsets = []
         prev_time = 0
