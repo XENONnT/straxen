@@ -40,6 +40,10 @@ class VetoProximity(strax.OverlapWindowPlugin):
              'such that one will never cut events that are < YY ns.'
     )
 
+    diagnose_overlapping = straxen.URLConfig(
+        track=False, default=True, infer_type=False,
+        help="Enable runtime checks for disjointness")
+
     veto_names = ['busy', 'busy_he', 'hev', 'straxen_deadtime']
 
     def infer_dtype(self):
@@ -98,10 +102,11 @@ class VetoProximity(strax.OverlapWindowPlugin):
         # Figure out the vetos *during* an event
         res = self.get_overlapping_window_time(vetos_during_event, selected_intervals, event_window, result_buffer)
         result_buffer[f'veto_{veto_name}_overlap'] = res
-        
-        # Check if the event windows overlap
-        _event_window_do_not_overlap = (strax.endtime(event_window)[:-1] - event_window['time'][1:]) <= 0
-        assert np.all(_event_window_do_not_overlap), 'event_window overlap!'
+
+        if self.diagnose_overlapping:
+            # Check if the event windows overlap
+            _event_window_do_not_overlap = (strax.endtime(event_window)[:-1] - event_window['time'][1:]) <= 0
+            assert np.all(_event_window_do_not_overlap), "event_window not disjoint"
 
         # Find the next and previous veto's
         times_to_prev, times_to_next = strax.abs_time_to_prev_next_interval(event_window, selected_intervals)
