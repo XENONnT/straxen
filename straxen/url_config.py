@@ -28,6 +28,8 @@ export, __all__ = strax.exporter()
 
 _CACHES = {}
 
+WARN = True
+
 
 @export
 def clear_config_caches():
@@ -701,10 +703,17 @@ def alphabetize_url_kwargs(url: str):
     """
     Reorders queries for urlconfigs to avoid hashing issues
     """
+    
+    global WARN
 
     if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
-        if url != URLConfig.format_url_kwargs(url):
-            warnings.warn("From straxen version 2.1.0 onward, URLConfig parameters will be sorted alphabetically before being passed to the plugins, this will change the lineage hash for non-sorted URLs. To load data processed with non-sorted URLs, you will need to use an older version.", FutureWarning)
+        if url != URLConfig.format_url_kwargs(url) and WARN:
+            warnings.warn("From straxen version 2.1.0 onward, URLConfig parameters"
+              "will be sorted alphabetically before being passed to the plugins,"
+              " this will change the lineage hash for non-sorted URLs. To load"
+              " data processed with non-sorted URLs, you will need to use an"
+              " older version.")
+            WARN = False
         return URLConfig.format_url_kwargs(url)
     return url
 
@@ -730,3 +739,4 @@ def read_rundoc(path, run_id=None, default=None):
         else:
             raise ValueError(f'No path {path} found in rundoc for run {run_id}')
     return rundoc
+
