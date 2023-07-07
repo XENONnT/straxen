@@ -1,4 +1,15 @@
-v2.1.70 / 2023-06-22
+v2.1.1 / 2023-07-06
+-------------------
+* Fix timing of peaks when ordering in `center_time` by @dachengx in https://github.com/XENONnT/straxen/pull/1208
+* Move `get_window_size` factor of merged_s2s as untracked configuration by @dachengx in https://github.com/XENONnT/straxen/pull/1209
+* Sort `hitlets` in `nVETOHitlets` by @dachengx in https://github.com/XENONnT/straxen/pull/1210
+* Only print out warning once by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1211
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.0...v2.1.1
+
+
+v2.1.0 / 2023-06-22
 -------------------
 * Added peaks subtyping by @Jianyu010 in https://github.com/XENONnT/straxen/pull/1152
 * Fix ipython version by @dachengx in https://github.com/XENONnT/straxen/pull/1169
