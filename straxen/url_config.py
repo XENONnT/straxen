@@ -10,6 +10,7 @@ import inspect
 import tarfile
 import tempfile
 import warnings
+import re
 
 import numpy as np
 import pandas as pd
@@ -698,26 +699,6 @@ def objects_to_array(objects: list):
     return np.array(objects)
 
 
-@URLConfig.preprocessor
-def alphabetize_url_kwargs(url: str):
-    """
-    Reorders queries for urlconfigs to avoid hashing issues
-    """
-    
-    global WARN
-
-    if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
-        if url != URLConfig.format_url_kwargs(url) and WARN:
-            warnings.warn("From straxen version 2.1.0 onward, URLConfig parameters"
-              "will be sorted alphabetically before being passed to the plugins,"
-              " this will change the lineage hash for non-sorted URLs. To load"
-              " data processed with non-sorted URLs, you will need to use an"
-              " older version.")
-            WARN = False
-        return URLConfig.format_url_kwargs(url)
-    return url
-
-
 @URLConfig.register('run_doc')
 def read_rundoc(path, run_id=None, default=None):
     """Read a path from the rundoc.
@@ -739,4 +720,112 @@ def read_rundoc(path, run_id=None, default=None):
         else:
             raise ValueError(f'No path {path} found in rundoc for run {run_id}')
     return rundoc
+
+
+@URLConfig.preprocessor
+def alphabetize_url_kwargs(url: str):
+    """
+    Reorders queries for urlconfigs to avoid hashing issues
+    """
+    
+    global WARN
+
+    if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
+        if url != URLConfig.format_url_kwargs(url) and WARN:
+            warnings.warn("From straxen version 2.1.0 onward, URLConfig parameters"
+              "will be sorted alphabetically before being passed to the plugins,"
+              " this will change the lineage hash for non-sorted URLs. To load"
+              " data processed with non-sorted URLs, you will need to use an"
+              " older version.")
+            WARN = False
+        return URLConfig.format_url_kwargs(url)
+    return url
+
+
+@URLConfig.preprocessor
+def prevent_url_common_issues(url: str):
+    """
+    Checks the URLs given to straxen and confirm they 
+    do not have any obvious issues.
+    """
+    
+    if isinstance(url, str) and ('xedocs' in url):
+        confirm_xedocs_schema_exists_check(url)
+        data_as_list_check(url)
+        are_resources_needed_check(url)
+        itp_map_check(url)
+        tf_check(url)
+        url_attr_check(url)
+        url_version_check(url)
+    
+    
+def confirm_xedocs_schema_exists_check(url: str):
+    import xedocs
+    # Selects the schema name in the URL and confirms it exists in the xedocs db
+    if not re.findall(r'(?<=\://)[^\://]*(?=\?)', url)[0] in xedocs.list_schemas():
+        warnings.warn("You tried to use a schema that is not part of the xedocs database")
+        
+
+def data_as_list_check(url: str):
+    if ('list-to-array' or 'object-to-dict') in url:
+        if not('as_list=True' in url):
+            warnings.warn("When using the list-to-array or object-to-dict "
+                          "protocol, you must include an as_list=True in the URL arguments")
+        if not('sort' in url):
+            warnings.warn("When using the list-to-array or object-to-dict "
+                          "protocol, you must include a sort argument in the URL")
+
+                
+def are_resources_needed_check(url: str):
+    parent_class = get_parent_class(url)
+
+    if ('BaseMap' == parent_class) or ('BaseResourceReference' == parent_class):
+        if not('resource://' in url):
+            warnings.warn("A URL which requeres the resource:// was given however"
+                          "resource:// was not found within the URL, not data will be loaded.")
+            
+            
+def itp_map_check(url: str):
+
+    parent_class = get_parent_class(url)
+
+    if ('BaseMap' == parent_class):
+        if not('itp_map://' in url):
+            warnings.warn("Warning, you are requesting a map file with this URL however, "
+                          "the protocol itp_map:// was not requested as part of the URL. "
+                          "The itp_map:// protocol is requiered for map corrections.")
+                
+                
+def tf_check(url: str):
+    if re.findall(r'(?<=\://)[^\://]*(?=\?)', url)[0] == 'posrec_models':
+        if not('tf://' in url):
+            warnings.warn("Warning, you are requesting a position reconstruction model with this URL however, "
+                          "the protocol tf:// was not requested as part of the URL. "
+                          "The tf:// protocol is requiered for position reconstruction corrections.")
+
+    
+def url_attr_check(url: str):
+    if not('attr' in url):
+        warnings.warn("A URL without an 'attr' argument was given, as a result, instead of a "
+                      "value, list of values or other files, you will get a document, which"
+                      "cannot be used to process data.")
+            
+                
+def url_version_check(url: str):
+    if not('version' in url):
+        warnings.warn("A URL without a 'version' argument was given, as a result, to use "
+                      "a url protocol to get a correction a version of said correcection is requiered")
+            
+            
+def get_parent_class(url:str):
+    """
+    Finds a xedocs schema and returns the class used to make the schema
+    """
+    import xedocs 
+    
+    schema = re.findall(r'(?<=\://)[^\://]*(?=\?)', url)[0]
+    xedocs_class = xedocs.find_schema(schema).__bases__
+    parent_class = [parent.__name__ for parent in xedocs_class]
+    
+    return parent_class[0]
 
