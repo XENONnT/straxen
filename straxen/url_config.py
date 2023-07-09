@@ -276,25 +276,25 @@ class URLConfig(strax.Config):
             # its intended type (final_type)
             if self.final_type is not OMITTED and not isinstance(cfg, self.final_type):
                 # TODO replace back with InvalidConfiguration
-                UserWarning(
+                warnings.warn(
                     f"Invalid type for option {self.name}. "
-                    f"Excepted a {self.final_type}, got a {type(cfg)}")
+                    f"Expected a {self.final_type} instance, got {type(cfg)}",
+                    UserWarning)
 
     def validate_type(self, value):
-        """This method is called by the context on plugin initialization
-        at this stage, the run_id and context config are already known but the
-        config values are not yet set on the plugin. Therefore its the perfect
-        place to run any preprocessors on the config values to make any needed
-        changes before the configs are hashed.
+        """Validate the type of a value against its intended type
         """
-
+        
         if self.final_type is OMITTED or isinstance(value, self.final_type):
             return value
         
-        raise TypeError(
+        warnings.warn(
                 f"Invalid type for option {self.name}. "
-                f"Excepted a {self.final_type}, got a {type(value)}"
-        )
+                f"Expected a {self.final_type} instance, got {type(value)}",
+                UserWarning
+                )
+        
+        return value
     
     def fetch(self, plugin):
         """override the Config.fetch method
@@ -335,7 +335,7 @@ class URLConfig(strax.Config):
             value = self.eval(protocol, arg, kwargs)
             self.cache[key] = value
 
-        return self.validate_type(url)
+        return self.validate_type(value)
         
     @classmethod
     def ast_to_url(cls,
