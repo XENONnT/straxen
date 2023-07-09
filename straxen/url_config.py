@@ -323,9 +323,12 @@ class URLConfig(strax.Config):
         # evaluate the url as AST
         protocol, arg, kwargs = self.url_to_ast(url)
 
+        # allow run_id to be missing
+        run_id = getattr(plugin, "run_id", "000000")
+        
         # construct a deterministic hash key from AST
         key = strax.deterministic_hash(
-            (plugin.config, plugin.run_id, protocol, arg, kwargs)
+            (plugin.config, run_id, protocol, arg, kwargs)
         )
 
         # fetch from cache if exists
