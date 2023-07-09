@@ -280,6 +280,22 @@ class URLConfig(strax.Config):
                     f"Invalid type for option {self.name}. "
                     f"Excepted a {self.final_type}, got a {type(cfg)}")
 
+    def validate_type(self, value):
+        """This method is called by the context on plugin initialization
+        at this stage, the run_id and context config are already known but the
+        config values are not yet set on the plugin. Therefore its the perfect
+        place to run any preprocessors on the config values to make any needed
+        changes before the configs are hashed.
+        """
+
+        if self.final_type is OMITTED or isinstance(value, self.final_type):
+            return value
+        
+        raise TypeError(
+                f"Invalid type for option {self.name}. "
+                f"Excepted a {self.final_type}, got a {type(value)}"
+        )
+    
     def fetch(self, plugin):
         """override the Config.fetch method
            this is called when the attribute is accessed
@@ -293,18 +309,18 @@ class URLConfig(strax.Config):
         if not isinstance(url, str):
             # if the value is not a string it is evaluated
             # as a literal config and returned as is.
-            return url
+            return self.validate_type(url)
 
         if self.SCHEME_SEP not in url:
             # no protocol in the url so its evaluated
             # as string-literal config and returned as is
-            return url
+            return self.validate_type(url)
 
         # evaluate the url as AST
         protocol, arg, kwargs = self.url_to_ast(url)
 
         # construct a deterministic hash key from AST
-        key = strax.deterministic_hash((protocol, arg, kwargs))
+        key = strax.deterministic_hash((plugin.config, plugin.run_id, protocol, arg, kwargs))
 
         # fetch from cache if exists
         value = self.cache.get(key, None)
@@ -319,7 +335,7 @@ class URLConfig(strax.Config):
             value = self.eval(protocol, arg, kwargs)
             self.cache[key] = value
 
-        return value
+        return self.validate_type(url)
         
     @classmethod
     def ast_to_url(cls,
