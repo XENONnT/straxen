@@ -278,26 +278,16 @@ class URLConfig(strax.Config):
         if not isinstance(cfg, str) or self.SCHEME_SEP not in cfg:
             # if the value is not a url config it is validated against
             # its intended type (final_type)
-            if self.final_type is not OMITTED and not isinstance(cfg, self.final_type):
-                # TODO replace back with InvalidConfiguration
-                warnings.warn(
-                    f"Invalid type for option {self.name}. "
-                    f"Expected a {self.final_type} instance, got {type(cfg)}",
-                    UserWarning,
-                )
+            self.validate_type(cfg)
 
     def validate_type(self, value):
         """Validate the type of a value against its intended type"""
 
-        if self.final_type is OMITTED or isinstance(value, self.final_type):
-            return value
-
-        warnings.warn(
+        matches_expected = self.final_type is OMITTED or isinstance(value, self.final_type)
+        assert matches_expected, (
             f"Invalid type for option {self.name}. "
             f"Expected a {self.final_type} instance, got {type(value)}",
-            UserWarning,
         )
-
         return value
 
     def fetch(self, plugin):
@@ -325,7 +315,7 @@ class URLConfig(strax.Config):
 
         # allow run_id to be missing
         run_id = getattr(plugin, "run_id", "000000")
-        
+
         # construct a deterministic hash key from AST
         key = strax.deterministic_hash(
             (plugin.config, run_id, protocol, arg, kwargs)
