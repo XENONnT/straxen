@@ -24,6 +24,10 @@ from scipy.interpolate import interp1d
 from straxen.misc import filter_kwargs
 from typing import Container, Mapping, Union, Iterable
 
+from pydantic.validators import find_validators
+from pydantic.config import get_config
+from pydantic.errors import PydanticTypeError
+
 export, __all__ = strax.exporter()
 
 _CACHES = {}
@@ -282,12 +286,24 @@ class URLConfig(strax.Config):
 
     def validate_type(self, value):
         """Validate the type of a value against its intended type"""
-
-        matches_expected = self.final_type is OMITTED or isinstance(value, self.final_type)
-        assert matches_expected, (
+        msg = (
             f"Invalid type for option {self.name}. "
-            f"Expected a {self.final_type} instance, got {type(value)}",
-        )
+            f"Expected a {self.final_type} instance, got {type(value)}"
+            )
+        
+        if self.final_type is not OMITTED:
+            # Use pydantic to validate the type
+            # its validation is more flexible than isinstance
+            # it will coerce standard equivalent types
+            cfg = get_config(dict(arbitrary_types_allowed=True))
+            
+            try:
+                validator = next(find_validators(self.final_type, config=cfg))
+                value = validator(value)
+            except:
+                pass
+            assert isinstance(value, self.final_type), msg
+    
         return value
 
     def fetch(self, plugin):
@@ -332,9 +348,10 @@ class URLConfig(strax.Config):
             )
 
             value = self.eval(protocol, arg, kwargs)
+            value = self.validate_type(value)
             self.cache[key] = value
 
-        return self.validate_type(value)
+        return value
 
     @classmethod
     def ast_to_url(
