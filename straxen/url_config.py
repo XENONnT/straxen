@@ -297,11 +297,12 @@ class URLConfig(strax.Config):
             # it will coerce standard equivalent types
             cfg = get_config(dict(arbitrary_types_allowed=True))
             
-            try:
-                validator = next(find_validators(self.final_type, config=cfg))
-                value = validator(value)
-            except:
-                pass
+            for validator in find_validators(self.final_type, config=cfg):
+                try:
+                    value = validator(value)
+                except:
+                    pass
+
             assert isinstance(value, self.final_type), msg
     
         return value
