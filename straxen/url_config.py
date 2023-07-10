@@ -296,14 +296,18 @@ class URLConfig(strax.Config):
             # its validation is more flexible than isinstance
             # it will coerce standard equivalent types
             cfg = get_config(dict(arbitrary_types_allowed=True))
-            
-            for validator in find_validators(self.final_type, config=cfg):
+            if isinstance(self.final_type, tuple):
+                validators = [ v for t in self.final_type for v in find_validators(t, config=cfg)]
+            else:
+                validators = find_validators(self.final_type, config=cfg)
+            for validator in validators:
                 try:
-                    value = validator(value)
+                    validator(value)
+                    break
                 except:
                     pass
-
-            assert isinstance(value, self.final_type), msg
+            else:
+                raise TypeError(msg)
     
         return value
 
