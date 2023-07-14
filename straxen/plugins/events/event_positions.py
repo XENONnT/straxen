@@ -19,7 +19,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics',)
 
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
@@ -103,8 +103,8 @@ class EventPositions(strax.Plugin):
         return dtype + strax.time_fields
 
     def setup(self):
-        self.coordinate_scales = [1., 1., - self.electron_drift_velocity]
         self.map = self.fdc_map
+        self.map.scale_coordinates([1., 1., - self.electron_drift_velocity])
 
     def compute(self, events):
 
