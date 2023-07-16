@@ -152,6 +152,12 @@ class EventPatternFit(strax.Plugin):
     def setup(self):
         # FIXME: Consider renaming the configs to match usage
 
+        # Change the S1 AFT map 
+        # self.s1_aft_map = straxen.InterpolatingMap(
+        #     straxen.get_resource(
+        #         '/scratch/midway2/minzhong/S1AFTMap/s1_a_area_fraction_top_dd_xyz_XENONnT_kr-83m_28Jun2023.json',
+        #         fmt='json'))
+        
         self.to_pe = self.gain_model
 
         self.mean_pe_photon = self.mean_pe_per_photon
