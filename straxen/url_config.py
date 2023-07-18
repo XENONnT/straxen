@@ -523,9 +523,8 @@ class URLConfig(strax.Config):
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
         """
-        protocol, url_arg, url_kwarg = cls.url_to_ast(url)
-
-        combined_kwargs = dict(url_kwarg, **kwargs)
+        url = cls.format_url_kwargs(url, **kwargs)
+        _, combined_kwargs = cls.split_url_kwargs(url)
 
         for k, v in combined_kwargs.items():
             if isinstance(v, str) and cls.PLUGIN_ATTR_PREFIX in v:
@@ -536,8 +535,8 @@ class URLConfig(strax.Config):
                     f"Try passing {k} as a keyword argument."
                     f"e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`"
                 )
-
-        return cls.eval(protocol, url_arg, combined_kwargs)
+        
+        return cls.eval(url)
 
 
 @URLConfig.register("cmt")
