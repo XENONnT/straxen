@@ -7,6 +7,7 @@ import commentjson
 import json
 import os
 import os.path as osp
+import tarfile
 import pickle
 import dill
 import urllib.request
@@ -156,6 +157,15 @@ def open_resource(file_name: str, fmt='text'):
             result = f.read()
     elif fmt == 'csv':
         result = pd.read_csv(file_name)
+    elif fmt == 'tar.gz':
+        with tarfile.open(file_name, 'r:gz') as tar:
+            for member in tar.getmembers():
+                if member.isfile():
+                    pkl_file = tar.extractfile(member)
+                    result = pickle.load(pkl_file)
+                else:
+                    raise ValueError("Not a readable file in tar.gz!")
+    
     else:
         raise ValueError(f"Unsupported format {fmt}!")
 
