@@ -16,14 +16,14 @@ class EventPatternFit(strax.Plugin):
 
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.3'
+    __version__ = '0.1.5'
 
     # Getting S1 AFT maps
-    s1_aft_map = straxen.URLConfig(
-        default='itp_map://resource://cmt://'
-                's1_aft_xyz_map'
-                '?version=ONLINE&run_id=plugin.run_id&fmt=json',
-        cache=True)
+    # s1_aft_map = straxen.URLConfig(
+    #     default='itp_map://resource://cmt://'
+    #             's1_aft_xyz_map'
+    #             '?version=ONLINE&run_id=plugin.run_id&fmt=json',
+    #     cache=True)
 
     electron_drift_velocity = straxen.URLConfig(
         default='cmt://'
@@ -152,6 +152,11 @@ class EventPatternFit(strax.Plugin):
     def setup(self):
         # FIXME: Consider renaming the configs to match usage
 
+        # Change the S1 AFT map 
+        self.s1_aft_map = straxen.InterpolatingMap(
+            straxen.get_resource(
+                '/scratch/midway2/minzhong/S1AFTMap/s1_a_area_fraction_top_dd_xyz_XENONnT_kr-83m_18Jul2023_v11_z_dv.json',
+                fmt='json'))
         self.to_pe = self.gain_model
 
         self.mean_pe_photon = self.mean_pe_per_photon
@@ -189,7 +194,7 @@ class EventPatternFit(strax.Plugin):
         self.compute_s2_neural_llhvalue(events, result)
 
         # Computing binomial test for s1 area fraction top
-        positions = np.vstack([events['x'], events['y'], events['z']]).T
+        positions = np.vstack([events['x'], events['y'], events['z_dv_corr']]).T
         aft_prob = self.s1_aft_map(positions)
 
         alt_s1_interaction_drift_time = events['s2_center_time'] - events['alt_s1_center_time']
