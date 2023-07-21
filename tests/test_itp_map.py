@@ -43,7 +43,13 @@ class TestItpMaps(TestCase):
             self._map['map'],
             self._map['coordinate_system'],
             filename=filename,
-            quantum=0.1,
+        )
+        filename_quantized = 'test_array_valued_quantized.pkl'
+        save_interpolating_map(
+            self._map['map'],
+            self._map['coordinate_system'],
+            filename=filename_quantized,
+            quantum=0.001,
         )
 
         # Let's do something easy, check if one fixed point yields the
@@ -51,11 +57,14 @@ class TestItpMaps(TestCase):
         # straxen version?! That's bad!
         itp_maps = [
             InterpolatingMap(self._map),
-            InterpolatingMap(get_resource(filename, fmt='.pkl'))]
+            InterpolatingMap(get_resource(filename, fmt='pkl')),
+            InterpolatingMap(get_resource(filename_quantized, fmt='pkl'))
+        ]
         for itp_map in itp_maps:
             map_at_random_point = itp_map([[0, 0, 0], [0, 0, -140]])
-            self.assertAlmostEqual(map_at_random_point[0][0], 2.80609655)
-            self.assertAlmostEqual(map_at_random_point[0][1], 7.37967879)
+            places = 5
+            self.assertAlmostEqual(map_at_random_point[0][0], 2.80609655, places=places)
+            self.assertAlmostEqual(map_at_random_point[0][1], 7.37967879, places=places)
 
-            self.assertAlmostEqual(map_at_random_point[1][0], 2.17815179)
-            self.assertAlmostEqual(map_at_random_point[1][1], 9.47282782)
+            self.assertAlmostEqual(map_at_random_point[1][0], 2.17815179, places=places)
+            self.assertAlmostEqual(map_at_random_point[1][1], 9.47282782, places=places)

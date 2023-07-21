@@ -6,7 +6,7 @@ import time
 import pickle
 import logging
 import warnings
-from typing import List, Literal
+from typing import Type, List, Literal
 from textwrap import dedent
 
 import numpy as np
@@ -271,7 +271,8 @@ def save_interpolating_map(
         coordinate_system: List,
         filename: str,
         map_name: str = None,
-        quantum=0.00001,
+        quantum: float = None,
+        quantum_dtype = np.int16,
         map_description: str = '',
         compressor: Literal['bz2', 'zstd', 'blosc', 'lz4'] = 'zstd',
     ):
@@ -307,22 +308,33 @@ def save_interpolating_map(
             f"The shape of histogram: {histogram_shape} and "
             f"coordinate system: {coordinate_shape} do not match")
 
-    dtype = np.int16
-    encode_until = np.iinfo(dtype).max * quantum
-    if histogram.max() > encode_until:
-        raise ValueError(
-            f"Map maximum value is {histogram.max():.4f},"
-            " can encode values until {encode_until:.4f}")
+    if quantum is None:
+        # if quantum is not specified, just use float32
+        q = 1
+        quantum_dtype = np.float32
+        map = histogram.astype(quantum_dtype)
+    else:
+        q = quantum
+        if not np.issubdtype(quantum_dtype, np.integer):
+            raise ValueError(
+                "If using quantization, quantum_dtype must be an integer type,"
+                f" but it is now {quantum_dtype}")
+        encode_until = np.iinfo(quantum_dtype).max * q
+        if histogram.max() > encode_until:
+            raise ValueError(
+                f"Map maximum value is {histogram.max():.4f},"
+                " can encode values until {encode_until:.4f}")
+        map = np.round(histogram / q).astype(quantum_dtype)
 
     output = dict(
         coordinate_system=coordinate_system,
-        map=strax.io.COMPRESSORS[compressor]['compress'](
-            np.round(histogram / quantum).astype(dtype)),
-        quantized=quantum,
+        map=strax.io.COMPRESSORS[compressor]['compress'](map),
         description=dedent(map_description),
         timestamp=time.time(),
-        compressed=(compressor, dtype, histogram.shape),
+        compressed=(compressor, quantum_dtype, map.shape),
     )
+    if quantum is not None:
+        output['quantized'] = q
     if map_name is not None:
         output['name'] = map_name
 
