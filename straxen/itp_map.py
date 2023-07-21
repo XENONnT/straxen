@@ -267,7 +267,7 @@ class InterpolatingMap:
 
 @export
 def save_interpolating_map(
-        histogram,
+        itp_map,
         coordinate_system: List,
         filename: str,
         map_name: str = None,
@@ -281,8 +281,9 @@ def save_interpolating_map(
     To fit the large XENONnT per-PMT MC maps into strax_auxiliary files,
     quantized them to values of 1e-5,
     and store the maps as 16-bit integer multiples of 1e-5, instead of 64-bit floats.
-    :param histogram: numpy histogram or list of floats
-    :param coordinate_system: coordinate system of the histogram,
+    :param itp_map: numpy itp_map or list of floats,
+    should follow the shape indicated by coordinate_system
+    :param coordinate_system: coordinate system of the itp_map,
     list of [['x', [x_min, x_max, n_x]], [['y', [y_min, y_max, n_y], ...] for each dimension,
     or [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
     :param filename: filename with '.pkl' extension
@@ -291,28 +292,28 @@ def save_interpolating_map(
     :param map_description: map's description
     :param compressor: key of compressor in strax.io.COMPRESSORS
     """
-    if isinstance(histogram, list):
-        histogram = np.array(histogram)
+    if isinstance(itp_map, list):
+        itp_map = np.array(itp_map)
 
     if isinstance(coordinate_system[0][0], str):
-        histogram_shape = list(histogram.shape)
+        itp_map_shape = list(itp_map.shape)
         coordinate_shape = [c[1][2] for c in coordinate_system]
-        mask = (len(histogram_shape) == len(coordinate_shape))
-        mask &= all([hs == cs for hs, cs in zip(histogram_shape, coordinate_shape)])
+        mask = (len(itp_map_shape) == len(coordinate_shape))
+        mask &= all([hs == cs for hs, cs in zip(itp_map_shape, coordinate_shape)])
     else:
-        histogram_shape = len(histogram)
+        itp_map_shape = len(itp_map)
         coordinate_shape = len(coordinate_system)
-        mask = (histogram_shape == coordinate_shape)
+        mask = (itp_map_shape == coordinate_shape)
     if not mask:
         raise ValueError(
-            f"The shape of histogram: {histogram_shape} and "
+            f"The shape of itp_map: {itp_map_shape} and "
             f"coordinate system: {coordinate_shape} do not match")
 
     if quantum is None:
         # if quantum is not specified, just use float32
         q = 1
         quantum_dtype = np.float32
-        map = histogram.astype(quantum_dtype)
+        map = itp_map.astype(quantum_dtype)
     else:
         q = quantum
         if not np.issubdtype(quantum_dtype, np.integer):
@@ -320,11 +321,11 @@ def save_interpolating_map(
                 "If using quantization, quantum_dtype must be an integer type,"
                 f" but it is now {quantum_dtype}")
         encode_until = np.iinfo(quantum_dtype).max * q
-        if histogram.max() > encode_until:
+        if itp_map.max() > encode_until:
             raise ValueError(
-                f"Map maximum value is {histogram.max():.4f},"
+                f"Map maximum value is {itp_map.max():.4f},"
                 " can encode values until {encode_until:.4f}")
-        map = np.round(histogram / q).astype(quantum_dtype)
+        map = np.round(itp_map / q).astype(quantum_dtype)
 
     output = dict(
         coordinate_system=coordinate_system,
