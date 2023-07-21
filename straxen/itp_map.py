@@ -12,7 +12,6 @@ from textwrap import dedent
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
-from multihist import Histdd
 
 import straxen
 import strax
@@ -268,19 +267,20 @@ class InterpolatingMap:
 
 @export
 def save_interpolating_map(
-    histogram,
-    coordinate_system: List,
-    filename: str,
-    map_name: str = None,
-    quantum=0.00001,
-    map_description: str = '',
-    compressor: Literal['bz2', 'zstd', 'blosc', 'lz4'] = 'zstd'):
+        histogram,
+        coordinate_system: List,
+        filename: str,
+        map_name: str = None,
+        quantum=0.00001,
+        map_description: str = '',
+        compressor: Literal['bz2', 'zstd', 'blosc', 'lz4'] = 'zstd',
+    ):
     """
     Make a straxen-style InterpolatingMap.
     To fit the large XENONnT per-PMT MC maps into strax_auxiliary files,
     quantized them to values of 1e-5,
     and store the maps as 16-bit integer multiples of 1e-5, instead of 64-bit floats.
-    :param histogram: numpy histogram
+    :param histogram: numpy histogram or list of floats
     :param coordinate_system: coordinate system of the histogram,
     list of [['x', [x_min, x_max, n_x]], [['y', [y_min, y_max, n_y], ...] for each dimension,
     or [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
@@ -290,6 +290,9 @@ def save_interpolating_map(
     :param map_description: map's description
     :param compressor: key of compressor in strax.io.COMPRESSORS
     """
+    if isinstance(histogram, list):
+        histogram = np.array(histogram)
+
     if isinstance(coordinate_system[0][0], str):
         histogram_shape = list(histogram.shape)
         coordinate_shape = [c[1][2] for c in coordinate_system]
@@ -313,7 +316,8 @@ def save_interpolating_map(
 
     output = dict(
         coordinate_system=coordinate_system,
-        map=strax.io.COMPRESSORS[compressor]['compress'](np.round(histogram / quantum).astype(dtype)),
+        map=strax.io.COMPRESSORS[compressor]['compress'](
+            np.round(histogram / quantum).astype(dtype)),
         quantized=quantum,
         description=dedent(map_description),
         timestamp=time.time(),
