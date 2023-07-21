@@ -51,6 +51,13 @@ class TestItpMaps(TestCase):
             filename=filename_quantized,
             quantum=0.001,
         )
+        filename_quantized_gzip = 'test_array_valued_quantized.pkl.gz'
+        save_interpolating_map(
+            self._map['map'],
+            self._map['coordinate_system'],
+            filename=filename_quantized_gzip,
+            quantum=0.001,
+        )
 
         # Let's do something easy, check if one fixed point yields the
         # same result if not, our interpolation map depends on the
@@ -58,7 +65,8 @@ class TestItpMaps(TestCase):
         itp_maps = [
             InterpolatingMap(self._map),
             InterpolatingMap(get_resource(filename, fmt='pkl')),
-            InterpolatingMap(get_resource(filename_quantized, fmt='pkl'))
+            InterpolatingMap(get_resource(filename_quantized, fmt='pkl')),
+            InterpolatingMap(get_resource(filename_quantized_gzip, fmt='pkl.gz')),
         ]
         for itp_map in itp_maps:
             map_at_random_point = itp_map([[0, 0, 0], [0, 0, -140]])

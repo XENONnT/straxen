@@ -339,8 +339,13 @@ def save_interpolating_map(
     if map_name is not None:
         output['name'] = map_name
 
-    if os.path.splitext(filename)[-1] != '.pkl':
-        warnings.warn("Better use .pkl extension for map files")
-    with open(filename, mode='wb') as f:
+    if 'pkl' not in filename:
+        warnings.warn("Better use .pkl or .pkl.gz extension for map files")
+    splitext = os.path.splitext(filename)
+    if splitext[-1] == '.gz':
+        opener = gzip.open
+    else:
+        opener = open
+    with opener(filename, mode='wb') as f:
         pickle.dump(output, f)
     print(f"Wrote new map file {filename}, {os.path.getsize(filename) / 1e6:.2f} MB")
