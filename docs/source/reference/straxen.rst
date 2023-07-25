@@ -130,7 +130,7 @@ straxen.units module
 straxen.url\_config module
 --------------------------
 
-.. automodule:: straxen.url_config
+.. automodule:: straxen.url_config.url_config
    :members:
    :undoc-members:
    :show-inheritance:

@@ -350,7 +350,7 @@ class TestURLConfig(unittest.TestCase):
         url to ensure the same url with a different hash order gives the same hash"""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
-        preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)
+        preprocessed_url = straxen.url_config.url_config.alphabetize_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
 
     def test_xedocs_global_version_hash_coinsistency(self):
@@ -376,6 +376,16 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config_new': 'fake://url?version=global_v1'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config_new, 'fake://url?version=global_v1')
+        
+    def test_regex_url_warnings(self):
+        url = "xedocs://electron_lifetimes?verion=v5&att=value" #url with typos
+        self.st.set_config({'test_config': url})
+        
+        with pytest.warns(UserWarning) as record:
+            self.st.get_single_plugin(nt_test_run_id, 'test_data').test_config
+            
+        assert len(record) != 0, "Error, warning dispatcher not working"
+            
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test run_doc protocol.")
     def test_run_doc_protocol(self):
