@@ -13,7 +13,7 @@ from .misc import *
 
 from .scada import *
 from .bokeh_utils import *
-from .url_config.url_config import *
+from .url_config import *
 
 from . import legacy
 from .legacy import *
