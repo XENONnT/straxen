@@ -391,3 +391,12 @@ class TestURLConfig(unittest.TestCase):
             self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
             p = self.st.get_single_plugin(999999999, 'test_data')
             return p.test_config
+    def test_regex_url_warnings(self):
+
+        url = "xedocs://electron_lifetimes?verion=v5&att=value" #url with typos
+        self.st.set_config({'test_config': url})
+
+        with pytest.warns(UserWarning) as record:
+            self.st.get_single_plugin(nt_test_run_id, 'test_data').test_config
+            
+        assert len(record) != 0, "Error, warning dispatcher not working"
