@@ -278,7 +278,7 @@ def save_interpolating_map(
     ):
     """
     Make a straxen-style InterpolatingMap.
-    To fit the large XENONnT per-PMT MC maps into strax_auxiliary files,
+    To fit the large XENONnT per-PMT maps into strax_auxiliary files,
     quantized them to values of 1e-5,
     and store the maps as 16-bit integer multiples of 1e-5, instead of 64-bit floats.
     :param itp_map: numpy itp_map or list of floats,
