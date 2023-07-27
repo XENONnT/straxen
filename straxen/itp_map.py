@@ -266,7 +266,7 @@ class InterpolatingMap:
 
 
 @export
-def save_interpolating_map(
+def save_interpolation_formatted_map(
         itp_map,
         coordinate_system: List,
         filename: str,

@@ -1,6 +1,6 @@
 from unittest import TestCase, skipIf
 from straxen import utilix_is_configured, get_resource
-from straxen import InterpolatingMap, save_interpolating_map
+from straxen import InterpolatingMap, save_interpolation_formatted_map
 
 
 class TestItpMaps(TestCase):
@@ -39,20 +39,20 @@ class TestItpMaps(TestCase):
 
     def test_array_valued(self):
         filename = 'test_array_valued.pkl'
-        save_interpolating_map(
+        save_interpolation_formatted_map(
             self._map['map'],
             self._map['coordinate_system'],
             filename=filename,
         )
         filename_quantized = 'test_array_valued_quantized.pkl'
-        save_interpolating_map(
+        save_interpolation_formatted_map(
             self._map['map'],
             self._map['coordinate_system'],
             filename=filename_quantized,
             quantum=0.001,
         )
         filename_quantized_gzip = 'test_array_valued_quantized.pkl.gz'
-        save_interpolating_map(
+        save_interpolation_formatted_map(
             self._map['map'],
             self._map['coordinate_system'],
             filename=filename_quantized_gzip,
