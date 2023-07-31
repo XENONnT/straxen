@@ -85,19 +85,6 @@ class nVETOEvents(strax.OverlapWindowPlugin):
                                            hitlets_nv,
                                            hitlets_ids_in_event,
                                            start_channel=self.channel_range[0])
-            
-        # Compute shape like properties:
-        _tmp_events = np.zeros(len(events), dtype=temp_event_data_type())
-        strax.copy_to_buffer(events, _tmp_events, '_temp_nv_evts_cpy')
-        strax.simple_summed_waveform(records_nv, _tmp_events, self.to_pe)
-        strax.compute_widths(_tmp_events)
-        
-        strax.copy_to_buffer(
-            _tmp_events, events, '_temp_nv_evts_cpy')
-        events['range_50p_area'] = _tmp_events['width'][:, 5]
-        events['range_90p_area'] = _tmp_events['width'][:, 9]
-        events['rise_time'] = -_tmp_events['area_decile_from_midpoint'][:, 1]
-        del _tmp_events
 
         # Get eventids:
         n_events = len(events)
@@ -122,39 +109,12 @@ def veto_event_dtype(name_event_number: str = 'event_number_nv',
               (('Area weighted mean time of the event relative to the event start [ns]',
                 'center_time'), np.float32),
               (('Weighted variance of time [ns]', 'center_time_spread'), np.float32),
-              (('Waveform data in PE/sample (not PE/ns!)', 'data'), np.float32, n_samples_wf),
-              (('Width (in ns) of the central 50% area of the peak', 'range_50p_area'), np.float32),
-              (('Width (in ns) of the central 90% area of the peak', 'range_90p_area'), np.float32),
-              (('Time between 10% and 50% area quantiles [ns]', 'rise_time'), np.float32),
               (('Minimal amplitude-to-amplitude gap between neighboring hitlets [ns]', 'min_gap'),
-               np.int16),
+               np.int8),
               (('Maximal amplitude-to-amplitude gap between neighboring hitlets [ns]',
-                'max_gap'), np.int16),
+                'max_gap'), np.int8),
               ]
     return dtype
-
-
-def temp_event_data_type(n_samples_wf: int = 200, 
-                         n_pmts: int = 120,
-                         n_widths: int = 11,
-                        ) -> list:
-    """Temp. data type which adds field required to use some of the functions
-    used to build the summed waveform for the TPC.
-    """
-    dtype = veto_event_dtype()
-    dtype += [(('Dummy top waveform data in PE/sample (not PE/ns!)', 'data_top'), np.float32, n_samples_wf),
-              (('Peak widths in range of central area fraction [ns]', 'width'), np.float32, n_widths),
-              (('Peak widths: time between nth and 5th area decile [ns]', 
-                'area_decile_from_midpoint'), np.float32, n_widths),
-              # Following two omly needed if TPC summed waveform method should be used:
-#               (('Total number of saturated channels', 'n_saturated_channels'), np.int16),
-              # Only needed for downsampled waveform..... 
-#               (('Does the channel reach ADC saturation?',
-#           'saturated_channel'), np.int8, n_channels),
-             ]
-              
-    return dtype
-
 
 
 @numba.njit(cache=True, nogil=True)
