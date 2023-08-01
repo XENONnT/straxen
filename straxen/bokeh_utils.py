@@ -19,7 +19,7 @@ def bokeh_to_wiki(fig, outputfile=None):
     """
     # convert plot to wiki format:
     html = file_html(fig, CDN)
-    html = '\n'.join((['<html>'] + html.split('\n')[6:]))
+    html = '\n'.join((['<html>'] + html.split('\n')[2:]))
 
     if outputfile:
         with open(outputfile, mode='w') as file:

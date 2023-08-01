@@ -344,6 +344,20 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config': 'fake://url?version=global_v1'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 'fake://url?version=v0')
+
+    def test_alphabetize_url_kwargs(self):
+        """URLConfig preprocessor to rearange the order of arguments given buy a 
+        url to ensure the same url with a different hash order gives the same hash"""
+        url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
+        intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
+        preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)
+        self.assertEqual(intended_url, preprocessed_url)
+
+    def test_xedocs_global_version_hash_coinsistency(self):
+        # Same URLs but the queries are in a different order
+        st1 = self.st.new_context(config={"test_config":"fake://electron_lifetimes?run_id=25000&version=v5&attr=value"})
+        st2 = self.st.new_context(config={"test_config":"fake://electron_lifetimes?attr=value&run_id=25000&version=v5"})
+        self.assertEqual(st1.key_for(25000, 'corrected_areas').lineage_hash, st2.key_for(25000, 'corrected_areas').lineage_hash)
     
     def test_global_version_not_changed(self):
         """
@@ -362,3 +376,18 @@ class TestURLConfig(unittest.TestCase):
         self.st.set_config({'test_config_new': 'fake://url?version=global_v1'})
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config_new, 'fake://url?version=global_v1')
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test run_doc protocol.")
+    def test_run_doc_protocol(self):
+        self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 'tpc_commissioning')
+
+        self.st.set_config({ 'test_config': "run_doc://fake_key?run_id=plugin.run_id&default=42" })
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(p.test_config, 42)
+
+        with self.assertRaises(ValueError):
+            self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
+            p = self.st.get_single_plugin(999999999, 'test_data')
+            return p.test_config

@@ -10,8 +10,8 @@ from .peak_basics import *
 from . import peak_classification_bayes
 from .peak_classification_bayes import *
 
-from . import peak_s1_position_cnn
-from .peak_s1_position_cnn import *
+from . import peak_s1_positions_cnn
+from .peak_s1_positions_cnn import *
 
 from . import peak_positions
 from .peak_positions import *
@@ -34,11 +34,11 @@ from .peak_shadow import *
 from . import peaks
 from .peaks import *
 
-from . import peaks_per_event
-from .peaks_per_event import *
+from . import peak_per_event
+from .peak_per_event import *
 
-from . import peaks_corrections
-from .peaks_corrections import *
+from . import peak_corrections
+from .peak_corrections import *
 
 from . import peaks_subtyping
 from .peaks_subtyping import *

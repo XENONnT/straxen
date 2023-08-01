@@ -403,19 +403,26 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
 
 @strax.Context.add_method
 def apply_xedocs_configs(context: strax.Context, 
-                         version: str, db='straxen_db') -> None:
+                         db='straxen_db', **kwargs) -> None:
     import xedocs
 
-    docs = xedocs.find_docs('context_configs', 
-                            datasource=db, 
-                            version=version)
+    if isinstance(db, str):
+        func = getattr(xedocs.databases, db)
+        db_kwargs = straxen.filter_kwargs(func, kwargs)
+        db = func(**db_kwargs)
+
+    filter_kwargs = {k: v for k, v in kwargs.items()
+                        if k in db.context_configs.schema.__fields__}
+
+    docs = db.context_configs.find_docs(**filter_kwargs)
 
     global_config = {doc.config_name: doc.value for doc in docs}
     
     if len(global_config):
         context.set_config(global_config)
     else:
-        warnings.warn(f"Could not find any context configs for version {version}")
+        warnings.warn(f"Could not find any context configs matchin {filter_kwargs}",
+                      RuntimeWarning, stacklevel=2)
 
 
 def replace_url_version(url, version):
