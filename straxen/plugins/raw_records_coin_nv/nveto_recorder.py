@@ -60,7 +60,7 @@ class nVETORecorder(strax.Plugin):
         track=True,
         help="Number of samples used in baseline rms calculation")
 
-    hit_min_amplitude_nv = straxen.URLConfig(
+    software_trigger_min_hit_amplitude_nv = straxen.URLConfig(
         infer_type=False,
         default=NV_HIT_DEFAULTS['hit_min_amplitude_nv'], track=True,
         help='Minimum hit amplitude in ADC counts above baseline. '
@@ -86,7 +86,7 @@ class nVETORecorder(strax.Plugin):
 
     def setup(self):
         self.baseline_samples = self.baseline_samples_nv
-        self.hit_thresholds = self.hit_min_amplitude_nv
+        self.hit_thresholds = self.software_trigger_min_hit_amplitude_nv
 
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
