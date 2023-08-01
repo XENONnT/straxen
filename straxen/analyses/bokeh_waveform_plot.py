@@ -880,8 +880,8 @@ class DataSelectionHist:
                                  bokeh.models.CustomJS(args=dict(s1=s1), code=f"""
                 var inds = cb_obj.indices;
                 var kernel = IPython.notebook.kernel;
-                IPython.notebook.kernel.execute("{self.name}.selection_index = " + inds);
-            """)
+                kernel.execute("{self.name}.selection_index = " + inds);
+                """)
                                  )
         return f
 

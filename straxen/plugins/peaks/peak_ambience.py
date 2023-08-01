@@ -16,7 +16,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     References:
         * v0.0.7 reference: xenon:xenonnt:ac:prediction:shadow_ambience
     """
-    __version__ = '0.0.7'
+    __version__ = '0.0.8'
     depends_on = ('lone_hits', 'peak_basics', 'peak_positions')
     provides = 'peak_ambience'
     data_kind = 'peaks'
@@ -75,7 +75,11 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         return dtype
 
     def compute(self, lone_hits, peaks):
-        return self.compute_ambience(lone_hits, peaks, peaks)
+        argsort = np.argsort(peaks['center_time'], kind='mergesort')
+        _peaks = np.sort(peaks, order='center_time')
+        result = np.zeros(len(peaks), self.dtype)
+        _quick_assign(argsort, result, self.compute_ambience(lone_hits, peaks, _peaks))
+        return result
 
     def compute_ambience(self, lone_hits, peaks, current_peak):
         # 1. Initialization
@@ -186,3 +190,9 @@ def distance_in_xy(peak_a, peak_b):
     """Distance between S2s in (x,y)"""
     return np.sqrt((peak_a['x'] - peak_b['x']) ** 2 +
                    (peak_a['y'] - peak_b['y']) ** 2)
+
+
+@numba.njit
+def _quick_assign(indices, results, inputs):
+    for i, r in zip(indices, inputs):
+        results[i] = r
