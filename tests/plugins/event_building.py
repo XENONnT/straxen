@@ -73,20 +73,20 @@ def test_event_info_double(self):
     assert df['cs2_a'].sum() > 0
     assert len(df) > 0
 
-@PluginTestAccumulator.register('test_event_MS_naive')
+@PluginTestAccumulator.register('test_event_ms_naive')
 def test_event_info_double(self):
     """Do a dummy check on event-info that it loads"""
     if _is_empty_data_test(self.st, self.run_id):
         return
-    df = self.st.get_df(self.run_id, targets=('event_info','event_MS_naive'))
+    df = self.st.get_df(self.run_id, targets=('event_info', 'event_ms_naive'))
     assert 'cs2_sum' in df.columns
     assert 'cs2_wo_timecorr_sum' in df.columns
     assert 'cs2_wo_elifecorr_sum' in df.columns
-    assert 'cs2_area_fraction_sum' in df.columns
+    assert 'cs2_area_fraction_top_avg' in df.columns
     assert df['cs2_sum'].sum() > 0
     assert df['cs2_wo_timecorr_sum'].sum() > 0
     assert df['cs2_wo_elifecorr_sum'].sum() > 0
-    assert df['cs2_area_fraction_sum'].sum() > 0
+    assert df['cs2_area_fraction_top_avg'].sum() > 0
 
 
 
@@ -181,6 +181,56 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
 def _is_empty_data_test(st, run_id):
     return str(st.key_for(run_id, 'raw_records')) == f'{run_id}-raw_records-5uvrrzwhnl'
 
+
+@PluginTestAccumulator.register('test_alternative_s2_areas')
+def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
+    """
+    Test if the extracted S2 peaks in an event are the largest peaks in the event time range
+    if both force_main_before_alt and force_alt_s2_in_max_drift_time are True
+    """
+
+    # Initialize plugin and config options
+    st = self.st.new_context()
+    st.set_config({
+        'force_main_before_alt': True,
+        'force_alt_s2_in_max_drift_time': True})
+    run_id = '000000'
+    event_basics_plugin = st.get_single_plugin(run_id, 'event_basics')
+
+    # Build fake two events and a few peaks, one event has an S1, one event does not.
+    dummy_events = np.zeros(2, dtype=event_basics_plugin.dtype)
+    dummy_events['time'] = np.array([0, 105])
+    dummy_events['endtime'] = np.array([100, 205])
+
+    # Prepare some dummy peaks
+    peaks_dtype = strax.merged_dtype((
+        st.get_single_plugin(run_id, 'peak_basics').dtype,
+        st.get_single_plugin(run_id, 'peak_proximity').dtype,
+        st.get_single_plugin(run_id, 'peak_positions').dtype))
+
+    peaks_for_event_1 = np.zeros(5, dtype=peaks_dtype)
+    peaks_for_event_1['time'] = np.arange(10, 105, 20)
+    peaks_for_event_1['center_time'] = peaks_for_event_1['time'] + 1
+    peaks_for_event_1['endtime'] = peaks_for_event_1['time'] + 2
+    peaks_for_event_1['type'] = 2 
+    peaks_for_event_1['tight_coincidence'] = 5
+    peaks_for_event_1['area'] = np.array([10, 20, 70, 100, 50])
+
+    peaks_for_event_2 = np.zeros(5, dtype=peaks_dtype)
+    peaks_for_event_2['time'] = np.arange(110, 205, 20)
+    peaks_for_event_2['center_time'] = peaks_for_event_2['time'] + 1
+    peaks_for_event_2['endtime'] = peaks_for_event_2['time'] + 2
+    peaks_for_event_2['type'] = 2
+    peaks_for_event_2['type'][1] = 1
+    peaks_for_event_2['tight_coincidence'] = 5
+    peaks_for_event_2['area'] = np.array([10, 20, 70, 100, 50])
+
+    result = event_basics_plugin.compute(
+        dummy_events, np.concatenate((peaks_for_event_1, peaks_for_event_2)))
+
+    # Check for both events if the peak that was identified as main s2 really is the (second-)largest s2 peak in that time range
+    assert((result[0]['s2_area'] == 70) & (result[0]['alt_s2_area'] == 100))
+    assert((result[1]['s2_area'] == 70) & (result[1]['alt_s2_area'] == 100))
 
 if __name__ == '__main__':
     run_pytest_from_main()
