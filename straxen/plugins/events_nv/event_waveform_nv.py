@@ -19,6 +19,7 @@ class nVETOEventWaveform(strax.Plugin):
     depends_on = 'events_nv', 'records_nv'
     provides = 'event_waveform_nv'
     data_kind = 'events_nv'
+    compressor = 'zstd'
     
     gain_model_nv = straxen.URLConfig(
         default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id", infer_type=False,

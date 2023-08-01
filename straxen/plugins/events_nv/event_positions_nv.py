@@ -14,11 +14,12 @@ class nVETOEventPositions(strax.Plugin):
     Plugin which computes the interaction position in the nveto as an
     azimuthal angle.
     """
-    __version__ = '0.1.2'
+    __version__ = '0.1.1'
 
     depends_on = ('events_nv', 'hitlets_nv')
     data_kind = 'events_nv'
     provides = 'event_positions_nv'
+    compressor = 'zstd'
 
     position_max_time_nv = straxen.URLConfig(default=20, infer_type=False,
                                              help="Time [ns] within an event use to compute the azimuthal angle of the "
