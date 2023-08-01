@@ -19,7 +19,6 @@ class nVETOEventPositions(strax.Plugin):
     depends_on = ('events_nv', 'hitlets_nv')
     data_kind = 'events_nv'
     provides = 'event_positions_nv'
-    compressor = 'zstd'
 
     position_max_time_nv = straxen.URLConfig(default=20, infer_type=False,
                                              help="Time [ns] within an event use to compute the azimuthal angle of the "
