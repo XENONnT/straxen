@@ -14,7 +14,7 @@ class nVETOEventPositions(strax.Plugin):
     Plugin which computes the interaction position in the nveto as an
     azimuthal angle.
     """
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     depends_on = ('events_nv', 'hitlets_nv')
     data_kind = 'events_nv'
