@@ -4,7 +4,6 @@ from scipy.spatial.distance import cdist
 
 import strax
 import straxen
-import numba
 
 export, __all__ = strax.exporter()
 
@@ -33,31 +32,22 @@ class PeakletClassificationSOM(strax.Plugin):
              + [('type', np.int8, 'Classification of the peak(let)')]
              + [('som_type', np.int8, 'Classification of peaklets by SOM clusters')])
 
-    SOM_files = som_data
-    
-    #def infer_dtype(self):
-    #    return self.deps['peaklets'].dtype_for('peaklets')
-
-    def compute(self, peaklets, peaklet_classification):
-
+    SOM_files = np.load('/stor2/data/LS_data/SOM_data/som_data_v0.npz', allow_pickle=True)
+    def compute(self, peaklets):
         peaklets_w_type = peaklets.copy()
-
-        peaklets_w_type['type'] = peaklet_classification['type']
-
+        peaklets_w_type['type'] = peaklets['type']
         result = np.zeros(len(peaklets_w_type), dtype=self.dtype)
-
         som_type = recall_populations(peaklets_w_type, self.SOM_files['weight_cube'],
                            self.SOM_files['som_img'], self.SOM_files['norm_factors'])
-
         strax_type = som_type_to_type(som_type,
-                                self.SOM_files['s1_type'],
-                                self.SOM_files['s2_type'])
-
-        result['time'] = peaks['time']
-        result['endtime'] = strax.endtime(peaks)
+                                self.SOM_files['s1_array'],
+                                self.SOM_files['s2_array'])
+        result['time'] = peaklets['time']
+        result['length'] = peaklets['length']
+        result['dt'] = peaklets['dt']
         result['som_type'] = som_type
         result['type'] = strax_type
-        return result
+        return result 
     # Work on these functions to make them fit with a class
 def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
     """
@@ -154,7 +144,7 @@ def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
     """
     
     # turn deciles into approriate 'normalized' format (maybe also consider L1 normalization of these inputs)
-    _,decile_data = compute_wf_and_quantiles(peaklet_data, 10)
+    decile_data = compute_wf_and_quantiles(peaklet_data, 10)
     decile_data[decile_data < 1] = 1
     #decile_L1 = np.log10(decile_data)
     decile_log = np.log10(decile_data)
@@ -173,8 +163,6 @@ def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
     peaklet_aft = np.where(peaklet_aft > 0, peaklet_aft, 0)
     peaklet_aft = np.where(peaklet_aft < 1, peaklet_aft, 1)
     
-    print(decile_log.shape)
-    print((decile_log / normalization_factor[:10]).shape)
     deciles_area_aft = np.concatenate((decile_log_over_max, 
                                        np.reshape(peaklet_log_area, (len(peaklet_log_area),1))/ normalization_factor[10],
                                        np.reshape(peaklet_aft, (len(peaklet_log_area),1))), axis = 1)
@@ -185,45 +173,15 @@ def compute_AFT(data):
     peaklets_aft = np.sum(data['area_per_channel'][:,:straxen.n_top_pmts], axis = 1) / np.sum(data['area_per_channel'], axis = 1) 
     return peaklets_aft
 
-def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
+def compute_wf_and_quantiles(peaks: np.ndarray, n_samples: int):
     """
     Compute waveforms and quantiles for a given number of nodes(attributes)
     :param peaks:
-    :param bayes_n_nodes: number of nodes or attributes
+    :param n_samples: number of nodes or attributes
     :return: waveforms and quantiles
     """
     data = peaks['data'].copy()
     data[data < 0.0] = 0.0
     dt = peaks['dt']
-    return _compute_wf_and_quantiles(data, dt, bayes_n_nodes)
-
-
-@numba.njit(cache=True)
-def _compute_wf_and_quantiles(data, sample_length, bayes_n_nodes: int):
-    waveforms = np.zeros((len(data), bayes_n_nodes))
-    quantiles = np.zeros((len(data), bayes_n_nodes))
-
-    num_samples = data.shape[1]
-    step_size = int(num_samples / bayes_n_nodes)
-    steps = np.arange(0, num_samples + 1, step_size)
-    inter_points = np.linspace(0., 1. - (1. / bayes_n_nodes), bayes_n_nodes)
-    cumsum_steps = np.zeros(bayes_n_nodes + 1, dtype=np.float64)
-    frac_of_cumsum = np.zeros(num_samples + 1)
-    sample_number_div_dt = np.arange(0, num_samples + 1, 1)
-    for i, (samples, dt) in enumerate(zip(data, sample_length)):
-        # reset buffers
-        frac_of_cumsum[:] = 0
-        cumsum_steps[:] = 0
-
-        frac_of_cumsum[1:] = np.cumsum(samples)
-        frac_of_cumsum[1:] = frac_of_cumsum[1:] / frac_of_cumsum[-1]
-
-        cumsum_steps[:-1] = np.interp(inter_points, frac_of_cumsum, sample_number_div_dt * dt)
-        cumsum_steps[-1] = sample_number_div_dt[-1] * dt
-        quantiles[i] = cumsum_steps[1:] - cumsum_steps[:-1]
-
-        #for j in range(bayes_n_nodes):
-        #    waveforms[i][j] = np.sum(samples[steps[j]:steps[j + 1]])
-        #waveforms[i] /= (step_size * dt)
-
-    return waveforms, quantiles
+    q, wf = strax.compute_wf_attributes(data, dt, n_samples, False)
+    return q 
