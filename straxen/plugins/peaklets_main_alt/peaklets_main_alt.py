@@ -19,7 +19,7 @@ class PeakletsMainAlt(strax.Plugin):
     compressor = 'zstd'
     save_when = strax.SaveWhen.ALWAYS
 
-    __version__ = '0.0.0'
+    __version__ = '0.0.1'
 
     n_tpc_pmts = straxen.URLConfig(
         type=int,
@@ -36,9 +36,9 @@ class PeakletsMainAlt(strax.Plugin):
 
     def infer_dtype(self):
         return strax.peak_dtype(
-                n_channels=self.n_tpc_pmts,
-                digitize_top=self.sum_waveform_top_array,
-            )
+            n_channels=self.n_tpc_pmts,
+            digitize_top=self.sum_waveform_top_array,
+        )
 
     def fake_mask(self, df, start_field='time', end_field='end_time', pad=10e3):
         """
@@ -63,12 +63,12 @@ class PeakletsMainAlt(strax.Plugin):
 
         for tag in ['s1', 'alt_s1', 's2', 'alt_s2']:
             result = strax.touching_windows(peaklets,
-                                            fake_mask(events, f'{tag}_time', f'{tag}_endtime'))  # touch the peaklets
+                                            self.fake_mask(events, f'{tag}_time',
+                                                           f'{tag}_endtime'))  # touch the peaklets
             if len(result) > 0:
                 result = np.concatenate([np.arange(result[i][0], result[i][1], dtype=int) for i in
                                          range(len(result))])  # find the index of the touched peaklets
                 peaklets_main_alt_id.append(np.array(result))
-            print(result)
         # peaklets_main_alt = peaklets[np.array(peaklets_main_alt_id)]
         peaklets_main_alt = peaklets[np.sort(np.concatenate(peaklets_main_alt_id))]  # sort by time
         peaklets_main_alt = peaklets_main_alt[np.argsort(peaklets_main_alt['time'])]  # sort again just in case
