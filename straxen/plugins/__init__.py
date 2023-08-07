@@ -77,9 +77,14 @@ from .peaklets_he import *
 from .peaks_he import *
 from . import peaks_he
 
+from . import peaklets_main_alt
+from .peaklets_main_alt import *
+
 # Misc
 from . import afterpulses
 from .afterpulses import *
 
 from . import led_cal
 from .led_cal import *
+
+
