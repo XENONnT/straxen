@@ -59,7 +59,7 @@ class PeakletsEvents(strax.Plugin):
 
     def compute(self, peaklets, events):
         # Only save peaklets in main/alt_s1 main/alt_s2
-        peaklets_main_alt_id = []
+        peaklets_events_id = []
 
         for tag in ['s1', 'alt_s1', 's2', 'alt_s2']:
             result = strax.touching_windows(peaklets,
@@ -68,9 +68,8 @@ class PeakletsEvents(strax.Plugin):
             if len(result) > 0:
                 result = np.concatenate([np.arange(result[i][0], result[i][1], dtype=int) for i in
                                          range(len(result))])  # find the index of the touched peaklets
-                peaklets_main_alt_id.append(np.array(result))
-        # peaklets_main_alt = peaklets[np.array(peaklets_main_alt_id)]
-        peaklets_events = peaklets[np.sort(np.concatenate(peaklets_main_alt_id))]  # sort by time
+                peaklets_events_id.append(np.array(result))
+        peaklets_events = peaklets[np.sort(np.concatenate(peaklets_events_id))]  # sort by time
         peaklets_events = peaklets_events[np.argsort(peaklets_events['time'])]  # sort again just in case
 
         return peaklets_events

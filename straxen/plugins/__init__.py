@@ -77,8 +77,8 @@ from .peaklets_he import *
 from .peaks_he import *
 from . import peaks_he
 
-from . import peaklets_main_alt
-from .peaklets_main_alt import *
+from . import peaklets_events
+from .peaklets_events import *
 
 # Misc
 from . import afterpulses
