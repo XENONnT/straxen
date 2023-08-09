@@ -32,7 +32,7 @@ export, __all__ = strax.exporter()
 
 @export
 def dataframe_to_wiki(
-    df, float_digits=5, title='Awesome table', force_int=tuple()):
+    df, float_digits=5, title='Awesome table', force_int=()):
     """Convert a pandas dataframe to a dokuwiki table 
     (which you can copy-paste onto the XENON wiki)
     :param df: dataframe to convert
