@@ -1,13 +1,21 @@
-import logging
+import os
+import re
 import gzip
 import json
-import re
+import time
+import pickle
+import logging
+import warnings
+from typing import Type, List, Literal
+from textwrap import dedent
 
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
+
 import straxen
 import strax
+
 export, __all__ = strax.exporter()
 
 
@@ -50,8 +58,8 @@ class InterpolateAndExtrapolate:
         if self.array_valued:
             weights = np.repeat(weights, self.n_dim).reshape(values.shape)
 
-        result[valid] = np.average(values, weights=weights,
-                                   axis=-2 if self.array_valued else -1)
+        result[valid] = np.average(
+            values, weights=weights, axis=-2 if self.array_valued else -1)
         return result
 
 
@@ -133,15 +141,16 @@ class InterpolatingMap:
 
         self.coordinate_system = csys
         self.interpolators = {}
-        self.map_names = sorted([k for k in self.data.keys()
-                                 if k not in self.metadata_field_names])
+        self.map_names = sorted([
+            k for k in self.data.keys()
+            if k not in self.metadata_field_names])
 
         log = logging.getLogger('InterpolatingMap')
-        log.debug('Map name: %s' % self.data.get('name',
-                                                 "NO NAME?!"))
-        log.debug('Map description:\n    ' +
-                  re.sub(r'\n', r'\n    ', self.data.get('description',
-                                                         "NO DESCRIPTION?!")))
+        log.debug(
+            'Map name: %s' % self.data.get('name', "NO NAME?!"))
+        log.debug(
+            'Map description:\n    ' +
+            re.sub(r'\n', r'\n    ', self.data.get('description', "NO DESCRIPTION?!")))
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
@@ -249,7 +258,94 @@ class InterpolatingMap:
             array_valued = len(map_data.shape) == self.dimensions + 1
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
-        itp_fun = InterpolateAndExtrapolate(points=np.array(alt_csys),
-                                            values=np.array(map_data),
-                                            array_valued=array_valued)
+        itp_fun = InterpolateAndExtrapolate(
+            points=np.array(alt_csys),
+            values=np.array(map_data),
+            array_valued=array_valued)
         self.interpolators[map_name] = itp_fun
+
+
+@export
+def save_interpolation_formatted_map(
+        itp_map,
+        coordinate_system: List,
+        filename: str,
+        map_name: str = None,
+        quantum: float = None,
+        quantum_dtype = np.int16,
+        map_description: str = '',
+        compressor: Literal['bz2', 'zstd', 'blosc', 'lz4'] = 'zstd',
+    ):
+    """
+    Make a straxen-style InterpolatingMap.
+    To fit the large XENONnT per-PMT maps into strax_auxiliary files,
+    quantized them to values of 1e-5,
+    and store the maps as 16-bit integer multiples of 1e-5, instead of 64-bit floats.
+    :param itp_map: numpy itp_map or list of floats,
+    should follow the shape indicated by coordinate_system
+    :param coordinate_system: coordinate system of the itp_map,
+    list of [['x', [x_min, x_max, n_x]], [['y', [y_min, y_max, n_y], ...] for each dimension,
+    or [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
+    :param filename: filename with '.pkl' extension
+    :param map_name: name of map
+    :param quantum: quantum of the map if quantized
+    :param map_description: map's description
+    :param compressor: key of compressor in strax.io.COMPRESSORS
+    """
+    if isinstance(itp_map, list):
+        itp_map = np.array(itp_map)
+
+    if isinstance(coordinate_system[0][0], str):
+        itp_map_shape = list(itp_map.shape)
+        coordinate_shape = [c[1][2] for c in coordinate_system]
+        mask = (len(itp_map_shape) == len(coordinate_shape))
+        mask &= all([hs == cs for hs, cs in zip(itp_map_shape, coordinate_shape)])
+    else:
+        itp_map_shape = len(itp_map)
+        coordinate_shape = len(coordinate_system)
+        mask = (itp_map_shape == coordinate_shape)
+    if not mask:
+        raise ValueError(
+            f"The shape of itp_map: {itp_map_shape} and "
+            f"coordinate system: {coordinate_shape} do not match")
+
+    if quantum is None:
+        # if quantum is not specified, just use float32
+        q = 1
+        quantum_dtype = np.float32
+        map = itp_map.astype(quantum_dtype)
+    else:
+        q = quantum
+        if not np.issubdtype(quantum_dtype, np.integer):
+            raise ValueError(
+                "If using quantization, quantum_dtype must be an integer type,"
+                f" but it is now {quantum_dtype}")
+        encode_until = np.iinfo(quantum_dtype).max * q
+        if itp_map.max() > encode_until:
+            raise ValueError(
+                f"Map maximum value is {itp_map.max():.4f},"
+                " can encode values until {encode_until:.4f}")
+        map = np.round(itp_map / q).astype(quantum_dtype)
+
+    output = dict(
+        coordinate_system=coordinate_system,
+        map=strax.io.COMPRESSORS[compressor]['compress'](map),
+        description=dedent(map_description),
+        timestamp=time.time(),
+        compressed=(compressor, quantum_dtype, map.shape),
+    )
+    if quantum is not None:
+        output['quantized'] = q
+    if map_name is not None:
+        output['name'] = map_name
+
+    if 'pkl' not in filename:
+        warnings.warn("Better use .pkl or .pkl.gz extension for map files")
+    splitext = os.path.splitext(filename)
+    if splitext[-1] == '.gz':
+        opener = gzip.open
+    else:
+        opener = open
+    with opener(filename, mode='wb') as f:
+        pickle.dump(output, f)
+    print(f"Wrote new map file {filename}, {os.path.getsize(filename) / 1e6:.2f} MB")

@@ -15,7 +15,7 @@ class PeakS1PositionCNN(PeakS1PositionBase):
     algorithm = "s1_cnn"
     __version__ = '0.0.1'
 
-    tf_peak_model_s1_cnn = straxen.URLConfig(
+    tf_model_s1_cnn = straxen.URLConfig(
         default=f'tf://'
                 f'resource://'
                 f'xedocs://posrec_models'
