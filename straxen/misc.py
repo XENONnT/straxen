@@ -32,7 +32,7 @@ export, __all__ = strax.exporter()
 
 @export
 def dataframe_to_wiki(
-    df, float_digits=5, title='Awesome table', force_int=()):
+    df, float_digits=5, title='Awesome table', force_int:ty.Tuple=()):
     """Convert a pandas dataframe to a dokuwiki table 
     (which you can copy-paste onto the XENON wiki)
     :param df: dataframe to convert
@@ -47,8 +47,8 @@ def dataframe_to_wiki(
         if isinstance(x, float):
             return f'{x:.{float_digits}f}'
         return x
-    force_int = np.where(np.in1d(
-        df.columns.values, strax.to_str_tuple(force_int)))[0]
+    force_int = np.where(np.in1d(df.columns.values,
+                                 strax.to_str_tuple(force_int)))[0]
 
     for _, row in df.iterrows():
         table += "| " + ' | '.join([
