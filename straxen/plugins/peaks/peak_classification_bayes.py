@@ -35,9 +35,7 @@ class BayesPeakClassification(strax.Plugin):
 
     # Descriptor configs
     bayes_config_file = straxen.URLConfig(
-        default='resource://cmt://'
-                'bayes_model'
-                '?version=ONLINE&run_id=plugin.run_id&fmt=npy',
+        default='resource://xedocs://bayes_models?attr=value&fmt=npy&run_id=plugin.run_id&version=ONLINE',
         help='Bayes model, conditional probabilities tables and Bayes discrete bins'
     )
     bayes_n_nodes = straxen.URLConfig(

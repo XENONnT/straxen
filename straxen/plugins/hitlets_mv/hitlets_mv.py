@@ -59,7 +59,7 @@ class muVETOHitlets(nVETOHitlets):
              'the template.')
 
     gain_model_mv = straxen.URLConfig(
-        default="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id", infer_type=False,
+        default="list-to-array://xedocs://pmt_area_to_pes?as_list=True&sort=pmt&detector=muon_veto&run_id=plugin.run_id&version=ONLINE&attr=value", infer_type=False,
         child_option=True, parent_option_name='gain_model_nv',
         help='PMT gain model. Specify as (model_type, model_config)')
 
