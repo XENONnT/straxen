@@ -38,9 +38,30 @@ common_opts = dict(
 xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model="cmt://to_pe_model?version=ONLINE&run_id=plugin.run_id",
-    gain_model_nv="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
-    gain_model_mv="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id",
+    gain_model="list-to-array://"
+               "xedocs://pmt_area_to_pes"
+               "?as_list=True"
+               "&sort=pmt"
+               "&detector=tpc"
+               "&run_id=plugin.run_id"
+               "&version=ONLINE"
+               "&attr=value",
+    gain_model_nv="list-to-array://"
+                  "xedocs://pmt_area_to_pes"
+                  "?as_list=True"
+                  "&sort=pmt"
+                  "&detector=neutron_veto"
+                  "&run_id=plugin.run_id"
+                  "&version=ONLINE"
+                  "&attr=value",
+    gain_model_mv="list-to-array://"
+                  "xedocs://pmt_area_to_pes"
+                  "?as_list=True"
+                  "&sort=pmt"
+                  "&detector=muon_veto"
+                  "&run_id=plugin.run_id"
+                  "&version=ONLINE"
+                  "&attr=value",
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -58,10 +79,10 @@ xnt_common_config = dict(
     # Event level parameters
     fdc_map='itp_map://'
             'resource://'
-            'cmt://'
-            'format://fdc_map_{alg}'
-            '?alg=plugin.default_reconstruction_algorithm'
+            'xedocs://fdc_maps'
+            '?algorithm=plugin.default_reconstruction_algorithm'
             '&version=ONLINE'
+            '&attr=value'
             '&run_id=plugin.run_id'
             '&fmt=binary'
             '&scale_coordinates=plugin.coordinate_scales',
@@ -96,18 +117,14 @@ xnt_common_opts.update({
 ##
 
 
-def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
+def xenonnt(global_version='global_v11',
             _from_cutax=False, **kwargs):
     """XENONnT context"""
-    if not _from_cutax and cmt_version != 'global_ONLINE':
+    if not _from_cutax and global_version != 'global_ONLINE':
         warnings.warn('Don\'t load a context directly from straxen, '
                       'use cutax instead!')
-    st = straxen.contexts.xenonnt_online(**kwargs)
-    st.apply_cmt_version(cmt_version)
+    st = straxen.contexts.xenonnt_online(global_version=global_version, **kwargs)
     
-    if xedocs_version is not None:
-        st.apply_xedocs_configs(version=xedocs_version, **kwargs)
-
     return st
 
 
@@ -167,6 +184,7 @@ def xenonnt_online(output_folder: str = './strax_data',
                    _context_config_overwrite: ty.Optional[dict] = None,
                    _database_init: bool = True,
                    _forbid_creation_of: ty.Optional[dict] = None,
+                   global_version: str = "global_ONLINE",
                    **kwargs):
     """
     XENONnT online processing and analysis
@@ -281,6 +299,9 @@ def xenonnt_online(output_folder: str = './strax_data',
         warnings.warn(f'_context_config_overwrite is deprecated, please pass to context as kwargs',
                       DeprecationWarning)
         st.set_context_config(_context_config_overwrite)
+
+    if global_version is not None:
+        st.apply_xedocs_configs(version=global_version, **kwargs)
 
     return st
 
