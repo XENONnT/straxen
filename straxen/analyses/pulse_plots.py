@@ -29,8 +29,6 @@ def plot_pulses_tpc(context, raw_records, run_id, time_range=None,
         generated including the time range and run_id.
     :param path: Relative path where the PDF should be stored. By default
         it is the directory of the notebook.
-    :param detector_ending: Ending of the corresponding detector. Empty
-        string for TPC '_nv' for neutron-veto and '_mv' muon-veto. 
     """
     plot_pulses(context, raw_records, run_id, time_range,
                 plot_hits, plot_median,
@@ -60,8 +58,6 @@ def plot_pulses_mv(context, raw_records_mv, run_id, time_range=None,
         generated including the time range and run_id.
     :param path: Relative path where the PDF should be stored. By default
         it is the directory of the notebook.
-    :param detector_ending: Ending of the corresponding detector. Empty
-        string for TPC '_nv' for neutron-veto and '_mv' muon-veto. 
     """
     plot_pulses(context, raw_records_mv, run_id, time_range,
                 plot_hits, plot_median,
@@ -91,8 +87,6 @@ def plot_pulses_nv(context, raw_records_nv, run_id, time_range=None,
         generated including the time range and run_id.
     :param path: Relative path where the PDF should be stored. By default
         it is the directory of the notebook.
-    :param detector_ending: Ending of the corresponding detector. Empty
-        string for TPC '_nv' for neutron-veto and '_mv' muon-veto. 
     """
     plot_pulses(context, raw_records_nv, run_id, time_range,
                 plot_hits, plot_median,
