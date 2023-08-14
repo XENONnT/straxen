@@ -34,13 +34,6 @@ class PeakletClassificationSOM(strax.Plugin):
 
     som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v0.npz?fmt=npy')
 
-    def __init__(self):
-        self.som_img = None
-        self.som_weight_cube = None
-        self.som_norm_factors = None
-        self.som_s1_array = None
-        self.som_s2_array = None
-
     def setup(self):
         self.som_weight_cube = self.som_files['weight_cube']
         self.som_img = self.som_files['som_img']
@@ -51,8 +44,8 @@ class PeakletClassificationSOM(strax.Plugin):
     def compute(self, peaklets):
         peaklets_w_type = peaklets.copy()
         mask_non_zero = peaklets_w_type['type'] != 0
-        peaklets_w_type['type'] = peaklets_w_type[mask_non_zero]
-        result = np.zeros(len(peaklets_w_type), dtype=self.dtype)
+        peaklets_w_type = peaklets_w_type[mask_non_zero]
+        result = np.zeros(len(peaklets), dtype=self.dtype)
         som_type = recall_populations(peaklets_w_type, self.som_weight_cube,
                                       self.som_img,
                                       self.som_norm_factors)
