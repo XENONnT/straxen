@@ -34,6 +34,13 @@ class PeakletClassificationSOM(strax.Plugin):
 
     som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v0.npz?fmt=npy')
 
+    def __init__(self):
+        self.som_img = None
+        self.som_weight_cube = None
+        self.som_norm_factors = None
+        self.som_s1_array = None
+        self.som_s2_array = None
+
     def setup(self):
         self.som_weight_cube = self.som_files['weight_cube']
         self.som_img = self.som_files['som_img']
@@ -43,7 +50,8 @@ class PeakletClassificationSOM(strax.Plugin):
 
     def compute(self, peaklets):
         peaklets_w_type = peaklets.copy()
-        peaklets_w_type['type'] = peaklets['type']
+        mask_non_zero = peaklets_w_type['type'] != 0
+        peaklets_w_type['type'] = peaklets_w_type[mask_non_zero]
         result = np.zeros(len(peaklets_w_type), dtype=self.dtype)
         som_type = recall_populations(peaklets_w_type, self.som_weight_cube,
                                       self.som_img,
@@ -54,7 +62,7 @@ class PeakletClassificationSOM(strax.Plugin):
         result['time'] = peaklets['time']
         result['length'] = peaklets['length']
         result['dt'] = peaklets['dt']
-        result['type'] = strax_type
+        result['type'][mask_non_zero] = strax_type
         return result
 
 
@@ -75,6 +83,8 @@ def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
     # Checks that the reference image matches the weight cube
     assert SOM_xdim == IMG_xdim, f'Dimensions mismatch between SOM weight cube ({SOM_xdim}) and reference image ({IMG_xdim})'
     assert SOM_ydim == IMG_ydim, f'Dimensions mismatch between SOM weight cube ({SOM_ydim}) and reference image ({IMG_ydim})'
+
+    assert all(dataset['type'] != 0), 'Dataset contains unclassified peaklets'
     # Get the deciles representation of data for recall
     decile_transform_check = data_to_log_decile_log_area_aft(dataset, norm_factors)
     # preform a recall of the dataset with the weight cube
