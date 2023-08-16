@@ -521,11 +521,11 @@ class URLConfig(strax.Config):
         for k, v in combined_kwargs.items():
             if isinstance(v, str) and cls.PLUGIN_ATTR_PREFIX in v:
                 raise ValueError(
-                    f"The URL parameter {k} depends on the plugin"
-                    "You must specify the value for this parameter"
-                    "for this URL to be evaluated correctly."
-                    f"Try passing {k} as a keyword argument."
-                    f"e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`"
+                    f"The URL parameter {k} depends on the plugin. "
+                    "You must specify the value for this parameter "
+                    "for this URL to be evaluated correctly. "
+                    f"Try passing {k} as a keyword argument. "
+                    f"e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`."
                 )
         
         return cls.eval(url)

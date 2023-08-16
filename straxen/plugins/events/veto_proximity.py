@@ -98,7 +98,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         # Figure out the vetos *during* an event
         res = self.get_overlapping_window_time(vetos_during_event, selected_intervals, event_window, result_buffer)
         result_buffer[f'veto_{veto_name}_overlap'] = res
-        
+
         # Find the next and previous veto's
         times_to_prev, times_to_next = strax.abs_time_to_prev_next_interval(event_window, selected_intervals)
         mask_prev = times_to_prev > 0
@@ -106,7 +106,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
 
         max_next = times_to_next > 0
         result_buffer[f'time_to_next_{veto_name}'][max_next] = times_to_next[max_next]
-      
+
     @staticmethod
     @numba.njit
     def get_overlapping_window_time(vetos_during_event, selected_intervals, event_window, result_buffer):

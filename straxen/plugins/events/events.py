@@ -89,6 +89,10 @@ class Events(strax.OverlapWindowPlugin):
         default=2, type=int,
         help="Minimum tight coincidence necessary to make an S1")
 
+    diagnose_overlapping = straxen.URLConfig(
+        track=False, default=True, infer_type=False,
+        help="Enable runtime checks for disjointness")
+
     def setup(self):
         if self.s1_min_coincidence > self.event_s1_min_coincidence:
             raise ValueError('Peak s1 coincidence requirement should be smaller '
@@ -138,6 +142,11 @@ class Events(strax.OverlapWindowPlugin):
 
         if not result.size > 0:
             print("Found chunk without events?!")
+
+        if self.diagnose_overlapping and len(result):
+            # Check if the event windows overlap
+            _event_window_do_not_overlap = (strax.endtime(result)[:-1] - result['time'][1:]) <= 0
+            assert np.all(_event_window_do_not_overlap), "Events not disjoint"
 
         self.events_seen += len(result)
 
