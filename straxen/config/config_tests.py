@@ -1,12 +1,14 @@
 from .regex_dispatcher import RegexDispatcher
+from .utils import URLConfigWarning
 
+import straxen
 import re
 import warnings
 
 check_urls = RegexDispatcher("check_urls")
 
 
-@check_urls.register(r".*")
+@check_urls.register(r"(.*)(.*xedocs.*)")
 def confirm_xedocs_schema_exists_check(url: str):
     import xedocs
     # Selects the schema name in the URL and confirms it exists in the xedocs db
@@ -14,28 +16,27 @@ def confirm_xedocs_schema_exists_check(url: str):
         warnings.warn("You tried to use a schema that is not part of the xedocs database")
 
 
-@check_urls.register(r".*(list-to-array|'object-to-dict').*")
+@check_urls.register(r".*(list-to-array|'objects-to-dict').*")
 def data_as_list_check(url: str):
-    if not ("as_list=True" in url):
-        warnings.warn("When using the list-to-array or object-to-dict protocol, you must include an as_list=True in the URL arguments")
+    if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
+        warnings.warn("When using the list-to-array or objects-to-dict protocol, you must include an as_list=True in the URL arguments")
     if not ("sort" in url):
-        warnings.warn("When using the list-to-array or object-to-dict protocol, you must include a sort argument in the URL")
+        warnings.warn("When using the list-to-array or objects-to-dict protocol, you must include a sort argument in the URL")
 
 
-@check_urls.register(r".*")
+@check_urls.register(r"(.*)(.*xedocs.*)")
 def are_resources_needed_check(url: str):
     parent_class = get_parent_class(url)
 
-    if ("BaseMap" == parent_class) or ("BaseResourceReference" == parent_class):
+    if ("BaseMap" in parent_class) or ("BaseResourceReference" in parent_class):
         if not ("resource://" in url):
             warnings.warn("A URL which requeres the resource:// was given however resource:// was not found within the URL, not data will be loaded.")
 
-
-@check_urls.register(r".*")
+@check_urls.register(r"(.*)(.*xedocs.*)")
 def itp_map_check(url: str):
     parent_class = get_parent_class(url)
 
-    if ("BaseMap" == parent_class):
+    if ("BaseMap" in parent_class):
         if not ("itp_map://" in url):
             warnings.warn("Warning, you are requesting a map file with this URL however, the protocol itp_map:// was not requested as part of the URL. The itp_map:// protocol is requiered for map corrections.")
 
@@ -46,7 +47,7 @@ def tf_check(url: str):
         warnings.warn("Warning, you are requesting a position reconstruction model with this URL however, the protocol tf:// was not requested as part of the URL. The tf:// protocol is requiered for position reconstruction corrections.")
 
 
-@check_urls.register(r".*")
+@check_urls.register(r"(.*)(.*xedocs.*)")
 def url_attr_check(url: str):
     if not ("attr" in url):
         warnings.warn("A URL without an 'attr' argument was given, as a result, instead of a value, list of values or other files, you will get a document, which cannot be used to process data.")
@@ -64,7 +65,7 @@ def url_fdc__check(url: str):
         warnings.warn("A URL for fdc was given without a [scale_coordinates] argument. This could lead to issues when reprocessing data. Please include the scaling in the URL")
         
         
-@check_urls.register(r".*object-to-dict.*")
+@check_urls.register(r".*objects-to-dict.*")
 def tf_dict_attributes(url: str):
     if not ("key_attr" in url):
         warnings.warn("Warning, you are requesting a correction in the form of a dictionary with this URL however, you did not choose keys for the dictionary with [key_attr]. Please insert [key_attr=] in your url for the keys.")
@@ -79,7 +80,7 @@ def get_parent_class(url: str):
     import xedocs
 
     schema = re.findall(r"(?<=\://)[^\://]*(?=\?)", url)[0]
-    xedocs_class = xedocs.find_schema(schema).__bases__
+    xedocs_class = xedocs.find_schema(schema).__mro__
     parent_class = [parent.__name__ for parent in xedocs_class]
 
-    return parent_class[0]
+    return parent_class

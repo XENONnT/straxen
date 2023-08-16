@@ -127,10 +127,10 @@ straxen.units module
    :undoc-members:
    :show-inheritance:
 
-straxen.url\_config module
+straxen.config.url\_config module
 --------------------------
 
-.. automodule:: straxen.url_config
+.. automodule:: straxen.config.url_config
    :members:
    :undoc-members:
    :show-inheritance:

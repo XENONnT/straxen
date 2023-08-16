@@ -1,6 +1,9 @@
-from .dispatcher import check_urls
+from .config_tests import check_urls
 from .url_config import URLConfig
 import warnings
+
+WARN = True
+
 
 @URLConfig.preprocessor
 def alphabetize_url_kwargs(url: str):
@@ -22,8 +25,9 @@ def alphabetize_url_kwargs(url: str):
         return URLConfig.format_url_kwargs(url)
     return url
 
+
 @URLConfig.preprocessor
 def check_url_with_dispatcher(url: str):
     # Classes regex dispatcher to check url expressions
-    check_urls(url)
-
+    if isinstance(url, str):
+        check_urls(url)
