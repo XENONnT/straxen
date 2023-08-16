@@ -1,5 +1,4 @@
 from .regex_dispatcher import RegexDispatcher
-from .utils import URLConfigWarning
 
 import straxen
 import re
