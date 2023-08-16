@@ -10,6 +10,7 @@ from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 import pickle
 import random
+import warnings
 import numpy as np
 from datetime import datetime
 
@@ -350,7 +351,7 @@ class TestURLConfig(unittest.TestCase):
         url to ensure the same url with a different hash order gives the same hash"""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
-        preprocessed_url = straxen.config.preprocessor.alphabetize_url_kwargs(url)
+        preprocessed_url = straxen.config.preprocessors.alphabetize_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
 
     def test_xedocs_global_version_hash_coinsistency(self):
@@ -391,12 +392,18 @@ class TestURLConfig(unittest.TestCase):
             self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
             p = self.st.get_single_plugin(999999999, 'test_data')
             return p.test_config
+
     def test_regex_url_warnings(self):
 
         url = "xedocs://electron_lifetimes?verion=v5&att=value" #url with typos
         self.st.set_config({'test_config': url})
 
-        with pytest.warns(UserWarning) as record:
-            self.st.get_single_plugin(nt_test_run_id, 'test_data').test_config
-            
-        assert len(record) != 0, "Error, warning dispatcher not working"
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+        
+            # Trigger a warning.
+            result = self.st.get_single_plugin(nt_test_run_id, 'test_data').test_config
+
+            # Verify the warning
+            assert len(w) != 0, "Error, warning dispatcher not working"

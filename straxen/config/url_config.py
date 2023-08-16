@@ -52,12 +52,6 @@ def parse_val(val: str):
     return val
 
 
-def get_item_or_attr(obj, key, default=None):
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
-
-
 @export
 class URLConfig(strax.Config):
     """Dispatch on URL protocol.

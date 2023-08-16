@@ -19,6 +19,12 @@ from scipy.interpolate import interp1d
 from typing import Container, Iterable
 
 
+def get_item_or_attr(obj, key, default=None):
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 @URLConfig.register('cmt')
 def get_correction(name: str,
                    run_id: str = None,
@@ -240,4 +246,3 @@ def read_rundoc(path, run_id=None, default=None):
         else:
             raise ValueError(f'No path {path} found in rundoc for run {run_id}')
     return rundoc
-
