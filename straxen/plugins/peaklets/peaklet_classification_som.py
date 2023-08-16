@@ -30,7 +30,8 @@ class PeakletClassificationSOM(strax.Plugin):
     depends_on = ('peaklets', 'peaklet_classification')
     parallel = True
     dtype = (strax.peak_interval_dtype +
-             [('type', np.int8, 'Classification of the peak(let)')]) 
+             [('type', np.int8, 'Classification of the peak(let)')] +
+             [('som_type', np.int16, 'Classification of the peak(let) SOM labels')]) 
 
     som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v0.npz?fmt=npy')
 
@@ -56,6 +57,7 @@ class PeakletClassificationSOM(strax.Plugin):
         result['length'] = peaklets['length']
         result['dt'] = peaklets['dt']
         result['type'][mask_non_zero] = strax_type
+        result['som_type'][mask_non_zero] = som_type + 1
         return result
 
 
@@ -120,7 +122,6 @@ def som_type_to_type(som_type, s1_array, s2_array):
                  be converted to S1's
     """
     som_type_copy = som_type.copy()
-    assert len(np.unique(som_type)) == (len(s1_array) + len(s2_array)), f'Error, the number of SOM types provided ({len(np.unique(som_type_copy))}) does not match' f'the arrays to convert to ({len(s1_array) + len(s2_array)})'
     som_type_copy[np.isin(som_type_copy, s1_array)] = 1234
     som_type_copy[np.isin(som_type_copy, s2_array)] = 5678
     som_type_copy[som_type_copy == 1234] = 1
