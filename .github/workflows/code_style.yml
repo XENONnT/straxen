@@ -24,7 +24,7 @@ jobs:
           python-version: 3.8
       - name: patch reviewdog
         run: sudo chown -R root:root $GITHUB_WORKSPACE
-      - name: Wemake Python Stylguide
+      - name: Wemake Python Styleguide
         uses: wemake-services/wemake-python-styleguide@0.18.0
         continue-on-error: true
         with:

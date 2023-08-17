@@ -84,10 +84,50 @@ straxen.plugins.events.event\_positions module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.events.event\_s1\_positions\_cnn module
+-------------------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_s1_positions_cnn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.events.event\_s2\_positions\_cnn module
+-------------------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_s2_positions_cnn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.events.event\_s2\_positions\_gcn module
+-------------------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_s2_positions_gcn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.events.event\_s2\_positions\_mlp module
+-------------------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_s2_positions_mlp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.events.event\_shadow module
 -------------------------------------------
 
 .. automodule:: straxen.plugins.events.event_shadow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.events.event\_top\_bottom\_params module
+--------------------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_top_bottom_params
    :members:
    :undoc-members:
    :show-inheritance:
@@ -100,10 +140,34 @@ straxen.plugins.events.event\_w\_bayes\_class module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.events.event\_waveform module
+---------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_waveform
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.events.events module
 ------------------------------------
 
 .. automodule:: straxen.plugins.events.events
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.events.local\_minimum\_info module
+--------------------------------------------------
+
+.. automodule:: straxen.plugins.events.local_minimum_info
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.events.multi\_scatter module
+--------------------------------------------
+
+.. automodule:: straxen.plugins.events.multi_scatter
    :members:
    :undoc-members:
    :show-inheritance:
