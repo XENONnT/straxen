@@ -62,12 +62,12 @@ class EventPositions(strax.Plugin):
                 dtype += [(field, np.float32, comment)]
 
         for j in ['z']:
-            comment = 'Interaction z-position, using mean drift velocity only (cm)'
+            comment = 'Interaction z-position corrected to non-uniform drift velocity (cm)'
             dtype += [(j, np.float32, comment)]
             comment = 'Interaction z-position corrected to non-uniform drift velocity (cm)'
             dtype += [(j + "_dv_corr", np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f'Alternative S{s_i} z-position (rel. main S{int(2 * (1.5 - s_i) + s_i)}), using mean drift velocity only (cm)'
+                comment = f'Alternative S{s_i} z-position (rel. main S{int(2 * (1.5 - s_i) + s_i)}) corrected to non-uniform drift velocity (cm)'
                 field = f'alt_s{s_i}_z'
                 dtype += [(field, np.float32, comment)]
                 # values for corrected Z position
@@ -153,9 +153,9 @@ class EventPositions(strax.Plugin):
                            f'{pre_field}r_field_distortion_correction': delta_r,
                            f'{pre_field}theta': np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
                            f'{pre_field}z_naive': z_obs,
-                           # using z_obs in agreement with the dtype description
+                           # using z_dv_corr (z_obs - z_dv_delta) in agreement with the dtype description
                            # the FDC for z (z_cor) is found to be not reliable (see #527)
-                           f'{pre_field}z': z_obs,
+                           f'{pre_field}z': z_obs - z_dv_delta,
                            f'{pre_field}z_field_distortion_correction': delta_z,
                            f'{pre_field}z_dv_corr': z_obs - z_dv_delta,
                            })
