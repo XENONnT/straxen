@@ -19,7 +19,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics',)
 
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
