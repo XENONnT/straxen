@@ -57,21 +57,21 @@ class EventPositions(strax.Plugin):
             comment = f'Main interaction {j}-position, field-distortion corrected (cm)'
             dtype += [(j, np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f'Alternative S{s_i} interaction (rel. main S{int(2 * (1.5 - s_i) + s_i)}) {j}-position, field-distortion corrected (cm)'
+                comment = f'Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position, field-distortion corrected (cm)'
                 field = f'alt_s{s_i}_{j}_fdc'
                 dtype += [(field, np.float32, comment)]
 
         for j in ['z']:
-            comment = 'Interaction z-position corrected to non-uniform drift velocity (cm)'
+            comment = 'Interaction z-position, corrected to non-uniform drift velocity (cm)'
             dtype += [(j, np.float32, comment)]
-            comment = 'Interaction z-position corrected to non-uniform drift velocity (cm)'
+            comment = 'Interaction z-position, corrected to non-uniform drift velocity, duplicated (cm)'
             dtype += [(j + "_dv_corr", np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f'Alternative S{s_i} z-position (rel. main S{int(2 * (1.5 - s_i) + s_i)}) corrected to non-uniform drift velocity (cm)'
+                comment = f'Alternative S{s_i} z-position (rel. main S{3 - s_i}), corrected to non-uniform drift velocity (cm)'
                 field = f'alt_s{s_i}_z'
                 dtype += [(field, np.float32, comment)]
                 # values for corrected Z position
-                comment = f'Alternative S{s_i} z-position (rel. main S{[1 if s_i==2 else 2]}), corrected for non-uniform field (cm)'
+                comment = f'Alternative S{s_i} z-position (rel. main S{3 - s_i}), corrected to non-uniform drift velocity, duplicated (cm)'
                 field = f'alt_s{s_i}_z_dv_corr'
                 dtype += [(field, np.float32, comment)]
 
@@ -89,7 +89,7 @@ class EventPositions(strax.Plugin):
                 naive_pos += [(
                     f'alt_s{s_i}_{j}_naive',
                     np.float32,
-                    f'Alternative S{s_i} interaction (rel. main S{int(2 * (1.5 - s_i) + s_i)}) {j}-position with observed position (cm)')]
+                    f'Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position with observed position (cm)')]
                 fdc_pos += [(f'alt_s{s_i}_{j}_field_distortion_correction',
                              np.float32,
                              f'Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)')]
@@ -97,7 +97,7 @@ class EventPositions(strax.Plugin):
         for s_i in [1, 2]:
             dtype += [(f'alt_s{s_i}_theta',
                        np.float32,
-                       f'Alternative S{s_i} (rel. main S{int(2 * (1.5 - s_i) + s_i)}) interaction angular position (radians)')]
+                       f'Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)')]
 
         dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
         return dtype + strax.time_fields
