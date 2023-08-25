@@ -147,7 +147,7 @@ def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
     # Now lets deal with area
     data['area'] = data['area'] + normalization_factor[11] + 1
     peaklet_log_area = np.log10(data['area'])
-    peaklet_aft = np.sum(data['area_per_channel'][:, :straxen.n_top_pmts], axis=1) / normalization_factor[10]
+    peaklet_aft = np.sum(data['area_per_channel'][:, :straxen.n_top_pmts], axis=1) / peaklet_data['area']
     peaklet_aft = np.where(peaklet_aft > 0, peaklet_aft, 0)
     peaklet_aft = np.where(peaklet_aft < 1, peaklet_aft, 1)
     deciles_area_aft = np.concatenate((decile_log_over_max,
