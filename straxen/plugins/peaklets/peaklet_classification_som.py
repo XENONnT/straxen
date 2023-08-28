@@ -30,10 +30,9 @@ class PeakletClassificationSOM(strax.Plugin):
     depends_on = ('peaklets', 'peaklet_classification')
     parallel = True
     dtype = (strax.peak_interval_dtype +
-             [('type', np.int8, 'Classification of the peak(let)')] +
-             [('som_type', np.int16, 'Classification of the peak(let) SOM labels')]) 
+             [('type', np.int8, 'Classification of the peak(let)')]) 
 
-    som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v0.npz?fmt=npy')
+    som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v1.npz?fmt=npy')
 
     def setup(self):
         self.som_weight_cube = self.som_files['weight_cube']
@@ -57,7 +56,7 @@ class PeakletClassificationSOM(strax.Plugin):
         result['length'] = peaklets['length']
         result['dt'] = peaklets['dt']
         result['type'][mask_non_zero] = strax_type
-        result['som_type'][mask_non_zero] = som_type + 1
+        #result['som_type'][mask_non_zero] = som_type + 1
         return result
 
 
