@@ -158,6 +158,7 @@ def xenonnt_online(output_folder: str = './strax_data',
                    _auto_append_rucio_local: bool = True,
                    _rucio_path: str = '/dali/lgrandi/rucio/',
                    _rucio_local_path: ty.Optional[str] = None,
+                   _find_in_storage: bool = False,
                    _raw_paths: ty.Optional[str] = ['/dali/lgrandi/xenonnt/raw'],
                    _processed_paths: ty.Optional[ty.List[str]] = ['/dali/lgrandi/xenonnt/processed',
                                                                   '/project2/lgrandi/xenonnt/processed',
@@ -224,6 +225,7 @@ def xenonnt_online(output_folder: str = './strax_data',
             runid_field='number',
             new_data_path=output_folder,
             rucio_path=_rucio_path,
+            find_in_storage=_find_in_storage,
         )] if _database_init else []
     if not we_are_the_daq:
         for _raw_path in _raw_paths:
