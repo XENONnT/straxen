@@ -79,6 +79,22 @@ class CorrectedAreas(strax.Plugin):
         help='circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
 
+    # Photon ionization intensity and cS2 AFT correction
+    photon_ionization_intensity = straxen.URLConfig(
+        default='cmt://photon_ionization_intensity?version=ONLINE&run_id=plugin.run_id',
+        help='Photon ionization intensity'
+    )
+
+    cs2_aft_correction_coefficients = straxen.URLConfig(
+        default=(-0.0756, 0.3188),
+        help='cS2 AFT correction coefficients'
+    )
+
+    cs2_aft_correction_average = straxen.URLConfig(
+        default=0.7648,
+        help='cS2 AFT correction average'
+    )
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
@@ -111,7 +127,7 @@ class CorrectedAreas(strax.Plugin):
         return ~self.ab_region(x, y)
     
     def s2_map_names(self):
-        
+
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
         # figure out the map name
         if len(self.s2_xy_map.map_names) > 1:
@@ -147,7 +163,7 @@ class CorrectedAreas(strax.Plugin):
             ee = {key: self.rel_extraction_eff for key in self.regions}
         
         return seg, avg_seg, ee
-    
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result['time'] = events['time']
@@ -163,7 +179,6 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
         # s2 corrections
-         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
 
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
@@ -203,13 +218,29 @@ class CorrectedAreas(strax.Plugin):
                 result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
                 # cs2aft doesn't need elife/time corrections as they cancel
-                result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / \
-                                                                              (
-                                                                                      cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
 
-                result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * \
-                                                            elife_correction[partition_mask]
-                result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[
-                    partition_mask]
+                result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+                result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
+                result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
+
+        # Photon ionization intensity and cS2 AFT correction
+        for peak_type in ["", "alt_"]:
+            cs2_bottom = result[f"{peak_type}cs2_bottom"]
+            cs2_top = result[f"{peak_type}cs2"] - cs2_bottom
+
+            # Bottom top ratios
+            bt = cs2_bottom / cs2_top
+            bt_average = (1 - self.cs2_aft_correction_average) / self.cs2_aft_correction_average
+            bt_corrected = bt * bt_average / np.poly1d(self.cs2_aft_correction_coefficients)(self.photon_ionization_intensity)
+
+            # cS2 bottom should be corrected by photon ionization, but not cS2 top
+            cs2_top_corrected = cs2_top
+            cs2_bottom_corrected = cs2_top * bt_corrected
+            cs2_aft_corrected = cs2_top_corrected / (cs2_top_corrected + cs2_bottom_corrected)
+
+            # Overwrite result
+            result[f"{peak_type}cs2_area_fraction_top"] = cs2_aft_corrected
+            result[f"{peak_type}cs2"] = cs2_top_corrected + cs2_bottom_corrected
+            result[f"{peak_type}cs2_bottom"] = cs2_bottom_corrected
 
         return result
