@@ -125,7 +125,7 @@ class CorrectedAreas(strax.Plugin):
 
     def cd_region(self, x, y):
         return ~self.ab_region(x, y)
-    
+
     def s2_map_names(self):
 
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
@@ -136,13 +136,13 @@ class CorrectedAreas(strax.Plugin):
         else:
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
-        
+
         return s2_top_map_name, s2_bottom_map_name
-    
+
     def seg_ee_correction_preparation(self):
         """Get single electron gain and extraction efficiency options"""
         self.regions = {'ab': self.ab_region, 'cd': self.cd_region}
-        
+
         # setup SEG and EE corrections
         # if they are dicts, we just leave them as is
         # if they are not, we assume they are floats and
