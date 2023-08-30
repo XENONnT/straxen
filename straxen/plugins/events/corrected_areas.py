@@ -87,12 +87,12 @@ class CorrectedAreas(strax.Plugin):
 
     cs2_aft_correction_coefficients = straxen.URLConfig(
         default=(-0.0756, 0.3188),
-        help='cS2 AFT correction coefficients'
+        help='cS2 AFT correction coefficients due to photon ionization'
     )
 
     cs2_aft_correction_average = straxen.URLConfig(
         default=0.7648,
-        help='cS2 AFT correction average'
+        help='cS2 AFT correction average due to photon ionization'
     )
 
     def infer_dtype(self):
