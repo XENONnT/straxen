@@ -42,7 +42,6 @@ class RunDB(strax.StorageFrontend):
                  new_data_path=None,
                  reader_ini_name_is_mode=False,
                  rucio_path=None,
-                 find_in_storage=False,
                  mongo_url=None,
                  mongo_user=None,
                  mongo_password=None,
@@ -82,7 +81,6 @@ class RunDB(strax.StorageFrontend):
         if self.new_data_path is None:
             self.readonly = True
         self.runid_field = runid_field
-        self.find_in_storage = find_in_storage
 
         if self.runid_field not in ['name', 'number']:
             raise ValueError("Unrecognized runid_field option %s" % self.runid_field)
@@ -232,13 +230,6 @@ class RunDB(strax.StorageFrontend):
         return datum['protocol'], datum['location']
 
     def find_several(self, keys: typing.List[strax.DataKey], **kwargs):
-        """Find several keys at once.
-        If find_in_storage is True, will only check the storage backend,
-        because sometimes the RunDB docs indicate more docs than the available servers.
-        """
-        if self.find_in_storage:
-            return super().find_several(keys, **kwargs)
-
         if kwargs.get('fuzzy_for', False) or kwargs.get('fuzzy_for_options', False):
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
         if not keys:
