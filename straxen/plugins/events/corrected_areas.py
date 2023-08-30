@@ -81,7 +81,7 @@ class CorrectedAreas(strax.Plugin):
 
     # Photon ionization intensity and cS2 AFT correction
     photon_ionization_intensity = straxen.URLConfig(
-        default='cmt://photoionization_strengths?version=ONLINE&run_id=plugin.run_id',
+        default=0,
         help='Photon ionization intensity'
     )
 
