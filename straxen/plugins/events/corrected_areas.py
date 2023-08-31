@@ -223,7 +223,7 @@ class CorrectedAreas(strax.Plugin):
                 result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
                 result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
 
-        # Photon ionization intensity and cS2 AFT correction
+        # Photon ionization intensity and cS2 AFT correction (see #1247)
         for peak_type in ["", "alt_"]:
             cs2_bottom = result[f"{peak_type}cs2_bottom"]
             cs2_top = result[f"{peak_type}cs2"] - cs2_bottom
