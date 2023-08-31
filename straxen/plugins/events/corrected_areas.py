@@ -79,20 +79,10 @@ class CorrectedAreas(strax.Plugin):
         help='circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
 
-    # Photon ionization intensity and cS2 AFT correction
-    photon_ionization_intensity = straxen.URLConfig(
-        default=0,
-        help='Photon ionization intensity'
-    )
-
-    cs2_aft_correction_coefficients = straxen.URLConfig(
-        default=(-0.0756, 0.3188),
-        help='cS2 AFT correction coefficients due to photon ionization'
-    )
-
-    cs2_aft_correction_average = straxen.URLConfig(
-        default=0.7648,
-        help='cS2 AFT correction average due to photon ionization'
+    # cS2 AFT correction due to photon ionization
+    bottom_top_ratio_correction = straxen.URLConfig(
+        default=1,
+        help='Scaling factor for cS2 AFT correction due to photon ionization'
     )
 
     def infer_dtype(self):
@@ -180,7 +170,6 @@ class CorrectedAreas(strax.Plugin):
 
         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
-
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
 
         # now can start doing corrections
@@ -190,7 +179,6 @@ class CorrectedAreas(strax.Plugin):
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-
             cs2_top_xycorr = (events[f'{peak_type}s2_area']
                               * events[f'{peak_type}s2_area_fraction_top']
                               / self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
@@ -214,11 +202,9 @@ class CorrectedAreas(strax.Plugin):
                 # note that these are already masked!
                 cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
                 cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[partition_mask] / seg_ee_corr
-
                 result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
                 # cs2aft doesn't need elife/time corrections as they cancel
-
                 result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
                 result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
                 result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
@@ -230,8 +216,7 @@ class CorrectedAreas(strax.Plugin):
 
             # Bottom top ratios
             bt = cs2_bottom / cs2_top
-            bt_average = (1 - self.cs2_aft_correction_average) / self.cs2_aft_correction_average
-            bt_corrected = bt * bt_average / np.poly1d(self.cs2_aft_correction_coefficients)(self.photon_ionization_intensity)
+            bt_corrected = bt * self.bottom_top_ratio_correction
 
             # cS2 bottom should be corrected by photon ionization, but not cS2 top
             cs2_top_corrected = cs2_top
