@@ -80,7 +80,7 @@ class CorrectedAreas(strax.Plugin):
     )
 
     # cS2 AFT correction due to photon ionization
-    bottom_top_ratio_correction = straxen.URLConfig(
+    cs2_bottom_top_ratio_correction = straxen.URLConfig(
         default=1,
         help='Scaling factor for cS2 AFT correction due to photon ionization'
     )
@@ -216,7 +216,7 @@ class CorrectedAreas(strax.Plugin):
 
             # Bottom top ratios
             bt = cs2_bottom / cs2_top
-            bt_corrected = bt * self.bottom_top_ratio_correction
+            bt_corrected = bt * self.cs2_bottom_top_ratio_correction
 
             # cS2 bottom should be corrected by photon ionization, but not cS2 top
             cs2_top_corrected = cs2_top
