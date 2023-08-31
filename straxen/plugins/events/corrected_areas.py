@@ -80,6 +80,7 @@ class CorrectedAreas(strax.Plugin):
     )
 
     # cS2 AFT correction due to photon ionization
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:zihao:sr1_s2aft_photonionization_correction
     cs2_bottom_top_ratio_correction = straxen.URLConfig(
         default=1,
         help='Scaling factor for cS2 AFT correction due to photon ionization'
