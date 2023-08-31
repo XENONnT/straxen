@@ -21,7 +21,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.3.0'
+    __version__ = '0.3.1'
 
     depends_on = ['event_basics', 'event_positions']
 
