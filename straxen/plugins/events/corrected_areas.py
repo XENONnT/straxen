@@ -100,11 +100,18 @@ class CorrectedAreas(strax.Plugin):
                       (f'{peak_type}cs2_wo_timecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before SEG/EE and elife corrections'
                        f'(s2 xy correction applied) [PE]'),
+                      (f'{peak_type}cs2_area_fraction_top_wo_picorr', np.float32,
+                       f'Fraction of area seen by the top PMT array for corrected {peak_name} S2 before photon ionization correction'),
+                      (f'{peak_type}cs2_bottom_wo_picorr', np.float32,
+                       f'Corrected area of {peak_name} S2 in the bottom PMT array [PE] before photon ionization correction'),
+                      (f'{peak_type}cs2_wo_picorr', np.float32,
+                       f'Corrected area of {peak_name} S2 [PE] before photon ionization correction'),
                       (f'{peak_type}cs2_area_fraction_top', np.float32,
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
+                      (f'{peak_type}cs2', np.float32,
+                       f'Corrected area of {peak_name} S2 [PE]')]
         return dtype
 
     def ab_region(self, x, y):
@@ -206,14 +213,14 @@ class CorrectedAreas(strax.Plugin):
                 result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
                 # cs2aft doesn't need elife/time corrections as they cancel
-                result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
-                result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
-                result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
+                result[f"{peak_type}cs2_area_fraction_top_wo_picorr"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+                result[f"{peak_type}cs2_wo_picorr"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
+                result[f"{peak_type}cs2_bottom_wo_picorr"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
 
         # Photon ionization intensity and cS2 AFT correction (see #1247)
         for peak_type in ["", "alt_"]:
-            cs2_bottom = result[f"{peak_type}cs2_bottom"]
-            cs2_top = result[f"{peak_type}cs2"] - cs2_bottom
+            cs2_bottom = result[f"{peak_type}cs2_bottom_wo_picorr"]
+            cs2_top = result[f"{peak_type}cs2_wo_picorr"] - cs2_bottom
 
             # Bottom top ratios
             bt = cs2_bottom / cs2_top
