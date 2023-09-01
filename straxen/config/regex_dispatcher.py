@@ -95,6 +95,11 @@ class RegexDispatcher(object):
             for func in funcs:
                 func(s, *args, **kwargs)
 
+        elif isinstance(s, str) and ('xedocs' not in s):
+            funcs = self.dispatch(s)
+            for func in funcs:
+                func(s, *args, **kwargs)
+
     @property
     def __doc__(self):
         # take the min to give the docstring of the last fallback function

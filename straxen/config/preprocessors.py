@@ -6,7 +6,7 @@ WARN = True
 
 
 @URLConfig.preprocessor
-def alphabetize_url_kwargs(url: str):
+def sort_url_kwargs(url: str):
     """
     Reorders queries for urlconfigs to avoid hashing issues
     """

@@ -346,12 +346,12 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
         self.assertEqual(p.test_config, 'fake://url?version=v0')
 
-    def test_alphabetize_url_kwargs(self):
+    def test_sort_url_kwargs(self):
         """URLConfig preprocessor to rearange the order of arguments given buy a 
         url to ensure the same url with a different hash order gives the same hash"""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
-        preprocessed_url = straxen.config.preprocessors.alphabetize_url_kwargs(url)
+        preprocessed_url = straxen.config.preprocessors.sort_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
 
     def test_xedocs_global_version_hash_coinsistency(self):
@@ -403,7 +403,8 @@ class TestURLConfig(unittest.TestCase):
             warnings.simplefilter("always")
         
             # Trigger a warning.
-            result = self.st.get_single_plugin(nt_test_run_id, 'test_data').test_config
+            result = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+            _ = result.test_config
 
             # Verify the warning
             assert len(w) != 0, "Error, warning dispatcher not working"
