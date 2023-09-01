@@ -404,7 +404,6 @@ class TestURLConfig(unittest.TestCase):
         
             # Trigger a warning.
             result = self.st.get_single_plugin(nt_test_run_id, 'test_data')
-            _ = result.test_config
 
             # Verify the warning
             assert len(w) != 0, "Error, warning dispatcher not working"
