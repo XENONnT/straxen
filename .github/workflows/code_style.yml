@@ -19,12 +19,12 @@ jobs:
         run: |
              bash .github/scripts/pre_pyflakes.sh
       - name: Set up Python
-        uses: actions/setup-python@v4.6.1
+        uses: actions/setup-python@v4.7.0
         with:
           python-version: 3.8
       - name: patch reviewdog
         run: sudo chown -R root:root $GITHUB_WORKSPACE
-      - name: Wemake Python Stylguide
+      - name: Wemake Python Styleguide
         uses: wemake-services/wemake-python-styleguide@0.18.0
         continue-on-error: true
         with:

@@ -28,6 +28,22 @@ straxen.plugins.peaks.peak\_classification\_bayes module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.peaks.peak\_corrections module
+----------------------------------------------
+
+.. automodule:: straxen.plugins.peaks.peak_corrections
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.peaks.peak\_per\_event module
+---------------------------------------------
+
+.. automodule:: straxen.plugins.peaks.peak_per_event
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.peaks.peak\_positions module
 --------------------------------------------
 
@@ -68,6 +84,14 @@ straxen.plugins.peaks.peak\_proximity module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.peaks.peak\_s1\_positions\_cnn module
+-----------------------------------------------------
+
+.. automodule:: straxen.plugins.peaks.peak_s1_positions_cnn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.peaks.peak\_shadow module
 -----------------------------------------
 
@@ -76,10 +100,26 @@ straxen.plugins.peaks.peak\_shadow module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.peaks.peak\_top\_bottom\_params module
+------------------------------------------------------
+
+.. automodule:: straxen.plugins.peaks.peak_top_bottom_params
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.peaks.peaks module
 ----------------------------------
 
 .. automodule:: straxen.plugins.peaks.peaks
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.plugins.peaks.peaks\_subtyping module
+---------------------------------------------
+
+.. automodule:: straxen.plugins.peaks.peaks_subtyping
    :members:
    :undoc-members:
    :show-inheritance:

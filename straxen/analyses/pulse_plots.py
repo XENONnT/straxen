@@ -10,6 +10,26 @@ import straxen
 def plot_pulses_tpc(context, raw_records, run_id, time_range=None,
                     plot_hits=False, plot_median=False,
                     max_plots=20, store_pdf=False, path=''):
+    """
+    Mini-analyis to plot pulses for the specified list of records.
+    You have to provide a a run-id for which pulses should be plotted.
+    You can use the same arguments as for get_array to select a specific
+    time range or data (see also further ).
+
+    In addition you can provide the following arguments:
+    
+    :param plot_hits: If True plot hit boundaries including the left
+        and right extension as orange shaded regions.
+    :param plot_median: If true plots pulses sample median as dotted
+        line.
+    :param max_plots: Limits the number of figures. If you would like
+        to plot more pulses you should put the plots in a PDF.
+    :param store_pdf: If true figures are put to a PDF instead of
+        plotting them to your notebook. The file name is automatically
+        generated including the time range and run_id.
+    :param path: Relative path where the PDF should be stored. By default
+        it is the directory of the notebook.
+    """
     plot_pulses(context, raw_records, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path)
@@ -19,6 +39,26 @@ def plot_pulses_tpc(context, raw_records, run_id, time_range=None,
 def plot_pulses_mv(context, raw_records_mv, run_id, time_range=None,
                    plot_hits=False, plot_median=False,
                    max_plots=20, store_pdf=False, path=''):
+    """
+    Mini-analyis to plot pulses for the specified list of records.
+    You have to provide a a run-id for which pulses should be plotted.
+    You can use the same arguments as for get_array to select a specific
+    time range or data (see also further ).
+
+    In addition you can provide the following arguments:
+    
+    :param plot_hits: If True plot hit boundaries including the left
+        and right extension as orange shaded regions.
+    :param plot_median: If true plots pulses sample median as dotted
+        line.
+    :param max_plots: Limits the number of figures. If you would like
+        to plot more pulses you should put the plots in a PDF.
+    :param store_pdf: If true figures are put to a PDF instead of
+        plotting them to your notebook. The file name is automatically
+        generated including the time range and run_id.
+    :param path: Relative path where the PDF should be stored. By default
+        it is the directory of the notebook.
+    """
     plot_pulses(context, raw_records_mv, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path, detector_ending='_mv')
@@ -28,6 +68,26 @@ def plot_pulses_mv(context, raw_records_mv, run_id, time_range=None,
 def plot_pulses_nv(context, raw_records_nv, run_id, time_range=None,
                    plot_hits=False, plot_median=False,
                    max_plots=20, store_pdf=False, path=''):
+    """
+    Mini-analyis to plot pulses for the specified list of records.
+    You have to provide a a run-id for which pulses should be plotted.
+    You can use the same arguments as for get_array to select a specific
+    time range or data (see also further ).
+
+    In addition you can provide the following arguments:
+    
+    :param plot_hits: If True plot hit boundaries including the left
+        and right extension as orange shaded regions.
+    :param plot_median: If true plots pulses sample median as dotted
+        line.
+    :param max_plots: Limits the number of figures. If you would like
+        to plot more pulses you should put the plots in a PDF.
+    :param store_pdf: If true figures are put to a PDF instead of
+        plotting them to your notebook. The file name is automatically
+        generated including the time range and run_id.
+    :param path: Relative path where the PDF should be stored. By default
+        it is the directory of the notebook.
+    """
     plot_pulses(context, raw_records_nv, run_id, time_range,
                 plot_hits, plot_median,
                 max_plots, store_pdf, path, detector_ending='_nv')
