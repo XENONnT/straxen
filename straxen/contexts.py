@@ -9,7 +9,6 @@ import typing as ty
 from pandas.util._decorators import deprecate_kwarg
 import socket
 
-
 common_opts = dict(
     register_all=[],
     # Register all peak/pulse processing by hand as 1T does not need to have
@@ -91,6 +90,7 @@ xnt_common_opts.update({
     'use_per_run_defaults': False,
 })
 
+
 ##
 # XENONnT
 ##
@@ -104,7 +104,7 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
                       'use cutax instead!')
     st = straxen.contexts.xenonnt_online(**kwargs)
     st.apply_cmt_version(cmt_version)
-    
+
     if xedocs_version is not None:
         st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
@@ -236,7 +236,7 @@ def xenonnt_online(output_folder: str = './strax_data',
             st.storage += [strax.DataDirectory(
                 _processed_path,
                 readonly=True)]
-            
+
         if output_folder:
             st.storage += [strax.DataDirectory(output_folder,
                                                provide_run_metadata=True,
@@ -307,24 +307,71 @@ def xenonnt_led(**kwargs):
     return st
 
 
+def xenonnt_simulation_offline(output_folder: str = './strax_data',
+                               wfsim_registry: str = 'RawRecordsFromFaxNT',
+                               run_id: str = '026000',
+                               global_version: str = 'global_v11',
+                               fax_config: str = 'fax_config_nt_sr0_v4.json',
+                               ):
+    """
+
+    :param output_folder: strax_data folder
+    :param wfsim_registry: Raw_records generation mechanism, 'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc
+                           https://github.com/XENONnT/WFSim/blob/master/wfsim/strax_interface.py
+    :param run_id: Real run_id to use to fetch the corrections
+    :param global_version: Global versions, https://github.com/XENONnT/corrections/tree/master/XENONnT/global_versions
+    :param fax_config: WFSim configuration files, https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
+    :return: strax context for simulation
+    """
+    import wfsim
+    # General strax context, register common plugins
+    st = strax.Context(torage=strax.DataDirectory(output_folder),
+                       **straxen.contexts.xnt_common_opts)
+    # Register simulation configs required by WFSim plugins
+    st.config.update(dict(detector='XENONnT',
+                          fax_config=fax_config,
+                          check_raw_record_overlaps=True,
+                          **straxen.contexts.xnt_common_config))
+    # Register WFSim raw_records plugin to overwrite real
+    wfsim_plugin = getattr(wfsim, wfsim_registry)
+    st.register(wfsim_plugin)
+    for plugin_name in wfsim_plugin.provides:
+        assert 'wfsim' in str(st._plugin_class_registry[plugin_name])
+    # Register offline global corrections same as real data
+    st.apply_xedocs_configs(version=global_version)
+    # Real data correction is run_id dependent, but in sim we often use run_ids not in the runDB
+    # So we switch the run_id dependence to a specific run -> run_id
+    local_versions = st.config
+    for config_name, url_config in local_versions.items():
+        if isinstance(url_config, str):
+            if 'run_id' in url_config:
+                local_versions[config_name] = straxen.URLConfig.format_url_kwargs(url_config, run_id=run_id)
+    st.config = local_versions
+    # In simulation, the raw_records generation depends on gain measurement
+    st.config['gain_model_mc'] = st.config['gain_model']
+    # No blinding in simulations
+    st.config["event_info_function"] = "disabled"
+    return st
+
+
 def xenonnt_simulation(
-                output_folder='./strax_data',
-                wfsim_registry='RawRecordsFromFaxNT',
-                cmt_run_id_sim=None,
-                cmt_run_id_proc=None,
-                cmt_version='global_ONLINE',
-                fax_config='fax_config_nt_design.json',
-                overwrite_from_fax_file_sim=False,
-                overwrite_from_fax_file_proc=False,
-                cmt_option_overwrite_sim=immutabledict(),
-                cmt_option_overwrite_proc=immutabledict(),
-                _forbid_creation_of=None,
-                _config_overlap=immutabledict(
-                            drift_time_gate='electron_drift_time_gate',
-                            drift_velocity_liquid='electron_drift_velocity',
-                            electron_lifetime_liquid='elife',
-                ),
-                **kwargs):
+        output_folder='./strax_data',
+        wfsim_registry='RawRecordsFromFaxNT',
+        cmt_run_id_sim=None,
+        cmt_run_id_proc=None,
+        cmt_version='global_ONLINE',
+        fax_config='fax_config_nt_design.json',
+        overwrite_from_fax_file_sim=False,
+        overwrite_from_fax_file_proc=False,
+        cmt_option_overwrite_sim=immutabledict(),
+        cmt_option_overwrite_proc=immutabledict(),
+        _forbid_creation_of=None,
+        _config_overlap=immutabledict(
+            drift_time_gate='electron_drift_time_gate',
+            drift_velocity_liquid='electron_drift_velocity',
+            electron_lifetime_liquid='elife',
+        ),
+        **kwargs):
     """
     The most generic context that allows for setting full divergent
     settings for simulation purposes
@@ -374,7 +421,7 @@ def xenonnt_simulation(
         config=dict(detector='XENONnT',
                     fax_config=fax_config,
                     check_raw_record_overlaps=True,
-                    **straxen.contexts.xnt_common_config,),
+                    **straxen.contexts.xnt_common_config, ),
         **straxen.contexts.xnt_common_opts, **kwargs)
     st.register(getattr(wfsim, wfsim_registry))
 
@@ -390,16 +437,16 @@ def xenonnt_simulation(
         st.context_config['forbid_creation_of'] += strax.to_str_tuple(_forbid_creation_of)
 
     # doing sanity checks for cmt run ids for simulation and processing
-    if (not cmt_run_id_sim ) and (not cmt_run_id_proc ):
+    if (not cmt_run_id_sim) and (not cmt_run_id_proc):
         raise RuntimeError("cmt_run_id_sim and cmt_run_id_proc are None. "
                            "You have to specify at least one CMT run id. ")
-    if (cmt_run_id_sim and cmt_run_id_proc ) and (cmt_run_id_sim!=cmt_run_id_proc):
+    if (cmt_run_id_sim and cmt_run_id_proc) and (cmt_run_id_sim != cmt_run_id_proc):
         print("INFO : divergent CMT runs for simulation and processing")
         print("    cmt_run_id_sim".ljust(25), cmt_run_id_sim)
         print("    cmt_run_id_proc".ljust(25), cmt_run_id_proc)
     else:
-        cmt_id = cmt_run_id_sim  or cmt_run_id_proc
-        cmt_run_id_sim  = cmt_id
+        cmt_id = cmt_run_id_sim or cmt_run_id_proc
+        cmt_run_id_sim = cmt_id
         cmt_run_id_proc = cmt_id
 
     # Replace default cmt options with cmt_run_id tag + cmt run id
@@ -410,8 +457,8 @@ def xenonnt_simulation(
                    for key, val in cmt_options_full.items()}
 
     # First, fix gain model for simulation
-    st.set_config({'gain_model_mc': 
-                        ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
+    st.set_config({'gain_model_mc':
+                       ('cmt_run_id', cmt_run_id_sim, *cmt_options['gain_model'])})
     fax_config_override_from_cmt = dict()
     for fax_field, cmt_field in _config_overlap.items():
         value = cmt_options[cmt_field]
@@ -459,7 +506,7 @@ def xenonnt_simulation(
                 cmt_name = cmt_options_full[cmt_field]['correction']
 
                 st.config['fax_config_override_from_cmt'][fax_field] = (
-                         cmt_name + '_constant', fax_config[fax_field])
+                    cmt_name + '_constant', fax_config[fax_field])
 
     # And as the last step - manual overrrides, since they have the highest priority
     # User customized for simulation
@@ -474,15 +521,15 @@ def xenonnt_simulation(
             if cmt_key == option:
                 cmt_name = cmt_options_full[option]['correction']
                 st.config['fax_config_override_from_cmt'][fax_key] = (
-                                            cmt_name + '_constant',
-                                            cmt_option_overwrite_sim[option])
-            del(fax_key, cmt_key)
+                    cmt_name + '_constant',
+                    cmt_option_overwrite_sim[option])
+            del (fax_key, cmt_key)
     # User customized for simulation
     for option in cmt_option_overwrite_proc:
         if option not in cmt_options:
             raise ValueError(f'Overwrite option {option} is not using CMT by default '
                              'you should just use set config')
-        
+
         if isinstance(cmt_options[option], str):
             # URLConfig options can just be set to constants, no hacks needed
             # But for now lets keep things consistent for people
@@ -491,12 +538,13 @@ def xenonnt_simulation(
             # CMT name allowed to be different from the config name
             # WFSim needs the cmt name
             cmt_name = cmt_options_full[option]['correction']
-            st.config[option] = (cmt_name + '_constant', 
+            st.config[option] = (cmt_name + '_constant',
                                  cmt_option_overwrite_proc[option])
     # Only for simulations
     st.set_config({"event_info_function": "disabled"})
 
     return st
+
 
 ##
 # XENON1T, see straxen/legacy
