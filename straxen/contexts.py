@@ -309,9 +309,9 @@ def xenonnt_led(**kwargs):
 
 def xenonnt_simulation_offline(output_folder: str = './strax_data',
                                wfsim_registry: str = 'RawRecordsFromFaxNT',
-                               run_id: str = '026000',
-                               global_version: str = 'global_v11',
-                               fax_config: str = 'fax_config_nt_sr0_v4.json',
+                               run_id: ty.Optional[str] = None,
+                               global_version: ty.Optional[str] = None,
+                               fax_config: ty.Optional[str] = None,
                                ):
     """
     :param output_folder: strax_data folder
@@ -324,6 +324,14 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
                        https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
     :return: strax context for simulation
     """
+
+    if run_id is None:
+        raise Exception("Specify a run_id to load the corrections")
+    if global_version is None:
+        raise Exception("Specify a correction global version")
+    if fax_config is None:
+        raise Exception("Specify a simulation configuration file")
+
     import wfsim
     # General strax context, register common plugins
     st = strax.Context(torage=strax.DataDirectory(output_folder),
