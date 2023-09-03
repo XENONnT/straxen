@@ -32,7 +32,6 @@ Subpackages
    straxen.plugins.records_he
    straxen.plugins.records_mv
    straxen.plugins.records_nv
-   straxen.plugins.strax_data
    straxen.plugins.veto_intervals
 
 Submodules

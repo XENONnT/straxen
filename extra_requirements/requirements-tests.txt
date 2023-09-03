@@ -4,5 +4,5 @@ git+https://github.com/XENONnT/ax_env
 wfsim==1.0.2
 nbmake
 pytest-xdist
-xedocs==0.2.20
+xedocs==0.2.24
 ipython==8.12.1
