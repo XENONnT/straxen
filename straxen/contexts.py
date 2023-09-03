@@ -315,7 +315,8 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
                                ):
     """
     :param output_folder: strax_data folder
-    :param wfsim_registry: Raw_records generation mechanism, 'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc,
+    :param wfsim_registry: Raw_records generation mechanism,
+                           'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc,
                            https://github.com/XENONnT/WFSim/blob/master/wfsim/strax_interface.py
     :param run_id: Real run_id to use to fetch the corrections
     :param global_version: Global versions
@@ -324,13 +325,12 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
                        https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
     :return: strax context for simulation
     """
-
     if run_id is None:
-        raise Exception("Specify a run_id to load the corrections")
+        raise ValueError("Specify a run_id to load the corrections")
     if global_version is None:
-        raise Exception("Specify a correction global version")
+        raise ValueError("Specify a correction global version")
     if fax_config is None:
-        raise Exception("Specify a simulation configuration file")
+        raise ValueError("Specify a simulation configuration file")
 
     import wfsim
     # General strax context, register common plugins
@@ -348,7 +348,8 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
         assert 'wfsim' in str(st._plugin_class_registry[plugin_name])
     # Register offline global corrections same as real data
     st.apply_xedocs_configs(version=global_version)
-    # Real data correction is run_id dependent, but in sim we often use run_ids not in the runDB
+    # Real data correction is run_id dependent,
+    # but in sim we often use run_id not in the runDB
     # So we switch the run_id dependence to a specific run -> run_id
     local_versions = st.config
     for config_name, url_config in local_versions.items():
