@@ -314,13 +314,14 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
                                fax_config: str = 'fax_config_nt_sr0_v4.json',
                                ):
     """
-
     :param output_folder: strax_data folder
-    :param wfsim_registry: Raw_records generation mechanism, 'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc
+    :param wfsim_registry: Raw_records generation mechanism, 'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc,
                            https://github.com/XENONnT/WFSim/blob/master/wfsim/strax_interface.py
     :param run_id: Real run_id to use to fetch the corrections
-    :param global_version: Global versions, https://github.com/XENONnT/corrections/tree/master/XENONnT/global_versions
-    :param fax_config: WFSim configuration files, https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
+    :param global_version: Global versions
+                           https://github.com/XENONnT/corrections/tree/master/XENONnT/global_versions
+    :param fax_config: WFSim configuration files
+                       https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
     :return: strax context for simulation
     """
     import wfsim
@@ -332,7 +333,7 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
                           fax_config=fax_config,
                           check_raw_record_overlaps=True,
                           **straxen.contexts.xnt_common_config))
-    # Register WFSim raw_records plugin to overwrite real
+    # Register WFSim raw_records plugin to overwrite real data raw_records
     wfsim_plugin = getattr(wfsim, wfsim_registry)
     st.register(wfsim_plugin)
     for plugin_name in wfsim_plugin.provides:
