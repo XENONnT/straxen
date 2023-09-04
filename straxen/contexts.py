@@ -334,7 +334,7 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
 
     import wfsim
     # General strax context, register common plugins
-    st = strax.Context(torage=strax.DataDirectory(output_folder),
+    st = strax.Context(storage=strax.DataDirectory(output_folder),
                        **straxen.contexts.xnt_common_opts)
     # Register simulation configs required by WFSim plugins
     st.config.update(dict(detector='XENONnT',
