@@ -21,7 +21,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.3.0'
+    __version__ = '0.4.0'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -79,6 +79,13 @@ class CorrectedAreas(strax.Plugin):
         help='circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction'
     )
 
+    # cS2 AFT correction due to photon ionization
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:zihao:sr1_s2aft_photonionization_correction
+    cs2_bottom_top_ratio_correction = straxen.URLConfig(
+        default=1,
+        help='Scaling factor for cS2 AFT correction due to photon ionization'
+    )
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
@@ -93,11 +100,18 @@ class CorrectedAreas(strax.Plugin):
                       (f'{peak_type}cs2_wo_timecorr', np.float32,
                        f'Corrected area of {peak_name} S2 before SEG/EE and elife corrections'
                        f'(s2 xy correction applied) [PE]'),
+                      (f'{peak_type}cs2_area_fraction_top_wo_picorr', np.float32,
+                       f'Fraction of area seen by the top PMT array for corrected {peak_name} S2 before photon ionization correction'),
+                      (f'{peak_type}cs2_bottom_wo_picorr', np.float32,
+                       f'Corrected area of {peak_name} S2 in the bottom PMT array [PE] before photon ionization correction'),
+                      (f'{peak_type}cs2_wo_picorr', np.float32,
+                       f'Corrected area of {peak_name} S2 [PE] before photon ionization correction'),
                       (f'{peak_type}cs2_area_fraction_top', np.float32,
                        f'Fraction of area seen by the top PMT array for corrected {peak_name} S2'),
                       (f'{peak_type}cs2_bottom', np.float32,
                        f'Corrected area of {peak_name} S2 in the bottom PMT array [PE]'),
-                      (f'{peak_type}cs2', np.float32, f'Corrected area of {peak_name} S2 [PE]'), ]
+                      (f'{peak_type}cs2', np.float32,
+                       f'Corrected area of {peak_name} S2 [PE]')]
         return dtype
 
     def ab_region(self, x, y):
@@ -109,9 +123,9 @@ class CorrectedAreas(strax.Plugin):
 
     def cd_region(self, x, y):
         return ~self.ab_region(x, y)
-    
+
     def s2_map_names(self):
-        
+
         # S2 top and bottom are corrected separately, and cS2 total is the sum of the two
         # figure out the map name
         if len(self.s2_xy_map.map_names) > 1:
@@ -120,13 +134,13 @@ class CorrectedAreas(strax.Plugin):
         else:
             s2_top_map_name = "map"
             s2_bottom_map_name = "map"
-        
+
         return s2_top_map_name, s2_bottom_map_name
-    
+
     def seg_ee_correction_preparation(self):
         """Get single electron gain and extraction efficiency options"""
         self.regions = {'ab': self.ab_region, 'cd': self.cd_region}
-        
+
         # setup SEG and EE corrections
         # if they are dicts, we just leave them as is
         # if they are not, we assume they are floats and
@@ -147,7 +161,7 @@ class CorrectedAreas(strax.Plugin):
             ee = {key: self.rel_extraction_eff for key in self.regions}
         
         return seg, avg_seg, ee
-    
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result['time'] = events['time']
@@ -163,9 +177,7 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
         # s2 corrections
-         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
-
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
 
         # now can start doing corrections
@@ -175,7 +187,6 @@ class CorrectedAreas(strax.Plugin):
 
             # corrected s2 with s2 xy map only, i.e. no elife correction
             # this is for s2-only events which don't have drift time info
-
             cs2_top_xycorr = (events[f'{peak_type}s2_area']
                               * events[f'{peak_type}s2_area_fraction_top']
                               / self.s2_xy_map(s2_positions, map_name=s2_top_map_name))
@@ -199,17 +210,30 @@ class CorrectedAreas(strax.Plugin):
                 # note that these are already masked!
                 cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
                 cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[partition_mask] / seg_ee_corr
-
                 result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
 
                 # cs2aft doesn't need elife/time corrections as they cancel
-                result[f"{peak_type}cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / \
-                                                                              (
-                                                                                      cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+                result[f"{peak_type}cs2_area_fraction_top_wo_picorr"][partition_mask] = cs2_top_wo_elifecorr / (cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr)
+                result[f"{peak_type}cs2_wo_picorr"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
+                result[f"{peak_type}cs2_bottom_wo_picorr"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
 
-                result[f"{peak_type}cs2"][partition_mask] = result[f"{peak_type}cs2_wo_elifecorr"][partition_mask] * \
-                                                            elife_correction[partition_mask]
-                result[f"{peak_type}cs2_bottom"][partition_mask] = cs2_bottom_wo_elifecorr * elife_correction[
-                    partition_mask]
+        # Photon ionization intensity and cS2 AFT correction (see #1247)
+        for peak_type in ["", "alt_"]:
+            cs2_bottom = result[f"{peak_type}cs2_bottom_wo_picorr"]
+            cs2_top = result[f"{peak_type}cs2_wo_picorr"] - cs2_bottom
+
+            # Bottom top ratios
+            bt = cs2_bottom / cs2_top
+            bt_corrected = bt * self.cs2_bottom_top_ratio_correction
+
+            # cS2 bottom should be corrected by photon ionization, but not cS2 top
+            cs2_top_corrected = cs2_top
+            cs2_bottom_corrected = cs2_top * bt_corrected
+            cs2_aft_corrected = cs2_top_corrected / (cs2_top_corrected + cs2_bottom_corrected)
+
+            # Overwrite result
+            result[f"{peak_type}cs2_area_fraction_top"] = cs2_aft_corrected
+            result[f"{peak_type}cs2"] = cs2_top_corrected + cs2_bottom_corrected
+            result[f"{peak_type}cs2_bottom"] = cs2_bottom_corrected
 
         return result

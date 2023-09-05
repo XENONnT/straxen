@@ -31,27 +31,28 @@ export, __all__ = strax.exporter()
 
 
 @export
-def dataframe_to_wiki(df, float_digits=5, title='Awesome table', 
-                      force_int=tuple()):
+def dataframe_to_wiki(
+    df, float_digits=5, title='Awesome table', force_int:ty.Tuple=()):
     """Convert a pandas dataframe to a dokuwiki table 
     (which you can copy-paste onto the XENON wiki)
     :param df: dataframe to convert
-    :param float_digits: Round float-ing point values to this number of digits.
+    :param float_digits: format float to this number of digits.
     :param title: title of the table.
+    :param force_int: tuple of column names to force to be integers
     """
     table = '^ %s ' % title + '^' * (len(df.columns) - 1) + '^\n'
     table += '^ ' + ' ^ '.join(df.columns) + ' ^\n'
 
-    def do_round(x):
+    def format_float(x):
         if isinstance(x, float):
-            return round(x, float_digits)
+            return f'{x:.{float_digits}f}'
         return x
     force_int = np.where(np.in1d(df.columns.values,
                                  strax.to_str_tuple(force_int)))[0]
 
     for _, row in df.iterrows():
         table += "| " + ' | '.join([
-            str(int(x) if i in force_int else do_round(x))
+            str(int(x) if i in force_int else format_float(x))
             for i, x in enumerate(row.values.tolist())]) + ' |\n'
     return table
 
