@@ -105,8 +105,8 @@ class CorrectedAreas(strax.Plugin):
                 if i == len(names) - 1:
                     description = ''
                 else:
-                    description = ' (before' + ' + '.join(descriptions[i + 1:])
-                    description += ', after' + ' + '.join(descriptions[:i + 1]) + ')'
+                    description = ' (before ' + ' + '.join(descriptions[i + 1:])
+                    description += ', after ' + ' + '.join(descriptions[:i + 1]) + ')'
                 dtype += [
                     (
                         f'{peak_type}cs2{name}', np.float32,
