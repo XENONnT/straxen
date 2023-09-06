@@ -211,7 +211,7 @@ class CorrectedAreas(strax.Plugin):
             elife_correction = np.exp(events[f'{el_string}drift_time'] / self.elife)
 
             # collect SEG and EE corrections
-            seg_ee_corr = np.zeros(len(events), dtype=bool)
+            seg_ee_corr = np.zeros(len(events))
             for partition, func in self.regions.items():
                 # partitioned SEG and EE
                 partition_mask = func(events[f'{peak_type}s2_x'], events[f'{peak_type}s2_y'])
@@ -231,12 +231,10 @@ class CorrectedAreas(strax.Plugin):
                 cs2_top_wo_picorr / result[f"{peak_type}cs2_wo_picorr"])
 
             # apply photon ionization intensity and cS2 AFT correction (see #1247)
-            # correct bottom top ratios
-            bt = cs2_bottom_wo_picorr / cs2_top_wo_picorr
-            bt_corrected = bt * self.cs2_bottom_top_ratio_correction
             # cS2 bottom should be corrected by photon ionization, but not cS2 top
             cs2_top_wo_elifecorr = cs2_top_wo_picorr
-            cs2_bottom_wo_elifecorr = cs2_top_wo_elifecorr * bt_corrected
+            cs2_bottom_wo_elifecorr = (
+                cs2_bottom_wo_picorr * self.cs2_bottom_top_ratio_correction)
             result[f"{peak_type}cs2_wo_elifecorr"] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
             result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"] = (
                 cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"])
