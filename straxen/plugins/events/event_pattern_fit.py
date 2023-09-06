@@ -16,14 +16,14 @@ class EventPatternFit(strax.Plugin):
 
     depends_on = ('event_area_per_channel', 'event_basics', 'event_positions')
     provides = 'event_pattern_fit'
-    __version__ = '0.1.5'
+    __version__ = '0.1.3'
 
     # Getting S1 AFT maps
-    # s1_aft_map = straxen.URLConfig(
-    #     default='itp_map://resource://cmt://'
-    #             's1_aft_xyz_map'
-    #             '?version=ONLINE&run_id=plugin.run_id&fmt=json',
-    #     cache=True)
+    s1_aft_map = straxen.URLConfig(
+        default='itp_map://resource://cmt://'
+                's1_aft_xyz_map'
+                '?version=ONLINE&run_id=plugin.run_id&fmt=json',
+        cache=True)
 
     electron_drift_velocity = straxen.URLConfig(
         default='cmt://'
@@ -153,10 +153,11 @@ class EventPatternFit(strax.Plugin):
         # FIXME: Consider renaming the configs to match usage
 
         # Change the S1 AFT map 
-        self.s1_aft_map = straxen.InterpolatingMap(
-            straxen.get_resource(
-                '/scratch/midway2/minzhong/S1AFTMap/s1_a_area_fraction_top_dd_xyz_XENONnT_kr-83m_18Jul2023_v11_z_dv.json',
-                fmt='json'))
+        # self.s1_aft_map = straxen.InterpolatingMap(
+        #     straxen.get_resource(
+        #         '/scratch/midway2/minzhong/S1AFTMap/s1_a_area_fraction_top_dd_xyz_XENONnT_kr-83m_18Jul2023_v11_z_dv.json',
+        #         fmt='json'))
+        
         self.to_pe = self.gain_model
 
         self.mean_pe_photon = self.mean_pe_per_photon
@@ -193,8 +194,24 @@ class EventPatternFit(strax.Plugin):
         # Computing chi2 values for S2s
         self.compute_s2_neural_llhvalue(events, result)
 
+        # SR1 Manual FDC
+        FDC_path = '/project2/lgrandi/lprincipe/FDC_maps/2023_08_15/XnT_3D_FDC_xyz_MLP_v1.2_B2d75n_C2d74n_G0d3p_A5d0p_T0d9n_PMTs1d3n_FSR0d65p.json.gz'
+        fdc_map = straxen.get_resource(FDC_path, fmt='json.gz')
+        itp = straxen.InterpolatingMap(fdc_map)
+
+        raw_positions = np.vstack([events['s2_x_mlp'], events['s2_y_mlp'], events['z_dv_corr']]).T
+        corrections = itp(raw_positions)
+
+        # Temporary numpy arrays
+        array_s2_r_mlp = np.sqrt(events['s2_x_mlp']**2 + events['s2_y_mlp']**2)
+        array_fdc_r_mlp = array_s2_r_mlp + corrections
+        array_scale = array_fdc_r_mlp / array_s2_r_mlp
+        array_fdc_x_mlp = array_scale * events['s2_x_mlp'] 
+        array_fdc_y_mlp = array_scale * events['s2_y_mlp']
+        
         # Computing binomial test for s1 area fraction top
-        positions = np.vstack([events['x'], events['y'], events['z_dv_corr']]).T
+        # positions = np.vstack([events['x'], events['y'], events['z_dv_corr']]).T
+        positions = np.vstack([array_fdc_x_mlp, array_fdc_y_mlp, events['z_dv_corr']]).T
         aft_prob = self.s1_aft_map(positions)
 
         alt_s1_interaction_drift_time = events['s2_center_time'] - events['alt_s1_center_time']
