@@ -44,7 +44,7 @@ class EventPatternFit(strax.Plugin):
         help='S1 (x, y, z) optical/pattern map.', infer_type=False,
         default='itp_map://'
                 'resource://'
-                'XENONnT_s1_xyz_patterns_corrected_qes_MCva43fa9b_wires.pkl'
+                'XENONnT_S1_xyz_patterns_sparse_binning_LCE_with-QEs_MCv4.4.0_wires.pkl'
                 '?fmt=pkl')
 
     s2_optical_map = straxen.URLConfig(
