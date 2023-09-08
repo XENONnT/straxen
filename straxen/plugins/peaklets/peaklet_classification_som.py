@@ -32,7 +32,7 @@ class PeakletClassificationSOM(strax.Plugin):
     dtype = (strax.peak_interval_dtype +
              [('type', np.int8, 'Classification of the peak(let)')]) 
 
-    som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v3.2.npz?fmt=npy')
+    som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v4.1.npz?fmt=npy')
 
     def setup(self):
         self.som_weight_cube = self.som_files['weight_cube']
@@ -40,6 +40,7 @@ class PeakletClassificationSOM(strax.Plugin):
         self.som_norm_factors = self.som_files['norm_factors']
         self.som_s1_array = self.som_files['s1_array']
         self.som_s2_array = self.som_files['s2_array']
+        self.som_s3_array = self.som_files['s3_array']
         self.som_s0_array = self.som_files['s0_array']
 
     def compute(self, peaklets):
@@ -53,6 +54,7 @@ class PeakletClassificationSOM(strax.Plugin):
         strax_type = som_type_to_type(som_type,
                                       self.som_s1_array,
                                       self.som_s2_array,
+                                      self.som_s3_array,
                                       self.som_s0_array)
         result['time'] = peaklets['time']
         result['length'] = peaklets['length']
@@ -115,7 +117,7 @@ def SOM_cls_recall(array_to_fill, data_in_SOM_fmt, weight_cube, reference_map):
     return array_to_fill
 
 
-def som_type_to_type(som_type, s1_array, s2_array, s0_array):
+def som_type_to_type(som_type, s1_array, s2_array, s3_array, s0_array):
     """
     Converts the SOM type into either S1 or S2 type (1, 2)
     som_type:    array with integers corresponding to the different SOM types
@@ -125,9 +127,11 @@ def som_type_to_type(som_type, s1_array, s2_array, s0_array):
     som_type_copy = som_type.copy()
     som_type_copy[np.isin(som_type_copy, s1_array)] = 1234
     som_type_copy[np.isin(som_type_copy, s2_array)] = 5678
+    som_type_copy[np.isin(som_type_copy, s3_array)] = -5
     som_type_copy[np.isin(som_type_copy, s0_array)] = -250
     som_type_copy[som_type_copy == 1234] = 1
     som_type_copy[som_type_copy == 5678] = 2
+    som_type_copy[som_type_copy == -5] = 3
     som_type_copy[som_type_copy == -250] = 0
     #assert np.all(np.unique(som_type_copy) == np.array([0, 1, 2])), f'Error, values other than s1 and s2 found in the array'
     return som_type_copy
