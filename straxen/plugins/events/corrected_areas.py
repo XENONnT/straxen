@@ -21,7 +21,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
     """
-    __version__ = '0.5.0'
+    __version__ = '0.5.1'
 
     depends_on = ['event_basics', 'event_positions']
 
@@ -104,6 +104,11 @@ class CorrectedAreas(strax.Plugin):
             for i, name in enumerate(names):
                 if i == len(names) - 1:
                     description = ''
+                elif i == 0:
+                    # special treatment for wo_timecorr, apply elife correction
+                    description = ' (before ' + ' + '.join(descriptions[i + 1:-1])
+                    description += ', after ' + ' + '.join(
+                        descriptions[:i + 1] + descriptions[-1:]) + ')'
                 else:
                     description = ' (before ' + ' + '.join(descriptions[i + 1:])
                     description += ', after ' + ' + '.join(descriptions[:i + 1]) + ')'
@@ -219,9 +224,9 @@ class CorrectedAreas(strax.Plugin):
                 seg_ee_corr[partition_mask] = seg[partition] / avg_seg[partition] * ee[partition]
 
             # apply S2 xy correction
-            result[f"{peak_type}cs2_wo_timecorr"] = cs2_top_xycorr + cs2_bottom_xycorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"] = (
-                cs2_top_xycorr / result[f"{peak_type}cs2_wo_timecorr"])
+            cs2_xycorr = cs2_top_xycorr + cs2_bottom_xycorr
+            result[f"{peak_type}cs2_wo_timecorr"] = cs2_xycorr * elife_correction
+            result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"] = cs2_top_xycorr / cs2_xycorr
 
             # apply SEG and EE correction
             cs2_top_wo_picorr = cs2_top_xycorr / seg_ee_corr
