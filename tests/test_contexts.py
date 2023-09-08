@@ -182,6 +182,8 @@ class TestSimContextNT(unittest.TestCase):
 def test_sim_context():
     st = straxen.contexts.xenon1t_simulation()
 
+
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 @unittest.skipIf(
     "ALLOW_WFSIM_TEST" not in os.environ,
     "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`",
