@@ -177,12 +177,23 @@ class TestSimContextNT(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.context(cmt_run_id_sim=None, cmt_run_id_proc=None,)
 
-
 @unittest.skipIf('ALLOW_WFSIM_TEST' not in os.environ,
                  "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`")
 def test_sim_context():
     st = straxen.contexts.xenon1t_simulation()
-    st.search_field('time')
+
+
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+@unittest.skipIf(
+    "ALLOW_WFSIM_TEST" not in os.environ,
+    "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`",
+)
+def test_sim_offline_context():
+    st = straxen.contexts.xenonnt_simulation_offline(
+        run_id="026000",
+        global_version="global_v11",
+        fax_config="fax_config_nt_sr0_v4.json",
+    )
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
