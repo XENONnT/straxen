@@ -1,3 +1,31 @@
+2.1.3 / 2023-09-08
+-------------------
+* Manually check event overlapping by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1214
+* Add missing docstrings by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1234
+* Use formatted float in `dataframe_to_wiki` by @dachengx in https://github.com/XENONnT/straxen/pull/1231
+* Bump actions/setup-python, urllib3 and sphinx by @dachengx in https://github.com/XENONnT/straxen/pull/1232
+* Update module index of docs by @dachengx in https://github.com/XENONnT/straxen/pull/1233
+* Bump sphinx-rtd-theme from 1.2.2 to 1.3.0 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1238
+* Replace `z` from `z_naive` to `z_dv_corr` by @dachengx in https://github.com/XENONnT/straxen/pull/1239
+* Remove context collection badge by @dachengx in https://github.com/XENONnT/straxen/pull/1241
+* Update xedocs version by @dachengx in https://github.com/XENONnT/straxen/pull/1246
+* No need to get map shape for 0D placeholder map by @dachengx in https://github.com/XENONnT/straxen/pull/1245
+* Give `RunDB` an option to find files in storage by @dachengx in https://github.com/XENONnT/straxen/pull/1244
+* Check chunk n for backends after chunk loading by @dachengx in https://github.com/XENONnT/straxen/pull/1243
+* Revert "Give RunDB an option to find files in storage but not in data… by @dachengx in https://github.com/XENONnT/straxen/pull/1248
+* Photon ionization correction on S2 by @xzh19980906 in https://github.com/XENONnT/straxen/pull/1247
+* Bump xedocs from 0.2.23 to 0.2.24 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1250
+* FDC uses corrected position by @shenyangshi in https://github.com/XENONnT/straxen/pull/1254
+* Correct elife at the last in `corrected_areas` by @dachengx in https://github.com/XENONnT/straxen/pull/1258
+* Correct elife for `cs2_wo_timecorr` by @dachengx in https://github.com/XENONnT/straxen/pull/1260
+* SR1 offline simulation strax context by @shenyangshi in https://github.com/XENONnT/straxen/pull/1253
+
+New Contributors
+* @xzh19980906 made their first contribution in https://github.com/XENONnT/straxen/pull/1247
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.2...v2.1.3
+
+
 2.1.2 / 2023-07-28
 -------------------
 * Validate final type after URL eval by @jmosbacher in https://github.com/XENONnT/straxen/pull/1217
