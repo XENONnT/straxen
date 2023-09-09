@@ -61,7 +61,7 @@ class EventAreaPerChannel(strax.Plugin):
         area_per_channel = np.zeros(len(events), self.dtype["event_area_per_channel"])
         area_per_channel['time'] = events['time']
         area_per_channel['endtime'] = strax.endtime(events)
-        n_channel = np.zeros(len(events), self.dtype["event_area_per_channel"])
+        n_channel = np.zeros(len(events), self.dtype["event_n_channel"])
         n_channel['time'] = events['time']
         n_channel['endtime'] = strax.endtime(events)
 
