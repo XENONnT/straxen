@@ -95,3 +95,9 @@ def get_z_bias(offset: str):
         return np.zeros(len(rz)) * int(offset)
 
     return fake_z_bias
+
+
+@URLConfig.register('pad-array')
+def get_paded_array(arr: np.ndarray, pad_value=0, pad_left=0, pad_right=0):
+    """Pad the array with pad_value on the left and right side"""
+    return np.pad(arr, (pad_left, pad_right), constant_values=pad_value)
