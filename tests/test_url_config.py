@@ -391,3 +391,10 @@ class TestURLConfig(unittest.TestCase):
             self.st.set_config({ 'test_config': "run_doc://mode?run_id=plugin.run_id" })
             p = self.st.get_single_plugin(999999999, 'test_data')
             return p.test_config
+    
+    def test_pad_array(self):
+        self.st.set_config({'test_config': 'pad-array://json://[1,2,3]?pad_left=2&pad_right=3&pad_value=0'})
+        p = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+        self.assertEqual(len(p.test_config), 8)
+        self.assertEqual(p.test_config[0], 0)
+        self.assertEqual(p.test_config[-1], 0)
