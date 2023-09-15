@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    straxen.analyses
+   straxen.holoviews
    straxen.legacy
    straxen.plugins
    straxen.storage
@@ -43,6 +44,22 @@ straxen.corrections\_services module
 ------------------------------------
 
 .. automodule:: straxen.corrections_services
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.daq\_core module
+------------------------
+
+.. automodule:: straxen.daq_core
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+straxen.entry\_points module
+----------------------------
+
+.. automodule:: straxen.entry_points
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,4 +1,26 @@
-v2.1.70 / 2023-06-22
+2.1.2 / 2023-07-28
+-------------------
+* Validate final type after URL eval by @jmosbacher in https://github.com/XENONnT/straxen/pull/1217
+* Fix URLConfig.evaluate_dry by @jmosbacher in https://github.com/XENONnT/straxen/pull/1219
+* Add function to save itp_map InterpolatingMap related dictionary into pickle by @dachengx in https://github.com/XENONnT/straxen/pull/1221
+* Rename `tf_peak_model_s1_cnn` to `tf_model_s1_cnn` by @dachengx in https://github.com/XENONnT/straxen/pull/1223
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.1...v2.1.2
+
+
+2.1.1 / 2023-07-06
+-------------------
+* Fix timing of peaks when ordering in `center_time` by @dachengx in https://github.com/XENONnT/straxen/pull/1208
+* Move `get_window_size` factor of merged_s2s as untracked configuration by @dachengx in https://github.com/XENONnT/straxen/pull/1209
+* Sort `hitlets` in `nVETOHitlets` by @dachengx in https://github.com/XENONnT/straxen/pull/1210
+* Only print out warning once by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1211
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.0...v2.1.1
+
+
+2.1.0 / 2023-06-22
 -------------------
 * Added peaks subtyping by @Jianyu010 in https://github.com/XENONnT/straxen/pull/1152
 * Fix ipython version by @dachengx in https://github.com/XENONnT/straxen/pull/1169
@@ -29,7 +51,7 @@ New Contributors
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.7...v2.1.0
 
 
-v2.0.7 / 2023-04-25
+2.0.7 / 2023-04-25
 -------------------
 * Bootstrax target removal after failures by @cfuselli in https://github.com/XENONnT/straxen/pull/1145
 * reforming _raw_path and _processed_path by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1149
@@ -48,7 +70,7 @@ New Contributors
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.6...v2.0.7
 
 
-v2.0.6 / 2023-03-08
+2.0.6 / 2023-03-08
 -------------------
 * Bump supercharge/mongodb-github-action from 1.8.0 to 1.9.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1140
 * Small patches to restrax module by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1143, d04a3428c52c159577b61af2a28ddd0af5652027, 602b807291211f083c8f54df6768b8198fbf6b55
@@ -63,7 +85,7 @@ Notes:
  - new data types: `peaks_per_event`, `event_top_bottom_params`, `peaks_corrections` (see #1080)
 
 
-v2.0.5 / 2023-02-24
+2.0.5 / 2023-02-24
 -------------------
 * fix xedocs for testing by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1139
 * Restart python style guide by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1138
@@ -74,7 +96,7 @@ v2.0.5 / 2023-02-24
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.4...v2.0.5
 
 
-v2.0.4 / 2023-01-16
+2.0.4 / 2023-01-16
 -------------------
 * Top and bottom timing parameters at event and peak level by @terliuk in https://github.com/XENONnT/straxen/pull/1119
 * Allow use of xedocs context configs by @jmosbacher in https://github.com/XENONnT/straxen/pull/1125
@@ -89,7 +111,7 @@ v2.0.4 / 2023-01-16
 Notes:
  - new data types: `peak_top_bottom_params`, `event_top_bottom_params`
 
-v2.0.3 / 2022-11-09
+2.0.3 / 2022-11-09
 -------------------
 * Adding peak waveforms at event level by @terliuk in https://github.com/XENONnT/straxen/pull/1112
 
@@ -100,7 +122,7 @@ Notes:
  * lineage changes for event_area_per_channel
 
 
-v2.0.2 / 2022-10-24
+2.0.2 / 2022-10-24
 -------------------
 * New URLConfig protocols - list-to-array and list-to-dict by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1104
 * Single core 1T test by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1109
@@ -112,7 +134,7 @@ New Contributors
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.1...v2.0.2
 
 
-v2.0.1 / 2022-10-20
+2.0.1 / 2022-10-20
 -------------------
 * Use mongodb v4.4.1 when testing to match real version used in production by @jmosbacher in https://github.com/XENONnT/straxen/pull/1103
 * Pass tests from remote forks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1105
@@ -128,7 +150,7 @@ New Contributors
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.0.0...v2.0.1
 
 
-v2.0.0 / 2022-10-17
+2.0.0 / 2022-10-17
 -------------------
 * Fix acqmon veto field by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1072
 * Use self.dtype also for empty peaks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1058
@@ -156,7 +178,7 @@ Notes:
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.8.3...v2.0.0
 
 
-v1.8.3 / 2022-07-18
+1.8.3 / 2022-07-18
 -------------------
 * Bootstrax file-check fix by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1064
 * Fix hanging straxer by @jmosbacher in https://github.com/XENONnT/straxen/pull/1065
@@ -168,7 +190,7 @@ Full Changelog:
  - https://github.com/XENONnT/straxen/compare/v1.8.2...v1.8.3
 
 
-v1.8.2 / 2022-07-12
+1.8.2 / 2022-07-12
 -------------------
 * Stop tf pbar by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1063
 * Allow long runs by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1062
@@ -180,7 +202,7 @@ Full Changelog:
 - https://github.com/XENONnT/straxen/compare/v1.8.1...v1.8.2
 
 
-v1.8.1 / 2022-06-07
+1.8.1 / 2022-06-07
 -------------------
 Minor:
 * Change FDC z offset and add alternative interaction by @ftoschi in #1017
@@ -204,7 +226,7 @@ Patch:
 Full changelog:
 - https://github.com/XENONnT/straxen/compare/v1.7.1...v1.8.0
 
-v1.7.2 / 2022-07-18
+1.7.2 / 2022-07-18
 -------------------
 Patch:
  * Upload cherry picks by @JoranAngevaare in https://github.com/XENONnT/straxen/pull/1066
@@ -222,7 +244,7 @@ Patch:
 **Full Changelog**: https://github.com/XENONnT/straxen/compare/v1.7.1...v1.7.2
 
 
-v1.7.1 / 2022-05-16
+1.7.1 / 2022-05-16
 -------------------
 Patch:
 * Check if processed data already exists in --production mode by @mflierm in https://github.com/XENONnT/straxen/pull/1024
@@ -238,7 +260,7 @@ New Contributors
  - @mflierm made their first contribution in https://github.com/XENONnT/straxen/pull/1024
 
 
-v1.7.0 / 2022-05-11
+1.7.0 / 2022-05-11
 ---------------------
 Minor:
 - Fix detector sync (#1033) 
@@ -263,7 +285,7 @@ Full Changelog:
  - https://github.com/XENONnT/straxen/compare/v1.6.2...v1.7.0
 
 
-v1.6.2 / 2022-05-06
+1.6.2 / 2022-05-06
 ---------------------
 Patch:
 -  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
