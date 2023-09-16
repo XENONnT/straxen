@@ -19,7 +19,7 @@ class EventPositions(strax.Plugin):
 
     depends_on = ('event_basics',)
 
-    __version__ = '0.2.1'
+    __version__ = '0.3.0'
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
@@ -116,33 +116,20 @@ class EventPositions(strax.Plugin):
         for s_i in [0, 1, 2]:
             # alt_sx_interaction_drift_time is calculated between main Sy and alternative Sx
             drift_time = events['drift_time'] if not s_i else events[f'alt_s{s_i}_interaction_drift_time']
-
             z_obs = - self.electron_drift_velocity * drift_time
             xy_pos = 's2_' if s_i != 2 else 'alt_s2_'
             orig_pos = np.vstack([events[f'{xy_pos}x'], events[f'{xy_pos}y'], z_obs]).T
             r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-            delta_r = self.map(orig_pos)
             z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
 
-            # apply radial correction
+            # apply z bias correction
+            z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T, map_name='z_bias_map')
+            corr_pos = np.vstack([events[f"{xy_pos}x"], events[f"{xy_pos}y"], z_obs - z_dv_delta]).T
+            # apply r bias correction
+            delta_r = self.map(corr_pos)
             with np.errstate(invalid='ignore', divide='ignore'):
                 r_cor = r_obs + delta_r
                 scale = np.divide(r_cor, r_obs, out=np.zeros_like(r_cor), where=r_obs != 0)
-
-            # z correction due to longer drift time for distortion
-            # calculated based on the Pythagorean theorem where
-            # the electron track is assumed to be a straight line
-            # (geometrical reasoning not valid if |delta_r| > |z_obs|,
-            #  as cathetus cannot be longer than hypothenuse)
-            with np.errstate(invalid='ignore'):
-                z_cor = -(z_obs ** 2 - delta_r ** 2) ** 0.5
-                invalid = np.abs(z_obs) < np.abs(delta_r)
-                # do not apply z correction above gate
-                invalid |= z_obs >= 0
-            z_cor[invalid] = z_obs[invalid]
-            delta_z = z_cor - z_obs
-            # correction of z bias due to non-uniform field
-            z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T, map_name='z_bias_map')
 
             pre_field = '' if s_i == 0 else f'alt_s{s_i}_'
             post_field = '' if s_i == 0 else '_fdc'
@@ -156,7 +143,6 @@ class EventPositions(strax.Plugin):
                            # using z_dv_corr (z_obs - z_dv_delta) in agreement with the dtype description
                            # the FDC for z (z_cor) is found to be not reliable (see #527)
                            f'{pre_field}z': z_obs - z_dv_delta,
-                           f'{pre_field}z_field_distortion_correction': delta_z,
                            f'{pre_field}z_dv_corr': z_obs - z_dv_delta,
                            })
         return result
