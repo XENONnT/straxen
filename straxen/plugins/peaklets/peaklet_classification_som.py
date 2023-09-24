@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
 from scipy.spatial.distance import cdist
+import numba
 
 import strax
 import straxen
@@ -26,13 +27,28 @@ class PeakletClassificationSOM(strax.Plugin):
     """
     __version__ = '0.0.1'
 
-    provides = 'peaklet_classification_som'
+    #rechunk_on_save = immutabledict(
+    #    peaklet_classification_som=True,
+    #    som_peaklet_data=True)
+
     depends_on = ('peaklets', 'peaklet_classification')
-    parallel = True
-    dtype = (strax.peak_interval_dtype +
-             [('type', np.int8, 'Classification of the peak(let)')]) 
+
+    provides = ('peaklet_classification_som', 'som_peaklet_data')
+    data_kind = {k: k for k in provides}
+
+    # parallel = True
 
     som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v4.1.npz?fmt=npy')
+
+    def infer_dtype(self):
+        dtype = dict()
+        dtype['peaklet_classification_som'] = (strax.peak_interval_dtype +
+             [('type', np.int8, 'Classification of the peak(let)')])
+        dtype['som_peaklet_data'] = (strax.peak_interval_dtype + [('som_type', np.int8, 'SOM type of the peak(let)')]
+                                     + [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')]
+                                     + [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')])
+
+        return dtype
 
     def setup(self):
         self.som_weight_cube = self.som_files['weight_cube']
@@ -47,10 +63,19 @@ class PeakletClassificationSOM(strax.Plugin):
         peaklets_w_type = peaklets.copy()
         mask_non_zero = peaklets_w_type['type'] != 0
         peaklets_w_type = peaklets_w_type[mask_non_zero]
-        result = np.zeros(len(peaklets), dtype=self.dtype)
-        som_type = recall_populations(peaklets_w_type, self.som_weight_cube,
+        result = np.zeros(len(peaklets), dtype=self.dtype['peaklet_classification_som'])
+        som_info = np.zeros(len(peaklets), dtype=self.dtype['som_peaklet_data'])
+        som_type, x_som, y_som = recall_populations(peaklets_w_type, self.som_weight_cube,
                                       self.som_img,
                                       self.som_norm_factors)
+
+        som_info['time'] = peaklets['time']
+        som_info['length'] = peaklets['length']
+        som_info['dt'] = peaklets['dt']
+        som_info['som_type'][mask_non_zero] = som_type
+        som_info['loc_x_som'][mask_non_zero] = x_som
+        som_info['loc_y_som'][mask_non_zero] = y_som
+        
         strax_type = som_type_to_type(som_type,
                                       self.som_s1_array,
                                       self.som_s2_array,
@@ -61,7 +86,7 @@ class PeakletClassificationSOM(strax.Plugin):
         result['dt'] = peaklets['dt']
         result['type'][mask_non_zero] = strax_type
         #result['som_type'][mask_non_zero] = som_type + 1
-        return result
+        return dict(peaklet_classification_som=result, som_peaklet_data=som_info)
 
 
 def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
@@ -93,8 +118,8 @@ def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
     # Make new numpy structured array to save the SOM cls data
     data_with_SOM_cls = rfn.append_fields(dataset, 'SOM_type', SOM_cls_array)
     # preforms the recall and assigns SOM_type label
-    output_data = SOM_cls_recall(data_with_SOM_cls, decile_transform_check, weight_cube, ref_map)
-    return output_data['SOM_type']
+    output_data, x_som, y_som = SOM_cls_recall(data_with_SOM_cls, decile_transform_check, weight_cube, ref_map)
+    return output_data['SOM_type'], x_som, y_som
 
 
 def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
@@ -114,7 +139,7 @@ def SOM_cls_recall(array_to_fill, data_in_SOM_fmt, weight_cube, reference_map):
     w_neuron = np.argmin(distances, axis=0)
     x_idx, y_idx = np.unravel_index(w_neuron, (SOM_xdim, SOM_ydim))
     array_to_fill['SOM_type'] = reference_map[x_idx, y_idx]
-    return array_to_fill
+    return array_to_fill, x_idx, y_idx
 
 
 def som_type_to_type(som_type, s1_array, s2_array, s3_array, s0_array):
@@ -174,5 +199,48 @@ def compute_quantiles(peaks: np.ndarray, n_samples: int):
     data = peaks['data'].copy()
     data[data < 0.0] = 0.0
     dt = peaks['dt']
-    q, wf = strax.compute_wf_attributes(data, dt, n_samples, False)
+    q = compute_wf_attributes(data, dt, n_samples)
     return q
+
+
+@export
+@numba.jit(nopython=True, cache=True)
+def compute_wf_attributes(data, sample_length, n_samples: int):
+    """
+    Compute waveform attribures
+    Quantiles: represent the amount of time elapsed for
+    a given fraction of the total waveform area to be observed in n_samples
+    i.e. n_samples = 10, then quantiles are equivalent deciles
+    Waveforms: downsampled waveform to n_samples
+    :param data: waveform e.g. peaks or peaklets
+    :param n_samples: compute quantiles for a given number of samples
+    :return: waveforms and quantiles of size n_samples
+    """
+    assert data.shape[0] == len(sample_length), "ararys must have same size"
+
+    num_samples = data.shape[1]
+
+    quantiles = np.zeros((len(data), n_samples), dtype=np.float64)
+
+    # Cannot compute with with more samples than actual waveform sample
+    assert num_samples > n_samples, "cannot compute with more samples than the actual waveform"
+    assert num_samples % n_samples == 0, "number of samples must be a multiple of n_samples"
+
+    # Compute quantiles
+    inter_points = np.linspace(0., 1. - (1. / n_samples), n_samples)
+    cumsum_steps = np.zeros(n_samples + 1, dtype=np.float64)
+    frac_of_cumsum = np.zeros(num_samples + 1)
+    sample_number_div_dt = np.arange(0, num_samples + 1, 1)
+    for i, (samples, dt) in enumerate(zip(data, sample_length)):
+        if np.sum(samples) == 0:
+            continue
+        # reset buffers
+        frac_of_cumsum[:] = 0
+        cumsum_steps[:] = 0
+        frac_of_cumsum[1:] = np.cumsum(samples)
+        frac_of_cumsum[1:] = frac_of_cumsum[1:] / frac_of_cumsum[-1]
+        cumsum_steps[:-1] = np.interp(inter_points, frac_of_cumsum, sample_number_div_dt * dt)
+        cumsum_steps[-1] = sample_number_div_dt[-1] * dt
+        quantiles[i] = cumsum_steps[1:] - cumsum_steps[:-1]
+
+    return quantiles
