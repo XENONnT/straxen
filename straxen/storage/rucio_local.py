@@ -158,7 +158,6 @@ class RucioLocalBackend(strax.FileSytemBackend):
         with open(metadata_path, mode='r') as f:
             return json.loads(f.read())
 
-    @strax.check_chunk_n
     def _read_chunk(self, did, chunk_info, dtype, compressor):
         scope, name = did.split(':')
         did = f"{scope}:{chunk_info['filename']}"
