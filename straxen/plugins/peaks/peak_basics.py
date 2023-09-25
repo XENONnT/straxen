@@ -31,6 +31,8 @@ class PeakBasics(strax.Plugin):
           'n_hits'), np.int32),
         (('Number of PMTs contributing to the peak',
           'n_channels'), np.int16),
+        (("Number of top PMTs contributing to the peak",
+          "n_top_channels"), np.int16),
         (('PMT number which contributes the most PE',
           'max_pmt'), np.int16),
         (('Area of signal in the largest-contributing PMT (PE)',
@@ -75,7 +77,10 @@ class PeakBasics(strax.Plugin):
         needed_fields = 'time length dt area type max_diff min_diff'
         for q in needed_fields.split():
             r[q] = p[q]
+
+        n_top = self.n_top_pmts
         r['endtime'] = p['time'] + p['dt'] * p['length']
+        r["n_top_channels"] = (p["area_per_channel"][:n_top] > 0).sum(axis=1)
         r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
         r['n_hits'] = p['n_hits']
         r['range_50p_area'] = p['width'][:, 5]
@@ -85,7 +90,6 @@ class PeakBasics(strax.Plugin):
         r['tight_coincidence'] = p['tight_coincidence']
         r['n_saturated_channels'] = p['n_saturated_channels']
 
-        n_top = self.n_top_pmts
         area_top = p['area_per_channel'][:, :n_top].sum(axis=1)
         # Recalculate to prevent numerical inaccuracy #442
         area_total = p['area_per_channel'].sum(axis=1)
