@@ -80,7 +80,7 @@ class PeakBasics(strax.Plugin):
 
         n_top = self.n_top_pmts
         r['endtime'] = p['time'] + p['dt'] * p['length']
-        r["n_top_channels"] = (p["area_per_channel"][:n_top] > 0).sum(axis=1)
+        r["n_top_channels"] = (p["area_per_channel"][:, :n_top] > 0).sum(axis=1)
         r['n_channels'] = (p['area_per_channel'] > 0).sum(axis=1)
         r['n_hits'] = p['n_hits']
         r['range_50p_area'] = p['width'][:, 5]
