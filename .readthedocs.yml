@@ -7,7 +7,9 @@ sphinx:
   configuration: docs/source/conf.py
 
 build:
-  image: latest
+  os: ubuntu-22.04
+  tools:
+    python: "3.9"
 
 python:
   version: "3.8"
@@ -21,5 +23,5 @@ python:
       path: .
 
 formats:
-  - pdf
+  - htmlzip
   - epub
