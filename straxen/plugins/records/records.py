@@ -7,7 +7,7 @@ import strax
 import straxen
 
 export, __all__ = strax.exporter()
-__all__ += ["NO_PULSE_COUNTS"]
+__all__.extend(["NO_PULSE_COUNTS"])
 
 
 @export

@@ -10,7 +10,7 @@ import numba
 import strax
 
 export, __all__ = strax.exporter()
-__all__ += ["ARTIFICIAL_DEADTIME_CHANNEL"]
+__all__.extend(["ARTIFICIAL_DEADTIME_CHANNEL"])
 
 # Just below the TPC acquisition monitor, see
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:channel_groups

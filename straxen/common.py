@@ -19,24 +19,26 @@ import strax
 import straxen
 
 export, __all__ = strax.exporter()
-__all__ += [
-    "straxen_dir",
-    "first_sr1_run",
-    "tpc_r",
-    "tpc_z",
-    "aux_repo",
-    "n_tpc_pmts",
-    "n_top_pmts",
-    "n_hard_aqmon_start",
-    "ADC_TO_E",
-    "n_nveto_pmts",
-    "n_mveto_pmts",
-    "tpc_pmt_radius",
-    "cryostat_outer_radius",
-    "perp_wire_angle",
-    "perp_wire_x_rot_pos",
-    "INFINITY_64BIT_SIGNED",
-]
+__all__.extend(
+    [
+        "straxen_dir",
+        "first_sr1_run",
+        "tpc_r",
+        "tpc_z",
+        "aux_repo",
+        "n_tpc_pmts",
+        "n_top_pmts",
+        "n_hard_aqmon_start",
+        "ADC_TO_E",
+        "n_nveto_pmts",
+        "n_mveto_pmts",
+        "tpc_pmt_radius",
+        "cryostat_outer_radius",
+        "perp_wire_angle",
+        "perp_wire_x_rot_pos",
+        "INFINITY_64BIT_SIGNED",
+    ]
+)
 
 straxen_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))  # type: ignore
 

@@ -17,7 +17,7 @@ except ImportError:
 
 export, __all__ = strax.exporter()
 
-__all__ += ["HAVE_ADMIX"]
+__all__.extend(["HAVE_ADMIX"])
 
 
 @export
