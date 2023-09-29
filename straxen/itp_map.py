@@ -6,7 +6,7 @@ import time
 import pickle
 import logging
 import warnings
-from typing import Type, List, Literal, Callable, Union, Optional
+from typing import List, Literal, Callable, Union, Optional
 from textwrap import dedent
 
 import numpy as np

@@ -563,7 +563,6 @@ def _peak_saturation_correction_inner(
         if not channel_saturated[ch]:
             continue
         b = b_pulse[ch]
-        r0 = records[b_index[ch][0]]
 
         # Define the reference region as reference_length before the first saturation point
         # unless there are not enough samples

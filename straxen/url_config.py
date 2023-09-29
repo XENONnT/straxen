@@ -304,7 +304,7 @@ class URLConfig(strax.Config):
                 try:
                     validator(value)
                     break
-                except:
+                except Exception:
                     pass
             else:
                 raise TypeError(msg)

@@ -1,7 +1,5 @@
 import numpy as np
 import strax
-import straxen
-from warnings import warn
 
 export, __all__ = strax.exporter()
 
@@ -76,10 +74,6 @@ class PeakTopBottomParams(strax.Plugin):
             elif arr_ == "bot":
                 fpeaks_["data"] = peaks["data"] - peaks["data_top"]
                 fpeaks_["area"] = peaks["area"] * (1.0 - peaks["area_fraction_top"])
-            elif arr_ == "tot":
-                # This one is ony
-                fpeaks_["data"] = peaks[f"{type_}_data"]
-                fpeaks_["area"] = peaks[f"{type_}_area"]
             else:
                 raise RuntimeError(f"Received unknown array type : " + arr_)
             fpeaks_["length"] = peaks[f"length"]

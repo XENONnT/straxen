@@ -1,7 +1,7 @@
 from immutabledict import immutabledict
 import strax
 import straxen
-from straxen.common import pax_file, aux_repo
+from straxen.common import pax_file
 
 
 def get_x1t_context_config():

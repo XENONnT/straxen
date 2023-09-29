@@ -1,9 +1,14 @@
-import pandas as pd
-import numpy as np
-import straxen
+import param
 from immutabledict import immutabledict
+import numpy as np
+import pandas as pd
 import holoviews as hv
-import strax
+import straxen
+
+# Define function which plots points with radius defined in data space:
+# Taken from: https://stackoverflow.com/questions/60361810/how-do-i-set-the-scatter-circle-radius-in-holoviews
+from holoviews.element.chart import Chart
+from holoviews.plotting.bokeh import PointPlot
 
 
 class PlotPMTArrayTPC:
@@ -129,13 +134,6 @@ class PlotPMTArrayTPC:
         plot = self._plot_tpc()
         plot *= self._plot_top_array(peak, label=label).opts(**self.settings, **opts)
         return plot
-
-
-# Define function which plots points with radius defined in data space:
-# Taken from: https://stackoverflow.com/questions/60361810/how-do-i-set-the-scatter-circle-radius-in-holoviews
-import param
-from holoviews.element.chart import Chart
-from holoviews.plotting.bokeh import PointPlot
 
 
 class Circle(Chart):

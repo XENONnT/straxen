@@ -472,7 +472,7 @@ class EventPatternFit(strax.Plugin):
                 if self.store_per_channel:
                     store_patterns = np.zeros((s2_pattern.shape[0], self.n_top_pmts))
                     store_patterns[:, self.pmtbool_top] = s2_pattern
-                    result[t_ + "_pattern"][s2_mask] = store_patterns  #:s2_pattern[s2_mask]
+                    result[t_ + "_pattern"][s2_mask] = store_patterns
 
                     store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.n_top_pmts))
                     store_2LLH_ch[:, self.pmtbool_top] = norm_llh_val

@@ -2,7 +2,6 @@ import os
 import warnings
 from copy import deepcopy
 from typing import Dict, Any, List, Optional
-import typing as ty
 from immutabledict import immutabledict
 import socket
 

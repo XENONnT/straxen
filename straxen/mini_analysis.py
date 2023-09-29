@@ -151,9 +151,9 @@ def mini_analysis(
                 to_pass = kwargs
                 # Do not pass time_range and seconds_range both (unless explicitly requested)
                 # strax does not like that
-                if "seconds_range" in to_pass and not "seconds_range" in parameters:
+                if "seconds_range" in to_pass and "seconds_range" not in parameters:
                     del to_pass["seconds_range"]
-                if "time_within" in to_pass and not "time_within" in parameters:
+                if "time_within" in to_pass and "time_within" not in parameters:
                     del to_pass["time_within"]
             else:
                 # Pass only arguments the function wants

@@ -141,7 +141,7 @@ class EventStats(param.Parameterized):
         """Function which drops certain fields from."""
         dtype = []
         for f in fields:
-            if not f in excluded_fields:
+            if f not in excluded_fields:
                 dtype.append(f)
         return dtype
 

@@ -1,12 +1,6 @@
-import numba
-import numpy as np
 import strax
-from immutabledict import immutabledict
-from strax.processing.general import _touching_windows
-import straxen
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.peaks.peaks import Peaks
-from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
 
 export, __all__ = strax.exporter()
 

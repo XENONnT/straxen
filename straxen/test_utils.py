@@ -19,7 +19,7 @@ nt_test_run_id = "012882"
 
 @export
 def download_test_data(
-    test_data="https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/353b2c60a01e96f67e4ba544ce284bd91241964d/strax_files/strax_test_data_straxv1.1.0.tar",  #  noqa
+    test_data="https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/353b2c60a01e96f67e4ba544ce284bd91241964d/strax_files/strax_test_data_straxv1.1.0.tar",  # noqa
 ):
     """Downloads strax test data to strax_test_data in the current directory."""
     blob = straxen.common.get_resource(test_data, fmt="binary")

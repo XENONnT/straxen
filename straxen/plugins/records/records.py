@@ -360,7 +360,7 @@ def rough_sum(regions, records, to_pe, n, dt):
     r_i = 0
     while (peak_i <= len(regions) - 1) and (r_i <= len(records) - 1):
         p = regions[peak_i]
-        l = p["time"]
+        l = p["time"]  # noqa
         r = l + n * dt
 
         while True:

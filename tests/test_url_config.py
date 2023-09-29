@@ -62,7 +62,7 @@ def replace_global_version(config, name=None, **kwargs):
     if not isinstance(config, str):
         return config
 
-    if not straxen.URLConfig.SCHEME_SEP in config:
+    if straxen.URLConfig.SCHEME_SEP not in config:
         return config
 
     version = straxen.URLConfig.kwarg_from_url(config, "version")
@@ -280,7 +280,7 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
 
         # fetch the value so its stored in the cache
-        value = p.cached_config
+        p.cached_config
 
         # cache should now have finite size
         self.assertGreater(straxen.config_cache_size_mb(), 0.0)

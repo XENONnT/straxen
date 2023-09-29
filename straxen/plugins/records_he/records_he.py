@@ -2,10 +2,10 @@ from immutabledict import immutabledict
 import strax
 import straxen
 
-export, __all__ = strax.exporter()
-
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.records.records import PulseProcessing, pulse_count_dtype
+
+export, __all__ = strax.exporter()
 
 
 @export

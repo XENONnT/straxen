@@ -1,4 +1,3 @@
-import warnings
 import pytz  # type: ignore
 import numpy as np
 import straxen
@@ -21,7 +20,7 @@ class SCInterfaceTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # Runid but no context
-            df = self.sc.get_scada_values(
+            self.sc.get_scada_values(
                 parameters,
                 run_id="1",
                 every_nth_value=1,
@@ -30,7 +29,7 @@ class SCInterfaceTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # No time range specified
-            df = self.sc.get_scada_values(
+            self.sc.get_scada_values(
                 parameters,
                 every_nth_value=1,
                 query_type_lab=False,
@@ -38,7 +37,7 @@ class SCInterfaceTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # Start larger end
-            df = self.sc.get_scada_values(
+            self.sc.get_scada_values(
                 parameters,
                 start=2,
                 end=1,
@@ -48,7 +47,7 @@ class SCInterfaceTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # Start and/or end not in ns unix time
-            df = self.sc.get_scada_values(
+            self.sc.get_scada_values(
                 parameters,
                 start=1,
                 end=2,

@@ -1,6 +1,6 @@
 import strax
 import straxen
-from straxen.analyses.holoviews_waveform_display import seconds_from, plot_record_polygons
+from straxen.analyses.holoviews_waveform_display import seconds_from
 
 import panel as pn
 from bokeh.models import HoverTool

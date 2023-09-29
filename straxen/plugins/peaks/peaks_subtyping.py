@@ -1,7 +1,6 @@
 from enum import IntEnum
 
 import numpy as np
-import numba
 import strax
 import straxen
 

@@ -1,7 +1,6 @@
 import numpy as np
 import strax
 import straxen
-from warnings import warn
 
 export, __all__ = strax.exporter()
 
@@ -16,7 +15,7 @@ class EventTopBottomParams(strax.Plugin):
     __version__ = "0.0.0"
 
     def infer_dtype(self):
-        ## Populating data type information
+        # Populating data type information
         infoline = {
             "s1": "main S1",
             "s2": "main S2",

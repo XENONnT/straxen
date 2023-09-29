@@ -171,7 +171,7 @@ class InteractiveTPCEventDisplay:
         position_plot = s2_plot
         position_plot = s2_plot * s2_point
 
-        if not self._alt_s2 is None:
+        if self._alt_s2 is not None:
             alt_s2_plot = pmt_array.plot_pmt_array(
                 self._alt_s2,
                 label="alt. S2",
@@ -211,7 +211,7 @@ class InteractiveTPCEventDisplay:
             amplitude_prefix=amplitude_prefix,
             time_in_us=time_in_µs,
         )
-        if not alt_peak is None:
+        if alt_peak is not None:
             opts_curve = self._add_legend_mute(opts_curve)
             opts_area = self._add_legend_mute(opts_area)
             alt_peak_plot = peak_ploter.plot_peak(

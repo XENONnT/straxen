@@ -114,7 +114,7 @@ def group_by_daq(run_id, group_by: str):
     if group_by == "link":
         labels, idx = _group_channels_by_index(cable_map, group_by="ADC ID")
         daq_config = _get_daq_config(run_id)
-        labels = [_board_to_host_link(daq_config, l) for l in labels]
+        labels = [_board_to_host_link(daq_config, label) for label in labels]
         labels = np.array(labels)
         order = np.argsort(labels)
         return labels[order], idx[order]

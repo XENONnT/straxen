@@ -22,6 +22,9 @@ import sys
 from typing import Dict
 import straxen
 
+# ADDED MANUALLY
+from unittest.mock import MagicMock
+
 project = "straxen"
 # pylint: disable=redefined-builtin
 copyright = "2018, straxen contributors and the XENON collaboration"
@@ -47,9 +50,6 @@ extensions = [
     "sphinx.ext.viewcode",
     "nbsphinx",
 ]
-
-# ADDED MANUALLY
-from unittest.mock import MagicMock
 
 
 class Mock(MagicMock):

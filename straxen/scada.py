@@ -167,7 +167,7 @@ class SCADAInterface:
                 )
 
                 if ind:
-                    m = np.all(df.loc[:, "time"] == temp_df.loc[:, "time"])
+                    m = np.all(df.loc[:, "time"] == temp_df.loc[:, "time"])  # noqa
                     if ind and not m:
                         raise ValueError(
                             "This is odd somehow the time stamps for the query of"
@@ -181,7 +181,7 @@ class SCADAInterface:
                 temp_df = pd.DataFrame(columns=(k,))
 
             if ind:
-                df = pd.concat((df, temp_df[k]), axis=1)
+                df = pd.concat((df, temp_df[k]), axis=1)  # noqa
             else:
                 df = temp_df
 
