@@ -34,6 +34,7 @@ def records_matrix(
         plt.pcolormesh(ts, ys, wvm.T,
                        norm=matplotlib.colors.LogNorm())
         plt.colorbar(label='Intensity [PE / ns]')
+
     """
     if len(records):
         dt = records[0]["dt"]

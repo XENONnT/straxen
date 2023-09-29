@@ -9,12 +9,12 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakAmbience(strax.OverlapWindowPlugin):
-    """Calculate Ambience of peaks. Features are the number of lonehits, small
-    S0, S1, S2 in a time window before peaks, and the number of small S2 in
-    circle near the S2 peak in a time window.
+    """Calculate Ambience of peaks. Features are the number of lonehits, small S0, S1, S2 in a time
+    window before peaks, and the number of small S2 in circle near the S2 peak in a time window.
 
     References:
         * v0.0.7 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+
     """
 
     __version__ = "0.0.8"

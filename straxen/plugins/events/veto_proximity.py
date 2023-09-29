@@ -11,6 +11,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     """Find the closest next/previous veto start w.r.t.
 
     the event time or when a busy happens during an event.
+
     """
 
     __version__ = "2.2.0"
@@ -84,18 +85,15 @@ class VetoProximity(strax.OverlapWindowPlugin):
         veto_intervals: np.ndarray,
         veto_name: str,
     ) -> None:
-        """Fill the result buffer inplace. Goal is to find vetos with
-        <veto_name> that are either during, before or after the current
-        event_window.
+        """Fill the result buffer inplace. Goal is to find vetos with <veto_name> that are either
+        during, before or after the current event_window.
 
-        :param result_buffer: The buffer to fill inplace
-        :param event_window: start/stop boundaries of the event to
-            consider. Should be an array with ['time'] and ['endtime']
-            which can be based on event start/end times or S1/S2 times
-        :param veto_intervals: veto intervals datatype
-        :param veto_name: The name of the veto to fill the result buffer
-            for
-        :return: Nothing, results are filled in place
+        :param result_buffer: The buffer to fill inplace :param event_window: start/stop boundaries
+        of the event to     consider. Should be an array with ['time'] and ['endtime']     which can
+        be based on event start/end times or S1/S2 times :param veto_intervals: veto intervals
+        datatype :param veto_name: The name of the veto to fill the result buffer     for :return:
+        Nothing, results are filled in place
+
         """
         # Set defaults to be some very long time
         result_buffer[f"time_to_previous_{veto_name}"] = self.time_no_aqmon_veto_found
@@ -128,8 +126,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
     def get_overlapping_window_time(
         vetos_during_event, selected_intervals, event_window, result_buffer
     ):
-        """Computes total time each event overlaps with the corresponding
-        veto."""
+        """Computes total time each event overlaps with the corresponding veto."""
         res = np.zeros(len(vetos_during_event), np.int64)
 
         for event_i, veto_window in enumerate(vetos_during_event):

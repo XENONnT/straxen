@@ -1,14 +1,15 @@
-import strax
-import straxen
-import tarfile
 import io
 import os
 from warnings import warn
 from os import environ as os_environ
+from typing import Tuple
+import tarfile
 from immutabledict import immutabledict
 from importlib import import_module
-import numpy as np
 
+import numpy as np
+import strax
+import straxen
 
 export, __all__ = strax.exporter()
 
@@ -20,8 +21,7 @@ nt_test_run_id = "012882"
 def download_test_data(
     test_data="https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/353b2c60a01e96f67e4ba544ce284bd91241964d/strax_files/strax_test_data_straxv1.1.0.tar",  #  noqa
 ):
-    """Downloads strax test data to strax_test_data in the current
-    directory."""
+    """Downloads strax test data to strax_test_data in the current directory."""
     blob = straxen.common.get_resource(test_data, fmt="binary")
     f = io.BytesIO(blob)
     tf = tarfile.open(fileobj=f)
@@ -30,8 +30,7 @@ def download_test_data(
 
 @export
 def _overwrite_testing_function_file(function_file):
-    """For testing purposes allow this function file to be loaded from
-    HOME/testing_folder."""
+    """For testing purposes allow this function file to be loaded from HOME/testing_folder."""
     if not _is_on_pytest():
         # If we are not on a pytest, never try using a local file.
         return function_file
@@ -71,8 +70,8 @@ def _is_on_pytest():
 
 def _get_fake_daq_reader():
     class DAQReader(straxen.DAQReader):
-        """Dummy version of the DAQ reader to make sure that all the testing
-        data produced here will have a different lineage."""
+        """Dummy version of the DAQ reader to make sure that all the testing data produced here will
+        have a different lineage."""
 
         __version__ = "MOCKTESTDATA"
 
@@ -82,16 +81,14 @@ def _get_fake_daq_reader():
 def nt_test_context(
     target_context="xenonnt_online", deregister=(), keep_default_storage=False, **kwargs
 ) -> strax.Context:
-    """Get a dummy context with full nt-like data simulated data (except aqmon)
-    to allow testing plugins.
+    """Get a dummy context with full nt-like data simulated data (except aqmon) to allow testing
+    plugins.
 
-    :param target_context: Which contexts from straxen.contexts to test
-    :param deregister: a list of plugins from the context
-    :param keep_default_storage: if to True, keep the default context
-        storage. Usually, you don't need this since all the data will be
-        stored in a separate test data folder.
-    :param kwargs: Any kwargs are passed to the target-context
-    :return: a context
+    :param target_context: Which contexts from straxen.contexts to test :param deregister: a list of
+    plugins from the context :param keep_default_storage: if to True, keep the default context
+    storage. Usually, you don't need this since all the data will be     stored in a separate test
+    data folder. :param kwargs: Any kwargs are passed to the target-context :return: a context
+
     """
     if not straxen.utilix_is_configured(warning_message=False):
         kwargs.setdefault("_database_init", False)
@@ -123,10 +120,10 @@ def nt_test_context(
 def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
     """Hypothesis stragtegy which creates unqiue time intervals.
 
-    :param size: Number of intervals desired. Can be less if non-unique
-        intervals are found.
-    :param time_range: Time range in which intervals should be.
-    :param allow_zero_length: If true allow zero length intervals.
+    :param size: Number of intervals desired. Can be less if non-unique     intervals are found.
+    :param time_range: Time range in which intervals should be. :param allow_zero_length: If true
+    allow zero length intervals.
+
     """
     from hypothesis import strategies
 
@@ -169,7 +166,7 @@ class DummyRawRecords(strax.Plugin):
 
     provides = straxen.daqreader.DAQReader.provides
     parallel = "process"
-    depends_on = tuple()
+    depends_on: Tuple = tuple()
     data_kind = immutabledict(zip(provides, provides))
     rechunk_on_save = False
     dtype = {p: strax.raw_record_dtype() for p in provides}

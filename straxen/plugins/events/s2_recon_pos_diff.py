@@ -7,10 +7,10 @@ export, __all__ = strax.exporter()
 
 @export
 class S2ReconPosDiff(strax.Plugin):
-    """Plugin that provides position reconstruction difference for S2s in
-    events, see note:
+    """Plugin that provides position reconstruction difference for S2s in events, see note:
 
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:shengchao:sr0:reconstruction_quality
+
     """
 
     __version__ = "0.0.3"
@@ -56,9 +56,9 @@ class S2ReconPosDiff(strax.Plugin):
         return average, std
 
     def eval_recon(self, data, name_x_list, name_y_list):
-        """This function reads the name list based on s2/alt_s2 and all recon
-        algorithm registered Each row consists the reconstructed x/y and their
-        average and standard deviation is calculated."""
+        """This function reads the name list based on s2/alt_s2 and all recon algorithm registered
+        Each row consists the reconstructed x/y and their average and standard deviation is
+        calculated."""
         # lazy fix to delete field name in array, otherwise np.mean will complain
         x_avg, x_std = self.cal_avg_and_std(np.array(data[name_x_list].tolist()))
         y_avg, y_std = self.cal_avg_and_std(np.array(data[name_y_list].tolist()))

@@ -8,8 +8,8 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakTopBottomParams(strax.Plugin):
-    """Pluging that computes timing characteristics of top and bottom waveforms
-    based on waveforms stored at peak level."""
+    """Pluging that computes timing characteristics of top and bottom waveforms based on waveforms
+    stored at peak level."""
 
     depends_on = ("peaks", "peak_basics")
     provides = "peak_top_bottom_params"

@@ -6,11 +6,12 @@ export, __all__ = strax.exporter()
 
 @export
 class EventShadow(strax.Plugin):
-    """This plugin can calculate shadow for main S1 and main S2 in events. It
-    also gives the position information of the previous peaks.
+    """This plugin can calculate shadow for main S1 and main S2 in events. It also gives the
+    position information of the previous peaks.
 
     References:
         * v0.1.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+
     """
 
     __version__ = "0.1.4"
@@ -87,8 +88,8 @@ class EventShadow(strax.Plugin):
 
     @staticmethod
     def set_nan_defaults(result):
-        """When constructing the dtype, take extra care to set values to np.Nan
-        / -1 (for ints) as 0 might have a meaning."""
+        """When constructing the dtype, take extra care to set values to np.Nan / -1 (for ints) as 0
+        might have a meaning."""
         for field in result.dtype.names:
             if np.issubdtype(result.dtype[field], np.integer):
                 result[field][:] = -1

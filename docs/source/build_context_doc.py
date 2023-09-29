@@ -26,8 +26,7 @@ Auto generated documention of all the context functions including minianalyses
 
 
 def main():
-    """Maybe we one day want to expend this, but for now, let's start with
-    this."""
+    """Maybe we one day want to expend this, but for now, let's start with this."""
     out = base_doc
     with open(this_dir + f"/reference/context.rst", mode="w") as f:
         f.write(out)

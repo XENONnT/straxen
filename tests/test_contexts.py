@@ -1,6 +1,5 @@
-"""For all of the context, do a quick check to see that we are able to search a
-field (i.e. can build the dependencies in the context correctly) See issue #233
-and PR #236."""
+"""For all of the context, do a quick check to see that we are able to search a field (i.e. can
+build the dependencies in the context correctly) See issue #233 and PR #236."""
 from straxen.contexts import xenon1t_dali, xenon1t_led, fake_daq, demo
 from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
 import straxen
@@ -65,8 +64,7 @@ def test_nt_is_nt_online():
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_offline():
-    """Let's try and see which CMT versions are compatible with this straxen
-    version."""
+    """Let's try and see which CMT versions are compatible with this straxen version."""
     cmt = straxen.CorrectionsManagementServices()
     cmt_versions = list(cmt.global_versions)[::-1]
     print(cmt_versions)
@@ -100,8 +98,9 @@ def test_xenon1t_dali():
 def test_demo():
     """Test the demo context.
 
-    Since we download the folder to the current working directory, make
-    sure we are in a tempfolder where we can write the data to
+    Since we download the folder to the current working directory, make sure we are in a tempfolder
+    where we can write the data to
+
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -158,13 +157,13 @@ class TestSimContextNT(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_nt_diverging_context_options(self):
-        """Test diverging options. Idea is that you can use different settings
-        for processing and generating data, should have been handled by
-        RawRecordsFromWFsim but is now hacked into the xenonnt_simulation
-        context.
+        """Test diverging options. Idea is that you can use different settings for processing and
+        generating data, should have been handled by RawRecordsFromWFsim but is now hacked into the
+        xenonnt_simulation context.
 
         Just to show how convoluted this syntax for the
         xenonnt_simulation context / CMT is...
+
         """
         self.context(
             cmt_run_id_sim="008000",

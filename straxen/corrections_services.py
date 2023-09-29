@@ -64,11 +64,12 @@ class CMTnanValueError(Exception):
 
 @export
 class CorrectionsManagementServices:
-    """A class that returns corrections Corrections are set of parameters to be
-    applied in the analysis stage to remove detector effects.
+    """A class that returns corrections Corrections are set of parameters to be applied in the
+    analysis stage to remove detector effects.
 
     Information on the strax implementation can be found at
     https://github.com/AxFoundation/strax/blob/master/strax/corrections.py
+
     """
 
     def __init__(self, username=None, password=None, mongo_url=None, is_nt=True):
@@ -109,9 +110,8 @@ class CorrectionsManagementServices:
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}' f"-Corrections_Management_Services")
 
     def get_corrections_config(self, run_id, config_model=None):
-        """Get context configuration for a given correction :param run_id: run
-        id from runDB :param config_model: configuration model (tuple type)
-        :return: correction value(s)"""
+        """Get context configuration for a given correction :param run_id: run id from runDB :param
+        config_model: configuration model (tuple type) :return: correction value(s)"""
 
         if not isinstance(config_model, (tuple, list)) or len(config_model) != 2:
             raise ValueError(f"config_model {config_model} must be a tuple of length 2")
@@ -205,13 +205,11 @@ class CorrectionsManagementServices:
     ):
         """Smart logic to return pmt gains to PE values.
 
-        :param run_id: run id from runDB
-        :param model_type: to_pe_model (gain model)
-        :param version: version
-        :param cacheable_versions: versions that are allowed to be
-            cached in ./resource_cache
-        :param gain_dtype: dtype of the gains to be returned as array
-        :return: array of pmt gains to PE values
+        :param run_id: run id from runDB :param model_type: to_pe_model (gain model) :param version:
+        version :param cacheable_versions: versions that are allowed to be     cached in
+        ./resource_cache :param gain_dtype: dtype of the gains to be returned as array :return:
+        array of pmt gains to PE values
+
         """
         to_pe = None
         cache_name = None
@@ -294,8 +292,11 @@ class CorrectionsManagementServices:
         return file_name
 
     def get_start_time(self, run_id):
-        """Smart logic to return start time from runsDB :param run_id: run id
-        from runDB :return: run start time."""
+        """Smart logic to return start time from runsDB :param run_id: run id from runDB :return:
+
+        run start time.
+
+        """
 
         if self.is_nt:
             # xenonnt use int
@@ -313,6 +314,7 @@ class CorrectionsManagementServices:
         """Returns a dict of local versions for a given global version.
 
         Use 'latest' to get newest version
+
         """
         # check that 'global' is in the passed string.
 
@@ -383,9 +385,8 @@ def args_idx(x):
 
 @strax.Context.add_method
 def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
-    """Sets all the relevant correction variables :param cmt_global_version: A
-    specific CMT global version, or 'latest' to get the newest one :returns
-    None."""
+    """Sets all the relevant correction variables :param cmt_global_version: A specific CMT global
+    version, or 'latest' to get the newest one :returns None."""
     local_versions = get_cmt_local_versions(cmt_global_version)
 
     # get the position algorithm we are using

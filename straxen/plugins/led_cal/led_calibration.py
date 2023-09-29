@@ -71,11 +71,10 @@ class LEDCalibration(strax.Plugin):
     ]
 
     def compute(self, raw_records):
-        """The data for LED calibration are build for those PMT which belongs
-        to channel list.
+        """The data for LED calibration are build for those PMT which belongs to channel list.
 
-        This is used for the different ligh levels. As defaul value all
-        the PMTs are considered.
+        This is used for the different ligh levels. As defaul value all the PMTs are considered.
+
         """
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
         rr = raw_records[mask]
@@ -95,10 +94,10 @@ class LEDCalibration(strax.Plugin):
 
 
 def get_records(raw_records, baseline_window):
-    """Determine baseline as the average of the first baseline_samples of each
-    pulse.
+    """Determine baseline as the average of the first baseline_samples of each pulse.
 
     Subtract the pulse float(data) from baseline.
+
     """
 
     record_length = np.shape(raw_records.dtype["data"])[0]
@@ -132,8 +131,8 @@ _on_off_dtype = np.dtype([("channel", "int16"), ("amplitude", "float32")])
 def get_amplitude(records, led_window, noise_window):
     """Needed for the SPE computation.
 
-    Take the maximum in two different regions, where there is the signal
-    and where there is not.
+    Take the maximum in two different regions, where there is the signal and where there is not.
+
     """
     on = np.zeros((len(records)), dtype=_on_off_dtype)
     off = np.zeros((len(records)), dtype=_on_off_dtype)
@@ -150,8 +149,9 @@ _area_dtype = np.dtype([("channel", "int16"), ("area", "float32")])
 def get_area(records, led_window):
     """Needed for the gain computation.
 
-    Sum the data in the defined window to get the area. This is done in
-    6 integration window and it returns the average area.
+    Sum the data in the defined window to get the area. This is done in 6 integration window and it
+    returns the average area.
+
     """
     left = led_window[0]
     end_pos = [led_window[1] + 2 * i for i in range(6)]
@@ -167,11 +167,11 @@ def get_area(records, led_window):
 
 @export
 class nVetoExtTimings(strax.Plugin):
-    """Plugin which computes the time difference `delta_time` from pulse timing
-    of `hitlets_nv` to start time of `raw_records` which belong the
-    `hitlets_nv`.
+    """Plugin which computes the time difference `delta_time` from pulse timing of `hitlets_nv` to
+    start time of `raw_records` which belong the `hitlets_nv`.
 
     They are used as the external trigger timings.
+
     """
 
     __version__ = "0.0.1"
@@ -228,8 +228,8 @@ class nVetoExtTimings(strax.Plugin):
     @staticmethod
     @numba.jit
     def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
-        """Numpy access with fancy index returns copy, not view This for-loop
-        is required to substitute in one by one."""
+        """Numpy access with fancy index returns copy, not view This for-loop is required to
+        substitute in one by one."""
         hitlet_index = np.arange(len(hitlets_nv))
         pulse_index = np.arange(len(pulses))
         for ch in range(nv_pmt_start, nv_pmt_stop):

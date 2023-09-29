@@ -57,14 +57,13 @@ class PeakletClassification(strax.Plugin):
 
     @staticmethod
     def upper_rise_time_area_boundary(area, norm, const, tau):
-        """Function which determines the upper boundary for the rise-time for a
-        given area."""
+        """Function which determines the upper boundary for the rise-time for a given area."""
         return norm * np.exp(-area / tau) + const
 
     @staticmethod
     def upper_rise_time_aft_boundary(aft, slope, offset, aft_boundary, flat_threshold):
-        """Function which computes the upper rise time boundary as a function
-        of area fraction top."""
+        """Function which computes the upper rise time boundary as a function of area fraction
+        top."""
         res = 10 ** (slope * aft + offset)
         res[aft >= aft_boundary] = flat_threshold
         return res

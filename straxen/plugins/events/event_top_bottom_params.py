@@ -8,8 +8,8 @@ export, __all__ = strax.exporter()
 
 @export
 class EventTopBottomParams(strax.Plugin):
-    """Pluging that computes timing characteristics of top and bottom waveforms
-    based on waveforms stored at event level for main/alt S1/S2."""
+    """Pluging that computes timing characteristics of top and bottom waveforms based on waveforms
+    stored at event level for main/alt S1/S2."""
 
     depends_on = ("event_info", "event_waveform")
     provides = "event_top_bottom_params"

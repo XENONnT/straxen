@@ -32,6 +32,7 @@ def plot_pmts(
     :param vmax: maximum of color scale
     :param show_axis_labels: if True it will show x and y labels
     Other arguments are passed to plot_on_single_pmt_array.
+
     """
     if vmin is None:
         vmin = np.nanmin(c)
@@ -100,6 +101,7 @@ def plot_on_single_pmt_array(
     :param vmin: Minimum of color scale
     :param vmax: maximum of color scale
     Other arguments are passed to plt.scatter.
+
     """
     if vmin is None:
         vmin = c.min()
@@ -202,10 +204,9 @@ def draw_box(x, y, **kwargs):
 def plot_single_pulse(records, run_id, pulse_i=""):
     """Function which plots a single pulse.
 
-    :param records: Records which belong to the pulse.
-    :param run_id: Id of the run.
-    :param pulse_i: Index of the pulse to be plotted.
-    :returns: fig, axes objects.
+    :param records: Records which belong to the pulse. :param run_id: Id of the run. :param pulse_i:
+    Index of the pulse to be plotted. :returns: fig, axes objects.
+
     """
     pulse = _make_pulse(records)
 

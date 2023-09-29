@@ -21,8 +21,8 @@ export, __all__ = strax.exporter()
 
 @export
 class InterpolateAndExtrapolate:
-    """Linearly interpolate- and extrapolate using inverse-distance weighted
-    averaging between nearby points."""
+    """Linearly interpolate- and extrapolate using inverse-distance weighted averaging between
+    nearby points."""
 
     def __init__(self, points, values, neighbours_to_use=None, array_valued=False):
         """
@@ -63,8 +63,7 @@ class InterpolateAndExtrapolate:
 
 @export
 class InterpolatingMap:
-    """Correction map that computes values using inverse-weighted distance
-    interpolation.
+    """Correction map that computes values using inverse-weighted distance interpolation.
 
     The map must be specified as a json translating to a dictionary like this:
         'coordinate_system' :   [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...],
@@ -97,6 +96,7 @@ class InterpolatingMap:
     The interpolators are called with
         'positions' :  [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
         'map_name'  :  key to switch to map interpolator other than the default 'map'
+
     """
 
     metadata_field_names = [
@@ -187,11 +187,11 @@ class InterpolatingMap:
             self.interpolators[map_name] = itp_fun
 
     def __call__(self, *args, map_name="map"):
-        """Returns the value of the map at the position given by coordinates
-        :param positions: array (n_dim) or (n_points, n_dim) of positions
-        :param map_name: Name of the map to use.
+        """Returns the value of the map at the position given by coordinates :param positions: array
+        (n_dim) or (n_points, n_dim) of positions :param map_name: Name of the map to use.
 
         Default is 'map'.
+
         """
         return self.interpolators[map_name](*args)
 
@@ -298,6 +298,7 @@ def save_interpolation_formatted_map(
     :param quantum: quantum of the map if quantized
     :param map_description: map's description
     :param compressor: key of compressor in strax.io.COMPRESSORS
+
     """
     if isinstance(itp_map, list):
         itp_map = np.array(itp_map)

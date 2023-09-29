@@ -32,8 +32,8 @@ def test_sum_wf(self: PluginTestCase):
 
 @PluginTestAccumulator.register("test_saturation_correction")
 def test_saturation_correction(self: PluginTestCase):
-    """Manually saturate a bunch of raw-records and check that it's
-    appropriately handled in the desaturation correction."""
+    """Manually saturate a bunch of raw-records and check that it's appropriately handled in the
+    desaturation correction."""
     st = self.st.new_context()
     st.set_config(dict(saturation_reference_length=15))
     rr = st.get_array(self.run_id, "raw_records", seconds_range=(0, 10))

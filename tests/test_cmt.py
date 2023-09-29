@@ -36,8 +36,7 @@ def test_1T_elife():
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_cmt_conf_option(option="mlp_model", version="ONLINE", is_nT=True):
-    """Test CMT conf options If wrong conf is passed it would raise an error
-    accordingly."""
+    """Test CMT conf options If wrong conf is passed it would raise an error accordingly."""
     conf = option, version, is_nT
     correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
     assert isinstance(correction, (float, int, str, np.ndarray))
@@ -49,14 +48,12 @@ def test_mc_wrapper_elife(
     cmt_id="016000",
     mc_id="mc_0",
 ):
-    """Test that for two different run ids, we get different elifes using the
-    MC wrapper.
+    """Test that for two different run ids, we get different elifes using the MC wrapper.
 
-    :param run_id: First run-id (used for normal query)
-    :param cmt_id: Second run-id used as a CMT id (should not be the
-        same as run_id! otherwise the values might actually be the same
-        and the test does not work).
-    :return: None
+    :param run_id: First run-id (used for normal query) :param cmt_id: Second run-id used as a CMT
+    id (should not be the     same as run_id! otherwise the values might actually be the same and
+    the test does not work). :return: None
+
     """
     assert np.abs(int(run_id) - int(cmt_id)) > 500, "runs must be far apart"
 
@@ -87,17 +84,14 @@ def test_mc_wrapper_gains(
     mc_id="mc_0",
     execute=True,
 ):
-    """Test that for two different run ids, we get different gains using the MC
-    wrapper.
+    """Test that for two different run ids, we get different gains using the MC wrapper.
 
-    :param run_id: First run-id (used for normal query)
-    :param cmt_id: Second run-id used as a CMT id (should not be the
-        same as run_id! otherwise the values might actually be the same
-        and the test does not work).
-    :param execute: Execute this test (this is set to False since the
-        test takes 9 minutes which is too long. We can activate this if
-        the testing time due to faster CMT queries is reduced).
-    :return: None
+    :param run_id: First run-id (used for normal query) :param cmt_id: Second run-id used as a CMT
+    id (should not be the     same as run_id! otherwise the values might actually be the same and
+    the test does not work). :param execute: Execute this test (this is set to False since the test
+    takes 9 minutes which is too long. We can activate this if     the testing time due to faster
+    CMT queries is reduced). :return: None
+
     """
     if not execute:
         return
@@ -127,6 +121,7 @@ def test_is_cmt_option():
     """Catches if we change the CMT option structure.
 
     The example dummy_option works at least before Jun 13 2021
+
     """
     dummy_option = ("hit_thresholds_tpc", "ONLINE", True)
     assert straxen.is_cmt_option(dummy_option), "Structure of CMT options changed!"
@@ -136,8 +131,7 @@ def test_is_cmt_option():
 
 
 def test_replace_url_version():
-    """Tests the replace_url_version function which is important in
-    apply_cmt_version."""
+    """Tests the replace_url_version function which is important in apply_cmt_version."""
     url = "cmt://elife?version=ONLINE&run_id=plugin.run_id"
     url_check = "cmt://elife?version=v1&run_id=plugin.run_id"
     url_test = straxen.corrections_services.replace_url_version(url, "v1")

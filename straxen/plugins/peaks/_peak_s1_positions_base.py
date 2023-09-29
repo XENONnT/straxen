@@ -14,8 +14,9 @@ export, __all__ = strax.exporter()
 class PeakS1PositionBase(strax.Plugin):
     """Base pluging for S1 position reconstruction at peak level.
 
-    Provides x_algorithm, y_algorithm, z_algorithm for all peaks > than
-    min-reconstruction area based on both the top and bottom array.
+    Provides x_algorithm, y_algorithm, z_algorithm for all peaks > than min-reconstruction area
+    based on both the top and bottom array.
+
     """
 
     __version__ = "0.0.0"
@@ -67,6 +68,7 @@ class PeakS1PositionBase(strax.Plugin):
         """Simple wrapper to have several tf_model_s1_cnn, ..
 
         point to this same function in the compute method
+
         """
         model = getattr(self, f"tf_model_{self.algorithm}", None)
         if model is None:

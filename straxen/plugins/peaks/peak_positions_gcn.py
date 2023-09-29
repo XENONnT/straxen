@@ -8,8 +8,7 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakPositionsGCN(PeakPositionsBaseNT):
-    """Graph Convolutional Network (GCN) neural net for position
-    reconstruction."""
+    """Graph Convolutional Network (GCN) neural net for position reconstruction."""
 
     provides = "peak_positions_gcn"
     algorithm = "gcn"

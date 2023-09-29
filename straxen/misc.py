@@ -32,12 +32,12 @@ export, __all__ = strax.exporter()
 
 @export
 def dataframe_to_wiki(df, float_digits=5, title="Awesome table", force_int: ty.Tuple = ()):
-    """Convert a pandas dataframe to a dokuwiki table (which you can copy-paste
-    onto the XENON wiki) :param df: dataframe to convert :param float_digits:
-    format float to this number of digits.
+    """Convert a pandas dataframe to a dokuwiki table (which you can copy-paste onto the XENON wiki)
+    :param df: dataframe to convert :param float_digits: format float to this number of digits.
 
-    :param title: title of the table.
-    :param force_int: tuple of column names to force to be integers
+    :param title: title of the table. :param force_int: tuple of column names to force to be
+    integers
+
     """
     table = "^ %s " % title + "^" * (len(df.columns) - 1) + "^\n"
     table += "^ " + " ^ ".join(df.columns) + " ^\n"
@@ -74,12 +74,13 @@ def print_versions(
     """Print versions of modules installed.
 
     :param modules: Modules to print, should be str, tuple or list. E.g.
-        print_versions(modules=('numpy', 'dddm',))
-    :param return_string: optional. Instead of printing the message,
-        return a string
-    :param include_git: Include the current branch and latest commit
-        hash
+    print_versions(modules=('numpy', 'dddm',)) :param return_string: optional. Instead of printing
+    the message,     return a string :param include_
+    git:
+    Include the current branch and latest commit
+    hash
     :return: optional, the message that would have been printed
+
     """
     versions = defaultdict(list)
     if include_python:
@@ -139,14 +140,12 @@ def utilix_is_configured(
     section: str = "xent_database",
     warning_message: ty.Union[None, bool, str] = None,
 ) -> bool:
-    """Check if we have the right connection to :return: bool, can we connect
-    to the Mongo database?
+    """Check if we have the right connection to :return: bool, can we connect to the Mongo database?
 
-    :param header: Which header to check in the utilix config file
-    :param section: Which entry in the header to check to exist
-    :param warning_message: If utilix is not configured, warn the user.
-        if None -> generic warning if str -> use the string to warn if
-        False -> don't warn
+    :param header: Which header to check in the utilix config file :param section: Which entry in
+    the header to check to exist :param warning_message: If utilix is not configured, warn the user.
+    if None -> generic warning if str -> use the string to warn if     False -> don't warn
+
     """
     try:
         is_configured = (
@@ -166,9 +165,8 @@ def utilix_is_configured(
 @export
 class TimeWidgets:
     def __init__(self):
-        """Creates interactive time widgets which allow to convert a human
-        readble date and time into a start and endtime in unix time nano-
-        seconds."""
+        """Creates interactive time widgets which allow to convert a human readble date and time
+        into a start and endtime in unix time nano- seconds."""
         self._created_widgets = False
 
     def create_widgets(self):
@@ -177,6 +175,7 @@ class TimeWidgets:
         Note:
             Please be aware that the correct format for the time field
             is HH:MM.
+
         """
         utcend = datetime.datetime.utcnow()
         deltat = datetime.timedelta(minutes=60)
@@ -197,8 +196,8 @@ class TimeWidgets:
         )
 
     def get_start_end(self):
-        """Returns start and end time of the specfied time interval in nano-
-        seconds utc unix time."""
+        """Returns start and end time of the specfied time interval in nano- seconds utc unix
+        time."""
         if not self._created_widgets:
             raise ValueError('Please run first "create_widgets". ')
 
@@ -249,11 +248,11 @@ class TimeWidgets:
     def _convert_to_datetime(time_widget, time_zone):
         """Converts values of widget into a timezone aware datetime object.
 
-        :param time_widget: Widget Box containing a DatePicker and two
-            text widget. The first text widget is used to set a day
-            time. The second the time in nano-seconds.
-        :param time_zone: pytz.timezone allowed string for a timezone.
-        :returns: timezone aware datetime object.
+        :param time_widget: Widget Box containing a DatePicker and two     text widget. The first
+        text widget is used to set a day     time. The second the time in nano-seconds. :param
+        time_zone: pytz.timezone allowed string for a timezone. :returns: timezone aware datetime
+        object.
+
         """
         date_and_time = [c.value for c in time_widget.children]
         try:
@@ -276,12 +275,12 @@ class TimeWidgets:
 
 @strax.Context.add_method
 def extract_latest_comment(self):
-    """Extract the latest comment in the runs-database. This just adds info to
-    st.runs.
+    """Extract the latest comment in the runs-database. This just adds info to st.runs.
 
     Example:
         st.extract_latest_comment()
         st.select_runs(available=('raw_records'))
+
     """
     if self.runs is None or "comments" not in self.runs.keys():
         self.scan_runs(store_fields=("comments",))
@@ -291,18 +290,17 @@ def extract_latest_comment(self):
 
 
 def _parse_to_last_comment(comments):
-    """Unpack to get the last comment (hence the -1) or give '' when there is
-    none."""
+    """Unpack to get the last comment (hence the -1) or give '' when there is none."""
     return [(c[-1]["comment"] if hasattr(c, "__len__") else "") for c in comments]
 
 
 @export
 def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
-    """Converts the specified array into a DataFrame drops all higher
-    dimensional fields during the process.
+    """Converts the specified array into a DataFrame drops all higher dimensional fields during the
+    process.
 
-    :param array: numpy.array to be converted.
-    :returns: DataFrame with higher dimensions dropped.
+    :param array: numpy.array to be converted. :returns: DataFrame with higher dimensions dropped.
+
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
     return pd.DataFrame(array[keys])
@@ -310,8 +308,8 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
 
 @export
 def filter_kwargs(func, kwargs):
-    """Filter out keyword arguments that are not in the call signature of func
-    and return filtered kwargs dictionary."""
+    """Filter out keyword arguments that are not in the call signature of func and return filtered
+    kwargs dictionary."""
     params = inspect.signature(func).parameters
     if any([str(p).startswith("**") for p in params.values()]):
         # if func accepts wildcard kwargs, return all
@@ -325,6 +323,7 @@ class CacheDict(OrderedDict):
 
     copied from
     https://gist.github.com/davesteele/44793cd0348f59f8fadd49d7799bd306
+
     """
 
     def __init__(self, *args, cache_len: int = 10, **kwargs):
@@ -350,8 +349,7 @@ class CacheDict(OrderedDict):
 
 @export
 def total_size(o, handlers=None, verbose=False):
-    """Returns the approximate memory footprint an object and all of its
-    contents.
+    """Returns the approximate memory footprint an object and all of its contents.
 
     Automatically finds the contents of the following builtin containers and
     their subclasses:  tuple, list, deque, dict, set and frozenset.
@@ -361,6 +359,7 @@ def total_size(o, handlers=None, verbose=False):
                     OtherContainerClass: OtherContainerClass.get_elements}
 
     from: https://code.activestate.com/recipes/577504/
+
     """
     dict_handler = lambda d: chain.from_iterable(d.items())
     all_handlers = {

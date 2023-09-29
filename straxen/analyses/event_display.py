@@ -121,8 +121,8 @@ def _event_display(
     event_time_limit=None,
     plot_all_positions=True,
 ):
-    """{event_docs} :param axes: if a dict of matplotlib axes (w/ same keys as
-    below, and empty/None for panels not filled) {event_returns}"""
+    """{event_docs} :param axes: if a dict of matplotlib axes (w/ same keys as below, and empty/None
+    for panels not filled) {event_returns}"""
     if len(events) != 1:
         raise ValueError(f"Found {len(events)} only request one")
     event = events[0]
@@ -378,14 +378,11 @@ def _event_display_full_layout(_rr_resize_int, records_matrix) -> dict:
 def plot_single_event(context: strax.Context, run_id, events, event_number=None, **kwargs):
     """Wrapper for event_display.
 
-    :param context: strax.context
-    :param run_id: run id
-    :param events: dataframe / numpy array of events. Should either be
-        length 1 or the event_number argument should be provided
-    :param event_number: (optional) int, if provided, only show this
-        event number
-    :param kwargs: kwargs for events_display
-    :return: see events_display
+    :param context: strax.context :param run_id: run id :param events: dataframe / numpy array of
+    events. Should either be     length 1 or the event_number argument should be provided :param
+    event_number: (optional) int, if provided, only show this     event number :param kwargs: kwargs
+    for events_display :return: see events_display
+
     """
     if event_number is not None:
         events = events[events["event_number"] == event_number]

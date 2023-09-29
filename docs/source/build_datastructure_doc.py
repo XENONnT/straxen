@@ -5,6 +5,7 @@ describing the datastructure: dependencies, columns provided,
 and configuration options that apply to each plugins.
 
 For extra credit, the SVGs are clickable.
+
 """
 from collections import defaultdict
 import os
@@ -137,6 +138,7 @@ def add_spaces(x):
     """Add four spaces to every line in x.
 
     This is needed to make html raw blocks in rst format correctly
+
     """
     y = ""
     if isinstance(x, str):
@@ -147,12 +149,11 @@ def add_spaces(x):
 
 
 def get_plugins_deps(st):
-    """For a given Strax.Context return the dependencies per plugin split by
-    the known tree_suffices.
+    """For a given Strax.Context return the dependencies per plugin split by the known
+    tree_suffices.
 
-    :param st: Strax.Context
-    :return: dict of default dicts containing the number of
-        dependencies.
+    :param st: Strax.Context :return: dict of default dicts containing the number of dependencies.
+
     """
     plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
     for det_suffix in tree_suffices:
@@ -169,11 +170,11 @@ def get_plugins_deps(st):
 
 
 def get_context(is_nt):
-    """Need to init a context without initializing the runs_db as that requires
-    the appropriate passwords.
+    """Need to init a context without initializing the runs_db as that requires the appropriate
+    passwords.
 
-    :return: straxen context that mimics the xenonnt_online context
-        without the rundb init
+    :return: straxen context that mimics the xenonnt_online context     without the rundb init
+
     """
     if is_nt:
         st = straxen.contexts.xenonnt_online(_database_init=False)

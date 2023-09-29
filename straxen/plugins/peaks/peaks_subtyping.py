@@ -34,14 +34,15 @@ class PeakSubtyping(IntEnum):
 
 
 class PeaksSubtypes(strax.Plugin):
-    """Subtyping Peaks This plugin scans forward in time and catagorize peaks
-    into subtypes based on their correlations with nearby peaks.
+    """Subtyping Peaks This plugin scans forward in time and catagorize peaks into subtypes based on
+    their correlations with nearby peaks.
 
     Reference note:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_study
     :returns: an integer index for each peak.
       Please refer to this note:
       https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_dictionary
+
     """
 
     __version__ = "0.2.0"
@@ -193,9 +194,9 @@ class PeaksSubtypes(strax.Plugin):
     def mark_s2s(self, peaks, mask):
         """After marking all peaks after S1s, all that's left are S2s.
 
-        One extra occasion is the "fakeS2". If a small S2 is identified
-        and a pS2 can be paired up with it, such small S2 is marked
-        "fake S2".
+        One extra occasion is the "fakeS2". If a small S2 is identified and a pS2 can be paired up
+        with it, such small S2 is marked "fake S2".
+
         """
 
         undefined_mask = mask == PeakSubtyping.Undefined

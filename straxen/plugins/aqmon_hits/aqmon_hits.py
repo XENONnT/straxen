@@ -42,8 +42,9 @@ class AqmonChannels(IntEnum):
 class AqmonHits(strax.Plugin):
     """Find hits in acquisition monitor data.
 
-    These hits could be then used by other plugins for deadtime
-    calculations, GPS SYNC analysis, etc.
+    These hits could be then used by other plugins for deadtime calculations, GPS SYNC analysis,
+    etc.
+
     """
 
     save_when = strax.SaveWhen.TARGET
@@ -137,8 +138,8 @@ class AqmonHits(strax.Plugin):
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):
-        """Actually, the artificial deadtime hits are already an interval so we
-        only have to copy the appropriate hits."""
+        """Actually, the artificial deadtime hits are already an interval so we only have to copy
+        the appropriate hits."""
         hits = np.zeros(len(artificial_deadtime), dtype=self.dtype)
         hits["time"] = artificial_deadtime["time"]
         hits["dt"] = artificial_deadtime["dt"]

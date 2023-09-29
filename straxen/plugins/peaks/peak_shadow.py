@@ -10,12 +10,12 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakShadow(strax.OverlapWindowPlugin):
-    """This plugin can find and calculate the time & position shadow from
-    previous peaks in time. It also gives the area and (x,y) of the previous
-    peaks.
+    """This plugin can find and calculate the time & position shadow from previous peaks in time. It
+    also gives the area and (x,y) of the previous peaks.
 
     References:
         * v0.1.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+
     """
 
     __version__ = "0.1.6"
@@ -223,8 +223,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
     @staticmethod
     @numba.njit
     def peaks_shadow(peaks, pre_peaks, touching_windows, exponent, result, pos_corr, sigmas=None):
-        """For each peak in peaks, check if there is a shadow-casting peak and
-        check if it casts the largest shadow."""
+        """For each peak in peaks, check if there is a shadow-casting peak and check if it casts the
+        largest shadow."""
         for p_i, (suspicious_peak, sigma) in enumerate(zip(peaks, sigmas)):
             # casting_peak is the previous large peak casting shadow
             # suspicious_peak is the suspicious peak which in shadow from casting_peak

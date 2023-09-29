@@ -9,6 +9,7 @@ class DetectorSynchronization(strax.Plugin):
 
     Reference:
         * xenon:xenonnt:dsg:mveto:sync_monitor
+
     """
 
     __version__ = "0.0.3"

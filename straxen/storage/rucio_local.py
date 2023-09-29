@@ -16,11 +16,12 @@ export, __all__ = strax.exporter()
 
 @export
 class RucioLocalFrontend(strax.StorageFrontend):
-    """Storage that loads from rucio by assuming the rucio file naming
-    convention without access to the rucio database.
+    """Storage that loads from rucio by assuming the rucio file naming convention without access to
+    the rucio database.
 
-    Normally, you don't need this StorageFrontend as it should return
-    the same data as the RunDB frontend
+    Normally, you don't need this StorageFrontend as it should return the same data as the RunDB
+    frontend
+
     """
 
     storage_type = strax.StorageType.LOCAL
@@ -79,11 +80,11 @@ class RucioLocalFrontend(strax.StorageFrontend):
         raise strax.DataNotAvailable
 
     def did_is_local(self, did):
-        """Determines whether or not a given did is on a local RSE. If there is
-        no local RSE, returns False.
+        """Determines whether or not a given did is on a local RSE. If there is no local RSE,
+        returns False.
 
-        :param did: Rucio DID string
-        :return: boolean for whether DID is local or not.
+        :param did: Rucio DID string :return: boolean for whether DID is local or not.
+
         """
         if self.path is None:
             raise strax.DataNotAvailable
@@ -95,8 +96,7 @@ class RucioLocalFrontend(strax.StorageFrontend):
         return self._all_chunk_stored(md, did)
 
     def _all_chunk_stored(self, md: dict, did: str) -> bool:
-        """Check if all the chunks are stored that are claimed in the metadata-
-        file."""
+        """Check if all the chunks are stored that are claimed in the metadata- file."""
         scope, name = did.split(":")
         for chunk in md.get("chunks", []):
             if chunk.get("filename"):
@@ -130,6 +130,7 @@ class RucioLocalFrontend(strax.StorageFrontend):
                 warnings.warn(f"Was asked for {key} returning {md}", UserWarning)
                 if self._all_chunk_stored(md_dict, did):
                     return self.backends[0].__class__.__name__, did
+        return None
 
 
 @export
@@ -173,6 +174,7 @@ def rucio_path(root_dir, did):
 
     See the __hash method here:
     https://github.com/rucio/rucio/blob/1.20.15/lib/rucio/rse/protocols/protocol.py
+
     """
     scope, filename = did.split(":")
     # disable bandit
@@ -182,7 +184,7 @@ def rucio_path(root_dir, did):
     return os.path.join(root_dir, scope, t1, t2, filename)
 
 
-def read_md(path: str) -> json:
+def read_md(path: str) -> dict:
     with open(path, mode="r") as f:
         md = json.loads(f.read(), object_hook=json_util.object_hook)
     return md

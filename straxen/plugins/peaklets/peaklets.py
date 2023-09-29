@@ -379,11 +379,9 @@ class Peaklets(strax.Plugin):
     def create_outside_peaks_region(peaklets, start, end):
         """Creates time intervals which are outside peaks.
 
-        :param peaklets: Peaklets for which intervals should be
-            computed.
-        :param start: Chunk start
-        :param end: Chunk end
-        :return: array of strax.time_fields dtype.
+        :param peaklets: Peaklets for which intervals should be     computed. :param start: Chunk
+        start :param end: Chunk end :return: array of strax.time_fields dtype.
+
         """
         if not len(peaklets):
             return np.zeros(0, dtype=strax.time_fields)
@@ -400,12 +398,11 @@ class Peaklets(strax.Plugin):
 
     @staticmethod
     def add_hit_features(hitlets, hit_max_times, peaklets):
-        """Create hits timing features :param hitlets_max: hitlets with only
-        max height time.
+        """Create hits timing features :param hitlets_max: hitlets with only max height time.
 
-        :param peaklets: Peaklets for which intervals should be
-            computed.
-        :return: array of peaklet_timing dtype.
+        :param peaklets: Peaklets for which intervals should be     computed. :return: array of
+        peaklet_timing dtype.
+
         """
         hits_w_max = np.zeros(
             len(hitlets),
@@ -549,12 +546,13 @@ def _peak_saturation_correction_inner(
     reference_length=100,
     min_reference_length=20,
 ):
-    """Would add a third level loop in peak_saturation_correction Which is not
-    ideal for numba, thus this function is written :param channel_saturated:
+    """Would add a third level loop in peak_saturation_correction Which is not ideal for numba, thus
+    this function is written :param channel_saturated:
 
     (bool, n_channels) :param p: One peak/peaklet :param to_pe: adc to PE
     conversion (length should equal number of PMTs) :param b_sumwf, b_pulse,
     b_index: Filled buffers.
+
     """
     dt = records["dt"][0]
     n_channels = len(channel_saturated)
@@ -641,6 +639,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right, chan
 
     :returns: n_coin_channel of length peaks containing the
         tight coincidence.
+
     """
     left_hit_i = 0
     n_coin_channel = np.zeros(len(peak_max_times), dtype=np.int16)

@@ -8,6 +8,7 @@ How to apply:
                        targets=('event_info', 'cut_s2_width', 'cut_s2_threshold'))
  - Apply the selection of events that pass the cut like:
  selected_events = events[events['cut_s2_threshold'] == True]
+
 """
 
 import numpy as np
@@ -20,8 +21,8 @@ export, __all__ = strax.exporter()
 
 
 class S2Width(strax.CutPlugin):
-    """S2 Width cut based on diffusion model The S2 width cut compares the S2
-    width to what we could expect based on its depth in the detector.
+    """S2 Width cut based on diffusion model The S2 width cut compares the S2 width to what we could
+    expect based on its depth in the detector.
 
     The inputs to
     this are the drift velocity and the diffusion constant. The allowed variation in S2 width is greater at low
@@ -33,6 +34,7 @@ class S2Width(strax.CutPlugin):
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenon1t:sim:notes:tzhu:width_cut_tuning#toy_fax_simulation
     Contact: Tianyu <tz2263@columbia.edu>, Yuehuan <weiyh@physik.uzh.ch>, Jelle <jaalbers@nikhef.nl>
     ported from lax.sciencerun1.py
+
     """
 
     depends_on = ("event_info",)
@@ -73,8 +75,7 @@ class S2Width(strax.CutPlugin):
 
 
 class S1SingleScatter(strax.CutPlugin):
-    """Requires only one valid interaction between the largest S2, and any S1
-    recorded before it.
+    """Requires only one valid interaction between the largest S2, and any S1 recorded before it.
 
     The S1 cut checks that any possible secondary S1s recorded in a waveform, could not have also
     produced a valid interaction with the primary S2. To check whether an interaction between the
@@ -87,6 +88,7 @@ class S1SingleScatter(strax.CutPlugin):
     It should be applicable to data regardless whether it is ER or NR.
     Contact: Jacques Pienaar, <jpienaar@uchicago.edu>
     ported from lax.sciencerun1.py
+
     """
 
     depends_on = "event_info"
@@ -125,6 +127,7 @@ class S2SingleScatter(strax.CutPlugin):
     https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:analysis:firstresults:cut:s2single
     Contact: Tianyu Zhu <tz2263@columbia.edu>
     ported from lax.sciencerun1.py
+
     """
 
     depends_on = "event_info"
@@ -161,6 +164,7 @@ class S2Threshold(strax.CutPlugin):
     See: https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:analysis:firstresults:daqtriggerpaxefficiency
     Contact: Jelle Aalbers <aalbers@nikhef.nl>
     ported from lax.sciencerun1.py
+
     """
 
     depends_on = "event_info"
@@ -182,6 +186,7 @@ class S2AreaFractionTop(strax.CutPlugin):
     Described in the note at: xenon:xenon1t:analysis:firstresults:s2_aft_cut_summary
     Contact: Adam Brown <abrown@physik.uzh.ch>,
     ported from lax.sciencerun1.py
+
     """
 
     depends_on = ("event_info",)
@@ -209,8 +214,7 @@ class S2AreaFractionTop(strax.CutPlugin):
 
 
 class FiducialCylinder1T(strax.CutPlugin):
-    """Implementation of fiducial volume cylinder 1T, ported from
-    lax.sciencerun0.py."""
+    """Implementation of fiducial volume cylinder 1T, ported from lax.sciencerun0.py."""
 
     depends_on = ("event_positions",)
     provides = "cut_fiducial_cylinder_1t"
@@ -231,8 +235,7 @@ class FiducialCylinder1T(strax.CutPlugin):
 
 
 class S1MaxPMT(strax.LoopPlugin):
-    """Removes events where the largest hit in S1 is too large port from
-    lax.sciencerun0.py."""
+    """Removes events where the largest hit in S1 is too large port from lax.sciencerun0.py."""
 
     depends_on = ("events", "event_basics", "peak_basics")
     dtype = [("cut_s1_max_pmt", np.bool_, "S1 max PMT cut")] + strax.time_fields

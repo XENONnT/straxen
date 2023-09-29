@@ -169,11 +169,11 @@ def _is_cmt_option(run_id, config):
 
 
 def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]:
-    """Function which loops over all plugin configs and returns dictionary with
-    option name as key and a nested dict of CMT correction name and strax
-    option as values.
+    """Function which loops over all plugin configs and returns dictionary with option name as key
+    and a nested dict of CMT correction name and strax option as values.
 
     :param context: Context with registered plugins.
+
     """
 
     cmt_options = {}

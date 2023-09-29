@@ -19,6 +19,7 @@ class TestMongoDownloader(unittest.TestCase):
 
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
+
     """
 
     _run_test = True
@@ -85,8 +86,7 @@ class TestMongoDownloader(unittest.TestCase):
         )
 
     def test_invalid_methods(self):
-        """The following examples should NOT work, let's make sure the right
-        errors are raised."""
+        """The following examples should NOT work, let's make sure the right errors are raised."""
         with self.assertRaises(ValueError):
             straxen.MongoDownloader(
                 collection=self.collection,

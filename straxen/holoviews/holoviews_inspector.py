@@ -6,9 +6,8 @@ from immutabledict import immutabledict
 
 
 class EventStats(param.Parameterized):
-    """Class which displays all events in a user defined data space. Marks
-    position of single selected event depending on the passed index or index
-    widget.
+    """Class which displays all events in a user defined data space. Marks position of single
+    selected event depending on the passed index or index widget.
 
     :param events: Events for which histogram should be plotted.
     :param default_config: Dictionary containing the default settings
@@ -24,6 +23,7 @@ class EventStats(param.Parameterized):
     Warning:
         In case the initally selected value is outside of the specified
         plotting range the plot will break.
+
     """
 
     _x_edges = None
@@ -76,9 +76,9 @@ class EventStats(param.Parameterized):
     def interactive_event_stats(self):
         """An interactive plot which displays a histogram of the supplied data.
 
-        The user can manually change the axis and binning via the
-        provided widgets. This plot is meant to be used as a stand alone
-        outside of the event display.
+        The user can manually change the axis and binning via the provided widgets. This plot is
+        meant to be used as a stand alone outside of the event display.
+
         """
         stream_hist, stream_marker = self._create_streams()
         hist = hv.DynamicMap(self._plot_hist_data, streams=stream_hist)
@@ -113,8 +113,8 @@ class EventStats(param.Parameterized):
         y_field="cs2",
         _index_slider=None,
     ):
-        """Creates widgets for the x and y field as well as an slider for the
-        event index if not supplied externally."""
+        """Creates widgets for the x and y field as well as an slider for the event index if not
+        supplied externally."""
         fields = list(self.events.dtype.names)
         if self.exclude_fields:
             if hasattr(self.exclude_fields, "__call__"):
@@ -146,10 +146,10 @@ class EventStats(param.Parameterized):
         return dtype
 
     def _make_widget_panel(self, include_index_slider=False):
-        """Put widgets used in the selection plot into a single panel which can
-        be displayed.
+        """Put widgets used in the selection plot into a single panel which can be displayed.
 
         Adds index slider for stand alone plot.
+
         """
         widget_panel = pn.Row(
             pn.Column(

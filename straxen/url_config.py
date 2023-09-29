@@ -26,7 +26,6 @@ from typing import Container, Mapping, Union, Iterable
 
 from pydantic.validators import find_validators
 from pydantic.config import get_config
-from pydantic.errors import PydanticTypeError
 
 export, __all__ = strax.exporter()
 
@@ -47,8 +46,8 @@ def config_cache_size_mb():
 
 
 def parse_val(val: str):
-    """Attempt to parse a string value as a python literal, falls back to
-    returning just the original string if cant be parsed."""
+    """Attempt to parse a string value as a python literal, falls back to returning just the
+    original string if cant be parsed."""
     try:
         val = literal_eval(val)
     except ValueError:
@@ -68,8 +67,8 @@ def get_item_or_attr(obj, key, default=None):
 class URLConfig(strax.Config):
     """Dispatch on URL protocol.
 
-    unrecognized protocol returns identity inspired by dasks Dispatch
-    and fsspec fs protocols.
+    unrecognized protocol returns identity inspired by dasks Dispatch and fsspec fs protocols.
+
     """
 
     _LOOKUP = {}
@@ -104,8 +103,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def register(cls, protocol, func=None):
-        """Register dispatch of `func` on urls starting with protocol name
-        `protocol`"""
+        """Register dispatch of `func` on urls starting with protocol name `protocol`"""
 
         def wrapper(func):
             if isinstance(protocol, tuple):
@@ -125,8 +123,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def preprocessor(cls, func=None, precedence=0):
-        """Register a new processor to modify the config values before they are
-        used."""
+        """Register a new processor to modify the config values before they are used."""
 
         def wrapper(func):
             entry = (precedence, func)
@@ -139,17 +136,15 @@ class URLConfig(strax.Config):
 
     @classmethod
     def eval(cls, protocol: str, arg: Union[str, tuple] = None, kwargs: dict = None):
-        """Evaluate a URL/AST by recusively dispatching protocols by name with
-        argument arg and keyword arguments kwargs and return the value.
+        """Evaluate a URL/AST by recusively dispatching protocols by name with argument arg and
+        keyword arguments kwargs and return the value.
 
-        If protocol does not exist, returnes arg
-        :param protocol: name of the protocol or a URL
-        :param arg: argument to pass to protocol, can be another (sub-
-            protocol, arg, kwargs) tuple, in which case sub-protocol
-            will be evaluated and passed to protocol
-        :param kwargs: keyword arguments to be passed to the protocol
-        :return: (Any) The return value of the protocol on these
-            arguments
+        If protocol does not exist, returnes arg :param protocol: name of the protocol or a URL
+        :param arg: argument to pass to protocol, can be another (sub-     protocol, arg, kwargs)
+        tuple, in which case sub-protocol     will be evaluated and passed to protocol :param
+        kwargs: keyword arguments to be passed to the protocol :return: (Any) The return value of
+        the protocol on these     arguments
+
         """
 
         if protocol is not None and arg is None:
@@ -198,6 +193,7 @@ class URLConfig(strax.Config):
         """Add keyword arguments to a URL.
 
         Sorts all arguments by key for hash consistency
+
         """
         url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs = dict(extra_kwargs, **kwargs)
@@ -214,13 +210,13 @@ class URLConfig(strax.Config):
 
     @classmethod
     def lookup_value(cls, value, **namespace):
-        """Optionally fetch an attribute from namespace if value is a string
-        with cls.NAMESPACE_SEP in it, the string is split and the first part is
-        used to lookup an object in namespace and the second part is used to
-        lookup the value in the object.
+        """Optionally fetch an attribute from namespace if value is a string with cls.NAMESPACE_SEP
+        in it, the string is split and the first part is used to lookup an object in namespace and
+        the second part is used to lookup the value in the object.
 
-        If the value is not a string or the target object is not in the
-        namesapce, the value is returned as is.
+        If the value is not a string or the target object is not in the namesapce, the value is
+        returned as is.
+
         """
 
         if isinstance(value, list):
@@ -254,13 +250,12 @@ class URLConfig(strax.Config):
         run_defaults=None,
         set_defaults=True,
     ):
-        """This method is called by the context on plugin initialization at
-        this stage, the run_id and context config are already known but the
-        config values are not yet set on the plugin.
+        """This method is called by the context on plugin initialization at this stage, the run_id
+        and context config are already known but the config values are not yet set on the plugin.
 
-        Therefore its the perfect place to run any preprocessors on the
-        config values to make any needed changes before the configs are
-        hashed.
+        Therefore its the perfect place to run any preprocessors on the config values to make any
+        needed changes before the configs are hashed.
+
         """
         super().validate(config, run_id, run_defaults, set_defaults)
 
@@ -315,8 +310,8 @@ class URLConfig(strax.Config):
         return value
 
     def fetch(self, plugin):
-        """Override the Config.fetch method this is called when the attribute
-        is accessed from withing the Plugin instance."""
+        """Override the Config.fetch method this is called when the attribute is accessed from
+        withing the Plugin instance."""
         # first fetch the user-set value
 
         # from the config dictionary
@@ -499,9 +494,8 @@ class URLConfig(strax.Config):
 
     @classmethod
     def evaluate_dry(cls, url: str, **kwargs):
-        """Utility function to quickly test and evaluate URL configs, without
-        the initialization of plugins (so no plugin attributes). plugin
-        attributes can be passed as keyword arguments.
+        """Utility function to quickly test and evaluate URL configs, without the initialization of
+        plugins (so no plugin attributes). plugin attributes can be passed as keyword arguments.
 
         example::
 
@@ -520,6 +514,7 @@ class URLConfig(strax.Config):
         :param url: URL to evaluate, see above for example.
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
+
         """
         url = cls.format_url_kwargs(url, **kwargs)
         _, combined_kwargs = cls.split_url_kwargs(url)
@@ -555,8 +550,8 @@ def get_correction(
 
 @URLConfig.register("resource")
 def get_resource(name: str, fmt: str = "text", **kwargs):
-    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'>
-    otherwise kwargs are passed directly to straxen.get_resource."""
+    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    passed directly to straxen.get_resource."""
     if fmt == "abs_path":
         downloader = straxen.MongoDownloader()
         return downloader.download_single(name)
@@ -636,17 +631,13 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
 def get_itp_dict(
     loaded_json, run_id=None, time_key="time", itp_keys="correction", **kwargs
 ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
-    """Interpolate a dictionary at the start time that is queried from a run-
-    id.
+    """Interpolate a dictionary at the start time that is queried from a run- id.
 
-    :param loaded_json: a dictionary with a time-series
-    :param run_id: run_id
-    :param time_key: key that gives the timestamps
-    :param itp_keys: which keys from the dict to read. Should be comma
-        (',') separated!
-    :return: Interpolated values of dict at the start time, either
-        returned as an np.ndarray (single value) or as a dict (multiple
-        itp_dict_keys)
+    :param loaded_json: a dictionary with a time-series :param run_id: run_id :param time_key: key
+    that gives the timestamps :param itp_keys: which keys from the dict to read. Should be comma
+    (',') separated! :return: Interpolated values of dict at the start time, either     returned as
+    an np.ndarray (single value) or as a dict (multiple     itp_dict_keys)
+
     """
     keys = strax.to_str_tuple(itp_keys.split(","))
     for key in list(keys) + [time_key]:
@@ -678,12 +669,10 @@ def get_itp_dict(
 def rekey_dict(d, replace_keys="", with_keys=""):
     """Replace the keys of a dictionary.
 
-    :param d: dictionary that will have its keys renamed
-    :param replace_keys: comma-separated string of keys that will be
-        replaced
-    :param with_keys: comma-separated string of keys that will replace
-        the replace_keys
-    :return: dictionary with renamed keys
+    :param d: dictionary that will have its keys renamed :param replace_keys: comma-separated string
+    of keys that will be     replaced :param with_keys: comma-separated string of keys that will
+    replace     the replace_keys :return: dictionary with renamed keys
+
     """
     new_dict = d.copy()
     replace_keys = strax.to_str_tuple(replace_keys.split(","))
@@ -697,16 +686,13 @@ def rekey_dict(d, replace_keys="", with_keys=""):
 
 @URLConfig.register("objects-to-dict")
 def objects_to_dict(objects: list, key_attr=None, value_attr="value", immutable=False):
-    """Converts a list of objects/dicts to a single dictionary by taking the
-    key and value from each of the objects/dicts. If key_attr is not provided,
-    the list index is used as the key.
+    """Converts a list of objects/dicts to a single dictionary by taking the key and value from each
+    of the objects/dicts. If key_attr is not provided, the list index is used as the key.
 
-    :param objects: list of objects/dicts that will be converted to a
-        dictionary
-    :param key_attr: key/attribute of the objects that will be used as
-        key in the dictionary
-    :param value_attr: key/attribute of the objects that will be used as
-        value in the dictionary
+    :param objects: list of objects/dicts that will be converted to a     dictionary :param
+    key_attr: key/attribute of the objects that will be used as     key in the dictionary :param
+    value_attr: key/attribute of the objects that will be used as     value in the dictionary
+
     """
     if not isinstance(objects, Iterable):
         raise TypeError(
@@ -729,6 +715,7 @@ def objects_to_array(objects: list):
     """Converts a list of objects/dicts to a numpy array.
 
     :param objects: Any list of objects
+
     """
 
     if not isinstance(objects, Iterable):

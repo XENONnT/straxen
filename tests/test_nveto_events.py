@@ -17,8 +17,7 @@ def create_disjoint_intervals(
     channel_range=(2000, 2119),
     length_range=(1, 1),
 ):
-    """Function which generates a hypothesis strategy for a fixed number of
-    disjoint intervals.
+    """Function which generates a hypothesis strategy for a fixed number of disjoint intervals.
 
     :param dtype: Can be any strax-like dtype either with endtime or
         dt and length field.
@@ -43,6 +42,7 @@ def create_disjoint_intervals(
         corresponding healt checks via:" @settings(
         suppress_health_check=[hypothesis.HealthCheck.large_base_example,
          hypothesis.HealthCheck.too_slow])"
+
     """
     n = 0
 
@@ -113,8 +113,7 @@ def _test_disjoint(intervals, time, length, channel, dt):
     hst.integers(1, 3),
 )
 def test_nveto_event_building(hitlets, coincidence):
-    """In this test we test the code of
-    straxen.plugins.events_nv.find_veto_events."""
+    """In this test we test the code of straxen.plugins.events_nv.find_veto_events."""
     hitlets = strax.sort_by_time(hitlets)
 
     event_intervals = straxen.plugins.raw_records_coin_nv.find_coincidence(

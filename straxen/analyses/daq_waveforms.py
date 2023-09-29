@@ -12,8 +12,8 @@ import utilix
 def daq_plot(
     context, figsize=(14, 15), lower_panel_height=6, group_by="link", vmin=None, vmax=None, **kwargs
 ):
-    """Plot with peak, records and records sorted by "link" or "ADC ID" (other
-    items are also possible as long as it is in the channel map)."""
+    """Plot with peak, records and records sorted by "link" or "ADC ID" (other items are also
+    possible as long as it is in the channel map)."""
     f, axes = plt.subplots(
         3, 1, figsize=figsize, gridspec_kw={"height_ratios": [1, 1, lower_panel_height]}
     )
@@ -52,6 +52,7 @@ def _get_daq_config(
     """Query the runs database for the config of the daq during this run.
 
     Either use the context of the runs collection.
+
     """
     if run_collection is None:
         if not straxen.utilix_is_configured():
@@ -91,9 +92,8 @@ def _group_channels_by_index(
     cable_map: pandas.DataFrame,
     group_by: str = "ADC ID",
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    """Parse the cable map, return the labels where each of the channels is
-    mapped to as well as an array that can be used to map each of the channels
-    maps to the labels."""
+    """Parse the cable map, return the labels where each of the channels is mapped to as well as an
+    array that can be used to map each of the channels maps to the labels."""
     idx = np.arange(straxen.n_tpc_pmts)
     idx_seen = 0
     labels = []

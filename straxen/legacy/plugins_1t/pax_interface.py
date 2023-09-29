@@ -1,7 +1,8 @@
-import numpy as np
 import os
 import glob
+from typing import Tuple
 
+import numpy as np
 import strax
 
 export, __all__ = strax.exporter()
@@ -16,9 +17,9 @@ def records_needed(pulse_length, samples_per_record):
 def pax_to_records(
     input_filename, samples_per_record=strax.DEFAULT_RECORD_LENGTH, events_per_chunk=10
 ):
-    """Return pulse records array from pax zip input_filename Convert pax .zip
-    files to flat records format This only works if you have pax installed in
-    your strax environment, which is somewhat tricky."""
+    """Return pulse records array from pax zip input_filename Convert pax .zip files to flat records
+    format This only works if you have pax installed in your strax environment, which is somewhat
+    tricky."""
 
     # Monkeypatch matplotlib so pax is importable
     # See https://github.com/XENON1T/pax/pull/734
@@ -152,7 +153,7 @@ class RecordsFromPax(strax.Plugin):
     provides = "raw_records"
     data_kind = "raw_records"
     compressor = "zstd"
-    depends_on = tuple()
+    depends_on: Tuple = tuple()
     parallel = False
     rechunk_on_save = False
 

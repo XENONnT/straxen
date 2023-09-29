@@ -8,17 +8,16 @@ from straxen.test_utils import nt_test_run_id as test_run_id_nT
 
 
 class DummyAqmonHits(strax.Plugin):
-    """Dummy plugin to make some aqmon hits that may span ON and OFF signals
-    over chunks.
+    """Dummy plugin to make some aqmon hits that may span ON and OFF signals over chunks.
 
     There are two channels, that signify ON or OFF of a logic signal
 
-    We are interested in the deadtime, which is the time difference
-    between ON and OFF singals. This plugin computes that deadtime, even
-    if we have missed the first ON (so we start with OFF) or missed the
-    last OFF (such that the last signal is an ON). If we miss one ON at
-    the start or one OFF at the end, we should just consider all time
-    before the first OFF or all the time after the last ON as deadtime.
+    We are interested in the deadtime, which is the time difference between ON and OFF singals. This
+    plugin computes that deadtime, even if we have missed the first ON (so we start with OFF) or
+    missed the last OFF (such that the last signal is an ON). If we miss one ON at the start or one
+    OFF at the end, we should just consider all time before the first OFF or all the time after the
+    last ON as deadtime.
+
     """
 
     vetos_per_chunk = strax.Config(
@@ -239,8 +238,7 @@ class TestAqmonProcessing(TestCase):
         self.test_veto_intervals(dict(start_with_channel_on=False))
 
     def test_make_veto_proximity(self):
-        """I'm not going to do something fancy here, just checking if we can
-        run the code."""
+        """I'm not going to do something fancy here, just checking if we can run the code."""
         veto_intervals = self.st.get_array(self.run, "veto_intervals")
         self.st.set_config(dict(event_time_range=[0, int(veto_intervals["endtime"][-1])]))
         self.st.make(self.run, "event_basics")

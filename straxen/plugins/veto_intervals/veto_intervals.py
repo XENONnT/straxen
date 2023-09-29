@@ -30,6 +30,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
      - hev_*   <= DDC10 hardware high energy veto
      - straxen_deadtime <= special case of deadtime introduced by the
        DAQReader-plugin
+
     """
 
     __version__ = "1.1.1"
@@ -118,8 +119,8 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         chunk_end: int,
         veto_name: str,
     ) -> typing.Tuple[np.ndarray, np.ndarray]:
-        """We might be missing one start or one stop at the end of the run, set
-        it to the chunk endtime if this is the case."""
+        """We might be missing one start or one stop at the end of the run, set it to the chunk
+        endtime if this is the case."""
         # Just for traceback info that we declare this here
         extra_start = []
         extra_stop = []
@@ -176,6 +177,5 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
 # Don't use @numba since numba doesn't like masking arrays, use numpy
 def channel_select(rr, ch):
-    """Return data from start/stop veto channel in the acquisition monitor
-    (AM)"""
+    """Return data from start/stop veto channel in the acquisition monitor (AM)"""
     return rr[rr["channel"] == ch]

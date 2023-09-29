@@ -24,18 +24,14 @@ class nVETOEventDisplay:
     ):
         """Class to plot an interactive nveto display.
 
-        :param events: Events which should be plot. Can also be none in
-            case the hitlet matrix and/or pattern map should be plotted
-            separately.
-        :param hitlets: Same as events, but hitlets_nv.
-        :param run_id: Run_id which should be displayed in the title.
-        :param channel_range: Channel range of the detector.
-        :param pmt_map: PMT map which is loaded via
-            straxen.get_resource. The map has to contain the channel
-            number, and xyz coordinates.
-        :param plot_extension: Extension which should be used for
-            rendering can be either bokeh or matpltolib. Default is
-            bokeh to support dynamic plots.
+        :param events: Events which should be plot. Can also be none in     case the hitlet matrix
+        and/or pattern map should be plotted     separately. :param hitlets: Same as events, but
+        hitlets_nv. :param run_id: Run_id which should be displayed in the title. :param
+        channel_range: Channel range of the detector. :param pmt_map: PMT map which is loaded via
+        straxen.get_resource. The map has to contain the channel     number, and xyz coordinates.
+        :param plot_extension: Extension which should be used for     rendering can be either bokeh
+        or matpltolib. Default is     bokeh to support dynamic plots.
+
         """
         self.import_holoviews()
         self.hv.extension(plot_extension)
@@ -73,6 +69,7 @@ class nVETOEventDisplay:
         """Creates an interactive event display for the neutron veto.
 
         :returns: panel.Column hosting the plots and panels.
+
         """
 
         # First we have to define the python callbacks:
@@ -80,6 +77,7 @@ class nVETOEventDisplay:
             """Callback for the dynamic hitlet matrix.
 
             Changes polygons when a new event is selected.
+
             """
             self.hitlet_points = self.hitlets_to_hv_points(
                 self.hitlets_per_event[value], t_ref=self.event_df.loc[value, "time"]
@@ -94,8 +92,8 @@ class nVETOEventDisplay:
         def pattern_callback(value, x_range):
             """Call back for the dynamic PMT pattern map.
 
-            Depends on the selcted event as well as the selected x_range
-            in the hitlet_matrix.
+            Depends on the selcted event as well as the selected x_range in the hitlet_matrix.
+
             """
             # Get hitlet points and select only points within x_range:
             hit = self.hitlet_points.data
@@ -148,14 +146,13 @@ class nVETOEventDisplay:
         return event_display
 
     def plot_hitlet_matrix(self, hitlets, _hitlet_points=None):
-        """Function which plots the hitlet matrix for the specified hitlets.
-        The hitlet matrix is something equivalent to the record matrix for the
-        TPC.
+        """Function which plots the hitlet matrix for the specified hitlets. The hitlet matrix is
+        something equivalent to the record matrix for the TPC.
 
-        :param hitlets: Hitlets to be plotted if called directly.
-        :param _hitlet_points: holoviews.Points created by the event
-            display. Only internal use.
-        :returns: hv.Polygons plot.
+        :param hitlets: Hitlets to be plotted if called directly. :param _hitlet_points:
+        holoviews.Points created by the event     display. Only internal use. :returns: hv.Polygons
+        plot.
+
         """
         if not _hitlet_points:
             _hitlet_points = self.hitlets_to_hv_points(
@@ -192,16 +189,14 @@ class nVETOEventDisplay:
         pmt_distance=0.5,
         _hitlet_points=None,
     ):
-        """Plots the nveto pmt pattern map for the specified hitlets. Expects
-        hitlets to be sorted in time.
+        """Plots the nveto pmt pattern map for the specified hitlets. Expects hitlets to be sorted
+        in time.
 
-        :param hitlets: Hitlets to be plotted if called directly.
-        :param pmt_size: Base size of a PMT for 1 pe.
-        :param pmt_distance: Scaling parameter for the z -> xy
-            projection.
-        :param _hitlet_points: holoviews.Points created by the event
-            display. Only internal use.
+        :param hitlets: Hitlets to be plotted if called directly. :param pmt_size: Base size of a
+        PMT for 1 pe. :param pmt_distance: Scaling parameter for the z -> xy     projection. :param
+        _hitlet_points: holoviews.Points created by the event     display. Only internal use.
         :returns: stacked hv.Points plot.
+
         """
         if not _hitlet_points:
             _hitlet_points = self.hitlets_to_hv_points(
@@ -263,8 +258,7 @@ class nVETOEventDisplay:
         pmt_distance,
         max_area_scale=10,
     ):
-        """Function which creates data for the nVTEO PMT points of the pattern
-        plot."""
+        """Function which creates data for the nVTEO PMT points of the pattern plot."""
         # Get PMT xy-position based on projection function:
         pmt_data = self._convert_channel_to_xy(pmt_distance=pmt_distance)
 
@@ -328,11 +322,11 @@ class nVETOEventDisplay:
         hitlets,
         t_ref=None,
     ):
-        """Function which converts hitlets into hv.Points used in the different
-        plots.
+        """Function which converts hitlets into hv.Points used in the different plots.
 
-        Computes hitlet times as relative times with respect to the
-        first hitlet if t_ref is not set.
+        Computes hitlet times as relative times with respect to the first hitlet if t_ref is not
+        set.
+
         """
         import holoviews as hv
 
@@ -355,10 +349,10 @@ class nVETOEventDisplay:
         return hitlet_points
 
     def _plot_reconstructed_position(self, index):
-        """Function which plots the nVETO event position according to its
-        azimuthal angle.
+        """Function which plots the nVETO event position according to its azimuthal angle.
 
         :param index: Which event to plot.
+
         """
 
         x = (0, np.real(np.exp(self.event_df.loc[index, "angle"] * 1j)) * 400)
@@ -369,8 +363,8 @@ class nVETOEventDisplay:
         return angle
 
     def _make_sliders_and_tables(self, df):
-        """Function which creates interactive sliders and tables for the
-        neutron-veto event display."""
+        """Function which creates interactive sliders and tables for the neutron-veto event
+        display."""
         if not len(df):
             raise ValueError("DataFrame must be at least one entry long.")
 
@@ -452,6 +446,7 @@ def plot_tpc_circle(radius):
     """Plots TPC as a black circle.
 
     :param radius: Radius in cm.
+
     """
     import holoviews as hv
 
@@ -464,6 +459,7 @@ def plot_diffuser_balls_nv():
     """Computes position of nveto diffuser balls.
 
     :return: hv.Points with hover tool.
+
     """
     import holoviews as hv
 
@@ -484,6 +480,7 @@ def plot_nveto_reflector():
     Coordinates are based on the MC coordinates of the octagon
     model. The coordinates can be found in this note:
     id=xenon:xenonnt:mc:notes:nveto-geometry#lateral_reflectors
+
     """
     import holoviews as hv
 
@@ -516,13 +513,12 @@ def plot_nveto_reflector():
 def _compute_lateral_reflector_xy_edges(
     xy_center_angle, long_side_length=2018, short_side_length=1224
 ):
-    """Function which computes the position of the lateral reflector panels.
-    Input in mm return in cm.
+    """Function which computes the position of the lateral reflector panels. Input in mm return in
+    cm.
 
-    :param xy_center_angle: Center xy coordinate and angle of each
-        panel.
-    :param long_side_length: Full length of the long panels in mm.
-    :param short_side_length: Same
+    :param xy_center_angle: Center xy coordinate and angle of each     panel. :param
+    long_side_length: Full length of the long panels in mm. :param short_side_length: Same
+
     """
     res = np.zeros(len(xy_center_angle), dtype=[("x", np.float64), ("y", np.float64)])
     for ind, xy in enumerate(xy_center_angle):
@@ -542,11 +538,10 @@ def _compute_lateral_reflector_xy_edges(
 def table_callback(table, data, event, column=False):
     """Callback template for tables used together with a pn.widget.IntSlider.
 
-    :param table: pn.Panel object of a pd.DataFrame
-    :param data: pd.DataFrame storing the data.
-    :param event: Slider event returned by param.watch
-    :param column: Boolean if true uses horizontal columns to present
-        data.
+    :param table: pn.Panel object of a pd.DataFrame :param data: pd.DataFrame storing the data.
+    :param event: Slider event returned by param.watch :param column: Boolean if true uses
+    horizontal columns to present     data.
+
     """
     if column:
         table.object = data.loc[event.new]

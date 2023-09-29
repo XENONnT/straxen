@@ -3,8 +3,7 @@ import numpy as np
 
 
 class EventwBayesClass(strax.Plugin):
-    """Append at event level the posterior probability for an S1, S2, alt_S1
-    and alt_S2."""
+    """Append at event level the posterior probability for an S1, S2, alt_S1 and alt_S2."""
 
     provides = "event_w_bayes_class"
     depends_on = ("peak_classification_bayes", "event_basics")

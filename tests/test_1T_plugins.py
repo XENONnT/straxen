@@ -17,9 +17,9 @@ testing_config_1T = dict(
 
 
 def _run_plugins(st, make_all=False, run_id=test_run_id_1T, **process_kwargs):
-    """Try all plugins (except the DAQReader) for a given context (st) to see
-    if we can really push some (empty) data from it and don't have any nasty
-    problems like that we are referring to some non existant dali folder."""
+    """Try all plugins (except the DAQReader) for a given context (st) to see if we can really push
+    some (empty) data from it and don't have any nasty problems like that we are referring to some
+    non existant dali folder."""
 
     with tempfile.TemporaryDirectory() as temp_dir:
         st.storage = [strax.DataDirectory(temp_dir)]

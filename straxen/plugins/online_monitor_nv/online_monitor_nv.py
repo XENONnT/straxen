@@ -8,16 +8,15 @@ export, __all__ = strax.exporter()
 
 @export
 class OnlineMonitorNV(strax.Plugin):
-    """Plugin to write data of nVeto detector to the online-monitor. Data that
-    is written by this plugin should be small (~MB/chunk) to not overload the
-    runs-database.
+    """Plugin to write data of nVeto detector to the online-monitor. Data that is written by this
+    plugin should be small (~MB/chunk) to not overload the runs-database.
 
-    This plugin takes 'hitlets_nv' and 'events_nv'. Although they are
-    not strictly related, they are aggregated into a single data_type in
-    order to minimize the number of documents in the online monitor.
+    This plugin takes 'hitlets_nv' and 'events_nv'. Although they are not strictly related, they are
+    aggregated into a single data_type in order to minimize the number of documents in the online
+    monitor.
 
-    Produces 'online_monitor_nv' with info on the hitlets_nv and
-    events_nv
+    Produces 'online_monitor_nv' with info on the hitlets_nv and events_nv
+
     """
 
     __version__ = "0.0.4"

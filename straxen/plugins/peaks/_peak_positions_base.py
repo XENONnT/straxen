@@ -14,9 +14,9 @@ DEFAULT_POSREC_ALGO = "mlp"
 class PeakPositionsBaseNT(strax.Plugin):
     """Base class for reconstructions.
 
-    This class should only be used when subclassed for the different
-    algorithms. Provides x_algorithm, y_algorithm for all peaks > than
-    min-reconstruction area based on the top array.
+    This class should only be used when subclassed for the different algorithms. Provides
+    x_algorithm, y_algorithm for all peaks > than min-reconstruction area based on the top array.
+
     """
 
     __version__ = "0.0.0"
@@ -61,6 +61,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         """Simple wrapper to have several tf_model_mlp, tf_model_cnn, ..
 
         point to this same function in the compute method
+
         """
         model = getattr(self, f"tf_model_{self.algorithm}", None)
         if model is None:

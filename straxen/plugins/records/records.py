@@ -239,8 +239,7 @@ def software_he_veto(
     pass_veto_extend=3,
     max_veto_value=None,
 ):
-    """Veto veto_length (time in ns) after peaks larger than area_threshold (in
-    PE).
+    """Veto veto_length (time in ns) after peaks larger than area_threshold (in PE).
 
     Further large peaks inside the veto regions are still passed:
     We sum the waveform inside the veto region (with time resolution
@@ -264,6 +263,7 @@ def software_he_veto(
     regions.
     :param max_veto_value: if not None, pass peaks that exceed this area
     no matter what.
+
     """
     veto_res = int(veto_res)
     if veto_res > np.iinfo(np.int16).max:
@@ -347,6 +347,7 @@ def rough_sum(regions, records, to_pe, n, dt):
      - every record is a single peak at its first sample
      - all regions have the same length and dt
     and probably not carying too much about boundaries
+
     """
     if not len(regions) or not len(records):
         return
@@ -488,6 +489,7 @@ def check_overlaps(records, n_channels):
     """Raise a ValueError if any of the pulses in records overlap.
 
     Assumes records is already sorted by time.
+
     """
     last_end = np.zeros(n_channels, dtype=np.int64)
     channel, time = _check_overlaps(records, last_end)

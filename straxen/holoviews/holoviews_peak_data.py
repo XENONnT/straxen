@@ -1,8 +1,8 @@
-import holoviews as hv
-import numpy as np
+from typing import Union, Tuple
 from immutabledict import immutabledict
-from bokeh.models import HoverTool
-from straxen.bokeh_utils import _patches_x_y, peak_tool_tip
+
+import numpy as np
+import holoviews as hv
 
 
 # noinspection PyArgumentList
@@ -16,7 +16,7 @@ class PlotPeakLikeData:
     _scaler = 1
     keep_amplitude_per_sample = False
     _vdim_labels = immutabledict()
-    _never_include_fields = ()
+    _never_include_fields: Union[Tuple[str, ...], Tuple[()]] = ()
 
     def __init__(
         self,
@@ -33,21 +33,19 @@ class PlotPeakLikeData:
         self.opts_dict = opts
 
     def plot_peak(self, peak):
-        """User defined function for plotting a single peak with correct labels
-        etc."""
+        """User defined function for plotting a single peak with correct labels etc."""
         raise NotImplementedError()
 
     def plot_peaks(self, peaks):
-        """User defined function for plotting multiple peaks into the same
-        figure."""
+        """User defined function for plotting multiple peaks into the same figure."""
         raise NotImplementedError()
 
     def _set_labels(self, peaks, peak_type, time_prefix):
-        """User defined function which should set the xlabel, ylabel and plot
-        label for our peak plots.
+        """User defined function which should set the xlabel, ylabel and plot label for our peak
+        plots.
 
-        Also should define the scaler which scales the time axis in
-        desired unit e.g. µs or ns.
+        Also should define the scaler which scales the time axis in desired unit e.g. µs or ns.
+
         """
         raise NotImplementedError()
 
@@ -98,10 +96,10 @@ class PlotPeakLikeData:
         return area, curve
 
     def _init_peak_plot(self, peak, peak_type, time_prefix):
-        """Initalizes empty plots for plotting single or muliple-peaks into the
-        same figure.
+        """Initalizes empty plots for plotting single or muliple-peaks into the same figure.
 
         Intializes plot legend labels as well as other dimensions.
+
         """
         self._set_single_valued_dimensions(peak)
         self._set_labels(peak, peak_type, time_prefix)
@@ -125,12 +123,12 @@ class PlotPeakLikeData:
         return area, curve
 
     def _set_single_valued_dimensions(self, peak):
-        """Extracts information from peaks. Defines a list of single valued
-        dimensions which will be extracted for the plot in _get_peak_data.
+        """Extracts information from peaks. Defines a list of single valued dimensions which will be
+        extracted for the plot in _get_peak_data.
 
-        Defines holovies vdim Dimensions for a proper hover-tool
-        display. Looks up unit describition in _vdim_labels which have
-        to be specified by the user.
+        Defines holovies vdim Dimensions for a proper hover-tool display. Looks up unit describition
+        in _vdim_labels which have to be specified by the user.
+
         """
         self.single_dimension_fields = self._get_single_dimension_fields(peak)
         vdims = []
@@ -145,8 +143,7 @@ class PlotPeakLikeData:
 
     @staticmethod
     def _get_single_dimension_fields(peak):
-        """Function which returns all single valued qunatity names for a given
-        peak."""
+        """Function which returns all single valued qunatity names for a given peak."""
         field_names = []
         for field_name in peak.dtype.names:
             value = peak[field_name]
@@ -157,31 +154,29 @@ class PlotPeakLikeData:
         return field_names
 
     def _is_time_based_quantity(self, field_name):
-        """Function which checks if specified parameter is a quantiy which is
-        based on time, like range, width or time properties."""
+        """Function which checks if specified parameter is a quantiy which is based on time, like
+        range, width or time properties."""
         raise NotImplementedError()
 
     def get_peak_data(self, peak, relative_start=0):
-        """Function which extracts base peaks information as a dictionary. Can
-        be further customized in sub-classes if needed.
+        """Function which extracts base peaks information as a dictionary. Can be further customized
+        in sub-classes if needed.
 
-        :param peak: Peaks to be plotted.
-        :param relative_start: t0 from which on the peaks should be
-            plotted.
-        :return: dictionary
+        :param peak: Peaks to be plotted. :param relative_start: t0 from which on the peaks should
+        be     plotted. :return: dictionary
+
         """
         # Wrapper in case one hast to customized things further in one
         # of the sub-clases.
         return self._get_peak_data(peak, relative_start=relative_start)
 
     def _get_peak_data(self, peak, relative_start=0):
-        """Function which extracts base peaks information as a dictionary.
-        Extracts all information which are stored as single valued parameters.
+        """Function which extracts base peaks information as a dictionary. Extracts all information
+        which are stored as single valued parameters.
 
-        :param peaks: Peaks to be plotted.
-        :param relative_start: t0 from which on the peaks should be
-            plotted.
-        :return: dictionary
+        :param peaks: Peaks to be plotted. :param relative_start: t0 from which on the peaks should
+        be     plotted. :return: dictionary
+
         """
         x, y = self._patches_x_y(peak)
         x -= relative_start  # relative to first peak
@@ -206,11 +201,10 @@ class PlotPeakLikeData:
         return data
 
     def _patches_x_y(self, peak):
-        """Creates x,y coordinates needed to make a stepwise function with
-        hv.Areas.
+        """Creates x,y coordinates needed to make a stepwise function with hv.Areas.
 
-        :param peak: Peak for which we need the x/y samples
-        :returns: Tuple of x, y
+        :param peak: Peak for which we need the x/y samples :returns: Tuple of x, y
+
         """
         if self.keep_amplitude_per_sample:
             dt_a = 1
@@ -239,8 +233,7 @@ class PlotPeakLikeData:
 
 # noinspection PyArgumentList
 class PlotPeaksTPC(PlotPeakLikeData):
-    """Class which plots single or multiple peaks for interactive holoviews
-    display."""
+    """Class which plots single or multiple peaks for interactive holoviews display."""
 
     time_in_us = False
     _never_include_fields = (
@@ -355,8 +348,8 @@ class PlotPeaksTPC(PlotPeakLikeData):
         return (area * curve).opts(**self.opts_dict, legend_limit=100)
 
     def _is_time_based_quantity(self, field_name):
-        """Checks if fiel_name belongs to a time based peak property to rescale
-        ns value to µs for S2s."""
+        """Checks if fiel_name belongs to a time based peak property to rescale ns value to µs for
+        S2s."""
         _is_true = "time" in field_name and (
             (field_name != "time") and (field_name != "endtime") and (field_name != "center_time")
         )

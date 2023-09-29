@@ -26,15 +26,13 @@ def plot_waveform(
 ):
     """Plot the sum waveform and optionally per-PMT waveforms.
 
-    :param deep: If True, show per-PMT waveform matrix under sum
-        waveform. If 'raw', use raw_records instead of records to do so.
-    :param show_largest: Show only the largest show_largest peaks.
-    :param figsize: Matplotlib figure size for the plot Additional
-        options for deep = True or raw:
-    :param cbar_loc: location of the intensity color bar. Set to None to
-        omit it altogether.
-    :param lower_panel_height: Height of the lower panel in terms of the
-        height of the upper panel.
+    :param deep: If True, show per-PMT waveform matrix under sum     waveform. If 'raw', use
+    raw_records instead of records to do so. :param show_largest: Show only the largest show_largest
+    peaks. :param figsize: Matplotlib figure size for the plot Additional     options for deep =
+    True or raw: :param cbar_loc: location of the intensity color bar. Set to None to     omit it
+    altogether. :param lower_panel_height: Height of the lower panel in terms of the     height of
+    the upper panel.
+
     """
     if figsize is None:
         figsize = (10, 6 if deep else 4)
@@ -288,13 +286,11 @@ def plot_peak(p, t0=None, center_time=True, **kwargs):
 
 
 def time_and_samples(p, t0=None):
-    """Return (x, y) numpy arrays for plotting the waveform data in p using
-    'steps-pre'.
+    """Return (x, y) numpy arrays for plotting the waveform data in p using 'steps-pre'.
 
-    Where x is the time since t0 in seconds (or another time_scale), and
-    y is intensity in PE / ns.
-    :param p: Peak or other similar strax data type
-    :param t0: Zero of time in ns since unix epoch
+    Where x is the time since t0 in seconds (or another time_scale), and y is intensity in PE / ns.
+    :param p: Peak or other similar strax data type :param t0: Zero of time in ns since unix epoch
+
     """
     n = p["length"]
     if t0 is None:

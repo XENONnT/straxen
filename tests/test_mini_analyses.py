@@ -29,14 +29,13 @@ def test_pmt_pos_nt():
 class TestMiniAnalyses(unittest.TestCase):
     """Generally, tests in this class run st.<some_mini_analysis>
 
-    We provide minimal arguments to just probe if the
-    <some_mini_analysis> is not breaking when running, we are NOT
-    checking if plots et cetera make sense, just if the code is not
-    broken (e.g. because for changes in dependencies like matplotlib or
-    bokeh)
+    We provide minimal arguments to just probe if the <some_mini_analysis> is not breaking when
+    running, we are NOT checking if plots et cetera make sense, just if the code is not broken (e.g.
+    because for changes in dependencies like matplotlib or bokeh)
 
-    NB! If this tests fails locally (but not on github-CI), please do:
-    `rm strax_test_data` You might be an old version of test data.
+    NB! If this tests fails locally (but not on github-CI), please do: `rm strax_test_data` You
+    might be an old version of test data.
+
     """
 
     # They were added on 25/10/2021 and may be outdated by now
@@ -51,8 +50,9 @@ class TestMiniAnalyses(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Common setup for all the tests.
 
-        We need some data which we don't delete but reuse to prevent a
-        lot of computations in this class
+        We need some data which we don't delete but reuse to prevent a lot of computations in this
+        class
+
         """
         cls.st = nt_test_context()
         # For al the WF plotting, we might need records, let's make those
@@ -72,11 +72,11 @@ class TestMiniAnalyses(unittest.TestCase):
         plt_clf()
 
     def test_target_peaks(self, target="peak_basics", tol=2):
-        """Not a real mini analysis but let's see if the number of peaks
-        matches some pre-defined value.
+        """Not a real mini analysis but let's see if the number of peaks matches some pre-defined
+        value.
 
-        This is just to safeguard one from accidentally adding some
-        braking code.
+        This is just to safeguard one from accidentally adding some braking code.
+
         """
         self.assertTrue(target in self._expected_test_results, f"No expectation for {target}?!")
         data = self.st.get_array(nt_test_run_id, target)
@@ -171,8 +171,8 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.plot_peak_classification(nt_test_run_id)
 
     def _st_attr_for_one_peak(self, function_name):
-        """Utility function to prevent having to copy past the code below for
-        all the functions we are going to test for one peak."""
+        """Utility function to prevent having to copy past the code below for all the functions we
+        are going to test for one peak."""
         f = getattr(self.st, function_name)
         f(nt_test_run_id, time_within=self.first_peak)
 
@@ -189,8 +189,8 @@ class TestMiniAnalyses(unittest.TestCase):
         self._st_attr_for_one_peak("hvdisp_plot_peak_waveforms")
 
     def test_plot_pulses_tpc(self):
-        """Test that we can plot some TPC pulses and fail if raise a ValueError
-        if an invalid combination of parameters is given."""
+        """Test that we can plot some TPC pulses and fail if raise a ValueError if an invalid
+        combination of parameters is given."""
         self.st.plot_pulses_tpc(
             nt_test_run_id,
             time_within=self.first_peak,
@@ -264,8 +264,8 @@ class TestMiniAnalyses(unittest.TestCase):
             straxen.analyses.daq_waveforms._board_to_host_link({"boards": [{"no_boards": 0}]}, 1)
 
     def test_event_plot_errors(self):
-        """Several Exceptions should be raised with these following bad ways of
-        calling the event display."""
+        """Several Exceptions should be raised with these following bad ways of calling the event
+        display."""
         with self.assertRaises(ValueError):
             # Wrong way of calling records matrix
             self.st.event_display(nt_test_run_id, records_matrix="records_are_bad")

@@ -9,8 +9,7 @@ export, __all__ = strax.exporter()
 
 @export
 class CorrectedAreas(strax.Plugin):
-    """Plugin which applies light collection efficiency maps and electron life
-    time to the data.
+    """Plugin which applies light collection efficiency maps and electron life time to the data.
 
     Computes the cS1/cS2 for the main/alternative S1/S2 as well as the
     corrected life time.
@@ -20,6 +19,7 @@ class CorrectedAreas(strax.Plugin):
         There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
+
     """
 
     __version__ = "0.5.1"

@@ -25,6 +25,7 @@ class nVETOHitlets(strax.Plugin):
 
     Note:
         Hitlets are getting chopped if extended in not recorded regions.
+
     """
 
     __version__ = "0.1.1"
@@ -158,9 +159,9 @@ class nVETOHitlets(strax.Plugin):
 def remove_switched_off_channels(hits, to_pe):
     """Removes hits which were found in a channel without any gain.
 
-    :param hits: Hits found in records.
-    :param to_pe: conversion factor from ADC per sample.
+    :param hits: Hits found in records. :param to_pe: conversion factor from ADC per sample.
     :return: Hits
+
     """
     channel_off = np.argwhere(to_pe == 0).flatten()
     mask_off = np.isin(hits["channel"], channel_off)

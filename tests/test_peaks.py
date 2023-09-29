@@ -48,8 +48,8 @@ class TestComputePeakBasics(unittest.TestCase):
         ),
     )
     def test_bad_peak(self, off_by_factor, test_peak_idx):
-        """Lets deliberately make some data that is not self-consistent to run
-        into the error in the test."""
+        """Lets deliberately make some data that is not self-consistent to run into the error in the
+        test."""
         test_data = self.get_test_peaks(self.n_top)
         test_data[test_peak_idx]["area_per_channel"][: self.n_top] = 1
         area = np.sum(test_data[test_peak_idx]["area_per_channel"])

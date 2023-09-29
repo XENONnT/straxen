@@ -7,8 +7,7 @@ export, __all__ = strax.exporter()
 
 @export
 class EventInfo(strax.MergeOnlyPlugin):
-    """Plugin which merges the information of all event data_kinds into a
-    single data_type."""
+    """Plugin which merges the information of all event data_kinds into a single data_type."""
 
     depends_on = [
         "event_basics",

@@ -16,16 +16,14 @@ class TestRotateWires(TestCase):
 
 
 class TestGetResourceFmt(TestCase):
-    """Replicate bug with ignored formatting
-    github.com/XENONnT/straxen/issues/741."""
+    """Replicate bug with ignored formatting github.com/XENONnT/straxen/issues/741."""
 
     json_file = (
         aux_repo + "/01809798105f0a6c9efbdfcb5755af087824c234/sim_files/placeholder_map.json"
     )  # noqa
 
     def test_format(self):
-        """We did not do this correctly before, so let's make sure to do it
-        right this time."""
+        """We did not do this correctly before, so let's make sure to do it right this time."""
         json_as_text = get_resource(self.json_file, fmt="text")
         self.assertIsInstance(json_as_text, str)
         # load it from memory

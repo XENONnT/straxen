@@ -8,8 +8,7 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakPositionsCNN(PeakPositionsBaseNT):
-    """Convolutional Neural Network (CNN) neural net for position
-    reconstruction."""
+    """Convolutional Neural Network (CNN) neural net for position reconstruction."""
 
     provides = "peak_positions_cnn"
     algorithm = "cnn"

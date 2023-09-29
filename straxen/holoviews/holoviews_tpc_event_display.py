@@ -10,18 +10,14 @@ from .holoviews_pmt_array import PlotPMTArrayTPC
 
 
 class InteractiveTPCEventDisplay:
-    """Interactive event display for the TPC. Can be used for waveform
-    watching/inspection. For waveform inspection the user can provide a subset
-    of peak data which only belongs to the peaks of interest. In this case the
-    inspector plot plots all events, but only the selected events with peaks
-    can be choosen with the event slider.
+    """Interactive event display for the TPC. Can be used for waveform watching/inspection. For
+    waveform inspection the user can provide a subset of peak data which only belongs to the peaks
+    of interest. In this case the inspector plot plots all events, but only the selected events with
+    peaks can be choosen with the event slider.
 
-    :param events:
-    :param peaks:
-    :param selection:
-    :param gains: Can be used to apply to_pe value to area_per_channel
-        before plotting. PMTs with a to_pe value of zero are displayed
-        in gray.
+    :param events: :param peaks: :param selection: :param gains: Can be used to apply to_pe value to
+    area_per_channel     before plotting. PMTs with a to_pe value of zero are displayed     in gray.
+
     """
 
     _current_event_index = -1
@@ -84,8 +80,8 @@ class InteractiveTPCEventDisplay:
         plot_alt=True,
         log_hit_pattern=True,
     ):
-        """Function which creates all required plot and widget components for
-        the interactive event display."""
+        """Function which creates all required plot and widget components for the interactive event
+        display."""
         inspector_plot = None
         inspector_widget = None
         if inspection_mode:
@@ -120,8 +116,9 @@ class InteractiveTPCEventDisplay:
     def _selcet_current_event(self, event_index):
         """Function which selects current event.
 
-        If event has been already selected do nothing. This improves
-        performance as we need four different callbacks.
+        If event has been already selected do nothing. This improves performance as we need four
+        different callbacks.
+
         """
         if self._current_event_index == event_index:
             return
@@ -152,8 +149,8 @@ class InteractiveTPCEventDisplay:
     def _pmt_pattern_callback(self, event_index, top_pmt_array=True, pattern_ops=immutabledict()):
         """Callback function for the PMT hitpattern.
 
-        Selects main and alt S2 position for a given event_index and
-        creates the plot.
+        Selects main and alt S2 position for a given event_index and creates the plot.
+
         """
         self._selcet_current_event(event_index)
 

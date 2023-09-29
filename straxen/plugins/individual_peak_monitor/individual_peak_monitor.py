@@ -7,18 +7,17 @@ export, __all__ = strax.exporter()
 
 @export
 class IndividualPeakMonitor(strax.Plugin):
-    """Plugin to write data needed for the online SE monitor to the online-
-    monitor collection in the runs-database. Data that is written by this
-    plugin should be small such as to not overload the runs- database. If the
-    peaks are large, random max_bytes of data are selected from the peaks.
+    """Plugin to write data needed for the online SE monitor to the online- monitor collection in
+    the runs-database. Data that is written by this plugin should be small such as to not overload
+    the runs- database. If the peaks are large, random max_bytes of data are selected from the
+    peaks.
 
-    This plugin takes 'peak_basics' and 'peak_positions_mlp'. Although
-    they are not strictly related, they are aggregated into a single
-    data_type in order to minimize the number of documents in the online
-    monitor.
+    This plugin takes 'peak_basics' and 'peak_positions_mlp'. Although they are not strictly
+    related, they are aggregated into a single data_type in order to minimize the number of
+    documents in the online monitor.
 
-    Produces 'individual_peak_monitor' with info on the peaks and their
-    positions.
+    Produces 'individual_peak_monitor' with info on the peaks and their positions.
+
     """
 
     online_max_bytes = straxen.URLConfig(

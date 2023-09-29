@@ -18,10 +18,9 @@ def plot_pulses_tpc(
     store_pdf=False,
     path="",
 ):
-    """Mini-analyis to plot pulses for the specified list of records. You have
-    to provide a a run-id for which pulses should be plotted. You can use the
-    same arguments as for get_array to select a specific time range or data
-    (see also further ).
+    """Mini-analyis to plot pulses for the specified list of records. You have to provide a a run-id
+    for which pulses should be plotted. You can use the same arguments as for get_array to select a
+    specific time range or data (see also further ).
 
     In addition you can provide the following arguments:
 
@@ -36,6 +35,7 @@ def plot_pulses_tpc(
         generated including the time range and run_id.
     :param path: Relative path where the PDF should be stored. By default
         it is the directory of the notebook.
+
     """
     plot_pulses(
         context, raw_records, run_id, time_range, plot_hits, plot_median, max_plots, store_pdf, path
@@ -54,10 +54,9 @@ def plot_pulses_mv(
     store_pdf=False,
     path="",
 ):
-    """Mini-analyis to plot pulses for the specified list of records. You have
-    to provide a a run-id for which pulses should be plotted. You can use the
-    same arguments as for get_array to select a specific time range or data
-    (see also further ).
+    """Mini-analyis to plot pulses for the specified list of records. You have to provide a a run-id
+    for which pulses should be plotted. You can use the same arguments as for get_array to select a
+    specific time range or data (see also further ).
 
     In addition you can provide the following arguments:
 
@@ -72,6 +71,7 @@ def plot_pulses_mv(
         generated including the time range and run_id.
     :param path: Relative path where the PDF should be stored. By default
         it is the directory of the notebook.
+
     """
     plot_pulses(
         context,
@@ -99,10 +99,9 @@ def plot_pulses_nv(
     store_pdf=False,
     path="",
 ):
-    """Mini-analyis to plot pulses for the specified list of records. You have
-    to provide a a run-id for which pulses should be plotted. You can use the
-    same arguments as for get_array to select a specific time range or data
-    (see also further ).
+    """Mini-analyis to plot pulses for the specified list of records. You have to provide a a run-id
+    for which pulses should be plotted. You can use the same arguments as for get_array to select a
+    specific time range or data (see also further ).
 
     In addition you can provide the following arguments:
 
@@ -117,6 +116,7 @@ def plot_pulses_nv(
         generated including the time range and run_id.
     :param path: Relative path where the PDF should be stored. By default
         it is the directory of the notebook.
+
     """
     plot_pulses(
         context,
@@ -146,20 +146,16 @@ def plot_pulses(
 ):
     """Plots nveto pulses for a list of records.
 
-    :param context: Context to be used.
-    :param plot_hits: If True plot hit boundaries including the left and
-        right extension as orange shaded regions.
-    :param plot_median: If true plots pulses sample median as dotted
-        line.
-    :param max_plots: Limits the number of figures. If you would like to
-        plot more pulses you should put the plots in a PDF.
-    :param store_pdf: If true figures are put to a PDF instead of
-        plotting them to your notebook. The file name is automatically
-        generated including the time range and run_id.
-    :param path: Relative path where the PDF should be stored. By
-        default it is the directory of the notebook.
-    :param detector_ending: Ending of the corresponding detector. Empty
-        string for TPC '_nv' for neutron-veto and '_mv' muon-veto.
+    :param context: Context to be used. :param plot_hits: If True plot hit boundaries including the
+    left and     right extension as orange shaded regions. :param plot_median: If true plots pulses
+    sample median as dotted     line. :param max_plots: Limits the number of figures. If you would
+    like to     plot more pulses you should put the plots in a PDF. :param store_pdf: If true
+    figures are put to a PDF instead of     plotting them to your notebook. The file name is
+    automatically     generated including the time range and run_id. :param path: Relative path
+    where the PDF should be stored. By     default it is the directory of the notebook. :param
+    detector_ending: Ending of the corresponding detector. Empty     string for TPC '_nv' for
+    neutron-veto and '_mv' muon-veto.
+
     """
     # Register records plugin to get settings
     p = context.get_single_plugin(run_id, "records" + detector_ending)
@@ -275,6 +271,7 @@ def _yield_pulse_indices(records):
         Only finds fragments of the pulse if record_i == 0 is within list
         of records.
     :yields: indices of fragments to make the corresponding pulse.
+
     """
     # Get record links and find start indicies:
     _, next_ri = strax.record_links(records)

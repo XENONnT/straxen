@@ -25,6 +25,7 @@ class TestRunDBFrontend(unittest.TestCase):
 
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
+
     """
 
     _run_test = True
@@ -103,8 +104,7 @@ class TestRunDBFrontend(unittest.TestCase):
 
     @property
     def is_all_targets_stored(self) -> bool:
-        """This should always be False as one of the targets (records) is not
-        stored in mongo."""
+        """This should always be False as one of the targets (records) is not stored in mongo."""
         return all(
             [all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids]
         )

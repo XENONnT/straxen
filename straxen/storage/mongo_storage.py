@@ -50,6 +50,7 @@ class GridFsInterface:
                 pymongo.MongoClient(..).DATABASE_NAME.COLLECTION_NAME
         :param _test_on_init: Test if the collection is empty on init
             (only deactivate if you are using a brand new database)!
+
         """
 
         if collection is None:
@@ -95,16 +96,17 @@ class GridFsInterface:
     def get_query_config(self, config):
         """Generate identifier to query against. This is just the configs name.
 
-        :param config: str,  name of the file of interest
-        :return: dict, that can be used in queries
+        :param config: str,  name of the file of interest :return: dict, that can be used in queries
+
         """
         return {self.config_identifier: config}
 
     def document_format(self, config):
         """Format of the document to upload.
 
-        :param config: str,  name of the file of interest
-        :return: dict, that will be used to add the document
+        :param config: str,  name of the file of interest :return: dict, that will be used to add
+        the document
+
         """
         doc = self.get_query_config(config)
         doc.update(
@@ -117,8 +119,9 @@ class GridFsInterface:
     def config_exists(self, config):
         """Quick check if this config is already saved in the collection.
 
-        :param config: str,  name of the file of interest
-        :return: bool, is this config name stored in the database
+        :param config: str,  name of the file of interest :return: bool, is this config name stored
+        in the database
+
         """
         query = self.get_query_config(config)
         return self.collection.count_documents(query) > 0
@@ -141,16 +144,16 @@ class GridFsInterface:
         return self.collection.count_documents(query) > 0
 
     def test_find(self):
-        """Test the connection to the self.collection to see if we can perform
-        a collection.find operation."""
+        """Test the connection to the self.collection to see if we can perform a collection.find
+        operation."""
         if self.collection.find_one(projection="_id") is None:
             raise ConnectionError("Could not find any data in this collection")
 
     def list_files(self):
         """Get a complete list of files that are stored in the database.
 
-        :return: list, list of the names of the items stored in this
-            database
+        :return: list, list of the names of the items stored in this     database
+
         """
         return [
             doc[self.config_identifier]
@@ -201,6 +204,7 @@ class MongoUploader(GridFsInterface):
             file_path_dict = {'config_name':  '/the_config_path', ...}
 
         :return: None
+
         """
         if not isinstance(file_path_dict, dict):
             raise ValueError(
@@ -230,9 +234,9 @@ class MongoUploader(GridFsInterface):
     def upload_single(self, config, abs_path):
         """Upload a single file to gridfs.
 
-        :param config: str, the name under which this file should be
-            stored
-        :param abs_path: str, the absolute path of the file
+        :param config: str, the name under which this file should be     stored :param abs_path:
+        str, the absolute path of the file
+
         """
         doc = self.document_format(config)
         doc["md5"] = self.compute_md5(abs_path)
@@ -269,12 +273,11 @@ class MongoDownloader(GridFsInterface):
     def download_single(self, config_name: str, human_readable_file_name=False):
         """Download the config_name if it exists.
 
-        :param config_name: str, the name under which the file is stored
-        :param human_readable_file_name: bool, store the file also under
-            it's human readable name. It is better not to use this as
-            the user might not know if the version of the file is the
-            latest.
-        :return: str, the absolute path of the file requested
+        :param config_name: str, the name under which the file is stored :param
+        human_readable_file_name: bool, store the file also under     it's human readable name. It
+        is better not to use this as     the user might not know if the version of the file is the
+        latest. :return: str, the absolute path of the file requested
+
         """
         if self.config_exists(config_name):
             # Query by name
@@ -337,13 +340,12 @@ class MongoDownloader(GridFsInterface):
 
     @staticmethod
     def _check_store_files_at(cache_folder_alternatives):
-        """Iterate over the options in cache_options until we find a folder
-        where we can store data. Order does matter as we iterate until we find
-        one folder that is willing.
+        """Iterate over the options in cache_options until we find a folder where we can store data.
+        Order does matter as we iterate until we find one folder that is willing.
 
-        :param cache_folder_alternatives: tuple, this tuple must be a
-            list of paths one can try to store the downloaded data
-        :return: str, the folder that we can write to.
+        :param cache_folder_alternatives: tuple, this tuple must be a     list of paths one can try
+        to store the downloaded data :return: str, the folder that we can write to.
+
         """
         if not isinstance(cache_folder_alternatives, (tuple, list)):
             raise ValueError("cache_folder_alternatives must be tuple")

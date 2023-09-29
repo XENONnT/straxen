@@ -65,8 +65,7 @@ class DataBases:
         production=True,
         user="daq_process",
     ):
-        """Report a warning to the terminal (using the logging module) and the
-        DAQ log DB.
+        """Report a warning to the terminal (using the logging module) and the DAQ log DB.
 
         :param message: insert string into log_coll
         :param priority: severity of warning. Can be:
@@ -74,6 +73,7 @@ class DataBases:
             warning: 2,
             <any other valid python logging level, e.g. error or fatal>: 3
         :param run_id: optional run id.
+
         """
         if not production:
             return

@@ -15,12 +15,11 @@ export, __all__ = strax.exporter()
 class nVETORecorder(strax.Plugin):
     """Plugin which builds a software trigger based on records.
 
-    The trigger is defined by a simple coincidence between pulse
-    fragments within the specified resolving time. All records which do
-    not fall into one of the coincidence windows are labeled as lone
-    records for which we compute some average properties for monitoring
-    purposes. Depending on the setting also a fixed number of the
-    lone_records per channel are stored.
+    The trigger is defined by a simple coincidence between pulse fragments within the specified
+    resolving time. All records which do not fall into one of the coincidence windows are labeled as
+    lone records for which we compute some average properties for monitoring purposes. Depending on
+    the setting also a fixed number of the lone_records per channel are stored.
+
     """
 
     __version__ = "0.0.7"
@@ -230,16 +229,15 @@ def lone_record_statistics_dtype(n_channels):
 
 
 def compute_lone_records(lone_records, nveto_channels, n):
-    """Function which returns for each data chunk the specified number of
-    lone_records and computes for the rest some basic properties.
+    """Function which returns for each data chunk the specified number of lone_records and computes
+    for the rest some basic properties.
 
-    :param lone_records: raw_records which are flagged as lone records.
-    :param nveto_channels: First and last channel of nVETO.
-    :param n: Number of lone records to be stored per chunk.
-    :returns: Structured array of the lone_record_count_dtype containing
-        some properties of the lone records which will be deleted.
-    :returns: Lone records which should be saved for diagnostic
-        purposes. The array shape is of the raw_records dtype.
+    :param lone_records: raw_records which are flagged as lone records. :param nveto_channels: First
+    and last channel of nVETO. :param n: Number of lone records to be stored per chunk. :returns:
+    Structured array of the lone_record_count_dtype containing     some properties of the lone
+    records which will be deleted. :returns: Lone records which should be saved for diagnostic
+    purposes. The array shape is of the raw_records dtype.
+
     """
     ch0, ch119 = nveto_channels
 
@@ -317,15 +315,14 @@ def _compute_lone_records(lone_record, res, lone_ids, n, nveto_channels):
 
 @numba.njit(cache=True, nogil=True)
 def pulse_in_interval(raw_records, record_links, start_times, end_times):
-    """Checks if a records is in one of the intervals. If yes the entire pulse
-    ist flagged as to be stored.
+    """Checks if a records is in one of the intervals. If yes the entire pulse ist flagged as to be
+    stored.
 
-    :param raw_records: raw_records or records
-    :param record_links: position of the previous and next record if
-        pulse is made of many fragments
-    :param start_times: start time of the coincidence intervals
-    :param end_times: endtimes of the coincidence intervals
-    :return: boolean array true if one fragment of a pulse is in window.
+    :param raw_records: raw_records or records :param record_links: position of the previous and
+    next record if     pulse is made of many fragments :param start_times: start time of the
+    coincidence intervals :param end_times: endtimes of the coincidence intervals :return: boolean
+    array true if one fragment of a pulse is in window.
+
     """
     nrr = len(raw_records)
     result = np.zeros(nrr, np.bool_)
@@ -384,8 +381,8 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
 @export
 def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
-    """Checks if n-neighboring events are less apart from each other then the
-    specified resolving time.
+    """Checks if n-neighboring events are less apart from each other then the specified resolving
+    time.
 
     :param records: Can be anything which is of the dtype
         strax.interval_dtype e.g. records, hits, peaks...
@@ -399,6 +396,7 @@ def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
         The coincidence window is self-extending. If start times of two
          intervals are exactly resolving_time apart from each other
          they will be merged into a single interval.
+
     """
     if len(records):
         if nfold > 1:
@@ -417,8 +415,8 @@ def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
 
 
 def _coincidence(rr, nfold=4, resolving_time=300):
-    """Function which checks if n-neighboring events are less apart from each
-    other then the specified resolving time.
+    """Function which checks if n-neighboring events are less apart from each other then the
+    specified resolving time.
 
     Note:
         1.) For the nVETO recorder we treat every fragment as a single
@@ -427,6 +425,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
             we compute only the start times of a coincidence window.
         3.) By default we cannot test the last n-1 records since we
             do not know the gap to the next chunk.
+
     """
     # 1. estimate time difference between fragments:
     start_times = rr["time"]
@@ -454,9 +453,9 @@ def _coincidence(rr, nfold=4, resolving_time=300):
 def merge_intervals(intervals):
     """Function which merges overlapping intervals into a single one.
 
-    :param intervals: Any numpy array with strax time fields.
-    :returns: New intervals with time and endtime according to the
-        overlapping intervals.
+    :param intervals: Any numpy array with strax time fields. :returns: New intervals with time and
+    endtime according to the     overlapping intervals.
+
     """
     res = np.zeros(len(intervals), dtype=strax.time_fields)
 

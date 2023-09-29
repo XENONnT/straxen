@@ -9,10 +9,11 @@ export, __all__ = strax.exporter()
 
 @export
 class Peaks(strax.Plugin):
-    """Merge peaklets and merged S2s such that we obtain our peaks (replacing
-    all peaklets that were later re-merged as S2s).
+    """Merge peaklets and merged S2s such that we obtain our peaks (replacing all peaklets that were
+    later re-merged as S2s).
 
     As this step is computationally trivial, never save this plugin.
+
     """
 
     __version__ = "0.1.2"

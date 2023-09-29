@@ -12,18 +12,15 @@ export, __all__ = strax.exporter()
 
 @export
 class BayesPeakClassification(strax.Plugin):
-    """Bayes Peak classification Returns the ln probability of a each event
-    belonging to the S1 and S2 class. Uses conditional probabilities and data
-    parameterization learned from wfsim data. More info can be found here
-    xenon:xenonnt:ahiguera:bayespeakclassification.
+    """Bayes Peak classification Returns the ln probability of a each event belonging to the S1 and
+    S2 class. Uses conditional probabilities and data parameterization learned from wfsim data. More
+    info can be found here xenon:xenonnt:ahiguera:bayespeakclassification.
 
-    :param peaks: peaks
-    :param waveforms: peaks waveforms in PE/ns
-    :param quantiles: quantiles in ns, calculate from a cumulative sum
-        over the waveform, from zero to the total area with normalized
-        cumulative sum to determine the time
-    :returns: the ln probability of a each peak belonging to S1 and S2
-        class
+    :param peaks: peaks :param waveforms: peaks waveforms in PE/ns :param quantiles: quantiles in
+    ns, calculate from a cumulative sum     over the waveform, from zero to the total area with
+    normalized     cumulative sum to determine the time :returns: the ln probability of a each peak
+    belonging to S1 and S2     class
+
     """
 
     provides = "peak_classification_bayes"
@@ -72,11 +69,10 @@ class BayesPeakClassification(strax.Plugin):
 
 
 def compute_wf_and_quantiles(peaks: np.ndarray, bayes_n_nodes: int):
-    """Compute waveforms and quantiles for a given number of nodes(attributes)
-    :param peaks:
+    """Compute waveforms and quantiles for a given number of nodes(attributes) :param peaks:
 
-    :param bayes_n_nodes: number of nodes or attributes
-    :return: waveforms and quantiles
+    :param bayes_n_nodes: number of nodes or attributes :return: waveforms and quantiles
+
     """
     data = peaks["data"].copy()
     data[data < 0.0] = 0.0
@@ -175,16 +171,12 @@ def get_log_posterior(
 ) -> np.ndarray:
     """# TODO, add a description what we are computing here
 
-    :param bayes_n_nodes: number of nodes or attributes
-    :param waveforms: waveforms
-    :param cpt: conditional probability tables
-    :param waveform_num_bin_edges: number of bins for waveforms
-    :param quantile_num_bin_edges: number of bins for quantiles
-    :param n_bayes_classes: number of classes
-    :param waveform_values: digitized waveforms
-    :param quantile_values: digitized quantiles
-    :return: log-posterior for waveforms and quantiles. NB! This is not
-        normalized
+    :param bayes_n_nodes: number of nodes or attributes :param waveforms: waveforms :param cpt:
+    conditional probability tables :param waveform_num_bin_edges: number of bins for waveforms
+    :param quantile_num_bin_edges: number of bins for quantiles :param n_bayes_classes: number of
+    classes :param waveform_values: digitized waveforms :param quantile_values: digitized quantiles
+    :return: log-posterior for waveforms and quantiles. NB! This is not     normalized
+
     """
     wf_posterior = _get_log_posterior(
         nodes=bayes_n_nodes,

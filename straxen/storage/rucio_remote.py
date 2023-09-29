@@ -1,10 +1,11 @@
-import json
 import os
+import json
 from warnings import warn
+from typing import Dict
+
 import numpy as np
 import strax
 from utilix import xent_collection
-import typing as ty
 
 try:
     import admix
@@ -88,7 +89,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     heavy_types = ["raw_records", "raw_records_nv", "raw_records_he"]
 
     # for caching RSE locations
-    dset_cache = {}
+    dset_cache: Dict[str, str] = {}
 
     def __init__(self, staging_dir, download_heavy=False, **kwargs):
         """
@@ -189,9 +190,8 @@ class RucioSaver(strax.Saver):
 
 
 @export
-def parse_rucio_did(did: str) -> list:
-    """Parses a Rucio DID and returns a tuple of (number:int, dtype:str,
-    hash:str)"""
+def parse_rucio_did(did: str) -> tuple:
+    """Parses a Rucio DID and returns a tuple of (number:int, dtype:str, hash:str)"""
     scope, name = did.split(":")
     number = int(scope.split("_")[1])
     dtype, hsh = name.split("-")
@@ -199,8 +199,7 @@ def parse_rucio_did(did: str) -> list:
 
 
 def did_to_dirname(did: str):
-    """Takes a Rucio dataset DID and returns a dirname like used by
-    strax.FileSystemBackend."""
+    """Takes a Rucio dataset DID and returns a dirname like used by strax.FileSystemBackend."""
     # make sure it's a DATASET did, not e.g. a FILE
     if len(did.split("-")) != 2:
         raise RuntimeError(

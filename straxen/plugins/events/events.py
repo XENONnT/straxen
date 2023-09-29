@@ -20,6 +20,7 @@ class Events(strax.OverlapWindowPlugin):
     Note:
         The time range which defines an event gets chopped at the chunk
         boundaries. This happens at invalid boundaries of the
+
     """
 
     __version__ = "0.1.1"

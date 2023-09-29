@@ -5,8 +5,7 @@ import numpy as np
 
 @PluginTestAccumulator.register("test_bayes_bins")
 def test_bayes_bins(self: PluginTestCase):
-    """Test bins are monotonic, if no, issue w/ config file (training
-    problem)"""
+    """Test bins are monotonic, if no, issue w/ config file (training problem)"""
     target = "peak_classification_bayes"
     plugin = self.st.get_single_plugin(self.run_id, target)
     bins = plugin.bayes_config_file["bins"]

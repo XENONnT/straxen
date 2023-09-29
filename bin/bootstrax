@@ -555,9 +555,11 @@ def keep_target(targets, compare_with, n_fails):
 
 
 def infer_target(rd: dict) -> dict:
-    """Check if the target should be overridden based on the mode of the DAQ
-    for this run :param rd: rundoc :return: dict with the targets and the
-    targets for post processing."""
+    """Check if the target should be overridden based on the mode of the DAQ for this run :param rd:
+
+    rundoc :return: dict with the targets and the targets for post processing.
+
+    """
     targets = args.targets.copy()
     post_process = args.post_process.copy()
 
@@ -653,6 +655,7 @@ def set_state(state, update_fields=None):
     """Inform the bootstrax collection we're in a different state.
 
     if state is None, leave state unchanged, just update heartbeat time
+
     """
     # Find the last message of this host
     previous_entry = bs_coll.find_one({"host": hostname}, sort=[("_id", pymongo.DESCENDING)])
@@ -685,8 +688,8 @@ def set_state(state, update_fields=None):
 
 
 def send_heartbeat(update_fields=None):
-    """Inform the bootstrax collection we're still here Use during long-running
-    tasks where state doesn't change."""
+    """Inform the bootstrax collection we're still here Use during long-running tasks where state
+    doesn't change."""
     # Same as set_state, just don't change state
     set_state(None, update_fields=update_fields)
 
@@ -703,14 +706,14 @@ def log_warning(message, priority="warning", run_id=None):
 
 
 def eb_can_process():
-    """"The new ebs (eb3-5) should be sufficient to process all data. In
-    exceptional circumstances eb3-5 cannot keep up. Only let eb0-2 also process
-    data in such cases.
+    """"The new ebs (eb3-5) should be sufficient to process all data. In exceptional circumstances
+    eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
 
     Before eb0-2 are also used for processing two criteria have to be fulfilled:
       - There should be runs waiting to be processed
       - Eb3-5 should be busy processing for a substantial time.
     :returns: bool if this host should process a run
+
     """
 
     # eb3-5 always process.
@@ -761,14 +764,14 @@ def eb_can_process():
 
 
 def infer_mode(rd):
-    """Infer a safe operating mode of running bootstrax based on the
-    uncompressed redax rate.
+    """Infer a safe operating mode of running bootstrax based on the uncompressed redax rate.
 
     Estimating save parameters for running
     bootstrax from:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_2021update
     :returns: dictionary of how many cores, max_messages and compressor
     should be used based on an estimated data rate.
+
     """
     # Get data rate from dispatcher
     data_rate = 0
@@ -892,8 +895,7 @@ def infer_records_compressor(rd, datarate, n_fails):
 
 
 def sufficient_diskspace():
-    """Check if there is sufficient space available on the local disk to write
-    to."""
+    """Check if there is sufficient space available on the local disk to write to."""
     for i in range(wait_diskspace_n_max):
         du = disk_usage(output_folder)
         disk_pct = du.percent
@@ -937,8 +939,7 @@ def delete_live_data(rd, live_data_path):
 
 
 def _delete_data(rd, path, data_type):
-    """After completing the processing and updating the runsDB, remove the
-    live_data."""
+    """After completing the processing and updating the runsDB, remove the live_data."""
 
     if data_type == "live" and not args.delete_live and args.production:
         message = "Unsafe operation. Trying to delete live data!"
@@ -974,8 +975,7 @@ def _delete_data(rd, path, data_type):
 
 
 def wait_on_delete_thread():
-    """Check that the thread with the delete_thread_name is finished before
-    continuing."""
+    """Check that the thread with the delete_thread_name is finished before continuing."""
     threads = threading.enumerate()
     for thread in threads:
         if thread.name == delete_thread_name:
@@ -1020,11 +1020,11 @@ def ping_dbs():
 
 
 def get_run(*, mongo_id=None, number=None, full_doc=False):
-    """Find and return run doc matching mongo_id or number The bootstrax state
-    is left unchanged.
+    """Find and return run doc matching mongo_id or number The bootstrax state is left unchanged.
 
-    :param full_doc: If true (default is False), return the full run doc
-        rather than just fields used by bootstrax.
+    :param full_doc: If true (default is False), return the full run doc     rather than just fields
+    used by bootstrax.
+
     """
     if number is not None:
         query = {"number": number}
@@ -1062,9 +1062,9 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
 
 
 def check_data_written(rd):
-    """Checks that the data as written in the runs-database is actually
-    available on this machine :param rd: rundoc :return: type bool, False if
-    not all paths exist or if there are no files on this host."""
+    """Checks that the data as written in the runs-database is actually available on this machine
+    :param rd: rundoc :return: type bool, False if not all paths exist or if there are no files on
+    this host."""
     files_written = 0
 
     # Fetch the rd again -> to see status of 'data' field
@@ -1089,13 +1089,11 @@ def check_data_written(rd):
 def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
     """Check that all files are written.
 
-    It might be that the savers are still in the process of renaming
-    from folder_temp to folder. Hence allow some wait time to allow the
-    savers to finish
-    :param rd: rundoc
-    :param wait_max: max seconds to wait for data to save
-    :param wait_per_cycle: wait this many seconds if the data is not yet
-        there
+    It might be that the savers are still in the process of renaming from folder_temp to folder.
+    Hence allow some wait time to allow the savers to finish :param rd: rundoc :param wait_max: max
+    seconds to wait for data to save :param wait_per_cycle: wait this many seconds if the data is
+    not yet     there
+
     """
     start = time.time()
     while not check_data_written(rd):
@@ -1153,8 +1151,8 @@ def abandon(*, mongo_id=None, number=None):
 
 
 def consider_run(query, return_new_doc=True, test_counter=0):
-    """Return one run doc matching query, and simultaneously set its bootstrax
-    state to 'considering'."""
+    """Return one run doc matching query, and simultaneously set its bootstrax state to
+    'considering'."""
     # We must first do an atomic find-and-update to set the run's state
     # to "considering", to ensure the run doesn't get picked up by a
     # bootstrax on another host.
@@ -1356,10 +1354,11 @@ def run_strax(
 
 
 def last_file_write_time(match_location: str) -> datetime:
-    """Get the datetime in UTC of the last file that was written in raw-
-    records* :param match_location: Location where runs are written to :return:
+    """Get the datetime in UTC of the last file that was written in raw- records* :param
+    match_location: Location where runs are written to :return:
 
     TZ aware timestamp.
+
     """
     last_time = datetime.fromtimestamp(0).replace(tzinfo=pytz.utc)
     matched_folders = glob(match_location)
@@ -1653,11 +1652,11 @@ def process_run(rd, send_heartbeats=args.production):
 
 
 def clean_run(*, mongo_id=None, number=None, force=False):
-    """Removes all data on this host associated with a run that was previously
-    registered in the run db.
+    """Removes all data on this host associated with a run that was previously registered in the run
+    db.
 
-    Does NOT remove temporary folders, nor data that isn't registered to
-    the run db.
+    Does NOT remove temporary folders, nor data that isn't registered to the run db.
+
     """
     # We need to get the full data docs here, since I was too lazy to write
     # a surgical update below
@@ -1698,6 +1697,7 @@ def cleanup_db():
     """Find various pathological runs and clean them from the db.
 
     Also cleans the bootstrax collection for stale entries
+
     """
     # Check mongo connection
     ping_dbs()

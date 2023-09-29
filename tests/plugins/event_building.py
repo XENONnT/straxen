@@ -13,8 +13,7 @@ from datetime import datetime
 
 @PluginTestAccumulator.register("test_exclude_s1_as_triggering_peaks_config")
 def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area=10):
-    """Test for checking the event building options, specifically the S1
-    (exclusion)"""
+    """Test for checking the event building options, specifically the S1 (exclusion)"""
     if _is_empty_data_test(self.st, self.run_id):
         return
     # Change the config to allow s1s to be triggering, also drastically
@@ -125,8 +124,8 @@ def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area
 
 
 def get_triggering_peaks(events, left_extension, right_extension):
-    """Extract the first and last triggering peaks from an event and return
-    type, area an tight_coincidence."""
+    """Extract the first and last triggering peaks from an event and return type, area an
+    tight_coincidence."""
     peaks = np.zeros(
         len(events) * 4,
         dtype=[
@@ -157,8 +156,7 @@ def get_triggering_peaks(events, left_extension, right_extension):
 
 @PluginTestAccumulator.register("test_partitioned_tpc_corrected_areas")
 def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
-    """Run the test in ../test_url_config.TestURLConfig.test_seg_file_json on
-    corrected_areas."""
+    """Run the test in ../test_url_config.TestURLConfig.test_seg_file_json on corrected_areas."""
     fake_file = {
         "time": [
             datetime(2000, 1, 1).timestamp() * 1e9,
@@ -194,9 +192,8 @@ def _is_empty_data_test(st, run_id):
 
 @PluginTestAccumulator.register("test_alternative_s2_areas")
 def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
-    """Test if the extracted S2 peaks in an event are the largest peaks in the
-    event time range if both force_main_before_alt and
-    force_alt_s2_in_max_drift_time are True."""
+    """Test if the extracted S2 peaks in an event are the largest peaks in the event time range if
+    both force_main_before_alt and force_alt_s2_in_max_drift_time are True."""
 
     # Initialize plugin and config options
     st = self.st.new_context()

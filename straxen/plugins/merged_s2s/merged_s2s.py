@@ -11,8 +11,8 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Merge together peaklets if peak finding favours that they would form a
-    single peak instead."""
+    """Merge together peaklets if peak finding favours that they would form a single peak
+    instead."""
 
     __version__ = "1.0.2"
 
@@ -221,10 +221,9 @@ def _filter_s1_starts(start_merge_at, types, end_merge_at):
 
 @numba.njit(cache=True, nogil=True)
 def merge_s2_threshold(log_area, gap_thresholds):
-    """Return gap threshold for log_area of the merged S2 with linear
-    interpolation given the points in gap_thresholds :param log_area: Log 10
-    area of the merged S2 :param gap_thresholds: tuple (n, 2) of fix points for
-    interpolation."""
+    """Return gap threshold for log_area of the merged S2 with linear interpolation given the points
+    in gap_thresholds :param log_area: Log 10 area of the merged S2 :param gap_thresholds: tuple (n,
+    2) of fix points for interpolation."""
     for i, (a1, g1) in enumerate(gap_thresholds):
         if log_area < a1:
             if i == 0:

@@ -9,14 +9,12 @@ export, __all__ = strax.exporter()
 
 @export
 class EventBasics(strax.Plugin):
-    """Computes the basic properties of the main/alternative S1/S2 within an
-    event.
+    """Computes the basic properties of the main/alternative S1/S2 within an event.
 
-    The main S1 and alternative S1 are given by the largest two S1-Peaks
-    within the event. The main S2 is given by the largest S2-Peak within
-    the event, while alternative S2 is selected as the largest S2 other
-    than main S2 in the time window [main S1 time, main S1 time + max
-    drift time].
+    The main S1 and alternative S1 are given by the largest two S1-Peaks within the event. The main
+    S2 is given by the largest S2-Peak within the event, while alternative S2 is selected as the
+    largest S2 other than main S2 in the time window [main S1 time, main S1 time + max drift time].
+
     """
 
     __version__ = "1.3.3"
@@ -166,8 +164,8 @@ class EventBasics(strax.Plugin):
         return si_dtype
 
     def _set_posrec_save(self):
-        """Parse x_mlp et cetera if needed to get the algorithms used and set
-        required class attributes."""
+        """Parse x_mlp et cetera if needed to get the algorithms used and set required class
+        attributes."""
         posrec_fields = self.deps["peak_positions"].dtype_for("peak_positions").names
         posrec_names = [d.split("_")[-1] for d in posrec_fields if "x_" in d]
 
@@ -178,8 +176,7 @@ class EventBasics(strax.Plugin):
         self.posrec_save = [(xy + algo) for xy in ["x_", "y_"] for algo in self.pos_rec_labels]
 
     def _get_posrec_dtypes(self):
-        """Get S2 positions for each of the position reconstruction
-        algorithms."""
+        """Get S2 positions for each of the position reconstruction algorithms."""
         posrec_dtpye = []
 
         for algo in self.pos_rec_labels:
@@ -211,8 +208,8 @@ class EventBasics(strax.Plugin):
 
     @staticmethod
     def set_nan_defaults(buffer):
-        """When constructing the dtype, take extra care to set values to np.Nan
-        / -1 (for ints) as 0 might have a meaning."""
+        """When constructing the dtype, take extra care to set values to np.Nan / -1 (for ints) as 0
+        might have a meaning."""
         for field in buffer.dtype.names:
             if np.issubdtype(buffer.dtype[field], np.integer):
                 buffer[field][:] = -1
@@ -356,6 +353,7 @@ class EventBasics(strax.Plugin):
         """Get the largest S1/S2.
 
         For S1s allow a min coincidence and max time
+
         """
         # Find all peaks of this type (S1 or S2)
         s_mask = peaks["type"] == s_i
@@ -378,10 +376,9 @@ class EventBasics(strax.Plugin):
         result_fields,
         peak_fields,
     ):
-        """For one event, write all the peak_fields (e.g. "area") of the peak
-        (largest_s_i) into their associated field in the event (e.g. s1_area),
-        main_or_alt_index differentiates between main (index 0) and alt (index
-        1)"""
+        """For one event, write all the peak_fields (e.g. "area") of the peak (largest_s_i) into
+        their associated field in the event (e.g. s1_area), main_or_alt_index differentiates between
+        main (index 0) and alt (index 1)"""
         index_not_in_list_of_largest_peaks = main_or_alt_index >= len(largest_s_i)
         if index_not_in_list_of_largest_peaks:
             # There is no such peak. E.g. main_or_alt_index == 1 but largest_s_i = ["Main S1"]

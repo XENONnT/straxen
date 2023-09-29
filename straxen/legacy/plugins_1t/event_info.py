@@ -5,10 +5,10 @@ export, __all__ = strax.exporter()
 
 @export
 class EventInfo1T(strax.MergeOnlyPlugin):
-    """Plugin which merges the information of all event data_kinds into a
-    single data_type.
+    """Plugin which merges the information of all event data_kinds into a single data_type.
 
     This only uses 1T data-types as several event-plugins are nT only
+
     """
 
     depends_on = [

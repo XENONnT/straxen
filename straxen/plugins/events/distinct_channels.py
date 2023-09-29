@@ -6,8 +6,8 @@ export, __all__ = strax.exporter()
 
 @export
 class DistinctChannels(strax.LoopPlugin):
-    """Compute the number of contributing PMTs that contribute to the alt_s1
-    but not to the main S1."""
+    """Compute the number of contributing PMTs that contribute to the alt_s1 but not to the main
+    S1."""
 
     __version__ = "0.1.1"
     depends_on = ("event_basics", "peaks")

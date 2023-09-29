@@ -13,6 +13,7 @@ class EventInfoDouble(strax.MergeOnlyPlugin):
        s1 -> s1_a, alt_s1 -> s1_b, and similarly for s2s;
      - Adds s1_b_distinct_channels, which can be tricky to compute
        (since it requires going back to peaks)
+
     """
 
     __version__ = "0.1.2"

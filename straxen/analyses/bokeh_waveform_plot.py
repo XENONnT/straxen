@@ -38,8 +38,8 @@ def event_display_interactive(
     yscale=("linear", "linear", "linear"),
     log=True,
 ):
-    """Interactive event display for XENONnT. Plots detailed main/alt S1/S2,
-    bottom and top PMT hit pattern as well as all other peaks in a given event.
+    """Interactive event display for XENONnT. Plots detailed main/alt S1/S2, bottom and top PMT hit
+    pattern as well as all other peaks in a given event.
 
     :param bottom_pmt_array: If true plots bottom PMT array hit-pattern.
     :param only_main_peaks: If true plots only main peaks into detail
@@ -78,6 +78,7 @@ def event_display_interactive(
         more than a single event.
 
     :return: bokeh.plotting.figure instance.
+
     """
     st = context
 
@@ -253,13 +254,11 @@ def event_display_interactive(
 def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("linear", "linear")):
     """Function to plot the main/alt S1/S2 peak details.
 
-    :param signal: Dictionary containing the peak information.
-    :param s1_keys: S1 keys to be plotted e.g. with and without alt S1
-    :param s2_keys: Same but for S2
-    :param labels: Labels to be used for Peaks
-    :param colors: Colors to be used
-    :param yscale: Tuple with axis scale type.
-    :return: S1 and S2 bokeh figure.
+    :param signal: Dictionary containing the peak information. :param s1_keys: S1 keys to be plotted
+    e.g. with and without alt S1 :param s2_keys: Same but for S2 :param labels: Labels to be used
+    for Peaks :param colors: Colors to be used :param yscale: Tuple with axis scale type. :return:
+    S1 and S2 bokeh figure.
+
     """
     # First we create figure then we loop over figures and plots and
     # add drawings:
@@ -304,6 +303,7 @@ def plot_pmt_arrays_and_positions(
     """Function which plots the Top and Bottom PMT array.
 
     :returns: fig_top, fig_bottom
+
     """
     # Same logic as for detailed Peaks, first make figures
     # then loop over figures and data and populate figures with plots
@@ -350,13 +350,11 @@ def plot_pmt_arrays_and_positions(
 def plot_event(peaks, signal, labels, event, colors, yscale="linear"):
     """Wrapper for plot peaks to highlight main/alt. S1/S2.
 
-    :param peaks: Peaks in event
-    :param signal: Dictionary containing main/alt. S1/S2
-    :param labels: dict with labels to be used
-    :param event: Event to set correctly x-ranges.
-    :param colors: Colors to be used for unknown, s1 and s2 signals.
-    :param yscale: string of yscale type.
-    :return: bokeh.plotting.figure instance
+    :param peaks: Peaks in event :param signal: Dictionary containing main/alt. S1/S2 :param labels:
+    dict with labels to be used :param event: Event to set correctly x-ranges. :param colors: Colors
+    to be used for unknown, s1 and s2 signals. :param yscale: string of yscale type. :return:
+    bokeh.plotting.figure instance
+
     """
     waveform = plot_peaks(peaks, time_scalar=1000, colors=colors, yscale=yscale)
     # Highlight main and alternate S1/S2:
@@ -403,18 +401,15 @@ def plot_peak_detail(
     colors=("gray", "blue", "green"),
     fig=None,
 ):
-    """Function which makes a detailed plot for the given peak. As in the
-    main/alt S1/S2 plots of the event display.
+    """Function which makes a detailed plot for the given peak. As in the main/alt S1/S2 plots of
+    the event display.
 
-    :param peak: Peak to be plotted.
-    :param time_scalar: Factor to rescale the time from ns to other
-        scale. E.g. =1000 scales to µs.
-    :param label: Label to be used in the plot legend.
-    :param unit: Time unit of the plotted peak.
-    :param colors: Colors to be used for unknown, s1 and s2 peaks.
-    :param fig: Instance of bokeh.plotting.figure if None one will be
-        created via straxen.bokeh.utils.default_figure().
-    :return: Instance of bokeh.plotting.figure
+    :param peak: Peak to be plotted. :param time_scalar: Factor to rescale the time from ns to other
+    scale. E.g. =1000 scales to µs. :param label: Label to be used in the plot legend. :param unit:
+    Time unit of the plotted peak. :param colors: Colors to be used for unknown, s1 and s2 peaks.
+    :param fig: Instance of bokeh.plotting.figure if None one will be     created via
+    straxen.bokeh.utils.default_figure(). :return: Instance of bokeh.plotting.figure
+
     """
     if not peak.shape:
         peak = np.array([peak])
@@ -469,14 +464,12 @@ def plot_peak_detail(
 def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"), yscale="linear"):
     """Function which plots a list/array of peaks relative to the first one.
 
-    :param peaks: Peaks to be plotted.
-    :param time_scalar: Factor to rescale the time from ns to other
-        scale. E.g. =1000 scales to µs.
-    :param colors: Colors to be used for unknown, s1 and s2 signals
-    :param yscale: yscale type can be "linear" or "log"
-    :param fig: Instance of bokeh.plotting.figure if None one will be
-        created via straxen.bokeh.utils.default_figure().
+    :param peaks: Peaks to be plotted. :param time_scalar: Factor to rescale the time from ns to
+    other     scale. E.g. =1000 scales to µs. :param colors: Colors to be used for unknown, s1 and
+    s2 signals :param yscale: yscale type can be "linear" or "log" :param fig: Instance of
+    bokeh.plotting.figure if None one will be     created via straxen.bokeh.utils.default_figure().
     :return: bokeh.plotting.figure instance.
+
     """
     if not fig:
         fig = straxen.bokeh_utils.default_fig(width=1600, height=400, y_axis_type=yscale)
@@ -531,20 +524,14 @@ def plot_pmt_array(
 ):
     """Plots top or bottom PMT array for given peak.
 
-    :param peak: Peak for which the hit pattern should be plotted.
-    :param array_type: String which specifies if "top" or "bottom" PMT
-        array should be plotted
-    :param to_pe: PMT gains.
-    :param log: If true use a log-scale for the color scale.
-    :param plot_all_pmts: If True colors all PMTs instead of showing
-        swtiched off PMTs as gray dots.
-    :param xenon1t: If True plots 1T array.
-    :param fig: Instance of bokeh.plotting.figure if None one will be
-        created via straxen.bokeh.utils.default_figure().
-    :param label: Label of the peak which should be used for the plot
-        legend
-    :returns: Tuple containing a bokeh figure, glyph and transform
-        instance.
+    :param peak: Peak for which the hit pattern should be plotted. :param array_type: String which
+    specifies if "top" or "bottom" PMT     array should be plotted :param to_pe: PMT gains. :param
+    log: If true use a log-scale for the color scale. :param plot_all_pmts: If True colors all PMTs
+    instead of showing     swtiched off PMTs as gray dots. :param xenon1t: If True plots 1T array.
+    :param fig: Instance of bokeh.plotting.figure if None one will be     created via
+    straxen.bokeh.utils.default_figure(). :param label: Label of the peak which should be used for
+    the plot     legend :returns: Tuple containing a bokeh figure, glyph and transform     instance.
+
     """
     if peak.shape:
         raise ValueError("Can plot PMT array only for a single peak at a time.")
@@ -665,13 +652,11 @@ def _plot_off_pmts(pmts, fig=None):
 def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     """Plots xy-positions of specified peaks.
 
-    :param peaks: Peaks for which the position should be plotted.
-    :param label: Legend label and plot name (name serves as
-        idenitfier).
-    :param fig: bokeh.plotting.figure instance the plot should be
-        plotted into. If None creates new instance.
-    :param s2_type_style_id: 0 plots main S2 style, 1 for alt S2 and 2
-        for other S2s (e.g. single electrons).
+    :param peaks: Peaks for which the position should be plotted. :param label: Legend label and
+    plot name (name serves as     idenitfier). :param fig: bokeh.plotting.figure instance the plot
+    should be     plotted into. If None creates new instance. :param s2_type_style_id: 0 plots main
+    S2 style, 1 for alt S2 and 2     for other S2s (e.g. single electrons).
+
     """
     if not peaks.shape:
         peaks = np.array([peaks])
@@ -723,6 +708,7 @@ def _make_event_title(event, run_id, width=1600):
     :param run_id: run_id
 
     :returns: Title as bokeh.models.Div instance
+
     """
     start = event["time"]
     date = np.datetime_as_string(start.astype("<M8[ns]"), unit="s")
@@ -752,12 +738,13 @@ def _make_event_title(event, run_id, width=1600):
 
 
 def bokeh_set_x_range(plot, x_range, debug=False):
-    """Function which adjust java script call back for x_range of a bokeh plot.
-    Required to link bokeh and holoviews x_range.
+    """Function which adjust java script call back for x_range of a bokeh plot. Required to link
+    bokeh and holoviews x_range.
 
     Note:
         This is somewhat voodoo + some black magic,
         but it works....
+
     """
     from bokeh.models import CustomJS
 
@@ -780,9 +767,9 @@ class DataSelectionHist:
     def __init__(self, name, size=600):
         """Class for an interactive data selection plot.
 
-        :param name: Name of the class object instance. Needed for
-            dynamic return, e.g. ds = DataSelectionHist("ds")
-        :param size: Edge size of the figure in pixel.
+        :param name: Name of the class object instance. Needed for     dynamic return, e.g. ds =
+        DataSelectionHist("ds") :param size: Edge size of the figure in pixel.
+
         """
         self.name = name
         self.selection_index = None
@@ -844,6 +831,7 @@ class DataSelectionHist:
             value. Can be either a scalar e.g. a time or an array of
             weights which has the same length as the x/y data.
         :return: bokeh figure instance.
+
         """
         if isinstance(bins, tuple):
             raise ValueError(
@@ -964,8 +952,7 @@ class DataSelectionHist:
         return res_hist, res_hist_inds
 
     def _make_bin_positions(self, bins, bin_range):
-        """Helper function to create center positions for "histogram"
-        markers."""
+        """Helper function to create center positions for "histogram" markers."""
         edges = []
         for b, br in zip(bins, bin_range):
             # Create x and y edges

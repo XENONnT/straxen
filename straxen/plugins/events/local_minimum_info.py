@@ -9,9 +9,9 @@ export, __all__ = strax.exporter()
 
 @export
 class LocalMinimumInfo(strax.LoopPlugin):
-    """Looks for the main S2 peak in an event, finds the local minimum (if
-    there is one), and looks to compute some figures of merit such as the max
-    goodness of split, width of the valley, and height of the valley."""
+    """Looks for the main S2 peak in an event, finds the local minimum (if there is one), and looks
+    to compute some figures of merit such as the max goodness of split, width of the valley, and
+    height of the valley."""
 
     depends_on = ("event_basics", "peaks")
     data_kind = "events"
@@ -69,18 +69,16 @@ class LocalMinimumInfo(strax.LoopPlugin):
     )
 
     def compute_loop(self, event, peaks):
-        """This finds the maxima and minima for the main S2 peak and calculates
-        its info such as the number of local maxima, the depth of the deepest
-        local minimum over the maximum height of the peak
-        (s2_valley_height_ratio), and the width of the local minimum valley at
-        90% of the valley height.
+        """This finds the maxima and minima for the main S2 peak and calculates its info such as the
+        number of local maxima, the depth of the deepest local minimum over the maximum height of
+        the peak (s2_valley_height_ratio), and the width of the local minimum valley at 90% of the
+        valley height.
 
-        :param event: The event
-        :param peaks: The peaks belonging to the event, only the main S2
-            peak is considered, if there is none, this plugin returns
-            none
-        :return: Returns a dictionary containing all of the fields above
-            for each main S2 peak as well as the timing information.
+        :param event: The event :param peaks: The peaks belonging to the event, only the main S2
+        peak is considered, if there is none, this plugin returns     none :return: Returns a
+        dictionary containing all of the fields above     for each main S2 peak as well as the
+        timing information.
+
         """
         max_gos = np.nan
         num_loc_maxes = 0
@@ -133,19 +131,14 @@ class LocalMinimumInfo(strax.LoopPlugin):
 def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
     """Full gap at percent valley.
 
-    The width of the valley at "pv" of the valley height Only do this
-    for peaks which have number of maxes-number of mins = 1, since
-    otherwise this local minimum finding doesn't make sense.
-    Furthermore, it gets rid of those peaks which start at some high
-    value likely because they are the tails of another peak or
-    something.
-    :param smoothp: The smoothed peak
-    :param max_loc: Location of every local maximum of the peak
-    :param min_loc: Location of every local minimum of the peak
-    :param pv: "Percent value", the percent of the valley height for
-        which to calculate the gap
-    :param dt: The time of one sample in ns
-    :return: The gap in ns, the depth in PE
+    The width of the valley at "pv" of the valley height Only do this for peaks which have number of
+    maxes-number of mins = 1, since otherwise this local minimum finding doesn't make sense.
+    Furthermore, it gets rid of those peaks which start at some high value likely because they are
+    the tails of another peak or something. :param smoothp: The smoothed peak :param max_loc:
+    Location of every local maximum of the peak :param min_loc: Location of every local minimum of
+    the peak :param pv: "Percent value", the percent of the valley height for     which to calculate
+    the gap :param dt: The time of one sample in ns :return: The gap in ns, the depth in PE
+
     """
     n_gap = len(min_loc)
     p_length = len(smoothp)
@@ -179,12 +172,10 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
 def bounds_above_percentage_height(p, percent):
     """Finding the index bounds of the peak above given percentage :param p:
 
-    The peak
-    :param percent: The percentage of the maximum height to cut the
-        peak, this is to reject the tails and noise before and after the
-        bulk of the peak
-    :return: The left and right (exclusive) index of samples above the
-        percent.
+    The peak :param percent: The percentage of the maximum height to cut the     peak, this is to
+    reject the tails and noise before and after the     bulk of the peak :return: The left and right
+    (exclusive) index of samples above the     percent.
+
     """
     percent_height = np.max(p) * percent
     above_percent_height = np.where(p >= percent_height)[0]
@@ -193,9 +184,9 @@ def bounds_above_percentage_height(p, percent):
 
 
 def identify_local_extrema(smoothp):
-    """Identifies local minima and maxima by comparing each point to the one
-    before and after it :param smoothp: smoothed peak :return: The locations of
-    the minima, the locations of the maxima."""
+    """Identifies local minima and maxima by comparing each point to the one before and after it
+    :param smoothp: smoothed peak :return: The locations of the minima, the locations of the
+    maxima."""
     larger_than_next = smoothp > np.pad(smoothp[:-1], (1, 0))
     larger_than_next = larger_than_next.astype("int")
 
@@ -206,12 +197,11 @@ def identify_local_extrema(smoothp):
 
 
 def power_smooth(origindata, cover_num, power):
-    """A smoothing filter to get rid of the noise in peaks so that we don't
-    find too many local extrema that are just noisy :param origindata: Original
-    peak :param cover_num: The cover number for smoothing high cover numbers
-    mean you smooth over a larger region :param power: The power of the
-    smoothing essentially tunes how much your smoothing filter looks like a
-    square :return: The smoothed waveform."""
+    """A smoothing filter to get rid of the noise in peaks so that we don't find too many local
+    extrema that are just noisy :param origindata: Original peak :param cover_num: The cover number
+    for smoothing high cover numbers mean you smooth over a larger region :param power: The power of
+    the smoothing essentially tunes how much your smoothing filter looks like a square :return: The
+    smoothed waveform."""
     x_zeroed = np.arange(-cover_num, cover_num + 1)
     weight = (1 - np.abs(x_zeroed / cover_num) ** power) ** power
     weight = weight / np.sum(weight)

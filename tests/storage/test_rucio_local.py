@@ -108,8 +108,8 @@ class TestRucioLocal(unittest.TestCase):
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        """For testing purposes, slightly alter the RucioFrontend such that we
-        can run tests outside of dali too."""
+        """For testing purposes, slightly alter the RucioFrontend such that we can run tests outside
+        of dali too."""
         # Some non-existing keys that we will try finding in the test cases.
         cls.test_keys = [
             strax.DataKey(
@@ -134,8 +134,8 @@ class TestBasics(unittest.TestCase):
     def test_find_several_remote(self):
         """Let's try running a find_several with the include remote.
 
-        This should fail but when no rucio is installed or else it
-        shouldn't find any data.
+        This should fail but when no rucio is installed or else it shouldn't find any data.
+
         """
         try:
             rucio = straxen.RucioRemoteFrontend()
@@ -179,8 +179,8 @@ class TestBasics(unittest.TestCase):
         "Testing useless frontends only works on hosts where it's not supposed to work",
     )
     def test_useless_frontend(self):
-        """Test that using a rucio-local frontend on a non-RSE listed site
-        doesn't cause issues when registered."""
+        """Test that using a rucio-local frontend on a non-RSE listed site doesn't cause issues when
+        registered."""
         rucio_local = straxen.RucioLocalFrontend()
         assert rucio_local.path is None
         with self.assertRaises(strax.DataNotAvailable):

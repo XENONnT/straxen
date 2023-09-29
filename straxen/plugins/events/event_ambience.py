@@ -10,6 +10,7 @@ class EventAmbience(strax.Plugin):
 
     References:
         * v0.0.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
+
     """
 
     __version__ = "0.0.4"

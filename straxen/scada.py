@@ -1,22 +1,19 @@
-import urllib
-import requests
+import warnings
 
+import urllib
+import time
+from datetime import datetime
+from datetime import timedelta
+import pytz  # type: ignore
+import requests  # type: ignore
+import getpass
+from configparser import NoOptionError
 import pandas as pd
 import numba
 import numpy as np
 
 import strax
 import straxen
-
-from datetime import datetime
-from datetime import timedelta
-import time
-import pytz
-
-import getpass
-import warnings
-from configparser import NoOptionError
-import sys
 
 export, __all__ = strax.exporter()
 
@@ -30,10 +27,9 @@ class SCADAInterface:
     def __init__(self, context=None, use_progress_bar=True):
         """Interface to access the XENONnT slow control data via python.
 
-        :param context: Context you are using e.g. st. This is needed if
-            you would like to query data via run_ids.
-        :param use_progress_bar: Use a progress bar in the Scada
-            interface
+        :param context: Context you are using e.g. st. This is needed if     you would like to query
+        data via run_ids. :param use_progress_bar: Use a progress bar in the Scada     interface
+
         """
         self.we_are_straxen = False
         self._token_expire_time = None
@@ -78,8 +74,8 @@ class SCADAInterface:
         down_sampling=False,
         every_nth_value=1,
     ):
-        """Function which returns XENONnT slow control values for a given set
-        of parameters and time range.
+        """Function which returns XENONnT slow control values for a given set of parameters and time
+        range.
 
         The time range can be either defined by a start and end time or
         via the run_id, target and context.
@@ -120,6 +116,7 @@ class SCADAInterface:
             returned.
         :return: pandas.DataFrame containing the data of the specified
             parameters.
+
         """
 
         if not filling_kwargs:
@@ -199,8 +196,8 @@ class SCADAInterface:
         return df
 
     def _get_and_check_start_end(self, run_id, start, end, time_selection_kwargs):
-        """Helper function which clusters all time related checks and reduces
-        complexity of get_scada_values."""
+        """Helper function which clusters all time related checks and reduces complexity of
+        get_scada_values."""
         if not time_selection_kwargs:
             time_selection_kwargs = {"full_range": True}
 
@@ -303,6 +300,7 @@ class SCADAInterface:
             the average or the nthed sample in case we down sample the
             data.
         :returns: DataFrame with a time and parameter_key column.
+
         """
         if every_nth_value < 1:
             mes = (
@@ -400,11 +398,11 @@ class SCADAInterface:
         seconds_interval,
         result_dataframe,
     ):
-        """The SCADA API cannot handle query ranges lasting longer than one
-        year. So in case the user specifies a longer time range we have to
-        chunk the time requests in steps of years.
+        """The SCADA API cannot handle query ranges lasting longer than one year. So in case the
+        user specifies a longer time range we have to chunk the time requests in steps of years.
 
         Updates the resulting dataframe in place.
+
         """
         ntries = 0
         # This corresponds to a bit more than one year assuming 1 value per second:
@@ -452,8 +450,8 @@ class SCADAInterface:
     ):
         """Helper to reduce code.
 
-        Asks for data and returns result. Raises error if api returns
-        error.
+        Asks for data and returns result. Raises error if api returns error.
+
         """
         if start:
             query["StartDateUnix"] = start
@@ -513,20 +511,17 @@ class SCADAInterface:
 
     def find_pmt_names(self, pmts=None, hv=True, current=False):
         """Function which returns a list of PMT parameter names to be called in
-        SCADAInterface.get_scada_values. The names refer to the high voltage of
-        the PMTs, not their current.
+        SCADAInterface.get_scada_values. The names refer to the high voltage of the PMTs, not their
+        current.
 
         Thanks to Hagar and Giovanni who provided the file.
 
-        :param pmts: Optional parameter to specify which PMT parameters
-            should be returned. Can be either a list or array of
-            channels or just a single one.
-        :param hv: Bool if true names of high voltage channels are
-            returned.
-        :param current: Bool if true names for the current channels are
-            returned.
-        :return: dictionary containing short names as keys and scada
-            parameter names as values.
+        :param pmts: Optional parameter to specify which PMT parameters     should be returned. Can
+        be either a list or array of     channels or just a single one. :param hv: Bool if true
+        names of high voltage channels are     returned. :param current: Bool if true names for the
+        current channels are     returned. :return: dictionary containing short names as keys and
+        scada     parameter names as values.
+
         """
         if not self.pmt_file_found:
             raise ValueError(
@@ -567,11 +562,10 @@ class SCADAInterface:
         self._get_token()
 
     def _get_token(self):
-        """Function which asks for user credentials to receive a personalized
-        security token.
+        """Function which asks for user credentials to receive a personalized security token.
 
-        The token is required to query any data from the slow control
-        historians.
+        The token is required to query any data from the slow control historians.
+
         """
         if not self.we_are_straxen:
             username, password = self._ask_for_credentials()
@@ -640,8 +634,7 @@ class SCADAInterface:
 
 @export
 def convert_time_zone(df, tz):
-    """Function which converts the current time zone of a given pd.DataFrame
-    into another timezone.
+    """Function which converts the current time zone of a given pd.DataFrame into another timezone.
 
     :param df: pandas.DataFrame containing the Data. Index must be a
         datetime object with time zone information.
@@ -661,6 +654,7 @@ def convert_time_zone(df, tz):
         You can also specify 'strax' as timezone which will convert the
         time index into a 'strax time' equivalent.
         The default timezone of strax is UTC.
+
     """
     if tz == "strax":
         df = df.tz_convert(tz="UTC")
@@ -676,10 +670,9 @@ def convert_time_zone(df, tz):
 def _average_scada(times, values, nvalues):
     """Function which down samples scada values.
 
-    :param times: Unix times of the data points.
-    :param values: Corresponding sensor value
-    :param nvalues: Number of samples we average over.
-    :return: new time values and
+    :param times: Unix times of the data points. :param values: Corresponding sensor value :param
+    nvalues: Number of samples we average over. :return: new time values and
+
     """
     if len(times) % nvalues:
         n_samples = (len(times) // nvalues) - 1

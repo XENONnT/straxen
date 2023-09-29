@@ -9,8 +9,8 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakProximity(strax.OverlapWindowPlugin):
-    """Look for peaks around a peak to determine how many peaks are in
-    proximity (in time) of a peak."""
+    """Look for peaks around a peak to determine how many peaks are in proximity (in time) of a
+    peak."""
 
     __version__ = "0.4.0"
 

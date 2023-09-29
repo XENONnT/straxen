@@ -165,11 +165,12 @@ class TestURLConfig(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_itp_dict(self, ab_value=20, cd_value=21, dump_as="json"):
-        """Test that we are getting ~the same value from interpolating at the
-        central date in a dict.
+        """Test that we are getting ~the same value from interpolating at the central date in a
+        dict.
 
-        :param ab_value, cd_value: some values to test against
-        :param dump_as: Write as csv or as json file
+        :param ab_value, cd_value: some values to test against :param dump_as: Write as csv or as
+        json file
+
         """
         central_datetime = (
             utilix.rundb.xent_collection()
@@ -309,8 +310,8 @@ class TestURLConfig(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
     def test_dry_evaluation(self):
-        """Check that running a dry evaluation can be done outside of the
-        context of a URL config and yield the same result."""
+        """Check that running a dry evaluation can be done outside of the context of a URL config
+        and yield the same result."""
         plugin_url = "cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3"
         self.st.set_config({"test_config": plugin_url})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
@@ -358,9 +359,8 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, "fake://url?version=v0")
 
     def test_alphabetize_url_kwargs(self):
-        """URLConfig preprocessor to rearange the order of arguments given buy
-        a url to ensure the same url with a different hash order gives the same
-        hash."""
+        """URLConfig preprocessor to rearange the order of arguments given buy a url to ensure the
+        same url with a different hash order gives the same hash."""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
         preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)

@@ -6,8 +6,8 @@ import straxen
 
 
 class PluginTestAccumulator:
-    """Accumulator for test functions for unit-testing such that all plugin
-    related unit tests can be run on the same data within a single unit-test.
+    """Accumulator for test functions for unit-testing such that all plugin related unit tests can
+    be run on the same data within a single unit-test.
 
     Use example:
     ```python
@@ -19,6 +19,7 @@ class PluginTestAccumulator:
                         ):
             raise ValueError('Test failed')
     ```
+
     """
 
     # See URLConfigs for the original inspiration.
@@ -45,13 +46,12 @@ class PluginTestCase(TestCase):
 
 
 class SetupContextNt(PluginTestCase):
-    """Class for managing tests that depend on specific plugins and require a
-    bit of data to run the test (provided by
-    straxen.test_utils.nt_test_context).
+    """Class for managing tests that depend on specific plugins and require a bit of data to run the
+    test (provided by straxen.test_utils.nt_test_context).
 
-    Don't add tests directly, but add using the
-    `@PluginTestAccumulator.register`-decorator (see
+    Don't add tests directly, but add using the `@PluginTestAccumulator.register`-decorator (see
     straxen/tests/plugins/README.md)
+
     """
 
     exclude_plugins = "events_sync_mv", "events_sync_nv"
@@ -60,9 +60,9 @@ class SetupContextNt(PluginTestCase):
     def setUpClass(cls) -> None:
         """Common setup for all the tests.
 
-        We need some data which we don't delete but reuse to prevent a
-        lot of computations in this class. Only after running all the
-        tests, we run the cleanup.
+        We need some data which we don't delete but reuse to prevent a lot of computations in this
+        class. Only after running all the tests, we run the cleanup.
+
         """
         cls.st = straxen.test_utils.nt_test_context()
         cls.run_id = nt_test_run_id
@@ -81,10 +81,10 @@ class SetupContextNt(PluginTestCase):
 def run_pytest_from_main():
     """Build new unit test for provided functions.
 
-    For example, you might want to run it for a single module, in that
-    case you don't want to run ALL the tests. So you can do e.g. `python
-    bayes_plugin.py` where we only collect the tests defined in that
-    module.
+    For example, you might want to run it for a single module, in that case you don't want to run
+    ALL the tests. So you can do e.g. `python bayes_plugin.py` where we only collect the tests
+    defined in that module.
+
     """
     import unittest
 

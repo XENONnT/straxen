@@ -7,8 +7,7 @@ export, __all__ = strax.exporter()
 
 @export
 class mVETOEventSync(nVETOEventsSync):
-    """Plugin which computes synchronized timestamps for the muon-veto with
-    respect to the TPC."""
+    """Plugin which computes synchronized timestamps for the muon-veto with respect to the TPC."""
 
     depends_on = ("events_mv", "detector_time_offsets")
     delay_field_name = "time_offset_mv"

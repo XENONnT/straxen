@@ -93,6 +93,7 @@ class SCInterfaceTest(unittest.TestCase):
         """Unity test for the SCADAInterface.
 
         Query a fixed range and check if return is correct.
+
         """
         print("Testing SCADAInterface")
         parameters = {"SomeParameter": "XE1T.CTPC.Board06.Chan011.VMon"}
@@ -179,11 +180,11 @@ class SCInterfaceTest(unittest.TestCase):
         assert is_sorrect, "Not all values are correct for query type lab."
 
     def test_long_query(self):
-        """Test which querries a bit more than 35000 values over a longer
-        period.
+        """Test which querries a bit more than 35000 values over a longer period.
 
         Checks if additional values are querried correctly.
         See also: xenon:xenon1t:slowcontrol:webservicenew
+
         """
         st = straxen.contexts.xenonnt_online()
         self.sc.context = st
@@ -204,6 +205,7 @@ class SCInterfaceTest(unittest.TestCase):
         """Exception to skip test if external requirements are not met.
 
         Otherwise define Scada interface as self.sc.
+
         """
         if not straxen.utilix_is_configured(
             "scada",

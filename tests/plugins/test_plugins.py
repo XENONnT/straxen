@@ -50,8 +50,7 @@ class TestEmptyRecords(PluginTest):
 
 
 def test_only_one_test_file_in_this_directory():
-    """See the README.md the specific tests should NOT start with
-    test_<something>!"""
+    """See the README.md the specific tests should NOT start with test_<something>!"""
     files_in_this_dir = os.listdir(
         os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     )

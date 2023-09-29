@@ -9,6 +9,7 @@ class nVETOEventsSync(strax.OverlapWindowPlugin):
     """Plugin which computes time stamps which are synchronized with the TPC.
 
     Uses delay set in the DAQ.
+
     """
 
     depends_on = ("events_nv", "detector_time_offsets")

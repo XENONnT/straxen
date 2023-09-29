@@ -253,8 +253,7 @@ def _find_ap(
 @export
 @numba.jit(nopython=True, nogil=True, cache=True)
 def get_sample_area_quantile(data, quantile, baseline_fpart):
-    """Returns first sample index in hit where integrated area of hit is above
-    total area."""
+    """Returns first sample index in hit where integrated area of hit is above total area."""
 
     area = 0
     area_tot = data.sum() + len(data) * baseline_fpart

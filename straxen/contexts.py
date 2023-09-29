@@ -115,15 +115,13 @@ def xenonnt(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False,
 
 
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
-    """Check the hostname to determine which rucio local path to use. Note that
-    access to /dali/lgrandi/rucio/ is possible only if you are on dali compute
-    node or login node.
+    """Check the hostname to determine which rucio local path to use. Note that access to
+    /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
 
-    :param include_rucio_local: add the rucio local storage frontend.
-        This is only needed if one wants to do a fuzzy search in the
-        data the runs database is out of sync with rucio
-    :param _rucio_local_path: str, path of local RSE of rucio. Only use
-        for testing!
+    :param include_rucio_local: add the rucio local storage frontend.     This is only needed if one
+    wants to do a fuzzy search in the     data the runs database is out of sync with rucio :param
+    _rucio_local_path: str, path of local RSE of rucio. Only use     for testing!
+
     """
     hostname = socket.gethostname()
     # if you are on dali compute node, do nothing
@@ -206,6 +204,7 @@ def xenonnt_online(
         being written (raw_records* is always forbidden).
     :param kwargs: dict, context options
     :return: strax.Context
+
     """
     context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
 
@@ -410,8 +409,8 @@ def xenonnt_simulation(
     ),
     **kwargs,
 ):
-    """The most generic context that allows for setting full divergent settings
-    for simulation purposes.
+    """The most generic context that allows for setting full divergent settings for simulation
+    purposes.
 
     It makes full divergent setup, allowing to set detector simulation
     part (i.e. for wfsim up to truth and  raw_records). Parameters _sim
@@ -451,6 +450,7 @@ def xenonnt_simulation(
         must be simulation config keys, values must be valid CMT option keys.
     :param kwargs: Additional kwargs taken by strax.Context.
     :return: strax.Context instance
+
     """
     import wfsim
 

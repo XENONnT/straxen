@@ -8,8 +8,8 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakCorrectedAreas(CorrectedAreas):
-    """Pluging to apply corrections on peak level assuming that the main S1 is
-    the only physical S1."""
+    """Pluging to apply corrections on peak level assuming that the main S1 is the only physical
+    S1."""
 
     __version__ = "0.0.1"
 

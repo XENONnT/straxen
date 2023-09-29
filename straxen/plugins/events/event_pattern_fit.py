@@ -498,12 +498,12 @@ class EventPatternFit(strax.Plugin):
 
 
 def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
-    """Modified poisson distribution with proper normalization for shifted
-    poisson.
+    """Modified poisson distribution with proper normalization for shifted poisson.
 
     mu - expected number of photons per channel
     areas  - observed areas per channel
     mean_pe_photon - mean of area responce for one photon
+
     """
     with np.errstate(divide="ignore", invalid="ignore"):
         fraction = areas / mean_pe_photon
@@ -524,8 +524,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
 
 @numba.njit
 def lbinom_pmf(k, n, p):
-    """Log of binomial probability mass function approximated with gamma
-    function."""
+    """Log of binomial probability mass function approximated with gamma function."""
     scale_log = numba_gammaln(n + 1) - numba_gammaln(n - k + 1) - numba_gammaln(k + 1)
     ret_log = scale_log + k * np.log(p) + (n - k) * np.log(1 - p)
     return ret_log
@@ -551,8 +550,7 @@ def binom_sf(k, n, p):
 
 @numba.njit
 def lbinom_pmf_diriv(k, n, p, dk=1e-7):
-    """Numerical dirivitive of Binomial pmf approximated with gamma
-    function."""
+    """Numerical dirivitive of Binomial pmf approximated with gamma function."""
     if k + dk < n:
         return (lbinom_pmf(k + dk, n, p) - lbinom_pmf(k, n, p)) / dk
     else:
@@ -579,8 +577,7 @@ def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
 
 @numba.njit
 def lbinom_pmf_mode(x_min, x_max, target, args, err=1e-7, max_iter=50):
-    """Find the root of the derivative of log Binomial pmf with secant
-    method."""
+    """Find the root of the derivative of log Binomial pmf with secant method."""
     x0 = x_min
     x1 = x_max
     dx = abs(x1 - x0)
@@ -618,12 +615,11 @@ def lbinom_pmf_inverse(x_min, x_max, target, args, err=1e-7, max_iter=50):
 
 @numba.njit
 def binom_test(k, n, p):
-    """The main purpose of this algorithm is to find the value j on the other
-    side of the mode that has the same probability as k, and integrate the
-    tails outward from k and j.
+    """The main purpose of this algorithm is to find the value j on the other side of the mode that
+    has the same probability as k, and integrate the tails outward from k and j.
 
-    In the case where either k or j are zero, only the non-zero tail is
-    integrated.
+    In the case where either k or j are zero, only the non-zero tail is integrated.
+
     """
     mode = lbinom_pmf_mode(0, n, 0, (n, p))
     distance = abs(mode - k)

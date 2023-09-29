@@ -15,8 +15,7 @@ import numpy as np
 
 
 class DummyDAQReader(DAQReader):
-    """Dummy version of DAQReader with different provides and different
-    lineage."""
+    """Dummy version of DAQReader with different provides and different lineage."""
 
     provides = [
         "raw_records",
@@ -62,8 +61,8 @@ class TestDAQReader(unittest.TestCase):
 
     # # Part A. the actual tests
     def test_make(self) -> None:
-        """Test if we can run the daq-reader without chrashing and if we
-        actually stored the data after making it."""
+        """Test if we can run the daq-reader without chrashing and if we actually stored the data
+        after making it."""
         run_id = self.run_id
         for target, plugin_class in self.st._plugin_class_registry.items():
             self.st.make(run_id, target)
@@ -74,12 +73,11 @@ class TestDAQReader(unittest.TestCase):
                 )
 
     def test_insert_deadtime(self):
-        """In the DAQ reader, we need a mimimium quiet period to say where we
-        can start/end a chunk.
+        """In the DAQ reader, we need a mimimium quiet period to say where we can start/end a chunk.
 
-        Test that this information gets propagated to the
-        ARTIFICIAL_DEADTIME_CHANNEL (in raw-records-aqmon) if we set
-        this value to an unrealistic value of 0.5 s.
+        Test that this information gets propagated to the ARTIFICIAL_DEADTIME_CHANNEL (in raw-
+        records-aqmon) if we set this value to an unrealistic value of 0.5 s.
+
         """
         st = self.st.new_context()
         st.set_config(

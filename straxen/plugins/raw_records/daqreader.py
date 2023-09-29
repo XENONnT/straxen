@@ -1,11 +1,12 @@
-import glob
 import os
+import glob
 import warnings
+from typing import Tuple
 from collections import Counter
 from immutabledict import immutabledict
+
 import numpy as np
 import numba
-
 import strax
 
 export, __all__ = strax.exporter()
@@ -88,8 +89,8 @@ class ArtificialDeadtimeInserted(UserWarning):
     ),
 )
 class DAQReader(strax.Plugin):
-    """Read the XENONnT DAQ-live_data from redax and split it to the
-    appropriate raw_record data-types based on the channel-map.
+    """Read the XENONnT DAQ-live_data from redax and split it to the appropriate raw_record data-
+    types based on the channel-map.
 
     Does nothing whatsoever to the live_data; not even baselining.
 
@@ -102,9 +103,10 @@ class DAQReader(strax.Plugin):
      - raw_records_mv: muon veto raw_records.
      - raw_records_aqmon: raw_records for the acquisition monitor (_nv
        for neutron veto).
+
     """
 
-    provides = (
+    provides: Tuple[str, ...] = (
         "raw_records",
         "raw_records_he",  # high energy
         "raw_records_aqmon",
@@ -115,7 +117,7 @@ class DAQReader(strax.Plugin):
     )
 
     data_kind = immutabledict(zip(provides, provides))
-    depends_on = tuple()
+    depends_on: Tuple = tuple()
     parallel = "process"
     chunk_target_size_mb = 50
     rechunk_on_save = immutabledict(
@@ -153,9 +155,8 @@ class DAQReader(strax.Plugin):
         return self.config["daq_input_dir"] + f"/{chunk_i:06d}"
 
     def _chunk_paths(self, chunk_i):
-        """Return paths to previous, current and next chunk If any of them does
-        not exist, or they are not yet populated with data from all readers,
-        their path is replaced by False."""
+        """Return paths to previous, current and next chunk If any of them does not exist, or they
+        are not yet populated with data from all readers, their path is replaced by False."""
         p = self._path(chunk_i)
         result = []
         for q in [p + "_pre", p, p + "_post"]:
@@ -184,13 +185,11 @@ class DAQReader(strax.Plugin):
 
     @staticmethod
     def _partial_chunk_to_thread_name(partial_chunk):
-        """Convert name of part of the chunk to the thread_name that wrote
-        it."""
+        """Convert name of part of the chunk to the thread_name that wrote it."""
         return "_".join(partial_chunk.split("_")[:-1])
 
     def _count_files_per_chunk(self, path_chunk_i):
-        """Check that the files in the chunks have names consistent with the
-        readout threads."""
+        """Check that the files in the chunks have names consistent with the readout threads."""
         counted_files = Counter(
             [self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)]
         )
@@ -406,6 +405,7 @@ def split_channel_ranges(records, channel_ranges):
     """Return numba.List of record arrays in channel_ranges.
 
     ~2.5x as fast as a naive implementation with np.in1d
+
     """
     n_subdetectors = len(channel_ranges)
     which_detector = np.zeros(len(records), dtype=np.int8)
