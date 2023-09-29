@@ -14,6 +14,8 @@ double = ctypes.c_double
 
 functype = ctypes.CFUNCTYPE(double, double)
 gammaln_float64 = functype(gammaln)
+
+
 @export
 @numba.njit
 def numba_gammaln(x):
@@ -22,6 +24,8 @@ def numba_gammaln(x):
 
 functype = ctypes.CFUNCTYPE(double, double, double, double)
 betainc_float64 = functype(betainc)
+
+
 @export
 @numba.njit
 def numba_betainc(x1, x2, x3):
@@ -30,6 +34,8 @@ def numba_betainc(x1, x2, x3):
 
 functype = ctypes.CFUNCTYPE(double, double)
 loggamma_float64 = functype(loggamma)
+
+
 @export
 @numba.njit
 def numba_loggamma(x):
