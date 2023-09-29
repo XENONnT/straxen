@@ -66,3 +66,10 @@ from .local_minimum_info import *
 
 from . import multi_scatter
 from .multi_scatter import *
+
+#Only for testing!
+from . import event_s2_fwhm
+from .event_s2_fwhm import *
+
+from . import event_nans
+from .event_nans import *
