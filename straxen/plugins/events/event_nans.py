@@ -10,7 +10,7 @@ class GiveNans(strax.Plugin):
     A test plugin that just gives nans
     """
 
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     
     depends_on = ('events',)
     provides = 'event_nans'
@@ -28,7 +28,7 @@ class GiveNans(strax.Plugin):
         
         if len(events)>0:
             halflen = int(len(events)/2)
-            result['event_nans'][:halflen] = np.nan
-            result['event_negs'][:halflen] = -1
+            result['event_nans'][0] = np.nan
+            result['event_negs'][0] = -1
             
         return result

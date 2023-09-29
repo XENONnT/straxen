@@ -6,16 +6,19 @@ import numba
 export, __all__ = strax.exporter()
 
 @export
-class S2FWHM(strax.Plugin):
+class S2FWHM2(strax.Plugin):
     """
     This is a default plugin, like used by many plugins in straxen. It 
     finds the full-width half-maximum of the main and alternate S2
-    peak for each event
+    peak for each event.
+    
+    This is the exact same code as S2FWHM, except for the fact that I set
+    the first FWHM of each chunk to a NaN, and the 'random_stuff' field to -1.
     """
     __version__ = '0.0.1'
     
     depends_on = ('event_basics', 'peaks')
-    provides = 's2_fwhm'
+    provides = 's2_fwhm_2'
     data_kind = 'events'
 
     smoothing = straxen.URLConfig(default=False, type=bool, track = True,
@@ -31,7 +34,7 @@ class S2FWHM(strax.Plugin):
                  (('Exclusive end time since unix epoch [ns]', 'endtime'), np.int64),
                  (('FWHM for s2 S2 in the event', 's2_fwhm'), np.float32),
                  (('FWHM for alt_s2 S2 in the event', 'alt_s2_fwhm'), np.float32),
-                (('An extra field just to detect something', 'random_stuff'), np.float32)]
+                (('An extra field just to detect something', 'random_stuff'), np.int32)]
 
         return dtype
     
@@ -55,6 +58,9 @@ class S2FWHM(strax.Plugin):
                 if self.smoothing:
                     pk_buffer[t] = smooth(pk_buffer[t], self.averaging_samples)
                 result[f'{t}_fwhm'] = fwhm(pk_buffer[t], pk_dt[t])
+                
+            result['s2_fwhm'][0] = np.nan
+            result['random_stuff'][0] = -1
         
         return result
     
