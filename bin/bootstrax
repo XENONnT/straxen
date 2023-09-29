@@ -706,7 +706,7 @@ def log_warning(message, priority="warning", run_id=None):
 
 
 def eb_can_process():
-    """"The new ebs (eb3-5) should be sufficient to process all data. In exceptional circumstances
+    """The new ebs (eb3-5) should be sufficient to process all data. In exceptional circumstances
     eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
 
     Before eb0-2 are also used for processing two criteria have to be fulfilled:
