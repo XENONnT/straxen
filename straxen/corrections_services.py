@@ -1,12 +1,14 @@
 """Return corrections from corrections DB."""
-import warnings
-import pytz
-import numpy as np
+import os
 from functools import lru_cache
+import warnings
+import pytz  # type: ignore
+from typing import List
+
+import numpy as np
 import strax
 import utilix
 import straxen
-import os
 from urllib.parse import urlparse, parse_qs
 
 export, __all__ = strax.exporter()
@@ -310,7 +312,7 @@ class CorrectionsManagementServices:
         time = rundoc["start"]
         return time.replace(tzinfo=pytz.utc)
 
-    def get_local_versions(self, global_version):
+    def get_local_versions(self, global_version) -> dict:
         """Returns a dict of local versions for a given global version.
 
         Use 'latest' to get newest version
@@ -405,7 +407,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
     # this happens if a new correction was added to CMT that was not used in a fixed version
     # we want this error to occur in order to keep fixed global versions
     cmt_config = dict()
-    failed_keys = []
+    failed_keys: List[str] = []
 
     for option, option_info in cmt_options.items():
         # name of the CMT correction, this is not always equal to the strax option
@@ -419,7 +421,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
         # URL configs should already include the posrec suffix
         # (it's real mess -- we should drop tuple configs)
         if correction_name in posrec_corrections_basenames:
-            correction_name += f"_{posrec_algo}"
+            correction_name += f"_{posrec_algo}"  # type: ignore
 
         # now see if our correction is in our local_versions dict
         if correction_name in local_versions:
@@ -430,13 +432,13 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
                 new_value = (value[0], local_versions[correction_name], value[2])
         else:
             if correction_name not in failed_keys:
-                failed_keys.append(correction_name)
+                failed_keys.append(correction_name)  # type: ignore
             continue
 
         cmt_config[option] = new_value
 
     if len(failed_keys):
-        failed_keys = ", ".join(failed_keys)
+        failed_keys = ", ".join(failed_keys)  # type: ignore
         msg = (
             f"CMT version {cmt_global_version} is not compatible with this straxen version! "
             f"CMT {cmt_global_version} is missing these corrections: {failed_keys}"

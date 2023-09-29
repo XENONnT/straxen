@@ -1,7 +1,7 @@
 import strax
 import straxen
 
-from straxen.plugins.defaults import MV_PREAMBLE, NV_HIT_DEFAULTS, MV_HIT_DEFAULTS
+from straxen.plugins.defaults import MV_PREAMBLE, MV_HIT_DEFAULTS
 from straxen.plugins.records_nv.records_nv import nVETOPulseProcessing
 
 
@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 
 @export
 class muVETOPulseProcessing(nVETOPulseProcessing):
-    __doc__ = MV_PREAMBLE + nVETOPulseProcessing.__doc__
+    __doc__ = MV_PREAMBLE + (nVETOPulseProcessing.__doc__ or "")
     __version__ = "0.0.1"
 
     depends_on = "raw_records_mv"
@@ -33,7 +33,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         infer_type=False,
         child_option=True,
         parent_option_name="baseline_samples_nv",
-        help="Number of samples to use at the start of the pulse to determine " "the baseline",
+        help="Number of samples to use at the start of the pulse to determine the baseline",
     )
 
     hit_min_amplitude_mv = straxen.URLConfig(
@@ -52,7 +52,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         default=True,
         track=False,
         infer_type=False,
-        help="Crash if any of the pulses in raw_records overlap with others " "in the same channel",
+        help="Crash if any of the pulses in raw_records overlap with others in the same channel",
     )
 
     def setup(self):

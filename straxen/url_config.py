@@ -1,6 +1,6 @@
 import os
 import json
-import pytz
+import pytz  # type: ignore
 import typing
 import strax
 import fsspec
@@ -10,6 +10,7 @@ import inspect
 import tarfile
 import tempfile
 import warnings
+from typing import Any, Dict, Optional, Container, Mapping, Union, Iterable
 
 import numpy as np
 import pandas as pd
@@ -22,14 +23,13 @@ from strax.config import OMITTED
 from utilix import xent_collection
 from scipy.interpolate import interp1d
 from straxen.misc import filter_kwargs
-from typing import Container, Mapping, Union, Iterable
 
 from pydantic.validators import find_validators
 from pydantic.config import get_config
 
 export, __all__ = strax.exporter()
 
-_CACHES = {}
+_CACHES: Dict[int, Any] = {}
 
 WARN = True
 
@@ -71,7 +71,7 @@ class URLConfig(strax.Config):
 
     """
 
-    _LOOKUP = {}
+    _LOOKUP: Dict[str, Any] = {}
     _PREPROCESSORS = ()
 
     SCHEME_SEP = "://"
@@ -135,7 +135,9 @@ class URLConfig(strax.Config):
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
-    def eval(cls, protocol: str, arg: Union[str, tuple] = None, kwargs: dict = None):
+    def eval(
+        cls, protocol: str, arg: Optional[Union[str, tuple]] = None, kwargs: Optional[dict] = None
+    ):
         """Evaluate a URL/AST by recusively dispatching protocols by name with argument arg and
         keyword arguments kwargs and return the value.
 
@@ -356,8 +358,8 @@ class URLConfig(strax.Config):
     def ast_to_url(
         cls,
         protocol: Union[str, tuple],
-        arg: Union[str, tuple] = None,
-        kwargs: dict = None,
+        arg: Optional[Union[str, tuple]] = None,
+        kwargs: Optional[dict] = None,
     ):
         """Convert a protocol abstract syntax tree to a valid URL."""
 
@@ -535,7 +537,7 @@ class URLConfig(strax.Config):
 @URLConfig.register("cmt")
 def get_correction(
     name: str,
-    run_id: str = None,
+    run_id: Optional[str] = None,
     version: str = "ONLINE",
     detector: str = "nt",
     **kwargs,
@@ -583,7 +585,7 @@ def get_key(container: Container, take=None, **kwargs):
     # support for multiple keys for
     # nested objects
     for t in take:
-        container = container[t]
+        container = container[t]  # type: ignore
 
     return container
 

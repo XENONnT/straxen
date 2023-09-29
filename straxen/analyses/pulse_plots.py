@@ -291,6 +291,6 @@ def _yield_pulse_indices(records):
             tries += 1
             if tries > max_tries:
                 raise ValueError(
-                    "Tried more than 5000 times to find subsequent record." " Am I stuck in a loop?"
+                    "Tried more than 5000 times to find subsequent record. Am I stuck in a loop?"
                 )
         yield inds

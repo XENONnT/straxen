@@ -167,7 +167,7 @@ def mini_analysis(
             wrapped_f.__doc__ = doc_lines[0] + "\n" + textwrap.dedent("\n".join(doc_lines[1:]))
         else:
             wrapped_f.__doc__ = (
-                "Straxen mini-analysis for which someone was too lazy" "to write a proper docstring"
+                "Straxen mini-analysis for which someone was too lazy to write a proper docstring"
             )
 
         wrapped_f.__doc__ += ma_doc.format(requires=", ".join(requires))

@@ -76,7 +76,7 @@ def test_event_info_double(self):
 
 
 @PluginTestAccumulator.register("test_event_ms_naive")
-def test_event_info_double(self):
+def test_event_ms_naive(self):
     """Do a dummy check on event-info that it loads."""
     if _is_empty_data_test(self.st, self.run_id):
         return

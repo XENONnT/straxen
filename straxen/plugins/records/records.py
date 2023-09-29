@@ -1,3 +1,4 @@
+from typing import Tuple
 from immutabledict import immutabledict
 import numba
 import numpy as np
@@ -37,7 +38,7 @@ class PulseProcessing(strax.Plugin):
 
     depends_on = "raw_records"
 
-    provides = ("records", "veto_regions", "pulse_counts")
+    provides: Tuple[str, ...] = ("records", "veto_regions", "pulse_counts")
     data_kind = {k: k for k in provides}
     save_when = immutabledict(
         records=strax.SaveWhen.TARGET,
@@ -52,7 +53,7 @@ class PulseProcessing(strax.Plugin):
     baseline_samples = straxen.URLConfig(
         default=40,
         infer_type=False,
-        help="Number of samples to use at the start of the pulse to determine " "the baseline",
+        help="Number of samples to use at the start of the pulse to determine the baseline",
     )
 
     # Tail veto options
@@ -109,7 +110,7 @@ class PulseProcessing(strax.Plugin):
         default=True,
         track=False,
         infer_type=False,
-        help="Crash if any of the pulses in raw_records overlap with others " "in the same channel",
+        help="Crash if any of the pulses in raw_records overlap with others in the same channel",
     )
 
     allow_sloppy_chunking = straxen.URLConfig(

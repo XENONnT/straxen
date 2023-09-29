@@ -1,22 +1,22 @@
-from collections import defaultdict
+import sys
+from sys import getsizeof, stderr
+import inspect
+import warnings
+import datetime
+import pytz  # type: ignore
+from itertools import chain
+from collections import defaultdict, OrderedDict, deque
+from importlib import import_module
 from platform import python_version
+import typing as ty
+
 import numpy as np
 import pandas as pd
 import socket
 import strax
-import inspect
 import straxen
-import sys
-import warnings
-import datetime
-import pytz
-from sys import getsizeof, stderr
-from itertools import chain
-from collections import OrderedDict, deque
-from importlib import import_module
 from git import Repo, InvalidGitRepositoryError
 from configparser import NoSectionError
-import typing as ty
 
 try:
     # pylint: disable=redefined-builtin
@@ -158,7 +158,7 @@ def utilix_is_configured(
     if not is_configured and should_report:
         if warning_message is None:
             warning_message = "Utilix is not configured, cannot proceed"
-        warnings.warn(warning_message)
+        warnings.warn(str(warning_message))
     return is_configured
 
 
@@ -213,7 +213,7 @@ class TimeWidgets:
         end = int(end * 10**9) + end_ns
 
         if start > end:
-            warnings.warn("Start time is larger than endtime are you " "sure you wanted this?")
+            warnings.warn("Start time is larger than endtime are you sure you wanted this?")
         return start, end
 
     @staticmethod

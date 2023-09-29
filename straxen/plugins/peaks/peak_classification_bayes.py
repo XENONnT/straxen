@@ -34,7 +34,7 @@ class BayesPeakClassification(strax.Plugin):
 
     # Descriptor configs
     bayes_config_file = straxen.URLConfig(
-        default="resource://cmt://" "bayes_model" "?version=ONLINE&run_id=plugin.run_id&fmt=npy",
+        default="resource://cmt://bayes_model?version=ONLINE&run_id=plugin.run_id&fmt=npy",
         help="Bayes model, conditional probabilities tables and Bayes discrete bins",
     )
     bayes_n_nodes = straxen.URLConfig(
@@ -112,7 +112,7 @@ def _compute_wf_and_quantiles(data, sample_length, bayes_n_nodes: int):
 
 
 def compute_inference(
-    bins: int,
+    bins: np.ndarray,
     bayes_n_nodes: int,
     cpt: np.ndarray,
     n_bayes_classes: int,

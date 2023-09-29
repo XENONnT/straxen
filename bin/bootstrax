@@ -17,14 +17,15 @@ https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
 __version__ = "2.0.1"
 
+import os
+import os.path as osp
+import typing as ty
 import argparse
 import typing
 from datetime import datetime, timedelta, timezone
 import logging
 import multiprocessing
 import npshmex
-import os
-import os.path as osp
 import signal
 import socket
 import shutil
@@ -33,12 +34,11 @@ import traceback
 import numpy as np
 import pymongo
 from psutil import pid_exists, disk_usage, Process
-import pytz
+import pytz  # type: ignore
 import strax
 import straxen
 import threading
 import pandas as pd
-import typing as ty
 import daqnt
 import fnmatch
 from glob import glob
@@ -296,7 +296,7 @@ if not args.production:
 else:
     if not args.delete_live:
         log.warning(
-            "Production mode is designed to run with '--delete_live'\n" "please restart bootstrax"
+            "Production mode is designed to run with '--delete_live'\nplease restart bootstrax"
         )
     if not args.infer_mode:
         log.warning(
@@ -530,7 +530,7 @@ def _keep_veto_from_t(
     keep: ty.Union[str, list, tuple] = "_nv",
 ) -> ty.Union[str, list, tuple, None]:
     """Remove non-veto(s) targets."""
-    targets = _remove_veto_from_t(targets, remove=keep, _flip=True)
+    targets = _remove_veto_from_t(targets, remove=keep, _flip=True)  # type: ignore
     if not len(targets):
         targets = strax.to_str_tuple("raw_records")
     return targets
@@ -590,7 +590,7 @@ def infer_target(rd: dict) -> dict:
     ]
     ap_modes = ["pmtap"]
     mode = str(rd.get("mode"))
-    detectors = list(rd.get("detectors"))
+    detectors = list(rd.get("detectors"))  # type: ignore
 
     log.debug(f"mode is {mode}, changing target if needed")
     if np.any([m in mode for m in led_modes]):
@@ -1131,7 +1131,7 @@ def set_status_finished(rd):
     elif rd.get("status") == ready_for_restrax.get("status"):
         # This is strange, bootstrax already finished this run before
         log_warning(
-            "WARNING: bootstax has already marked this run as ready " "for restrax. Doing nothing.",
+            "WARNING: bootstax has already marked this run as ready for restrax. Doing nothing.",
             priority="warning",
             run_id=f'{rd["number"]:06}',
         )

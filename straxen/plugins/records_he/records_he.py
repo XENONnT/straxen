@@ -10,7 +10,7 @@ from straxen.plugins.records.records import PulseProcessing, pulse_count_dtype
 
 @export
 class PulseProcessingHighEnergy(PulseProcessing):
-    __doc__ = HE_PREAMBLE + PulseProcessing.__doc__
+    __doc__ = HE_PREAMBLE + (PulseProcessing.__doc__ or "")
     __version__ = "0.0.1"
     provides = ("records_he", "pulse_counts_he")
     data_kind = {k: k for k in provides}

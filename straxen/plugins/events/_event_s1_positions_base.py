@@ -1,6 +1,8 @@
 """S1 Position reconstruction for Xenon-nT
 Author and maintainer: Matteo Guida (guidam@mpi-hd.mpg.de)"""
 
+from typing import Optional
+
 import strax
 import straxen
 import numpy as np
@@ -16,7 +18,7 @@ class EventS1PositionBase(strax.Plugin):
     __version__ = "0.0.0"
     depends_on = ("event_area_per_channel", "event_basics")
 
-    algorithm = None
+    algorithm: Optional[str] = None
     compressor = "zstd"
     parallel = True  # can set to "process" after #82
 
@@ -28,13 +30,6 @@ class EventS1PositionBase(strax.Plugin):
     n_top_pmts = straxen.URLConfig(
         default=straxen.n_top_pmts, infer_type=False, help="Number of top PMTs"
     )
-
-    def infer_dtype(self):
-        if self.algorithm is None:
-            raise NotImplementedError(
-                f"Base class should not be used without "
-                f"algorithm as done in {__class__.__name__}"
-            )
 
     def infer_dtype(self):
         if self.algorithm is None:

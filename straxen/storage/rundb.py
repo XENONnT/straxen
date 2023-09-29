@@ -2,6 +2,7 @@ import os
 import re
 import typing
 import socket
+from typing import Dict, Union, Iterator
 from copy import deepcopy
 import strax
 from .rucio_remote import key_to_rucio_did
@@ -168,6 +169,7 @@ class RunDB(strax.StorageFrontend):
             warnings.warn("Can't do fuzzy with RunDB yet. Only returning exact matches")
 
         # Check if the run exists
+        run_query: Dict[str, Union[str, int]]
         if self.runid_field == "name":
             run_query = {"name": str(key.run_id)}
         else:
@@ -274,7 +276,7 @@ class RunDB(strax.StorageFrontend):
 
         return [results_dict.get(k.run_id, False) for k in keys]
 
-    def _parse_documents(self, documents: iter):
+    def _parse_documents(self, documents: Iterator):
         results_dict = dict()
         for doc in documents:
             # If you get a key error here there might be something off with the

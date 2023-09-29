@@ -25,7 +25,7 @@ class EventBasics(strax.Plugin):
     loop_over = "events"
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://" "electron_drift_velocity" "?version=ONLINE&run_id=plugin.run_id",
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
@@ -39,7 +39,7 @@ class EventBasics(strax.Plugin):
     force_main_before_alt = straxen.URLConfig(
         default=False,
         infer_type=False,
-        help="Make the alternate S1 (and likewise S2) the main S1 if " "occurs before the main S1.",
+        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.",
     )
 
     force_alt_s2_in_max_drift_time = straxen.URLConfig(
@@ -58,7 +58,7 @@ class EventBasics(strax.Plugin):
     max_drift_length = straxen.URLConfig(
         default=straxen.tpc_z,
         infer_type=False,
-        help="Total length of the TPC from the bottom of gate to the " "top of cathode wires [cm]",
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
     )
 
     def infer_dtype(self):

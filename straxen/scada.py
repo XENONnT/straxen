@@ -231,7 +231,7 @@ class SCADAInterface:
             raise ValueError(mes)
 
         if end < start:
-            raise ValueError("You specified an endtime which is smaller " "than the start time.")
+            raise ValueError("You specified an endtime which is smaller than the start time.")
 
         if (np.log10(start) < 18) or (np.log10(end) < 18):
             raise ValueError(

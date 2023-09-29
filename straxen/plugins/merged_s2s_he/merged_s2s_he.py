@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2sHighEnergy(MergedS2s):
-    __doc__ = HE_PREAMBLE + MergedS2s.__doc__
+    __doc__ = HE_PREAMBLE + (MergedS2s.__doc__ or "")
     depends_on = ("peaklets_he", "peaklet_classification_he")
     data_kind = "merged_s2s_he"
     provides = "merged_s2s_he"

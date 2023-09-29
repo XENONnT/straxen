@@ -1,15 +1,18 @@
-from immutabledict import immutabledict
-import strax
-import straxen
-from copy import deepcopy
-from straxen import HAVE_ADMIX
 import os
 import warnings
+from copy import deepcopy
+from typing import Dict, Any, List, Optional
 import typing as ty
-from pandas.util._decorators import deprecate_kwarg
+from immutabledict import immutabledict
 import socket
 
-common_opts = dict(
+from pandas.util._decorators import deprecate_kwarg
+import strax
+import straxen
+
+from straxen import HAVE_ADMIX
+
+common_opts: Dict[str, Any] = dict(
     register_all=[],
     # Register all peak/pulse processing by hand as 1T does not need to have
     # the high-energy plugins.
@@ -86,8 +89,8 @@ xnt_simulation_config.update(
 xnt_common_opts = common_opts.copy()
 xnt_common_opts.update(
     {
-        "register": common_opts["register"] + [],
-        "register_all": common_opts["register_all"]
+        "register": list(common_opts["register"]) + [],
+        "register_all": list(common_opts["register_all"])
         + [
             straxen.plugins,
         ],
@@ -104,7 +107,7 @@ xnt_common_opts.update(
 def xenonnt(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False, **kwargs):
     """XENONnT context."""
     if not _from_cutax and cmt_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, " "use cutax instead!")
+        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
     st = straxen.contexts.xenonnt_online(**kwargs)
     st.apply_cmt_version(cmt_version)
 
@@ -151,7 +154,7 @@ def xenonnt_online(
     output_folder: str = "./strax_data",
     we_are_the_daq: bool = False,
     minimum_run_number: int = 7157,
-    maximum_run_number: ty.Optional[int] = None,
+    maximum_run_number: Optional[int] = None,
     # Frontends
     include_rucio_remote: bool = False,
     include_online_monitor: bool = False,
@@ -160,17 +163,17 @@ def xenonnt_online(
     download_heavy: bool = False,
     _auto_append_rucio_local: bool = True,
     _rucio_path: str = "/dali/lgrandi/rucio/",
-    _rucio_local_path: ty.Optional[str] = None,
-    _raw_paths: ty.Optional[str] = ["/dali/lgrandi/xenonnt/raw"],
-    _processed_paths: ty.Optional[ty.List[str]] = [
+    _rucio_local_path: Optional[str] = None,
+    _raw_paths: List[str] = ["/dali/lgrandi/xenonnt/raw"],
+    _processed_paths: List[str] = [
         "/dali/lgrandi/xenonnt/processed",
         "/project2/lgrandi/xenonnt/processed",
         "/project/lgrandi/xenonnt/processed",
     ],
     # Testing options
-    _context_config_overwrite: ty.Optional[dict] = None,
+    _context_config_overwrite: Optional[dict] = None,
     _database_init: bool = True,
-    _forbid_creation_of: ty.Optional[dict] = None,
+    _forbid_creation_of: Optional[dict] = None,
     **kwargs,
 ):
     """XENONnT online processing and analysis.
@@ -327,9 +330,9 @@ def xenonnt_led(**kwargs):
 def xenonnt_simulation_offline(
     output_folder: str = "./strax_data",
     wfsim_registry: str = "RawRecordsFromFaxNT",
-    run_id: ty.Optional[str] = None,
-    global_version: ty.Optional[str] = None,
-    fax_config: ty.Optional[str] = None,
+    run_id: Optional[str] = None,
+    global_version: Optional[str] = None,
+    fax_config: Optional[str] = None,
 ):
     """
     :param output_folder: strax_data folder
@@ -471,7 +474,7 @@ def xenonnt_simulation(
     st.deregister_plugins_with_missing_dependencies()
 
     if straxen.utilix_is_configured(
-        warning_message="Bad context as we cannot set CMT since we " "have no database access" ""
+        warning_message="Bad context as we cannot set CMT since we have no database access"
     ):
         st.apply_cmt_version(cmt_version)
 

@@ -835,7 +835,7 @@ class DataSelectionHist:
         """
         if isinstance(bins, tuple):
             raise ValueError(
-                "Currently only squared bins are supported. " "Plase change bins into an integer."
+                "Currently only squared bins are supported. Plase change bins into an integer."
             )
 
         x_pos, y_pos = self._make_bin_positions((bins, bins), hist_range)

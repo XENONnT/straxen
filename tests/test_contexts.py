@@ -1,11 +1,11 @@
 """For all of the context, do a quick check to see that we are able to search a field (i.e. can
 build the dependencies in the context correctly) See issue #233 and PR #236."""
-from straxen.contexts import xenon1t_dali, xenon1t_led, fake_daq, demo
-from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
-import straxen
-import tempfile
 import os
 import unittest
+import tempfile
+import straxen
+from straxen.contexts import xenon1t_dali, xenon1t_led, fake_daq, demo
+from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
 
 
 ##
@@ -63,7 +63,7 @@ def test_nt_is_nt_online():
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_offline():
+def test_cmt_versions():
     """Let's try and see which CMT versions are compatible with this straxen version."""
     cmt = straxen.CorrectionsManagementServices()
     cmt_versions = list(cmt.global_versions)[::-1]

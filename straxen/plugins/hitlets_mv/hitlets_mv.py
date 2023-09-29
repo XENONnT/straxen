@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
 
 @export
 class muVETOHitlets(nVETOHitlets):
-    __doc__ = MV_PREAMBLE + nVETOHitlets.__doc__
+    __doc__ = MV_PREAMBLE + (nVETOHitlets.__doc__ or "")
     __version__ = "0.0.2"
     depends_on = "records_mv"
 

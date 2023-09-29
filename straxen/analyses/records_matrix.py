@@ -131,7 +131,7 @@ def _records_to_matrix_inner(records, t0, window, n_channels, dt=10):
             idx = (r["time"] - t0) // dt
             if idx >= len(y):
                 print(len(y), idx)
-                raise IndexError("Despite n_samples = window // dt + 1, our " "idx is too high?!")
+                raise IndexError("Despite n_samples = window // dt + 1, our idx is too high?!")
             y[idx, r["channel"]] += r["area"]
             continue
 

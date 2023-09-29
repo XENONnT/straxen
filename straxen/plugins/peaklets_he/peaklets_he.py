@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakletsHighEnergy(Peaklets):
-    __doc__ = HE_PREAMBLE + Peaklets.__doc__
+    __doc__ = HE_PREAMBLE + (Peaklets.__doc__ or "")
     depends_on = "records_he"
     provides = "peaklets_he"
     data_kind = "peaklets_he"
@@ -47,7 +47,7 @@ class PeakletsHighEnergy(Peaklets):
         child_option=True,
         parent_option_name="saturation_correction_on",
         track=True,
-        help="On off switch for saturation correction for High Energy" " channels",
+        help="On off switch for saturation correction for High Energy channels",
     )
 
     hit_min_amplitude_he = straxen.URLConfig(

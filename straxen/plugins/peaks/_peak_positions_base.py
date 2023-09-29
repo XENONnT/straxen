@@ -1,5 +1,7 @@
 """Position reconstruction for Xenon-nT."""
 
+from typing import Optional
+
 import numpy as np
 import strax
 import straxen
@@ -22,7 +24,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     __version__ = "0.0.0"
 
     depends_on = ("peaks",)
-    algorithm = None
+    algorithm: Optional[str] = None
     compressor = "zstd"
     parallel = True  # can set to "process" after #82
 

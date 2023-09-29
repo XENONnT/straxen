@@ -17,7 +17,7 @@ class PeakBasics(strax.Plugin):
 
     __version__ = "0.1.4"
     parallel = True
-    depends_on = ("peaks",)
+    depends_on = "peaks"
     provides = "peak_basics"
     dtype = [
         (("Start time of the peak (ns since unix epoch)", "time"), np.int64),
@@ -33,7 +33,7 @@ class PeakBasics(strax.Plugin):
         (("Width (in ns) of the central 90% area of the peak", "range_90p_area"), np.float32),
         (
             (
-                "Fraction of area seen by the top array " "(NaN for peaks with non-positive area)",
+                "Fraction of area seen by the top array (NaN for peaks with non-positive area)",
                 "area_fraction_top",
             ),
             np.float32,

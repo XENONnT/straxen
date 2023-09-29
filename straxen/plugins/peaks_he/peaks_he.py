@@ -13,7 +13,7 @@ export, __all__ = strax.exporter()
 
 @export
 class PeaksHighEnergy(Peaks):
-    __doc__ = HE_PREAMBLE + Peaks.__doc__
+    __doc__ = HE_PREAMBLE + (Peaks.__doc__ or "")
     depends_on = ("peaklets_he", "peaklet_classification_he", "merged_s2s_he")
     data_kind = "peaks_he"
     provides = "peaks_he"

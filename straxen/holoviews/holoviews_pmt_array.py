@@ -45,9 +45,7 @@ class PlotPMTArrayTPC:
         _pmts["gains"] = np.ones(straxen.n_tpc_pmts)
         if np.any(gains):
             if len(gains) != straxen.n_tpc_pmts:
-                raise ValueError(
-                    "Expected gains to have the same shape as number " "of PMTs in TPC!"
-                )
+                raise ValueError("Expected gains to have the same shape as number of PMTs in TPC!")
             _is_zero = gains == 0
             _pmts.loc[_is_zero, "gains"] = np.nan
         self.pmts = _pmts.loc[self.pmt_start : self.pmt_end - 1, :]

@@ -1,3 +1,5 @@
+# mypy: disable-error-code="has-type"
+
 import os
 import shutil
 import unittest
@@ -17,11 +19,11 @@ import numpy as np
 class DummyDAQReader(DAQReader):
     """Dummy version of DAQReader with different provides and different lineage."""
 
-    provides = [
+    provides = (
         "raw_records",
         "raw_records_nv",
         "raw_records_aqmon",
-    ]
+    )
     dummy_version = strax.Config(
         default=None,
         track=True,

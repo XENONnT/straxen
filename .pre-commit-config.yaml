@@ -29,12 +29,6 @@ repos:
     -   id: mypy
         additional_dependencies: [types-PyYAML, types-tqdm]
 
--   repo: https://github.com/pycqa/doc8
-    rev: v1.1.1
-    hooks:
-    -   id: doc8
-        files: ^docs/.*\.(rst|md)$
-
 -   repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:

@@ -31,7 +31,7 @@ class OnlineMonitorNV(strax.Plugin):
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) " "channel number.",
+        help="immutabledict mapping subdetector to (min, max) channel number.",
     )
 
     events_area_bounds = straxen.URLConfig(
@@ -43,7 +43,7 @@ class OnlineMonitorNV(strax.Plugin):
     events_area_nbins = straxen.URLConfig(
         type=int,
         default=131,
-        help="Number of bins of histogram of events_nv_area_per_chunk, " "defined value 1 PE/bin",
+        help="Number of bins of histogram of events_nv_area_per_chunk, defined value 1 PE/bin",
     )
 
     def infer_dtype(self):

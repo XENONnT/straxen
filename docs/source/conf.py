@@ -18,8 +18,9 @@
 
 
 # -- Project information -----------------------------------------------------
-import straxen
 import sys
+from typing import Dict
+import straxen
 
 project = "straxen"
 # pylint: disable=redefined-builtin
@@ -126,7 +127,7 @@ htmlhelp_basename = "straxendoc"
 
 # -- Options for LaTeX output ------------------------------------------------
 
-latex_elements = {
+latex_elements: Dict[str, str] = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',

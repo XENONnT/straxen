@@ -22,7 +22,7 @@ class nVETOEventPositions(strax.Plugin):
     position_max_time_nv = straxen.URLConfig(
         default=20,
         infer_type=False,
-        help="Time [ns] within an event use to compute the azimuthal angle of the " "event.",
+        help="Time [ns] within an event use to compute the azimuthal angle of the event.",
     )
 
     nveto_pmt_position_map = straxen.URLConfig(
@@ -187,7 +187,7 @@ def _circ_angle(x: float, y: float) -> float:
         return np.NaN
     else:
         print(x, y)
-        raise ValueError("It should be impossible to arrive here, " "but somehow we managed.")
+        raise ValueError("It should be impossible to arrive here, but somehow we managed.")
 
 
 @numba.njit(cache=True, nogil=True)

@@ -177,7 +177,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
     def _saver(self, dirname, metadata, **kwargs):
         raise NotImplementedError(
-            "Cannot save directly into rucio (yet), " "upload with admix instead"
+            "Cannot save directly into rucio (yet), upload with admix instead"
         )
 
 

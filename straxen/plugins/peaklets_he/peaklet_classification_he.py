@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakletClassificationHighEnergy(PeakletClassification):
-    __doc__ = HE_PREAMBLE + PeakletClassification.__doc__
+    __doc__ = HE_PREAMBLE + (PeakletClassification.__doc__ or "")
     provides = "peaklet_classification_he"
     depends_on = ("peaklets_he",)
     __version__ = "0.0.2"

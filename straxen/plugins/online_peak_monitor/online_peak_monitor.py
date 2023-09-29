@@ -70,7 +70,7 @@ class OnlinePeakMonitor(strax.Plugin):
     lone_hits_min_gap = straxen.URLConfig(
         type=int,
         default=15_000,
-        help="Minimal gap [ns] between consecutive lone-hits. To turn off " "this cut, set to 0.",
+        help="Minimal gap [ns] between consecutive lone-hits. To turn off this cut, set to 0.",
     )
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")

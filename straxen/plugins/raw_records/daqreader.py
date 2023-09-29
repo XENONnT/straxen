@@ -85,7 +85,7 @@ class ArtificialDeadtimeInserted(UserWarning):
         track=False,
         type=immutabledict,
         infer_type=False,
-        help="immutabledict mapping subdetector to (min, max) " "channel number.",
+        help="immutabledict mapping subdetector to (min, max) channel number.",
     ),
 )
 class DAQReader(strax.Plugin):

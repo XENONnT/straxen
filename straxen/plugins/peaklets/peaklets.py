@@ -1,3 +1,5 @@
+from typing import Dict, Tuple, Union
+
 import numba
 import numpy as np
 import strax
@@ -32,9 +34,9 @@ class Peaklets(strax.Plugin):
     extension overlaps with any peaks or other hits.
     """
 
-    depends_on = ("records",)
-    provides = ("peaklets", "lone_hits")
-    data_kind = dict(peaklets="peaklets", lone_hits="lone_hits")
+    depends_on = "records"
+    provides: Union[Tuple[str, ...], str] = ("peaklets", "lone_hits")
+    data_kind: Union[Dict[str, str], str] = dict(peaklets="peaklets", lone_hits="lone_hits")
     parallel = "process"
     compressor = "zstd"
 
@@ -72,13 +74,13 @@ class Peaklets(strax.Plugin):
     peak_split_filter_wing_width = straxen.URLConfig(
         default=70,
         infer_type=False,
-        help="Wing width of moving average filter for " "low-split natural breaks",
+        help="Wing width of moving average filter for low-split natural breaks",
     )
 
     peak_split_min_area = straxen.URLConfig(
         default=40.0,
         infer_type=False,
-        help="Minimum area to evaluate natural breaks criterion. " "Smaller peaks are not split.",
+        help="Minimum area to evaluate natural breaks criterion. Smaller peaks are not split.",
     )
 
     peak_split_iterations = straxen.URLConfig(
@@ -123,13 +125,13 @@ class Peaklets(strax.Plugin):
     saturation_reference_length = straxen.URLConfig(
         default=100,
         infer_type=False,
-        help="Maximum number of reference sample used " "to correct saturated samples",
+        help="Maximum number of reference sample used to correct saturated samples",
     )
 
     saturation_min_reference_length = straxen.URLConfig(
         default=20,
         infer_type=False,
-        help="Minimum number of reference sample used " "to correct saturated samples",
+        help="Minimum number of reference sample used to correct saturated samples",
     )
 
     peaklet_max_duration = straxen.URLConfig(
@@ -139,7 +141,7 @@ class Peaklets(strax.Plugin):
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) " "channel number.",
+        help="immutabledict mapping subdetector to (min, max) channel number.",
     )
 
     hit_min_amplitude = straxen.URLConfig(

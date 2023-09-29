@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-redef"
 __version__ = "2.1.3"
 
 from utilix import uconfig

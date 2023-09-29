@@ -158,7 +158,7 @@ def _convert_to_interval(time_stamps, allow_zero_length):
         "channel_map",
         track=False,
         type=immutabledict,
-        help="frozendict mapping subdetector to (min, max) " "channel number.",
+        help="frozendict mapping subdetector to (min, max) channel number.",
     ),
 )
 class DummyRawRecords(strax.Plugin):

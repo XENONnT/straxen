@@ -1,9 +1,9 @@
 import warnings
-import pytz
+import pytz  # type: ignore
 import numpy as np
 import straxen
 import unittest
-import requests
+import requests  # type: ignore
 
 
 class SCInterfaceTest(unittest.TestCase):

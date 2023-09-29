@@ -7,7 +7,7 @@ export, __all__ = strax.exporter()
 
 @export
 class OnlineMonitorMV(OnlineMonitorNV):
-    __doc__ = OnlineMonitorNV.__doc__.replace("_nv", "_mv").replace("nVeto", "muVeto")
+    __doc__ = (OnlineMonitorNV.__doc__ or "").replace("_nv", "_mv").replace("nVeto", "muVeto")
     depends_on = ("hitlets_mv", "events_mv")
     provides = "online_monitor_mv"
     data_kind = "online_monitor_mv"

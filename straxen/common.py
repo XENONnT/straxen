@@ -1,18 +1,19 @@
+import os
+import os.path as osp
+import json
+from re import match
 import ast
 import configparser
 import gzip
 import inspect
-import typing as ty
-import commentjson
-import json
-import os
-import os.path as osp
-import pickle
+from typing import Union, Dict, Any
 import dill
+import pickle
+import commentjson
+
 import urllib.request
 import numpy as np
 import pandas as pd
-from re import match
 import numba
 import strax
 import straxen
@@ -37,7 +38,7 @@ __all__ += [
     "INFINITY_64BIT_SIGNED",
 ]
 
-straxen_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+straxen_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))  # type: ignore
 
 aux_repo = "https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/"
 
@@ -69,7 +70,7 @@ INFINITY_64BIT_SIGNED = 9223372036854775807
 
 
 @export
-def rotate_perp_wires(x_obs: np.ndarray, y_obs: np.ndarray, angle_extra: ty.Union[float, int] = 0):
+def rotate_perp_wires(x_obs: np.ndarray, y_obs: np.ndarray, angle_extra: Union[float, int] = 0):
     """Returns x and y in the rotated plane where the perpendicular wires area vertically aligned
     (parallel to the y-axis). Accepts addition to the rotation angle with `angle_extra` [deg]
 
@@ -124,7 +125,7 @@ def pmt_positions(xenon1t=False):
 
 
 # In-memory resource cache
-_resource_cache = dict()
+_resource_cache: Dict[str, Any] = dict()
 
 # Formats for which the original file is text, not binary
 _text_formats = ["text", "csv", "json"]

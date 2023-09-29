@@ -1,10 +1,13 @@
 import os.path
+from typing import List, Optional
+
 from unittest import TestCase, skipIf
 import numpy as np
 import strax
 import straxen
 import shutil
 from straxen.test_utils import nt_test_run_id as test_run_id_nT
+from straxen import VetoIntervals, VetoProximity
 
 
 class DummyAqmonHits(strax.Plugin):
@@ -52,8 +55,8 @@ class DummyAqmonHits(strax.Plugin):
     _last_endtime = 0
 
     # Will overwrite this with a mutable default in the test
-    TOTAL_DEADTIME = None
-    TOTAL_SIGNALS = None
+    TOTAL_DEADTIME: Optional[List] = None
+    TOTAL_SIGNALS: Optional[List] = None
 
     # This value should be larger than the duration of a single hit
     gap_ns_between_chunks = 10
@@ -192,18 +195,18 @@ class TestAqmonProcessing(TestCase):
         st._plugin_class_registry = {}
 
         st.set_config(dict(veto_proximity_window=10**99))
-        self.TOTAL_DEADTIME = []
-        self.TOTAL_SIGNALS = []
+        self.TOTAL_DEADTIME: List = []
+        self.TOTAL_SIGNALS: List = []
 
         class DeadTimedDummyAqHits(DummyAqmonHits):
             # Add mutible defaults to give results in the tests below
             TOTAL_DEADTIME = self.TOTAL_DEADTIME
             TOTAL_SIGNALS = self.TOTAL_SIGNALS
 
-        class DummyVi(straxen.VetoIntervals):
+        class DummyVi(VetoIntervals):
             save_when = strax.SaveWhen.ALWAYS
 
-        class DummyVp(straxen.VetoProximity):
+        class DummyVp(VetoProximity):
             save_when = strax.SaveWhen.NEVER
 
         st.register(DeadTimedDummyAqHits)
@@ -211,23 +214,23 @@ class TestAqmonProcessing(TestCase):
         st.register(DummyVp)
         st.register(DummyEventBasics)
         self.st = st
-        self.run = test_run_id_nT
+        self.run_id = test_run_id_nT
         self.assertFalse(np.sum(self.TOTAL_DEADTIME))
-        self.assertFalse(st.is_stored(self.run, "aqmon_hits"))
-        self.assertFalse(st.is_stored(self.run, "veto_intervals"))
+        self.assertFalse(st.is_stored(self.run_id, "aqmon_hits"))
+        self.assertFalse(st.is_stored(self.run_id, "veto_intervals"))
 
     def test_dummy_plugin_works(self):
         """The simplest plugin."""
-        self.st.make(self.run, "aqmon_hits")
+        self.st.make(self.run_id, "aqmon_hits")
         self.assertGreater(np.sum(self.TOTAL_DEADTIME), 0)
         self.assertGreater(np.sum(self.TOTAL_SIGNALS), 0)
-        events = self.st.get_array(self.run, "event_basics")
+        events = self.st.get_array(self.run_id, "event_basics")
         self.assertTrue(len(events))
 
     def test_veto_intervals(self, options=None):
         if options is not None:
             self.st.set_config(options)
-        veto_intervals = self.st.get_array(self.run, "veto_intervals")
+        veto_intervals = self.st.get_array(self.run_id, "veto_intervals")
         # We should have roughly 1/2 the number of ON/OFF signals of intervals
         # Roughly, since we might have patched an ON/OFF
         self.assertAlmostEqual(len(veto_intervals), sum(self.TOTAL_SIGNALS) / 2, delta=2)
@@ -239,10 +242,10 @@ class TestAqmonProcessing(TestCase):
 
     def test_make_veto_proximity(self):
         """I'm not going to do something fancy here, just checking if we can run the code."""
-        veto_intervals = self.st.get_array(self.run, "veto_intervals")
+        veto_intervals = self.st.get_array(self.run_id, "veto_intervals")
         self.st.set_config(dict(event_time_range=[0, int(veto_intervals["endtime"][-1])]))
-        self.st.make(self.run, "event_basics")
-        for c in self.st.get_iter(self.run, "veto_proximity"):
+        self.st.make(self.run_id, "event_basics")
+        for c in self.st.get_iter(self.run_id, "veto_proximity"):
             print(c)
         return self.st
 
@@ -252,7 +255,7 @@ class TestAqmonProcessing(TestCase):
         import cutax
 
         st.register(cutax.cuts.DAQVeto)
-        st.make(self.run, "cut_daq_veto")
+        st.make(self.run_id, "cut_daq_veto")
 
     def tearDown(self) -> None:
         for sf in self.st.storage:

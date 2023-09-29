@@ -85,14 +85,14 @@ class nVETORecorder(strax.Plugin):
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
-        help="frozendict mapping subdetector to (min, max) " "channel number.",
+        help="frozendict mapping subdetector to (min, max) channel number.",
     )
 
     check_raw_record_overlaps_nv = straxen.URLConfig(
         default=True,
         track=False,
         infer_type=False,
-        help="Crash if any of the pulses in raw_records overlap with others " "in the same channel",
+        help="Crash if any of the pulses in raw_records overlap with others in the same channel",
     )
 
     def setup(self):
@@ -374,7 +374,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
                 if n == 1000:
                     raise RuntimeWarning(
-                        "Tried more than 1000 times to find" " neighboring record. This is odd."
+                        "Tried more than 1000 times to find neighboring record. This is odd."
                     )
     return result
 

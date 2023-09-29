@@ -1,3 +1,5 @@
+from typing import Optional
+
 import strax
 import straxen
 import numpy as np
@@ -13,7 +15,7 @@ class EventS2PositionBase(strax.Plugin):
     __version__ = "0.0.0"
     depends_on = ("event_area_per_channel", "event_basics")
 
-    algorithm = None
+    algorithm: Optional[str] = None
     compressor = "zstd"
     parallel = True  # can set to "process" after #82
 

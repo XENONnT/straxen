@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import strax
 import straxen
 from straxen.plugins.peaklets.peaklets import drop_data_top_field
@@ -16,14 +18,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     __version__ = "1.0.2"
 
-    depends_on = ("peaklets", "peaklet_classification", "lone_hits")
+    depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
     provides = "merged_s2s"
 
     s2_merge_max_duration = straxen.URLConfig(
         default=50_000,
         infer_type=False,
-        help="Do not merge peaklets at all if the result would be a peak " "longer than this [ns]",
+        help="Do not merge peaklets at all if the result would be a peak longer than this [ns]",
     )
 
     s2_merge_gap_thresholds = straxen.URLConfig(
@@ -38,7 +40,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     gain_model = straxen.URLConfig(
         infer_type=False,
-        help="PMT gain model. Specify as " "(str(model_config), str(version), nT-->boolean",
+        help="PMT gain model. Specify as (str(model_config), str(version), nT-->boolean",
     )
 
     merge_without_s1 = straxen.URLConfig(

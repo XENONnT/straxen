@@ -6,7 +6,7 @@ import time
 import pickle
 import logging
 import warnings
-from typing import Type, List, Literal
+from typing import Type, List, Literal, Callable, Union, Optional
 from textwrap import dedent
 
 import numpy as np
@@ -277,8 +277,8 @@ def save_interpolation_formatted_map(
     itp_map,
     coordinate_system: List,
     filename: str,
-    map_name: str = None,
-    quantum: float = None,
+    map_name: Optional[str] = None,
+    quantum: Optional[float] = None,
     quantum_dtype=np.int16,
     map_description: str = "",
     compressor: Literal["bz2", "zstd", "blosc", "lz4"] = "zstd",
@@ -303,6 +303,8 @@ def save_interpolation_formatted_map(
     if isinstance(itp_map, list):
         itp_map = np.array(itp_map)
 
+    itp_map_shape: Union[list, int]
+    coordinate_shape: Union[list, int]
     if isinstance(coordinate_system[0][0], str):
         itp_map_shape = list(itp_map.shape)
         coordinate_shape = [c[1][2] for c in coordinate_system]
@@ -318,6 +320,7 @@ def save_interpolation_formatted_map(
             f"coordinate system: {coordinate_shape} do not match"
         )
 
+    q: Union[int, float]
     if quantum is None:
         # if quantum is not specified, just use float32
         q = 1
@@ -353,6 +356,7 @@ def save_interpolation_formatted_map(
     if "pkl" not in filename:
         warnings.warn("Better use .pkl or .pkl.gz extension for map files")
     splitext = os.path.splitext(filename)
+    opener: Callable
     if splitext[-1] == ".gz":
         opener = gzip.open
     else:

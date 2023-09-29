@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import strax
 import straxen
@@ -24,7 +26,7 @@ class CorrectedAreas(strax.Plugin):
 
     __version__ = "0.5.1"
 
-    depends_on = ["event_basics", "event_positions"]
+    depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
     # Descriptor configs
     elife = straxen.URLConfig(

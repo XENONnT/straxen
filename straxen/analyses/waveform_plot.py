@@ -147,7 +147,7 @@ def plot_records_matrix(
 ):
     if seconds_range is None:
         raise ValueError(
-            "You must pass a time selection (e.g. seconds_range) " "to plot_records_matrix."
+            "You must pass a time selection (e.g. seconds_range) to plot_records_matrix."
         )
 
     if single_figure:

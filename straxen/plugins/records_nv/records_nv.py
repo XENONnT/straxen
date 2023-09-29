@@ -51,7 +51,7 @@ class nVETOPulseProcessing(strax.Plugin):
         infer_type=False,
         default="cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id",
         track=True,
-        help="Number of samples to use at the start of the pulse to determine " "the baseline",
+        help="Number of samples to use at the start of the pulse to determine the baseline",
     )
 
     def setup(self):

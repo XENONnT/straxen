@@ -2,7 +2,7 @@ import os
 import tempfile
 from datetime import datetime
 from warnings import warn
-import pytz
+import pytz  # type: ignore
 from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm

@@ -1,11 +1,12 @@
 """S1 Position reconstruction for Xenon-nT
 Author and maintainer: Matteo Guida (guidam@mpi-hd.mpg.de)"""
 
+from typing import Optional
+
 import strax
 import straxen
 import numpy as np
 from warnings import warn
-import time
 
 export, __all__ = strax.exporter()
 
@@ -22,20 +23,13 @@ class PeakS1PositionBase(strax.Plugin):
     __version__ = "0.0.0"
     depends_on = ("peaks",)
 
-    algorithm = None
+    algorithm: Optional[str] = None
     compressor = "zstd"
     parallel = True  # can set to "process" after #82
 
     min_s1_area_s1_posrec = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this", default=1000, infer_type=False
     )
-
-    def infer_dtype(self):
-        if self.algorithm is None:
-            raise NotImplementedError(
-                f"Base class should not be used without "
-                f"algorithm as done in {__class__.__name__}"
-            )
 
     def infer_dtype(self):
         if self.algorithm is None:

@@ -40,7 +40,7 @@ class Events(strax.OverlapWindowPlugin):
     events_seen = 0
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://" "electron_drift_velocity" "?version=ONLINE&run_id=plugin.run_id",
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
@@ -48,13 +48,13 @@ class Events(strax.OverlapWindowPlugin):
     trigger_min_area = straxen.URLConfig(
         default=100,
         type=(int, float),
-        help="Peaks must have more area (PE) than this to " "cause events",
+        help="Peaks must have more area (PE) than this to cause events",
     )
 
     trigger_max_competing = straxen.URLConfig(
         default=7,
         type=int,
-        help="Peaks must have FEWER nearby larger or slightly smaller" " peaks to cause events",
+        help="Peaks must have FEWER nearby larger or slightly smaller peaks to cause events",
     )
 
     left_event_extension = straxen.URLConfig(
@@ -68,13 +68,13 @@ class Events(strax.OverlapWindowPlugin):
     right_event_extension = straxen.URLConfig(
         default=int(0.25e6),
         type=(int, float),
-        help="Extend events this many ns to the right from each " "triggering peak.",
+        help="Extend events this many ns to the right from each triggering peak.",
     )
 
     max_drift_length = straxen.URLConfig(
         default=straxen.tpc_z,
         type=(int, float),
-        help="Total length of the TPC from the bottom of gate to the " "top of cathode wires [cm]",
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
     )
 
     exclude_s1_as_triggering_peaks = straxen.URLConfig(

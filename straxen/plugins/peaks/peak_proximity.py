@@ -41,7 +41,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     nearby_window = straxen.URLConfig(
         default=int(1e7),
         infer_type=False,
-        help="Peaks starting within this time window (on either side)" "in ns count as nearby.",
+        help="Peaks starting within this time window (on either side) in ns count as nearby.",
     )
 
     peak_max_proximity_time = straxen.URLConfig(

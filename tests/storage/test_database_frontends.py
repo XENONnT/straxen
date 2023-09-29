@@ -1,13 +1,14 @@
+import os
 import unittest
 import strax
 from strax.testutils import Records, Peaks
 import straxen
-import os
 import shutil
 import tempfile
 import pymongo
 import datetime
 import socket
+from straxen import RunDB
 
 
 def mongo_uri_not_set():
@@ -61,7 +62,7 @@ class TestRunDBFrontend(unittest.TestCase):
         cls.rundb_sf.collection = collection
 
         # Extra test for regexes
-        class RunDBTestLocal(straxen.RunDB):
+        class RunDBTestLocal(RunDB):
             """Change class to mathc current host too."""
 
             hosts = {"bla": f"{socket.getfqdn()}"}

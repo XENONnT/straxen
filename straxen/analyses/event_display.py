@@ -3,7 +3,7 @@ from datetime import datetime
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
-import pytz
+import pytz  # type: ignore
 import strax
 import straxen
 
@@ -14,7 +14,7 @@ export, __all__ = strax.exporter()
 # Should be of form as below where {v} wil be filled with the value of
 # event['key']:
 #  (('key', '{v} UNIT'), ..)
-PEAK_DISPLAY_DEFAULT_INFO = sum(
+PEAK_DISPLAY_DEFAULT_INFO: list = sum(
     [
         [
             (k.format(i=s_i), u)

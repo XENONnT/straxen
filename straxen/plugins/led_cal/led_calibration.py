@@ -185,7 +185,7 @@ class nVetoExtTimings(strax.Plugin):
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) " "channel number.",
+        help="immutabledict mapping subdetector to (min, max) channel number.",
     )
 
     def infer_dtype(self):

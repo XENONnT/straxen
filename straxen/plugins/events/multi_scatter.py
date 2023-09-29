@@ -31,14 +31,14 @@ class EventInfoMS(strax.Plugin):
     )
     lxe_w = straxen.URLConfig(default=13.7e-3, help="LXe work function in quanta/keV")
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://" "electron_drift_velocity" "?version=ONLINE&run_id=plugin.run_id",
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
     max_drift_length = straxen.URLConfig(
         default=straxen.tpc_z,
         infer_type=False,
-        help="Total length of the TPC from the bottom of gate to the " "top of cathode wires [cm]",
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
     )
 
     ms_window_fac = straxen.URLConfig(
