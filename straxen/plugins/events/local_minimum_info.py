@@ -25,8 +25,7 @@ class LocalMinimumInfo(strax.LoopPlugin):
         (("Number of local maxima of the smoothed peak", "s2_num_loc_max"), np.int16),
         (
             (
-                "Full gap at p% of the valley height of the deepest valley [ns],"
-                "by default p = 90",
+                "Full gap at p% of the valley height of the deepest valley [ns],by default p = 90",
                 "s2_valley_gap",
             ),
             np.float32,
@@ -40,32 +39,40 @@ class LocalMinimumInfo(strax.LoopPlugin):
     divide_90p_width_localmin = straxen.URLConfig(
         default=7.0,
         type=float,
-        help="The peak is smoothed by dividing the 90p width by"
-        "this number, and coverting it into number of samples."
-        "This is then the 'n' used in the smoothing kernel"
-        "shown below.",
+        help=(
+            "The peak is smoothed by dividing the 90p width by"
+            "this number, and coverting it into number of samples."
+            "This is then the 'n' used in the smoothing kernel"
+            "shown below."
+        ),
     )
 
     smoothing_power_localmin = straxen.URLConfig(
         default=3.0,
         type=float,
-        help="The power used in the smoothing filter with a kernel of"
-        "(1-(x/n)^p)^p, where p is the power",
+        help=(
+            "The power used in the smoothing filter with a kernel of"
+            "(1-(x/n)^p)^p, where p is the power"
+        ),
     )
 
     percentage_threshold_localmin = straxen.URLConfig(
         default=0.1,
         type=float,
-        help="The height threshold for the peak as a percentage"
-        "of the maximum, used to reject the low parts"
-        "of the peak in order to find the local extrema.",
+        help=(
+            "The height threshold for the peak as a percentage"
+            "of the maximum, used to reject the low parts"
+            "of the peak in order to find the local extrema."
+        ),
     )
 
     percent_valley_height = straxen.URLConfig(
         default=0.9,
         type=float,
-        help="The percentage of the valley height of the deepest"
-        "valley for which to calculate the valley width",
+        help=(
+            "The percentage of the valley height of the deepest"
+            "valley for which to calculate the valley width"
+        ),
     )
 
     def compute_loop(self, event, peaks):

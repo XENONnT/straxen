@@ -46,10 +46,12 @@ class VetoIntervals(strax.OverlapWindowPlugin):
         default=int(7.2e12),
         track=True,
         type=int,
-        help="Maximum separation between veto stop and start pulses [ns]. "
-        "Set to be >> than the max duration of the run to be able to "
-        "fully store one run into buffer since aqmon-hits are not "
-        "sorted by endtime",
+        help=(
+            "Maximum separation between veto stop and start pulses [ns]. "
+            "Set to be >> than the max duration of the run to be able to "
+            "fully store one run into buffer since aqmon-hits are not "
+            "sorted by endtime"
+        ),
     )
 
     def infer_dtype(self):

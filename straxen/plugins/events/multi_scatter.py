@@ -56,7 +56,10 @@ class EventInfoMS(strax.Plugin):
             ),
             (
                 (
-                    "Corrected S1 area based on average position of S2s in event before time-dep LY correction",
+                    (
+                        "Corrected S1 area based on average position of S2s in event before"
+                        " time-dep LY correction"
+                    ),
                     "cs1_multi_wo_timecorr",
                 ),
                 np.float32,

@@ -40,12 +40,14 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         infer_type=False,
         default=MV_HIT_DEFAULTS["hit_min_amplitude_mv"],
         track=True,
-        help="Minimum hit amplitude in ADC counts above baseline. "
-        "Specify as a tuple of length n_mveto_pmts, or a number, "
-        'or a string like "pmt_commissioning_initial" which means calling '
-        "hitfinder_thresholds.py, "
-        "or a tuple like (correction=str, version=str, nT=boolean),"
-        "which means we are using cmt.",
+        help=(
+            "Minimum hit amplitude in ADC counts above baseline. "
+            "Specify as a tuple of length n_mveto_pmts, or a number, "
+            'or a string like "pmt_commissioning_initial" which means calling '
+            "hitfinder_thresholds.py, "
+            "or a tuple like (correction=str, version=str, nT=boolean),"
+            "which means we are using cmt."
+        ),
     )
 
     check_raw_record_overlaps = straxen.URLConfig(

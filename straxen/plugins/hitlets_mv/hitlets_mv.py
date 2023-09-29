@@ -32,12 +32,14 @@ class muVETOHitlets(nVETOHitlets):
         infer_type=False,
         default=MV_HIT_DEFAULTS["hit_min_amplitude_mv"],
         track=True,
-        help="Minimum hit amplitude in ADC counts above baseline. "
-        "Specify as a tuple of length n_mveto_pmts, or a number, "
-        'or a string like "pmt_commissioning_initial" which means calling '
-        "hitfinder_thresholds.py, "
-        "or a tuple like (correction=str, version=str, nT=boolean),"
-        "which means we are using cmt.",
+        help=(
+            "Minimum hit amplitude in ADC counts above baseline. "
+            "Specify as a tuple of length n_mveto_pmts, or a number, "
+            'or a string like "pmt_commissioning_initial" which means calling '
+            "hitfinder_thresholds.py, "
+            "or a tuple like (correction=str, version=str, nT=boolean),"
+            "which means we are using cmt."
+        ),
     )
 
     min_split_mv = straxen.URLConfig(
@@ -46,8 +48,10 @@ class muVETOHitlets(nVETOHitlets):
         infer_type=False,
         child_option=True,
         parent_option_name="min_split_nv",
-        help="Minimum height difference pe/sample between local minimum and maximum, "
-        "that a pulse get split.",
+        help=(
+            "Minimum height difference pe/sample between local minimum and maximum, "
+            "that a pulse get split."
+        ),
     )
 
     min_split_ratio_mv = straxen.URLConfig(
@@ -56,8 +60,9 @@ class muVETOHitlets(nVETOHitlets):
         infer_type=False,
         child_option=True,
         parent_option_name="min_split_ratio_nv",
-        help="Min ratio between local maximum and minimum to split pulse (zero to switch this "
-        "off).",
+        help=(
+            "Min ratio between local maximum and minimum to split pulse (zero to switch this off)."
+        ),
     )
 
     entropy_template_mv = straxen.URLConfig(
@@ -66,8 +71,10 @@ class muVETOHitlets(nVETOHitlets):
         infer_type=False,
         child_option=True,
         parent_option_name="entropy_template_nv",
-        help='Template data is compared with in conditional entropy. Can be either "flat" or a '
-        "template array.",
+        help=(
+            'Template data is compared with in conditional entropy. Can be either "flat" or a '
+            "template array."
+        ),
     )
 
     entropy_square_data_mv = straxen.URLConfig(
@@ -76,8 +83,10 @@ class muVETOHitlets(nVETOHitlets):
         infer_type=False,
         child_option=True,
         parent_option_name="entropy_square_data_nv",
-        help="Parameter which decides if data is first squared before normalized and compared to "
-        "the template.",
+        help=(
+            "Parameter which decides if data is first squared before normalized and compared to "
+            "the template."
+        ),
     )
 
     gain_model_mv = straxen.URLConfig(

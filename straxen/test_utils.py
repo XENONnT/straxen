@@ -46,8 +46,8 @@ def _overwrite_testing_function_file(function_file):
         # For testing purposes allow loading from 'home/testing_folder'
         warn(
             f"Using local function: {function_file} from {testing_file}! "
-            f"If you are not integrated testing on github you should "
-            f"absolutely remove this file. (See #559)"
+            "If you are not integrated testing on github you should "
+            "absolutely remove this file. (See #559)"
         )
         function_file = testing_file
 
@@ -210,7 +210,8 @@ class DummyRawRecords(strax.Plugin):
                     first_channel, last_channel = self.config["channel_map"][channel_key]
                     rr["channel"] += first_channel
                     if key == "aqmon":
-                        # explicitly clip these channels as we have an additional check higher in the chain
+                        # explicitly clip these channels
+                        # as we have an additional check higher in the chain
                         first_channel = int(min(straxen.AqmonChannels))
                         last_channel = int(max(straxen.AqmonChannels))
 

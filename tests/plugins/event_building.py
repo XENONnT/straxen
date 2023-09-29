@@ -173,12 +173,14 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
 
     self.st.set_config(
         {
-            "se_gain": f"itp_dict://"
-            f"resource://"
-            f"{fake_file_name}"
-            f"?run_id=plugin.run_id"
-            f"&fmt=csv"
-            f"&itp_keys=ab,cd"
+            "se_gain": (
+                "itp_dict://"
+                "resource://"
+                f"{fake_file_name}"
+                "?run_id=plugin.run_id"
+                "&fmt=csv"
+                "&itp_keys=ab,cd"
+            )
         }
     )
     # Try loading some new data with the interpolated dictionary
@@ -236,7 +238,8 @@ def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
         dummy_events, np.concatenate((peaks_for_event_1, peaks_for_event_2))
     )
 
-    # Check for both events if the peak that was identified as main s2 really is the (second-)largest s2 peak in that time range
+    # Check for both events if the peak that was identified as
+    # main s2 really is the (second-)largest s2 peak in that time range
     assert (result[0]["s2_area"] == 70) & (result[0]["alt_s2_area"] == 100)
     assert (result[1]["s2_area"] == 70) & (result[1]["alt_s2_area"] == 100)
 

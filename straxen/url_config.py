@@ -698,7 +698,7 @@ def objects_to_dict(objects: list, key_attr=None, value_attr="value", immutable=
     """
     if not isinstance(objects, Iterable):
         raise TypeError(
-            f"The objects-to-dict protocol expects an iterable "
+            "The objects-to-dict protocol expects an iterable "
             f"of objects but received {type(objects)} instead."
         )
     result = {}
@@ -722,8 +722,7 @@ def objects_to_array(objects: list):
 
     if not isinstance(objects, Iterable):
         raise TypeError(
-            f"The list-to-array protocol expects an "
-            f"iterable but recieved a {type(objects)} instead"
+            f"The list-to-array protocol expects an iterable but recieved a {type(objects)} instead"
         )
 
     return np.array(objects)

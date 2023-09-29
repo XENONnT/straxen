@@ -21,7 +21,8 @@ export, __all__ = strax.exporter()
             (
                 first_sr1_run,
                 straxen.aux_repo
-                + "3548132b55f81a43654dba5141366041e1daaf01/strax_files/XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json",
+                + "3548132b55f81a43654dba5141366041e1daaf01/strax_files/"
+                "XENON1T_tensorflow_nn_pos_20171217_sr1_reformatted.json",
             ),
         ],
     ),  # noqa

@@ -29,7 +29,7 @@ class PluginTestAccumulator:
             if not isinstance(test_name, str):
                 raise ValueError("test_name name must be a string.")
             if not test_name.startswith("test"):
-                raise ValueError(f"Tests should start with test_.., " f"got {test_name} for {func}")
+                raise ValueError(f"Tests should start with test_.., got {test_name} for {func}")
             if hasattr(cls, test_name):
                 raise ValueError(f"{test_name} already used!")
             setattr(cls, test_name, func)

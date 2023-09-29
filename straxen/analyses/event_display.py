@@ -291,8 +291,8 @@ def _event_display(
         ax_ev.tick_params(axis="x", rotation=0)
     title = (
         f"Run {run_id}. Time "
-        f'{str(events["time"])[:-9]}.{str(events["time"])[-9:]}\n'
-        f'{datetime.fromtimestamp(event["time"] / 1e9, tz=pytz.utc)}'
+        f"{str(events['time'])[:-9]}.{str(events['time'])[-9:]}\n"
+        f"{datetime.fromtimestamp(event['time'] / 1e9, tz=pytz.utc)}"
     )
     plt.suptitle(title, y=0.95)
     # NB: reflects panels order
@@ -388,7 +388,7 @@ def plot_single_event(context: strax.Context, run_id, events, event_number=None,
         events = events[events["event_number"] == event_number]
     if len(events) > 1 or len(events) == 0:
         raise ValueError(
-            f"Make sure to provide an event number or a single " f"event. Got {len(events)} events"
+            f"Make sure to provide an event number or a single event. Got {len(events)} events"
         )
 
     return context.event_display(

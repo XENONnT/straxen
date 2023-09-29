@@ -60,10 +60,7 @@ class PulseProcessing(strax.Plugin):
     tail_veto_threshold = straxen.URLConfig(
         default=0,
         infer_type=False,
-        help=(
-            "Minimum peakarea in PE to trigger tail veto."
-            "Set to None, 0 or False to disable veto."
-        ),
+        help="Minimum peakarea in PE to trigger tail veto.Set to None, 0 or False to disable veto.",
     )
 
     tail_veto_duration = straxen.URLConfig(
@@ -89,8 +86,10 @@ class PulseProcessing(strax.Plugin):
     max_veto_value = straxen.URLConfig(
         default=None,
         infer_type=False,
-        help="Optionally pass a HE peak that exceeds this absolute area. "
-        "(if performing a hard veto, can keep a few statistics.)",
+        help=(
+            "Optionally pass a HE peak that exceeds this absolute area. "
+            "(if performing a hard veto, can keep a few statistics.)"
+        ),
     )
 
     # PMT pulse processing options
@@ -127,12 +126,14 @@ class PulseProcessing(strax.Plugin):
         track=True,
         infer_type=False,
         default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
-        help="Minimum hit amplitude in ADC counts above baseline. "
-        "Specify as a tuple of length n_tpc_pmts, or a number,"
-        'or a string like "pmt_commissioning_initial" which means calling'
-        "hitfinder_thresholds.py"
-        "or a tuple like (correction=str, version=str, nT=boolean),"
-        "which means we are using cmt.",
+        help=(
+            "Minimum hit amplitude in ADC counts above baseline. "
+            "Specify as a tuple of length n_tpc_pmts, or a number,"
+            'or a string like "pmt_commissioning_initial" which means calling'
+            "hitfinder_thresholds.py"
+            "or a tuple like (correction=str, version=str, nT=boolean),"
+            "which means we are using cmt."
+        ),
     )
 
     def infer_dtype(self):
@@ -497,7 +498,7 @@ def check_overlaps(records, n_channels):
     if channel != -9999:
         raise ValueError(
             f"Bad data! In channel {channel}, a pulse starts at {time}, "
-            f"BEFORE the previous pulse in that same channel ended "
+            "BEFORE the previous pulse in that same channel ended "
             f"(at {last_end[channel]})"
         )
 

@@ -17,7 +17,8 @@ export, __all__ = strax.exporter()
 def correction_options(get_correction_function):
     """
     A wrapper function for functions here in the get_corrections module
-    Search for special options like ["cmt_run_id", "prefix", "suffix"] and apply arg shuffling accordingly
+    Search for special options like ["cmt_run_id", "prefix", "suffix"]
+    and apply arg shuffling accordingly
     Example confs:
         ('cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
         ('suffix', suffix, 'cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
@@ -105,8 +106,7 @@ def get_correction_from_cmt(run_id, conf):
         correction = cmt.get_corrections_config(run_id, conf[:2])
         if correction.size == 0:
             raise ValueError(
-                f"Could not find a value for {model_conf} "
-                f"please check it is implemented in CMT. "
+                f"Could not find a value for {model_conf} please check it is implemented in CMT. "
             )
 
         if model_conf in corrections_w_file:  # file's name (maps, NN, etc)

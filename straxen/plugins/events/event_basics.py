@@ -51,8 +51,10 @@ class EventBasics(strax.Plugin):
     event_s1_min_coincidence = straxen.URLConfig(
         default=2,
         infer_type=False,
-        help="Event level S1 min coincidence. Should be >= s1_min_coincidence "
-        "in the peaklet classification",
+        help=(
+            "Event level S1 min coincidence. Should be >= s1_min_coincidence "
+            "in the peaklet classification"
+        ),
     )
 
     max_drift_length = straxen.URLConfig(

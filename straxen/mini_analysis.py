@@ -9,8 +9,7 @@ import straxen
 
 export, __all__ = strax.exporter()
 
-ma_doc = (
-    """
+ma_doc = """
 This is a straxen mini-analysis.
 The method takes run_id as its only positional argument,
 and additional arguments through keywords only.
@@ -20,9 +19,7 @@ Unless you specify this through data_kind = array keyword arguments,
 this data will be loaded automatically.
 
 The function takes the same selection arguments as context.get_array:
-"""
-    + select_docs
-)
+""" + select_docs
 
 _hv_bokeh_initialized = False
 
@@ -89,7 +86,7 @@ def mini_analysis(
                 if sec_requested > warn_beyond_sec:
                     tr_str = "the entire run" if tr is None else f"{sec_requested} seconds"
                     raise ValueError(
-                        f"The author of this mini analysis recommends "
+                        "The author of this mini analysis recommends "
                         f"not requesting more than {warn_beyond_sec} seconds. "
                         f"You are requesting {tr_str}. If you wish to proceed, "
                         "pass ignore_time_warning = True."

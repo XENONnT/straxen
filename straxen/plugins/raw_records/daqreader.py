@@ -66,8 +66,10 @@ class ArtificialDeadtimeInserted(UserWarning):
         "readout_threads",
         type=dict,
         track=False,
-        help="Dictionary of the readout threads where the keys "
-        "specify the reader and value the number of threads",
+        help=(
+            "Dictionary of the readout threads where the keys "
+            "specify the reader and value the number of threads"
+        ),
     ),
     strax.Option("daq_input_dir", type=str, track=False, help="Directory where readers put data"),
     # DAQReader settings
@@ -76,9 +78,11 @@ class ArtificialDeadtimeInserted(UserWarning):
         default=1000,
         track=False,
         infer_type=False,
-        help="Time (ns) between pulses indicating a safe break "
-        "in the datastream -- gaps of this size cannot be "
-        "interior to peaklets.",
+        help=(
+            "Time (ns) between pulses indicating a safe break "
+            "in the datastream -- gaps of this size cannot be "
+            "interior to peaklets."
+        ),
     ),
     strax.Option(
         "channel_map",
@@ -169,13 +173,13 @@ class DAQReader(strax.Plugin):
                         f"Found incomplete folder {q}: "
                         f"contains {n_files} files but expected "
                         f"{self.n_readout_threads}. "
-                        f"Waiting for more data."
+                        "Waiting for more data."
                     )
                     if self.source_finished():
                         # For low rates, different threads might end in a
                         # different chunck at the end of a run,
                         # still keep the results in this case.
-                        print(f"Run finished correctly nonetheless: " f"saving the results")
+                        print(f"Run finished correctly nonetheless: saving the results")
                         result.append(q)
                     else:
                         result.append(False)
@@ -198,8 +202,7 @@ class DAQReader(strax.Plugin):
                 raise ValueError(f"Bad data for {path_chunk_i}. Got {thread}")
             if n_counts > self.config["readout_threads"][thread]:
                 raise ValueError(
-                    f"{thread} wrote {n_counts}, expected"
-                    f'{self.config["readout_threads"][thread]}'
+                    f"{thread} wrote {n_counts}, expected{self.config['readout_threads'][thread]}"
                 )
         return sum(counted_files.values())
 
@@ -280,8 +283,8 @@ class DAQReader(strax.Plugin):
                     dead_time_start = break_time - self.config["record_length"] * self.dt_max
                     warnings.warn(
                         f"Data in {path} is so dense that no {min_gap} "
-                        f"ns break exists: data loss inevitable. "
-                        f"Inserting artificial deadtime between "
+                        "ns break exists: data loss inevitable. "
+                        "Inserting artificial deadtime between "
                         f"{dead_time_start} and {end}.",
                         ArtificialDeadtimeInserted,
                     )
@@ -333,7 +336,7 @@ class DAQReader(strax.Plugin):
             if chunk_i == 0:
                 warnings.warn(
                     f"DAQ is being sloppy: there should be no pre dir {pre} "
-                    f"for chunk 0. We're ignoring it.",
+                    "for chunk 0. We're ignoring it.",
                     UserWarning,
                 )
             else:

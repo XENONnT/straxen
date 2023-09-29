@@ -40,7 +40,9 @@ __all__.extend(
     ]
 )
 
-straxen_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))  # type: ignore
+straxen_dir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe()))  # type: ignore
+)
 
 aux_repo = "https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/"
 
@@ -221,8 +223,7 @@ def get_resource(x: str, fmt="text"):
     if "://" in x:
         return resource_from_url(x, fmt=fmt)
     raise FileNotFoundError(
-        f"Cannot open {x} because it is either not stored or we "
-        f"cannot download it from anywhere."
+        f"Cannot open {x} because it is either not stored or we cannot download it from anywhere."
     )
 
 
@@ -441,7 +442,7 @@ def remap_channels(
         _k = get_dtypes(_data)
         if _array_entry not in _k:
             raise ValueError(
-                f"remap_single_entry::\tcannot remap {_array_entry} in data " f"with fields {_k}."
+                f"remap_single_entry::\tcannot remap {_array_entry} in data with fields {_k}."
             )
         buff = np.array(_data[_array_entry])
         for _, _row in remap.iterrows():

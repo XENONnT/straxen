@@ -6,7 +6,8 @@ import holoviews as hv
 import straxen
 
 # Define function which plots points with radius defined in data space:
-# Taken from: https://stackoverflow.com/questions/60361810/how-do-i-set-the-scatter-circle-radius-in-holoviews
+# Taken from:
+# https://stackoverflow.com/questions/60361810/how-do-i-set-the-scatter-circle-radius-in-holoviews
 from holoviews.element.chart import Chart
 from holoviews.plotting.bokeh import PointPlot
 

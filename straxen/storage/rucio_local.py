@@ -65,9 +65,9 @@ class RucioLocalFrontend(strax.StorageFrontend):
         did = key_to_rucio_did(key)
         if allow_incomplete or write:
             raise RuntimeError(
-                f"Allow incomplete/writing is not allowed for "
+                "Allow incomplete/writing is not allowed for "
                 f"{self.__class.__name__} since data might not be "
-                f"continuous"
+                "continuous"
             )
         if self.did_is_local(did):
             return self.backends[0].__class__.__name__, did

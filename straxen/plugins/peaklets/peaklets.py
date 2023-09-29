@@ -67,8 +67,10 @@ class Peaklets(strax.Plugin):
         # for more information
         default=(None, ((0.5, 1.0), (6.0, 0.4)), ((2.5, 1.0), (5.625, 0.4))),  # Reserved
         infer_type=False,
-        help="Natural breaks goodness of fit/split threshold to split "
-        "a peak. Specify as tuples of (log10(area), threshold).",
+        help=(
+            "Natural breaks goodness of fit/split threshold to split "
+            "a peak. Specify as tuples of (log10(area), threshold)."
+        ),
     )
 
     peak_split_filter_wing_width = straxen.URLConfig(
@@ -148,12 +150,14 @@ class Peaklets(strax.Plugin):
         track=True,
         infer_type=False,
         default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
-        help="Minimum hit amplitude in ADC counts above baseline. "
-        "Specify as a tuple of length n_tpc_pmts, or a number,"
-        'or a string like "pmt_commissioning_initial" which means calling'
-        "hitfinder_thresholds.py"
-        "or a tuple like (correction=str, version=str, nT=boolean),"
-        "which means we are using cmt.",
+        help=(
+            "Minimum hit amplitude in ADC counts above baseline. "
+            "Specify as a tuple of length n_tpc_pmts, or a number,"
+            'or a string like "pmt_commissioning_initial" which means calling'
+            "hitfinder_thresholds.py"
+            "or a tuple like (correction=str, version=str, nT=boolean),"
+            "which means we are using cmt."
+        ),
     )
 
     def infer_dtype(self):
@@ -170,8 +174,8 @@ class Peaklets(strax.Plugin):
             # Can fix by re-splitting,
             raise NotImplementedError(
                 f"Raising the peak_min_pmts to {self.peak_min_pmts} "
-                f"interferes with lone_hit definition. "
-                f"See github.com/XENONnT/straxen/issues/295"
+                "interferes with lone_hit definition. "
+                "See github.com/XENONnT/straxen/issues/295"
             )
 
         self.to_pe = self.gain_model
@@ -583,7 +587,8 @@ def _peak_saturation_correction_inner(
             # the same condition applies to the waveform model
             continue
         if np.sum(b[ref]) * to_pe[ch] / np.sum(b_sumwf[ref]) > 1:
-            # The pulse is saturated, but insufficient information is available in the other channels
+            # The pulse is saturated,
+            # but insufficient information is available in the other channels
             # to reliably reconstruct it
             continue
 

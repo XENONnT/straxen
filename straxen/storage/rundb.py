@@ -218,7 +218,7 @@ class RunDB(strax.StorageFrontend):
                 doc = self.collection.find_one(run_query, projection={"_id"})
                 if not doc:
                     raise ValueError(
-                        f"Attempt to register new data for" f" non-existing run {key.run_id}"
+                        f"Attempt to register new data for non-existing run {key.run_id}"
                     )
                 self.collection.find_one_and_update(
                     {"_id": doc["_id"]},

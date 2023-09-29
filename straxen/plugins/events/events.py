@@ -60,9 +60,11 @@ class Events(strax.OverlapWindowPlugin):
     left_event_extension = straxen.URLConfig(
         default=int(0.25e6),
         type=(int, float),
-        help="Extend events this many ns to the left from each "
-        "triggering peak. This extension is added to the maximum "
-        "drift time.",
+        help=(
+            "Extend events this many ns to the left from each "
+            "triggering peak. This extension is added to the maximum "
+            "drift time."
+        ),
     )
 
     right_event_extension = straxen.URLConfig(
@@ -86,8 +88,10 @@ class Events(strax.OverlapWindowPlugin):
     event_s1_min_coincidence = straxen.URLConfig(
         default=2,
         infer_type=False,
-        help="Event level S1 min coincidence. Should be >= "
-        "s1_min_coincidence in the peaklet classification",
+        help=(
+            "Event level S1 min coincidence. Should be >= "
+            "s1_min_coincidence in the peaklet classification"
+        ),
     )
 
     s1_min_coincidence = straxen.URLConfig(

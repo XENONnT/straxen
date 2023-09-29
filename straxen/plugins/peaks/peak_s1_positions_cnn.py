@@ -15,15 +15,19 @@ class PeakS1PositionCNN(PeakS1PositionBase):
     __version__ = "0.0.1"
 
     tf_model_s1_cnn = straxen.URLConfig(
-        default=f"tf://"
-        f"resource://"
-        f"xedocs://posrec_models"
-        f"?version=ONLINE"
-        f"&run_id=plugin.run_id"
-        f"&kind=s1_cnn"
-        f"&fmt=abs_path"
-        f"&attr=value",
-        help='s1 position 3d reconstruction cnn model. Should be opened using the "tf" descriptor. '
-        'Set to "None" to skip computation',
+        default=(
+            f"tf://"
+            f"resource://"
+            f"xedocs://posrec_models"
+            f"?version=ONLINE"
+            f"&run_id=plugin.run_id"
+            f"&kind=s1_cnn"
+            f"&fmt=abs_path"
+            f"&attr=value"
+        ),
+        help=(
+            's1 position 3d reconstruction cnn model. Should be opened using the "tf" descriptor. '
+            'Set to "None" to skip computation'
+        ),
         cache=3,
     )

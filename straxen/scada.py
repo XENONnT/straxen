@@ -43,7 +43,7 @@ class SCADAInterface:
         except ValueError as e:
             raise ValueError(
                 f"Cannot load SCADA information, from your xenon"
-                " config. SCADAInterface cannot be used."
+                f" config. SCADAInterface cannot be used."
             ) from e
 
         try:
@@ -471,7 +471,7 @@ class SCADAInterface:
         # Security check if url is a real url and not something like file://
         if not self._query_url.lower().startswith("https"):
             raise ValueError(
-                "The query URL should start with https! " f"Current URL: {self._query_url}"
+                f"The query URL should start with https! Current URL: {self._query_url}"
             )
 
         response = requests.get(self._query_url, headers={"Authorization": self._token})
@@ -497,8 +497,8 @@ class SCADAInterface:
             query_status = values["status"]
             query_message = values["message"]
             raise ValueError(
-                f"SCADAapi has not returned values for the "
-                f'parameter "{query["name"]}". It returned the '
+                "SCADAapi has not returned values for the "
+                f"parameter \"{query['name']}\". It returned the "
                 f'status "{query_status}" with the message "{query_message}".'
             )
         if isinstance(values, list):
@@ -587,7 +587,7 @@ class SCADAInterface:
         if "token" not in res.keys():
             raise ValueError(
                 "Cannot get security token from Slow Control web API. "
-                f'API returned the following reason: {res["Message"]}'
+                f"API returned the following reason: {res['Message']}"
             )
 
         self._token = res["token"]
@@ -614,13 +614,14 @@ class SCADAInterface:
         """Function which displays how long until the current token expires."""
         if self._token_expire_time:
             print(
-                f'The current token expires at {self._token_expire_time.strftime("%d.%m. %H:%M:%S")} UTC'
+                "The current token expires at"
+                f" {self._token_expire_time.strftime('%d.%m. %H:%M:%S')} UTC"
             )
             hrs, mins = self._token_expires_in()
             print(f"Which is in {hrs} h and {mins} min.")
         else:
             raise ValueError(
-                "You do not have any valid token yet. Please call " '"get_new_token" first".'
+                'You do not have any valid token yet. Please call "get_new_token" first".'
             )
 
     def _token_expires_in(self):

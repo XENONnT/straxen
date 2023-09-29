@@ -13,9 +13,9 @@ repos:
     rev: 23.7.0
     hooks:
     -   id: black
-        args: [--safe, --line-length=100]
+        args: [--safe, --line-length=100, --preview]
     -   id: black-jupyter
-        args: [--safe, --line-length=100]
+        args: [--safe, --line-length=100, --preview]
         language_version: python3.9
 
 -   repo: https://github.com/pycqa/docformatter

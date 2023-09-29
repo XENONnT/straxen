@@ -62,7 +62,7 @@ def records_matrix(
                 dt = max(record_duration, window // max_samples)
         if not ignore_max_sample_warning:
             warnings.warn(
-                f"Matrix would exceed max_samples {max_samples}, " f"downsampling to dt = {dt} ns."
+                f"Matrix would exceed max_samples {max_samples}, downsampling to dt = {dt} ns."
             )
 
     wvm = _records_to_matrix(

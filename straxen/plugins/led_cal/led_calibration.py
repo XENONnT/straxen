@@ -1,6 +1,7 @@
 """
 Dear nT analyser,
-if you want to complain please contact: chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
+if you want to complain please contact:
+    chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
 """
 from immutabledict import immutabledict
 import strax

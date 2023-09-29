@@ -20,7 +20,8 @@ def test_sum_wf(self: PluginTestCase):
     peaks_alt = st_alt.get_array(self.run_id, ("peaks", "peak_basics"))
     peaks = self.st.get_array(self.run_id, ("peaks", "peak_basics"))
     np.testing.assert_array_equal(peaks_alt["data"], peaks["data"])
-    # For the statement assert_array_equal seems false, how can that be? The diff is <1e5 % so maybe numerical?
+    # For the statement assert_array_equal seems false,
+    # how can that be? The diff is <1e5 % so maybe numerical?
     np.testing.assert_array_almost_equal(peaks_alt["area_fraction_top"], peaks["area_fraction_top"])
     np.testing.assert_array_almost_equal(
         peaks["area_fraction_top"],

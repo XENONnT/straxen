@@ -57,20 +57,24 @@ xnt_common_config = dict(
     ),
     # Clustering/classification parameters
     # Event level parameters
-    fdc_map="itp_map://"
-    "resource://"
-    "cmt://"
-    "format://fdc_map_{alg}"
-    "?alg=plugin.default_reconstruction_algorithm"
-    "&version=ONLINE"
-    "&run_id=plugin.run_id"
-    "&fmt=binary"
-    "&scale_coordinates=plugin.coordinate_scales",
-    z_bias_map="itp_map://"
-    "resource://"
-    "XnT_z_bias_map_chargeup_20230329.json.gz?"
-    "fmt=json.gz"
-    "&method=RegularGridInterpolator",
+    fdc_map=(
+        "itp_map://"
+        "resource://"
+        "cmt://"
+        "format://fdc_map_{alg}"
+        "?alg=plugin.default_reconstruction_algorithm"
+        "&version=ONLINE"
+        "&run_id=plugin.run_id"
+        "&fmt=binary"
+        "&scale_coordinates=plugin.coordinate_scales"
+    ),
+    z_bias_map=(
+        "itp_map://"
+        "resource://"
+        "XnT_z_bias_map_chargeup_20230329.json.gz?"
+        "fmt=json.gz"
+        "&method=RegularGridInterpolator"
+    ),
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -89,8 +93,7 @@ xnt_common_opts = common_opts.copy()
 xnt_common_opts.update(
     {
         "register": list(common_opts["register"]) + [],
-        "register_all": list(common_opts["register_all"])
-        + [
+        "register_all": list(common_opts["register_all"]) + [
             straxen.plugins,
         ],
         "use_per_run_defaults": False,
@@ -565,7 +568,7 @@ def xenonnt_simulation(
             )
         if option not in _config_overlap.values():
             raise ValueError(
-                f"Overwrite option {option} does not have mapping from " f"CMT to fax config!"
+                f"Overwrite option {option} does not have mapping from CMT to fax config!"
             )
         for fax_key, cmt_key in _config_overlap.items():
             if cmt_key == option:

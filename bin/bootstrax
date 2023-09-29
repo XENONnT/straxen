@@ -68,8 +68,10 @@ parser.add_argument(
     "--post_process",
     nargs="*",
     default=["veto_intervals"],
-    help="Target(s) for other sub-detectors. If not produced automatically "
-    "when processing tpc data, st.make the requested data later.",
+    help=(
+        "Target(s) for other sub-detectors. If not produced automatically "
+        "when processing tpc data, st.make the requested data later."
+    ),
 )
 parser.add_argument(
     "--fix_target",
@@ -79,8 +81,10 @@ parser.add_argument(
 parser.add_argument(
     "--infer_mode",
     action="store_true",
-    help="Determine best number max-messages and cores for each run "
-    "automatically. Overrides --cores and --max_messages",
+    help=(
+        "Determine best number max-messages and cores for each run "
+        "automatically. Overrides --cores and --max_messages"
+    ),
 )
 parser.add_argument(
     "--delete_live",
@@ -90,14 +94,18 @@ parser.add_argument(
 parser.add_argument(
     "--production",
     action="store_true",
-    help="Run bootstrax in production mode. Assuming test mode otherwise to "
-    "prevent interactions with the runs-database",
+    help=(
+        "Run bootstrax in production mode. Assuming test mode otherwise to "
+        "prevent interactions with the runs-database"
+    ),
 )
 parser.add_argument(
     "--ignore_checks",
     action="store_true",
-    help="Do not use! This disables checks on e.g. the timestamps! Should only "
-    "be used if some run is very valuable but some checks are failing.",
+    help=(
+        "Do not use! This disables checks on e.g. the timestamps! Should only "
+        "be used if some run is very valuable but some checks are failing."
+    ),
 )
 parser.add_argument("--max_messages", type=int, default=10, help="number of max mailbox messages")
 
@@ -286,11 +294,11 @@ if not args.production:
         log.warning(f"Creating {output_folder}")
         os.mkdir(output_folder)
     log.warning(
-        f"\n---------------"
-        f"\nBe aware, bootstrax not running in production mode. Specify with --production."
+        "\n---------------"
+        "\nBe aware, bootstrax not running in production mode. Specify with --production."
         f"\nWriting new data to {output_folder}. Not saving this location in the runsDB."
-        f"\nNot writing to the runs-database."
-        f"\n---------------"
+        "\nNot writing to the runs-database."
+        "\n---------------"
     )
     time.sleep(5)
 else:
@@ -395,7 +403,8 @@ def main():
         set_state("busy")
         process_run(rd)
         log.info(
-            f"bootstrax ({hostname}) finished run {number} in {(now() - t_start).total_seconds()} seconds"
+            f"bootstrax ({hostname}) finished run {number} in"
+            f" {(now() - t_start).total_seconds()} seconds"
         )
         wait_on_delete_thread()
 
@@ -473,7 +482,7 @@ def main_loop():
         # Nothing to do, let's do some cleanup
         if not args.production:
             log.info(
-                f"We have gone through the rundDB in a readonly mode there are no "
+                "We have gone through the rundDB in a readonly mode there are no "
                 f"runs left. We looked at {new_runs_seen} new runs and "
                 f"{failed_runs_seen} previously failed runs."
             )
@@ -755,7 +764,7 @@ def eb_can_process():
             if running_eb:
                 n_ebs_busy += 1
                 log.debug(f"eb{eb_i} is busy")
-    log.info(f"running: {n_ebs_running}\t" f"busy: {n_ebs_busy}\tqueue: {n_untouched_runs}")
+    log.info(f"running: {n_ebs_running}\tbusy: {n_ebs_busy}\tqueue: {n_untouched_runs}")
     if not n_ebs_running:
         return True
     if n_untouched_runs > max_queue_new_runs:
@@ -850,7 +859,7 @@ def infer_mode(rd):
             timeout=np.clip(result["timeout"] * (1.1**n_fails), 500, 3600).astype(int),
         )
         log_warning(
-            f'Repeated failures on {rd["number"]}@{hostname}. ' f"Lowering to {result}",
+            f'Repeated failures on {rd["number"]}@{hostname}. Lowering to {result}',
             priority="info",
             run_id=f'{rd["number"]:06}',
         )
@@ -1013,7 +1022,7 @@ def ping_dbs():
             break
         except Exception as ping_error:
             log.warning(
-                f"Failed to connect to Mongo. Ran into {ping_error}. Sleep " f"for a minute.",
+                f"Failed to connect to Mongo. Ran into {ping_error}. Sleep for a minute.",
                 priority="warning",
             )
             time.sleep(60)
@@ -1510,7 +1519,8 @@ def process_run(rd, send_heartbeats=args.production):
                     kill_process(strax_proc.pid)
                     fail(f"Processing took longer than {timeouts['max_processing_time']} sec")
 
-                # Fail because we are taking a very long time to process despite the run having ended
+                # Fail because we are taking a very long time to process
+                # despite the run having ended
                 endtime = get_end_time(rd)
                 if (
                     endtime is not None
@@ -1520,7 +1530,7 @@ def process_run(rd, send_heartbeats=args.production):
                 ):
                     kill_process(strax_proc.pid)
                     fail(
-                        f"After the run ended, processing did not succeed in "
+                        "After the run ended, processing did not succeed in "
                         f"{timeouts['max_processing_time_after_completion']} sec."
                     )
 
@@ -1530,7 +1540,8 @@ def process_run(rd, send_heartbeats=args.production):
                 ) < now(-timeouts["max_no_write_time"]):
                     kill_process(strax_proc.pid)
                     fail(
-                        f"No data written for {timeouts['max_no_write_time']} sec. Last write is from {last_write}"
+                        f"No data written for {timeouts['max_no_write_time']} sec. Last write is"
+                        f" from {last_write}"
                     )
 
                 if args.production:
@@ -1671,7 +1682,7 @@ def clean_run(*, mongo_id=None, number=None, force=False):
             loc = ddoc["location"]
             if not force and not have_live_data and "raw_records" in ddoc["type"]:
                 log.info(
-                    f"prevent {loc} from being deleted. The live_data has already" f" been removed"
+                    f"prevent {loc} from being deleted. The live_data has already been removed"
                 )
             elif os.path.exists(loc):
                 log.info(f"delete data at {loc}")
@@ -1734,7 +1745,7 @@ def cleanup_db():
                 rd,
                 f"Host {rd['bootstrax']['host']} said it was {state} "
                 f"at {rd['bootstrax']['time']}, but then didn't get further; "
-                f"perhaps it crashed on this run or is still stuck?",
+                "perhaps it crashed on this run or is still stuck?",
             )
 
     # Runs for which, based on the run doc alone, we can tell they are in a bad state
@@ -1801,7 +1812,7 @@ if __name__ == "__main__":
             except Exception as fatal_error:
                 log.error(
                     f"Fatal warning:\tran into {fatal_error}. Try "
-                    f"logging error and restart bootstrax"
+                    "logging error and restart bootstrax"
                 )
                 try:
                     log_warning(f"Fatal warning:\tran into {fatal_error}", priority="error")

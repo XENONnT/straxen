@@ -73,8 +73,10 @@ class AqmonHits(strax.Plugin):
             (0, (int(AqmonChannels.ARTIFICIAL_DEADTIME),)),
         ),
         track=True,
-        help="Minimum hit threshold in ADC*counts above baseline. Specified "
-        "per channel in the format (threshold, (chx,chy),)",
+        help=(
+            "Minimum hit threshold in ADC*counts above baseline. Specified "
+            "per channel in the format (threshold, (chx,chy),)"
+        ),
     )
     baseline_samples_aqmon = straxen.URLConfig(
         default=10,
@@ -84,8 +86,10 @@ class AqmonHits(strax.Plugin):
     check_raw_record_aqmon_overlaps = straxen.URLConfig(
         default=True,
         track=False,
-        help="Crash if any of the pulses in raw_records_aqmon overlap with others "
-        "in the same channel",
+        help=(
+            "Crash if any of the pulses in raw_records_aqmon overlap with others "
+            "in the same channel"
+        ),
     )
 
     depends_on = "raw_records_aqmon"

@@ -35,8 +35,10 @@ class Peaks(strax.Plugin):
     merge_without_s1 = straxen.URLConfig(
         default=True,
         infer_type=False,
-        help="If true, S1s will be igored during the merging. "
-        "It's now possible for a S1 to be inside a S2 post merging",
+        help=(
+            "If true, S1s will be igored during the merging. "
+            "It's now possible for a S1 to be inside a S2 post merging"
+        ),
     )
 
     def infer_dtype(self):

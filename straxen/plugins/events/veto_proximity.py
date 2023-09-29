@@ -23,9 +23,11 @@ class VetoProximity(strax.OverlapWindowPlugin):
 
     event_window_fields = straxen.URLConfig(
         default=("time", "endtime"),
-        help="Fields to determine where to look for overlaps for using "
-        "this plugin in the events. The default uses start and endtime "
-        "of an event, but this can also be the S1 or S2 start/endtime",
+        help=(
+            "Fields to determine where to look for overlaps for using "
+            "this plugin in the events. The default uses start and endtime "
+            "of an event, but this can also be the S1 or S2 start/endtime"
+        ),
     )
 
     veto_proximity_window = straxen.URLConfig(
@@ -35,9 +37,11 @@ class VetoProximity(strax.OverlapWindowPlugin):
         default=int(3.6e12),
         track=True,
         type=int,
-        help="If no next/previous veto is found, we will fill the fields "
-        "time_to_previous_XX with this time. Set to a large number "
-        "such that one will never cut events that are < YY ns.",
+        help=(
+            "If no next/previous veto is found, we will fill the fields "
+            "time_to_previous_XX with this time. Set to a large number "
+            "such that one will never cut events that are < YY ns."
+        ),
     )
 
     veto_names = ["busy", "busy_he", "hev", "straxen_deadtime"]
@@ -57,16 +61,20 @@ class VetoProximity(strax.OverlapWindowPlugin):
                 ),
                 (
                     (
-                        f'Time (absolute value) to previous "{name}"-veto '
-                        f'from "{start_field}" of event [ns]',
+                        (
+                            f'Time (absolute value) to previous "{name}"-veto '
+                            f'from "{start_field}" of event [ns]'
+                        ),
                         f"time_to_previous_{name}",
                     ),
                     np.int64,
                 ),
                 (
                     (
-                        f'Time (absolute value) to next "{name}"-veto '
-                        f'from "{stop_field}" of event [ns]',
+                        (
+                            f'Time (absolute value) to next "{name}"-veto '
+                            f'from "{stop_field}" of event [ns]'
+                        ),
                         f"time_to_next_{name}",
                     ),
                     np.int64,

@@ -18,9 +18,9 @@ class EventPatternFit(strax.Plugin):
 
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig(
-        default="itp_map://resource://cmt://"
-        "s1_aft_xyz_map"
-        "?version=ONLINE&run_id=plugin.run_id&fmt=json",
+        default=(
+            "itp_map://resource://cmt://s1_aft_xyz_map?version=ONLINE&run_id=plugin.run_id&fmt=json"
+        ),
         cache=True,
     )
 
@@ -39,29 +39,35 @@ class EventPatternFit(strax.Plugin):
     s1_optical_map = straxen.URLConfig(
         help="S1 (x, y, z) optical/pattern map.",
         infer_type=False,
-        default="itp_map://"
-        "resource://"
-        "XENONnT_s1_xyz_patterns_corrected_qes_MCva43fa9b_wires.pkl"
-        "?fmt=pkl",
+        default=(
+            "itp_map://"
+            "resource://"
+            "XENONnT_s1_xyz_patterns_corrected_qes_MCva43fa9b_wires.pkl"
+            "?fmt=pkl"
+        ),
     )
 
     s2_optical_map = straxen.URLConfig(
         help="S2 (x, y) optical/pattern map.",
         infer_type=False,
-        default="itp_map://"
-        "resource://"
-        "XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"
-        "?fmt=pkl",
+        default=(
+            "itp_map://"
+            "resource://"
+            "XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"
+            "?fmt=pkl"
+        ),
     )
 
     s2_tf_model = straxen.URLConfig(
         help="S2 (x, y) optical data-driven model",
         infer_type=False,
-        default="tf://"
-        "resource://"
-        "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
-        "?custom_objects=plugin.s2_map_custom_objects"
-        "&fmt=abs_path",
+        default=(
+            "tf://"
+            "resource://"
+            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
+            "?custom_objects=plugin.s2_map_custom_objects"
+            "&fmt=abs_path"
+        ),
     )
 
     mean_pe_per_photon = straxen.URLConfig(
@@ -267,23 +273,23 @@ class EventPatternFit(strax.Plugin):
                 events["s1_area"][mask_s1],
                 events["s1_area_fraction_top"][mask_s1],
             )
-            result["s1_area_fraction_top_continuous_probability"][
-                mask_s1
-            ] = s1_area_fraction_top_probability(*arg)
-            result["s1_area_fraction_top_discrete_probability"][
-                mask_s1
-            ] = s1_area_fraction_top_probability(*arg, "discrete")
+            result["s1_area_fraction_top_continuous_probability"][mask_s1] = (
+                s1_area_fraction_top_probability(*arg)
+            )
+            result["s1_area_fraction_top_discrete_probability"][mask_s1] = (
+                s1_area_fraction_top_probability(*arg, "discrete")
+            )
             arg = (
                 aft_prob[mask_s1],
                 events["s1_area"][mask_s1] / self.mean_pe_per_photon,
                 events["s1_area_fraction_top"][mask_s1],
             )
-            result["s1_photon_fraction_top_continuous_probability"][
-                mask_s1
-            ] = s1_area_fraction_top_probability(*arg)
-            result["s1_photon_fraction_top_discrete_probability"][
-                mask_s1
-            ] = s1_area_fraction_top_probability(*arg, "discrete")
+            result["s1_photon_fraction_top_continuous_probability"][mask_s1] = (
+                s1_area_fraction_top_probability(*arg)
+            )
+            result["s1_photon_fraction_top_discrete_probability"][mask_s1] = (
+                s1_area_fraction_top_probability(*arg, "discrete")
+            )
 
         # alternative s1 events
         mask_alt_s1 = ~np.isnan(alt_aft_prob)
@@ -296,30 +302,31 @@ class EventPatternFit(strax.Plugin):
         result["alt_s1_photon_fraction_top_continuous_probability"][:] = np.nan
         result["alt_s1_photon_fraction_top_discrete_probability"][:] = np.nan
 
-        # compute binomial test only if we have events that have valid aft prob, alt s1 area and alt s1 aft
+        # compute binomial test only if we have events that have valid aft prob,
+        # alt s1 area and alt s1 aft
         if np.sum(mask_alt_s1):
             arg = (
                 alt_aft_prob[mask_alt_s1],
                 events["alt_s1_area"][mask_alt_s1],
                 events["alt_s1_area_fraction_top"][mask_alt_s1],
             )
-            result["alt_s1_area_fraction_top_continuous_probability"][
-                mask_alt_s1
-            ] = s1_area_fraction_top_probability(*arg)
-            result["alt_s1_area_fraction_top_discrete_probability"][
-                mask_alt_s1
-            ] = s1_area_fraction_top_probability(*arg, "discrete")
+            result["alt_s1_area_fraction_top_continuous_probability"][mask_alt_s1] = (
+                s1_area_fraction_top_probability(*arg)
+            )
+            result["alt_s1_area_fraction_top_discrete_probability"][mask_alt_s1] = (
+                s1_area_fraction_top_probability(*arg, "discrete")
+            )
             arg = (
                 alt_aft_prob[mask_alt_s1],
                 events["alt_s1_area"][mask_alt_s1] / self.mean_pe_per_photon,
                 events["alt_s1_area_fraction_top"][mask_alt_s1],
             )
-            result["alt_s1_photon_fraction_top_continuous_probability"][
-                mask_alt_s1
-            ] = s1_area_fraction_top_probability(*arg)
-            result["alt_s1_photon_fraction_top_discrete_probability"][
-                mask_alt_s1
-            ] = s1_area_fraction_top_probability(*arg, "discrete")
+            result["alt_s1_photon_fraction_top_continuous_probability"][mask_alt_s1] = (
+                s1_area_fraction_top_probability(*arg)
+            )
+            result["alt_s1_photon_fraction_top_discrete_probability"][mask_alt_s1] = (
+                s1_area_fraction_top_probability(*arg, "discrete")
+            )
 
         return result
 
@@ -676,7 +683,8 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
         if mode == "discrete":
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
             # TODO:
-            # binomial_test = binomtest(k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
+            # binomial_test = binomtest(
+            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
 

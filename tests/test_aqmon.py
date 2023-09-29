@@ -25,9 +25,11 @@ class DummyAqmonHits(strax.Plugin):
 
     vetos_per_chunk = strax.Config(
         default=list(range(1, 10)),
-        help="The number of ON/OFF signals per chunk, preferably a "
-        "combination of odd and even such that we have both "
-        "unmatched ON/OFF singals",
+        help=(
+            "The number of ON/OFF signals per chunk, preferably a "
+            "combination of odd and even such that we have both "
+            "unmatched ON/OFF singals"
+        ),
     )
     start_with_channel_on = strax.Config(
         default=True, help="If True, start with an ON signal, otherwise start if OFF"

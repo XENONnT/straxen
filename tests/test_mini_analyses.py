@@ -83,7 +83,7 @@ class TestMiniAnalyses(unittest.TestCase):
         message = (
             f"Got more/less data for {target}. If you changed something "
             f"on {target}, please update the numbers in "
-            f"tests/test_mini_analyses.TestMiniAnalyses._expected_test_results"
+            "tests/test_mini_analyses.TestMiniAnalyses._expected_test_results"
         )
         if not straxen.utilix_is_configured():
             # If we do things with dummy maps, things might be slightly different

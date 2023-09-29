@@ -55,7 +55,10 @@ class EventPositions(strax.Plugin):
             comment = f"Main interaction {j}-position, field-distortion corrected (cm)"
             dtype += [(j, np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position, field-distortion corrected (cm)"
+                comment = (
+                    f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position,"
+                    " field-distortion corrected (cm)"
+                )
                 field = f"alt_s{s_i}_{j}_fdc"
                 dtype += [(field, np.float32, comment)]
 
@@ -67,11 +70,17 @@ class EventPositions(strax.Plugin):
             )
             dtype += [(j + "_dv_corr", np.float32, comment)]
             for s_i in [1, 2]:
-                comment = f"Alternative S{s_i} z-position (rel. main S{3 - s_i}), corrected to non-uniform drift velocity (cm)"
+                comment = (
+                    f"Alternative S{s_i} z-position (rel. main S{3 - s_i}), corrected to"
+                    " non-uniform drift velocity (cm)"
+                )
                 field = f"alt_s{s_i}_z"
                 dtype += [(field, np.float32, comment)]
                 # values for corrected Z position
-                comment = f"Alternative S{s_i} z-position (rel. main S{3 - s_i}), corrected to non-uniform drift velocity, duplicated (cm)"
+                comment = (
+                    f"Alternative S{s_i} z-position (rel. main S{3 - s_i}), corrected to"
+                    " non-uniform drift velocity, duplicated (cm)"
+                )
                 field = f"alt_s{s_i}_z_dv_corr"
                 dtype += [(field, np.float32, comment)]
 
@@ -97,7 +106,10 @@ class EventPositions(strax.Plugin):
                     (
                         f"alt_s{s_i}_{j}_naive",
                         np.float32,
-                        f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position with observed position (cm)",
+                        (
+                            f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position"
+                            " with observed position (cm)"
+                        ),
                     )
                 ]
                 fdc_pos += [
@@ -113,7 +125,10 @@ class EventPositions(strax.Plugin):
                 (
                     f"alt_s{s_i}_theta",
                     np.float32,
-                    f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)",
+                    (
+                        f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position"
+                        " (radians)"
+                    ),
                 )
             ]
 
@@ -127,8 +142,10 @@ class EventPositions(strax.Plugin):
     def compute(self, events):
         result = {"time": events["time"], "endtime": strax.endtime(events)}
 
-        # s_i == 0 indicates the main event, while s_i != 0 means alternative S1 or S2 is used based on s_i value
-        # while the other peak is the main one (e.g., s_i == 1 means that the event is defined using altS1 and main S2)
+        # s_i == 0 indicates the main event,
+        # while s_i != 0 means alternative S1 or S2 is used based on s_i value
+        # while the other peak is the main one
+        # (e.g., s_i == 1 means that the event is defined using altS1 and main S2)
         for s_i in [0, 1, 2]:
             # alt_sx_interaction_drift_time is calculated between main Sy and alternative Sx
             drift_time = (

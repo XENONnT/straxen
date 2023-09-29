@@ -31,8 +31,7 @@ class EventS2PositionBase(strax.Plugin):
     def infer_dtype(self):
         if self.algorithm is None:
             raise NotImplementedError(
-                f"Base class should not be used without "
-                f"algorithm as done in {__class__.__name__}"
+                f"Base class should not be used without algorithm as done in {__class__.__name__}"
             )
 
         dtype = [
@@ -75,7 +74,7 @@ class EventS2PositionBase(strax.Plugin):
         if isinstance(model, str):
             raise ValueError(
                 f"open files from tf:// protocol! Got {model} "
-                f"instead, see tests/test_posrec.py for examples."
+                "instead, see tests/test_posrec.py for examples."
             )
         return model
 

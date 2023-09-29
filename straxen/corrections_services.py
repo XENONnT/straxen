@@ -50,7 +50,8 @@ arrays_corrections = [
 
 dict_corrections = ["se_gain", "rel_extraction_eff", "avg_se_gain"]
 
-# needed because we pass these names as strax options which then get paired with the default reconstruction algorithm
+# needed because we pass these names as strax options which then get
+# paired with the default reconstruction algorithm
 # important for apply_cmt_version
 posrec_corrections_basenames = ["s1_xyz_map", "fdc_map", "s2_xy_map"]
 
@@ -109,7 +110,7 @@ class CorrectionsManagementServices:
         return self.__repr__()
 
     def __repr__(self):
-        return str(f'{"XENONnT " if self.is_nt else "XENON1T"}' f"-Corrections_Management_Services")
+        return str(f'{"XENONnT " if self.is_nt else "XENON1T"}-Corrections_Management_Services')
 
     def get_corrections_config(self, run_id, config_model=None):
         """Get context configuration for a given correction :param run_id: run id from runDB :param
@@ -162,8 +163,9 @@ class CorrectionsManagementServices:
                         df = self.interface.read_at(it_correction, when)
                         if df[version].isnull().values.any():
                             raise CMTnanValueError(
-                                f"For {it_correction} there are NaN values, this means no correction available "
-                                f"for {run_id} in version {version}, please check e-logbook for more info "
+                                f"For {it_correction} there are NaN values, this means no"
+                                f" correction available for {run_id} in version {version}, please"
+                                " check e-logbook for more info "
                             )
 
                         if version in "ONLINE":
@@ -175,8 +177,8 @@ class CorrectionsManagementServices:
                 df = self.interface.read_at(correction, when)
                 if df[version].isnull().values.any():
                     raise CMTnanValueError(
-                        f"For {correction} there are NaN values, this means no correction available "
-                        f"for {run_id} in version {version}, please check e-logbook for more info "
+                        f"For {correction} there are NaN values, this means no correction available"
+                        f" for {run_id} in version {version}, please check e-logbook for more info "
                     )
 
                 if (
@@ -241,7 +243,7 @@ class CorrectionsManagementServices:
             # be cautious with very early runs, check that not all are None
             if np.isnan(to_pe).any():
                 raise ValueError(
-                    f"to_pe(PMT gains) values are NaN, no data available "
+                    "to_pe(PMT gains) values are NaN, no data available "
                     f"for {run_id} in the gain model with version"
                 )
 
@@ -258,7 +260,7 @@ class CorrectionsManagementServices:
             pmts_affected = np.argwhere(np.isnan(to_pe))[:, 0]
             raise GainsNotFoundError(
                 f"Gains returned by CMT are None for PMT_i = {pmts_affected}. "
-                f"Cannot proceed with processing. Report to CMT-maintainers."
+                "Cannot proceed with processing. Report to CMT-maintainers."
             )
 
         if (
@@ -321,7 +323,8 @@ class CorrectionsManagementServices:
         # check that 'global' is in the passed string.
 
         if global_version == "latest":
-            # CMT appends columns to the global versions dataframe, so taking last one is the latests
+            # CMT appends columns to the global versions dataframe,
+            # so taking last one is the latests
             global_version = self.global_versions[-1]
 
         if "global" not in global_version:

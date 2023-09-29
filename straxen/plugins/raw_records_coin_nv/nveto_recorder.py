@@ -67,12 +67,14 @@ class nVETORecorder(strax.Plugin):
         infer_type=False,
         default=NV_HIT_DEFAULTS["hit_min_amplitude_nv"],
         track=True,
-        help="Minimum hit amplitude in ADC counts above baseline. "
-        "Specify as a tuple of length n_nveto_pmts, or a number, "
-        'or a string like "pmt_commissioning_initial" which means calling '
-        "hitfinder_thresholds.py, "
-        "or a tuple like (correction=str, version=str, nT=boolean), "
-        "which means we are using cmt.",
+        help=(
+            "Minimum hit amplitude in ADC counts above baseline. "
+            "Specify as a tuple of length n_nveto_pmts, or a number, "
+            'or a string like "pmt_commissioning_initial" which means calling '
+            "hitfinder_thresholds.py, "
+            "or a tuple like (correction=str, version=str, nT=boolean), "
+            "which means we are using cmt."
+        ),
     )
 
     n_lone_records_nv = straxen.URLConfig(
@@ -151,8 +153,9 @@ class nVETORecorder(strax.Plugin):
         )
         del hits
 
-        # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)  since we cannot guarantee the gap
-        # size to be larger. (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
+        # Always save the first and last resolving_time nanoseconds (e.g. 600 ns)
+        # since we cannot guarantee the gap size to be larger.
+        # (We cannot use an OverlapingWindow plugin either since it requires disjoint objects.)
         if len(intervals):
             intervals_with_bounds = np.zeros(len(intervals) + 2, dtype=strax.time_fields)
             intervals_with_bounds["time"][1:-1] = intervals["time"]
@@ -276,7 +279,8 @@ def _compute_lone_records(lone_record, res, lone_ids, n, nveto_channels):
         ch = lr["channel"]
         ch_ind = ch - ch0
         if n_lr[ch_ind] < n:
-            # If we have not found our number of lone_records yet we have to save the index of the event:
+            # If we have not found our number of lone_records yet
+            # we have to save the index of the event:
             lone_ids[ch_ind][n_index[ch_ind]] = ind  # add event index
             n_index[ch_ind] += 1
 
@@ -339,7 +343,8 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
         # Check if record start is in interval:
         m_starts = rr["time"] >= st
-        # <= in m_ends is not ambiguous here since if start and end time of an interval would be the same
+        # <= in m_ends is not ambiguous here since
+        # if start and end time of an interval would be the same
         # they would have been merged into a single interval in coincidence.
         m_ends = rr["time"] <= et
 
@@ -394,8 +399,8 @@ def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
 
     Note:
         The coincidence window is self-extending. If start times of two
-         intervals are exactly resolving_time apart from each other
-         they will be merged into a single interval.
+        intervals are exactly resolving_time apart from each other
+        they will be merged into a single interval.
 
     """
     if len(records):
@@ -439,10 +444,12 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     # generate kernel:
     kernel = np.zeros(nfold)
     kernel[: (nfold - 1)] = 1  # weight last seen by t_diff must be zero since
-    # starting time point e.g. n=4: [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn]  --> 0*dt1 + dt2 + dt3 + dt4
+    # starting time point e.g. n=4:
+    # [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn]  --> 0*dt1 + dt2 + dt3 + dt4
 
     t_cum = convolve1d(t_diff, kernel, mode="constant", origin=(nfold - 1) // 2)
-    # Do not have to check the last n-1 events since by definition they can not satisfy the n-fold coincidence.
+    # Do not have to check the last n-1 events since by definition
+    # they can not satisfy the n-fold coincidence.
     # So we can keep the mask false.
     t_cum = t_cum[: -(nfold - 1)]
     mask[: -(nfold - 1)] = t_cum < resolving_time

@@ -39,8 +39,7 @@ def load_corrected_positions(
 
     if isinstance(cmt_version, (tuple, list)) and len(cmt_version) != len(posrec_algos):
         raise TypeError(
-            f"cmt_version is a list but does not match the "
-            f"posrec_algos ({posrec_algos}) length."
+            f"cmt_version is a list but does not match the posrec_algos ({posrec_algos}) length."
         )
 
     cmt_version = (
@@ -108,8 +107,10 @@ def load_dtypes(posrec_algos):
             dtype += [
                 (
                     (
-                        f"Interaction {xyzr}-position, field-distortion corrected (cm) - "
-                        f"{algo.upper()} posrec algorithm",
+                        (
+                            f"Interaction {xyzr}-position, field-distortion corrected (cm) - "
+                            f"{algo.upper()} posrec algorithm"
+                        ),
                         f"{xyzr}_{algo}",
                     ),
                     np.float32,
@@ -118,23 +119,27 @@ def load_dtypes(posrec_algos):
         dtype += [
             (
                 (
-                    f"Interaction r-position using observed S2 positions directly (cm) -"
-                    f" {algo.upper()} posrec algorithm",
+                    (
+                        "Interaction r-position using observed S2 positions directly (cm) -"
+                        f" {algo.upper()} posrec algorithm"
+                    ),
                     f"r_naive_{algo}",
                 ),
                 np.float32,
             ),
             (
                 (
-                    f"Correction added to r_naive for field distortion (cm) - "
-                    f"{algo.upper()} posrec algorithm",
+                    (
+                        "Correction added to r_naive for field distortion (cm) - "
+                        f"{algo.upper()} posrec algorithm"
+                    ),
                     f"r_field_distortion_correction_{algo}",
                 ),
                 np.float32,
             ),
             (
                 (
-                    f"Interaction angular position (radians) - {algo.upper()} " f"posrec algorithm",
+                    f"Interaction angular position (radians) - {algo.upper()} posrec algorithm",
                     f"theta_{algo}",
                 ),
                 np.float32,

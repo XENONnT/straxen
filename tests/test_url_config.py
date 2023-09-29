@@ -150,13 +150,9 @@ class TestURLConfig(unittest.TestCase):
         """Just a didactic example."""
         self.st.set_config(
             {
-                "test_config": "take://"
-                "resource://"
-                "XENONnT_numbers.json"
-                "?fmt=json"
-                "&take=g1"
-                "&take=v2"
-                "&take=value"
+                "test_config": (
+                    "take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value"
+                )
             }
         )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
@@ -202,12 +198,14 @@ class TestURLConfig(unittest.TestCase):
 
         self.st.set_config(
             {
-                "test_config": f"itp_dict://"
-                f"resource://"
-                f"{fake_file_name}"
-                f"?run_id=plugin.run_id"
-                f"&fmt={dump_as}"
-                f"&itp_keys=ab,cd"
+                "test_config": (
+                    "itp_dict://"
+                    "resource://"
+                    f"{fake_file_name}"
+                    "?run_id=plugin.run_id"
+                    f"&fmt={dump_as}"
+                    "&itp_keys=ab,cd"
+                )
             }
         )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
@@ -231,9 +229,11 @@ class TestURLConfig(unittest.TestCase):
 
         self.st.set_config(
             {
-                "test_config": f"rekey_dict://resource://{fake_file_name}?"
-                f"fmt=json&replace_keys=a,b,c"
-                f"&with_keys=anew,bnew,cnew"
+                "test_config": (
+                    f"rekey_dict://resource://{fake_file_name}?"
+                    "fmt=json&replace_keys=a,b,c"
+                    "&with_keys=anew,bnew,cnew"
+                )
             }
         )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")

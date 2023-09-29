@@ -60,9 +60,7 @@ class TestRucioRemote(unittest.TestCase):
             rr = st.get_array(self.run_id, target)
         except strax.DataNotAvailable as data_error:
             message = (
-                f"Could not find "
-                f"{st.key_for(self.run_id, target)} "
-                f"with the following frontends\n"
+                f"Could not find {st.key_for(self.run_id, target)} with the following frontends\n"
             )
             for sf in st.storage:
                 message += f"\t{sf}\n"

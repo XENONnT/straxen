@@ -78,8 +78,10 @@ class PeaksSubtypes(strax.Plugin):
     s1_s2_window_fac = straxen.URLConfig(
         default=1.1,
         type=(int, float),
-        help="window to look for pS2 after S1 in multiples of full drift time,"
-        "slightly larger to incorporate spread uncertainties of e- drifting",
+        help=(
+            "window to look for pS2 after S1 in multiples of full drift time,"
+            "slightly larger to incorporate spread uncertainties of e- drifting"
+        ),
     )
 
     other_ls2_fac = straxen.URLConfig(
@@ -93,8 +95,10 @@ class PeaksSubtypes(strax.Plugin):
     after_s1_window_ext_fac = straxen.URLConfig(
         default=1,
         type=(int, float),
-        help="extend scanning window after identified large S1s by this much full drift time,"
-        "if no S2 is found in s1_s2_window",
+        help=(
+            "extend scanning window after identified large S1s by this much full drift time,"
+            "if no S2 is found in s1_s2_window"
+        ),
     )
 
     after_s2_window_ext_fac = straxen.URLConfig(

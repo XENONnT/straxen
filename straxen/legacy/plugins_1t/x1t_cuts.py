@@ -24,8 +24,8 @@ class S2Width(strax.CutPlugin):
     """S2 Width cut based on diffusion model The S2 width cut compares the S2 width to what we could
     expect based on its depth in the detector.
 
-    The inputs to
-    this are the drift velocity and the diffusion constant. The allowed variation in S2 width is greater at low
+    The inputs to this are the drift velocity and the diffusion constant.
+    The allowed variation in S2 width is greater at low
     energy (since it is fluctuating statistically) Ref: (arXiv:1102.2865)
     It should be applicable to data regardless of if it ER or NR;
     above cS2 = 1e5 pe ERs the acceptance will go down due to track length effects.
@@ -161,7 +161,7 @@ class S2SingleScatter(strax.CutPlugin):
 class S2Threshold(strax.CutPlugin):
     """The S2 energy at which the trigger is perfectly efficient.
 
-    See: https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:analysis:firstresults:daqtriggerpaxefficiency
+    See: https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:analysis:firstresults:daqtriggerpaxefficiency  # noqa
     Contact: Jelle Aalbers <aalbers@nikhef.nl>
     ported from lax.sciencerun1.py
 

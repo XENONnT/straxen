@@ -58,10 +58,12 @@ class PeakBasics(strax.Plugin):
         default=None,
         track=False,
         infer_type=False,
-        help="Check if the sum area and the sum of area per "
-        "channel are the same. If None, don't do the "
-        "check. To perform the check, set to the desired "
-        " rtol value used e.g. '1e-4' (see np.isclose).",
+        help=(
+            "Check if the sum area and the sum of area per "
+            "channel are the same. If None, don't do the "
+            "check. To perform the check, set to the desired "
+            " rtol value used e.g. '1e-4' (see np.isclose)."
+        ),
     )
 
     def compute(self, peaks):
@@ -139,7 +141,7 @@ class PeakBasics(strax.Plugin):
             peak = peaks[positive_area][p_i]
             area_fraction_off = 1 - area_per_channel_sum[positive_area][p_i] / peak["area"]
             message = (
-                f"Area not calculated correctly, it's "
-                f'{100 * area_fraction_off} % off, time: {peak["time"]}'
+                "Area not calculated correctly, it's "
+                f"{100 * area_fraction_off} % off, time: {peak['time']}"
             )
             raise ValueError(message)

@@ -208,8 +208,8 @@ class MongoUploader(GridFsInterface):
         """
         if not isinstance(file_path_dict, dict):
             raise ValueError(
-                f"file_path_dict must be dict of form "
-                f'"dict(NAME=ABSOLUTE_PATH,...)". Got '
+                "file_path_dict must be dict of form "
+                '"dict(NAME=ABSOLUTE_PATH,...)". Got '
                 f"{type(file_path_dict)} instead"
             )
 
@@ -326,9 +326,7 @@ class MongoDownloader(GridFsInterface):
             return destination_path
 
         else:
-            raise ValueError(
-                f"Config {config_name} cannot be downloaded " f"since it is not stored"
-            )
+            raise ValueError(f"Config {config_name} cannot be downloaded since it is not stored")
 
     def get_abs_path(self, config_name):
         return self.download_single(config_name)
@@ -358,7 +356,7 @@ class MongoDownloader(GridFsInterface):
             if os.access(folder, os.W_OK):
                 return folder
         raise PermissionError(
-            f"Cannot write to any of the cache_folder_alternatives: " f"{cache_folder_alternatives}"
+            f"Cannot write to any of the cache_folder_alternatives: {cache_folder_alternatives}"
         )
 
 

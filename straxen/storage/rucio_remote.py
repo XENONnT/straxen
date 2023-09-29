@@ -63,9 +63,9 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         did = key_to_rucio_did(key)
         if allow_incomplete or write:
             raise RuntimeError(
-                f"Allow incomplete/writing is not allowed for "
+                "Allow incomplete/writing is not allowed for "
                 f"{self.__class.__name__} since data might not be "
-                f"continuous"
+                "continuous"
             )
         try:
             rules = admix.rucio.list_rules(did, state="OK")
@@ -101,7 +101,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         """
         mess = (
             f"You told the rucio backend to download data to {staging_dir}, "
-            f"but that path is not writable by your user"
+            "but that path is not writable by your user"
         )
         if os.path.exists(staging_dir):
             if not os.access(staging_dir, os.W_OK):
@@ -126,9 +126,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         metadata_did = f"{dset_did}-metadata.json"
         downloaded = admix.download(metadata_did, rse=rse, location=self.staging_dir)
         if len(downloaded) != 1:
-            raise ValueError(
-                f"{metadata_did} should be a single file. " f"We found {len(downloaded)}."
-            )
+            raise ValueError(f"{metadata_did} should be a single file. We found {len(downloaded)}.")
         metadata_path = downloaded[0]
         # check again
         if not os.path.exists(metadata_path):
@@ -165,7 +163,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             downloaded = admix.download(chunk_did, rse=rse, location=self.staging_dir)
             if len(downloaded) != 1:
                 raise ValueError(
-                    f"{chunk_did} should be a single file. " f"We found {len(downloaded)}."
+                    f"{chunk_did} should be a single file. We found {len(downloaded)}."
                 )
             assert chunk_path == downloaded[0]
 
@@ -204,7 +202,7 @@ def did_to_dirname(did: str):
     if len(did.split("-")) != 2:
         raise RuntimeError(
             f"The DID {did} does not seem to be a dataset DID. "
-            f"Is it possible you passed a file DID?"
+            "Is it possible you passed a file DID?"
         )
     dirname = did.replace(":", "-").replace("xnt_", "")
     return dirname

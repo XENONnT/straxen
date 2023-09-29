@@ -31,11 +31,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
     s2_merge_gap_thresholds = straxen.URLConfig(
         default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.0)),
         infer_type=False,
-        help="Points to define maximum separation between peaklets to allow "
-        "merging [ns] depending on log10 area of the merged peak\n"
-        "where the gap size of the first point is the maximum gap to allow merging"
-        "and the area of the last point is the maximum area to allow merging. "
-        "The format is ((log10(area), max_gap), (..., ...), (..., ...))",
+        help=(
+            "Points to define maximum separation between peaklets to allow "
+            "merging [ns] depending on log10 area of the merged peak\n"
+            "where the gap size of the first point is the maximum gap to allow merging"
+            "and the area of the last point is the maximum area to allow merging. "
+            "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+        ),
     )
 
     gain_model = straxen.URLConfig(
@@ -46,8 +48,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
     merge_without_s1 = straxen.URLConfig(
         default=True,
         infer_type=False,
-        help="If true, S1s will be igored during the merging. "
-        "It's now possible for a S1 to be inside a S2 post merging",
+        help=(
+            "If true, S1s will be igored during the merging. "
+            "It's now possible for a S1 to be inside a S2 post merging"
+        ),
     )
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
@@ -155,7 +159,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         smallest gaps and keep merging until the new, merged S2 has such a
         large area or gap to adjacent peaks that merging is not required
         anymore.
-        see https://github.com/XENONnT/straxen/pull/548 and https://github.com/XENONnT/straxen/pull/568
+        see https://github.com/XENONnT/straxen/pull/548
+        and https://github.com/XENONnT/straxen/pull/568
 
         :returns: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged

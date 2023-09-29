@@ -27,8 +27,10 @@ class OnlinePeakMonitor(strax.Plugin):
     area_vs_width_nbins = straxen.URLConfig(
         type=int,
         default=60,
-        help="Number of bins for area vs width histogram for online monitor. "
-        "NB: this is a 2D histogram",
+        help=(
+            "Number of bins for area vs width histogram for online monitor. "
+            "NB: this is a 2D histogram"
+        ),
     )
 
     area_vs_width_bounds = straxen.URLConfig(
@@ -40,10 +42,12 @@ class OnlinePeakMonitor(strax.Plugin):
     area_vs_width_cut_string = straxen.URLConfig(
         type=str,
         default="",
-        help="Selection (like selection_str) applied to data for "
-        '"area_vs_width_hist_clean", cuts should be separated using "&"'
-        "For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)"
-        'Default is no selection (other than "area_vs_width_min_gap")',
+        help=(
+            "Selection (like selection_str) applied to data for "
+            '"area_vs_width_hist_clean", cuts should be separated using "&"'
+            "For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)"
+            'Default is no selection (other than "area_vs_width_min_gap")'
+        ),
     )
 
     lone_hits_area_bounds = straxen.URLConfig(
@@ -53,18 +57,22 @@ class OnlinePeakMonitor(strax.Plugin):
     online_peak_monitor_nbins = straxen.URLConfig(
         type=int,
         default=100,
-        help="Number of bins of histogram of online monitor. Will be used "
-        "for: "
-        "lone_hits_area-histogram, "
-        "area_fraction_top-histogram, "
-        "online_se_gain estimate (histogram is not stored), ",
+        help=(
+            "Number of bins of histogram of online monitor. Will be used "
+            "for: "
+            "lone_hits_area-histogram, "
+            "area_fraction_top-histogram, "
+            "online_se_gain estimate (histogram is not stored), "
+        ),
     )
 
     lone_hits_cut_string = straxen.URLConfig(
         type=str,
         default="(area >= 50) & (area <= 250)",
-        help="Selection (like selection_str) applied to data for "
-        '"lone-hits", cuts should be separated using "&")',
+        help=(
+            "Selection (like selection_str) applied to data for "
+            '"lone-hits", cuts should be separated using "&")'
+        ),
     )
 
     lone_hits_min_gap = straxen.URLConfig(

@@ -211,8 +211,8 @@ def event_display_interactive(
             r = p.compute(r, events[0]["time"], events[0]["endtime"])["records"]
         else:
             warnings.warn(
-                f"Can neither find records nor raw_records for run {run_id}, proceed without record "
-                f"matrix."
+                f"Can neither find records nor raw_records for run {run_id}, proceed without record"
+                " matrix."
             )
             plot_record_matrix = False
 

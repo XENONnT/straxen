@@ -86,7 +86,8 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         # 1. Initialization
         result = np.zeros(len(current_peak), self.dtype)
 
-        # 2. Define time window for each peak, we will find small peaks & lone hits within these time windows
+        # 2. Define time window for each peak,
+        # we will find small peaks & lone hits within these time windows
         roi = np.zeros(len(current_peak), dtype=strax.time_fields)
         roi["time"] = current_peak["center_time"] - self.ambience_time_window_backward
         roi["endtime"] = current_peak["center_time"]

@@ -16,8 +16,7 @@ class DistinctChannels(strax.LoopPlugin):
         (
             "alt_s1_distinct_channels",
             np.int32,
-            "Number of PMTs contributing to the secondary S1 "
-            "that do not contribute to the main S1",
+            "Number of PMTs contributing to the secondary S1 that do not contribute to the main S1",
         ),
     ] + strax.time_fields
 

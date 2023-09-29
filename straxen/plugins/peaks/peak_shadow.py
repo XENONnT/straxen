@@ -46,7 +46,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
         default=[15.220, 0.036],
         type=list,
         track=True,
-        help="Fitted position correlation sigma[cm*PE^0.5] and baseline[cm] using in position shadow",
+        help=(
+            "Fitted position correlation sigma[cm*PE^0.5] and baseline[cm] using in position shadow"
+        ),
     )
 
     def get_window_size(self):
@@ -76,7 +78,10 @@ class PeakShadow(strax.OverlapWindowPlugin):
             dtype.append(
                 (
                     (
-                        f"time difference to the previous large {type_str} peak casting largest {tp_desc} shadow [ns]",
+                        (
+                            f"time difference to the previous large {type_str} peak casting largest"
+                            f" {tp_desc} shadow [ns]"
+                        ),
                         f"dt_{key}",
                     ),
                     np.int64,
@@ -174,7 +179,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 array["shadow"] = 0
             array["nearest_dt"] = self.shadow_time_window_backward
 
-            # Calculating shadow, the Major of the plugin. Only record the previous peak casting the largest shadow
+            # Calculating shadow, the Major of the plugin.
+            # Only record the previous peak casting the largest shadow
             if len(current_peak):
                 self.peaks_shadow(
                     current_peak,
@@ -239,7 +245,8 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 # Calculate time shadow
                 new_shadow = casting_peak["area"] * dt**exponent
                 if pos_corr:
-                    # Calculate position shadow which is time shadow with a HalfCauchy PDF multiplier
+                    # Calculate position shadow which is
+                    # time shadow with a HalfCauchy PDF multiplier
                     distance = distance_in_xy(suspicious_peak, casting_peak)
                     distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
                     new_shadow *= 2 / (np.pi * sigma * (1 + (distance / sigma) ** 2))

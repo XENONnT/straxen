@@ -244,9 +244,9 @@ def build_datastructure_doc(is_nt):
                     data_type=this_data_type,
                     columns=add_spaces(st.data_info(this_data_type).to_html(index=False)),
                     kind=this_plugin.data_kind_for(this_data_type),
-                    docstring=this_plugin.__doc__
-                    if this_plugin.__doc__
-                    else "(no plugin description)",
+                    docstring=(
+                        this_plugin.__doc__ if this_plugin.__doc__ else "(no plugin description)"
+                    ),
                     config_options=add_spaces(config_df.to_html(index=False)),
                 )
 

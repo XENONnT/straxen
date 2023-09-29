@@ -37,15 +37,19 @@ class CorrectedAreas(strax.Plugin):
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
     s1_xyz_map = straxen.URLConfig(
-        default="itp_map://resource://cmt://format://"
-        "s1_xyz_map_{algo}?version=ONLINE&run_id=plugin.run_id"
-        "&fmt=json&algo=plugin.default_reconstruction_algorithm",
+        default=(
+            "itp_map://resource://cmt://format://"
+            "s1_xyz_map_{algo}?version=ONLINE&run_id=plugin.run_id"
+            "&fmt=json&algo=plugin.default_reconstruction_algorithm"
+        ),
         cache=True,
     )
     s2_xy_map = straxen.URLConfig(
-        default="itp_map://resource://cmt://format://"
-        "s2_xy_map_{algo}?version=ONLINE&run_id=plugin.run_id"
-        "&fmt=json&algo=plugin.default_reconstruction_algorithm",
+        default=(
+            "itp_map://resource://cmt://format://"
+            "s2_xy_map_{algo}?version=ONLINE&run_id=plugin.run_id"
+            "&fmt=json&algo=plugin.default_reconstruction_algorithm"
+        ),
         cache=True,
     )
 
@@ -53,8 +57,10 @@ class CorrectedAreas(strax.Plugin):
     # thus, by default, there will be no time-dependent correction according to se gain
     avg_se_gain = straxen.URLConfig(
         default="cmt://avg_se_gain?version=ONLINE&run_id=plugin.run_id",
-        help="Nominal single electron (SE) gain in PE / electron extracted. "
-        "Data will be corrected to this value",
+        help=(
+            "Nominal single electron (SE) gain in PE / electron extracted. "
+            "Data will be corrected to this value"
+        ),
     )
 
     # se gain for this run, allowing for using CMT. default to online
@@ -78,12 +84,18 @@ class CorrectedAreas(strax.Plugin):
 
     region_linear = straxen.URLConfig(
         default=28,
-        help="linear cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction",
+        help=(
+            "linear cut (cm) for ab region, check out the note"
+            " https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction"
+        ),
     )
 
     region_circular = straxen.URLConfig(
         default=60,
-        help="circular cut (cm) for ab region, check out the note https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction",
+        help=(
+            "circular cut (cm) for ab region, check out the note"
+            " https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction"
+        ),
     )
 
     # cS2 AFT correction due to photon ionization
@@ -129,8 +141,10 @@ class CorrectedAreas(strax.Plugin):
                     (
                         f"{peak_type}cs2_area_fraction_top{name}",
                         np.float32,
-                        f"Fraction of area seen by the top PMT array for corrected "
-                        f"{peak_name} S2{description}",
+                        (
+                            "Fraction of area seen by the top PMT array for corrected "
+                            f"{peak_name} S2{description}"
+                        ),
                     ),
                 ]
         return dtype

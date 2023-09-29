@@ -32,7 +32,7 @@ class OnlineMonitor(MongoFrontend):
     ):
         if take_only is None:
             raise ValueError(
-                f"Specify which data_types to accept! Otherwise " f"the DataBase will be overloaded"
+                f"Specify which data_types to accept! Otherwise the DataBase will be overloaded"
             )
         if uri is None and readonly:
             uri = get_mongo_uri()
