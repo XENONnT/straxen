@@ -17,7 +17,7 @@ class EventPositions(strax.Plugin):
     should be given as (x, y, z), not (x, y, drift_time).
     """
 
-    depends_on = ('event_basics',)
+    depends_on = ('event_basics','event_nans')
 
     __version__ = '0.3.0'
 
@@ -100,6 +100,9 @@ class EventPositions(strax.Plugin):
                        f'Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)')]
 
         dtype += [('theta', np.float32, f'Main interaction angular position (radians)')]
+        
+        #Add that random nan field just for testing, but don't do anything with it
+        dtype += [('nans', np.float64, f'The nans from event_nans')]
         return dtype + strax.time_fields
 
     def setup(self):
