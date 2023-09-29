@@ -178,10 +178,14 @@ def full_gap_percent_valley(smoothp, max_loc, min_loc, pv, dt):
 
 def bounds_above_percentage_height(p, percent):
     """Finding the index bounds of the peak above given percentage :param p:
-    The peak :param percent: The percentage of the maximum height to cut the
-    peak, this is to reject the tails and noise before and after the bulk of
-    the peak :return: The left and right (exclusive) index of samples above the
-    percent."""
+
+    The peak
+    :param percent: The percentage of the maximum height to cut the
+        peak, this is to reject the tails and noise before and after the
+        bulk of the peak
+    :return: The left and right (exclusive) index of samples above the
+        percent.
+    """
     percent_height = np.max(p) * percent
     above_percent_height = np.where(p >= percent_height)[0]
 

@@ -1358,7 +1358,9 @@ def run_strax(
 def last_file_write_time(match_location: str) -> datetime:
     """Get the datetime in UTC of the last file that was written in raw-
     records* :param match_location: Location where runs are written to :return:
-    TZ aware timestamp."""
+
+    TZ aware timestamp.
+    """
     last_time = datetime.fromtimestamp(0).replace(tzinfo=pytz.utc)
     matched_folders = glob(match_location)
     for folder in matched_folders:

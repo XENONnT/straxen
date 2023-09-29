@@ -551,9 +551,11 @@ def _peak_saturation_correction_inner(
 ):
     """Would add a third level loop in peak_saturation_correction Which is not
     ideal for numba, thus this function is written :param channel_saturated:
+
     (bool, n_channels) :param p: One peak/peaklet :param to_pe: adc to PE
     conversion (length should equal number of PMTs) :param b_sumwf, b_pulse,
-    b_index: Filled buffers."""
+    b_index: Filled buffers.
+    """
     dt = records["dt"][0]
     n_channels = len(channel_saturated)
 

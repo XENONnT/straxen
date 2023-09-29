@@ -291,8 +291,8 @@ def time_and_samples(p, t0=None):
     """Return (x, y) numpy arrays for plotting the waveform data in p using
     'steps-pre'.
 
-    Where x is the time since t0 in seconds (or another time_scale),
-    and y is intensity in PE / ns.
+    Where x is the time since t0 in seconds (or another time_scale), and
+    y is intensity in PE / ns.
     :param p: Peak or other similar strax data type
     :param t0: Zero of time in ns since unix epoch
     """
