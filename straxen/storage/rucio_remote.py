@@ -190,10 +190,8 @@ class RucioSaver(strax.Saver):
 
 @export
 def parse_rucio_did(did: str) -> list:
-    """Parses a Rucio DID and returns a tuple of (number:int, dtype:str, hash:
-
-    str)
-    """
+    """Parses a Rucio DID and returns a tuple of (number:int, dtype:str,
+    hash:str)"""
     scope, name = did.split(":")
     number = int(scope.split("_")[1])
     dtype, hsh = name.split("-")
