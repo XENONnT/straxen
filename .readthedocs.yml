@@ -8,12 +8,13 @@ sphinx:
 
 build:
   os: ubuntu-22.04
+  apt_packages:
+    - graphviz
   tools:
     python: "3.8"
 
 python:
   install:
-    - requirements: extra_requirements/requirements-tests.txt
     - method: pip
       path: .
       extra_requirements:
