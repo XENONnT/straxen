@@ -17,7 +17,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """
     __version__ = '1.0.2'
 
-    depends_on = ('peaklets', 'peaklet_classification', 'lone_hits')
+    depends_on = ('peaklets', 'peaklet_classification_som', 'lone_hits')
     data_kind = 'merged_s2s'
     provides = 'merged_s2s'
 

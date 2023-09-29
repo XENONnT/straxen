@@ -33,13 +33,18 @@ class PeakletClassificationSOM(strax.Plugin):
 
     depends_on = ('peaklets', 'peaklet_classification')
 
-    provides = ('peaklet_classification_som', 'som_peaklet_data')
+    provides = ('peaklet_classification', 'som_peaklet_data')
+    #provides = ('peaklet_classification_som')
     data_kind = {k: k for k in provides}
 
     # parallel = True
 
-    som_files = straxen.URLConfig(default='resource:///stor2/data/LS_data/SOM_data/som_data_v4.1.npz?fmt=npy')
+    som_files = straxen.URLConfig(default='resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy')
+    
+    #dtype = (strax.peak_interval_dtype
+    #         + [('type', np.int8, 'Classification of the peak(let)')])
 
+    
     def infer_dtype(self):
         dtype = dict()
         dtype['peaklet_classification_som'] = (strax.peak_interval_dtype +
@@ -49,6 +54,7 @@ class PeakletClassificationSOM(strax.Plugin):
                                      + [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')])
 
         return dtype
+    
 
     def setup(self):
         self.som_weight_cube = self.som_files['weight_cube']
@@ -63,6 +69,7 @@ class PeakletClassificationSOM(strax.Plugin):
         peaklets_w_type = peaklets.copy()
         mask_non_zero = peaklets_w_type['type'] != 0
         peaklets_w_type = peaklets_w_type[mask_non_zero]
+        #result = np.zeros(len(peaklets), dtype=self.dtype)
         result = np.zeros(len(peaklets), dtype=self.dtype['peaklet_classification_som'])
         som_info = np.zeros(len(peaklets), dtype=self.dtype['som_peaklet_data'])
         som_type, x_som, y_som = recall_populations(peaklets_w_type, self.som_weight_cube,
@@ -87,6 +94,7 @@ class PeakletClassificationSOM(strax.Plugin):
         result['type'][mask_non_zero] = strax_type
         #result['som_type'][mask_non_zero] = som_type + 1
         return dict(peaklet_classification_som=result, som_peaklet_data=som_info)
+        #return result
 
 
 def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):

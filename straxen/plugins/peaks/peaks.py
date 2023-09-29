@@ -16,7 +16,7 @@ class Peaks(strax.Plugin):
     """
     __version__ = '0.1.2'
 
-    depends_on = ('peaklets', 'peaklet_classification', 'merged_s2s')
+    depends_on = ('peaklets', 'peaklet_classification_som',  'merged_s2s')
     data_kind = 'peaks'
     provides = 'peaks'
     parallel = True
