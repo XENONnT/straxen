@@ -277,9 +277,11 @@ class SCADAInterface:
         :param parameter_key: Key to identify queried parameter in the DataFrame
         :param parameter_name: Parameter name in Scada/historian database
         :param fill_gaps: Decides how to fill gaps in which no data was recorded.
-            Only needed for query_type_lab=False. Can be either None, `'interpolation'` or `'forwardfill'`.
-            None keeps the gaps (default), `'interpolation'` uses `pandas.interpolate` and `'forwardfill'`
-            `pandas.ffill`. See https://pandas.pydata.org/docs/ for more information. You can change
+            Only needed for query_type_lab=False.
+            Can be either None, `'interpolation'` or `'forwardfill'`.
+            None keeps the gaps (default), `'interpolation'` uses `pandas.interpolate`,
+            and `'forwardfill'` uses `pandas.ffill`.
+            See https://pandas.pydata.org/docs/ for more information. You can change
             the filling options of the methods with the `filling_kwargs`.
         :param filling_kwargs: Keyword arguments forwarded to pandas.ffill or pandas.interpolate.
         :param every_nth_value: Defines over how many values we compute the average or the nthed
