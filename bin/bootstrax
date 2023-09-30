@@ -34,7 +34,7 @@ import traceback
 import numpy as np
 import pymongo
 from psutil import pid_exists, disk_usage, Process
-import pytz  # type: ignore
+import pytz
 import strax
 import straxen
 import threading
@@ -564,9 +564,10 @@ def keep_target(targets, compare_with, n_fails):
 
 
 def infer_target(rd: dict) -> dict:
-    """Check if the target should be overridden based on the mode of the DAQ for this run :param rd:
+    """Check if the target should be overridden based on the mode of the DAQ for this run.
 
-    rundoc :return: dict with the targets and the targets for post processing.
+    :param rd: rundoc
+    :return: dict with the targets and the targets for post processing
 
     """
     targets = args.targets.copy()
@@ -719,9 +720,9 @@ def eb_can_process():
     eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
 
     Before eb0-2 are also used for processing two criteria have to be fulfilled:
-      - There should be runs waiting to be processed
-      - Eb3-5 should be busy processing for a substantial time.
-    :returns: bool if this host should process a run
+        - There should be runs waiting to be processed
+        - Eb3-5 should be busy processing for a substantial time.
+    :return: bool if this host should process a run
 
     """
 
@@ -778,7 +779,7 @@ def infer_mode(rd):
     Estimating save parameters for running
     bootstrax from:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:eb_speed_tests_2021update
-    :returns: dictionary of how many cores, max_messages and compressor
+    :return: dictionary of how many cores, max_messages and compressor
     should be used based on an estimated data rate.
 
     """
@@ -1031,8 +1032,8 @@ def ping_dbs():
 def get_run(*, mongo_id=None, number=None, full_doc=False):
     """Find and return run doc matching mongo_id or number The bootstrax state is left unchanged.
 
-    :param full_doc: If true (default is False), return the full run doc     rather than just fields
-    used by bootstrax.
+    :param full_doc: If true (default is False), return the full run doc rather than just fields
+        used by bootstrax.
 
     """
     if number is not None:
@@ -1071,9 +1072,12 @@ def set_run_state(rd, state, return_new_doc=True, **kwargs):
 
 
 def check_data_written(rd):
-    """Checks that the data as written in the runs-database is actually available on this machine
-    :param rd: rundoc :return: type bool, False if not all paths exist or if there are no files on
-    this host."""
+    """Checks that the data as written in the runs-database is actually available on this machine.
+
+    :param rd: rundoc
+    :return: type bool, False if not all paths exist or if there are no files on this host.
+
+    """
     files_written = 0
 
     # Fetch the rd again -> to see status of 'data' field
@@ -1096,12 +1100,12 @@ def check_data_written(rd):
 
 
 def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
-    """Check that all files are written.
+    """Check that all files are written. It might be that the savers are still in the process of
+    renaming from folder_temp to folder. Hence allow some wait time to allow the savers to finish.
 
-    It might be that the savers are still in the process of renaming from folder_temp to folder.
-    Hence allow some wait time to allow the savers to finish :param rd: rundoc :param wait_max: max
-    seconds to wait for data to save :param wait_per_cycle: wait this many seconds if the data is
-    not yet     there
+    :param rd: rundoc
+    :param wait_max: max seconds to wait for data to save
+    :param wait_per_cycle: wait this many seconds if the data is not yet there
 
     """
     start = time.time()
@@ -1363,10 +1367,10 @@ def run_strax(
 
 
 def last_file_write_time(match_location: str) -> datetime:
-    """Get the datetime in UTC of the last file that was written in raw- records* :param
-    match_location: Location where runs are written to :return:
+    """Get the datetime in UTC of the last file that was written in raw-records*
 
-    TZ aware timestamp.
+    :param match_location: Location where runs are written to
+    :return: TZ aware timestamp.
 
     """
     last_time = datetime.fromtimestamp(0).replace(tzinfo=pytz.utc)

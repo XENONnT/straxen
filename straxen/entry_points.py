@@ -29,7 +29,7 @@ except ImportError:
     # But if we're not on Python >= 3.8 and the importlib_metadata backport
     # is not installed, we fall back to pkg_resources anyway.
     try:
-        import pkg_resources  # type: ignore
+        import pkg_resources
     except ImportError:
         import warnings
 

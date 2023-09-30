@@ -15,8 +15,11 @@ class InteractiveTPCEventDisplay:
     of interest. In this case the inspector plot plots all events, but only the selected events with
     peaks can be choosen with the event slider.
 
-    :param events: :param peaks: :param selection: :param gains: Can be used to apply to_pe value to
-    area_per_channel     before plotting. PMTs with a to_pe value of zero are displayed     in gray.
+    :param events:
+    :param peaks:
+    :param selection:
+    :param gains: Can be used to apply to_pe value to area_per_channel before plotting. PMTs with a
+        to_pe value of zero are displayed in gray.
 
     """
 

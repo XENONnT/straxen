@@ -97,7 +97,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             a writable location.
         :param download_heavy: Whether or not to allow downloads of the
             heaviest data (raw_records*, less aqmon and MV)
-        :param **kwargs: Passed to strax.FileSystemBackend
+        :param kwargs: Passed to strax.FileSystemBackend
         """
         mess = (
             f"You told the rucio backend to download data to {staging_dir}, "

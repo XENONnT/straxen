@@ -385,8 +385,10 @@ class Peaklets(strax.Plugin):
     def create_outside_peaks_region(peaklets, start, end):
         """Creates time intervals which are outside peaks.
 
-        :param peaklets: Peaklets for which intervals should be     computed. :param start: Chunk
-        start :param end: Chunk end :return: array of strax.time_fields dtype.
+        :param peaklets: Peaklets for which intervals should be computed.
+        :param start: Chunk start
+        :param end: Chunk end
+        :return: array of strax.time_fields dtype.
 
         """
         if not len(peaklets):
@@ -404,10 +406,11 @@ class Peaklets(strax.Plugin):
 
     @staticmethod
     def add_hit_features(hitlets, hit_max_times, peaklets):
-        """Create hits timing features :param hitlets_max: hitlets with only max height time.
+        """Create hits timing features.
 
-        :param peaklets: Peaklets for which intervals should be     computed. :return: array of
-        peaklet_timing dtype.
+        :param hitlets_max: hitlets with only max height time.
+        :param peaklets: Peaklets for which intervals should be computed.
+        :return: array of peaklet_timing dtype.
 
         """
         hits_w_max = np.zeros(
@@ -448,22 +451,20 @@ def peak_saturation_correction(
     use_classification=False,
     n_top_channels=0,
 ):
-    """Correct the area and per pmt area of peaks from saturation :param
-    records: Records :param rlinks: strax.record_links of corresponding
-    records.
+    """Correct the area and per pmt area of peaks from saturation.
 
+    :param records: Records
+    :param rlinks: strax.record_links of corresponding records.
     :param peaks: Peaklets / Peaks
-    :param hitlets: Hitlets found in records to build peaks. (Hitlets
-        are hits including the left/right extension)
-    :param to_pe: adc to PE conversion (length should equal number of
-        PMTs)
-    :param reference_length: Maximum number of reference sample used to
-        correct saturated samples
-    :param min_reference_length: Minimum number of reference sample used
-        to correct saturated samples
-    :param use_classification: Option of using classification to pick
-        only S2
+    :param hitlets: Hitlets found in records to build peaks. (Hitlets are hits including the
+        left/right extension)
+    :param to_pe: adc to PE conversion (length should equal number of PMTs)
+    :param reference_length: Maximum number of reference sample used to correct saturated samples
+    :param min_reference_length: Minimum number of reference sample used to correct saturated
+        samples
+    :param use_classification: Option of using classification to pick only S2
     :param n_top_channels: Number of top array channels.
+
     """
 
     if not len(records):
@@ -553,11 +554,12 @@ def _peak_saturation_correction_inner(
     min_reference_length=20,
 ):
     """Would add a third level loop in peak_saturation_correction Which is not ideal for numba, thus
-    this function is written :param channel_saturated:
+    this function is written.
 
-    (bool, n_channels) :param p: One peak/peaklet :param to_pe: adc to PE
-    conversion (length should equal number of PMTs) :param b_sumwf, b_pulse,
-    b_index: Filled buffers.
+    :param channel_saturated: (bool, n_channels)
+    :param p: One peak/peaklet
+    :param to_pe: adc to PE conversion (length should equal number of PMTs)
+    :param b_sumwf b_pulse b_index: Filled buffers
 
     """
     dt = records["dt"][0]
@@ -643,7 +645,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right, chan
         coincidence in ns.
     :param channel_range: (min/max) channel for the corresponding detector.
 
-    :returns: n_coin_channel of length peaks containing the
+    :return: n_coin_channel of length peaks containing the
         tight coincidence.
 
     """

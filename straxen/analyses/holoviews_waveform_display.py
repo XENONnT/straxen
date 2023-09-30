@@ -18,9 +18,9 @@ def plot_nveto_event_display(context, run_id, hitlets_nv, events_nv):
 def seconds_from(t, t_reference, unit_conversion=int(1e9)):
     """Helper function which concerts times into relative times in specified unit.
 
-    :param t: Time :param t_reference: Reference time e.g. start of an event or first     peak in
-    event. :param unit_conversion: Conversion factor for time units e.g. 10**3     for micro
-    seconds.
+    :param t: Time
+    :param t_reference: Reference time e.g. start of an event or first peak in event.
+    :param unit_conversion: Conversion factor for time units e.g. 10**3 for micro seconds.
 
     """
     return (t - t_reference) / unit_conversion
@@ -35,8 +35,11 @@ def x_zoom_wheel():
 
 @straxen.mini_analysis(requires=["records"], hv_bokeh=True)
 def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array="bottom"):
-    """Plot a PMT array, with colors showing the intensity of light observed in the time range
-    :param array: 'top' or 'bottom', array to show."""
+    """Plot a PMT array, with colors showing the intensity of light observed in the time range.
+
+    :param array: 'top' or 'bottom', array to show.
+
+    """
     import holoviews as hv
 
     pmts = straxen.pmt_positions(xenon1t=config["n_tpc_pmts"] < 300)
@@ -115,15 +118,16 @@ def hvdisp_plot_records_2d(
     plot_library="bokeh",
     hooks=(),
 ):
-    """Plot records in a dynamic 2D histogram of (time, pmt) :param width: Plot width in pixels
-    :param time_stream: holoviews rangex stream to use.
+    """Plot records in a dynamic 2D histogram of (time, pmt)
 
-    If provided,     we assume records is already converted to points (which hopefully     is what
-    the stream is derived from) :param tools: Tools to be used in the interactive plot. Only works
-    with bokeh as plot library. :param plot_library: Default bokeh, library to be used for the
-    plotting. :param width: With of the record matrix in pixel. :param hooks: Hooks to adjust plot
-    settings. :returns: datashader object, records holoview points, RangeX time     stream of
-    records.
+    :param width: Plot width in pixels
+    :param time_stream: holoviews rangex stream to use. If provided, we assume records is already
+        converted to points (which hopefully is what the stream is derived from)
+    :param tools: Tools to be used in the interactive plot. Only works with bokeh as plot library.
+    :param plot_library: Default bokeh, library to be used for the plotting.
+    :param width: With of the record matrix in pixel.
+    :param hooks: Hooks to adjust plot settings.
+    :return: datashader object, records holoview points, RangeX time stream of records.
 
     """
     shader, records, time_stream = _hvdisp_plot_records_2d(
@@ -208,9 +212,10 @@ def plot_record_polygons(
 ):
     """Plots record hv.Points as polygons for record matrix.
 
-    :param record_points: Holoviews Points generated with     _records_to_points. :param
-    center_time: If true treats specified times as center times. :param scaling: Scale times scale
-    by this factor. E.g. if times     should be in µs use 10**-3. :returns: hv.Polygons
+    :param record_points: Holoviews Points generated with _records_to_points.
+    :param center_time: If true treats specified times as center times.
+    :param scaling: Scale times scale by this factor. E.g. if times should be in µs use 10**-3.
+    :return: hv.Polygons
 
     """
     import holoviews as hv
@@ -282,8 +287,9 @@ def get_records_matrix_in_window(polys, x_range, time_slice=10):
 
     poly.apply(get_records_matrix_in_window, streams=[time_stream])
 
-    :param polys: Holoviews Polygons :param x_range: x_range of the RangeX object. :param
-    time_slice: Size of the time slice in [µs] when records     should be drawn.
+    :param polys: Holoviews Polygons
+    :param x_range: x_range of the RangeX object.
+    :param time_slice: Size of the time slice in [µs] when records should be drawn.
 
     """
     if x_range is None:
@@ -301,8 +307,8 @@ def get_records_matrix_in_window(polys, x_range, time_slice=10):
 def _in_window(polys, x_range):
     """Function which checks if a polygon is partially in x_range.
 
-    :param polys: List of ordered dictionaries containing Polygon data. :param x_range: Range which
-    should be tested.
+    :param polys: List of ordered dictionaries containing Polygon data.
+    :param x_range: Range which should be tested.
 
     """
     res = []
@@ -317,10 +323,12 @@ def _in_window(polys, x_range):
 def hvdisp_plot_peak_waveforms(
     t_reference, time_range, peaks, width=600, show_largest=None, time_dim=None
 ):
-    """Plot the sum waveforms of peaks :param width: Plot width in pixels :param show_largest:
-    Maximum number of peaks to show :param time_dim:
+    """Plot the sum waveforms of peaks. Holoviews time dimension; will create new one if not
+    provided.
 
-    Holoviews time dimension; will create new one if not provided.
+    :param width: Plot width in pixels
+    :param show_largest: Maximum number of peaks to show
+    :param time_dim:
 
     """
     import holoviews as hv
@@ -402,7 +410,11 @@ def waveform_display(
     width=600,
     show_largest=None,
 ):
-    """Plot a waveform overview display" :param width: Plot width in pixels."""
+    """Plot a waveform overview display".
+
+    :param width: Plot width in pixels.
+
+    """
     import holoviews as hv
 
     records_points, time_stream = _records_to_points(

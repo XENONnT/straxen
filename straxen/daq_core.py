@@ -5,7 +5,7 @@ import utilix
 from utilix import uconfig
 import straxen
 from datetime import datetime, timedelta
-import pytz  # type: ignore
+import pytz
 
 ceph_folder = "/live_data/xenonnt/"
 output_folder = "/data/xenonnt_processed/"

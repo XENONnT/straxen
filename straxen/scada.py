@@ -4,8 +4,8 @@ import urllib
 import time
 from datetime import datetime
 from datetime import timedelta
-import pytz  # type: ignore
-import requests  # type: ignore
+import pytz
+import requests
 import getpass
 from configparser import NoOptionError
 import pandas as pd
@@ -27,8 +27,9 @@ class SCADAInterface:
     def __init__(self, context=None, use_progress_bar=True):
         """Interface to access the XENONnT slow control data via python.
 
-        :param context: Context you are using e.g. st. This is needed if     you would like to query
-        data via run_ids. :param use_progress_bar: Use a progress bar in the Scada     interface
+        :param context: Context you are using e.g. st. This is needed if you would like to query
+            data via run_ids.
+        :param use_progress_bar: Use a progress bar in the Scada interface
 
         """
         self.we_are_straxen = False
@@ -271,35 +272,19 @@ class SCADAInterface:
     ):
         """Function to query the values of a single parameter from SCData.
 
-        :param start: Start time in ns unix time :param end: End time in
-        ns unix time :param parameter_key: Key to identify queried
-        parameter in the     DataFrame :param parameter_name: Parameter
-        name in Scada/historian database. :param fill_gaps: Decides how
-        to fill gaps in which no data was     recorded. Only needed for
-        query_type_lab=False. Can be either     None, "interpolation" or
-        "forwardfill".None keeps the gaps     (default), "interpolation"
-        uses pandas.interpolate and     "forwardfill" pandas.ffill. See
-        https://pandas.pydata.org/docs/
         :param start: Start time in ns unix time
         :param end: End time in ns unix time
-        :param parameter_key: Key to identify queried parameter in the
-            DataFrame
-        :param parameter_name: Parameter name in Scada/historian
-            database.
-        :param fill_gaps: Decides how to fill gaps in which no data was
-            recorded. Only needed for query_type_lab=False. Can be
-            either None, "interpolation" or "forwardfill".None keeps the
-            gaps (default), "interpolation" uses pandas.interpolate and
-            "forwardfill" pandas.ffill. See
-            https://pandas.pydata.org/docs/ for more information. You
-            can change the filling options of the methods with the
-            filling_kwargs.
-        :param filling_kwargs: Keyword arguments forwarded to
-            pandas.ffill or pandas.interpolate.
-        :param every_nth_value: Defines over how many values we compute
-            the average or the nthed sample in case we down sample the
-            data.
-        :returns: DataFrame with a time and parameter_key column.
+        :param parameter_key: Key to identify queried parameter in the DataFrame
+        :param parameter_name: Parameter name in Scada/historian database
+        :param fill_gaps: Decides how to fill gaps in which no data was recorded.
+            Only needed for query_type_lab=False. Can be either None, `'interpolation'` or `'forwardfill'`.
+            None keeps the gaps (default), `'interpolation'` uses `pandas.interpolate` and `'forwardfill'`
+            `pandas.ffill`. See https://pandas.pydata.org/docs/ for more information. You can change
+            the filling options of the methods with the `filling_kwargs`.
+        :param filling_kwargs: Keyword arguments forwarded to pandas.ffill or pandas.interpolate.
+        :param every_nth_value: Defines over how many values we compute the average or the nthed
+            sample in case we down sample the data.
+        :return: DataFrame with a time and parameter_key column.
 
         """
         if every_nth_value < 1:
@@ -516,11 +501,11 @@ class SCADAInterface:
 
         Thanks to Hagar and Giovanni who provided the file.
 
-        :param pmts: Optional parameter to specify which PMT parameters     should be returned. Can
-        be either a list or array of     channels or just a single one. :param hv: Bool if true
-        names of high voltage channels are     returned. :param current: Bool if true names for the
-        current channels are     returned. :return: dictionary containing short names as keys and
-        scada     parameter names as values.
+        :param pmts: Optional parameter to specify which PMT parameters should be returned. Can be
+            either a list or array of channels or just a single one.
+        :param hv: Bool if true names of high voltage channels are returned.
+        :param current: Bool if true names for the current channels are returned.
+        :return: dictionary containing short names as keys and scada parameter names as values.
 
         """
         if not self.pmt_file_found:
@@ -671,8 +656,10 @@ def convert_time_zone(df, tz):
 def _average_scada(times, values, nvalues):
     """Function which down samples scada values.
 
-    :param times: Unix times of the data points. :param values: Corresponding sensor value :param
-    nvalues: Number of samples we average over. :return: new time values and
+    :param times: Unix times of the data points
+    :param values: Corresponding sensor value
+    :param nvalues: Number of samples we average over
+    :return: new time values and
 
     """
     if len(times) % nvalues:

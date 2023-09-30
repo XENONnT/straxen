@@ -84,10 +84,12 @@ def nt_test_context(
     """Get a dummy context with full nt-like data simulated data (except aqmon) to allow testing
     plugins.
 
-    :param target_context: Which contexts from straxen.contexts to test :param deregister: a list of
-    plugins from the context :param keep_default_storage: if to True, keep the default context
-    storage. Usually, you don't need this since all the data will be     stored in a separate test
-    data folder. :param kwargs: Any kwargs are passed to the target-context :return: a context
+    :param target_context: Which contexts from straxen.contexts to test
+    :param deregister: a list of plugins from the context
+    :param keep_default_storage: if to True, keep the default context storage. Usually, you don't
+        need this since all the data will be stored in a separate test data folder.
+    :param kwargs: Any kwargs are passed to the target-context
+    :return: a context
 
     """
     if not straxen.utilix_is_configured(warning_message=False):
@@ -120,9 +122,9 @@ def nt_test_context(
 def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
     """Hypothesis stragtegy which creates unqiue time intervals.
 
-    :param size: Number of intervals desired. Can be less if non-unique     intervals are found.
-    :param time_range: Time range in which intervals should be. :param allow_zero_length: If true
-    allow zero length intervals.
+    :param size: Number of intervals desired. Can be less if non-unique intervals are found.
+    :param time_range: Time range in which intervals should be.
+    :param allow_zero_length: If true allow zero length intervals.
 
     """
     from hypothesis import strategies

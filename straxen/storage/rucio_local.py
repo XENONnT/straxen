@@ -83,7 +83,8 @@ class RucioLocalFrontend(strax.StorageFrontend):
         """Determines whether or not a given did is on a local RSE. If there is no local RSE,
         returns False.
 
-        :param did: Rucio DID string :return: boolean for whether DID is local or not.
+        :param did: Rucio DID string
+        :return: boolean for whether DID is local or not.
 
         """
         if self.path is None:

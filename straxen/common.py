@@ -78,8 +78,10 @@ def rotate_perp_wires(x_obs: np.ndarray, y_obs: np.ndarray, angle_extra: Union[f
     """Returns x and y in the rotated plane where the perpendicular wires area vertically aligned
     (parallel to the y-axis). Accepts addition to the rotation angle with `angle_extra` [deg]
 
-    :param x_obs: array of x coordinates :param y_obs: array of y coordinates :param angle_extra:
-    extra rotation in [deg] :return: x_rotated, y_rotated
+    :param x_obs: array of x coordinates
+    :param y_obs: array of y coordinates
+    :param angle_extra: extra rotation in [deg]
+    :return: x_rotated, y_rotated
 
     """
     if len(x_obs) != len(y_obs):
@@ -137,8 +139,13 @@ _text_formats = ["text", "csv", "json"]
 
 @export
 def open_resource(file_name: str, fmt="text"):
-    """Open file :param file_name: str, file to open :param fmt: format of the file :return: opened
-    file."""
+    """Open file.
+
+    :param file_name: str, file to open
+    :param fmt: format of the file
+    :return: opened file
+
+    """
     cached_name = _cache_name(file_name, fmt)
     if cached_name in _resource_cache:
         # Retrieve from in-memory cache
@@ -234,13 +241,14 @@ def _cache_name(name: str, fmt: str) -> str:
 
 # Legacy loader for public URL files
 def resource_from_url(html: str, fmt="text"):
-    """Return contents of file or URL html :param html: str, html to the file you are requesting
-    e.g. raw github content :param fmt: str, format to parse contents into.
+    """Return contents of file or URL html.
 
-    Do NOT mutate the result you get. Make a copy if you're not sure. If you mutate resources it
-    will corrupt the cache, cause terrible bugs in unrelated code, tears unnumbered ye shall shed,
-    not even the echo of your lamentations shall pass over the mountains, etc. :return: The file
-    opened as specified per it's format
+    :param html: str, html to the file you are requesting e.g. raw github content
+    :param fmt: str, format to parse contents into. Do NOT mutate the result you get. Make a copy if
+        you're not sure. If you mutate resources it will corrupt the cache, cause terrible bugs in
+        unrelated code, tears unnumbered ye shall shed, not even the echo of your lamentations shall
+        pass over the mountains, etc.
+    :return: The file opened as specified per it's format
 
     """
 
@@ -320,10 +328,12 @@ def get_livetime_sec(context, run_id, things=None):
 def pre_apply_function(data, run_id, target, function_name="pre_apply_function"):
     """Prior to returning the data (from one chunk) see if any function(s) need to be applied.
 
-    :param data: one chunk of data for the requested target(s) :param run_id: Single run-id of of
-    the chunk of data :param target: one or more targets :param function_name: the name of the
-    function to be applied. The     function_name.py should be stored in the database. :return: Data
-    where the function is applied.
+    :param data: one chunk of data for the requested target(s)
+    :param run_id: Single run-id of of the chunk of data
+    :param target: one or more targets
+    :param function_name: the name of the function to be applied. The function_name.py should be
+        stored in the database.
+    :return: Data where the function is applied.
 
     """
     if function_name not in _resource_cache:
@@ -349,11 +359,12 @@ def check_loading_allowed(
 ):
     """Check that the loading of the specified targets is not disallowed.
 
-    :param data: chunk of data :param run_id: run_id of the run :param target: list of targets
-    requested by the user :param max_in_disallowed: the max number of targets that are in the
-    disallowed list :param disallowed: list of targets that are not allowed to be loaded
-    simultaneously by the user :return: data :raise: RuntimeError if more than max_in_disallowed
-    targets are requested
+    :param data: chunk of data
+    :param run_id: run_id of the run
+    :param target: list of targets requested by the user
+    :param max_in_disallowed: the max number of targets that are in the disallowed list
+    :param disallowed: list of targets that are not allowed to be loaded simultaneously by the user
+    :return: data :raise: RuntimeError if more than max_in_disallowed targets are requested
 
     """
     n_targets_in_disallowed = sum([t in disallowed for t in strax.to_str_tuple(target)])
@@ -369,22 +380,17 @@ def remap_channels(
     safe_copy=False,
     _tqdm=False,
 ):
-    """
-    There were some errors in the channel mapping of old data as described in
-        https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-        using this function, we can convert old data to reflect the right channel map
-        while loading the data. We convert both the field 'channel' as well as anything
-        that is an array of the same length of the number of channels.
+    """There were some errors in the channel mapping of old data as described in
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
+    using this function, we can convert old data to reflect the right channel map
+    while loading the data. We convert both the field 'channel' as well as anything
+    that is an array of the same length of the number of channels.
 
     :param data: numpy array of pandas dataframe
-
     :param verbose: print messages while converting data
-
     :param safe_copy: if True make a copy of the data prior to performing manipulations.
         Will prevent overwrites of the internal references but does require more memory.
-
     :param _tqdm: bool (try to) add a tqdm wrapper to show the progress
-
     :return: Correctly mapped data
     """
     # This map shows which channels were recabled. We now have to do the same in software
@@ -399,9 +405,10 @@ def remap_channels(
         """Given an array, replace the 'channel' entry if we had to remap it according to the map of
         channels to be remapped.
 
-        :param _data: data whereof the replace entries should be changed     according to the
-        remapping of channels :param replace: entries (keys/numpy-dtypes) that should be     changed
-        in the data :return: remapped data where each of the replace entries has     been replaced
+        :param _data: data whereof the replace entries should be changed according to the remapping
+            of channels
+        :param replace: entries (keys/numpy-dtypes) that should be changed in the data
+        :return: remapped data where each of the replace entries has been replaced
 
         """
         data_keys = get_dtypes(_data)
@@ -434,9 +441,11 @@ def remap_channels(
         saturated_channel (which is of length n_pmts) where the entries of the PMT_old will be
         replaced by the entries of PMT_new and vise versa.
 
-        :param _data: reshuffle the _data according to for _entry     according to the map of
-        channels to be remapped :param _array_entry: key or dtype of the data. NB: should be array
-        whereof the length equals the number of PMTs! :return: correctly mapped data
+        :param _data: reshuffle the _data according to for _entry according to the map of channels
+            to be remapped
+        :param _array_entry: key or dtype of the data. NB: should be array whereof the length equals
+            the number of PMTs!
+        :return: correctly mapped data
 
         """
         _k = get_dtypes(_data)
@@ -456,9 +465,10 @@ def remap_channels(
         """Look for entries in the data of n_chs length. If found, assume it should be remapped
         according to the map.
 
-        :param channel_data: data to be converted according to the map     of channels to be
-        remapped. This data is checked for any     entries (dtype names) that have a length equal to
-        the n_chs     and if so, is remapped accordingly :param n_chs: the number of channels
+        :param channel_data: data to be converted according to the map of channels to be remapped.
+            This data is checked for any entries (dtype names) that have a length equal to the n_chs
+            and if so, is remapped accordingly
+        :param n_chs: the number of channels
         :return: correctly mapped data
 
         """
@@ -503,12 +513,14 @@ def remap_old(data, targets, run_id, works_on_target=""):
     """If the data is of before the time sectors were re-cabled, apply a software remap otherwise
     just return the data is it is.
 
-    :param data: numpy array of data with at least the field time. It is     assumed the data is
-    sorted by time :param targets: targets in the st.get_array to get :param run_id: required
-    positional argument of     apply_function_to_data in strax :param works_on_target: regex match
-    string to match any of the     targets. By default set to '' such that any target in the targets
-    would be remapped (which is what we want as channels are     present in most data types). If one
-    only wants records (no raw-     records) and peaks* use e.g. works_on_target = 'records|peaks'.
+    :param data: numpy array of data with at least the field time. It is assumed the data is sorted
+        by time
+    :param targets: targets in the st.get_array to get
+    :param run_id: required positional argument of apply_function_to_data in strax
+    :param works_on_target: regex match string to match any of the targets. By default set to ''
+        such that any target in the targets would be remapped (which is what we want as channels are
+        present in most data types). If one only wants records (no raw- records) and peaks* use e.g.
+        works_on_target = 'records|peaks'.
 
     """
 
@@ -530,7 +542,8 @@ def remap_old(data, targets, run_id, works_on_target=""):
 def get_dtypes(_data):
     """Return keys/dtype names of pd.DataFrame or numpy array.
 
-    :param _data: data to get the keys/dtype names :return: keys/dtype names
+    :param _data: data to get the keys/dtype names
+    :return: keys/dtype names
 
     """
     if isinstance(_data, np.ndarray):
@@ -542,11 +555,17 @@ def get_dtypes(_data):
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _swap_values_in_array(data_arr, buffer, items, replacements):
-    """Fill buffer for item[k] -> replacements[k] :param data_arr: numpy array of data :param
-    buffer: copy of data_arr where the replacements of items will be saved :param items: array of
-    len x containing values that are in data_arr and need to be replaced with the corresponding item
-    in replacements :param replacements: array of len x containing the values that should replace
-    the corresponding item in items :return: the buffer reflecting the changes."""
+    """Fill buffer for item[k] -> replacements[k]
+
+    :param data_arr: numpy array of data
+    :param buffer: copy of data_arr where the replacements of items will be saved
+    :param items: array of len x containing values that are in data_arr and need to be replaced with
+        the corresponding item in replacements
+    :param replacements: array of len x containing the values that should replace the corresponding
+        item in items
+    :return: the buffer reflecting the changes
+
+    """
     for i, val in enumerate(data_arr):
         for k, it in enumerate(items):
             if val == it:

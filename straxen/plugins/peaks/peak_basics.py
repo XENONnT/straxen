@@ -115,11 +115,12 @@ class PeakBasics(strax.Plugin):
         """Check if the area of the sum-wf is the same as the total area (if the area of the peak is
         positively defined).
 
-        :param area_per_channel_sum: the summation of the     peaks['area_per_channel'] which will
-        be checked against the     values of peaks['area']. :param peaks: array of peaks. :param
-        rtol: relative tolerance for difference between     area_per_channel_sum and peaks['area'].
-        See np.isclose. :raises: ValueError if the peak area and the area-per-channel     sum are
-        not sufficiently close
+        :param area_per_channel_sum: the summation of the peaks['area_per_channel'] which will be
+            checked against the values of peaks['area'].
+        :param peaks: array of peaks.
+        :param rtol: relative tolerance for difference between area_per_channel_sum and
+            peaks['area']. See np.isclose.
+        :raises: ValueError if the peak area and the area-per-channel sum are not sufficiently close
 
         """
         positive_area = peaks["area"] > 0

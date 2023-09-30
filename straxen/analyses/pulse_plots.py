@@ -146,15 +146,18 @@ def plot_pulses(
 ):
     """Plots nveto pulses for a list of records.
 
-    :param context: Context to be used. :param plot_hits: If True plot hit boundaries including the
-    left and     right extension as orange shaded regions. :param plot_median: If true plots pulses
-    sample median as dotted     line. :param max_plots: Limits the number of figures. If you would
-    like to     plot more pulses you should put the plots in a PDF. :param store_pdf: If true
-    figures are put to a PDF instead of     plotting them to your notebook. The file name is
-    automatically     generated including the time range and run_id. :param path: Relative path
-    where the PDF should be stored. By     default it is the directory of the notebook. :param
-    detector_ending: Ending of the corresponding detector. Empty     string for TPC '_nv' for
-    neutron-veto and '_mv' muon-veto.
+    :param context: Context to be used.
+    :param plot_hits: If True plot hit boundaries including the left and right extension as orange
+        shaded regions.
+    :param plot_median: If true plots pulses sample median as dotted line.
+    :param max_plots: Limits the number of figures. If you would like to plot more pulses you should
+        put the plots in a PDF.
+    :param store_pdf: If true figures are put to a PDF instead of plotting them to your notebook.
+        The file name is automatically generated including the time range and run_id.
+    :param path: Relative path where the PDF should be stored. By default it is the directory of the
+        notebook.
+    :param detector_ending: Ending of the corresponding detector. Empty string for TPC '_nv' for
+        neutron-veto and '_mv' muon-veto.
 
     """
     # Register records plugin to get settings

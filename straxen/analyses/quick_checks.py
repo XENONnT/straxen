@@ -19,11 +19,12 @@ def plot_peaks_aft_histogram(
 ):
     """Plot side-by-side (area, width) histograms of the peak rate and mean area fraction top.
 
-    :param pe_bins: Array of bin edges for the peak area dimension [PE] :param rt_bins: array of bin
-    edges for the rise time dimension [ns] :param extra_labels: List of (area, risetime, text,
-    color) extra     labels to put on the plot :param rate_range: Range of rates to show
-    [peaks/(bin*s)] :param aft_range: Range of mean S1 area fraction top / bin to show :param
-    figsize: Figure size to use
+    :param pe_bins: Array of bin edges for the peak area dimension [PE]
+    :param rt_bins: array of bin edges for the rise time dimension [ns]
+    :param extra_labels: List of (area, risetime, text, color) extra labels to put on the plot
+    :param rate_range: Range of rates to show [peaks/(bin*s)]
+    :param aft_range: Range of mean S1 area fraction top / bin to show
+    :param figsize: Figure size to use
 
     """
     livetime_sec = straxen.get_livetime_sec(context, run_id, peaks)
@@ -95,10 +96,11 @@ def event_scatter(
 ):
     """Plot a (cS1, cS2) event scatter plot.
 
-    :param show_single: Show events with only S1s or only S2s just     besides the axes. :param s:
-    Scatter size :param color_dim: Dimension to use for the color. Must be in     event_info. :param
-    color_range: Minimum and maximum color value to show. :param figsize: (w, h) figure size to use,
-    or leave None to not make     a new matplotlib figure.
+    :param show_single: Show events with only S1s or only S2s just besides the axes.
+    :param s: Scatter size
+    :param color_dim: Dimension to use for the color. Must be in event_info.
+    :param color_range: Minimum and maximum color value to show.
+    :param figsize: (w, h) figure size to use, or leave None to not make a new matplotlib figure.
 
     """
     if figsize is not None:
@@ -195,24 +197,21 @@ def plot_energy_spectrum(
 
     :param exposure_kg_sec: Exposure in kg * sec
     :param unit: Unit to plot spectrum in. Can be either:
-      - events (events per bin)
-      - kg_day_kev (events per kg day keV)
-      - tonne_day_kev (events per tonne day keV)
-      - tonne_year_kev (events per tonne year keV)
-    Defaults to kg_day_kev if exposure_kg_sec is provided,
-    otherwise events.
-
+        - events (events per bin)
+        - kg_day_kev (events per kg day keV)
+        - tonne_day_kev (events per tonne day keV)
+        - tonne_year_kev (events per tonne year keV)
+        Defaults to kg_day_kev if exposure_kg_sec is provided, otherwise events.
     :param min_energy: Minimum energy of the histogram
     :param max_energy: Maximum energy of the histogram
     :param geomspace: If True, will use a logarithmic energy binning.
-    Otherwise will use a linear scale.
+        Otherwise will use a linear scale.
     :param n_bins: Number of energy bins to use
-
     :param color: Color to plot in
     :param label: Label for the line
     :param error_alpha: Alpha value for the statistical error band
     :param errors: Type of errors to draw, passed to 'errors'
-    argument of Hist1d.plot.
+        argument of Hist1d.plot.
 
     """
     if unit is None:
@@ -265,7 +264,11 @@ def plot_energy_spectrum(
 
 @straxen.mini_analysis(requires=("peak_basics",))
 def plot_peak_classification(peaks, s=1):
-    """Make an (area, rise_time) scatter plot of peaks :param s: Size of dot for each peak."""
+    """Make an (area, rise_time) scatter plot of peaks.
+
+    :param s: Size of dot for each peak
+
+    """
     for cl, color in enumerate("kbg"):
         d = peaks[peaks["type"] == cl]
         plt.scatter(

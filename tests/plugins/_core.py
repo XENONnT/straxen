@@ -15,8 +15,7 @@ class PluginTestAccumulator:
 
 
         @PluginTestAccumulator.register('test_example')
-        def test_example(self, # You should always accept self as an argument!
-                        ):
+        def test_example(self, # You should always accept self as an argument!):
             raise ValueError('Test failed')
     ```
 

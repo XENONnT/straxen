@@ -2,7 +2,7 @@
 import os
 from functools import lru_cache
 import warnings
-import pytz  # type: ignore
+import pytz
 from typing import List
 
 import numpy as np
@@ -113,8 +113,13 @@ class CorrectionsManagementServices:
         return str(f'{"XENONnT " if self.is_nt else "XENON1T"}-Corrections_Management_Services')
 
     def get_corrections_config(self, run_id, config_model=None):
-        """Get context configuration for a given correction :param run_id: run id from runDB :param
-        config_model: configuration model (tuple type) :return: correction value(s)"""
+        """Get context configuration for a given correction.
+
+        :param run_id: run id from runDB
+        :param config_model: configuration model (tuple type)
+        :return: correction value(s)
+
+        """
 
         if not isinstance(config_model, (tuple, list)) or len(config_model) != 2:
             raise ValueError(f"config_model {config_model} must be a tuple of length 2")
@@ -141,9 +146,14 @@ class CorrectionsManagementServices:
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, version):
-        """Smart logic to get correction from DB :param run_id: run id from
-        runDB :param correction: correction's name, key word (str type) :param
-        version: local version (str type) :return: correction value(s)"""
+        """Smart logic to get correction from DB.
+
+        :param run_id: run id from runDB
+        :param correction: correction's name, key word (str type)
+        :param version: local version (str type)
+        :return: correction value(s)
+
+        """
         when = self.get_start_time(run_id)
 
         try:
@@ -209,10 +219,12 @@ class CorrectionsManagementServices:
     ):
         """Smart logic to return pmt gains to PE values.
 
-        :param run_id: run id from runDB :param model_type: to_pe_model (gain model) :param version:
-        version :param cacheable_versions: versions that are allowed to be     cached in
-        ./resource_cache :param gain_dtype: dtype of the gains to be returned as array :return:
-        array of pmt gains to PE values
+        :param run_id: run id from runDB
+        :param model_type: to_pe_model (gain model)
+        :param version: version
+        :param cacheable_versions: versions that are allowed to be cached in ./resource_cache
+        :param gain_dtype: dtype of the gains to be returned as array
+        :return: array of pmt gains to PE values
 
         """
         to_pe = None
@@ -275,11 +287,14 @@ class CorrectionsManagementServices:
         return to_pe
 
     def get_config_from_cmt(self, run_id, model_type, version="ONLINE"):
-        """Smart logic to return NN weights file name to be downloader by
-        straxen.MongoDownloader() :param run_id: run id from runDB :param
-        model_type: model type and neural network type; model_mlp, or model_gcn
-        or model_cnn :param version: version :param return: NN weights file
-        name."""
+        """Smart logic to return NN weights file name to be downloader by straxen.MongoDownloader()
+
+        :param run_id: run id from runDB
+        :param model_type: model type and neural network type; model_mlp, or model_gcn or model_cnn
+        :param version: version
+        :param return: NN weights file name
+
+        """
         if model_type not in corrections_w_file:
             raise ValueError(
                 f"{model_type} is not stored in CMT "
@@ -296,9 +311,10 @@ class CorrectionsManagementServices:
         return file_name
 
     def get_start_time(self, run_id):
-        """Smart logic to return start time from runsDB :param run_id: run id from runDB :return:
+        """Smart logic to return start time from runsDB.
 
-        run start time.
+        :param run_id: run id from runDB
+        :return: run start time
 
         """
 
@@ -390,8 +406,11 @@ def args_idx(x):
 
 @strax.Context.add_method
 def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
-    """Sets all the relevant correction variables :param cmt_global_version: A specific CMT global
-    version, or 'latest' to get the newest one :returns None."""
+    """Sets all the relevant correction variables.
+
+    :param cmt_global_version: A specific CMT global version, or 'latest' to get the newest one
+
+    """
     local_versions = get_cmt_local_versions(cmt_global_version)
 
     # get the position algorithm we are using

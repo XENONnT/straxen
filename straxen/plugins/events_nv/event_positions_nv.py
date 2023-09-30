@@ -95,9 +95,11 @@ def compute_positions(
     The position is computed based on a simple area weighted mean. Please note that the event
     position can be reconstructed in unphysical regions like being within the TPC.
 
-    :param event_angles: Result array of the veto_event_position dtype.     The result is updated
-    inplace. :param contained_hitlets: Hitlets contained in each event. :param pmt_pos: Position of
-    the veto PMTs :param start_channel: Starting channel of the detector.
+    :param event_angles: Result array of the veto_event_position dtype. The result is updated
+        inplace.
+    :param contained_hitlets: Hitlets contained in each event.
+    :param pmt_pos: Position of the veto PMTs
+    :param start_channel: Starting channel of the detector.
 
     """
     for e_angles, hitlets in zip(event_angles, contained_hitlets):
@@ -132,10 +134,11 @@ def get_average_angle(
 ) -> np.ndarray:
     """Computes azimuthal angle as an area weighted mean over all hitlets.
 
-    :param hitlets_in_event: numba.typed.List containing the hitlets per     event. :param
-    pmt_properties: numpy.sturctured.array containing the PMT     positions in the fields "x" and
-    "y". :param start_channel: First channel e.g. 2000 for nevto. :return: np.array holding the
-    azimuthal angles.
+    :param hitlets_in_event: numba.typed.List containing the hitlets per event.
+    :param pmt_properties: numpy.sturctured.array containing the PMT positions in the fields "x" and
+        "y".
+    :param start_channel: First channel e.g. 2000 for nevto.
+    :return: np.array holding the azimuthal angles.
 
     """
     res = np.zeros(len(hitlets_in_event), np.float32)
@@ -156,7 +159,9 @@ def get_average_angle(
 def circ_angle(x_values: np.ndarray, y_values: np.ndarray) -> np.ndarray:
     """Loops over a set of x and y values and computes azimuthal angle.
 
-    :param x_values: x-coordinates :param y_values: y-coordinates :return: angles
+    :param x_values: x-coordinates
+    :param y_values: y-coordinates
+    :return: angles
 
     """
     res = np.zeros(len(x_values), dtype=np.float32)
@@ -196,8 +201,8 @@ def first_hitlets(
 ) -> ty.Tuple[numba.typed.List, np.ndarray]:
     """Returns hitlets within the first "max_time" ns of an event.
 
-    :param hitlets_per_event: numba.typed.List of hitlets per event. :param max_time: int max
-    allowed time difference to leading hitlet     in ns.
+    :param hitlets_per_event: numba.typed.List of hitlets per event.
+    :param max_time: int max allowed time difference to leading hitlet in ns.
 
     """
     res_hitlets_in_event = numba.typed.List()

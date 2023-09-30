@@ -164,8 +164,8 @@ class TestURLConfig(unittest.TestCase):
         """Test that we are getting ~the same value from interpolating at the central date in a
         dict.
 
-        :param ab_value, cd_value: some values to test against :param dump_as: Write as csv or as
-        json file
+        :param ab_value, cd_value: some values to test against
+        :param dump_as: Write as csv or as json file
 
         """
         central_datetime = (

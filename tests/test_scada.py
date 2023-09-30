@@ -1,8 +1,8 @@
-import pytz  # type: ignore
+import pytz
 import numpy as np
 import straxen
 import unittest
-import requests  # type: ignore
+import requests
 
 
 class SCInterfaceTest(unittest.TestCase):

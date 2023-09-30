@@ -108,10 +108,11 @@ def compute_nveto_event_properties(
 ):
     """Computes properties of the neutron-veto events. Writes results directly to events.
 
-    :param events: Events for which properties should be computed :param hitlets: hitlets which were
-    used to build the events. :param contained_hitlets_ids: numpy array of the shape n x 2 which
-    holds the indices of the hitlets contained in the corresponding     event. :param start_channel:
-    Integer specifying start channel, e.g. 2000     for nveto.
+    :param events: Events for which properties should be computed
+    :param hitlets: hitlets which were used to build the events.
+    :param contained_hitlets_ids: numpy array of the shape n x 2 which holds the indices of the
+        hitlets contained in the corresponding event.
+    :param start_channel: Integer specifying start channel, e.g. 2000 for nveto.
 
     """
     for e, (s_i, e_i) in zip(events, contained_hitlets_ids):
@@ -151,11 +152,13 @@ def find_veto_events(
     """Function which find the veto events as a nfold concidence in a given resolving time window.
     All hitlets which touch the event window contribute.
 
-    :param hitlets: Hitlets which shall be used for event creation. :param coincidence_level: int,
-    coincidence level. :param resolving_time: int, resolving window for coincidence in ns. :param
-    left_extension: int, left event extension in ns. :param event_number_key: str, field name for
-    the event number :param n_channel: int, number of channels in detector. :returns: events,
-    hitelt_ids_per_event
+    :param hitlets: Hitlets which shall be used for event creation.
+    :param coincidence_level: int, coincidence level.
+    :param resolving_time: int, resolving window for coincidence in ns.
+    :param left_extension: int, left event extension in ns.
+    :param event_number_key: str, field name for the event number
+    :param n_channel: int, number of channels in detector.
+    :return: events, hitelt_ids_per_event
 
     """
     # Find intervals which satisfy requirement:

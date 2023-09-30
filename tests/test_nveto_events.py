@@ -41,7 +41,7 @@ def create_disjoint_intervals(
         takes too long ~2 s for 50 intervals. You can disable the
         corresponding healt checks via:" @settings(
         suppress_health_check=[hypothesis.HealthCheck.large_base_example,
-         hypothesis.HealthCheck.too_slow])"
+        hypothesis.HealthCheck.too_slow])"
 
     """
     n = 0

@@ -2,7 +2,7 @@ import os
 import tempfile
 from datetime import datetime
 from warnings import warn
-import pytz  # type: ignore
+import pytz
 from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm
@@ -96,7 +96,8 @@ class GridFsInterface:
     def get_query_config(self, config):
         """Generate identifier to query against. This is just the configs name.
 
-        :param config: str,  name of the file of interest :return: dict, that can be used in queries
+        :param config: str,  name of the file of interest
+        :return: dict, that can be used in queries
 
         """
         return {self.config_identifier: config}
@@ -104,8 +105,8 @@ class GridFsInterface:
     def document_format(self, config):
         """Format of the document to upload.
 
-        :param config: str,  name of the file of interest :return: dict, that will be used to add
-        the document
+        :param config: str,  name of the file of interest
+        :return: dict, that will be used to add the document
 
         """
         doc = self.get_query_config(config)
@@ -119,8 +120,8 @@ class GridFsInterface:
     def config_exists(self, config):
         """Quick check if this config is already saved in the collection.
 
-        :param config: str,  name of the file of interest :return: bool, is this config name stored
-        in the database
+        :param config: str,  name of the file of interest
+        :return: bool, is this config name stored in the database
 
         """
         query = self.get_query_config(config)
@@ -152,7 +153,7 @@ class GridFsInterface:
     def list_files(self):
         """Get a complete list of files that are stored in the database.
 
-        :return: list, list of the names of the items stored in this     database
+        :return: list, list of the names of the items stored in this database
 
         """
         return [
@@ -176,7 +177,7 @@ class GridFsInterface:
         if not os.path.exists(abs_path):
             # if there is no file, there is nothing to compute
             return ""
-        # Also, disable all the  Use of insecure MD2, MD4, MD5, or SHA1
+        # Also, disable all the use of insecure MD2, MD4, MD5, or SHA1
         # hash function violations in this function.
         # disable bandit
         hash_md5 = hashlib.md5()
@@ -234,8 +235,8 @@ class MongoUploader(GridFsInterface):
     def upload_single(self, config, abs_path):
         """Upload a single file to gridfs.
 
-        :param config: str, the name under which this file should be     stored :param abs_path:
-        str, the absolute path of the file
+        :param config: str, the name under which this file should be stored
+        :param abs_path: str, the absolute path of the file
 
         """
         doc = self.document_format(config)
@@ -273,10 +274,11 @@ class MongoDownloader(GridFsInterface):
     def download_single(self, config_name: str, human_readable_file_name=False):
         """Download the config_name if it exists.
 
-        :param config_name: str, the name under which the file is stored :param
-        human_readable_file_name: bool, store the file also under     it's human readable name. It
-        is better not to use this as     the user might not know if the version of the file is the
-        latest. :return: str, the absolute path of the file requested
+        :param config_name: str, the name under which the file is stored
+        :param human_readable_file_name: bool, store the file also under it's human readable name.
+            It is better not to use this as the user might not know if the version of the file is
+            the latest.
+        :return: str, the absolute path of the file requested
 
         """
         if self.config_exists(config_name):
@@ -341,8 +343,9 @@ class MongoDownloader(GridFsInterface):
         """Iterate over the options in cache_options until we find a folder where we can store data.
         Order does matter as we iterate until we find one folder that is willing.
 
-        :param cache_folder_alternatives: tuple, this tuple must be a     list of paths one can try
-        to store the downloaded data :return: str, the folder that we can write to.
+        :param cache_folder_alternatives: tuple, this tuple must be a list of paths one can try to
+            store the downloaded data
+        :return: str, the folder that we can write to.
 
         """
         if not isinstance(cache_folder_alternatives, (tuple, list)):

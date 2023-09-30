@@ -152,7 +152,8 @@ def get_plugins_deps(st):
     """For a given Strax.Context return the dependencies per plugin split by the known
     tree_suffices.
 
-    :param st: Strax.Context :return: dict of default dicts containing the number of dependencies.
+    :param st: Strax.Context
+    :return: dict of default dicts containing the number of dependencies.
 
     """
     plugins_by_deps = {k: defaultdict(list) for k in tree_suffices}
@@ -173,7 +174,7 @@ def get_context(is_nt):
     """Need to init a context without initializing the runs_db as that requires the appropriate
     passwords.
 
-    :return: straxen context that mimics the xenonnt_online context     without the rundb init
+    :return: straxen context that mimics the xenonnt_online context without the rundb init
 
     """
     if is_nt:

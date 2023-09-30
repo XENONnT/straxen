@@ -15,9 +15,9 @@ from holoviews.plotting.bokeh import PointPlot
 class PlotPMTArrayTPC:
     """Class to plot TPC PMT array.
 
-    :param gains: If a list of gain values are supplied PMTs which gain     are set to zero are
-    displayed in gray. :param top_pmt_array: Boolean whether top or bottom PMT array should     be
-    plotted.
+    :param gains: If a list of gain values are supplied PMTs which gain are set to zero are
+        displayed in gray.
+    :param top_pmt_array: Boolean whether top or bottom PMT array should be plotted.
 
     """
 
@@ -122,10 +122,12 @@ class PlotPMTArrayTPC:
     def plot_pmt_array(self, peak, label="", **opts):
         """Function which plots the specified PMT array for the given peak.
 
-        :param peak: Peak for which PMT array should be plotted. Must     contain area per channel
-        information. :param label: Plot abel to be used as title. :param opts: Option which can be
-        supplied to a holovies plot.     E.g. you can use logz=True for a logarithmic colorscale or
-        colorbar=True for adding a colorbar. :returns: Holoviews plot overlay.
+        :param peak: Peak for which PMT array should be plotted. Must contain area per channel
+            information.
+        :param label: Plot abel to be used as title.
+        :param opts: Option which can be supplied to a holovies plot. E.g. you can use logz=True for
+            a logarithmic colorscale or colorbar=True for adding a colorbar.
+        :return: Holoviews plot overlay.
 
         """
         # Allow to return empty plots required for event display if alt.

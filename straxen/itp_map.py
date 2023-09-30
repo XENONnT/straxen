@@ -187,10 +187,10 @@ class InterpolatingMap:
             self.interpolators[map_name] = itp_fun
 
     def __call__(self, *args, map_name="map"):
-        """Returns the value of the map at the position given by coordinates :param positions: array
-        (n_dim) or (n_points, n_dim) of positions :param map_name: Name of the map to use.
+        """Returns the value of the map at the position given by coordinates.
 
-        Default is 'map'.
+        :param positions: array (n_dim) or (n_points, n_dim) of positions
+        :param map_name: Name of the map to use.  Default is 'map'.
 
         """
         return self.interpolators[map_name](*args)
@@ -241,9 +241,11 @@ class InterpolatingMap:
         return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
 
     def scale_coordinates(self, scaling_factor, map_name="map"):
-        """Scales the coordinate system by the specified factor :params
-        scaling_factor: array (n_dim) of scaling factors if different or single
-        scalar."""
+        """Scales the coordinate system by the specified factor.
+
+        :params scaling_factor: array (n_dim) of scaling factors if different or single scalar.
+
+        """
         if self.dimensions == 0:
             return
         if hasattr(scaling_factor, "__len__"):

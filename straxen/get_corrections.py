@@ -24,7 +24,7 @@ def correction_options(get_correction_function):
         ('suffix', suffix, 'cmt_run_id', cmt_run_id, 'to_pe_model', 'ONLINE', True)
 
     :param get_correction_function: A function here in the get_corrections module
-    :returns: The function wrapped with the option search
+    :return: The function wrapped with the option search
     """
 
     @wraps(get_correction_function)
@@ -69,9 +69,11 @@ def get_correction_from_cmt(run_id, conf):
     special cases:
     version can be replaced by constant int, float or array
     when user specify value(s)
+
     :param run_id: run id from runDB
     :param conf: configuration
     :return: correction value(s)
+
     """
 
     if isinstance(conf, str):

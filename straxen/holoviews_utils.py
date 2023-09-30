@@ -24,13 +24,15 @@ class nVETOEventDisplay:
     ):
         """Class to plot an interactive nveto display.
 
-        :param events: Events which should be plot. Can also be none in     case the hitlet matrix
-        and/or pattern map should be plotted     separately. :param hitlets: Same as events, but
-        hitlets_nv. :param run_id: Run_id which should be displayed in the title. :param
-        channel_range: Channel range of the detector. :param pmt_map: PMT map which is loaded via
-        straxen.get_resource. The map has to contain the channel     number, and xyz coordinates.
-        :param plot_extension: Extension which should be used for     rendering can be either bokeh
-        or matpltolib. Default is     bokeh to support dynamic plots.
+        :param events: Events which should be plot. Can also be none in case the hitlet matrix
+            and/or pattern map should be plotted separately.
+        :param hitlets: Same as events, but hitlets_nv.
+        :param run_id: Run_id which should be displayed in the title.
+        :param channel_range: Channel range of the detector.
+        :param pmt_map: PMT map which is loaded via straxen.get_resource. The map has to contain the
+            channel number, and xyz coordinates.
+        :param plot_extension: Extension which should be used for rendering can be either bokeh or
+            matpltolib. Default is bokeh to support dynamic plots.
 
         """
         self.import_holoviews()
@@ -68,7 +70,7 @@ class nVETOEventDisplay:
     def plot_event_display(self):
         """Creates an interactive event display for the neutron veto.
 
-        :returns: panel.Column hosting the plots and panels.
+        :return: panel.Column hosting the plots and panels.
 
         """
 
@@ -149,9 +151,9 @@ class nVETOEventDisplay:
         """Function which plots the hitlet matrix for the specified hitlets. The hitlet matrix is
         something equivalent to the record matrix for the TPC.
 
-        :param hitlets: Hitlets to be plotted if called directly. :param _hitlet_points:
-        holoviews.Points created by the event     display. Only internal use. :returns: hv.Polygons
-        plot.
+        :param hitlets: Hitlets to be plotted if called directly.
+        :param _hitlet_points: holoviews.Points created by the event display. Only internal use.
+        :return: hv.Polygons plot.
 
         """
         if not _hitlet_points:
@@ -192,10 +194,11 @@ class nVETOEventDisplay:
         """Plots the nveto pmt pattern map for the specified hitlets. Expects hitlets to be sorted
         in time.
 
-        :param hitlets: Hitlets to be plotted if called directly. :param pmt_size: Base size of a
-        PMT for 1 pe. :param pmt_distance: Scaling parameter for the z -> xy     projection. :param
-        _hitlet_points: holoviews.Points created by the event     display. Only internal use.
-        :returns: stacked hv.Points plot.
+        :param hitlets: Hitlets to be plotted if called directly.
+        :param pmt_size: Base size of a PMT for 1 pe.
+        :param pmt_distance: Scaling parameter for the z -> xy projection.
+        :param _hitlet_points: holoviews.Points created by the event display. Only internal use.
+        :return: stacked hv.Points plot.
 
         """
         if not _hitlet_points:
@@ -516,8 +519,9 @@ def _compute_lateral_reflector_xy_edges(
     """Function which computes the position of the lateral reflector panels. Input in mm return in
     cm.
 
-    :param xy_center_angle: Center xy coordinate and angle of each     panel. :param
-    long_side_length: Full length of the long panels in mm. :param short_side_length: Same
+    :param xy_center_angle: Center xy coordinate and angle of each panel.
+    :param long_side_length: Full length of the long panels in mm.
+    :param short_side_length: Same
 
     """
     res = np.zeros(len(xy_center_angle), dtype=[("x", np.float64), ("y", np.float64)])
@@ -538,9 +542,10 @@ def _compute_lateral_reflector_xy_edges(
 def table_callback(table, data, event, column=False):
     """Callback template for tables used together with a pn.widget.IntSlider.
 
-    :param table: pn.Panel object of a pd.DataFrame :param data: pd.DataFrame storing the data.
-    :param event: Slider event returned by param.watch :param column: Boolean if true uses
-    horizontal columns to present     data.
+    :param table: pn.Panel object of a pd.DataFrame
+    :param data: pd.DataFrame storing the data.
+    :param event: Slider event returned by param.watch
+    :param column: Boolean if true uses horizontal columns to present data.
 
     """
     if column:

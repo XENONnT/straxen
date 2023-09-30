@@ -27,7 +27,10 @@ repos:
     rev: v1.5.1
     hooks:
     -   id: mypy
-        additional_dependencies: [types-PyYAML, types-tqdm]
+        additional_dependencies: [
+            types-PyYAML, types-tqdm, types-pytz,
+            types-requests, types-setuptools,
+        ]
 
 -   repo: https://github.com/pycqa/flake8
     rev: 6.1.0

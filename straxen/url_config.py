@@ -1,6 +1,6 @@
 import os
 import json
-import pytz  # type: ignore
+import pytz
 import typing
 import strax
 import fsspec
@@ -81,9 +81,8 @@ class URLConfig(strax.Config):
 
     def __init__(self, cache=0, **kwargs):
         """
-        :param cache: number of values to keep in cache,
-                      if set to True will cache all values
-        :param **kwargs: additional keyword arguments accepted by strax.Option
+        :param cache: number of values to keep in cache, if set to True will cache all values
+        :param kwargs: additional keyword arguments accepted by strax.Option
         """
         self.final_type = OMITTED
         super().__init__(**kwargs)
@@ -139,13 +138,13 @@ class URLConfig(strax.Config):
         cls, protocol: str, arg: Optional[Union[str, tuple]] = None, kwargs: Optional[dict] = None
     ):
         """Evaluate a URL/AST by recusively dispatching protocols by name with argument arg and
-        keyword arguments kwargs and return the value.
+        keyword arguments kwargs and return the value. If protocol does not exist, returns arg.
 
-        If protocol does not exist, returnes arg :param protocol: name of the protocol or a URL
-        :param arg: argument to pass to protocol, can be another (sub-     protocol, arg, kwargs)
-        tuple, in which case sub-protocol     will be evaluated and passed to protocol :param
-        kwargs: keyword arguments to be passed to the protocol :return: (Any) The return value of
-        the protocol on these     arguments
+        :param protocol: name of the protocol or a URL
+        :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs) tuple,
+            in which case sub-protocol will be evaluated and passed to protocol
+        :param kwargs: keyword arguments to be passed to the protocol
+        :return: (Any) The return value of the protocol on these arguments
 
         """
 
@@ -635,10 +634,12 @@ def get_itp_dict(
 ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
     """Interpolate a dictionary at the start time that is queried from a run- id.
 
-    :param loaded_json: a dictionary with a time-series :param run_id: run_id :param time_key: key
-    that gives the timestamps :param itp_keys: which keys from the dict to read. Should be comma
-    (',') separated! :return: Interpolated values of dict at the start time, either     returned as
-    an np.ndarray (single value) or as a dict (multiple     itp_dict_keys)
+    :param loaded_json: a dictionary with a time-series
+    :param run_id: run_id
+    :param time_key: key that gives the timestamps
+    :param itp_keys: which keys from the dict to read. Should be comma (',') separated!
+    :return: Interpolated values of dict at the start time, either returned as an np.ndarray (single
+        value) or as a dict (multiple itp_dict_keys)
 
     """
     keys = strax.to_str_tuple(itp_keys.split(","))
@@ -671,9 +672,10 @@ def get_itp_dict(
 def rekey_dict(d, replace_keys="", with_keys=""):
     """Replace the keys of a dictionary.
 
-    :param d: dictionary that will have its keys renamed :param replace_keys: comma-separated string
-    of keys that will be     replaced :param with_keys: comma-separated string of keys that will
-    replace     the replace_keys :return: dictionary with renamed keys
+    :param d: dictionary that will have its keys renamed
+    :param replace_keys: comma-separated string of keys that will be replaced
+    :param with_keys: comma-separated string of keys that will replace the replace_keys
+    :return: dictionary with renamed keys
 
     """
     new_dict = d.copy()
@@ -691,9 +693,9 @@ def objects_to_dict(objects: list, key_attr=None, value_attr="value", immutable=
     """Converts a list of objects/dicts to a single dictionary by taking the key and value from each
     of the objects/dicts. If key_attr is not provided, the list index is used as the key.
 
-    :param objects: list of objects/dicts that will be converted to a     dictionary :param
-    key_attr: key/attribute of the objects that will be used as     key in the dictionary :param
-    value_attr: key/attribute of the objects that will be used as     value in the dictionary
+    :param objects: list of objects/dicts that will be converted to a dictionary
+    :param key_attr: key/attribute of the objects that will be used as key in the dictionary
+    :param value_attr: key/attribute of the objects that will be used as value in the dictionary
 
     """
     if not isinstance(objects, Iterable):

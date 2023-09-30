@@ -202,8 +202,10 @@ def draw_box(x, y, **kwargs):
 def plot_single_pulse(records, run_id, pulse_i=""):
     """Function which plots a single pulse.
 
-    :param records: Records which belong to the pulse. :param run_id: Id of the run. :param pulse_i:
-    Index of the pulse to be plotted. :returns: fig, axes objects.
+    :param records: Records which belong to the pulse.
+    :param run_id: Id of the run.
+    :param pulse_i: Index of the pulse to be plotted.
+    :return: fig, axes objects.
 
     """
     pulse = _make_pulse(records)

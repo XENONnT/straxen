@@ -58,14 +58,16 @@ class PlotPeakLikeData:
         opts_area=immutabledict(),
         _relative_start_time=0,
     ):
-        """Plots area and curve to display a peak. :param peak: Peak to be
-        displayed :param label: Label to be used in legend. :param opts_curve:
-        Additional options to be applied to hv.Curve :param opts_area:
-        Additional options to be applied to hv.Area :param
-        _relative_start_time: Time to which the peak should be plotted
-        relatively. E.g. event start time.
+        """Plots area and curve to display a peak.
 
-        :returns: hv.Area and hv.Curve
+        :param peak: Peak to be displayed
+        :param label: Label to be used in legend.
+        :param opts_curve: Additional options to be applied to hv.Curve
+        :param opts_area: Additional options to be applied to hv.Area
+        :param _relative_start_time: Time to which the peak should be plotted relatively. E.g. event
+            start time.
+        :return: hv.Area and hv.Curve
+
         """
         data = self.get_peak_data(
             peak,
@@ -162,8 +164,9 @@ class PlotPeakLikeData:
         """Function which extracts base peaks information as a dictionary. Can be further customized
         in sub-classes if needed.
 
-        :param peak: Peaks to be plotted. :param relative_start: t0 from which on the peaks should
-        be     plotted. :return: dictionary
+        :param peak: Peaks to be plotted.
+        :param relative_start: t0 from which on the peaks should be plotted.
+        :return: dictionary
 
         """
         # Wrapper in case one hast to customized things further in one
@@ -174,8 +177,9 @@ class PlotPeakLikeData:
         """Function which extracts base peaks information as a dictionary. Extracts all information
         which are stored as single valued parameters.
 
-        :param peaks: Peaks to be plotted. :param relative_start: t0 from which on the peaks should
-        be     plotted. :return: dictionary
+        :param peaks: Peaks to be plotted.
+        :param relative_start: t0 from which on the peaks should be plotted.
+        :return: dictionary
 
         """
         x, y = self._patches_x_y(peak)
@@ -203,7 +207,8 @@ class PlotPeakLikeData:
     def _patches_x_y(self, peak):
         """Creates x,y coordinates needed to make a stepwise function with hv.Areas.
 
-        :param peak: Peak for which we need the x/y samples :returns: Tuple of x, y
+        :param peak: Peak for which we need the x/y samples
+        :return: Tuple of x, y
 
         """
         if self.keep_amplitude_per_sample:

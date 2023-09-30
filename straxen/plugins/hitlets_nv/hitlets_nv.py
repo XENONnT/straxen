@@ -168,7 +168,8 @@ class nVETOHitlets(strax.Plugin):
 def remove_switched_off_channels(hits, to_pe):
     """Removes hits which were found in a channel without any gain.
 
-    :param hits: Hits found in records. :param to_pe: conversion factor from ADC per sample.
+    :param hits: Hits found in records.
+    :param to_pe: conversion factor from ADC per sample.
     :return: Hits
 
     """

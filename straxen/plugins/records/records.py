@@ -248,7 +248,7 @@ def software_he_veto(
     veto_res in ns) and pass regions within pass_veto_extend samples
     of samples with amplitude above pass_veto_fraction times the maximum.
 
-    :returns: (preserved records, vetoed records, veto intervals).
+    :return: (preserved records, vetoed records, veto intervals).
 
     :param records: PMT records
     :param to_pe: ADC to PE conversion factors for the channels in records.

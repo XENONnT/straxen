@@ -235,11 +235,13 @@ def compute_lone_records(lone_records, nveto_channels, n):
     """Function which returns for each data chunk the specified number of lone_records and computes
     for the rest some basic properties.
 
-    :param lone_records: raw_records which are flagged as lone records. :param nveto_channels: First
-    and last channel of nVETO. :param n: Number of lone records to be stored per chunk. :returns:
-    Structured array of the lone_record_count_dtype containing     some properties of the lone
-    records which will be deleted. :returns: Lone records which should be saved for diagnostic
-    purposes. The array shape is of the raw_records dtype.
+    :param lone_records: raw_records which are flagged as lone records.
+    :param nveto_channels: First and last channel of nVETO.
+    :param n: Number of lone records to be stored per chunk.
+    :return: Structured array of the lone_record_count_dtype containing some properties of the lone
+        records which will be deleted.
+    :return: Lone records which should be saved for diagnostic purposes. The array shape is of the
+        raw_records dtype.
 
     """
     ch0, ch119 = nveto_channels
@@ -322,10 +324,11 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
     """Checks if a records is in one of the intervals. If yes the entire pulse ist flagged as to be
     stored.
 
-    :param raw_records: raw_records or records :param record_links: position of the previous and
-    next record if     pulse is made of many fragments :param start_times: start time of the
-    coincidence intervals :param end_times: endtimes of the coincidence intervals :return: boolean
-    array true if one fragment of a pulse is in window.
+    :param raw_records: raw_records or records
+    :param record_links: position of the previous and next record if pulse is made of many fragments
+    :param start_times: start time of the coincidence intervals
+    :param end_times: endtimes of the coincidence intervals
+    :return: boolean array true if one fragment of a pulse is in window.
 
     """
     nrr = len(raw_records)
@@ -395,7 +398,7 @@ def find_coincidence(records, nfold=4, resolving_time=300, pre_trigger=0):
     :param resolving_time: Time window of the coincidence [ns].
     :param pre_trigger: Pre trigger window which sould be saved
     :return: array containing the start times and end times of the
-            corresponding intervals.
+        corresponding intervals.
 
     Note:
         The coincidence window is self-extending. If start times of two
@@ -460,8 +463,8 @@ def _coincidence(rr, nfold=4, resolving_time=300):
 def merge_intervals(intervals):
     """Function which merges overlapping intervals into a single one.
 
-    :param intervals: Any numpy array with strax time fields. :returns: New intervals with time and
-    endtime according to the     overlapping intervals.
+    :param intervals: Any numpy array with strax time fields.
+    :return: New intervals with time and endtime according to the overlapping intervals.
 
     """
     res = np.zeros(len(intervals), dtype=strax.time_fields)

@@ -20,19 +20,18 @@ def records_matrix(
 ):
     """Return (wv_matrix, times, pms)
 
-      - wv_matrix: (n_samples, n_pmt) array with per-PMT waveform intensity in PE/ns
-      - times: time labels in seconds (corr. to rows)
-      - pmts: PMT numbers (corr. to columns)
+        - wv_matrix: (n_samples, n_pmt) array with per-PMT waveform intensity in PE/ns
+        - times: time labels in seconds (corr. to rows)
+        - pmts: PMT numbers (corr. to columns)
     Both times and pmts have one extra element.
 
     :param max_samples: Maximum number of time samples. If window and dt
-    conspire to exceed this, waveforms will be downsampled.
+        conspire to exceed this, waveforms will be downsampled.
     :param ignore_max_sample_warning: If True, suppress warning when this happens.
 
     Example:
         wvm, ts, ys = st.records_matrix(run_id, seconds_range=(1., 1.00001))
-        plt.pcolormesh(ts, ys, wvm.T,
-                       norm=matplotlib.colors.LogNorm())
+        plt.pcolormesh(ts, ys, wvm.T, norm=matplotlib.colors.LogNorm())
         plt.colorbar(label='Intensity [PE / ns]')
 
     """

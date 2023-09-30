@@ -50,7 +50,7 @@ xnt_common_config = dict(
         aqmon_nv=(808, 815),  # nveto acquisition monitor
         tpc_blank=(999, 999),
         mv=(1000, 1083),
-        aux_mv=(1084, 1087),  # Aux mv channel 2 empty  1 pulser  and 1 GPS
+        aux_mv=(1084, 1087),  # Aux mv channel 2 empty  1 pulser and 1 GPS
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999),
@@ -123,9 +123,9 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     """Check the hostname to determine which rucio local path to use. Note that access to
     /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
 
-    :param include_rucio_local: add the rucio local storage frontend.     This is only needed if one
-    wants to do a fuzzy search in the     data the runs database is out of sync with rucio :param
-    _rucio_local_path: str, path of local RSE of rucio. Only use     for testing!
+    :param include_rucio_local: add the rucio local storage frontend. This is only needed if one
+        wants to do a fuzzy search in the data the runs database is out of sync with rucio
+    :param _rucio_local_path: str, path of local RSE of rucio. Only use for testing!
 
     """
     hostname = socket.gethostname()
@@ -140,7 +140,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
         _include_rucio_local = True
         __rucio_local_path = "/project/lgrandi/rucio/"
         print(
-            "You specified _auto_append_rucio_local=True and you are not on dali compute nodes,"
+            "You specified _auto_append_rucio_local=True and you are not on dali compute nodes, "
             "so we will add the following rucio local path: ",
             __rucio_local_path,
         )
@@ -180,33 +180,27 @@ def xenonnt_online(
 ):
     """XENONnT online processing and analysis.
 
-    :param output_folder: str, Path of the strax.DataDirectory where new
-        data can be stored
+    :param output_folder: str, Path of the strax.DataDirectory where new data can be stored
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param minimum_run_number: int, lowest number to consider
-    :param maximum_run_number: Highest number to consider. When None
-        (the default) consider all runs that are higher than the
-        minimum_run_number.
-    :param include_rucio_remote: add the rucio remote frontend to the
-        context
-    :param include_online_monitor: add the online monitor storage
-        frontend.
-    :param include_rucio_local: add the rucio local storage frontend.
-        This is only needed if one wants to do a fuzzy search in the
-        data the runs database is out of sync with rucio
-    :param download_heavy: bool, whether or not to allow downloads of
-        heavy data (raw_records*, less the aqmon)
-    :param _auto_append_rucio_local: bool, whether or not to
-        automatically append the rucio local path
+    :param maximum_run_number: Highest number to consider. When None (the default) consider all runs
+        that are higher than the minimum_run_number.
+    :param include_rucio_remote: add the rucio remote frontend to the context
+    :param include_online_monitor: add the online monitor storage frontend
+    :param include_rucio_local: add the rucio local storage frontend. This is only needed if one
+        wants to do a fuzzy search in the data the runs database is out of sync with rucio
+    :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less
+        the aqmon)
+    :param _auto_append_rucio_local: bool, whether or not to automatically append the rucio local
+        path
     :param _rucio_path: str, path of rucio
-    :param _rucio_local_path: str, path of local RSE of rucio. Only use
-        for testing!
+    :param _rucio_local_path: str, path of local RSE of rucio. Only use for testing!
     :param _raw_paths: list[str], common path of the raw-data
     :param _processed_paths: list[str]. common paths of output data
     :param _context_config_overwrite: dict, overwrite config
     :param _database_init: bool, start the database (for testing)
-    :param _forbid_creation_of: str/tuple, of datatypes to prevent form
-        being written (raw_records* is always forbidden).
+    :param _forbid_creation_of: str/tuple, of datatypes to prevent form being written (raw_records*
+        is always forbidden).
     :param kwargs: dict, context options
     :return: strax.Context
 
@@ -339,13 +333,13 @@ def xenonnt_simulation_offline(
     """
     :param output_folder: strax_data folder
     :param wfsim_registry: Raw_records generation mechanism,
-                           'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc,
-                           https://github.com/XENONnT/WFSim/blob/master/wfsim/strax_interface.py
+        'RawRecordsFromFaxNT', 'RawRecordsFromMcChain', etc,
+        https://github.com/XENONnT/WFSim/blob/master/wfsim/strax_interface.py
     :param run_id: Real run_id to use to fetch the corrections
     :param global_version: Global versions
-                           https://github.com/XENONnT/corrections/tree/master/XENONnT/global_versions
+        https://github.com/XENONnT/corrections/tree/master/XENONnT/global_versions
     :param fax_config: WFSim configuration files
-                       https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
+        https://github.com/XENONnT/private_nt_aux_files/blob/master/sim_files/fax_config_nt_sr0_v4.json
     :return: strax context for simulation
     """
     if run_id is None:
@@ -418,7 +412,7 @@ def xenonnt_simulation(
     purposes.
 
     It makes full divergent setup, allowing to set detector simulation
-    part (i.e. for wfsim up to truth and  raw_records). Parameters _sim
+    part (i.e. for wfsim up to truth and raw_records). Parameters _sim
     refer to detector simulation parameters.
 
     Arguments having _proc in their name refer to detector parameters that

@@ -10,8 +10,8 @@ export, __all__ = strax.exporter()
 def hit_min_amplitude(model):
     """Return hitfiner height threshold to use in processing.
 
-    :param model: Model name (str), or int to use a uniform threshold,     or array/tuple or
-    thresholds to use.
+    :param model: Model name (str), or int to use a uniform threshold, or array/tuple or thresholds
+        to use.
 
     """
 

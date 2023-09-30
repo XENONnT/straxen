@@ -38,9 +38,9 @@ class PeaksSubtypes(strax.Plugin):
 
     Reference note:
     https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_study
-    :returns: an integer index for each peak.
-      Please refer to this note:
-      https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_dictionary
+    :return: an integer index for each peak.
+        Please refer to this note:
+        https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:peak_subtyping_dictionary
 
     """
 

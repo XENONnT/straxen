@@ -162,7 +162,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         see https://github.com/XENONnT/straxen/pull/548
         and https://github.com/XENONnT/straxen/pull/568
 
-        :returns: list of the first index of peaklet to be merged and
+        :return: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged
         """
 
@@ -229,8 +229,12 @@ def _filter_s1_starts(start_merge_at, types, end_merge_at):
 @numba.njit(cache=True, nogil=True)
 def merge_s2_threshold(log_area, gap_thresholds):
     """Return gap threshold for log_area of the merged S2 with linear interpolation given the points
-    in gap_thresholds :param log_area: Log 10 area of the merged S2 :param gap_thresholds: tuple (n,
-    2) of fix points for interpolation."""
+    in gap_thresholds.
+
+    :param log_area: Log 10 area of the merged S2
+    :param gap_thresholds: tuple (n, 2) of fix points for interpolation.
+
+    """
     for i, (a1, g1) in enumerate(gap_thresholds):
         if log_area < a1:
             if i == 0:

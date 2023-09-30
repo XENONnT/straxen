@@ -96,11 +96,12 @@ class VetoProximity(strax.OverlapWindowPlugin):
         """Fill the result buffer inplace. Goal is to find vetos with <veto_name> that are either
         during, before or after the current event_window.
 
-        :param result_buffer: The buffer to fill inplace :param event_window: start/stop boundaries
-        of the event to     consider. Should be an array with ['time'] and ['endtime']     which can
-        be based on event start/end times or S1/S2 times :param veto_intervals: veto intervals
-        datatype :param veto_name: The name of the veto to fill the result buffer     for :return:
-        Nothing, results are filled in place
+        :param result_buffer: The buffer to fill inplace
+        :param event_window: start/stop boundaries of the event to consider. Should be an array with
+            ['time'] and ['endtime'] which can be based on event start/end times or S1/S2 times
+        :param veto_intervals: veto intervals datatype
+        :param veto_name: The name of the veto to fill the result buffer for
+        :return: Nothing, results are filled in place
 
         """
         # Set defaults to be some very long time

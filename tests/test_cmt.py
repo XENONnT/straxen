@@ -50,9 +50,10 @@ def test_mc_wrapper_elife(
 ):
     """Test that for two different run ids, we get different elifes using the MC wrapper.
 
-    :param run_id: First run-id (used for normal query) :param cmt_id: Second run-id used as a CMT
-    id (should not be the     same as run_id! otherwise the values might actually be the same and
-    the test does not work). :return: None
+    :param run_id: First run-id (used for normal query)
+    :param cmt_id: Second run-id used as a CMT id (should not be the same as run_id! otherwise the
+        values might actually be the same and the test does not work).
+    :return: None
 
     """
     assert np.abs(int(run_id) - int(cmt_id)) > 500, "runs must be far apart"
@@ -86,11 +87,12 @@ def test_mc_wrapper_gains(
 ):
     """Test that for two different run ids, we get different gains using the MC wrapper.
 
-    :param run_id: First run-id (used for normal query) :param cmt_id: Second run-id used as a CMT
-    id (should not be the     same as run_id! otherwise the values might actually be the same and
-    the test does not work). :param execute: Execute this test (this is set to False since the test
-    takes 9 minutes which is too long. We can activate this if     the testing time due to faster
-    CMT queries is reduced). :return: None
+    :param run_id: First run-id (used for normal query)
+    :param cmt_id: Second run-id used as a CMT id (should not be the same as run_id! otherwise the
+        values might actually be the same and the test does not work).
+    :param execute: Execute this test (this is set to False since the test takes 9 minutes which is
+        too long. We can activate this if the testing time due to faster CMT queries is reduced).
+    :return: None
 
     """
     if not execute:

@@ -12,9 +12,8 @@ def bokeh_to_wiki(fig, outputfile=None):
     """Function which converts bokeh HTML code to a wiki readable code.
 
     :param fig: Figure to be conerted
-    :param outputfile: String of absolute file path. If specified output
-    is writen to the file. Else output is print to the notebook and
-    can be simply copied into the wiki.
+    :param outputfile: String of absolute file path. If specified output is writen to the file. Else
+        output is print to the notebook and can be simply copied into the wiki.
 
     """
     # convert plot to wiki format:
@@ -31,11 +30,12 @@ def bokeh_to_wiki(fig, outputfile=None):
 def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_sample=True):
     """Computes bokeh.plotting.ColumnDataSource for given peaks.
 
-    :param peaks: Peaks to be plotted. :param relative_start: t0 from which on the peaks should be
-    plotted. :param time_scaler: Factor to rescale the time from ns to other     scale. E.g. =1000
-    scales to µs. :param keep_amplitude_per_sample: Boolean if true amplitude of the     plotted
-    peaks is in pe/sample. False pe/ns. :return: bokeh.plotting.ColumnDataSource instance which can
-    be used     to plot peaks.
+    :param peaks: Peaks to be plotted.
+    :param relative_start: t0 from which on the peaks should be plotted.
+    :param time_scaler: Factor to rescale the time from ns to other scale. E.g. =1000 scales to µs.
+    :param keep_amplitude_per_sample: Boolean if true amplitude of the plotted peaks is in
+        pe/sample. False pe/ns.
+    :return: bokeh.plotting.ColumnDataSource instance which can be used to plot peaks.
 
     """
     if not (np.all(peaks["type"] == peaks[0]["type"])):
@@ -80,8 +80,9 @@ def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_
 def _patches_x_y(peak, keep_amplitude_per_sample=False):
     """Creates x,y coordinates needed to draw peaks via bokeh.models.patches.
 
-    :param peak: Peak for which we need the x/y samples :param keep_amplitude_per_sample: If y-data
-    should be in units of     "per sample" or "per ns". :returns: Tuple of x, y
+    :param peak: Peak for which we need the x/y samples
+    :param keep_amplitude_per_sample: If y-data should be in units of     "per sample" or "per ns".
+    :return: Tuple of x, y
 
     """
     if keep_amplitude_per_sample:
@@ -112,8 +113,8 @@ def _patches_x_y(peak, keep_amplitude_per_sample=False):
 def peak_tool_tip(peak_type):
     """Default mouseover tooltip for peaks.
 
-    :param peak_type: If 2, all time variables are in µs else in ns. :return: dictionary of
-    tooltips. Can be converted to a list for     bokeh.models.HoverTool.
+    :param peak_type: If 2, all time variables are in µs else in ns.
+    :return: dictionary of tooltips. Can be converted to a list for bokeh.models.HoverTool.
 
     """
 
@@ -150,9 +151,10 @@ def default_fig(width=400, height=400, title="", **kwargs):
     """Helper function which returns a bokeh.plotting.figure instance with sizing_mode set to
     'scale_both' and an aspect ratio set according to the specified width and height.
 
-    :param width: Plot width in pixels :param height: PLot height in pixels. :param title: Title of
-    the plot. Also allows for additional kwargs     accepted by bokeh.plotting. :returns:
-    bokeh.plotting.figure  instance.
+    :param width: Plot width in pixels
+    :param height: PLot height in pixels.
+    :param title: Title of the plot. Also allows for additional kwargs accepted by bokeh.plotting.
+    :return: bokeh.plotting.figure instance.
 
     """
     fig = bklt.figure(

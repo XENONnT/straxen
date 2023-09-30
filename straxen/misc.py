@@ -3,7 +3,7 @@ from sys import getsizeof, stderr
 import inspect
 import warnings
 import datetime
-import pytz  # type: ignore
+import pytz
 from itertools import chain
 from collections import defaultdict, OrderedDict, deque
 from importlib import import_module
@@ -33,10 +33,11 @@ export, __all__ = strax.exporter()
 @export
 def dataframe_to_wiki(df, float_digits=5, title="Awesome table", force_int: ty.Tuple = ()):
     """Convert a pandas dataframe to a dokuwiki table (which you can copy-paste onto the XENON wiki)
-    :param df: dataframe to convert :param float_digits: format float to this number of digits.
 
-    :param title: title of the table. :param force_int: tuple of column names to force to be
-    integers
+    :param df: dataframe to convert
+    :param float_digits: format float to this number of digits.
+    :param title: title of the table.
+    :param force_int: tuple of column names to force to be integers
 
     """
     table = "^ %s " % title + "^" * (len(df.columns) - 1) + "^\n"
@@ -74,11 +75,9 @@ def print_versions(
     """Print versions of modules installed.
 
     :param modules: Modules to print, should be str, tuple or list. E.g.
-    print_versions(modules=('numpy', 'dddm',)) :param return_string: optional. Instead of printing
-    the message,     return a string :param include_
-    git:
-    Include the current branch and latest commit
-    hash
+        print_versions(modules=('numpy', 'dddm',))
+    :param return_string: optional. Instead of printing the message, return a string
+    :param include_git: Include the current branch and latest commit hash
     :return: optional, the message that would have been printed
 
     """
@@ -140,11 +139,13 @@ def utilix_is_configured(
     section: str = "xent_database",
     warning_message: ty.Union[None, bool, str] = None,
 ) -> bool:
-    """Check if we have the right connection to :return: bool, can we connect to the Mongo database?
+    """Check if we have the right connection to.
 
-    :param header: Which header to check in the utilix config file :param section: Which entry in
-    the header to check to exist :param warning_message: If utilix is not configured, warn the user.
-    if None -> generic warning if str -> use the string to warn if     False -> don't warn
+    :param header: Which header to check in the utilix config file
+    :param section: Which entry in the header to check to exist
+    :param warning_message: If utilix is not configured, warn the user. if None -> generic warning
+        if str -> use the string to warn if False -> don't warn
+    :return: bool, can we connect to the Mongo database?
 
     """
     try:
@@ -248,10 +249,10 @@ class TimeWidgets:
     def _convert_to_datetime(time_widget, time_zone):
         """Converts values of widget into a timezone aware datetime object.
 
-        :param time_widget: Widget Box containing a DatePicker and two     text widget. The first
-        text widget is used to set a day     time. The second the time in nano-seconds. :param
-        time_zone: pytz.timezone allowed string for a timezone. :returns: timezone aware datetime
-        object.
+        :param time_widget: Widget Box containing a DatePicker and two text widget. The first text
+            widget is used to set a day time. The second the time in nano-seconds.
+        :param time_zone: pytz.timezone allowed string for a timezone.
+        :return: timezone aware datetime object.
 
         """
         date_and_time = [c.value for c in time_widget.children]
@@ -299,7 +300,8 @@ def convert_array_to_df(array: np.ndarray) -> pd.DataFrame:
     """Converts the specified array into a DataFrame drops all higher dimensional fields during the
     process.
 
-    :param array: numpy.array to be converted. :returns: DataFrame with higher dimensions dropped.
+    :param array: numpy.array to be converted.
+    :return: DataFrame with higher dimensions dropped.
 
     """
     keys = [key for key in array.dtype.names if array[key].ndim == 1]
