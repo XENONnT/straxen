@@ -33,9 +33,10 @@ class PeakletClassificationSOM(strax.Plugin):
 
     depends_on = ('peaklets', 'peaklet_classification')
 
-    provides = ('peaklet_classification', 'som_peaklet_data')
+    provides = ('peaklet_classification_som', 'som_peaklet_data')
     #provides = ('peaklet_classification_som')
-    data_kind = {k: k for k in provides}
+    data_kind = dict(peaklet_classification='peaklet_classification_som',
+                     som_peaklet_data='som_peaklet_data')
 
     # parallel = True
 

@@ -110,6 +110,17 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
 
     return st
 
+def xenonnt_som(cmt_version='global_ONLINE', xedocs_version=None,
+            _from_cutax=False, **kwargs):
+    """XENONnT context for the SOM"""
+    straxen.plugins.MergedS2s.depends_on = ('peaklets', 'peaklet_classification_som', 'lone_hits')
+    straxen.plugins.Peaks.depends_on = ('peaklets', 'peaklet_classification_som', 'merged_s2s')
+    st = straxen.contexts.xenonnt(cmt_version=cmt_version, xedocs_version=xedocs_version,
+                                  _from_cutax=_from_cutax, **kwargs)
+    st.register(straxen.plugins.PeakletClassificationSOM)
+
+    return st
+
 
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     """
