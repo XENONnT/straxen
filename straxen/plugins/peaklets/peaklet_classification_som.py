@@ -31,24 +31,54 @@ class PeakletClassificationSOM(strax.Plugin):
     #    peaklet_classification_som=True,
     #    som_peaklet_data=True)
 
-    depends_on = ('peaklets', 'peaklet_classification')
+    depends_on = ('peaklets') # get rid of classification and inject it dierectly
 
-    provides = ('peaklet_classification_som', 'som_peaklet_data')
-    #provides = ('peaklet_classification_som')
-    data_kind = dict(peaklet_classification='peaklet_classification_som',
-                     som_peaklet_data='som_peaklet_data')
+    provides = ('peaklet_classification', 'som_peaklet_data')
+    data_kind = dict(peaklet_classification='peaklets',
+                     som_peaklet_data='peaklets')
 
-    # parallel = True
+    parallel = True
 
     som_files = straxen.URLConfig(default='resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy')
     
     #dtype = (strax.peak_interval_dtype
     #         + [('type', np.int8, 'Classification of the peak(let)')])
+    s1_risetime_area_parameters = straxen.URLConfig(
+        default=(50, 80, 12), type=(list, tuple),
+        help="norm, const, tau in the empirical boundary in the risetime-area plot")
+
+    s1_risetime_aft_parameters = straxen.URLConfig(
+        default=(-1, 2.6), type=(list, tuple),
+        help=(
+            "Slope and offset in exponential of emperical boundary in the rise time-AFT "
+            "plot. Specified as (slope, offset)"))
+
+    s1_flatten_threshold_aft = straxen.URLConfig(
+        default=(0.6, 100), type=(tuple, list),
+        help=(
+            "Threshold for AFT, above which we use a flatted boundary for rise time"
+            "Specified values: (AFT boundary, constant rise time)."))
+
+    n_top_pmts = straxen.URLConfig(
+        default=straxen.n_top_pmts, type=int,
+        help="Number of top PMTs")
+
+    s1_max_rise_time_post100 = straxen.URLConfig(
+        default=200, type=(int, float),
+        help="Maximum S1 rise time for > 100 PE [ns]")
+
+    s1_min_coincidence = straxen.URLConfig(
+        default=2, type=int,
+        help="Minimum tight coincidence necessary to make an S1")
+
+    s2_min_pmts = straxen.URLConfig(
+        default=4, type=int,
+        help="Minimum number of PMTs contributing to an S2")
 
     
     def infer_dtype(self):
         dtype = dict()
-        dtype['peaklet_classification_som'] = (strax.peak_interval_dtype +
+        dtype['peaklet_classification'] = (strax.peak_interval_dtype +
              [('type', np.int8, 'Classification of the peak(let)')])
         dtype['som_peaklet_data'] = (strax.peak_interval_dtype + [('som_type', np.int8, 'SOM type of the peak(let)')]
                                      + [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')]
@@ -58,6 +88,7 @@ class PeakletClassificationSOM(strax.Plugin):
     
 
     def setup(self):
+
         self.som_weight_cube = self.som_files['weight_cube']
         self.som_img = self.som_files['som_img']
         self.som_norm_factors = self.som_files['norm_factors']
@@ -66,12 +97,67 @@ class PeakletClassificationSOM(strax.Plugin):
         self.som_s3_array = self.som_files['s3_array']
         self.som_s0_array = self.som_files['s0_array']
 
+    @staticmethod
+    def upper_rise_time_area_boundary(area, norm, const, tau):
+        """
+        Function which determines the upper boundary for the rise-time
+        for a given area.
+        """
+        return norm * np.exp(-area / tau) + const
+
+    @staticmethod
+    def upper_rise_time_aft_boundary(aft, slope, offset, aft_boundary, flat_threshold):
+        """
+        Function which computes the upper rise time boundary as a function
+        of area fraction top.
+        """
+        res = 10 ** (slope * aft + offset)
+        res[aft >= aft_boundary] = flat_threshold
+        return res
+
     def compute(self, peaklets):
+        # Current classification
+        ptype = np.zeros(len(peaklets), dtype=np.int8)
+
+        # Properties needed for classification:
+        rise_time = -peaklets['area_decile_from_midpoint'][:, 1]
+        n_channels = (peaklets['area_per_channel'] > 0).sum(axis=1)
+        n_top = self.n_top_pmts
+        area_top = peaklets['area_per_channel'][:, :n_top].sum(axis=1)
+        area_total = peaklets['area_per_channel'].sum(axis=1)
+        area_fraction_top = area_top / area_total
+
+        is_large_s1 = (peaklets['area'] >= 100)
+        is_large_s1 &= (rise_time <= self.s1_max_rise_time_post100)
+        is_large_s1 &= peaklets['tight_coincidence'] >= self.s1_min_coincidence
+
+        is_small_s1 = peaklets["area"] < 100
+        is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
+            peaklets["area"],
+            *self.s1_risetime_area_parameters,
+        )
+
+        is_small_s1 &= rise_time < self.upper_rise_time_aft_boundary(
+            area_fraction_top,
+            *self.s1_risetime_aft_parameters,
+            *self.s1_flatten_threshold_aft,
+        )
+
+        is_small_s1 &= peaklets['tight_coincidence'] >= self.s1_min_coincidence
+
+        ptype[is_large_s1 | is_small_s1] = 1
+
+        is_s2 = n_channels >= self.s2_min_pmts
+        is_s2[is_large_s1 | is_small_s1] = False
+        ptype[is_s2] = 2
+
+        # SOM classification
         peaklets_w_type = peaklets.copy()
+        peaklets_w_type['type'] = ptype
         mask_non_zero = peaklets_w_type['type'] != 0
         peaklets_w_type = peaklets_w_type[mask_non_zero]
         #result = np.zeros(len(peaklets), dtype=self.dtype)
-        result = np.zeros(len(peaklets), dtype=self.dtype['peaklet_classification_som'])
+        result = np.zeros(len(peaklets), dtype=self.dtype['peaklet_classification'])
         som_info = np.zeros(len(peaklets), dtype=self.dtype['som_peaklet_data'])
         som_type, x_som, y_som = recall_populations(peaklets_w_type, self.som_weight_cube,
                                       self.som_img,
@@ -94,7 +180,7 @@ class PeakletClassificationSOM(strax.Plugin):
         result['dt'] = peaklets['dt']
         result['type'][mask_non_zero] = strax_type
         #result['som_type'][mask_non_zero] = som_type + 1
-        return dict(peaklet_classification_som=result, som_peaklet_data=som_info)
+        return dict(peaklet_classification=result, som_peaklet_data=som_info)
         #return result
 
 
