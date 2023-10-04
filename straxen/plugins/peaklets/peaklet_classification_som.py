@@ -12,6 +12,7 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakletClassificationSOM(PeakletClassification):
+    
     """
     Self-Organizing Maps (SOM)
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:unsupervised_neural_network_som_methods
@@ -28,11 +29,7 @@ class PeakletClassificationSOM(PeakletClassification):
     """
     __version__ = '0.0.1'
 
-    #rechunk_on_save = immutabledict(
-    #    peaklet_classification_som=True,
-    #    som_peaklet_data=True)
-
-    depends_on = ('peaklets') # get rid of classification and inject it dierectly
+    depends_on = ('peaklets') 
 
     provides = ('peaklet_classification', 'som_peaklet_data')
     data_kind = dict(peaklet_classification='peaklets',
@@ -46,9 +43,9 @@ class PeakletClassificationSOM(PeakletClassification):
         dtype = dict()
         dtype['peaklet_classification'] = (strax.peak_interval_dtype +
              [('type', np.int8, 'Classification of the peak(let)')])
-        dtype['som_peaklet_data'] = (strax.peak_interval_dtype + [('som_type', np.int8, 'SOM type of the peak(let)')]
-                                     + [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')]
-                                     + [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')])
+        dtype['som_peaklet_data'] = (strax.peak_interval_dtype + [('som_type', np.int8, 'SOM type of the peak(let)')] +
+                                     [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')] +
+                                     [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')])
 
         return dtype
 
@@ -103,7 +100,6 @@ class PeakletClassificationSOM(PeakletClassification):
         peaklets_w_type['type'] = ptype
         mask_non_zero = peaklets_w_type['type'] != 0
         peaklets_w_type = peaklets_w_type[mask_non_zero]
-        #result = np.zeros(len(peaklets), dtype=self.dtype)
         result = np.zeros(len(peaklets), dtype=self.dtype['peaklet_classification'])
         som_info = np.zeros(len(peaklets), dtype=self.dtype['som_peaklet_data'])
         som_type, x_som, y_som = recall_populations(peaklets_w_type, self.som_weight_cube,
@@ -126,12 +122,13 @@ class PeakletClassificationSOM(PeakletClassification):
         result['length'] = peaklets['length']
         result['dt'] = peaklets['dt']
         result['type'][mask_non_zero] = strax_type
-        #result['som_type'][mask_non_zero] = som_type + 1
+
         return dict(peaklet_classification=result, som_peaklet_data=som_info)
-        #return result
+
 
 
 def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
+    
     """
     Master function that should let the user provide a weightcube,
     a reference img as a np.array, a dataset and a set of normalization factors.
@@ -142,6 +139,7 @@ def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
     dataset:          Data to preform the recall on (Should be peaklet level data)
     normfactos:       A set of 11 numbers to normalize the data so we can preform a recall
     """
+    
     [SOM_xdim, SOM_ydim, SOM_zdim] = weight_cube.shape
     [IMG_xdim, IMG_ydim, IMG_zdim] = SOM_cls_img.shape
     unique_colors = np.unique(np.reshape(SOM_cls_img, [SOM_xdim * SOM_ydim, 3]), axis=0)
@@ -200,11 +198,10 @@ def som_type_to_type(som_type, s1_array, s2_array, s3_array, s0_array):
     som_type_copy[som_type_copy == 5678] = 2
     som_type_copy[som_type_copy == -5] = 3
     som_type_copy[som_type_copy == -250] = 0
-    #assert np.all(np.unique(som_type_copy) == np.array([0, 1, 2])), f'Error, values other than s1 and s2 found in the array'
+
     return som_type_copy
 
 
-# Need function to convert things to S1s and S2s
 def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
     """
     Converts peaklet data into the current best inputs for the SOM,
@@ -215,7 +212,7 @@ def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
     decile_data = compute_quantiles(peaklet_data, 10)
     data = peaklet_data.copy()
     decile_data[decile_data < 1] = 1
-    # decile_L1 = np.log10(decile_data)
+
     decile_log = np.log10(decile_data)
     decile_log_over_max = np.divide(decile_log, normalization_factor[:10])
     # Now lets deal with area
@@ -232,12 +229,14 @@ def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
 
 
 def compute_quantiles(peaks: np.ndarray, n_samples: int):
+    
     """
     Compute waveforms and quantiles for a given number of nodes(attributes)
     :param peaks:
     :param n_samples: number of nodes or attributes
     :return:quantiles
     """
+    
     data = peaks['data'].copy()
     data[data < 0.0] = 0.0
     dt = peaks['dt']
@@ -248,6 +247,7 @@ def compute_quantiles(peaks: np.ndarray, n_samples: int):
 @export
 @numba.jit(nopython=True, cache=True)
 def compute_wf_attributes(data, sample_length, n_samples: int):
+    
     """
     Compute waveform attribures
     Quantiles: represent the amount of time elapsed for
@@ -258,6 +258,7 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
     :param n_samples: compute quantiles for a given number of samples
     :return: waveforms and quantiles of size n_samples
     """
+    
     assert data.shape[0] == len(sample_length), "ararys must have same size"
 
     num_samples = data.shape[1]
