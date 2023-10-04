@@ -95,3 +95,4 @@ def get_z_bias(offset: str):
         return np.zeros(len(rz)) * int(offset)
 
     return fake_z_bias
+
