@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
 from scipy.spatial.distance import cdist
+from straxen.plugins.peaklets.peaklet_classification import PeakletClassification
 import numba
 
 import strax
@@ -10,7 +11,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakletClassificationSOM(strax.Plugin):
+class PeakletClassificationSOM(PeakletClassification):
     """
     Self-Organizing Maps (SOM)
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:unsupervised_neural_network_som_methods
@@ -40,42 +41,7 @@ class PeakletClassificationSOM(strax.Plugin):
     parallel = True
 
     som_files = straxen.URLConfig(default='resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy')
-    
-    #dtype = (strax.peak_interval_dtype
-    #         + [('type', np.int8, 'Classification of the peak(let)')])
-    s1_risetime_area_parameters = straxen.URLConfig(
-        default=(50, 80, 12), type=(list, tuple),
-        help="norm, const, tau in the empirical boundary in the risetime-area plot")
 
-    s1_risetime_aft_parameters = straxen.URLConfig(
-        default=(-1, 2.6), type=(list, tuple),
-        help=(
-            "Slope and offset in exponential of emperical boundary in the rise time-AFT "
-            "plot. Specified as (slope, offset)"))
-
-    s1_flatten_threshold_aft = straxen.URLConfig(
-        default=(0.6, 100), type=(tuple, list),
-        help=(
-            "Threshold for AFT, above which we use a flatted boundary for rise time"
-            "Specified values: (AFT boundary, constant rise time)."))
-
-    n_top_pmts = straxen.URLConfig(
-        default=straxen.n_top_pmts, type=int,
-        help="Number of top PMTs")
-
-    s1_max_rise_time_post100 = straxen.URLConfig(
-        default=200, type=(int, float),
-        help="Maximum S1 rise time for > 100 PE [ns]")
-
-    s1_min_coincidence = straxen.URLConfig(
-        default=2, type=int,
-        help="Minimum tight coincidence necessary to make an S1")
-
-    s2_min_pmts = straxen.URLConfig(
-        default=4, type=int,
-        help="Minimum number of PMTs contributing to an S2")
-
-    
     def infer_dtype(self):
         dtype = dict()
         dtype['peaklet_classification'] = (strax.peak_interval_dtype +
@@ -85,7 +51,6 @@ class PeakletClassificationSOM(strax.Plugin):
                                      + [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')])
 
         return dtype
-    
 
     def setup(self):
 
@@ -96,24 +61,6 @@ class PeakletClassificationSOM(strax.Plugin):
         self.som_s2_array = self.som_files['s2_array']
         self.som_s3_array = self.som_files['s3_array']
         self.som_s0_array = self.som_files['s0_array']
-
-    @staticmethod
-    def upper_rise_time_area_boundary(area, norm, const, tau):
-        """
-        Function which determines the upper boundary for the rise-time
-        for a given area.
-        """
-        return norm * np.exp(-area / tau) + const
-
-    @staticmethod
-    def upper_rise_time_aft_boundary(aft, slope, offset, aft_boundary, flat_threshold):
-        """
-        Function which computes the upper rise time boundary as a function
-        of area fraction top.
-        """
-        res = 10 ** (slope * aft + offset)
-        res[aft >= aft_boundary] = flat_threshold
-        return res
 
     def compute(self, peaklets):
         # Current classification
