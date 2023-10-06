@@ -37,15 +37,22 @@ class PeakletClassificationSOM(PeakletClassification):
 
     parallel = True
 
-    som_files = straxen.URLConfig(default='resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy')
+    som_files = straxen.URLConfig(
+        default='resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy'
+    )
 
     def infer_dtype(self):
-        dtype = dict()
-        dtype['peaklet_classification'] = (strax.peak_interval_dtype +
-             [('type', np.int8, 'Classification of the peak(let)')])
-        dtype['som_peaklet_data'] = (strax.peak_interval_dtype + [('som_type', np.int8, 'SOM type of the peak(let)')] +
-                                     [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')] +
-                                     [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')])
+        dtype = {}
+        dtype['peaklet_classification'] = (
+                strax.peak_interval_dtype + 
+                [('type', np.int8, 'Classification of the peak(let)')]
+        )
+        dtype['som_peaklet_data'] = (
+                strax.peak_interval_dtype + 
+                [('som_type', np.int8, 'SOM type of the peak(let)')] +
+                [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')] +
+                [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')]
+        )
 
         return dtype
 
@@ -127,7 +134,7 @@ class PeakletClassificationSOM(PeakletClassification):
 
 
 
-def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
+def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
     
     """
     Master function that should let the user provide a weightcube,
@@ -135,28 +142,28 @@ def recall_populations(dataset, weight_cube, SOM_cls_img, norm_factors):
     In theory, if these 5 things are provided, this function should output
     the original data back with one added field with the name "SOM_type"
     weight_cube:      SOM weight cube (3D array)
-    SOM_cls_img:      SOM reference image as a numpy array
+    som_cls_img:      SOM reference image as a numpy array
     dataset:          Data to preform the recall on (Should be peaklet level data)
     normfactos:       A set of 11 numbers to normalize the data so we can preform a recall
     """
     
-    [SOM_xdim, SOM_ydim, SOM_zdim] = weight_cube.shape
-    [IMG_xdim, IMG_ydim, IMG_zdim] = SOM_cls_img.shape
-    unique_colors = np.unique(np.reshape(SOM_cls_img, [SOM_xdim * SOM_ydim, 3]), axis=0)
+    xdim, ydim, zdim = weight_cube.shape
+    img_xdim, img_ydim, img_zdim = som_cls_img.shape
+    unique_colors = np.unique(np.reshape(som_cls_img, [xdim * ydim, 3]), axis=0)
     # Checks that the reference image matches the weight cube
-    assert SOM_xdim == IMG_xdim, f'Dimensions mismatch between SOM weight cube ({SOM_xdim}) and reference image ({IMG_xdim})'
-    assert SOM_ydim == IMG_ydim, f'Dimensions mismatch between SOM weight cube ({SOM_ydim}) and reference image ({IMG_ydim})'
+    assert xdim == img_xdim, f'Dimensions mismatch between SOM weight cube ({xdim}) and reference image ({img_xdim})'
+    assert ydim == img_ydim, f'Dimensions mismatch between SOM weight cube ({ydim}) and reference image ({img_ydim})'
 
     assert all(dataset['type'] != 0), 'Dataset contains unclassified peaklets'
     # Get the deciles representation of data for recall
     decile_transform_check = data_to_log_decile_log_area_aft(dataset, norm_factors)
     # preform a recall of the dataset with the weight cube
     # assign each population color a number (can do from previous function)
-    ref_map = generate_color_ref_map(SOM_cls_img, unique_colors, SOM_xdim, SOM_ydim)
-    SOM_cls_array = np.empty(len(dataset['area']))
-    SOM_cls_array[:] = np.nan
+    ref_map = generate_color_ref_map(som_cls_img, unique_colors, xdim, ydim)
+    som_cls_array = np.empty(len(dataset['area']))
+    som_cls_array[:] = np.nan
     # Make new numpy structured array to save the SOM cls data
-    data_with_SOM_cls = rfn.append_fields(dataset, 'SOM_type', SOM_cls_array)
+    data_with_SOM_cls = rfn.append_fields(dataset, 'SOM_type', som_cls_array)
     # preforms the recall and assigns SOM_type label
     output_data, x_som, y_som = SOM_cls_recall(data_with_SOM_cls, decile_transform_check, weight_cube, ref_map)
     return output_data['SOM_type'], x_som, y_som
@@ -172,12 +179,12 @@ def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
     return ref_map
 
 
-def SOM_cls_recall(array_to_fill, data_in_SOM_fmt, weight_cube, reference_map):
-    [SOM_xdim, SOM_ydim, _] = weight_cube.shape
+def SOM_cls_recall(array_to_fill, data_in_som_fmt, weight_cube, reference_map):
+    som_xdim, som_ydim, _ = weight_cube.shape
     # for data_point in data_in_SOM_fmt:
-    distances = cdist(weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_SOM_fmt, metric='euclidean')
+    distances = cdist(weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_som_fmt, metric='euclidean')
     w_neuron = np.argmin(distances, axis=0)
-    x_idx, y_idx = np.unravel_index(w_neuron, (SOM_xdim, SOM_ydim))
+    x_idx, y_idx = np.unravel_index(w_neuron, (som_xdim, som_ydim))
     array_to_fill['SOM_type'] = reference_map[x_idx, y_idx]
     return array_to_fill, x_idx, y_idx
 
