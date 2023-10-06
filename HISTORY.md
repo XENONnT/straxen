@@ -1,3 +1,14 @@
+2.1.4 / 2023-10-04
+-------------------
+* No need to apply `strax.check_chunk_n` individually by @dachengx in https://github.com/XENONnT/straxen/pull/1267
+* Bump xedocs from 0.2.24 to 0.2.25 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1265
+* Bump wfsim from 1.0.2 to 1.1.0 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1264
+* Update configuration of RTD, add xedocs docs by @dachengx in https://github.com/XENONnT/straxen/pull/1271
+* Add pad-array protocol by @jmosbacher in https://github.com/XENONnT/straxen/pull/1266
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.3...v2.1.4
+
 2.1.3 / 2023-09-08
 -------------------
 * Manually check event overlapping by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1214
