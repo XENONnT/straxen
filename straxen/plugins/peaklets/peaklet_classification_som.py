@@ -165,7 +165,7 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
     # Make new numpy structured array to save the SOM cls data
     data_with_SOM_cls = rfn.append_fields(dataset, 'SOM_type', som_cls_array)
     # preforms the recall and assigns SOM_type label
-    output_data, x_som, y_som = SOM_cls_recall(data_with_SOM_cls, decile_transform_check, weight_cube, ref_map)
+    output_data, x_som, y_som = som_cls_recall(data_with_SOM_cls, decile_transform_check, weight_cube, ref_map)
     return output_data['SOM_type'], x_som, y_som
 
 
@@ -179,7 +179,7 @@ def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
     return ref_map
 
 
-def SOM_cls_recall(array_to_fill, data_in_som_fmt, weight_cube, reference_map):
+def som_cls_recall(array_to_fill, data_in_som_fmt, weight_cube, reference_map):
     som_xdim, som_ydim, _ = weight_cube.shape
     # for data_point in data_in_SOM_fmt:
     distances = cdist(weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_som_fmt, metric='euclidean')
