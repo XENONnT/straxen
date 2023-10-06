@@ -27,6 +27,7 @@ class PeakletClassificationSOM(PeakletClassification):
     curious or just want to test it or try it out but note this is note ready to be used in
     analysis.
     """
+    
     __version__ = '0.0.1'
 
     depends_on = ('peaklets') 
