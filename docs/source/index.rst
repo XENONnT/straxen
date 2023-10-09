@@ -36,6 +36,7 @@ Straxen is the analysis framework for XENONnT, built on top of the generic `stra
 
     config_storage
     online_monitor
+    xedocs_configs
     cmt
     context_configs
     url_configs

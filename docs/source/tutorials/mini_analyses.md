@@ -40,6 +40,7 @@ Besides the data kinds (`records` and `peaks` in the example above), a mini-anal
   * time_range: (start, stop) time in ns since the epoch of the selected data interval
   * time_selection: kind of time selection used (fully_contained, touching, or skip)
 
+
 Your analysis will always get these arguments (if you add them to your function), even if the user does not pass them. For time_range, you will get the absolute time in ns even if the user uses one of the other time arguments (such as seconds_range). If no time_range is passed by the user, you will get the time range of the full run. If run metadata is not available, this will be estimated from the data that is passed in / loaded (and if that is empty, you will get (NaN, Nan)).
 
 If your analysis takes any other arguments, they must be keyword arguments. For example, `plot_pmt_pattern` takes an extra `array` argument:
