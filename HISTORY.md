@@ -1,3 +1,11 @@
+2.1.5 / 2023-10-11
+-------------------
+* Som plugin by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1269
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.4...v2.1.5
+
+
 2.1.4 / 2023-10-04
 -------------------
 * No need to apply `strax.check_chunk_n` individually by @dachengx in https://github.com/XENONnT/straxen/pull/1267
