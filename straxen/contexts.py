@@ -8,6 +8,7 @@ import warnings
 import typing as ty
 from pandas.util._decorators import deprecate_kwarg
 import socket
+from straxen.plugins.peaklets.peaklet_classification_som import PeakletClassificationSOM
 
 common_opts = dict(
     register_all=[],
@@ -107,6 +108,18 @@ def xenonnt(cmt_version='global_ONLINE', xedocs_version=None,
 
     if xedocs_version is not None:
         st.apply_xedocs_configs(version=xedocs_version, **kwargs)
+
+    return st
+
+
+def xenonnt_som(cmt_version='global_ONLINE', xedocs_version=None,
+                _from_cutax=False, **kwargs):
+    """XENONnT context for the SOM"""
+
+    st = straxen.contexts.xenonnt(cmt_version=cmt_version, xedocs_version=xedocs_version,
+                                  _from_cutax=_from_cutax, **kwargs)
+    del st._plugin_class_registry['peaklet_classification']
+    st.register(PeakletClassificationSOM)
 
     return st
 

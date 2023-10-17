@@ -1,11 +1,42 @@
 import numpy as np
-from hypothesis import given, settings
+from hypothesis import given, strategies, example, settings
 import hypothesis.strategies as strat
 import strax
 from strax.testutils import fake_hits
 import straxen
 from straxen.plugins.peaklets.peaklets import get_tight_coin
+from straxen.plugins.peaklets.peaklet_classification_som import compute_wf_attributes
 
+
+def get_filled_peaks(peak_length, data_length, n_widths):
+    dtype = [(('Start time since unix epoch [ns]', 'time'), np.int64),
+             (('dt in ns', 'dt'), np.int64),
+             (('length of p', 'length'), np.int16),
+             (('area of p', 'area'), np.float64),
+             (('data of p', 'data'), (np.float64, data_length)),
+             ]
+    if n_widths is not None:
+        dtype += [
+             (('width of p', 'width'),
+              (np.float64, n_widths)),
+             (('area_decile_from_midpoint of p', 'area_decile_from_midpoint'),
+              (np.float64, n_widths)),
+        ]
+    peaks = np.zeros(peak_length, dtype=dtype)
+    dt = 1
+    peaks['time'] = np.arange(peak_length) * dt
+    peaks['dt'] = dt
+
+    # Fill the peaks with random length data
+    for p in peaks:
+        length = np.random.randint(0, data_length)
+        p['length'] = length
+        wf = np.random.random(size=length)
+        p['data'][:length] = wf
+    if len(peaks):
+        # Compute sum area
+        peaks['area'] = np.sum(peaks['data'], axis=1)
+    return peaks
 
 @settings(deadline=None)
 @given(strat.lists(strat.integers(min_value=0, max_value=10),
@@ -77,3 +108,31 @@ def test_get_tight_coin(hits, channel):
         m_hits_in_peak &= (hits_max_time <= (p_max_t + right))
         n_channel = len(np.unique(hits[m_hits_in_peak]['channel']))
         assert n_channel == tight_coin_channel[ind], f'Wrong number of tight channel got {tight_coin_channel[ind]}, but expectd {n_channel}'  # noqa
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    # number of peaks
+    strategies.integers(min_value=0, max_value=20),
+    # length of the data field in the peaks
+    strategies.integers(min_value=2, max_value=20),
+    # Number of widths to compute
+    strategies.integers(min_value=2, max_value=10),
+)
+def test_compute_wf_attributes(peak_length, data_length, n_widths):
+    """
+    Test strax.compute_wf_attribute
+    """
+    peaks = get_filled_peaks(peak_length, data_length, n_widths)
+    wf = np.zeros((len(peaks), 10), dtype=np.float64)
+    q = np.zeros((len(peaks), 10), dtype=np.float64)
+
+    try:
+        q = compute_wf_attributes(peaks['data'], peaks['dt'], 10)
+    except AssertionError as e:
+        if "zero waveform" in str(e):
+            print("cannot compute with a zero waveform")
+        elif "more samples than the actual waveform" in str(e):
+            print("cannot compute with more samples than the actual waveform")
+
+    assert np.all(~np.isnan(q)) and np.all(~np.isnan(wf)), "attributes contains NaN values"
