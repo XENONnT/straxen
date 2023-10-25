@@ -124,7 +124,13 @@ def _version_info_for_module(module_name, include_git):
                 commit_hash = repo.head.object.hexsha
             except TypeError:
                 commit_hash = 'unknown'
+            try:
+                is_dirty = repo.is_dirty()
+            except TypeError:
+                is_dirty = None
             git = f'branch:{branch} | {commit_hash[:7]}'
+            if is_dirty:
+                git += ' + unstaged'
     return version, module_path, git
 
 
