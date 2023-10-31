@@ -42,9 +42,6 @@ from .records_nv import *
 from . import hitlets_nv
 from .hitlets_nv import *
 
-from . import detector_time_offsets
-from .detector_time_offsets import *
-
 from . import events_nv
 from .events_nv import *
 
@@ -83,3 +80,6 @@ from .afterpulses import *
 
 from . import led_cal
 from .led_cal import *
+
+from . import gps_syncing
+from .gps_syncing import *
