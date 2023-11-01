@@ -197,6 +197,23 @@ class GpsSync(strax.OverlapWindowPlugin):
         return ans
 
 
+class GpsSyncDAQVeto(GpsSync):
+    """
+    Plugin which computes veto_intervals using GPS times.
+    Required to compute correctly total lifetime loss of 
+    experiment.
+    """
+    __version__ = '0.0.1'
+    depends_on = ('aqmon_hits', 'veto_intervals')
+    provides = 'veto_intervals_gps_sync'
+    data_kind = 'veto_intervals'
+    child_plugin = True
+
+    def compute(self, aqmon_hits, veto_intervals):
+        res = super().compute(aqmon_hits, veto_intervals)
+        return res
+
+
 class GpsSync_nv(GpsSync):
     """Computes absolute GPS time for nveto data. 
     """
