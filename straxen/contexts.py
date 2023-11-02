@@ -30,7 +30,7 @@ common_opts = dict(
         straxen.EventInfoDouble,
         straxen.DistinctChannels,
     ],
-    check_available=('raw_records', 'peak_basics'),
+    check_available=('peak_basics', 'event_basics'),
     store_run_fields=(
         'name', 'number',
         'start', 'end', 'livetime', 'mode', 'source'))
