@@ -131,7 +131,10 @@ class ReStrax(daq_core.DataBases):
 
     exclude_modes: ty.Iterable = (
         'pmtgain', 'pmtap', 'exttrig', 'noise', 'nVeto_LASER_calibration',
-        'mv_diffuserballs', 'mv_fibres', 'mv_darkrate')
+        'mv_diffuserballs', 'mv_fibres', 'mv_darkrate',
+        # rates are very high, better to skip restrax to avoid memory issues 
+        # anyway, restrax loses a bit its meaning with high rates
+        'ambe_linked', 'ambe_linked_hev')
 
     # If a dataset is larger than this many bytes, only compare a single field (time)
     large_data_compare_threshold: ty.Union[int, float] = int(5e9)
