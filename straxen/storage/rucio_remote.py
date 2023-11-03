@@ -138,7 +138,6 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         with open(metadata_path, mode='r') as f:
             return json.loads(f.read())
 
-    @strax.check_chunk_n
     def _read_chunk(self, dset_did, chunk_info, dtype, compressor):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
         chunk_file = chunk_info['filename']
