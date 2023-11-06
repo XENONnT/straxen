@@ -15,12 +15,7 @@ class EventS2PositionGCN(EventS2PositionBase):
     provides = "event_s2_positions_gcn"
 
     tf_event_model_gcn = straxen.URLConfig(
-        default=f'tf://'
-                f'resource://'
-                f'cmt://{algorithm}_model'
-                f'?version=ONLINE'
-                f'&run_id=plugin.run_id'
-                f'&fmt=abs_path',
+        default='tf://resource://xedocs://posrec_models?attr=value&fmt=abs_path&kind=cnn&run_id=plugin.run_id&version=ONLINE',
         help='MLP model. Should be opened using the "tf" descriptor. '
              'Set to "None" to skip computation',
         cache=3,

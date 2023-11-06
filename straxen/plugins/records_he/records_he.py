@@ -31,7 +31,7 @@ class PulseProcessingHighEnergy(PulseProcessing):
         help="Number of samples per raw_record")
 
     hit_min_amplitude_he = straxen.URLConfig(
-        default='cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id', track=True, infer_type=False,
+        default='list-to-array://xedocs://hit_thresholds?as_list=True&sort=pmt&attr=value&detector=tpc_he&run_id=plugin.run_id&version=ONLINE', track=True, infer_type=False,
         help='Minimum hit amplitude in ADC counts above baseline. '
              'Specify as a tuple of length n_tpc_pmts, or a number,'
              'or a string like "pmt_commissioning_initial" which means calling'
