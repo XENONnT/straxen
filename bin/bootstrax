@@ -1194,7 +1194,8 @@ def run_strax(run_id, input_dir, targets, readout_threads, compressor,
     clear_shm()
 
     if debug:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(force=True)
+        logging.getLogger().setLevel(logging.DEBUG)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 

@@ -247,11 +247,11 @@ class URLConfig(strax.Config):
         return protocol, arg, kwargs
 
     def validate(
-        self,
-        config,
-        run_id=None,  # TODO: will soon be removed
-        run_defaults=None,
-        set_defaults=True,
+            self,
+            config,
+            run_id=None,  # TODO: will soon be removed
+            run_defaults=None,
+            set_defaults=True,
     ):
         """This method is called by the context on plugin initialization
         at this stage, the run_id and context config are already known but the
@@ -289,15 +289,15 @@ class URLConfig(strax.Config):
         msg = (
             f"Invalid type for option {self.name}. "
             f"Expected a {self.final_type} instance, got {type(value)}"
-            )
-        
+        )
+
         if self.final_type is not OMITTED:
             # Use pydantic to validate the type
             # its validation is more flexible than isinstance
             # it will coerce standard equivalent types
             cfg = get_config(dict(arbitrary_types_allowed=True))
             if isinstance(self.final_type, tuple):
-                validators = [ v for t in self.final_type for v in find_validators(t, config=cfg)]
+                validators = [v for t in self.final_type for v in find_validators(t, config=cfg)]
             else:
                 validators = find_validators(self.final_type, config=cfg)
             for validator in validators:
@@ -308,7 +308,7 @@ class URLConfig(strax.Config):
                     pass
             else:
                 raise TypeError(msg)
-    
+
         return value
 
     def fetch(self, plugin):
@@ -360,10 +360,10 @@ class URLConfig(strax.Config):
 
     @classmethod
     def ast_to_url(
-        cls,
-        protocol: Union[str, tuple],
-        arg: Union[str, tuple] = None,
-        kwargs: dict = None,
+            cls,
+            protocol: Union[str, tuple],
+            arg: Union[str, tuple] = None,
+            kwargs: dict = None,
     ):
         """Convert a protocol abstract syntax tree to a valid URL"""
 
@@ -535,17 +535,17 @@ class URLConfig(strax.Config):
                     f"Try passing {k} as a keyword argument. "
                     f"e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`."
                 )
-        
+
         return cls.eval(url)
 
 
 @URLConfig.register("cmt")
 def get_correction(
-    name: str,
-    run_id: str = None,
-    version: str = "ONLINE",
-    detector: str = "nt",
-    **kwargs,
+        name: str,
+        run_id: str = None,
+        version: str = "ONLINE",
+        detector: str = "nt",
+        **kwargs,
 ):
     """Get value for name from CMT"""
 
@@ -606,7 +606,7 @@ def format_arg(arg: str, **kwargs):
 
 @URLConfig.register("itp_map")
 def load_map(
-    some_map, method="WeightedNearestNeighbors", scale_coordinates=None, **kwargs
+        some_map, method="WeightedNearestNeighbors", scale_coordinates=None, **kwargs
 ):
     """Make an InterpolatingMap"""
     itp_map = straxen.InterpolatingMap(some_map, method=method, **kwargs)
@@ -641,7 +641,7 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
 
 @URLConfig.register("itp_dict")
 def get_itp_dict(
-    loaded_json, run_id=None, time_key="time", itp_keys="correction", **kwargs
+        loaded_json, run_id=None, time_key="time", itp_keys="correction", **kwargs
 ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
     """
     Interpolate a dictionary at the start time that is queried from
@@ -785,3 +785,9 @@ def read_rundoc(path, run_id=None, default=None):
         else:
             raise ValueError(f"No path {path} found in rundoc for run {run_id}")
     return rundoc
+
+
+@URLConfig.register('pad-array')
+def get_paded_array(arr: np.ndarray, pad_value=0, pad_left=0, pad_right=0):
+    """Pad the array with pad_value on the left and right side"""
+    return np.pad(arr, (pad_left, pad_right), constant_values=pad_value)
