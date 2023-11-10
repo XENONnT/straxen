@@ -6,7 +6,7 @@ import time
 import pickle
 import logging
 import warnings
-from typing import Type, List, Literal
+from typing import List, Literal, Callable, Union, Optional
 from textwrap import dedent
 
 import numpy as np
@@ -21,9 +21,8 @@ export, __all__ = strax.exporter()
 
 @export
 class InterpolateAndExtrapolate:
-    """Linearly interpolate- and extrapolate using inverse-distance
-    weighted averaging between nearby points.
-    """
+    """Linearly interpolate- and extrapolate using inverse-distance weighted averaging between
+    nearby points."""
 
     def __init__(self, points, values, neighbours_to_use=None, array_valued=False):
         """
@@ -44,29 +43,27 @@ class InterpolateAndExtrapolate:
     def __call__(self, points):
         distances, indices = self.kdtree.query(points, self.neighbours_to_use)
 
-        result = np.ones(len(points)) * float('nan')
+        result = np.ones(len(points)) * float("nan")
         if self.array_valued:
             result = np.repeat(result.reshape(-1, 1), self.n_dim, axis=1)
 
         # If one of the coordinates is NaN, the neighbour-query fails.
         # If we don't filter these out, it would result in an IndexError
         # as the kdtree returns an invalid index if it can't find neighbours.
-        valid = (distances < float('inf')).max(axis=-1)
+        valid = (distances < float("inf")).max(axis=-1)
 
         values = self.values[indices[valid]]
-        weights = 1 / np.clip(distances[valid], 1e-6, float('inf'))
+        weights = 1 / np.clip(distances[valid], 1e-6, float("inf"))
         if self.array_valued:
             weights = np.repeat(weights, self.n_dim).reshape(values.shape)
 
-        result[valid] = np.average(
-            values, weights=weights, axis=-2 if self.array_valued else -1)
+        result[valid] = np.average(values, weights=weights, axis=-2 if self.array_valued else -1)
         return result
 
 
 @export
 class InterpolatingMap:
-    """Correction map that computes values using inverse-weighted distance
-    interpolation.
+    """Correction map that computes values using inverse-weighted distance interpolation.
 
     The map must be specified as a json translating to a dictionary like this:
         'coordinate_system' :   [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...],
@@ -99,11 +96,20 @@ class InterpolatingMap:
     The interpolators are called with
         'positions' :  [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
         'map_name'  :  key to switch to map interpolator other than the default 'map'
-    """
-    metadata_field_names = ['timestamp', 'description', 'coordinate_system',
-                            'name', 'irregular', 'compressed', 'quantized']
 
-    def __init__(self, data, method='WeightedNearestNeighbors', **kwargs):
+    """
+
+    metadata_field_names = [
+        "timestamp",
+        "description",
+        "coordinate_system",
+        "name",
+        "irregular",
+        "compressed",
+        "quantized",
+    ]
+
+    def __init__(self, data, method="WeightedNearestNeighbors", **kwargs):
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
         if isinstance(data, (str, bytes)):
@@ -113,24 +119,23 @@ class InterpolatingMap:
 
         # Decompress / dequantize the map
         # We should support multiple map names!
-        if 'compressed' in self.data:
-            compressor, dtype, shape = self.data['compressed']
-            self.data['map'] = np.frombuffer(
-                strax.io.COMPRESSORS[compressor]['decompress'](self.data['map']),
-                dtype=dtype).reshape(*shape)
-            del self.data['compressed']
-        if 'quantized' in self.data:
-            self.data['map'] = self.data['quantized'] * self.data['map'].astype(np.float32)
-            del self.data['quantized']
+        if "compressed" in self.data:
+            compressor, dtype, shape = self.data["compressed"]
+            self.data["map"] = np.frombuffer(
+                strax.io.COMPRESSORS[compressor]["decompress"](self.data["map"]), dtype=dtype
+            ).reshape(*shape)
+            del self.data["compressed"]
+        if "quantized" in self.data:
+            self.data["map"] = self.data["quantized"] * self.data["map"].astype(np.float32)
+            del self.data["quantized"]
 
-        csys = self.data['coordinate_system']
+        csys = self.data["coordinate_system"]
         if not len(csys):
             self.dimensions = 0
         elif isinstance(csys[0][0], str):
             # Support for specifying coordinate system as a gridspec
-            grid = [np.linspace(left, right, points)
-                    for _, (left, right, points) in csys]
-            csys = np.array(np.meshgrid(*grid, indexing='ij'))
+            grid = [np.linspace(left, right, points) for _, (left, right, points) in csys]
+            csys = np.array(np.meshgrid(*grid, indexing="ij"))
             axes = np.roll(np.arange(len(grid) + 1), -1)
             csys = np.transpose(csys, axes)
             csys = np.array(csys).reshape((-1, len(grid)))
@@ -141,16 +146,14 @@ class InterpolatingMap:
 
         self.coordinate_system = csys
         self.interpolators = {}
-        self.map_names = sorted([
-            k for k in self.data.keys()
-            if k not in self.metadata_field_names])
+        self.map_names = sorted([k for k in self.data.keys() if k not in self.metadata_field_names])
 
-        log = logging.getLogger('InterpolatingMap')
+        log = logging.getLogger("InterpolatingMap")
+        log.debug("Map name: %s" % self.data.get("name", "NO NAME?!"))
         log.debug(
-            'Map name: %s' % self.data.get('name', "NO NAME?!"))
-        log.debug(
-            'Map description:\n    ' +
-            re.sub(r'\n', r'\n    ', self.data.get('description', "NO DESCRIPTION?!")))
+            "Map description:\n    "
+            + re.sub(r"\n", r"\n    ", self.data.get("description", "NO DESCRIPTION?!"))
+        )
         log.debug("Map names found: %s" % self.map_names)
 
         for map_name in self.map_names:
@@ -169,24 +172,26 @@ class InterpolatingMap:
                 def itp_fun(positions):
                     return np.array([map_data])
 
-            elif method == 'RectBivariateSpline':
+            elif method == "RectBivariateSpline":
                 itp_fun = self._rect_bivariate_spline(csys, map_data, array_valued, **kwargs)
 
-            elif method == 'RegularGridInterpolator':
+            elif method == "RegularGridInterpolator":
                 itp_fun = self._regular_grid_interpolator(csys, map_data, array_valued, **kwargs)
 
-            elif method == 'WeightedNearestNeighbors':
+            elif method == "WeightedNearestNeighbors":
                 itp_fun = self._weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs)
 
             else:
-                raise ValueError(f'Interpolation method {method} is not supported')
+                raise ValueError(f"Interpolation method {method} is not supported")
 
             self.interpolators[map_name] = itp_fun
 
-    def __call__(self, *args, map_name='map'):
-        """Returns the value of the map at the position given by coordinates
+    def __call__(self, *args, map_name="map"):
+        """Returns the value of the map at the position given by coordinates.
+
         :param positions: array (n_dim) or (n_points, n_dim) of positions
-        :param map_name: Name of the map to use. Default is 'map'.
+        :param map_name: Name of the map to use.  Default is 'map'.
+
         """
         return self.interpolators[map_name](*args)
 
@@ -196,8 +201,8 @@ class InterpolatingMap:
         grid = [np.unique(csys[:, i]) for i in range(dimensions)]
         grid_shape = [len(g) for g in grid]
 
-        assert dimensions == 2, 'RectBivariateSpline interpolate maps of dimension 2'
-        assert not array_valued, 'RectBivariateSpline does not support interpolating array values'
+        assert dimensions == 2, "RectBivariateSpline interpolate maps of dimension 2"
+        assert not array_valued, "RectBivariateSpline does not support interpolating array values"
         map_data = map_data.reshape(*grid_shape)
         kwargs = straxen.filter_kwargs(RectBivariateSpline, kwargs)
         rbs = RectBivariateSpline(grid[0], grid[1], map_data, **kwargs)
@@ -223,7 +228,7 @@ class InterpolatingMap:
         config = dict(bounds_error=False, fill_value=None)
         kwargs = straxen.filter_kwargs(RegularGridInterpolator, kwargs)
         config.update(kwargs)
-        
+
         return RegularGridInterpolator(tuple(grid), map_data, **config)
 
     @staticmethod
@@ -235,16 +240,19 @@ class InterpolatingMap:
         kwargs = straxen.filter_kwargs(InterpolateAndExtrapolate, kwargs)
         return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
 
-    def scale_coordinates(self, scaling_factor, map_name='map'):
-        """Scales the coordinate system by the specified factor
+    def scale_coordinates(self, scaling_factor, map_name="map"):
+        """Scales the coordinate system by the specified factor.
+
         :params scaling_factor: array (n_dim) of scaling factors if different or single scalar.
+
         """
         if self.dimensions == 0:
             return
-        if hasattr(scaling_factor, '__len__'):
-            assert (len(scaling_factor) == self.dimensions), \
-                f"Scaling factor array dimension {len(scaling_factor)} " \
+        if hasattr(scaling_factor, "__len__"):
+            assert len(scaling_factor) == self.dimensions, (
+                f"Scaling factor array dimension {len(scaling_factor)} "
                 f"does not match grid dimension {self.dimensions}"
+            )
             self._sf = scaling_factor
         if isinstance(scaling_factor, (int, float)):
             self._sf = [scaling_factor] * self.dimensions
@@ -261,25 +269,24 @@ class InterpolatingMap:
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
         itp_fun = InterpolateAndExtrapolate(
-            points=np.array(alt_csys),
-            values=np.array(map_data),
-            array_valued=array_valued)
+            points=np.array(alt_csys), values=np.array(map_data), array_valued=array_valued
+        )
         self.interpolators[map_name] = itp_fun
 
 
 @export
 def save_interpolation_formatted_map(
-        itp_map,
-        coordinate_system: List,
-        filename: str,
-        map_name: str = None,
-        quantum: float = None,
-        quantum_dtype = np.int16,
-        map_description: str = '',
-        compressor: Literal['bz2', 'zstd', 'blosc', 'lz4'] = 'zstd',
-    ):
-    """
-    Make a straxen-style InterpolatingMap.
+    itp_map,
+    coordinate_system: List,
+    filename: str,
+    map_name: Optional[str] = None,
+    quantum: Optional[float] = None,
+    quantum_dtype=np.int16,
+    map_description: str = "",
+    compressor: Literal["bz2", "zstd", "blosc", "lz4"] = "zstd",
+):
+    """Make a straxen-style InterpolatingMap.
+
     To fit the large XENONnT per-PMT maps into strax_auxiliary files,
     quantized them to values of 1e-5,
     and store the maps as 16-bit integer multiples of 1e-5, instead of 64-bit floats.
@@ -293,24 +300,29 @@ def save_interpolation_formatted_map(
     :param quantum: quantum of the map if quantized
     :param map_description: map's description
     :param compressor: key of compressor in strax.io.COMPRESSORS
+
     """
     if isinstance(itp_map, list):
         itp_map = np.array(itp_map)
 
+    itp_map_shape: Union[list, int]
+    coordinate_shape: Union[list, int]
     if isinstance(coordinate_system[0][0], str):
         itp_map_shape = list(itp_map.shape)
         coordinate_shape = [c[1][2] for c in coordinate_system]
-        mask = (len(itp_map_shape) == len(coordinate_shape))
+        mask = len(itp_map_shape) == len(coordinate_shape)
         mask &= all([hs == cs for hs, cs in zip(itp_map_shape, coordinate_shape)])
     else:
         itp_map_shape = len(itp_map)
         coordinate_shape = len(coordinate_system)
-        mask = (itp_map_shape == coordinate_shape)
+        mask = itp_map_shape == coordinate_shape
     if not mask:
         raise ValueError(
             f"The shape of itp_map: {itp_map_shape} and "
-            f"coordinate system: {coordinate_shape} do not match")
+            f"coordinate system: {coordinate_shape} do not match"
+        )
 
+    q: Union[int, float]
     if quantum is None:
         # if quantum is not specified, just use float32
         q = 1
@@ -321,33 +333,36 @@ def save_interpolation_formatted_map(
         if not np.issubdtype(quantum_dtype, np.integer):
             raise ValueError(
                 "If using quantization, quantum_dtype must be an integer type,"
-                f" but it is now {quantum_dtype}")
+                f" but it is now {quantum_dtype}"
+            )
         encode_until = np.iinfo(quantum_dtype).max * q
         if itp_map.max() > encode_until:
             raise ValueError(
                 f"Map maximum value is {itp_map.max():.4f},"
-                " can encode values until {encode_until:.4f}")
+                " can encode values until {encode_until:.4f}"
+            )
         map = np.round(itp_map / q).astype(quantum_dtype)
 
     output = dict(
         coordinate_system=coordinate_system,
-        map=strax.io.COMPRESSORS[compressor]['compress'](map),
+        map=strax.io.COMPRESSORS[compressor]["compress"](map),
         description=dedent(map_description),
         timestamp=time.time(),
         compressed=(compressor, quantum_dtype, map.shape),
     )
     if quantum is not None:
-        output['quantized'] = q
+        output["quantized"] = q
     if map_name is not None:
-        output['name'] = map_name
+        output["name"] = map_name
 
-    if 'pkl' not in filename:
+    if "pkl" not in filename:
         warnings.warn("Better use .pkl or .pkl.gz extension for map files")
     splitext = os.path.splitext(filename)
-    if splitext[-1] == '.gz':
+    opener: Callable
+    if splitext[-1] == ".gz":
         opener = gzip.open
     else:
         opener = open
-    with opener(filename, mode='wb') as f:
+    with opener(filename, mode="wb") as f:
         pickle.dump(output, f)
     print(f"Wrote new map file {filename}, {os.path.getsize(filename) / 1e6:.2f} MB")

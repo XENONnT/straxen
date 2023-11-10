@@ -12,7 +12,6 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakletClassificationSOM(PeakletClassification):
-    
     """
     Self-Organizing Maps (SOM)
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:unsupervised_neural_network_som_methods
@@ -27,61 +26,58 @@ class PeakletClassificationSOM(PeakletClassification):
     curious or just want to test it or try it out but note this is note ready to be used in
     analysis.
     """
-    
-    __version__ = '0.0.1'
 
-    depends_on = ('peaklets') 
+    __version__ = "0.0.1"
 
-    provides = ('peaklet_classification', 'som_peaklet_data')
-    data_kind = dict(peaklet_classification='peaklets',
-                     som_peaklet_data='peaklets')
+    depends_on = "peaklets"
+
+    provides = ("peaklet_classification", "som_peaklet_data")
+    data_kind = dict(peaklet_classification="peaklets", som_peaklet_data="peaklets")
 
     parallel = True
 
     som_files = straxen.URLConfig(
-        default='resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy'
+        default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
     )
 
     def infer_dtype(self):
         dtype = {}
-        dtype['peaklet_classification'] = (
-                strax.peak_interval_dtype + 
-                [('type', np.int8, 'Classification of the peak(let)')]
-        )
-        dtype['som_peaklet_data'] = (
-                strax.peak_interval_dtype + 
-                [('som_type', np.int8, 'SOM type of the peak(let)')] +
-                [('loc_x_som', np.int16, 'x location of the peak(let) in the SOM')] +
-                [('loc_y_som', np.int16, 'y location of the peak(let) in the SOM')]
+        dtype["peaklet_classification"] = strax.peak_interval_dtype + [
+            ("type", np.int8, "Classification of the peak(let)")
+        ]
+        dtype["som_peaklet_data"] = (
+            strax.peak_interval_dtype
+            + [("som_type", np.int8, "SOM type of the peak(let)")]
+            + [("loc_x_som", np.int16, "x location of the peak(let) in the SOM")]
+            + [("loc_y_som", np.int16, "y location of the peak(let) in the SOM")]
         )
 
         return dtype
 
     def setup(self):
-
-        self.som_weight_cube = self.som_files['weight_cube']
-        self.som_img = self.som_files['som_img']
-        self.som_norm_factors = self.som_files['norm_factors']
-        self.som_s1_array = self.som_files['s1_array']
-        self.som_s2_array = self.som_files['s2_array']
-        self.som_s3_array = self.som_files['s3_array']
-        self.som_s0_array = self.som_files['s0_array']
+        self.som_weight_cube = self.som_files["weight_cube"]
+        self.som_img = self.som_files["som_img"]
+        self.som_norm_factors = self.som_files["norm_factors"]
+        self.som_s1_array = self.som_files["s1_array"]
+        self.som_s2_array = self.som_files["s2_array"]
+        self.som_s3_array = self.som_files["s3_array"]
+        self.som_s0_array = self.som_files["s0_array"]
 
     def compute(self, peaklets):
         # Current classification
         ptype = np.zeros(len(peaklets), dtype=np.int8)
 
         # Properties needed for classification:
-        rise_time = -peaklets['area_decile_from_midpoint'][:, 1]
-        n_channels = (peaklets['area_per_channel'] > 0).sum(axis=1)
+        rise_time = -peaklets["area_decile_from_midpoint"][:, 1]
+        n_channels = (peaklets["area_per_channel"] > 0).sum(axis=1)
         n_top = self.n_top_pmts
-        area_top = peaklets['area_per_channel'][:, :n_top].sum(axis=1)
-        area_total = peaklets['area_per_channel'].sum(axis=1)
+        area_top = peaklets["area_per_channel"][:, :n_top].sum(axis=1)
+        area_total = peaklets["area_per_channel"].sum(axis=1)
         area_fraction_top = area_top / area_total
 
-        is_large_s1 = (peaklets['area'] >= 100)
-        is_large_s1 &= (rise_time <= self.s1_max_rise_time_post100)
-        is_large_s1 &= peaklets['tight_coincidence'] >= self.s1_min_coincidence
+        is_large_s1 = peaklets["area"] >= 100
+        is_large_s1 &= rise_time <= self.s1_max_rise_time_post100
+        is_large_s1 &= peaklets["tight_coincidence"] >= self.s1_min_coincidence
 
         is_small_s1 = peaklets["area"] < 100
         is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
@@ -95,7 +91,7 @@ class PeakletClassificationSOM(PeakletClassification):
             *self.s1_flatten_threshold_aft,
         )
 
-        is_small_s1 &= peaklets['tight_coincidence'] >= self.s1_min_coincidence
+        is_small_s1 &= peaklets["tight_coincidence"] >= self.s1_min_coincidence
 
         ptype[is_large_s1 | is_small_s1] = 1
 
@@ -105,69 +101,72 @@ class PeakletClassificationSOM(PeakletClassification):
 
         # SOM classification
         peaklets_w_type = peaklets.copy()
-        peaklets_w_type['type'] = ptype
-        mask_non_zero = peaklets_w_type['type'] != 0
+        peaklets_w_type["type"] = ptype
+        mask_non_zero = peaklets_w_type["type"] != 0
         peaklets_w_type = peaklets_w_type[mask_non_zero]
-        result = np.zeros(len(peaklets), dtype=self.dtype['peaklet_classification'])
-        som_info = np.zeros(len(peaklets), dtype=self.dtype['som_peaklet_data'])
-        som_type, x_som, y_som = recall_populations(peaklets_w_type, self.som_weight_cube,
-                                      self.som_img,
-                                      self.som_norm_factors)
+        result = np.zeros(len(peaklets), dtype=self.dtype["peaklet_classification"])
+        som_info = np.zeros(len(peaklets), dtype=self.dtype["som_peaklet_data"])
+        som_type, x_som, y_som = recall_populations(
+            peaklets_w_type, self.som_weight_cube, self.som_img, self.som_norm_factors
+        )
 
-        som_info['time'] = peaklets['time']
-        som_info['length'] = peaklets['length']
-        som_info['dt'] = peaklets['dt']
-        som_info['som_type'][mask_non_zero] = som_type
-        som_info['loc_x_som'][mask_non_zero] = x_som
-        som_info['loc_y_som'][mask_non_zero] = y_som
-        
-        strax_type = som_type_to_type(som_type,
-                                      self.som_s1_array,
-                                      self.som_s2_array,
-                                      self.som_s3_array,
-                                      self.som_s0_array)
-        result['time'] = peaklets['time']
-        result['length'] = peaklets['length']
-        result['dt'] = peaklets['dt']
-        result['type'][mask_non_zero] = strax_type
+        som_info["time"] = peaklets["time"]
+        som_info["length"] = peaklets["length"]
+        som_info["dt"] = peaklets["dt"]
+        som_info["som_type"][mask_non_zero] = som_type
+        som_info["loc_x_som"][mask_non_zero] = x_som
+        som_info["loc_y_som"][mask_non_zero] = y_som
+
+        strax_type = som_type_to_type(
+            som_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
+        )
+        result["time"] = peaklets["time"]
+        result["length"] = peaklets["length"]
+        result["dt"] = peaklets["dt"]
+        result["type"][mask_non_zero] = strax_type
 
         return dict(peaklet_classification=result, som_peaklet_data=som_info)
 
 
-
 def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
-    
-    """
-    Master function that should let the user provide a weightcube,
-    a reference img as a np.array, a dataset and a set of normalization factors.
+    """Master function that should let the user provide a weightcube, a reference img as a np.array,
+    a dataset and a set of normalization factors.
+
     In theory, if these 5 things are provided, this function should output
     the original data back with one added field with the name "SOM_type"
     weight_cube:      SOM weight cube (3D array)
     som_cls_img:      SOM reference image as a numpy array
     dataset:          Data to preform the recall on (Should be peaklet level data)
     normfactos:       A set of 11 numbers to normalize the data so we can preform a recall
+
     """
-    
+
     xdim, ydim, zdim = weight_cube.shape
     img_xdim, img_ydim, img_zdim = som_cls_img.shape
     unique_colors = np.unique(np.reshape(som_cls_img, [xdim * ydim, 3]), axis=0)
     # Checks that the reference image matches the weight cube
-    assert xdim == img_xdim, f'Dimensions mismatch between SOM weight cube ({xdim}) and reference image ({img_xdim})'
-    assert ydim == img_ydim, f'Dimensions mismatch between SOM weight cube ({ydim}) and reference image ({img_ydim})'
+    assert (
+        xdim == img_xdim
+    ), f"Dimensions mismatch between SOM weight cube ({xdim}) and reference image ({img_xdim})"
+    assert (
+        ydim == img_ydim
+    ), f"Dimensions mismatch between SOM weight cube ({ydim}) and reference image ({img_ydim})"
 
-    assert all(dataset['type'] != 0), 'Dataset contains unclassified peaklets'
+    assert all(dataset["type"] != 0), "Dataset contains unclassified peaklets"
     # Get the deciles representation of data for recall
     decile_transform_check = data_to_log_decile_log_area_aft(dataset, norm_factors)
     # preform a recall of the dataset with the weight cube
     # assign each population color a number (can do from previous function)
     ref_map = generate_color_ref_map(som_cls_img, unique_colors, xdim, ydim)
-    som_cls_array = np.empty(len(dataset['area']))
+    som_cls_array = np.empty(len(dataset["area"]))
     som_cls_array[:] = np.nan
     # Make new numpy structured array to save the SOM cls data
-    data_with_SOM_cls = rfn.append_fields(dataset, 'SOM_type', som_cls_array)
+    data_with_SOM_cls = rfn.append_fields(dataset, "SOM_type", som_cls_array)
     # preforms the recall and assigns SOM_type label
-    output_data, x_som, y_som = som_cls_recall(data_with_SOM_cls, decile_transform_check, weight_cube, ref_map)
-    return output_data['SOM_type'], x_som, y_som
+    output_data, x_som, y_som = som_cls_recall(
+        data_with_SOM_cls, decile_transform_check, weight_cube, ref_map
+    )
+    return output_data["SOM_type"], x_som, y_som
 
 
 def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
@@ -183,10 +182,12 @@ def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
 def som_cls_recall(array_to_fill, data_in_som_fmt, weight_cube, reference_map):
     som_xdim, som_ydim, _ = weight_cube.shape
     # for data_point in data_in_SOM_fmt:
-    distances = cdist(weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_som_fmt, metric='euclidean')
+    distances = cdist(
+        weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_som_fmt, metric="euclidean"
+    )
     w_neuron = np.argmin(distances, axis=0)
     x_idx, y_idx = np.unravel_index(w_neuron, (som_xdim, som_ydim))
-    array_to_fill['SOM_type'] = reference_map[x_idx, y_idx]
+    array_to_fill["SOM_type"] = reference_map[x_idx, y_idx]
     return array_to_fill, x_idx, y_idx
 
 
@@ -211,12 +212,10 @@ def som_type_to_type(som_type, s1_array, s2_array, s3_array, s0_array):
 
 
 def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
-    """
-    Converts peaklet data into the current best inputs for the SOM,
-    log10(deciles) + log10(area) + AFT
-    Since we are dealing with logs, anything less than 1 will be set to 1
-    """
-    # turn deciles into approriate 'normalized' format (maybe also consider L1 normalization of these inputs)
+    """Converts peaklet data into the current best inputs for the SOM, log10(deciles) + log10(area)
+    + AFT Since we are dealing with logs, anything less than 1 will be set to 1."""
+    # turn deciles into approriate 'normalized' format
+    # (maybe also consider L1 normalization of these inputs)
     decile_data = compute_quantiles(peaklet_data, 10)
     data = peaklet_data.copy()
     decile_data[decile_data < 1] = 1
@@ -224,30 +223,35 @@ def data_to_log_decile_log_area_aft(peaklet_data, normalization_factor):
     decile_log = np.log10(decile_data)
     decile_log_over_max = np.divide(decile_log, normalization_factor[:10])
     # Now lets deal with area
-    data['area'] = data['area'] + normalization_factor[11] + 1
-    peaklet_log_area = np.log10(data['area'])
-    peaklet_aft = np.sum(data['area_per_channel'][:, :straxen.n_top_pmts], axis=1) / peaklet_data['area']
+    data["area"] = data["area"] + normalization_factor[11] + 1
+    peaklet_log_area = np.log10(data["area"])
+    peaklet_aft = (
+        np.sum(data["area_per_channel"][:, : straxen.n_top_pmts], axis=1) / peaklet_data["area"]
+    )
     peaklet_aft = np.where(peaklet_aft > 0, peaklet_aft, 0)
     peaklet_aft = np.where(peaklet_aft < 1, peaklet_aft, 1)
-    deciles_area_aft = np.concatenate((decile_log_over_max,
-                                       np.reshape(peaklet_log_area, (len(peaklet_log_area), 1)) / normalization_factor[
-                                           10],
-                                       np.reshape(peaklet_aft, (len(peaklet_log_area), 1))), axis=1)
+    deciles_area_aft = np.concatenate(
+        (
+            decile_log_over_max,
+            np.reshape(peaklet_log_area, (len(peaklet_log_area), 1)) / normalization_factor[10],
+            np.reshape(peaklet_aft, (len(peaklet_log_area), 1)),
+        ),
+        axis=1,
+    )
     return deciles_area_aft
 
 
 def compute_quantiles(peaks: np.ndarray, n_samples: int):
-    
-    """
-    Compute waveforms and quantiles for a given number of nodes(attributes)
-    :param peaks:
+    """Compute waveforms and quantiles for a given number of nodes(attributes) :param peaks:
+
     :param n_samples: number of nodes or attributes
-    :return:quantiles
+    :return: quantiles
+
     """
-    
-    data = peaks['data'].copy()
+
+    data = peaks["data"].copy()
     data[data < 0.0] = 0.0
-    dt = peaks['dt']
+    dt = peaks["dt"]
     q = compute_wf_attributes(data, dt, n_samples)
     return q
 
@@ -255,7 +259,6 @@ def compute_quantiles(peaks: np.ndarray, n_samples: int):
 @export
 @numba.jit(nopython=True, cache=True)
 def compute_wf_attributes(data, sample_length, n_samples: int):
-    
     """
     Compute waveform attribures
     Quantiles: represent the amount of time elapsed for
@@ -266,7 +269,7 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
     :param n_samples: compute quantiles for a given number of samples
     :return: waveforms and quantiles of size n_samples
     """
-    
+
     assert data.shape[0] == len(sample_length), "ararys must have same size"
 
     num_samples = data.shape[1]
@@ -278,7 +281,7 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
     assert num_samples % n_samples == 0, "number of samples must be a multiple of n_samples"
 
     # Compute quantiles
-    inter_points = np.linspace(0., 1. - (1. / n_samples), n_samples)
+    inter_points = np.linspace(0.0, 1.0 - (1.0 / n_samples), n_samples)
     cumsum_steps = np.zeros(n_samples + 1, dtype=np.float64)
     frac_of_cumsum = np.zeros(num_samples + 1)
     sample_number_div_dt = np.arange(0, num_samples + 1, 1)
