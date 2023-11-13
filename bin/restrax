@@ -212,14 +212,12 @@ class ReStrax(daq_core.DataBases):
             if close:
                 break
 
-    def find_work(self,
-                  projection: ty.Optional[dict] = None
-                  ) -> ty.Optional[dict]:
-        """
-        Get a list of documents to recompress and the associated rundoc
+    def find_work(self, projection: ty.Optional[dict] = None) -> ty.Optional[dict]:
+        """Get a list of documents to recompress and the associated rundoc
 
         :param projection: optional, which fields from the run document to query
         :return: list of data documents, and the run-document that
+
         """
         if projection is None:
             projection = {k: 1 for k in 'data number mode detectors rate'.split()}
@@ -378,7 +376,7 @@ class ReStrax(daq_core.DataBases):
             self.validate_data(compress_docs)
 
         # In the final bookkeeping we move documents, move them only if all
-        # checks above are good and update the rundoc in the  finalize_execute
+        # checks above are good and update the rundoc in the finalize_execute
         for move_doc in skip_docs:
             self._bypass_for_data_doc(move_doc)
 
@@ -410,13 +408,14 @@ class ReStrax(daq_core.DataBases):
         raise NotImplementedError
 
     def rechunk_docs(self, run_doc: dict, data_docs: ty.List[dict]) -> None:
-        """
-        For each of the data documents, rechunk/recompress/move/check the data,
+        """For each of the data documents, rechunk/recompress/move/check the data,
         if multi-threading is allowed, use that
+
         :param run_doc: run document
         :param data_docs: list of data documents. NB! Will work on ALL these documents
             so these data documents don't have to be the same as the data field in the
             run_doc.
+
         """
         if self.max_threads > 1:
             threads = []
@@ -466,11 +465,11 @@ class ReStrax(daq_core.DataBases):
             self.take_a_nap(self.nap_time_short)
 
     def get_compressor_and_size(self, run_doc: dict, data_doc: dict) -> ty.Tuple[str, ty.Optional[int]]:
-        """
-        For a given data document infer the desired compressor, and target size
+        """For a given data document infer the desired compressor, and target size
 
         :param run_doc: run document
         :param data_doc: data document
+
         """
         # This is where we might do some fancy coding
         dtype = data_doc['type']
@@ -513,6 +512,7 @@ class ReStrax(daq_core.DataBases):
 
         :param run_doc: run document
         :param data_doc: data document
+
         """
 
         # Skipp all when in bypass mode - don't log messages for each data_doc separately
@@ -538,11 +538,11 @@ class ReStrax(daq_core.DataBases):
         return False
 
     def do_checks(self, data_docs: ty.List[dict]) -> None:
-        """
-        Open the metadata of the old and the new file to check if everything
+        """Open the metadata of the old and the new file to check if everything
         is consistent and no exceptions were encountered during recompression
 
         :param data_docs: list of data documents to rechunk
+
         """
         if self.ignore_checks:
             # One does not just venture into Mar a lago!
@@ -617,8 +617,8 @@ class ReStrax(daq_core.DataBases):
                            keep_column: typing.Optional[ty.Union[str, list]] = None,
                            progress_bar: bool = False,
                            _compare_sum: bool = False) -> np.ndarray:
-        """
-        Load data from a specified folder
+        """Load data from a specified folder
+
         :param folder: absolute path to folder
         :param keep_column: columns to keep from structured array (if None, get all)
         :param progress_bar: show a tqdm progressbar
@@ -626,6 +626,7 @@ class ReStrax(daq_core.DataBases):
             prevent keeping too much memory occoupied.
             Will be overwritten for too large arrays.
         :return: concatenated numpy array
+
         """
         meta_data = strax.FileSytemBackend()._get_metadata(folder)
         files = strax.utils.tqdm(sorted(glob.glob(os.path.join(folder, '*')))[:-1],

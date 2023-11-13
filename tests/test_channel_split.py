@@ -5,10 +5,10 @@ import straxen
 
 
 def channel_split_naive(r, channel_ranges):
-    """Slower but simpler implementation of straxen.split_channel_ranges"""
+    """Slower but simpler implementation of straxen.split_channel_ranges."""
     results = []
     for left, right in channel_ranges:
-        results.append(r[np.in1d(r['channel'], np.arange(left, right + 1))])
+        results.append(r[np.in1d(r["channel"], np.arange(left, right + 1))])
     return results
 
 
@@ -22,6 +22,6 @@ def test_channel_split(records):
     assert len(result) == len(result_2)
     for i, _ in enumerate(result):
         np.testing.assert_array_equal(
-            np.unique(result[i]['channel']),
-            np.unique(result_2[i]['channel']))
+            np.unique(result[i]["channel"]), np.unique(result_2[i]["channel"])
+        )
         np.testing.assert_array_equal(result[i], result_2[i])

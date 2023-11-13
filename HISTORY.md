@@ -1,3 +1,50 @@
+2.1.5 / 2023-10-11
+-------------------
+* Som plugin by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1269
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.4...v2.1.5
+
+
+2.1.4 / 2023-10-04
+-------------------
+* No need to apply `strax.check_chunk_n` individually by @dachengx in https://github.com/XENONnT/straxen/pull/1267
+* Bump xedocs from 0.2.24 to 0.2.25 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1265
+* Bump wfsim from 1.0.2 to 1.1.0 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1264
+* Update configuration of RTD, add xedocs docs by @dachengx in https://github.com/XENONnT/straxen/pull/1271
+* Add pad-array protocol by @jmosbacher in https://github.com/XENONnT/straxen/pull/1266
+
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.3...v2.1.4
+
+2.1.3 / 2023-09-08
+-------------------
+* Manually check event overlapping by @FaroutYLq in https://github.com/XENONnT/straxen/pull/1214
+* Add missing docstrings by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1234
+* Use formatted float in `dataframe_to_wiki` by @dachengx in https://github.com/XENONnT/straxen/pull/1231
+* Bump actions/setup-python, urllib3 and sphinx by @dachengx in https://github.com/XENONnT/straxen/pull/1232
+* Update module index of docs by @dachengx in https://github.com/XENONnT/straxen/pull/1233
+* Bump sphinx-rtd-theme from 1.2.2 to 1.3.0 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1238
+* Replace `z` from `z_naive` to `z_dv_corr` by @dachengx in https://github.com/XENONnT/straxen/pull/1239
+* Remove context collection badge by @dachengx in https://github.com/XENONnT/straxen/pull/1241
+* Update xedocs version by @dachengx in https://github.com/XENONnT/straxen/pull/1246
+* No need to get map shape for 0D placeholder map by @dachengx in https://github.com/XENONnT/straxen/pull/1245
+* Give `RunDB` an option to find files in storage by @dachengx in https://github.com/XENONnT/straxen/pull/1244
+* Check chunk n for backends after chunk loading by @dachengx in https://github.com/XENONnT/straxen/pull/1243
+* Revert "Give RunDB an option to find files in storage but not in data… by @dachengx in https://github.com/XENONnT/straxen/pull/1248
+* Photon ionization correction on S2 by @xzh19980906 in https://github.com/XENONnT/straxen/pull/1247
+* Bump xedocs from 0.2.23 to 0.2.24 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1250
+* FDC uses corrected position by @shenyangshi in https://github.com/XENONnT/straxen/pull/1254
+* Correct elife at the last in `corrected_areas` by @dachengx in https://github.com/XENONnT/straxen/pull/1258
+* Correct elife for `cs2_wo_timecorr` by @dachengx in https://github.com/XENONnT/straxen/pull/1260
+* SR1 offline simulation strax context by @shenyangshi in https://github.com/XENONnT/straxen/pull/1253
+
+New Contributors
+* @xzh19980906 made their first contribution in https://github.com/XENONnT/straxen/pull/1247
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.2...v2.1.3
+
+
 2.1.2 / 2023-07-28
 -------------------
 * Validate final type after URL eval by @jmosbacher in https://github.com/XENONnT/straxen/pull/1217
@@ -253,7 +300,7 @@ Patch:
 Notes:
 - No lineage changes
 
-Full Changelog: 
+Full Changelog:
  - https://github.com/XENONnT/straxen/compare/v1.7.0...v1.7.1
 
 New Contributors
@@ -263,19 +310,19 @@ New Contributors
 1.7.0 / 2022-05-11
 ---------------------
 Minor:
-- Fix detector sync (#1033) 
-- Numbafy function (#1015) 
-- Fixing binomial (#991) 
-- Patched wrong setting (#1014) 
-- Partitioned tpc (#1027) 
+- Fix detector sync (#1033)
+- Numbafy function (#1015)
+- Fixing binomial (#991)
+- Patched wrong setting (#1014)
+- Partitioned tpc (#1027)
 
 Patch:
-- Update requirements-tests.txt (#1021) 
+- Update requirements-tests.txt (#1021)
 - remove deprecated function (#1023)
-- Warn when context not from cutax (#1020) 
-- Add 'electron_diffusion_cte' variable from CMT (#1025) 
-- Start testing with PluginTestingSuite, fix #881 (#1022) 
-- add dict type correction (#1028) 
+- Warn when context not from cutax (#1020)
+- Add 'electron_diffusion_cte' variable from CMT (#1025)
+- Start testing with PluginTestingSuite, fix #881 (#1022)
+- add dict type correction (#1028)
 
 Notes:
 - Lineage changes for event_area_per_channel, event_pattern_fit, peak_classification_bayes, detector_time_offsets, event_sync_nv
@@ -354,12 +401,12 @@ Notes:
 1.4.0 / 2022-03-02
 ------------------
 Minor:
-- Update corrected areas (#931) and Update event_processing.py (#937) 
+- Update corrected areas (#931) and Update event_processing.py (#937)
 - Fix bug veto positions (#940)
-- S1 aft map & CMT tweaks (#916) and initialize plugin without setup() method (#953) 
+- S1 aft map & CMT tweaks (#916) and initialize plugin without setup() method (#953)
 
 Patch
-- Documentation building (#934) 
+- Documentation building (#934)
 - Development (#951)
 
 Notes:
@@ -381,7 +428,7 @@ Patch
 
 Testing
 - Enable holoviews testing py3.10 (#914)
-- make coverage configuration (#926) 
+- make coverage configuration (#926)
 
 Notes:
 - The lineage of the aqmon processing-chain changed
@@ -480,7 +527,7 @@ fixes/tests:
  - Pin documentation requirements (#862)
  - Add read the docs config (#861)
  - Pymongo requirement should be <4.0 (#852)
- 
+
 notes:
  - Bug for `peaklets-uhfusstvab` due to (#875)
  - No lineage changes
@@ -493,42 +540,42 @@ major:
 
 * Update CorrectedAreas (instead of EnergyEstimates) (#817)
 * S2 pattern fit (#780)
-* Exclude S1 as triggering peak (#779) 
-* Two manual boundaries (updated 11/24/2021) (#775) 
+* Exclude S1 as triggering peak (#779)
+* Two manual boundaries (updated 11/24/2021) (#775)
 * Add main peaks' shadow for event shadow (#770)
 * Events synchronize (#761)
-* Implement peak-level shadow and event-level shadow refactor (#753) 
+* Implement peak-level shadow and event-level shadow refactor (#753)
 * use channel tight coincidence level (#745)
 
 minor / patches:
 
 * Normalized line endings (#833)
 * Fix codefactor issues (#832)
-* Another try at codefactor (#831) 
+* Another try at codefactor (#831)
 * URLConfig take protocol for nested keys (#826)
-* Rename tight coincidence (#825) 
+* Rename tight coincidence (#825)
 * Move URLConfig cache to global dictionary (#822)
-* Remove codefactor (#818) 
-* Performance update for binomial test (#783) 
+* Remove codefactor (#818)
+* Performance update for binomial test (#783)
 * URLConfig not in strax (#781)
-* Add refactor event building cut (#778) 
+* Add refactor event building cut (#778)
 * whipe online monitor data (#777)
-* Cache dependencies (#772) 
-* Update definition array_valued (#757) 
+* Cache dependencies (#772)
+* Update definition array_valued (#757)
 
 fixes/tests:
 
 * Add test for filter_kwargs (#837)
-* Fix nv testing data (#830)  
-* Unittest for DAQreader (#828) 
+* Fix nv testing data (#830)
+* Unittest for DAQreader (#828)
 * Fix broken matplotlib/minianalyses (#815)
 * Itp test (#813)
-* Loose packaging requirement (#810) 
-* can we disable codefactor please (#809) 
-* Fix #781 (#808) 
-* Matplotlib changed requirements (#805) 
-* Pin pymongo (#801) 
-* Bump wfsim tests (#773) 
+* Loose packaging requirement (#810)
+* can we disable codefactor please (#809)
+* Fix #781 (#808)
+* Matplotlib changed requirements (#805)
+* Pin pymongo (#801)
+* Bump wfsim tests (#773)
 * Patch peaks merging (#767)
 
 notes:
@@ -577,7 +624,7 @@ minor / patches:
 - Refactor straxen tests (#703)
 - WFSim registry as argument for simulations context (#713)
 - Update S1 AFT map in event pattern fit (#697)
-- Refactor s2 correction (#704) 
+- Refactor s2 correction (#704)
 
 fixes/tests:
 - Set default drift time as nan (#700)
@@ -618,7 +665,7 @@ major / minor:
 
 
 patches and fixes:
- 
+
 - Use read by index and check for NaNs (#661)
 - Add small feature for printing versions of git (#665)
 - Fix minianalyses from apply_selection (#666)
@@ -636,17 +683,17 @@ patches and fixes:
 1.0.0 / 2021-09-01
 -------------------
 major / minor:
-    
+
 - merge s2 without s1 (#645)
 - First nVeto monitor plugin (#634)
 - Peak event veto tagging (#618)
 - Fix peaklet area bias (#601)
 - Add lone hit information to merged S2s. (#623)
-    
+
 
 patches and fixes:
-    
-- Fix n_hits of peaks (#646) 
+
+- Fix n_hits of peaks (#646)
 - Update requirements for strax (#644)
 - Modifications of nT simulation context (#602)
 - Straxer for other packages (#595)
@@ -913,7 +960,7 @@ patches and fixes:
 - Nveto changes (#319)
 - travis test at pinned environments (#335)
 - Maintance and fixes on Bootstrax and ajax (#337, 96a2858, 84fda21, b09ea49, 1e577d9, 59cfd7d, 46ad1a3, 968a1dc)
-- Some fixes and changes for the passive event display + Plotting tests (#338, 1d1b5b2, 93c7e18, 331b543, 055aa55, 1ce04ff) 
+- Some fixes and changes for the passive event display + Plotting tests (#338, 1d1b5b2, 93c7e18, 331b543, 055aa55, 1ce04ff)
 - Listen to utilix, remove depricated function from straxen #340
 
 
@@ -1026,7 +1073,7 @@ patches and fixes:
 - Added back-up URLs for the mongoDB (#213)
 - Updated data cleaning/handling with ajax and bootstrax (#182, #191, #196, #202, #206)
 - Updated documentation and doc-strings (#189, #192 and #198)
-- Updated bin scripts like straxer (#204) 
+- Updated bin scripts like straxer (#204)
 - Updated PMT gains (#208)
 - Renamed high energy plugins (#200)
 - Bugifx in nveto-plugins (#183, #209)
@@ -1205,12 +1252,12 @@ patches and fixes:
 0.3.2 / 2019-11-13
 ------------------
 - Pulse counting bugfixes (#30)
-- Bootstrax: 
+- Bootstrax:
   - Setup fix (#27)
   - Add correct (epoch-based) run start time (#29)
   - Support compressor config (#29)
 - Avoid platform-specific tempfile things (#28)
-- Placeholder electron lifetime (#25)  
+- Placeholder electron lifetime (#25)
 
 
 0.3.1 / 2019-09-25
