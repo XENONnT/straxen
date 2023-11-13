@@ -1,4 +1,5 @@
 """Test for 1T plugins, nT plugins are tested in the ./plugins directory."""
+
 import tempfile
 import strax
 import straxen
@@ -56,14 +57,12 @@ def _update_context(st, max_workers):
     st.set_config(testing_config_1T)
 
     if max_workers - 1:
-        st.set_context_config(
-            {
-                "allow_multiprocess": True,
-                "allow_lazy": False,
-                "timeout": 120,  # we don't want to build travis for ever
-                "allow_shm": strax.processor.SHMExecutor is not None,
-            }
-        )
+        st.set_context_config({
+            "allow_multiprocess": True,
+            "allow_lazy": False,
+            "timeout": 120,  # we don't want to build travis for ever
+            "allow_shm": strax.processor.SHMExecutor is not None,
+        })
 
 
 def _test_child_options(st, run_id):

@@ -1,4 +1,5 @@
 """Run with python tests/plugins/posrec_processing.py."""
+
 import os
 import strax
 import straxen

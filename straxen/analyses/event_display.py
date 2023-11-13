@@ -244,9 +244,9 @@ def _event_display(
                     _scatter_rec(event)
 
     # Fill panels with peak/event info
-    for it, (ax, labels_and_unit) in enumerate(
-        [(ax_event_info, display_event_info), (ax_peak_info, display_peak_info)]
-    ):
+    for it, (ax, labels_and_unit) in enumerate([
+        (ax_event_info, display_event_info), (ax_peak_info, display_peak_info)
+    ]):
         if ax is not None:
             for i, (_lab, _unit) in enumerate(labels_and_unit):
                 coord = 0.01, 0.9 - 0.9 * i / len(labels_and_unit)
