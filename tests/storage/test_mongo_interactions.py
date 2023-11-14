@@ -4,6 +4,7 @@ NB! this only works if one has access to the database. This does not work e.g. o
 therefore the tests failing locally will not show up in Pull Requests.
 
 """
+
 import straxen
 import os
 import unittest

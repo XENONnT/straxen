@@ -194,9 +194,9 @@ class DAQReader(strax.Plugin):
 
     def _count_files_per_chunk(self, path_chunk_i):
         """Check that the files in the chunks have names consistent with the readout threads."""
-        counted_files = Counter(
-            [self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)]
-        )
+        counted_files = Counter([
+            self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)
+        ])
         for thread, n_counts in counted_files.items():
             if thread not in self.config["readout_threads"]:
                 raise ValueError(f"Bad data for {path_chunk_i}. Got {thread}")
@@ -299,14 +299,12 @@ class DAQReader(strax.Plugin):
                         result = records[strax.endtime(records) <= break_time]
                         # Add the artificial deadtime until the break
                         result = strax.sort_by_time(
-                            np.concatenate(
-                                [
-                                    result,
-                                    self._artificial_dead_time(
-                                        start=dead_time_start, end=break_time, dt=self.dt_max
-                                    ),
-                                ]
-                            )
+                            np.concatenate([
+                                result,
+                                self._artificial_dead_time(
+                                    start=dead_time_start, end=break_time, dt=self.dt_max
+                                ),
+                            ])
                         )
         return result, break_time
 

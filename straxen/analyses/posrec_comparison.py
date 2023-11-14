@@ -71,9 +71,9 @@ def load_corrected_positions(
         itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt="binary"))
         itp_tmp.scale_coordinates([1.0, 1.0, -drift_speed])
 
-        orig_pos = np.vstack(
-            [events[f"{s2_pre}s2_x_{algo}"], events[f"{s2_pre}s2_y_{algo}"], z_obs]
-        ).T
+        orig_pos = np.vstack([
+            events[f"{s2_pre}s2_x_{algo}"], events[f"{s2_pre}s2_y_{algo}"], z_obs
+        ]).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = itp_tmp(orig_pos)
         z_obs = z_obs + drift_speed * drift_time_gate

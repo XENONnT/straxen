@@ -110,11 +110,9 @@ class GridFsInterface:
 
         """
         doc = self.get_query_config(config)
-        doc.update(
-            {
-                "added": datetime.now(tz=pytz.utc),
-            }
-        )
+        doc.update({
+            "added": datetime.now(tz=pytz.utc),
+        })
         return doc
 
     def config_exists(self, config):

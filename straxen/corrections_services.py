@@ -1,4 +1,5 @@
 """Return corrections from corrections DB."""
+
 import os
 from functools import lru_cache
 import warnings

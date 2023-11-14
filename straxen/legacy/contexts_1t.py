@@ -197,12 +197,10 @@ def xenon1t_dali(output_folder="./strax_data", build_lowlevel=False, **kwargs):
 
 def xenon1t_led(**kwargs):
     st = xenon1t_dali(**kwargs)
-    st.set_context_config(
-        {
-            "check_available": ("raw_records", "led_calibration"),
-            "free_options": list(get_x1t_context_config().keys()),
-        }
-    )
+    st.set_context_config({
+        "check_available": ("raw_records", "led_calibration"),
+        "free_options": list(get_x1t_context_config().keys()),
+    })
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
     st.register([straxen.RecordsFromPax, straxen.LEDCalibration])

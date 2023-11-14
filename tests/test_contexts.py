@@ -1,5 +1,6 @@
 """For all of the context, do a quick check to see that we are able to search a field (i.e. can
 build the dependencies in the context correctly) See issue #233 and PR #236."""
+
 import os
 import unittest
 import tempfile

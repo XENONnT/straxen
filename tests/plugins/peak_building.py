@@ -1,4 +1,5 @@
 """Run with python tests/plugins/peak_building.py."""
+
 from _core import PluginTestAccumulator, PluginTestCase, run_pytest_from_main
 import numpy as np
 import strax
