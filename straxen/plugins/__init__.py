@@ -1,3 +1,6 @@
+# temporarily ignored, need to see whther the redefine is necessary
+# mypy: disable-error-code="no-redef"
+
 from . import defaults
 from .defaults import *
 

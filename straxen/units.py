@@ -1,8 +1,9 @@
 """Define unit system for pax (i.e., seconds, etc.)
 
-This sets up variables for the various unit abbreviations, ensuring we always
-have a 'consistent' unit system.  There are almost no cases that you should
-change this without talking with a maintainer.
+This sets up variables for the various unit abbreviations, ensuring we always have a 'consistent'
+unit system.  There are almost no cases that you should change this without talking with a
+maintainer.
+
 """
 
 from __future__ import division
@@ -11,8 +12,8 @@ from __future__ import division
 electron_charge_SI = 1.602176565 * 10 ** (-19)
 boltzmannConstant_SI = 1.3806488 * 10 ** (-23)
 
-m = 10 ** 2  # distances in cm
-s = 10 ** 9  # times in ns
+m = 10**2  # distances in cm
+s = 10**9  # times in ns
 eV = 1  # energies in eV
 C = 1 / electron_charge_SI  # Charge in # electrons, so voltage in Volts
 K = 1  # Temperature in Kelvins
@@ -20,12 +21,12 @@ K = 1  # Temperature in Kelvins
 # derived units
 Hz = 1 / s
 J = eV / electron_charge_SI
-kg = J * s ** 2 / m ** 2
+kg = J * s**2 / m**2
 V = J / C
 A = C / s
 N = J / m
-Pa = N / m ** 2
-bar = 10 ** 5 * Pa
+Pa = N / m**2
+bar = 10**5 * Pa
 Ohm = V / A
 
 # 10 ^ -3 base units
@@ -80,62 +81,62 @@ nbar = 10 ** (-9) * bar
 nOhm = 10 ** (-9) * Ohm
 
 # 10 ^ 3 base units
-km = 10 ** 3 * m
-ks = 10 ** 3 * s
-kK = 10 ** 3 * K
-kC = 10 ** 3 * C
-keV = 10 ** 3 * eV
+km = 10**3 * m
+ks = 10**3 * s
+kK = 10**3 * K
+kC = 10**3 * C
+keV = 10**3 * eV
 
-kHz = 10 ** 3 * Hz
-kJ = 10 ** 3 * J
-Mg = 10 ** 3 * kg
-kV = 10 ** 3 * V
-kA = 10 ** 3 * A
-kN = 10 ** 3 * N
-kOhm = 10 ** 3 * Ohm
-kbar = 10 ** 3 * bar
-kPa = 10 ** 3 * Pa
+kHz = 10**3 * Hz
+kJ = 10**3 * J
+Mg = 10**3 * kg
+kV = 10**3 * V
+kA = 10**3 * A
+kN = 10**3 * N
+kOhm = 10**3 * Ohm
+kbar = 10**3 * bar
+kPa = 10**3 * Pa
 
 
 # 10 ^ 6 base units
-Mm = 10 ** 6 * m
-Ms = 10 ** 6 * s
-MK = 10 ** 6 * K
-MC = 10 ** 6 * C
-MeV = 10 ** 6 * eV
+Mm = 10**6 * m
+Ms = 10**6 * s
+MK = 10**6 * K
+MC = 10**6 * C
+MeV = 10**6 * eV
 
-MHz = 10 ** 6 * Hz
-MJ = 10 ** 6 * J
-Gg = 10 ** 6 * kg
-MV = 10 ** 6 * V
-MA = 10 ** 6 * A
-MN = 10 ** 6 * N
-MOhm = 10 ** 6 * Ohm
-Mbar = 10 ** 6 * bar
-MPa = 10 ** 6 * Pa
+MHz = 10**6 * Hz
+MJ = 10**6 * J
+Gg = 10**6 * kg
+MV = 10**6 * V
+MA = 10**6 * A
+MN = 10**6 * N
+MOhm = 10**6 * Ohm
+Mbar = 10**6 * bar
+MPa = 10**6 * Pa
 
 
 # 10 ^ 9 base units
-Gm = 10 ** 9 * m
-Gs = 10 ** 9 * s
-GK = 10 ** 9 * K
-GC = 10 ** 9 * C
-GeV = 10 ** 9 * eV
+Gm = 10**9 * m
+Gs = 10**9 * s
+GK = 10**9 * K
+GC = 10**9 * C
+GeV = 10**9 * eV
 
-GHz = 10 ** 9 * Hz
-GJ = 10 ** 9 * J
-GV = 10 ** 9 * V
-GA = 10 ** 9 * A
-GN = 10 ** 9 * N
-GOhm = 10 ** 9 * Ohm
-Gbar = 10 ** 9 * bar
-GPa = 10 ** 9 * Pa
+GHz = 10**9 * Hz
+GJ = 10**9 * J
+GV = 10**9 * V
+GA = 10**9 * A
+GN = 10**9 * N
+GOhm = 10**9 * Ohm
+Gbar = 10**9 * bar
+GPa = 10**9 * Pa
 
 # other units
 cm = 10 ** (-2) * m
 ng = 10 ** (-12) * kg
 # Townsend (unit for reduced electric field)
-Td = 10 ** (-17) * V / cm ** 2  # noqa
+Td = 10 ** (-17) * V / cm**2  # noqa
 
 electron_charge = electron_charge_SI * C
 boltzmannConstant = boltzmannConstant_SI * J / K
