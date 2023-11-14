@@ -90,15 +90,13 @@ xnt_simulation_config.update(
 # processing there are plugins for High Energy plugins. Therefore, do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts.update(
-    {
-        "register": list(common_opts["register"]) + [],
-        "register_all": list(common_opts["register_all"]) + [
-            straxen.plugins,
-        ],
-        "use_per_run_defaults": False,
-    }
-)
+xnt_common_opts.update({
+    "register": list(common_opts["register"]) + [],
+    "register_all": list(common_opts["register_all"]) + [
+        straxen.plugins,
+    ],
+    "use_per_run_defaults": False,
+})
 
 
 ##
@@ -293,14 +291,12 @@ def xenonnt_online(
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config(
-        {
-            "apply_data_function": (
-                straxen.remap_old,
-                straxen.check_loading_allowed,
-            )
-        }
-    )
+    st.set_context_config({
+        "apply_data_function": (
+            straxen.remap_old,
+            straxen.check_loading_allowed,
+        )
+    })
     if _context_config_overwrite is not None:
         warnings.warn(
             f"_context_config_overwrite is deprecated, please pass to context as kwargs",
@@ -313,24 +309,20 @@ def xenonnt_online(
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
-    st.set_context_config(
-        {
-            "check_available": ("raw_records", "led_calibration"),
-            "free_options": list(xnt_common_config.keys()),
-        }
-    )
+    st.set_context_config({
+        "check_available": ("raw_records", "led_calibration"),
+        "free_options": list(xnt_common_config.keys()),
+    })
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
-    st.register(
-        [
-            straxen.DAQReader,
-            straxen.LEDCalibration,
-            straxen.nVETORecorder,
-            straxen.nVETOPulseProcessing,
-            straxen.nVETOHitlets,
-            straxen.nVetoExtTimings,
-        ]
-    )
+    st.register([
+        straxen.DAQReader,
+        straxen.LEDCalibration,
+        straxen.nVETORecorder,
+        straxen.nVETOPulseProcessing,
+        straxen.nVETOHitlets,
+        straxen.nVetoExtTimings,
+    ])
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
 

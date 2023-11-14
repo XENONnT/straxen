@@ -135,9 +135,9 @@ def mini_analysis(
                 if kwargs.get("time_range") is None:
                     scr = None
                 else:
-                    scr = tuple(
-                        [(t - kwargs["t_reference"]) / int(1e9) for t in kwargs["time_range"]]
-                    )
+                    scr = tuple([
+                        (t - kwargs["t_reference"]) / int(1e9) for t in kwargs["time_range"]
+                    ])
                 kwargs.setdefault("seconds_range", scr)
 
             kwargs.setdefault("run_id", run_id)

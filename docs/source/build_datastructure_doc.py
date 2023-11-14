@@ -7,6 +7,7 @@ and configuration options that apply to each plugins.
 For extra credit, the SVGs are clickable.
 
 """
+
 from collections import defaultdict
 import os
 import shutil

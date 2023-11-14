@@ -1,4 +1,5 @@
 """Some shared defaults."""
+
 DEFAULT_POSREC_ALGO = "mlp"
 
 HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""

@@ -136,9 +136,9 @@ class AqmonHits(strax.Plugin):
         aqmon_hits = strax.find_hits(records[~is_artificial], min_amplitude=aqmon_thresholds)
 
         if np.sum(is_artificial):
-            aqmon_hits = np.concatenate(
-                [aqmon_hits, self.get_deadtime_hits(records[is_artificial])]
-            )
+            aqmon_hits = np.concatenate([
+                aqmon_hits, self.get_deadtime_hits(records[is_artificial])
+            ])
         return aqmon_hits
 
     def get_deadtime_hits(self, artificial_deadtime):

@@ -106,9 +106,9 @@ class TestRunDBFrontend(unittest.TestCase):
     @property
     def is_all_targets_stored(self) -> bool:
         """This should always be False as one of the targets (records) is not stored in mongo."""
-        return all(
-            [all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids]
-        )
+        return all([
+            all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids
+        ])
 
     def test_finding_runs(self):
         rdb = self.rundb_sf

@@ -168,19 +168,17 @@ class EventPositions(strax.Plugin):
 
             pre_field = "" if s_i == 0 else f"alt_s{s_i}_"
             post_field = "" if s_i == 0 else "_fdc"
-            result.update(
-                {
-                    f"{pre_field}x{post_field}": orig_pos[:, 0] * scale,
-                    f"{pre_field}y{post_field}": orig_pos[:, 1] * scale,
-                    f"{pre_field}r{post_field}": r_cor,
-                    f"{pre_field}r_naive": r_obs,
-                    f"{pre_field}r_field_distortion_correction": delta_r,
-                    f"{pre_field}theta": np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
-                    f"{pre_field}z_naive": z_obs,
-                    # using z_dv_corr (z_obs - z_dv_delta) in agreement with the dtype description
-                    # the FDC for z (z_cor) is found to be not reliable (see #527)
-                    f"{pre_field}z": z_obs - z_dv_delta,
-                    f"{pre_field}z_dv_corr": z_obs - z_dv_delta,
-                }
-            )
+            result.update({
+                f"{pre_field}x{post_field}": orig_pos[:, 0] * scale,
+                f"{pre_field}y{post_field}": orig_pos[:, 1] * scale,
+                f"{pre_field}r{post_field}": r_cor,
+                f"{pre_field}r_naive": r_obs,
+                f"{pre_field}r_field_distortion_correction": delta_r,
+                f"{pre_field}theta": np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
+                f"{pre_field}z_naive": z_obs,
+                # using z_dv_corr (z_obs - z_dv_delta) in agreement with the dtype description
+                # the FDC for z (z_cor) is found to be not reliable (see #527)
+                f"{pre_field}z": z_obs - z_dv_delta,
+                f"{pre_field}z_dv_corr": z_obs - z_dv_delta,
+            })
         return result
