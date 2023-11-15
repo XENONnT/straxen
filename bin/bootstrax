@@ -575,8 +575,8 @@ def infer_target(rd: dict) -> dict:
         # rates are very high, to ensure smooth operation let's just do this
         # based on calibrations of Apr 2023 this is the only safe working solution
         log.debug('ambe-mode')
-        targets = list(['peaklets', 'lone_hits'])
-        post_process = list(['events_mv', 'events_nv', 'veto_intervals'])
+        targets = list(['individual_peak_monitor'])
+        post_process = list(['veto_intervals', 'peak_basics', 'peak_positions_mlp', 'peaklets', 'event_basics', 'events_nv'])
 
 
     targets = strax.to_str_tuple(targets)
