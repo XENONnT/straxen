@@ -628,9 +628,20 @@ def infer_target(rd: dict) -> dict:
         # rates are very high, to ensure smooth operation let's just do this
         # based on calibrations of Apr 2023 this is the only safe working solution
         log.debug('ambe-mode')
-        targets = list(['individual_peak_monitor'])
-        post_process = list(['veto_intervals', 'peak_basics', 'peak_positions_mlp', 'peaklets', 'event_basics', 'events_nv'])
 
+        # get the mode from the daq_db
+        # this is a new thing from Nov 2023
+        # it overwrites the mode from the rundb
+        bootstrax_config_coll = daq_db['bootstrax_config']
+        bootstrax_config = bootstrax_config_coll.find_one({'name': 'bootstrax_config'})
+
+        this_eb_ambe_mode = bootstrax_config['ambe_modes'].get(hostname[:3], 'default')
+        log.debug(f'Ambe mode for {hostname} is {this_eb_ambe_mode}')
+
+        if this_eb_ambe_mode != 'default':
+            log.debug(f'Overwriting targets and post processing for {hostname} from daq_db')
+            targets = bootstrax_config['modes_definitions'][this_eb_ambe_mode]['targets']
+            post_process = bootstrax_config['modes_definitions'][this_eb_ambe_mode]['post_process']
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
