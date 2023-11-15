@@ -69,6 +69,9 @@ parser.add_argument(
     '--fix_target', action='store_true',
     help="Don't allow bootstrax to switch to a different target for special runs")
 parser.add_argument(
+    '--fix_resources', action='store_true',
+    help="Don't allow bootstrax to switch to a different number of cores and max_messages for failures")
+parser.add_argument(
     '--infer_mode', action='store_true',
     help="Determine best number max-messages and cores for each run "
          "automatically. Overrides --cores and --max_messages")
@@ -86,6 +89,7 @@ parser.add_argument(
 parser.add_argument(
     '--max_messages', type=int, default=10,
     help="number of max mailbox messages")
+
 
 
 actions = parser.add_mutually_exclusive_group()
@@ -802,7 +806,14 @@ def infer_mode(rd):
         result = dict(cores=args.cores,
                       max_messages=args.max_messages,
                       timeout=1000)
+
     n_fails = rd['bootstrax'].get('n_failures', 0)
+    if args.fix_resources:
+        # If we are in a fix resource mode, we should not change the resources
+        # based on the number of failures.
+        n_fails = 0
+        log.debug(f'Fixing resources, ignoring {n_fails} previous failures')
+
     if n_fails:
         # Exponentially lower resources & increase timeout
         result = dict(
