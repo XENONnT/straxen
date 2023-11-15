@@ -571,6 +571,13 @@ def infer_target(rd: dict) -> dict:
         # also use source field, outcome is the same)
         if 'event_info' in targets or 'event_info' in post_process:
             targets = list(targets) + ['event_info_double']
+    elif 'ambe' in mode:
+        # rates are very high, to ensure smooth operation let's just do this
+        # based on calibrations of Apr 2023 this is the only safe working solution
+        log.debug('ambe-mode')
+        targets = 'individual_peak_monitor'
+        post_process = list(['veto_intervals', 'peak_basics', 'peak_positions_mlp', 'peaklets'])
+
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
@@ -768,6 +775,18 @@ def infer_mode(rd):
         'timeout': [1200, 1200, None, None, None, None, None, None, None, None, None, 2400]
     }
     if data_rate and args.infer_mode:
+
+        # Temporary solution
+        # It is a patch to try to process some ambe data without failing for memory 
+        # If we are doing ambe -> consider the maximum rate
+        # so that we have 10 cores and 12 messages for new ebs
+        # and we have     8 cores and 6 messages for old ebs
+        # added by Carlo on 19 April 2023
+        mode = str(rd.get('mode'))
+        if 'ambe' in mode:
+            data_rate = 550
+
+
         df = pd.DataFrame(benchmark)
         if data_rate not in benchmark['mbs']:
             df.loc[len(df.index)] = [data_rate, None, None, None, None, None]
