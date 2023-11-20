@@ -122,4 +122,3 @@ which is only visible for XENONnT members.
 
 
 *Last updated 2021-05-07. Joran Angevaare*
-
