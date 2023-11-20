@@ -359,16 +359,6 @@ class DAQReader(strax.Plugin):
 
 
 @export
-class Fake1TDAQReader(DAQReader):
-    provides = (
-        'raw_records',
-        'raw_records_diagnostic',
-        'raw_records_aqmon')
-
-    data_kind = immutabledict(zip(provides, provides))
-
-
-@export
 @numba.njit(nogil=True, cache=True)
 def split_channel_ranges(records, channel_ranges):
     """Return numba.List of record arrays in channel_ranges.
