@@ -1,14 +1,14 @@
 
 URLConfig options
 =================
-The URLConfig class was designed to make it easier have complex plugin configuration. 
+The URLConfig class was designed to make it easier have complex plugin configuration.
 A plugin may require a rich object (such as a TensorFlow model), loading a file, or a run dependent value for its calculation.
 While its perfectly reasonable to perform all of these operations in the plugins `setup()` method,
 some operations such as loading files and looking up CMT values tend to repeat themselves in many plugins leading to code duplication.
-Having the same code duplicated in many plugins can be very difficult to maintain or improve, 
+Having the same code duplicated in many plugins can be very difficult to maintain or improve,
 with the added annoyance that changing this behavior requires editing the plugin code.
 The URLConfig provides a consistent way to define such behaviors at runtime via a URL string.
-The URL is like a recipe for how the config value should be loaded when it is needed by the plugin. 
+The URL is like a recipe for how the config value should be loaded when it is needed by the plugin.
 Small snippets of code for loading a configuration can be registered as protocols and can be used by all plugins.
 This allows you to keep the plugin code clean and focused on the processing itself,
 without mixing in details of how to load the configuration data which tends to change more frequently.
@@ -62,7 +62,7 @@ A concrete plugin example
                 tar = tarfile.open(self.model_file, mode="r:gz")
                 tar.extractall(path=tmpdirname)
                 self.model = tf.keras.models.load_model(tmpdirname)
-                
+
         def _get_model_file_name(self):
             config_file = f'{self.algorithm}_model'
             model_from_config = self.config.get(config_file, 'No file')
@@ -160,8 +160,8 @@ As you can see its very easy to define new protocols, once its defined you can u
 Config preprocessors
 --------------------
 
-In some cases it makes sense to run some code and maybe modify a config value during 
-the plugin configuration initialization. This will result in the config being replaced 
+In some cases it makes sense to run some code and maybe modify a config value during
+the plugin configuration initialization. This will result in the config being replaced
 completely in the ``plugin.config`` dictionary and the modified value being hashed instead of the original value.
 The preprocessor function you register can accept any or all of the following keyword arguments: name, run_id, run_defaults, set_defaults.
 These keyword arguments will be passed their values when the function is invoked.
@@ -180,11 +180,11 @@ A simple example would be if you want to support string formatting in configs:
             pass
         return config
 
-This preprocessor will run on all configs and if any of them are strings it will 
+This preprocessor will run on all configs and if any of them are strings it will
 attempt to run the builtin ``format`` function on them with all the keyword arguments available at that time.
 
-You can also control the order in which preprocessors are run in cases where multiple 
-functions are registered by passing the ``precedence=N`` argument to the decroator, where N is the priority. 
+You can also control the order in which preprocessors are run in cases where multiple
+functions are registered by passing the ``precedence=N`` argument to the decroator, where N is the priority.
 Higher precedence functions are run first.
 
 **WARNINGS**:

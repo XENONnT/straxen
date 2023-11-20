@@ -8,16 +8,16 @@ export, __all__ = strax.exporter()
 
 @export
 class muVETOEvents(nVETOEvents):
-    """Plugin which computes the boundaries of veto events.
-    """
-    depends_on = 'hitlets_mv'
-    provides = 'events_mv'
-    data_kind = 'events_mv'
+    """Plugin which computes the boundaries of veto events."""
 
-    compressor = 'zstd'
+    depends_on = "hitlets_mv"
+    provides = "events_mv"
+    data_kind = "events_mv"
+
+    compressor = "zstd"
     child_plugin = True
 
-    __version__ = '0.0.1'
+    __version__ = "0.0.1"
     events_seen = 0
 
     event_left_extension_mv = straxen.URLConfig(
@@ -25,29 +25,29 @@ class muVETOEvents(nVETOEvents):
         track=True,
         type=int,
         child_option=True,
-        parent_option_name='event_left_extension_nv',
-        help='Extends event window this many [ns] to the left.'
+        parent_option_name="event_left_extension_nv",
+        help="Extends event window this many [ns] to the left.",
     )
     event_resolving_time_mv = straxen.URLConfig(
         default=300,
         track=True,
         type=int,
         child_option=True,
-        parent_option_name='event_resolving_time_nv',
-        help='Resolving time for window coincidence [ns].'
+        parent_option_name="event_resolving_time_nv",
+        help="Resolving time for window coincidence [ns].",
     )
     event_min_hits_mv = straxen.URLConfig(
         default=3,
         track=True,
         type=int,
         child_option=True,
-        parent_option_name='event_min_hits_nv',
-        help='Minimum number of fully confined hitlets to define an event.'
+        parent_option_name="event_min_hits_nv",
+        help="Minimum number of fully confined hitlets to define an event.",
     )
 
     def infer_dtype(self):
-        self.name_event_number = 'event_number_mv'
-        self.channel_range = self.channel_map['mv']
+        self.name_event_number = "event_number_mv"
+        self.channel_range = self.channel_map["mv"]
         self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
         return veto_event_dtype(self.name_event_number, self.n_channel)
 
