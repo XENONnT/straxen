@@ -9,6 +9,3 @@ from .peak_positions import *
 
 from . import x1t_cuts
 from .x1t_cuts import *
-
-from . import fake_daqreader
-from .fake_daqreader import *
