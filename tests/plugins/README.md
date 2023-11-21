@@ -39,8 +39,8 @@ python plugins/event_buiding.py
 # or one by one if you want to do them all
 cd straxen/tests/plugins
 tests = ls | grep .py | grep -v 'test\|__\|core'
-for p in $tests; 
-  do echo =================== $p ===================; 
+for p in $tests;
+  do echo =================== $p ===================;
   python $p;
 done
 ```

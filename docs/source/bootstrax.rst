@@ -17,7 +17,7 @@ first one.
 
 
 Bootstrax philosophy
-----------------
+--------------------
 Bootstrax has a crash-only / recovery first philosophy. Any error in
 the core code causes a crash; there is no nice exit or mandatory
 cleanup. Bootstrax focuses on recovery after restarts: before starting

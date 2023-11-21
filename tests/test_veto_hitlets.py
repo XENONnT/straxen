@@ -13,15 +13,15 @@ class TestRemoveSwtichedOffChannels(unittest.TestCase):
     def test_empty_inputs(self):
         hits = np.zeros(0, strax.hit_dtype)
         hits = straxen.plugins.hitlets_nv.remove_switched_off_channels(hits, self.to_pe)
-        assert not len(hits), 'Empty input should return an empty result.'
+        assert not len(hits), "Empty input should return an empty result."
 
     def test_return(self):
         hits = np.zeros(2, strax.hit_dtype)
-        hits[0]['channel'] = 15
-        hits[1]['channel'] = 18
+        hits[0]["channel"] = 15
+        hits[1]["channel"] = 18
         hits_returned = straxen.plugins.hitlets_nv.remove_switched_off_channels(hits, self.to_pe)
-        assert hits_returned['channel'] == 15, 'Returned a wrong channel.'
+        assert hits_returned["channel"] == 15, "Returned a wrong channel."
 
         self.to_pe[:] = 1
         hits_returned = straxen.plugins.hitlets_nv.remove_switched_off_channels(hits, self.to_pe)
-        assert len(hits_returned) == 2, 'Did not return all channels.'
+        assert len(hits_returned) == 2, "Did not return all channels."

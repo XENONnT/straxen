@@ -282,11 +282,12 @@ def clean_production_folder():
     clean_unregistered(delete_live=False, _clean_from=output_folder)
 
 def clean_unregistered(delete_live=False, _clean_from=pre_folder):
-    """
-    Clean data that is not in the database. To do this check the output folder and remove
+    """Clean data that is not in the database. To do this check the output folder and remove
     files if there is no corresponding entry in the rundoc.
+
     :param delete_live: bool, if true delete unregistered live data.
     :param _clean_from: which production (not live) folder to clean from
+
     """
     set_state('clean_unregistered')
     # We should only do this for the pre-folder since the production folder does have unregistered data when
@@ -344,10 +345,11 @@ def clean_old_hash():
 
 
 def clean_abandoned(delete_live=False):
-    """
-    Recursively delete data associated to abandoned runs. If deleting live data, submit
+    """Recursively delete data associated to abandoned runs. If deleting live data, submit
     multiple threads at the same time.
+
     :param delete_live: bool, if true also delete the live_data of these runs.
+
     """
     set_state('clean_abandoned')
     # Notice that we thread the deletion of live_data. As such we need to allow multiple
@@ -435,13 +437,13 @@ def clean_database(delete_live=False):
 
 
 def _rmtree(path):
-    """
-    Wrapper for shutil.rmtree. All deletion statements in this script go
-        through this function in order to make sure that the
-        args.production statement is always double (tripple) checked
-        before deleting data.
+    """Wrapper for shutil.rmtree. All deletion statements in this script go
+    through this function in order to make sure that the
+    args.production statement is always double (tripple) checked
+    before deleting data.
+
     :param path: path to delete
-    :return:
+
     """
     if args.production:
         if confirm(f'delete {path}?'):
@@ -455,15 +457,15 @@ def _rmtree(path):
 def threaded_delete_data(rd, path, data_type,
                          test=True, ignore_low_data_check=False,
                          reason=''):
-    """
-    Wrapper for delete_data to run in separate threads.
+    """Wrapper for delete_data to run in separate threads.
+
     :param rd: rundoc
     :param path: location of the folder to be deleted
     :param data_type: type of data to be deleted
     :param test: bool if we are testing or not. If true, nothing will be deleted.
     :param ignore_low_data_check: ignore the fact that this might be the only copy of the
-    data. We can specify this e.g. if we know this is data associated to some abandoned
-    run.
+        data. We can specify this e.g. if we know this is data associated to some abandoned run.
+
     """
 
     thread_name = thread_prefix + path.split('/')[-1]
@@ -486,8 +488,8 @@ def delete_data(rd, path, data_type,
                 ignore_low_data_check=False,
                 reason='',
                 ):
-    """
-    Delete data and update the rundoc
+    """Delete data and update the rundoc
+
     :param rd: rundoc
     :param path: location of the folder to be deleted
     :param data_type: type of data to be deleted
@@ -496,6 +498,7 @@ def delete_data(rd, path, data_type,
     :param ignore_low_data_check: ignore the fact that this might be
         the only copy of the data. We can specify this e.g. if we know
         this is data associated to some abandoned run.
+
     """
     # First check that we are not deleting essential data (unless we are working
     # with abandoned runs or so.
@@ -546,12 +549,13 @@ def delete_data(rd, path, data_type,
 
 
 def check_rundoc_for_live_and_raw(rd):
-    """
-    Count the number of files of live_data (cannot be >1) and raw_data (transfers can get
+    """Count the number of files of live_data (cannot be >1) and raw_data (transfers can get
     it greater than 1)
+
     :param rd: rundoc
     :return: length 2 tuple with n_live_data and n_raw_records being the number of files
-    in the rundoc for the live data and raw records respectively.
+        in the rundoc for the live data and raw records respectively.
+
     """
     n_live_data, n_raw_records = 0, 0
     for dd in rd['data']:
@@ -563,13 +567,14 @@ def check_rundoc_for_live_and_raw(rd):
 
 
 def remove_run_from_host(number, delete_live=False, force=False, reason=''):
-    """
-    Save way of removing data from host if data registered elsewhere
+    """Save way of removing data from host if data registered elsewhere
+
     :param number: run number (not ID!)
     :param delete_live: bool, if true delete the live_data else the processed data
     :param force: forcefully remove the data even if we don't have the right copies (e.g.
-    deleting /live_data when the raw_records are not stored. Be careful with this option!
-    Should only be used for the deletion of abandoned runs.
+        deleting /live_data when the raw_records are not stored. Be careful with this option!
+        Should only be used for the deletion of abandoned runs.
+
     """
     # Query the database to remove data
     rd = run_coll.find_one({'number': number,
@@ -630,10 +635,11 @@ def remove_run_from_host(number, delete_live=False, force=False, reason=''):
 
 
 def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
-    """
-    Given a run number delete data on this machine that matches that number
+    """Given a run number delete data on this machine that matches that number
+
     :param number: int! the run_number (not run_id)
     :param delete_live: Bool, if True: Remove the live_data. Else remove processed data
+
     """
     # Query the database to remove data
     # WANRING! If we don't find something we WILL remove the data! Don't make the query
@@ -662,12 +668,13 @@ def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
 
 
 def _remove_unregistered_run(base_folder, run_id, checked_db=False):
-    """
-    NB: The check that this run is not registered should be performed first!
+    """NB: The check that this run is not registered should be performed first!
     Deletes any folder from base_folder that matches run_id.
+
     :param base_folder: folder to check
     :param run_id: run_id to remove from folder
     :param checked_db: Bool if it is checked that this run in not in the database.
+
     """
     if not checked_db:
         log_warning(f'remove_if_unregistered::\trogue ajax operations! Trying '
