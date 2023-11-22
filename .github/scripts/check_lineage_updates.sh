@@ -1,28 +1,26 @@
 #!/bin/bash
+set -e
 
-if [ "$#" -ne 4 ]; then
-    echo "Usage: $0 <first_branch_name> <second_branch_name> <output folder path> <run_id>"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <first_branch_name> <second_branch_name>"
     exit 1
 fi
 
 old_branch="$1"
 new_branch="$2"
-output_path="$3"
-run_id="$4"
 
 cd straxen
 git checkout "$old_branch"
 
 get_old_plugins=$(cat<<'EOF'
-import strax, straxen
-import numpy as np
-import sys
 import json
 
-output_path = sys.argv[3]
+import numpy as np
+import strax, straxen
+from straxen.test_utils import nt_test_run_id
 
-st = straxen.contexts.xenonnt_online(output_folder=output_path)
-st.storage.append(strax.DataDirectory(output_path, readonly = True))
+
+st = straxen.test_utils.nt_test_context()
 
 version_hash_dict_old = strax.utils.version_hash_dict(st)
 with open("version_hash_dict_old.json", 'w') as jsonfile:
@@ -36,40 +34,38 @@ python3 -c "$get_old_plugins" "$@"
 git checkout "$new_branch"
 
 get_new_plugins=$(cat<<'EOF'
-import strax, straxen
-import numpy as np
-import sys
 import json
 
-output_path = sys.argv[3]
+import numpy as np
+import strax, straxen
 
-run_id = sys.argv[4]
+from straxen.test_utils import nt_test_run_id
 
-st = straxen.contexts.xenonnt_online(output_folder=output_path)
-st.storage.append(strax.DataDirectory(output_path, readonly = True))
 
-#Make the new version-hash dictionary
+st = straxen.test_utils.nt_test_context()
+
+# Make the new version-hash dictionary
 version_hash_dict_new = strax.utils.version_hash_dict(st)
 with open("version_hash_dict_new.json", 'w') as jsonfile:
     json.dump(version_hash_dict_new, jsonfile)
 
-#... and open the old one
+# ... and open the old one
 with open("version_hash_dict_old.json", 'r') as jsonfile:
     version_hash_dict_old = json.load(jsonfile)
 
-#... to compare the changes
+# ... to compare the changes
 updated_plugins_dict = strax.utils.updated_plugins(version_hash_dict_old, version_hash_dict_new)
 with open("plugin_update_comparison.json", 'w') as jsonfile:
     json.dump(updated_plugins_dict, jsonfile)
 
-#Print the deleted plugins:
+# Print the deleted plugins:
 print("\nDeleted plugins:")
 for p in updated_plugins_dict['deleted']:
     print(f"    - {p}")
 print('\n')
 
-#Now print the info for the added plugins
-bad_field_info_added = strax.utils.bad_field_info(st, run_id, updated_plugins_dict['added'])
+# Now print the info for the added plugins
+bad_field_info_added = strax.utils.bad_field_info(st, nt_test_run_id, updated_plugins_dict['added'])
 
 for p in bad_field_info_added:
     print(f"\nNew plugin '{p}' has the following bad field fractions:")
@@ -85,7 +81,7 @@ print('\n')
 lowest_level_changed_plugins = strax.utils.lowest_level_plugins(st, updated_plugins_dict['changed'])
 
 #See the nan field fractions + mean of each field
-new_changed_plugin_bad_info = strax.utils.bad_field_info(st, run_id, lowest_level_changed_plugins)
+new_changed_plugin_bad_info = strax.utils.bad_field_info(st, nt_test_run_id, lowest_level_changed_plugins)
 
 with open("new_changed_plugin_bad_info.json", 'w') as jsonfile:
     json.dump(new_changed_plugin_bad_info, jsonfile)
@@ -95,7 +91,7 @@ affected_changed_plugins = strax.utils.directly_depends_on(st,
     lowest_level_changed_plugins,
     updated_plugins_dict['changed'])
 
-new_affected_plugin_bad_info = strax.utils.bad_field_info(st, run_id, affected_changed_plugins)
+new_affected_plugin_bad_info = strax.utils.bad_field_info(st, nt_test_run_id, affected_changed_plugins)
 with open("new_affected_plugin_bad_info.json", 'w') as jsonfile:
     json.dump(new_affected_plugin_bad_info, jsonfile)
 EOF
@@ -106,18 +102,15 @@ python3 -c "$get_new_plugins" "$@"
 git checkout "$old_branch"
 
 compare_plugins=$(cat<<'EOF'
-import strax, straxen
-import numpy as np
-import sys
 import json
+import numpy as np
 
-output_path = sys.argv[3]
+import strax, straxen
 
-run_id = sys.argv[4]
-#'025423'
+from straxen.test_utils import nt_test_run_id
 
-st = straxen.contexts.xenonnt_online(output_folder=output_path)
-st.storage.append(strax.DataDirectory(output_path, readonly = True))
+
+st = straxen.test_utils.nt_test_context()
 
 #Load in the updated plugins dict
 with open("plugin_update_comparison.json", 'r') as jsonfile:
@@ -132,8 +125,8 @@ with open("new_affected_plugin_bad_info.json", 'r') as jsonfile:
     new_affected_plugin_bad_info = json.load(jsonfile)
 
 ##################### Now compute the same for the old version of the plugins #####################
-old_changed_plugin_bad_info = strax.utils.bad_field_info(st, run_id, list(new_changed_plugin_bad_info.keys()))
-old_affected_plugin_bad_info = strax.utils.bad_field_info(st, run_id, list(new_affected_plugin_bad_info.keys()))
+old_changed_plugin_bad_info = strax.utils.bad_field_info(st, nt_test_run_id, list(new_changed_plugin_bad_info.keys()))
+old_affected_plugin_bad_info = strax.utils.bad_field_info(st, nt_test_run_id, list(new_affected_plugin_bad_info.keys()))
 
 ###Now report the differences
 #Lowest level plugins
@@ -174,3 +167,6 @@ rm new_changed_plugin_bad_info.json
 rm plugin_update_comparison.json
 rm version_hash_dict_new.json
 rm version_hash_dict_old.json
+
+git checkout report_pr_changes
+cd
