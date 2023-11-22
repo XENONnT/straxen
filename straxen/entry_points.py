@@ -1,6 +1,5 @@
-
 # Entrypoint loading logic
-# Can be used to register context methods, mini-analyses, 
+# Can be used to register context methods, mini-analyses,
 # URLConfig protocols etc by other packeges when straxen is
 # imported.
 # The nice optimization of the different import attempts

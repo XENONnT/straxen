@@ -83,16 +83,16 @@ def main():
     if 'start' in md['chunks'][0]:
         raise ValueError("This data was already converted")
 
-    ## 
+    ##
     # Convert data
     ##
     last_endtime = 0
-    for i, c in enumerate(tqdm(md['chunks'], 
+    for i, c in enumerate(tqdm(md['chunks'],
                                desc=f'Converting raw_records for {run_id}')):
         filename = osp.join(folder, c['filename'])
         rr = strax.load_file(
             filename,
-            dtype=dtype, 
+            dtype=dtype,
             compressor=md['compressor'])
 
         if not len(rr):
@@ -156,9 +156,9 @@ def main():
     md['dtype'] = np.dtype(strax.raw_record_dtype(record_length)).descr.__repr__()
 
     with open(metadata_fn, mode='w') as f:
-        f.write(json.dumps(md, 
-                           sort_keys=True, 
-                           indent=4, 
+        f.write(json.dumps(md,
+                           sort_keys=True,
+                           indent=4,
                            cls=strax.NumpyJSONEncoder))
 
 

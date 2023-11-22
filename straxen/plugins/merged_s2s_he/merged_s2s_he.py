@@ -9,11 +9,11 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2sHighEnergy(MergedS2s):
-    __doc__ = HE_PREAMBLE + MergedS2s.__doc__
-    depends_on = ('peaklets_he', 'peaklet_classification_he')
-    data_kind = 'merged_s2s_he'
-    provides = 'merged_s2s_he'
-    __version__ = '0.1.0'
+    __doc__ = HE_PREAMBLE + (MergedS2s.__doc__ or "")
+    depends_on = ("peaklets_he", "peaklet_classification_he")
+    data_kind = "merged_s2s_he"
+    provides = "merged_s2s_he"
+    __version__ = "0.1.0"
     child_plugin = True
 
     # We cannot, we only have the top array, so should not.
@@ -25,7 +25,7 @@ class MergedS2sHighEnergy(MergedS2s):
         return self.n_he_pmts
 
     def infer_dtype(self):
-        return strax.unpack_dtype(self.deps['peaklets_he'].dtype_for('peaklets_he'))
+        return strax.unpack_dtype(self.deps["peaklets_he"].dtype_for("peaklets_he"))
 
     def compute(self, peaklets_he):
         # There are not any lone hits for the high energy channel,
