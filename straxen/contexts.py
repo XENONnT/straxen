@@ -327,12 +327,14 @@ def xenonnt_led(**kwargs):
     return st
 
 
-def xenonnt_simulation_offline(output_folder: str = './strax_data',
-                               wfsim_registry: str = 'RawRecordsFromFaxNT',
-                               run_id: ty.Optional[str] = None,
-                               global_version: ty.Optional[str] = None,
-                               fax_config: ty.Optional[str] = None,
-                               **kwargs):
+def xenonnt_simulation_offline(
+    output_folder: str = "./strax_data",
+    wfsim_registry: str = "RawRecordsFromFaxNT",
+    run_id: ty.Optional[str] = None,
+    global_version: ty.Optional[str] = None,
+    fax_config: ty.Optional[str] = None,
+    **kwargs,
+):
     """
     :param output_folder: strax_data folder
     :param wfsim_registry: Raw_records generation mechanism,
@@ -355,8 +357,9 @@ def xenonnt_simulation_offline(output_folder: str = './strax_data',
     import wfsim
 
     # General strax context, register common plugins
-    st = strax.Context(storage=strax.DataDirectory(output_folder),
-                       **straxen.contexts.xnt_common_opts, **kwargs)
+    st = strax.Context(
+        storage=strax.DataDirectory(output_folder), **straxen.contexts.xnt_common_opts, **kwargs
+    )
     # Register simulation configs required by WFSim plugins
     st.config.update(
         dict(
