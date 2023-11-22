@@ -15,7 +15,7 @@ that may delete the live_data such that we prevent multiple attempts to perform 
 action.
 """
 
-__version__ = '0.5.0'
+__version__ = "0.5.0"
 
 import argparse
 import warnings
@@ -39,32 +39,37 @@ import strax
 ##
 ajax_thresholds = {
     # Remove the live data only if this many seconds old
-    'remove_live_after': 24 * 3600,  # s
+    "remove_live_after": 24 * 3600,  # s
     # Remove do not remove successfully processed runs if they have finished less than
     # this many seconds ago to e.g. allow for saving et cetera
-    'wait_after_processing': 12 * 3600,  # s
+    "wait_after_processing": 12 * 3600,  # s
     # Remove high level plugins if the run is this old
     # TODO
     #  change the value to a different one
-    'remove_high_level_data': 365 * 24 * 3600,  # s
+    "remove_high_level_data": 365 * 24 * 3600,  # s
     # Minimum time for restarting ajax to check for new stuff to clean (essentially the
     # timeout)
-    'nap_time': 3600,  # s
+    "nap_time": 3600,  # s
     # Short nap time
-    'short_nap': 5,  # s
+    "short_nap": 5,  # s
 }
 
 # The low level data is taken care of by admix so we don't have to delete this. All other
 # data-types are deleted in the clean_high_level_data routine
-low_level_data = ['raw_records*', 'records*',
-                  'veto_regions', 'pulse_counts', 'led_calibration',
-                  'peaklets']
+low_level_data = [
+    "raw_records*",
+    "records*",
+    "veto_regions",
+    "pulse_counts",
+    "led_calibration",
+    "peaklets",
+]
 
 # Open deletion threads with this prefix (and also look for these before quiting ajax)
-thread_prefix = 'ajax_delete'
+thread_prefix = "ajax_delete"
 
 # To prevent multiple ebs from cleaning ceph only this one can actually do it
-eb_can_clean_ceph = 'eb0.xenon.local'
+eb_can_clean_ceph = "eb0.xenon.local"
 
 
 ##
@@ -73,34 +78,36 @@ eb_can_clean_ceph = 'eb0.xenon.local'
 
 
 def main_ajax():
-    """Main function"""
+    """Main function."""
     if args.number:
-        remove_run_from_host(args.number, delete_live=args.delete_live,
-                             force=args.force, reason='manual')
+        remove_run_from_host(
+            args.number, delete_live=args.delete_live, force=args.force, reason="manual"
+        )
         wait_on_delete_thread()
         return
     if not args.clean:
-        raise ValueError('either --number or --clean should be specified')
+        raise ValueError("either --number or --clean should be specified")
 
-    _modes = {'ceph': clean_ceph,
-              'high_level_data': clean_high_level_data,
-              'non_latest': clean_non_latest,
-              'unregistered': clean_unregistered,
-              'production': clean_production_folder,
-              'abandoned': clean_abandoned,
-              'old_hash': clean_old_hash,
-              'database': clean_database}
+    _modes = {
+        "ceph": clean_ceph,
+        "high_level_data": clean_high_level_data,
+        "non_latest": clean_non_latest,
+        "unregistered": clean_unregistered,
+        "production": clean_production_folder,
+        "abandoned": clean_abandoned,
+        "old_hash": clean_old_hash,
+        "database": clean_database,
+    }
 
-    if args.clean not in _modes and args.clean != 'all':
-        raise ValueError(f'Unknown cleaning mode {args.clean}')
+    if args.clean not in _modes and args.clean != "all":
+        raise ValueError(f"Unknown cleaning mode {args.clean}")
 
-    if args.clean != 'all':
+    if args.clean != "all":
         # Do this mode
         _modes[args.clean]()
-        if hostname == eb_can_clean_ceph and (args.clean in
-                                              ['abandoned', 'database']):
+        if hostname == eb_can_clean_ceph and (args.clean in ["abandoned", "database"]):
             _modes[args.clean](delete_live=True)
-        log.info(f'Done with {args.clean}')
+        log.info(f"Done with {args.clean}")
         return
 
     # Apparently we want to clean everything. Let's loop:
@@ -126,51 +133,49 @@ def main_ajax():
             if not args.production:
                 break
             log.info(f'Loop finished, take a {ajax_thresholds["nap_time"]} s nap')
-            time.sleep(ajax_thresholds['nap_time'])
+            time.sleep(ajax_thresholds["nap_time"])
         except (KeyboardInterrupt, SystemExit, NotImplementedError) as e:
-            log.info('\nStopping, wait a second for the delete threads\n')
+            log.info("\nStopping, wait a second for the delete threads\n")
             wait_on_delete_thread()
             raise e
         except Exception as fatal_error:
-            log.error(f'Fatal warning:\tran into {fatal_error}. Try '
-                      f'logging error and restart ajax')
+            log.error(f"Fatal warning:\tran into {fatal_error}. Try logging error and restart ajax")
             try:
-                log_warning(f'Fatal warning:\tran into {fatal_error}',
-                            priority='error')
+                log_warning(f"Fatal warning:\tran into {fatal_error}", priority="error")
             except Exception as warning_error:
-                log.error(f'Fatal warning:\tcould not log {warning_error}')
+                log.error(f"Fatal warning:\tcould not log {warning_error}")
             # This usually only takes a minute or two
             time.sleep(60)
-            log.warning('Restarting main loop')
+            log.warning("Restarting main loop")
 
 
 def clean_ceph():
+    """Look for old data on ceph.
+
+    If found, delete it. Recursively iterate until no old data is found. This function only works on
+    the the host that is eb_can_clean_ceph.
+
     """
-    Look for old data on ceph. If found, delete it. Recursively iterate until no old data
-    is found. This function only works on the the host that is eb_can_clean_ceph.
-    """
-    set_state('clean_ceph')
+    set_state("clean_ceph")
     if not hostname == eb_can_clean_ceph:
-        log.info(f'for cleaning ceph, go to {eb_can_clean_ceph}')
+        log.info(f"for cleaning ceph, go to {eb_can_clean_ceph}")
         return
 
-    rd = run_coll.find_one({'bootstrax.state': 'done',
-                            'status': 'transferred',
-                            'start':
-                                {'$lt': now(-ajax_thresholds['remove_live_after'])},
-                            'bootstrax.time':
-                                {"$lt": now(-ajax_thresholds['wait_after_processing'])},
-                            'data.type': 'live'})
+    rd = run_coll.find_one({
+        "bootstrax.state": "done",
+        "status": "transferred",
+        "start": {"$lt": now(-ajax_thresholds["remove_live_after"])},
+        "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+        "data.type": "live",
+    })
     if rd is None:
         return
     else:
-        run_number = rd['number']
-        log.info(f'remove data associated to run {run_number}')
-        remove_run_from_host(run_number, delete_live=True, force=args.force,
-                             reason='clean ceph')
-        log.info(f'finished for {run_number}, take a'
-                 f' {ajax_thresholds["short_nap"]} s nap')
-        time.sleep(ajax_thresholds['short_nap'])
+        run_number = rd["number"]
+        log.info(f"remove data associated to run {run_number}")
+        remove_run_from_host(run_number, delete_live=True, force=args.force, reason="clean ceph")
+        log.info(f"finished for {run_number}, take a {ajax_thresholds['short_nap']} s nap")
+        time.sleep(ajax_thresholds["short_nap"])
 
         # Repeat.
         if args.production:
@@ -182,21 +187,21 @@ def clean_ceph():
 
 
 def clean_high_level_data():
-    """
-    Check the runs database for old data on this host and clean all non-low-level
-    data-types from this host.
-    """
-    set_state('clean_high_level_data')
-    raise NotImplementedError('This is a drastic measure that we do not '
-                              'intend using at the time of writing')
+    """Check the runs database for old data on this host and clean all non-low-level data-types from
+    this host."""
+    set_state("clean_high_level_data")
+    raise NotImplementedError(
+        "This is a drastic measure that we do not intend using at the time of writing"
+    )
 
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
-    rds = run_coll.find({'bootstrax.state': 'done',
-                         'status': 'transferred',
-                         'start':
-                             {"$lt": now(-ajax_thresholds['remove_high_level_data'])},
-                         'data.host': hostname})
+    rds = run_coll.find({
+        "bootstrax.state": "done",
+        "status": "transferred",
+        "start": {"$lt": now(-ajax_thresholds["remove_high_level_data"])},
+        "data.host": hostname,
+    })
     if not rds:
         # Great, we are clean
         return
@@ -208,41 +213,41 @@ def clean_high_level_data():
             break
 
         # Okay, good to go let's see if it is high level data and if so, delete it
-        for ddoc in rd['data']:
+        for ddoc in rd["data"]:
             # Only delete data on this host
-            if 'host' in ddoc and ddoc['host'] == hostname:
-                is_low_level = re.findall('|'.join(low_level_data), ddoc['type'])
+            if "host" in ddoc and ddoc["host"] == hostname:
+                is_low_level = re.findall("|".join(low_level_data), ddoc["type"])
                 if is_low_level:
                     continue
-                loc = ddoc['location']
-                if 'raw_records' in ddoc['type']:
-                    raise ValueError(''
-                                     'your regex syntax fails!')
+                loc = ddoc["location"]
+                if "raw_records" in ddoc["type"]:
+                    raise ValueError("your regex syntax fails!")
                 elif os.path.exists(loc):
-                    log.info(f'delete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                reason='high level data')
+                    log.info(f"delete data at {loc}")
+                    delete_data(
+                        rd, loc, ddoc["type"], test=not args.production, reason="high level data"
+                    )
                 else:
-                    loc = loc + '_temp'
-                    log.info(f'delete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                reason='high level data')
+                    loc = loc + "_temp"
+                    log.info(f"delete data at {loc}")
+                    delete_data(
+                        rd, loc, ddoc["type"], test=not args.production, reason="high level data"
+                    )
 
 
 def clean_non_latest():
-    """
-    Remove data on this host if the boostrax.host field is not this host while
-    processing has finished
-    """
-    set_state('clean_non_latest')
+    """Remove data on this host if the boostrax.host field is not this host while processing has
+    finished."""
+    set_state("clean_non_latest")
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
-    rds = run_coll.find({'bootstrax.state': 'done',
-                         'status': 'transferred',
-                         'bootstrax.time':
-                             {"$lt": now(-ajax_thresholds['wait_after_processing'])},
-                         'bootstrax.host': {'$ne': hostname},
-                         'data.host': hostname})
+    rds = run_coll.find({
+        "bootstrax.state": "done",
+        "status": "transferred",
+        "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+        "bootstrax.host": {"$ne": hostname},
+        "data.host": hostname,
+    })
     if not rds:
         # Great, we are clean
         return
@@ -250,125 +255,134 @@ def clean_non_latest():
     for rd in rds:
         # First check that we actually have raw_records stored on one of the other ebs
         have_raw_records = False
-        for dd in rd['data']:
-            if (dd['type'] == 'raw_records' and
-                    dd['host'] != hostname):
+        for dd in rd["data"]:
+            if dd["type"] == "raw_records" and dd["host"] != hostname:
                 have_raw_records = True
                 break
         if not have_raw_records:
             break
 
         # Okay, good to go let's see if it is high level data and if so, delete it
-        for ddoc in rd['data']:
+        for ddoc in rd["data"]:
             # Only delete data on this host
-            if 'host' in ddoc and ddoc['host'] == hostname:
-                loc = ddoc['location']
+            if "host" in ddoc and ddoc["host"] == hostname:
+                loc = ddoc["location"]
                 if os.path.exists(loc):
-                    log.info(f'clean_non_latest::\tdelete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                reason='non latest')
+                    log.info(f"clean_non_latest::\tdelete data at {loc}")
+                    delete_data(
+                        rd, loc, ddoc["type"], test=not args.production, reason="non latest"
+                    )
                 else:
-                    loc = loc + '_temp'
-                    log.info(f'clean_non_latest::\tdelete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                reason='non latest')
+                    loc = loc + "_temp"
+                    log.info(f"clean_non_latest::\tdelete data at {loc}")
+                    delete_data(
+                        rd, loc, ddoc["type"], test=not args.production, reason="non latest"
+                    )
+
 
 def clean_production_folder():
-    warnings.warn('Running clean of production folder is a bad idea if you '
-                  'are running restrax at the same time (restrax does not '
-                  'register data while writing it)')
-    for _ in strax.utils.tqdm(list(range(30)), desc = 'Continue in 30 seconds'):
+    warnings.warn(
+        "Running clean of production folder is a bad idea if you "
+        "are running restrax at the same time (restrax does not "
+        "register data while writing it)"
+    )
+    for _ in strax.utils.tqdm(list(range(30)), desc="Continue in 30 seconds"):
         pass
     clean_unregistered(delete_live=False, _clean_from=output_folder)
 
+
 def clean_unregistered(delete_live=False, _clean_from=pre_folder):
-    """Clean data that is not in the database. To do this check the output folder and remove
-    files if there is no corresponding entry in the rundoc.
+    """Clean data that is not in the database. To do this check the output folder and remove files
+    if there is no corresponding entry in the rundoc.
 
     :param delete_live: bool, if true delete unregistered live data.
     :param _clean_from: which production (not live) folder to clean from
 
     """
-    set_state('clean_unregistered')
-    # We should only do this for the pre-folder since the production folder does have unregistered data when
-    # we are still trying to recompress the data
+    set_state("clean_unregistered")
+    # We should only do this for the pre-folder since the production folder does
+    # have unregistered data when we are still trying to recompress the data
     folder_to_check = _clean_from if delete_live is False else ceph_folder
     all_data = os.listdir(folder_to_check)
     run_ids = []
     for f in all_data:
-        run_ids.append(f.split('-')[0])
+        run_ids.append(f.split("-")[0])
     run_ids = np.unique(run_ids)
-    log.info(f'clean_unregistered::\tfound {len(run_ids)} runs stored on'
-             f'{folder_to_check}. Checking that each is in the runs-database')
+    log.info(
+        f"clean_unregistered::\tfound {len(run_ids)} runs stored on"
+        f"{folder_to_check}. Checking that each is in the runs-database"
+    )
     for run_id in run_ids:
         run_number = int(run_id)
         remove_if_unregistered(run_number, delete_live=delete_live, clean_from=_clean_from)
 
 
 def clean_old_hash():
-    """
-    Loop over the files on the host and check that the lineage is the
-        same as the current lineage hash we would get from straxen
-    """
-    set_state('clean_old_hash')
+    """Loop over the files on the host and check that the lineage is the same as the current lineage
+    hash we would get from straxen."""
+    set_state("clean_old_hash")
     files = os.listdir(output_folder)
     for f in files:
-        run_id, data_type, lineage_hash = f.split('-')
-        if (bool(re.findall('|'.join(low_level_data), data_type)) or
-                '_temp' in lineage_hash):
+        run_id, data_type, lineage_hash = f.split("-")
+        if bool(re.findall("|".join(low_level_data), data_type)) or "_temp" in lineage_hash:
             continue
         elif data_type not in st._plugin_class_registry:
-            log.warning(f'{data_type} is not registered!')
+            log.warning(f"{data_type} is not registered!")
             continue
 
         current_st_hash = st.key_for(run_id, data_type).lineage_hash
         if current_st_hash != lineage_hash:
             loc = os.path.join(output_folder, f)
-            log.info(f'clean_old_hash::\tLineage for run {run_id}, {data_type} is '
-                     f'{current_st_hash}. Removing old hash: {lineage_hash} from {loc}.')
-            rd = run_coll.find_one({'bootstrax.state': 'done',
-                                    'status': 'transferred',
-                                    'bootstrax.time':
-                                        {"$lt": now(-ajax_thresholds['wait_after_processing'])},
-                                    'data.type': data_type,
-                                    'data.host': hostname,
-                                    'number': int(run_id)})
-            if 'raw_records' in data_type:
-                raise ValueError(f'You did some sloppy regex on the data-type, almost '
-                                 f'deleted {data_type}!')
+            log.info(
+                f"clean_old_hash::\tLineage for run {run_id}, {data_type} is "
+                f"{current_st_hash}. Removing old hash: {lineage_hash} from {loc}."
+            )
+            rd = run_coll.find_one({
+                "bootstrax.state": "done",
+                "status": "transferred",
+                "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+                "data.type": data_type,
+                "data.host": hostname,
+                "number": int(run_id),
+            })
+            if "raw_records" in data_type:
+                raise ValueError(
+                    f"You did some sloppy regex on the data-type, almost deleted {data_type}!"
+                )
             if rd:
-                delete_data(rd, loc, data_type, test=not args.production,
-                            reason='old lineage hash')
+                delete_data(rd, loc, data_type, test=not args.production, reason="old lineage hash")
             else:
-                log.info(f'{data_type} at {loc} not registered as done for {run_id}. '
-                         f'Perhaps the data still processing the run?')
+                log.info(
+                    f"{data_type} at {loc} not registered as done for {run_id}. "
+                    "Perhaps the data still processing the run?"
+                )
 
 
 def clean_abandoned(delete_live=False):
-    """Recursively delete data associated to abandoned runs. If deleting live data, submit
-    multiple threads at the same time.
+    """Recursively delete data associated to abandoned runs. If deleting live data, submit multiple
+    threads at the same time.
 
     :param delete_live: bool, if true also delete the live_data of these runs.
 
     """
-    set_state('clean_abandoned')
+    set_state("clean_abandoned")
     # Notice that we thread the deletion of live_data. As such we need to allow multiple
     # runs to be deleted simultaneously.
     if not delete_live:
-        rd = run_coll.find_one({'bootstrax.state': 'abandoned',
-                                'data.host': hostname})
+        rd = run_coll.find_one({"bootstrax.state": "abandoned", "data.host": hostname})
         if rd is None:
-            log.info('clean_abandoned::\tNo more matches in rundoc')
+            log.info("clean_abandoned::\tNo more matches in rundoc")
             return
         else:
             # Make it iterable for the loop below
             rds = [rd]
     else:
-        rds = run_coll.find({'bootstrax.state': 'abandoned',
-                             'bootstrax.time':
-                                 {"$lt": now(-ajax_thresholds['wait_after_processing'])},
-                             'data.location': '/live_data/xenonnt',
-                             'data.host': 'daq'})
+        rds = run_coll.find({
+            "bootstrax.state": "abandoned",
+            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+            "data.location": "/live_data/xenonnt",
+            "data.host": "daq",
+        })
 
     # Count the number of threads. Only allow one if we aks for user input.
     i = 0
@@ -376,15 +390,16 @@ def clean_abandoned(delete_live=False):
     for rd in rds:
         if i >= i_max:
             break
-        run_number = rd['number']
-        log.info(f'clean_abandoned::\tremove data associated to run {run_number}')
+        run_number = rd["number"]
+        log.info(f"clean_abandoned::\tremove data associated to run {run_number}")
         # Please note that we have to force these runs always since they should not be
         # stored elsewhere. They are abandoned for a reason!
-        remove_run_from_host(run_number, delete_live=delete_live, force=True,
-                             reason='run abandonned')
+        remove_run_from_host(
+            run_number, delete_live=delete_live, force=True, reason="run abandonned"
+        )
         i += 1
     if not i:
-        log.info('clean_abandoned::\tNo more live_data matches in rundoc')
+        log.info("clean_abandoned::\tNo more live_data matches in rundoc")
         # Apparently there is no rd in rds
         return
 
@@ -396,39 +411,47 @@ def clean_abandoned(delete_live=False):
 
 
 def clean_database(delete_live=False):
-    """
-    Remove entries from the database if the data is not on this host
-    """
-    set_state('clean_database')
+    """Remove entries from the database if the data is not on this host."""
+    set_state("clean_database")
     # We need to grep all the rundocs at once as simply doing one at the
     # time (find_one) might get stuck as the query may yield the same
     # result the next time it is called.
     if not delete_live:
-        rds = run_coll.find({'bootstrax.state': 'done',
-                             'bootstrax.time':
-                                 {"$lt": now(-ajax_thresholds['wait_after_processing'])},
-                             'data.host': hostname})
+        rds = run_coll.find({
+            "bootstrax.state": "done",
+            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+            "data.host": hostname,
+        })
     else:
-        rds = run_coll.find({'bootstrax.state': 'done',
-                             'bootstrax.time':
-                                 {"$lt": now(-ajax_thresholds['wait_after_processing'])},
-                             'data.host': 'daq'})
+        rds = run_coll.find({
+            "bootstrax.state": "done",
+            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+            "data.host": "daq",
+        })
     if not rds:
         # Great, we are clean
         return
 
     for rd in rds:
         # Okay, good to go let's see if it is high level data and if so, delete it
-        for ddoc in rd['data']:
+        for ddoc in rd["data"]:
             # Only delete data on this host
-            if (('host' in ddoc and ddoc['host'] == hostname) or
-                    ('host' in ddoc and ddoc['host'] == 'daq' and delete_live)):
-                loc = ddoc['location']
+            if ("host" in ddoc and ddoc["host"] == hostname) or (
+                "host" in ddoc and ddoc["host"] == "daq" and delete_live
+            ):
+                loc = ddoc["location"]
                 if not os.path.exists(loc):
-                    log.info(f'clean_database::\tdelete entry of data from '
-                             f'{rd["number"]} at {loc} as it does not exist')
-                    delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                reason='reason already removed from eb?!')
+                    log.info(
+                        "clean_database::\tdelete entry of data from "
+                        f"{rd['number']} at {loc} as it does not exist"
+                    )
+                    delete_data(
+                        rd,
+                        loc,
+                        ddoc["type"],
+                        test=not args.production,
+                        reason="reason already removed from eb?!",
+                    )
 
 
 ##
@@ -437,205 +460,231 @@ def clean_database(delete_live=False):
 
 
 def _rmtree(path):
-    """Wrapper for shutil.rmtree. All deletion statements in this script go
-    through this function in order to make sure that the
-    args.production statement is always double (tripple) checked
-    before deleting data.
+    """Wrapper for shutil.rmtree. All deletion statements in this script go through this function in
+    order to make sure that the args.production statement is always double (tripple) checked before
+    deleting data.
 
     :param path: path to delete
 
     """
     if args.production:
-        if confirm(f'delete {path}?'):
+        if confirm(f"delete {path}?"):
             shutil.rmtree(path)
     else:
-        log.info(f'TESTING:\tshutil.rmtree({path})')
+        log.info(f"TESTING:\tshutil.rmtree({path})")
         if not os.path.exists(path):
-            raise ValueError(f'{path} does not exist')
+            raise ValueError(f"{path} does not exist")
 
 
-def threaded_delete_data(rd, path, data_type,
-                         test=True, ignore_low_data_check=False,
-                         reason=''):
+def threaded_delete_data(rd, path, data_type, test=True, ignore_low_data_check=False, reason=""):
     """Wrapper for delete_data to run in separate threads.
 
     :param rd: rundoc
     :param path: location of the folder to be deleted
     :param data_type: type of data to be deleted
     :param test: bool if we are testing or not. If true, nothing will be deleted.
-    :param ignore_low_data_check: ignore the fact that this might be the only copy of the
-        data. We can specify this e.g. if we know this is data associated to some abandoned run.
+    :param ignore_low_data_check: ignore the fact that this might be the only copy of the data. We
+        can specify this e.g. if we know this is data associated to some abandoned run.
 
     """
 
-    thread_name = thread_prefix + path.split('/')[-1]
-    delete_thread = threading.Thread(name=thread_name,
-                                     target=delete_data,
-                                     args=(rd, path, data_type,
-                                           test, ignore_low_data_check),
-                                     kwargs={'reason': reason})
-    log.info(f'Starting thread to delete {path} at {now()}')
+    thread_name = thread_prefix + path.split("/")[-1]
+    delete_thread = threading.Thread(
+        name=thread_name,
+        target=delete_data,
+        args=(rd, path, data_type, test, ignore_low_data_check),
+        kwargs={"reason": reason},
+    )
+    log.info(f"Starting thread to delete {path} at {now()}")
     # We rather not stop deleting the live_data if something else fails. Set the thread
     # to daemon.
     delete_thread.setDaemon(True)
     delete_thread.start()
-    log.info(f'DeleteThread {path} should be running in parallel, continue MainThread '
-             f'now: {now()}')
+    log.info(f"DeleteThread {path} should be running in parallel, continue MainThread now: {now()}")
 
 
-def delete_data(rd, path, data_type,
-                test=True,
-                ignore_low_data_check=False,
-                reason='',
-                ):
-    """Delete data and update the rundoc
+def delete_data(
+    rd,
+    path,
+    data_type,
+    test=True,
+    ignore_low_data_check=False,
+    reason="",
+):
+    """Delete data and update the rundoc.
 
     :param rd: rundoc
     :param path: location of the folder to be deleted
     :param data_type: type of data to be deleted
-    :param test: bool if we are testing or not. If true, nothing will
-        be deleted.
-    :param ignore_low_data_check: ignore the fact that this might be
-        the only copy of the data. We can specify this e.g. if we know
-        this is data associated to some abandoned run.
+    :param test: bool if we are testing or not. If true, nothing will be deleted.
+    :param ignore_low_data_check: ignore the fact that this might be the only copy of the data. We
+        can specify this e.g. if we know this is data associated to some abandoned run.
 
     """
     # First check that we are not deleting essential data (unless we are working
     # with abandoned runs or so.
     if not ignore_low_data_check:
         n_live, n_rr = check_rundoc_for_live_and_raw(rd)
-        if not (
-                n_live or
-                n_rr >= 1 + int('raw_records' in data_type)):
-            message = (f'Trying to delete {data_type} but we only have {n_live}'
-                       f' live- and {n_rr} raw_record-files in the '
-                       f'runs-database. This might be an essential copy of the'
-                       f' data!')
-            log_warning(message, priority='fatal', run_id=f'{rd["number"]:06}')
+        if not (n_live or n_rr >= 1 + int("raw_records" in data_type)):
+            message = (
+                f"Trying to delete {data_type} but we only have {n_live}"
+                f" live- and {n_rr} raw_record-files in the "
+                "runs-database. This might be an essential copy of the"
+                " data!"
+            )
+            log_warning(message, priority="fatal", run_id=f'{rd["number"]:06}')
             if not test:
                 raise ValueError(message)
 
     if os.path.exists(path):
-        log.info(f'Deleting data at {path}')
+        log.info(f"Deleting data at {path}")
         if not test:
             _rmtree(path)
-        log.info(f'deleting {path} finished')
+        log.info(f"deleting {path} finished")
     else:
-        log.info(f'There is no data on {path}! Just doing the rundoc.')
+        log.info(f"There is no data on {path}! Just doing the rundoc.")
 
     # Remove the data location from the rundoc and append it to the 'deleted_data' entries
     if not os.path.exists(path):
-        log.info('changing data field in rundoc')
-        for ddoc in rd['data']:
-            if ddoc['type'] == data_type and ddoc['host'] in ('daq', hostname):
+        log.info("changing data field in rundoc")
+        for ddoc in rd["data"]:
+            if ddoc["type"] == data_type and ddoc["host"] in ("daq", hostname):
                 break
         for k in ddoc.copy().keys():
-            if k in ['location', 'meta', 'protocol']:
+            if k in ["location", "meta", "protocol"]:
                 ddoc.pop(k)
 
-        ddoc.update({'at': now(), 'by': f'ajax.{hostname}', 'reason': reason})
-        log.info(f'update with {ddoc}')
+        ddoc.update({"at": now(), "by": f"ajax.{hostname}", "reason": reason})
+        log.info(f"update with {ddoc}")
         if args.production and not test:
-            if confirm('update rundoc?'):
-                run_coll.update_one({'_id': rd['_id']},
-                                    {"$addToSet": {'deleted_data': ddoc},
-                                     "$pull": {"data":
-                                                   {"type": data_type,
-                                                    "host": {'$in': ['daq', hostname]}}}})
+            if confirm("update rundoc?"):
+                run_coll.update_one(
+                    {"_id": rd["_id"]},
+                    {
+                        "$addToSet": {"deleted_data": ddoc},
+                        "$pull": {"data": {"type": data_type, "host": {"$in": ["daq", hostname]}}},
+                    },
+                )
         else:
-            log.info(f'Update ddoc with : {ddoc}')
+            log.info(f"Update ddoc with : {ddoc}")
     elif not test and not args.ask_confirm:
         raise ValueError(f"Something went wrong we wanted to delete {path}!")
 
 
 def check_rundoc_for_live_and_raw(rd):
-    """Count the number of files of live_data (cannot be >1) and raw_data (transfers can get
-    it greater than 1)
+    """Count the number of files of live_data (cannot be >1) and raw_data (transfers can get it
+    greater than 1)
 
     :param rd: rundoc
-    :return: length 2 tuple with n_live_data and n_raw_records being the number of files
-        in the rundoc for the live data and raw records respectively.
+    :return: length 2 tuple with n_live_data and n_raw_records being the number of files in the
+        rundoc for the live data and raw records respectively.
 
     """
     n_live_data, n_raw_records = 0, 0
-    for dd in rd['data']:
-        if dd['type'] == 'live':
+    for dd in rd["data"]:
+        if dd["type"] == "live":
             n_live_data += 1
-        if dd['type'] == 'raw_records':
+        if dd["type"] == "raw_records":
             n_raw_records += 1
     return n_live_data, n_raw_records
 
 
-def remove_run_from_host(number, delete_live=False, force=False, reason=''):
-    """Save way of removing data from host if data registered elsewhere
+def remove_run_from_host(number, delete_live=False, force=False, reason=""):
+    """Save way of removing data from host if data registered elsewhere.
 
     :param number: run number (not ID!)
     :param delete_live: bool, if true delete the live_data else the processed data
-    :param force: forcefully remove the data even if we don't have the right copies (e.g.
-        deleting /live_data when the raw_records are not stored. Be careful with this option!
-        Should only be used for the deletion of abandoned runs.
+    :param force: forcefully remove the data even if we don't have the right copies (e.g. deleting
+        /live_data when the raw_records are not stored. Be careful with this option! Should only be
+        used for the deletion of abandoned runs.
 
     """
     # Query the database to remove data
-    rd = run_coll.find_one({'number': number,
-                            'data.host': hostname if not delete_live else 'daq'})
+    rd = run_coll.find_one({"number": number, "data.host": hostname if not delete_live else "daq"})
     if not rd:
-        log_warning(f'No registered data for {number} on {hostname}',
-                    run_id=f'{number:06}', priority='info')
+        log_warning(
+            f"No registered data for {number} on {hostname}", run_id=f"{number:06}", priority="info"
+        )
         return
 
     have_live_data, have_raw_records = check_rundoc_for_live_and_raw(rd)
 
-    for ddoc in rd['data']:
+    for ddoc in rd["data"]:
         # This is processed data on the eventbuilders
-        if 'host' in ddoc and ddoc['host'] == hostname:
+        if "host" in ddoc and ddoc["host"] == hostname:
             if delete_live:
                 # If you want to delete the live data you shouldn't consider this ddoc
                 continue
-            loc = ddoc['location']
-            if not force and not have_live_data and 'raw_records' in ddoc['type']:
+            loc = ddoc["location"]
+            if not force and not have_live_data and "raw_records" in ddoc["type"]:
                 # If we do not have live_data, don't delete raw_records. However, if we
                 # --force deletion, do go to the next else statement
-                log.info(f'prevent {loc} from being deleted. The live_data has already'
-                         f' been removed')
+                log.info(
+                    f"prevent {loc} from being deleted. The live_data has already been removed"
+                )
             else:
-                log.info(f'delete data at {loc}')
-                delete_data(rd, loc, ddoc['type'], test=not args.production,
-                            ignore_low_data_check=force, reason=reason)
+                log.info(f"delete data at {loc}")
+                delete_data(
+                    rd,
+                    loc,
+                    ddoc["type"],
+                    test=not args.production,
+                    ignore_low_data_check=force,
+                    reason=reason,
+                )
 
-                loc = loc + '_temp'
+                loc = loc + "_temp"
                 if os.path.exists(loc):
-                    log.info(f'delete data at {loc}')
-                    delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                ignore_low_data_check=force, reason=reason)
-        elif 'host' in ddoc and ddoc['host'] == 'daq':
+                    log.info(f"delete data at {loc}")
+                    delete_data(
+                        rd,
+                        loc,
+                        ddoc["type"],
+                        test=not args.production,
+                        ignore_low_data_check=force,
+                        reason=reason,
+                    )
+        elif "host" in ddoc and ddoc["host"] == "daq":
             # This is the live_data
             if not delete_live:
                 log.info(f'prevent {ddoc["location"]} from being deleted. Do so with --delete_live')
                 # If you want to delete processed data you shouldn't consider this ddoc
                 continue
 
-            run_id = '%06d' % number
-            loc = os.path.join(ddoc['location'], run_id)
+            run_id = "%06d" % number
+            loc = os.path.join(ddoc["location"], run_id)
             if not force and not have_raw_records:
                 # If we do not have raw records, don't delete this data. However, if we
                 # --force deletion, do go to the next else statement
                 log_warning(
-                    f'Unsafe to delete {loc}, no raw_records registered. Force with '
-                    f'--force', priority='info')
+                    f"Unsafe to delete {loc}, no raw_records registered. Force with --force",
+                    priority="info",
+                )
             elif not force and have_raw_records:
-                log.info(f'Deleting {loc} since we have raw_records registered.')
-                threaded_delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                     ignore_low_data_check=False, reason=reason)
+                log.info(f"Deleting {loc} since we have raw_records registered.")
+                threaded_delete_data(
+                    rd,
+                    loc,
+                    ddoc["type"],
+                    test=not args.production,
+                    ignore_low_data_check=False,
+                    reason=reason,
+                )
             # Redundant elif but let's double check the force nonetheless.
             elif force:
-                log.info(f'Forcefully delete {loc}, but no raw_records registered!')
-                threaded_delete_data(rd, loc, ddoc['type'], test=not args.production,
-                                     ignore_low_data_check=True, reason=reason)
+                log.info(f"Forcefully delete {loc}, but no raw_records registered!")
+                threaded_delete_data(
+                    rd,
+                    loc,
+                    ddoc["type"],
+                    test=not args.production,
+                    ignore_low_data_check=True,
+                    reason=reason,
+                )
 
 
 def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
-    """Given a run number delete data on this machine that matches that number
+    """Given a run number delete data on this machine that matches that number.
 
     :param number: int! the run_number (not run_id)
     :param delete_live: Bool, if True: Remove the live_data. Else remove processed data
@@ -645,19 +694,20 @@ def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
     # WANRING! If we don't find something we WILL remove the data! Don't make the query
     # specific! We only check if any of the data is on this host (i.e. not get None from
     # the query below)
-    rd = run_coll.find_one({'number': number,
-                            'data.host': hostname if not delete_live else 'daq'})
-    run_id = '%06d' % number
+    rd = run_coll.find_one({"number": number, "data.host": hostname if not delete_live else "daq"})
+    run_id = "%06d" % number
 
-    if rd and any(ddoc.get('location', '').startswith(clean_from) for ddoc in rd.get('data', [])):
+    if rd and any(ddoc.get("location", "").startswith(clean_from) for ddoc in rd.get("data", [])):
         # Just for explicitness, this is where we want to end up. If we have a rundoc,
         # the data is registered and we don't have to do anything.
         return
     else:
-        log_warning(f'remove_if_unregistered::\trun {number} is NOT registered '
-                    f'in the runDB but is stored on {hostname}',
-                    run_id=run_id,
-                    priority='error')
+        log_warning(
+            f"remove_if_unregistered::\trun {number} is NOT registered "
+            f"in the runDB but is stored on {hostname}",
+            run_id=run_id,
+            priority="error",
+        )
         if not delete_live:
             # Check the local ebs disk for data.
             _remove_unregistered_run(clean_from, run_id, checked_db=True)
@@ -677,48 +727,60 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
 
     """
     if not checked_db:
-        log_warning(f'remove_if_unregistered::\trogue ajax operations! Trying '
-                    f'to delete {run_id} from {hostname}',
-                    run_id=run_id,
-                    priority='fatal')
-        raise ValueError("Only insert runs where for it is checked that it is "
-                         "not registered in the runs database and double checked.")
-    log_warning(f'No data for {run_id} found! Double checking {base_folder}!',
-                run_id=run_id, priority='warning')
+        log_warning(
+            "remove_if_unregistered::\trogue ajax operations! Trying "
+            f"to delete {run_id} from {hostname}",
+            run_id=run_id,
+            priority="fatal",
+        )
+        raise ValueError(
+            "Only insert runs where for it is checked that it is "
+            "not registered in the runs database and double checked."
+        )
+    log_warning(
+        f"No data for {run_id} found! Double checking {base_folder}!",
+        run_id=run_id,
+        priority="warning",
+    )
     deleted_data = False
 
     for folder in os.listdir(base_folder):
         if run_id in folder:
-            log.info(f'Cleaning {base_folder + folder}')
+            log.info(f"Cleaning {base_folder + folder}")
 
             # Do a final check if we are not deleting essential data!
             # Do not disable this check! If you don't like it: make a smarter query
-            rd = run_coll.find_one({'number': int(run_id)})
+            rd = run_coll.find_one({"number": int(run_id)})
             n_live, n_rr = check_rundoc_for_live_and_raw(rd)
 
-            if not (n_live or n_rr >= 1 + int('raw_records' in folder)):
-                message = (f'Trying to delete {folder} but we only have '
-                           f'{n_live} live- and {n_rr} raw_record-files in the '
-                           f'runs-database. This might be an essential copy of '
-                           f'the data!')
-                log_warning(message, run_id=run_id, priority='fatal')
+            if not (n_live or n_rr >= 1 + int("raw_records" in folder)):
+                message = (
+                    f"Trying to delete {folder} but we only have "
+                    f"{n_live} live- and {n_rr} raw_record-files in the "
+                    "runs-database. This might be an essential copy of "
+                    "the data!"
+                )
+                log_warning(message, run_id=run_id, priority="fatal")
                 raise ValueError(message)
 
             # OK, we still have live_data somewhere or we have raw_records (elsewhere)
             if args.production:
                 # Double check returns True automatically if not args.ask_confirm
                 if confirm(
-                        f'Should we really move {os.path.join(base_folder, folder)} '
-                        f'to {os.path.join(non_registered_folder, folder)}?'):
-                    shutil.move(os.path.join(base_folder, folder),
-                                os.path.join(non_registered_folder, folder))
+                    f"Should we really move {os.path.join(base_folder, folder)} "
+                    f"to {os.path.join(non_registered_folder, folder)}?"
+                ):
+                    shutil.move(
+                        os.path.join(base_folder, folder),
+                        os.path.join(non_registered_folder, folder),
+                    )
             else:
-                log.info(f'TEST\tmoving {base_folder + folder}')
+                log.info(f"TEST\tmoving {base_folder + folder}")
             deleted_data = True
 
     if not deleted_data:
-        message = f'No data registered on {hostname} for {run_id}'
-        log_warning(message, priority='fatal')
+        message = f"No data registered on {hostname} for {run_id}"
+        log_warning(message, priority="fatal")
         raise FileNotFoundError(message)
 
 
@@ -728,22 +790,23 @@ def _remove_unregistered_run(base_folder, run_id, checked_db=False):
 
 
 def now(plus=0):
-    """UTC timestamp"""
+    """UTC timestamp."""
     return datetime.now(pytz.utc) + timedelta(seconds=plus)
 
 
 def confirm(question):
-    """
-    If --ask_confirm is specified, ask user to confirm to proceed.
+    """If --ask_confirm is specified, ask user to confirm to proceed.
+
     :return: bool
+
     """
     if not args.ask_confirm:
         return True
-    answer = str(input(question + ' (y/n): \n')).lower().strip()
-    if answer in ('y', 'n'):
-        return answer == 'y'
+    answer = str(input(question + " (y/n): \n")).lower().strip()
+    if answer in ("y", "n"):
+        return answer == "y"
     else:
-        confirm('please input (y/n)\n')
+        confirm("please input (y/n)\n")
 
 
 def wait_on_delete_thread():
@@ -755,30 +818,38 @@ def wait_on_delete_thread():
             while wait:
                 wait = False
                 if thread.isAlive():
-                    log.info(f'{thread.name} still running take a '
-                             f'{ajax_thresholds["short_nap"]} s nap')
-                    time.sleep(ajax_thresholds['short_nap'])
+                    log.info(
+                        f"{thread.name} still running take a {ajax_thresholds['short_nap']} s nap"
+                    )
+                    time.sleep(ajax_thresholds["short_nap"])
                     wait = True
-    log.info(f'wait_on_delete_thread::\tChecked that all {thread_prefix}* finished')
+    log.info(f"wait_on_delete_thread::\tChecked that all {thread_prefix}* finished")
 
 
-def log_warning(message, priority='warning', run_id=None):
+def log_warning(message, priority="warning", run_id=None):
     getattr(log, priority.lower())(message)
-    databases.log_warning(message, priority=priority, run_id=run_id, production=args.production, user=f'ajax_{hostname}',)
+    databases.log_warning(
+        message,
+        priority=priority,
+        run_id=run_id,
+        production=args.production,
+        user=f"ajax_{hostname}",
+    )
 
 
 def set_state(state):
-    """Inform the bootstrax collection we're in a different state
+    """Inform the bootstrax collection we're in a different state.
 
     if state is None, leave state unchanged, just update heartbeat time
+
     """
     ajax_state = dict(
-        host='ajax.' + hostname,
+        host="ajax." + hostname,
         pid=os.getpid(),
         time=now(),
         state=state,
-        mode=f'clean {args.clean}',
-        production_mode=args.production
+        mode=f"clean {args.clean}",
+        production_mode=args.production,
     )
     bs_coll.insert_one(ajax_state)
 
@@ -788,106 +859,123 @@ def set_state(state):
 ##
 
 
-if __name__ == '__main__':
-    print(f'---\n ajax version {__version__}\n---')
+if __name__ == "__main__":
+    print(f"---\n ajax version {__version__}\n---")
 
-    parser = argparse.ArgumentParser(
-        description="XENONnT cleaning manager")
-    parser.add_argument('--force', action='store_true',
-                        help="Forcefully remove stuff from this host")
-    parser.add_argument('--ask_confirm', action='store_true',
-                        help="Always ask for confirmation before deleting data/updating"
-                             " the rundoc")
-    parser.add_argument('--delete_live', action='store_true',
-                        help="delete live data for this run")
-    parser.add_argument('--production', action='store_true',
-                        help="Execute the deletion commands. If not specified, ajax "
-                             "assumes you want to test")
-    parser.add_argument('--logging', default='DEBUG',
-                        help="logging level (DEBUG/INFO/WARNING)")
+    parser = argparse.ArgumentParser(description="XENONnT cleaning manager")
+    parser.add_argument(
+        "--force", action="store_true", help="Forcefully remove stuff from this host"
+    )
+    parser.add_argument(
+        "--ask_confirm",
+        action="store_true",
+        help="Always ask for confirmation before deleting data/updating the rundoc",
+    )
+    parser.add_argument("--delete_live", action="store_true", help="delete live data for this run")
+    parser.add_argument(
+        "--production",
+        action="store_true",
+        help="Execute the deletion commands. If not specified, ajax assumes you want to test",
+    )
+    parser.add_argument("--logging", default="DEBUG", help="logging level (DEBUG/INFO/WARNING)")
 
     actions = parser.add_mutually_exclusive_group()
-    actions.add_argument('--number', type=int, metavar='NUMBER',
-                         help="Process a single run, regardless of its status.")
-    actions.add_argument('--clean', type=str, help=
-    'Run ajax in any of the following modes: clean [ceph, '  # noqa
-    'unregistered, abandoned, high_level_data, all]\n'
-    '"ceph": Remove successfully processed runs and abandoned runs from /live_data\n'
-    '"unregistered": remove all data from this host that is not registered in the rundb\n'
-    '"abandoned": remove all the data associated to abandoned runs\n'
-    '"high_level_data": remove all high level data on this host\n'
-    '"non_latest": remove data on this host if it was not the last to process a given run \n'
-    '"database": check if all the entries that the database claims are actually here \n'
-    '"old_hash": remove high level data if the hash doesnt equal the latest for this datatype \n'
-    '"production": clean the production folder (bad idea if restrax is running since it writes there) \n'
-    '"all": Clean everything that AJAX can get its hands on: unregistered data, high level '
-    'data')
+    actions.add_argument(
+        "--number",
+        type=int,
+        metavar="NUMBER",
+        help="Process a single run, regardless of its status.",
+    )
+    actions.add_argument(
+        "--clean",
+        type=str,
+        help="Run ajax in any of the following modes: clean [ceph, "  # noqa
+        "unregistered, abandoned, high_level_data, all]\n"
+        '"ceph": Remove successfully processed runs and abandoned runs from /live_data\n'
+        '"unregistered": remove all data from this host that is not registered in the rundb\n'
+        '"abandoned": remove all the data associated to abandoned runs\n'
+        '"high_level_data": remove all high level data on this host\n'
+        '"non_latest": remove data on this host if it was not the last to process a given run \n'
+        '"database": check if all the entries that the database claims are actually here \n'
+        '"old_hash": remove high level data if the hash doesnt equal the latest for this'
+        " datatype \n"
+        '"production": clean the production folder (bad idea if restrax is running since it writes'
+        " there) \n"
+        '"all": Clean everything that AJAX can get its hands on: unregistered data, high level '
+        "data",
+    )
 
     args = parser.parse_args()
     hostname = socket.getfqdn()
     databases = daq_core.DataBases(production=args.production)
 
     if not hasattr(logging, args.logging):
-        raise AttributeError(f'Set --logging to a logging level like DEBUG or INFO')
+        raise AttributeError(f"Set --logging to a logging level like DEBUG or INFO")
     logging_level = getattr(logging, args.logging)
     try:
         import daqnt
-        log_name = 'ajax_' + hostname + ('' if args.production else '_TESTING')
-        log = daqnt.get_daq_logger('main', log_name, level=logging_level)
+
+        log_name = "ajax_" + hostname + ("" if args.production else "_TESTING")
+        log = daqnt.get_daq_logger("main", log_name, level=logging_level)
     except ModuleNotFoundError:
         logging.basicConfig(
             level=logging_level,
-            format='%(asctime)s %(name)s %(levelname)-8s %(message)s',
-            datefmt='%m-%d %H:%M')
+            format="%(asctime)s %(name)s %(levelname)-8s %(message)s",
+            datefmt="%m-%d %H:%M",
+        )
         log = logging.getLogger()
 
     if args.delete_live:
         if not args.number:
             raise ValueError("Specify which number with --number")
     if args.force:
-        log.warning(f'main::\tDANGER ZONE you are forcefully deleting data that may '
-                    f'result in an irrecoverable loss of data.')
-        log.info(f'main::\tPlease note that execute argument is {args.production} which '
-                 f'means you are {"" if not args.production else "!NOT!"} safe')
+        log.warning(
+            f"main::\tDANGER ZONE you are forcefully deleting data that may "
+            f"result in an irrecoverable loss of data."
+        )
+        log.info(
+            f"main::\tPlease note that execute argument is {args.production} which "
+            f"means you are {'' if not args.production else '!NOT!'} safe"
+        )
         if not args.ask_confirm:
             raise NotImplementedError(
-                f'main::\tI cannot let your forcefully delete data without asking for '
-                f'confirmation. Add --ask_confirm. Bye, bye')
+                f"main::\tI cannot let your forcefully delete data without asking for "
+                f"confirmation. Add --ask_confirm. Bye, bye"
+            )
 
-        if not input('Want to proceed willingly? [y]').lower() == 'y':
-            log.info(f'main::\tAlright no unsafe operations, bye bye')
+        if not input("Want to proceed willingly? [y]").lower() == "y":
+            log.info(f"main::\tAlright no unsafe operations, bye bye")
             exit(-1)
-        if args.clean != 'abandoned' and not args.number:
-            raise NotImplementedError(
-                "main::\tI don't want to have this option enabled (yet).")
+        if args.clean != "abandoned" and not args.number:
+            raise NotImplementedError("main::\tI don't want to have this option enabled (yet).")
 
-    if args.clean in ['all', 'old_hash']:
+    if args.clean in ["all", "old_hash"]:
         # Need the context for the latest hash
         st = straxen.contexts.xenonnt_online()
 
     for f in (output_folder, non_registered_folder):
         if os.access(f, os.W_OK) is not True:
-            log_warning(f'main::\tNo writing access to {f}', priority='fatal')
-            raise IOError(f'main::\tNo writing access to {f}')
+            log_warning(f"main::\tNo writing access to {f}", priority="fatal")
+            raise IOError(f"main::\tNo writing access to {f}")
 
     # Runs database
     run_db = databases.run_db
     run_coll = databases.run_coll
-    run_db.command('ping')
+    run_db.command("ping")
 
     # DAQ database
     daq_db = databases.daq_db
     log_coll = databases.log_coll
     bs_coll = databases.bs_coll
-    daq_db.command('ping')
+    daq_db.command("ping")
 
     try:
-        set_state('idle')
+        set_state("idle")
         main_ajax()
     except (KeyboardInterrupt, SystemExit) as e:
-        log.info('\nStopping, wait a second for the delete threads\n')
+        log.info("\nStopping, wait a second for the delete threads\n")
         wait_on_delete_thread()
         raise e
 
     wait_on_delete_thread()
-    log.info(f'main::\tAjax finished, bye bye')
+    log.info(f"main::\tAjax finished, bye bye")
