@@ -18,7 +18,7 @@ function cleanup {
 }
 trap cleanup EXIT
 
-cd $top_level/binn
+cd $top_level/bin
 
 git checkout $old_branch
 ./report_pr_changes --branch old --computation lineage_hash
