@@ -221,6 +221,7 @@ class DummyRawRecords(strax.Plugin):
             res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res
 
+
 @export
 def version_hash_dict(context):
     """Returns a dictionary of the form {data_type: [version, hash]} for the plugins within the
