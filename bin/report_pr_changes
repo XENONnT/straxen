@@ -9,7 +9,6 @@ import argparse
 import json
 
 import numpy as np
-import strax
 import straxen
 from straxen.test_utils import nt_test_run_id
 
@@ -25,7 +24,7 @@ def save_json(json_name, json_dict):
 
 
 def save_lineage_hash_dict(st, json_name):
-    version_hash_dict = strax.utils.version_hash_dict(st)
+    version_hash_dict = straxen.test_utils.version_hash_dict(st)
     save_json(json_name, version_hash_dict)
 
 
@@ -33,7 +32,9 @@ def compare_lineage_hash_dict(old_json_name, new_json_name, save_json_name):
     version_hash_dict_old = read_json(old_json_name)
     version_hash_dict_new = read_json(new_json_name)
 
-    updated_plugins_dict = strax.utils.updated_plugins(version_hash_dict_old, version_hash_dict_new)
+    updated_plugins_dict = straxen.test_utils.updated_plugins(
+        version_hash_dict_old, version_hash_dict_new
+    )
     save_json(save_json_name, updated_plugins_dict)
 
 
@@ -72,7 +73,7 @@ def print_added_plugin_info():
     # Now print the info for the added plugins
     st = straxen.test_utils.nt_test_context()
     updated_plugins_dict = read_json(plugin_update_comparison_name)
-    bad_field_info_added = strax.utils.bad_field_info(
+    bad_field_info_added = straxen.test_utils.bad_field_info(
         st, nt_test_run_id, updated_plugins_dict["added"]
     )
     for p in bad_field_info_added:
@@ -91,10 +92,10 @@ def get_changed_affected_plugin_info():
         st = straxen.test_utils.nt_test_context()
         new_changed_plugin_bad_info = read_json(new_changed_plugin_bad_info_name)
         new_affected_plugin_bad_info = read_json(new_affected_plugin_bad_info_name)
-        old_changed_plugin_bad_info = strax.utils.bad_field_info(
+        old_changed_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, list(new_changed_plugin_bad_info.keys())
         )
-        old_affected_plugin_bad_info = strax.utils.bad_field_info(
+        old_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, list(new_affected_plugin_bad_info.keys())
         )
         save_json(old_changed_plugin_bad_info_name, old_changed_plugin_bad_info)
@@ -103,18 +104,18 @@ def get_changed_affected_plugin_info():
         # Comparing differences to changed plugins
         st = straxen.test_utils.nt_test_context()
         updated_plugins_dict = read_json(plugin_update_comparison_name)
-        lowest_level_changed_plugins = strax.utils.lowest_level_plugins(
+        lowest_level_changed_plugins = straxen.test_utils.lowest_level_plugins(
             st, updated_plugins_dict["changed"]
         )
         # Affected means the plugins which directly depend on the lowest level changed plugins
-        affected_changed_plugins = strax.utils.directly_depends_on(
+        affected_changed_plugins = straxen.test_utils.directly_depends_on(
             st, lowest_level_changed_plugins, updated_plugins_dict["changed"]
         )
         # See the nan field fractions + mean of each field
-        new_changed_plugin_bad_info = strax.utils.bad_field_info(
+        new_changed_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, lowest_level_changed_plugins
         )
-        new_affected_plugin_bad_info = strax.utils.bad_field_info(
+        new_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, affected_changed_plugins
         )
         save_json(new_changed_plugin_bad_info_name, new_changed_plugin_bad_info)
