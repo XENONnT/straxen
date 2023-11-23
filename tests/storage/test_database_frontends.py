@@ -1,23 +1,23 @@
+import os
 import unittest
 import strax
 from strax.testutils import Records, Peaks
 import straxen
-import os
 import shutil
 import tempfile
 import pymongo
 import datetime
 import socket
+from straxen import RunDB
 
 
 def mongo_uri_not_set():
-    return 'TEST_MONGO_URI' not in os.environ
+    return "TEST_MONGO_URI" not in os.environ
 
 
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
 class TestRunDBFrontend(unittest.TestCase):
-    """
-    Test the saving behavior of the context with the straxen.RunDB
+    """Test the saving behavior of the context with the straxen.RunDB.
 
     Requires write access to some pymongo server, the URI of witch is to be set
     as an environment variable under:
@@ -26,22 +26,24 @@ class TestRunDBFrontend(unittest.TestCase):
 
     At the moment this is just an empty database but you can also use some free
     ATLAS mongo server.
+
     """
+
     _run_test = True
 
     @classmethod
     def setUpClass(cls) -> None:
         # Just to make sure we are running some mongo server, see test-class docstring
-        cls.test_run_ids = ['0', '1']
-        cls.all_targets = ('peaks', 'records')
+        cls.test_run_ids = ["0", "1"]
+        cls.all_targets = ("peaks", "records")
 
-        uri = os.environ.get('TEST_MONGO_URI')
-        db_name = 'test_rundb'
-        cls.collection_name = 'test_rundb_coll'
+        uri = os.environ.get("TEST_MONGO_URI")
+        db_name = "test_rundb"
+        cls.collection_name = "test_rundb_coll"
         client = pymongo.MongoClient(uri)
         cls.database = client[db_name]
         collection = cls.database[cls.collection_name]
-        cls.path = os.path.join(tempfile.gettempdir(), 'strax_data')
+        cls.path = os.path.join(tempfile.gettempdir(), "strax_data")
         # assert cls.collection_name not in cls.database.list_collection_names()
 
         if not straxen.utilix_is_configured():
@@ -49,34 +51,38 @@ class TestRunDBFrontend(unittest.TestCase):
             # function even though we don't need it
             straxen.rundb.utilix.rundb.xent_collection = lambda *args, **kwargs: collection
 
-        cls.rundb_sf = straxen.RunDB(readonly=False,
-                                     runid_field='number',
-                                     new_data_path=cls.path,
-                                     minimum_run_number=-1,
-                                     rucio_path='./strax_test_data',
-                                     )
+        cls.rundb_sf = straxen.RunDB(
+            readonly=False,
+            runid_field="number",
+            new_data_path=cls.path,
+            minimum_run_number=-1,
+            rucio_path="./strax_test_data",
+        )
         cls.rundb_sf.client = client
         cls.rundb_sf.collection = collection
 
         # Extra test for regexes
-        class RunDBTestLocal(straxen.RunDB):
-            """Change class to mathc current host too"""
-            hosts = {'bla': f'{socket.getfqdn()}'}
+        class RunDBTestLocal(RunDB):
+            """Change class to mathc current host too."""
 
-        cls.rundb_sf_with_current_host = RunDBTestLocal(readonly=False,
-                                                        runid_field='number',
-                                                        new_data_path=cls.path,
-                                                        minimum_run_number=-1,
-                                                        rucio_path='./strax_test_data',
-                                                        )
+            hosts = {"bla": f"{socket.getfqdn()}"}
+
+        cls.rundb_sf_with_current_host = RunDBTestLocal(
+            readonly=False,
+            runid_field="number",
+            new_data_path=cls.path,
+            minimum_run_number=-1,
+            rucio_path="./strax_test_data",
+        )
         cls.rundb_sf_with_current_host.client = client
         cls.rundb_sf_with_current_host.collection = collection
 
-        cls.st = strax.Context(register=[Records, Peaks],
-                               storage=[cls.rundb_sf],
-                               use_per_run_defaults=False,
-                               config=dict(bonus_area=0),
-                               )
+        cls.st = strax.Context(
+            register=[Records, Peaks],
+            storage=[cls.rundb_sf],
+            use_per_run_defaults=False,
+            config=dict(bonus_area=0),
+        )
 
     def setUp(self) -> None:
         for run_id in self.test_run_ids:
@@ -86,7 +92,7 @@ class TestRunDBFrontend(unittest.TestCase):
     def tearDown(self):
         self.database[self.collection_name].drop()
         if os.path.exists(self.path):
-            print(f'rm {self.path}')
+            print(f"rm {self.path}")
             shutil.rmtree(self.path)
 
     @classmethod
@@ -99,10 +105,10 @@ class TestRunDBFrontend(unittest.TestCase):
 
     @property
     def is_all_targets_stored(self) -> bool:
-        """This should always be False as one of the targets (records) is not stored in mongo"""
-        return all([all(
-            [self.st.is_stored(r, t) for t in self.all_targets])
-            for r in self.test_run_ids])
+        """This should always be False as one of the targets (records) is not stored in mongo."""
+        return all([
+            all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids
+        ])
 
     def test_finding_runs(self):
         rdb = self.rundb_sf
@@ -126,7 +132,7 @@ class TestRunDBFrontend(unittest.TestCase):
         assert self.is_all_targets_stored
 
         # Double check that we can load data from mongo even if we cannot make it
-        self.st.context_config['forbid_creation_of'] = self.all_targets
+        self.st.context_config["forbid_creation_of"] = self.all_targets
         peaks = self.st.get_array(self.test_run_ids, self.all_targets[-1])
         assert len(peaks)
         runs = self.st.select_runs(available=self.all_targets)
@@ -141,18 +147,19 @@ class TestRunDBFrontend(unittest.TestCase):
         assert len(all_runs) == len(self.test_run_ids) + 1
 
     def test_lineage_changes(self):
-        st = strax.Context(register=[Records, Peaks],
-                           storage=[self.rundb_sf],
-                           use_per_run_defaults=True,
-                           )
-        lineages = [st.key_for(r, 'peaks').lineage_hash for r in self.test_run_ids]
+        st = strax.Context(
+            register=[Records, Peaks],
+            storage=[self.rundb_sf],
+            use_per_run_defaults=True,
+        )
+        lineages = [st.key_for(r, "peaks").lineage_hash for r in self.test_run_ids]
         assert len(set(lineages)) > 1
         with self.assertRaises(ValueError):
             # Lineage changing per run is not allowed!
-            st.select_runs(available='peaks')
+            st.select_runs(available="peaks")
 
     def test_fuzzy(self):
-        """See that fuzzy for does not work yet with the RunDB"""
+        """See that fuzzy for does not work yet with the RunDB."""
         fuzzy_st = self.st.new_context(fuzzy_for=self.all_targets)
         with self.assertWarns(UserWarning):
             fuzzy_st.is_stored(self.test_run_ids[0], self.all_targets[0])
@@ -161,38 +168,44 @@ class TestRunDBFrontend(unittest.TestCase):
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
 
     def test_invalids(self):
-        """Test a couble of invalid ways of passing arguments to the RunDB"""
+        """Test a couble of invalid ways of passing arguments to the RunDB."""
         with self.assertRaises(ValueError):
-            straxen.RunDB(runid_field='numbersdfgsd', )
+            straxen.RunDB(
+                runid_field="numbersdfgsd",
+            )
         with self.assertRaises(ValueError):
             r = self.test_run_ids[0]
             keys = [self.st.key_for(r, t) for t in self.all_targets]
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
         with self.assertRaises(strax.DataNotAvailable):
-            self.rundb_sf.find(self.st.key_for('_super-run', self.all_targets[0]))
+            self.rundb_sf.find(self.st.key_for("_super-run", self.all_targets[0]))
         with self.assertRaises(strax.DataNotAvailable):
-            self.rundb_sf._find(self.st.key_for('_super-run', self.all_targets[0]),
-                                write=False,
-                                allow_incomplete=False,
-                                fuzzy_for = [],
-                                fuzzy_for_options=[],
-                                )
+            self.rundb_sf._find(
+                self.st.key_for("_super-run", self.all_targets[0]),
+                write=False,
+                allow_incomplete=False,
+                fuzzy_for=[],
+                fuzzy_for_options=[],
+            )
 
     def test_rucio_format(self):
-        """Test that document retrieval works for rucio files in the RunDB"""
-        rucio_id = '999999'
+        """Test that document retrieval works for rucio files in the RunDB."""
+        rucio_id = "999999"
         target = self.all_targets[-1]
         key = self.st.key_for(rucio_id, target)
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
-        rd['data'] = [{'host': 'rucio-catalogue',
-                       'location': 'UC_DALI_USERDISK',
-                       'status': 'transferred',
-                       'did': did,
-                       'number': int(rucio_id),
-                       'type': target,
-                       }]
+        rd["data"] = [
+            {
+                "host": "rucio-catalogue",
+                "location": "UC_DALI_USERDISK",
+                "status": "transferred",
+                "did": did,
+                "number": int(rucio_id),
+                "type": target,
+            }
+        ]
         self.database[self.collection_name].insert_one(rd)
 
         # Make sure we get the backend key using the _find option
@@ -203,7 +216,8 @@ class TestRunDBFrontend(unittest.TestCase):
                 allow_incomplete=False,
                 fuzzy_for=None,
                 fuzzy_for_options=None,
-            )[1] == did,
+            )[1]
+            == did,
         )
         with self.assertRaises(strax.DataNotAvailable):
             # Now, this same test should fail if we have a rundb SF
@@ -229,16 +243,14 @@ def _rundoc_format(run_id):
     start = datetime.datetime.fromtimestamp(0) + datetime.timedelta(days=int(run_id))
     end = start + datetime.timedelta(days=1)
     doc = {
-        'comments': [{'comment': 'some testdoc',
-                      'date': start,
-                      'user': 'master user'}],
-        'data': [],
-        'detectors': ['tpc'],
-
-        'mode': 'test',
-        'number': int(run_id),
-        'source': 'none',
-        'start': start,
-        'end': end,
-        'user': 'master user'}
+        "comments": [{"comment": "some testdoc", "date": start, "user": "master user"}],
+        "data": [],
+        "detectors": ["tpc"],
+        "mode": "test",
+        "number": int(run_id),
+        "source": "none",
+        "start": start,
+        "end": end,
+        "user": "master user",
+    }
     return doc

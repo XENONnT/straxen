@@ -47,10 +47,10 @@ jobs:
     steps:
       # Setup and installation
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup python
-        uses: actions/setup-python@v4.7.0
+        uses: actions/setup-python@v4.7.1
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -59,7 +59,7 @@ jobs:
           pip install -r extra_requirements/requirements-tests.txt
 
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.9.0
+        uses: supercharge/mongodb-github-action@1.10.0
         with:
           mongodb-version: 4.4.1
 
