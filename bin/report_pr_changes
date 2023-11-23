@@ -14,9 +14,6 @@ import straxen
 from straxen.test_utils import nt_test_run_id
 
 
-st = straxen.test_utils.nt_test_context()
-
-
 def read_json(json_name):
     with open(json_name, "r") as jsonfile:
         return json.load(jsonfile)
@@ -73,6 +70,7 @@ def get_hash_comparison():
 
 def print_added_plugin_info():
     # Now print the info for the added plugins
+    st = straxen.test_utils.nt_test_context()
     updated_plugins_dict = read_json(plugin_update_comparison_name)
     bad_field_info_added = strax.utils.bad_field_info(
         st, nt_test_run_id, updated_plugins_dict["added"]
@@ -108,13 +106,13 @@ def get_changed_affected_plugin_info():
         lowest_level_changed_plugins = strax.utils.lowest_level_plugins(
             st, updated_plugins_dict["changed"]
         )
-        # See the nan field fractions + mean of each field
-        new_changed_plugin_bad_info = strax.utils.bad_field_info(
-            st, nt_test_run_id, lowest_level_changed_plugins
-        )
         # Affected means the plugins which directly depend on the lowest level changed plugins
         affected_changed_plugins = strax.utils.directly_depends_on(
             st, lowest_level_changed_plugins, updated_plugins_dict["changed"]
+        )
+        # See the nan field fractions + mean of each field
+        new_changed_plugin_bad_info = strax.utils.bad_field_info(
+            st, nt_test_run_id, lowest_level_changed_plugins
         )
         new_affected_plugin_bad_info = strax.utils.bad_field_info(
             st, nt_test_run_id, affected_changed_plugins
@@ -191,3 +189,14 @@ if __name__ == "__main__":
         help="Type of computation",
     )
     args = parser.parse_args()
+
+    if args.computation == "lineage_hash":
+        get_lineage_hash_dict()
+    elif args.computation == "hash_comparison":
+        get_hash_comparison()
+    elif args.computation == "print_added_plugin":
+        print_added_plugin_info()
+    elif args.computation == "changed_affected_plugin":
+        get_changed_affected_plugin_info()
+    elif args.computation == "report_changes":
+        report_changes()
