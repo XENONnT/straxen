@@ -24,7 +24,7 @@ output_path = sys.argv[3]
 st = straxen.contexts.xenonnt_online(output_folder=output_path)
 st.storage.append(strax.DataDirectory(output_path, readonly = True))
 
-version_hash_dict_old = strax.utils.version_hash_dict(st)
+version_hash_dict_old = straxen.test_utils.version_hash_dict(st)
 with open("version_hash_dict_old.json", 'w') as jsonfile:
     json.dump(version_hash_dict_old, jsonfile)
 EOF
@@ -49,7 +49,7 @@ st = straxen.contexts.xenonnt_online(output_folder=output_path)
 st.storage.append(strax.DataDirectory(output_path, readonly = True))
 
 #Make the new version-hash dictionary
-version_hash_dict_new = strax.utils.version_hash_dict(st)
+version_hash_dict_new = straxen.test_utils.version_hash_dict(st)
 with open("version_hash_dict_new.json", 'w') as jsonfile:
     json.dump(version_hash_dict_new, jsonfile)
 
@@ -58,7 +58,7 @@ with open("version_hash_dict_old.json", 'r') as jsonfile:
     version_hash_dict_old = json.load(jsonfile)
 
 #... to compare the changes
-updated_plugins_dict = strax.utils.updated_plugins(version_hash_dict_old, version_hash_dict_new)
+updated_plugins_dict = straxen.test_utils.updated_plugins(version_hash_dict_old, version_hash_dict_new)
 with open("plugin_update_comparison.json", 'w') as jsonfile:
     json.dump(updated_plugins_dict, jsonfile)
 
@@ -69,7 +69,7 @@ for p in updated_plugins_dict['deleted']:
 print('\n')
 
 #Now print the info for the added plugins
-bad_field_info_added = strax.utils.bad_field_info(st, run_id, updated_plugins_dict['added'])
+bad_field_info_added = straxen.test_utils.bad_field_info(st, run_id, updated_plugins_dict['added'])
 
 for p in bad_field_info_added:
     print(f"\nNew plugin '{p}' has the following bad field fractions:")
@@ -82,20 +82,20 @@ print('\n')
 
 ##################################### Comparing differences to changed plugins #####################################
 
-lowest_level_changed_plugins = strax.utils.lowest_level_plugins(st, updated_plugins_dict['changed'])
+lowest_level_changed_plugins = straxen.test_utils.lowest_level_plugins(st, updated_plugins_dict['changed'])
 
 #See the nan field fractions + mean of each field
-new_changed_plugin_bad_info = strax.utils.bad_field_info(st, run_id, lowest_level_changed_plugins)
+new_changed_plugin_bad_info = straxen.test_utils.bad_field_info(st, run_id, lowest_level_changed_plugins)
 
 with open("new_changed_plugin_bad_info.json", 'w') as jsonfile:
     json.dump(new_changed_plugin_bad_info, jsonfile)
 print("Finish writing to file")
 #affected means the plugins which directly depend on the lowest level changed plugins
-affected_changed_plugins = strax.utils.directly_depends_on(st,
+affected_changed_plugins = straxen.test_utils.directly_depends_on(st,
     lowest_level_changed_plugins,
     updated_plugins_dict['changed'])
 
-new_affected_plugin_bad_info = strax.utils.bad_field_info(st, run_id, affected_changed_plugins)
+new_affected_plugin_bad_info = straxen.test_utils.bad_field_info(st, run_id, affected_changed_plugins)
 with open("new_affected_plugin_bad_info.json", 'w') as jsonfile:
     json.dump(new_affected_plugin_bad_info, jsonfile)
 EOF
@@ -132,8 +132,8 @@ with open("new_affected_plugin_bad_info.json", 'r') as jsonfile:
     new_affected_plugin_bad_info = json.load(jsonfile)
 
 ##################### Now compute the same for the old version of the plugins #####################
-old_changed_plugin_bad_info = strax.utils.bad_field_info(st, run_id, list(new_changed_plugin_bad_info.keys()))
-old_affected_plugin_bad_info = strax.utils.bad_field_info(st, run_id, list(new_affected_plugin_bad_info.keys()))
+old_changed_plugin_bad_info = straxen.test_utils.bad_field_info(st, run_id, list(new_changed_plugin_bad_info.keys()))
+old_affected_plugin_bad_info = straxen.test_utils.bad_field_info(st, run_id, list(new_affected_plugin_bad_info.keys()))
 
 ###Now report the differences
 #Lowest level plugins
