@@ -15,6 +15,7 @@ current_branch=$(git rev-parse --abbrev-ref HEAD)
 # run cleanup on exit
 function cleanup {
     git checkout $current_branch
+    ./report_pr_changes --branch old --computation clean
 }
 trap cleanup EXIT
 

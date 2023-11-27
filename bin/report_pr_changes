@@ -5,6 +5,7 @@ Example:
     report_pr_changes branch_a branch_b
 
 """
+import os
 import argparse
 import json
 
@@ -167,6 +168,22 @@ def report_changes():
         print("\n")
 
 
+def clean():
+    for filename in [
+        version_hash_dict_old_name,
+        version_hash_dict_new_name,
+        plugin_update_comparison_name,
+        new_changed_plugin_bad_info_name,
+        new_affected_plugin_bad_info_name,
+        old_changed_plugin_bad_info_name,
+        old_affected_plugin_bad_info_name,
+    ]:
+        try:
+            os.remove(filename)
+        except OSError:
+            pass
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Check results changes induced by PR")
     parser.add_argument(
@@ -186,6 +203,7 @@ if __name__ == "__main__":
             "print_added_plugin",
             "changed_affected_plugin",
             "report_changes",
+            "clean",
         ],
         help="Type of computation",
     )
@@ -201,3 +219,5 @@ if __name__ == "__main__":
         get_changed_affected_plugin_info()
     elif args.computation == "report_changes":
         report_changes()
+    elif args.computation == "clean":
+        clean()
