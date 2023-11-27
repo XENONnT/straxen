@@ -19,6 +19,12 @@ class EventPeaks(strax.Plugin):
     data_kind = "peaks"
     save_when = strax.SaveWhen.TARGET
 
+    s2_area_minimum = straxen.URLConfig(
+        default=200,
+        type=(int, float),
+        help="Area threshold for S2 peaks to be considered for multi scatter plugins",
+    )
+
     def infer_dtype(self):
         dtype = strax.time_fields + [
             ("drift_time", np.float32, "Drift time between main S1 and S2 in ns"),
@@ -39,6 +45,10 @@ class EventPeaks(strax.Plugin):
             )
         result["event_number"] = split_peaks_ind
         result["drift_time"][peaks["type"] != 2] = np.nan
+
+        # Only use S2 peaks with a certain size
+        result["peak_selection"] = np.where((peaks["type"] == 2) & (peaks["area"] < self.s2_area_minimum), 0, 1)
+
         result["time"] = peaks["time"]
         result["endtime"] = strax.endtime(peaks)
         return result
