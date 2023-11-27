@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
 class EventInfoMS(strax.Plugin):
     """Plugin to collect multiple-scatter event observables."""
 
-    __version__ = "0.0.2"
+    __version__ = "0.0.3"
     depends_on = (
         "event_info",
         "peak_basics",
@@ -107,6 +107,7 @@ class EventInfoMS(strax.Plugin):
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
             cond = (sp["type"] == 2) & (sp["drift_time"] > 0)
             cond &= (sp["drift_time"] < self.ms_window_fac * self.drift_time_max) & (sp["cs2"] > 0)
+            cond &= (sp["peak_selection"] == 1 )
             result["s2_sum"][event_i] = np.nansum(sp[cond]["area"])
             result["cs2_sum"][event_i] = np.nansum(sp[cond]["cs2"])
             result["cs2_wo_timecorr_sum"][event_i] = np.nansum(sp[cond]["cs2_wo_timecorr"])
