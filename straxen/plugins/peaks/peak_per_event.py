@@ -13,7 +13,7 @@ class EventPeaks(strax.Plugin):
 
     """
 
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
     depends_on = ("event_basics", "peak_basics", "peak_positions")
     provides = "peak_per_event"
     data_kind = "peaks"
