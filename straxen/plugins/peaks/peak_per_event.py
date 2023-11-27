@@ -30,6 +30,7 @@ class EventPeaks(strax.Plugin):
         dtype = strax.time_fields + [
             ("drift_time", np.float32, "Drift time between main S1 and S2 in ns"),
             ("event_number", np.int64, "Event number in this dataset"),
+            ("peak_selection", np.int8, "Boolean indication if the peak passes the high energy MS selection")
         ]
         return dtype
 
