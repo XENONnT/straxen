@@ -1,0 +1,203 @@
+#!/usr/bin/env python
+"""Check updates of straxen results.
+
+Example:
+    report_pr_changes branch_a branch_b
+
+"""
+import argparse
+import json
+
+import numpy as np
+import straxen
+from straxen.test_utils import nt_test_run_id
+
+
+def read_json(json_name):
+    with open(json_name, "r") as jsonfile:
+        return json.load(jsonfile)
+
+
+def save_json(json_name, json_dict):
+    with open(json_name, "w") as jsonfile:
+        json.dump(json_dict, jsonfile, indent=4)
+
+
+def save_lineage_hash_dict(st, json_name):
+    version_hash_dict = straxen.test_utils.version_hash_dict(st)
+    save_json(json_name, version_hash_dict)
+
+
+def compare_lineage_hash_dict(old_json_name, new_json_name, save_json_name):
+    version_hash_dict_old = read_json(old_json_name)
+    version_hash_dict_new = read_json(new_json_name)
+
+    updated_plugins_dict = straxen.test_utils.updated_plugins(
+        version_hash_dict_old, version_hash_dict_new
+    )
+    save_json(save_json_name, updated_plugins_dict)
+
+
+version_hash_dict_old_name = "version_hash_dict_old.json"
+version_hash_dict_new_name = "version_hash_dict_new.json"
+plugin_update_comparison_name = "plugin_update_comparison.json"
+new_changed_plugin_bad_info_name = "new_changed_plugin_bad_info.json"
+new_affected_plugin_bad_info_name = "new_affected_plugin_bad_info.json"
+old_changed_plugin_bad_info_name = "old_changed_plugin_bad_info.json"
+old_affected_plugin_bad_info_name = "old_affected_plugin_bad_info.json"
+
+
+def get_lineage_hash_dict():
+    st = straxen.test_utils.nt_test_context()
+    if args.branch == "old":
+        save_lineage_hash_dict(st, version_hash_dict_old_name)
+    elif args.branch == "new":
+        save_lineage_hash_dict(st, version_hash_dict_new_name)
+
+
+def get_hash_comparison():
+    compare_lineage_hash_dict(
+        version_hash_dict_old_name,
+        version_hash_dict_new_name,
+        plugin_update_comparison_name,
+    )
+    updated_plugins_dict = read_json(plugin_update_comparison_name)
+    # Print the deleted plugins:
+    print("\nDeleted plugins:")
+    for p in updated_plugins_dict["deleted"]:
+        print(f"    - {p}")
+    print("\n")
+
+
+def print_added_plugin_info():
+    # Now print the info for the added plugins
+    st = straxen.test_utils.nt_test_context()
+    updated_plugins_dict = read_json(plugin_update_comparison_name)
+    bad_field_info_added = straxen.test_utils.bad_field_info(
+        st, nt_test_run_id, updated_plugins_dict["added"]
+    )
+    for p in bad_field_info_added:
+        print(f"\nNew plugin '{p}' has the following bad field fractions:")
+        for c in bad_field_info_added[p]:
+            if bad_field_info_added[p][c] > 0:
+                # Don't print the mean values (unless the column name literally starts with mean)
+                if (not c.startswith("mean")) or (c.startswith("mean_mean")):
+                    print(f"    - {c}: {bad_field_info_added[p][c]}")
+    print("\n")
+
+
+def get_changed_affected_plugin_info():
+    if args.branch == "old":
+        # Compute the same for the old version of the plugins
+        st = straxen.test_utils.nt_test_context()
+        new_changed_plugin_bad_info = read_json(new_changed_plugin_bad_info_name)
+        new_affected_plugin_bad_info = read_json(new_affected_plugin_bad_info_name)
+        old_changed_plugin_bad_info = straxen.test_utils.bad_field_info(
+            st, nt_test_run_id, list(new_changed_plugin_bad_info.keys())
+        )
+        old_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
+            st, nt_test_run_id, list(new_affected_plugin_bad_info.keys())
+        )
+        save_json(old_changed_plugin_bad_info_name, old_changed_plugin_bad_info)
+        save_json(old_affected_plugin_bad_info_name, old_affected_plugin_bad_info)
+    elif args.branch == "new":
+        # Comparing differences to changed plugins
+        st = straxen.test_utils.nt_test_context()
+        updated_plugins_dict = read_json(plugin_update_comparison_name)
+        lowest_level_changed_plugins = straxen.test_utils.lowest_level_plugins(
+            st, updated_plugins_dict["changed"]
+        )
+        # Affected means the plugins which directly depend on the lowest level changed plugins
+        affected_changed_plugins = straxen.test_utils.directly_depends_on(
+            st, lowest_level_changed_plugins, updated_plugins_dict["changed"]
+        )
+        # See the nan field fractions + mean of each field
+        new_changed_plugin_bad_info = straxen.test_utils.bad_field_info(
+            st, nt_test_run_id, lowest_level_changed_plugins
+        )
+        new_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
+            st, nt_test_run_id, affected_changed_plugins
+        )
+        save_json(new_changed_plugin_bad_info_name, new_changed_plugin_bad_info)
+        save_json(new_affected_plugin_bad_info_name, new_affected_plugin_bad_info)
+
+
+def report_changes():
+    old_changed_plugin_bad_info = read_json(old_changed_plugin_bad_info_name)
+    old_affected_plugin_bad_info = read_json(old_affected_plugin_bad_info_name)
+    new_changed_plugin_bad_info = read_json(new_changed_plugin_bad_info_name)
+    new_affected_plugin_bad_info = read_json(new_affected_plugin_bad_info_name)
+    # Lowest level plugins
+    all_plugin_change_info = {
+        "Lowest Levels": {"old": old_changed_plugin_bad_info, "new": new_changed_plugin_bad_info},
+        "Affected": {"old": old_affected_plugin_bad_info, "new": new_affected_plugin_bad_info},
+    }
+    for level in ["Lowest Levels", "Affected"]:
+        print(f"#################### {level} Plugins ####################")
+        for p in all_plugin_change_info[level]["old"]:
+            print(f"Change report for '{p}':")
+            data_types_old = np.array(list(all_plugin_change_info[level]["old"][p].keys()))[::2]
+            data_types_new = np.array(list(all_plugin_change_info[level]["new"][p].keys()))[::2]
+            all_data_types = np.unique(np.concatenate([data_types_old, data_types_new]))
+            for d in all_data_types:
+                if d not in data_types_old:
+                    print(f"    - New column {d} added")
+                elif d not in data_types_new:
+                    print(f"    - Column {d} deleted")
+                else:
+                    if (
+                        all_plugin_change_info[level]["old"][p][d]
+                        != all_plugin_change_info[level]["new"][p][d]
+                    ):
+                        print(
+                            f"    - {d} bad fraction changed from:"
+                            f" {all_plugin_change_info[level]['old'][p][d]} ->"
+                            f" {all_plugin_change_info[level]['new'][p][d]}"
+                        )
+                    if (
+                        all_plugin_change_info[level]["old"][p][f"mean_{d}"]
+                        != all_plugin_change_info[level]["new"][p][f"mean_{d}"]
+                    ):
+                        print(
+                            f"    - {d} mean value changed from:"
+                            f" {all_plugin_change_info[level]['old'][p][f'mean_{d}']} ->"
+                            f" {all_plugin_change_info[level]['new'][p][f'mean_{d}']}"
+                        )
+            print("All other columns remained the same\n")
+        print("\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Check results changes induced by PR")
+    parser.add_argument(
+        "--branch",
+        type=str,
+        required=True,
+        choices=["old", "new"],
+        help="Whether on the old or new branch",
+    )
+    parser.add_argument(
+        "--computation",
+        type=str,
+        required=True,
+        choices=[
+            "lineage_hash",
+            "hash_comparison",
+            "print_added_plugin",
+            "changed_affected_plugin",
+            "report_changes",
+        ],
+        help="Type of computation",
+    )
+    args = parser.parse_args()
+
+    if args.computation == "lineage_hash":
+        get_lineage_hash_dict()
+    elif args.computation == "hash_comparison":
+        get_hash_comparison()
+    elif args.computation == "print_added_plugin":
+        print_added_plugin_info()
+    elif args.computation == "changed_affected_plugin":
+        get_changed_affected_plugin_info()
+    elif args.computation == "report_changes":
+        report_changes()
