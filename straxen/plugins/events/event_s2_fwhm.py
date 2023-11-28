@@ -5,6 +5,7 @@ import numba
 
 export, __all__ = strax.exporter()
 
+
 @export
 class S2FWHM2(strax.Plugin):
     """
@@ -71,6 +72,7 @@ def fwhm(wfs, dts):
         if w[0] == -999:
             result[i] = -1
         else:
+
             above_half = np.where(w>=0.5*np.max(w))[0]
             result[i] = (above_half[-1]-above_half[0])*dt
     return result

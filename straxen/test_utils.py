@@ -312,7 +312,7 @@ def lowest_level_plugins(context, plugins):
 
     """
 
-    if not type(plugins) == np.ndarray:
+    if not isinstance(plugins, np.ndarray):
         plugins = np.array(plugins)
 
     low_lev_plugs = []
@@ -339,9 +339,9 @@ def directly_depends_on(context, base_plugins, all_plugins):
     next_layer_plugins = []
     for p in all_plugins:
         dep_on = context._plugin_class_registry[p].depends_on
-        if type(dep_on) == str:
+        if isinstance(dep_on, str):
             dep_on = [dep_on]
-        elif type(dep_on) == tuple:
+        elif isinstance(dep_on, tuple):
             dep_on = list(dep_on)
 
         if np.any(np.isin(base_plugins, dep_on)):
