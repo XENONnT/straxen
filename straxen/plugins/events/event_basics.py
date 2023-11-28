@@ -17,15 +17,11 @@ class EventBasics(strax.Plugin):
 
     """
 
-    #Depends on event_nans, but doesn't actually affect anything
-    depends_on = ('events',
-                  'event_nans',
-                  'peak_basics',
-                  'peak_positions',
-                  'peak_proximity')
-    provides = 'event_basics'
-    data_kind = 'events'
-    loop_over = 'events'
+    # Depends on event_nans, but doesn't actually affect anything
+    depends_on = ("events", "event_nans", "peak_basics", "peak_positions", "peak_proximity")
+    provides = "event_basics"
+    data_kind = "events"
+    loop_over = "events"
 
     electron_drift_velocity = straxen.URLConfig(
         default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
