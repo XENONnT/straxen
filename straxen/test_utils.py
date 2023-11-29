@@ -348,3 +348,100 @@ def directly_depends_on(context, base_plugins, all_plugins):
             next_layer_plugins.append(p)
 
     return np.unique(next_layer_plugins)
+
+@export
+def dependency_graph(context):
+    
+    """
+    Gives the dependency graph for all the plugins in a context in the form of a dictionary
+    with {plugin: plugin.depends_on}
+    """
+    
+    dep_graph = {}
+    
+    for plugin_name, plugin in context._plugin_class_registry.items():
+        if isinstance(plugin.depends_on, str):
+            dep_graph[plugin_name] = [plugin.depends_on]
+        elif hasattr(plugin.depends_on, '__iter__'):
+            dep_graph[plugin_name] = list(plugin.depends_on)
+    return dep_graph
+
+@export
+def reverse_graph(original_graph):
+    
+    """
+    Reverses the direction of a directed graph. Useful for seeing which plugins feed into
+    other plugins after constructing the dependency graph.
+    """
+    
+    reversed_graph = {node: [] for node in original_graph}
+    
+    # Reverse the edges
+    for node, neighbors in original_graph.items():
+        for neighbor in neighbors:
+            reversed_graph[neighbor].append(node)
+
+    return reversed_graph
+
+@export
+def depth_first_search(graph, start_node, visited=None):
+    
+    """
+    Finds all of the reachable nodes within a graph starting from the start node
+    """
+    
+    if visited is None:
+        visited = set()
+
+    visited.add(start_node)
+    for neighbor in graph.get(start_node, []):
+        if neighbor not in visited:
+            depth_first_search(graph, neighbor, visited)
+
+    return visited
+
+@export
+def unidir_graph_layers(dep_on_graph, feeds_into_graph):
+    
+    """
+    For a unidirectional graph, separate the nodes into layers. For strax(en),
+    the dependency tree is a unidirectional graph, and each plugin can be
+    separated into a layer such that a plugin in the nth layer has n layers of
+    data types that need to be made before it. For example: merged_s2s depends on
+    peaklet_classification, peaklets, and lone_hits directly. peaklet_classification
+    depends on peaklets. peaklets and lone_hits depend on records. And records depends
+    on raw_records. Therefore, merged_s2s is on the 4th layer.
+    
+    :param dep_on_graph: A graph represented as a dictionary with
+        {node: [nodes that node depends on]}
+    :param feeds_into_graph: A graph represented as a dictionary with
+        {node: [nodes that node feeds into]}
+    """
+    
+    graph_layer = {}
+    visited = set()
+    # Start with all of the lowest level nodes
+    for p in dep_on_graph:
+        if not dep_on_graph[p]:
+            graph_layer[p] = 0
+            visited.add(p)
+    layer_counter = 0
+    this_layer = visited
+    
+    while len(visited)<len(dep_on_graph):
+        next_layer = set()
+        for p in this_layer:
+            next_layer_p = set(feeds_into_graph[p])
+            next_layer = next_layer.union(next_layer_p)
+        
+        next_visited_buffer = set()
+        for next_plugin in next_layer:
+            #If the node only depends on previously visited nodes, then we know its layer
+            if np.all(np.isin(dep_on_graph[next_plugin], list(visited))):
+                graph_layer[next_plugin] = layer_counter+1
+                next_visited_buffer.add(next_plugin)
+        visited = visited.union(next_visited_buffer)
+        layer_counter += 1
+        this_layer = next_visited_buffer
+
+    return graph_layer
