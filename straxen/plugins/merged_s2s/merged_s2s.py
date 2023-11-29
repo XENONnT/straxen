@@ -16,7 +16,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.0.2"
+    __version__ = "1.1.0"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
@@ -58,10 +58,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
 
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
-    )
-
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
@@ -70,7 +66,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.to_pe = self.gain_model
 
     def infer_dtype(self):
-        return strax.unpack_dtype(self.deps["peaklets"].dtype_for("peaklets"))
+        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
+            "peaklet_classification"
+        )
+        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        # The merged dtype is argument position dependent! It must be first classification then peaklet
+        # Otherwise strax will raise an error when checking for the returned dtype!
+        merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
+        return merged_s2s_dtype
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
@@ -92,16 +95,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Do not merge at all
             return np.zeros(0, dtype=self.dtype)
 
-        if "data_top" not in peaklets.dtype.names:
-            peaklets_w_field = np.zeros(
-                len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True)
-            )
-            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
-            del peaklets
-            peaklets = peaklets_w_field
-
-        # Max gap and area should be set by the gap thresholds
-        # to avoid contradictions
         start_merge_at, end_merge_at = self.get_merge_instructions(
             peaklets["time"],
             strax.endtime(peaklets),
