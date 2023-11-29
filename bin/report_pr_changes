@@ -44,8 +44,10 @@ version_hash_dict_new_name = "version_hash_dict_new.json"
 plugin_update_comparison_name = "plugin_update_comparison.json"
 new_changed_plugin_bad_info_name = "new_changed_plugin_bad_info.json"
 new_affected_plugin_bad_info_name = "new_affected_plugin_bad_info.json"
+new_hl_affected_plugin_bad_info_name = "new_hl_affected_plugin_bad_info.json"
 old_changed_plugin_bad_info_name = "old_changed_plugin_bad_info.json"
 old_affected_plugin_bad_info_name = "old_affected_plugin_bad_info.json"
+old_hl_affected_plugin_bad_info_name = "old_hl_affected_plugin_bad_info.json"
 
 
 def get_lineage_hash_dict():
@@ -86,6 +88,24 @@ def print_added_plugin_info():
                     print(f"    - {c}: {bad_field_info_added[p][c]}")
     print("\n")
 
+def get_highest_level_affected_plugins(context, plugins):
+    plugin_dep_on_graph = straxen.test_utils.dependency_graph(context)
+    plugin_feeds_into_graph = straxen.test_utils.reverse_graph(plugin_dep_on_graph)
+    plugin_layer = straxen.test_utils.unidir_graph_layers(plugin_dep_on_graph,
+                                                          plugin_feeds_into_graph)
+    
+    hl_affected_plugins = []
+    for p in plugins:
+        reachable = straxen.test_utils.depth_first_search(plugin_feeds_into_graph, p)
+        reachable = np.array(list(reachable))
+        reachable_layers = [plugin_layer[p] for p in reachable]
+        highest_level_daughters = reachable[np.where(reachable_layers
+                                                     == np.max(reachable_layers))[0]]
+        hl_affected_plugins.append(highest_level_daughters)
+        print(f"{p}: {highest_level_daughters}")
+    hl_affected_plugins = np.unique(np.concatenate(hl_affected_plugins))
+        
+    return hl_affected_plugins
 
 def get_changed_affected_plugin_info():
     if args.branch == "old":
@@ -93,14 +113,22 @@ def get_changed_affected_plugin_info():
         st = straxen.test_utils.nt_test_context()
         new_changed_plugin_bad_info = read_json(new_changed_plugin_bad_info_name)
         new_affected_plugin_bad_info = read_json(new_affected_plugin_bad_info_name)
+        new_hl_affected_plugin_bad_info = read_json(new_hl_affected_plugin_bad_info_name)
+        
         old_changed_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, list(new_changed_plugin_bad_info.keys())
         )
         old_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, list(new_affected_plugin_bad_info.keys())
         )
+        old_hl_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
+            st, nt_test_run_id, list(new_hl_affected_plugin_bad_info.keys())
+        )
+        
         save_json(old_changed_plugin_bad_info_name, old_changed_plugin_bad_info)
         save_json(old_affected_plugin_bad_info_name, old_affected_plugin_bad_info)
+        save_json(old_hl_affected_plugin_bad_info_name, old_hl_affected_plugin_bad_info)
+        
     elif args.branch == "new":
         # Comparing differences to changed plugins
         st = straxen.test_utils.nt_test_context()
@@ -112,6 +140,10 @@ def get_changed_affected_plugin_info():
         affected_changed_plugins = straxen.test_utils.directly_depends_on(
             st, lowest_level_changed_plugins, updated_plugins_dict["changed"]
         )
+        
+        # We also want to see if there is any change to the highest level plugins down the dependency tree
+        hl_affected_plugins = get_highest_level_affected_plugins(st, lowest_level_changed_plugins)
+        
         # See the nan field fractions + mean of each field
         new_changed_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, lowest_level_changed_plugins
@@ -119,21 +151,29 @@ def get_changed_affected_plugin_info():
         new_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
             st, nt_test_run_id, affected_changed_plugins
         )
+        new_hl_affected_plugin_bad_info = straxen.test_utils.bad_field_info(
+            st, nt_test_run_id, hl_affected_plugins
+        )
+        
         save_json(new_changed_plugin_bad_info_name, new_changed_plugin_bad_info)
         save_json(new_affected_plugin_bad_info_name, new_affected_plugin_bad_info)
+        save_json(new_hl_affected_plugin_bad_info_name, new_hl_affected_plugin_bad_info)
 
 
 def report_changes():
     old_changed_plugin_bad_info = read_json(old_changed_plugin_bad_info_name)
     old_affected_plugin_bad_info = read_json(old_affected_plugin_bad_info_name)
+    old_hl_affected_plugin_bad_info = read_json(old_hl_affected_plugin_bad_info_name)
     new_changed_plugin_bad_info = read_json(new_changed_plugin_bad_info_name)
     new_affected_plugin_bad_info = read_json(new_affected_plugin_bad_info_name)
+    new_hl_affected_plugin_bad_info = read_json(new_hl_affected_plugin_bad_info_name)
     # Lowest level plugins
     all_plugin_change_info = {
         "Lowest Levels": {"old": old_changed_plugin_bad_info, "new": new_changed_plugin_bad_info},
-        "Affected": {"old": old_affected_plugin_bad_info, "new": new_affected_plugin_bad_info},
+        "Directly Affected": {"old": old_affected_plugin_bad_info, "new": new_affected_plugin_bad_info},
+        "Highest Level Affected": {"old": old_hl_affected_plugin_bad_info, "new": new_hl_affected_plugin_bad_info}
     }
-    for level in ["Lowest Levels", "Affected"]:
+    for level in ["Lowest Levels", "Directly Affected", "Highest Level Affected"]:
         print(f"#################### {level} Plugins ####################")
         for p in all_plugin_change_info[level]["old"]:
             print(f"Change report for '{p}':")
@@ -167,6 +207,63 @@ def report_changes():
             print("All other columns remained the same\n")
         print("\n")
 
+
+def clean():
+    for filename in [
+        version_hash_dict_old_name,
+        version_hash_dict_new_name,
+        plugin_update_comparison_name,
+        new_changed_plugin_bad_info_name,
+        new_affected_plugin_bad_info_name,
+        new_hl_affected_plugin_bad_info_name,
+        old_changed_plugin_bad_info_name,
+        old_affected_plugin_bad_info_name,
+        old_hl_affected_plugin_bad_info_name
+    ]:
+        try:
+            os.remove(filename)
+        except OSError:
+            pass
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Check results changes induced by PR")
+    parser.add_argument(
+        "--branch",
+        type=str,
+        required=True,
+        choices=["old", "new"],
+        help="Whether on the old or new branch",
+    )
+    parser.add_argument(
+        "--computation",
+        type=str,
+        required=True,
+        choices=[
+            "lineage_hash",
+            "hash_comparison",
+            "print_added_plugin",
+            "changed_affected_plugin",
+            ""
+            "report_changes",
+            "clean",
+        ],
+        help="Type of computation",
+    )
+    args = parser.parse_args()
+
+    if args.computation == "lineage_hash":
+        get_lineage_hash_dict()
+    elif args.computation == "hash_comparison":
+        get_hash_comparison()
+    elif args.computation == "print_added_plugin":
+        print_added_plugin_info()
+    elif args.computation == "changed_affected_plugin":
+        get_changed_affected_plugin_info()
+    elif args.computation == "report_changes":
+        report_changes()
+    elif args.computation == "clean":
+        clean()
 
 def clean():
     for filename in [
