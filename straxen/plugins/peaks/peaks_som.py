@@ -1,4 +1,5 @@
 import strax
+import numpy as np
 from straxen.plugins.peaks.peaks import Peaks
 
 export, __all__ = strax.exporter()
@@ -30,4 +31,12 @@ class PeaksSOM(Peaks):
 
     def compute(self, peaklets, merged_s2s):
         result = super().compute(peaklets, merged_s2s)
+
+        # For merged S2s SOM and straxen type are undefined:
+        _is_merged_s2 = np.isin(result["time"], merged_s2s["time"]) & np.isin(
+            strax.endtime(result), strax.endtime(merged_s2s)
+        )
+        result["straxen_type"][_is_merged_s2] = -1
+        result["som_sub_type"][_is_merged_s2] = -1
+
         return result
