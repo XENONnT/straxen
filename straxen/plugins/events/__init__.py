@@ -66,3 +66,6 @@ from .local_minimum_info import *
 
 from . import multi_scatter
 from .multi_scatter import *
+
+from . import event_basics_som
+from .event_basics_som import *
