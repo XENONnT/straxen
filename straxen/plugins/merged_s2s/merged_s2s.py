@@ -95,6 +95,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Do not merge at all
             return np.zeros(0, dtype=self.dtype)
 
+        if "data_top" not in peaklets.dtype.names:
+            peaklets_w_field = np.zeros(
+                len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True)
+            )
+            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
+            del peaklets
+            peaklets = peaklets_w_field
+
+        # Max gap and area should be set by the gap thresholds
+        # to avoid contradictions
         start_merge_at, end_merge_at = self.get_merge_instructions(
             peaklets["time"],
             strax.endtime(peaklets),
