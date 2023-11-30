@@ -15,40 +15,10 @@ class PeakBasics(strax.Plugin):
 
     """
 
-    __version__ = "0.1.4"
+    __version__ = "0.1.5"
     parallel = True
     depends_on = "peaks"
     provides = "peak_basics"
-    dtype = [
-        (("Start time of the peak (ns since unix epoch)", "time"), np.int64),
-        (("End time of the peak (ns since unix epoch)", "endtime"), np.int64),
-        (("Weighted center time of the peak (ns since unix epoch)", "center_time"), np.int64),
-        (("Peak integral in PE", "area"), np.float32),
-        (("Number of hits contributing at least one sample to the peak", "n_hits"), np.int32),
-        (("Number of PMTs contributing to the peak", "n_channels"), np.int16),
-        (("PMT number which contributes the most PE", "max_pmt"), np.int16),
-        (("Area of signal in the largest-contributing PMT (PE)", "max_pmt_area"), np.float32),
-        (("Total number of saturated channels", "n_saturated_channels"), np.int16),
-        (("Width (in ns) of the central 50% area of the peak", "range_50p_area"), np.float32),
-        (("Width (in ns) of the central 90% area of the peak", "range_90p_area"), np.float32),
-        (
-            (
-                "Fraction of area seen by the top array (NaN for peaks with non-positive area)",
-                "area_fraction_top",
-            ),
-            np.float32,
-        ),
-        (("Length of the peak waveform in samples", "length"), np.int32),
-        (("Time resolution of the peak waveform in ns", "dt"), np.int16),
-        (("Time between 10% and 50% area quantiles [ns]", "rise_time"), np.float32),
-        (("Number of PMTs with hits within tight range of mean", "tight_coincidence"), np.int16),
-        (("Classification of the peak(let)", "type"), np.int8),
-        (("Largest time difference between apexes of hits inside peak [ns]", "max_diff"), np.int32),
-        (
-            ("Smallest time difference between apexes of hits inside peak [ns]", "min_diff"),
-            np.int32,
-        ),
-    ]
 
     n_top_pmts = straxen.URLConfig(
         default=straxen.n_top_pmts, infer_type=False, help="Number of top PMTs"
@@ -65,6 +35,45 @@ class PeakBasics(strax.Plugin):
             " rtol value used e.g. '1e-4' (see np.isclose)."
         ),
     )
+
+    def infer_dtype(self):
+        dtype = [
+            (("Start time of the peak (ns since unix epoch)", "time"), np.int64),
+            (("End time of the peak (ns since unix epoch)", "endtime"), np.int64),
+            (("Weighted center time of the peak (ns since unix epoch)", "center_time"), np.int64),
+            (("Peak integral in PE", "area"), np.float32),
+            (("Number of hits contributing at least one sample to the peak", "n_hits"), np.int32),
+            (("Number of PMTs contributing to the peak", "n_channels"), np.int16),
+            (("PMT number which contributes the most PE", "max_pmt"), np.int16),
+            (("Area of signal in the largest-contributing PMT (PE)", "max_pmt_area"), np.float32),
+            (("Total number of saturated channels", "n_saturated_channels"), np.int16),
+            (("Width (in ns) of the central 50% area of the peak", "range_50p_area"), np.float32),
+            (("Width (in ns) of the central 90% area of the peak", "range_90p_area"), np.float32),
+            (
+                (
+                    "Fraction of area seen by the top array (NaN for peaks with non-positive area)",
+                    "area_fraction_top",
+                ),
+                np.float32,
+            ),
+            (("Length of the peak waveform in samples", "length"), np.int32),
+            (("Time resolution of the peak waveform in ns", "dt"), np.int16),
+            (("Time between 10% and 50% area quantiles [ns]", "rise_time"), np.float32),
+            (
+                ("Number of PMTs with hits within tight range of mean", "tight_coincidence"),
+                np.int16,
+            ),
+            (("Classification of the peak(let)", "type"), np.int8),
+            (
+                ("Largest time difference between apexes of hits inside peak [ns]", "max_diff"),
+                np.int32,
+            ),
+            (
+                ("Smallest time difference between apexes of hits inside peak [ns]", "min_diff"),
+                np.int32,
+            ),
+        ]
+        return dtype
 
     def compute(self, peaks):
         p = peaks
