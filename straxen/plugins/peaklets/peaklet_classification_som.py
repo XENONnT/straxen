@@ -27,31 +27,21 @@ class PeakletClassificationSOM(PeakletClassification):
     analysis.
     """
 
-    __version__ = "0.0.1"
-
-    depends_on = "peaklets"
-
-    provides = ("peaklet_classification", "som_peaklet_data")
-    data_kind = dict(peaklet_classification="peaklets", som_peaklet_data="peaklets")
-
-    parallel = True
+    __version__ = "0.2.0"
+    child_plugin = True
 
     som_files = straxen.URLConfig(
         default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
     )
 
     def infer_dtype(self):
-        dtype = {}
-        dtype["peaklet_classification"] = strax.peak_interval_dtype + [
-            ("type", np.int8, "Classification of the peak(let)")
+        dtype = strax.peak_interval_dtype + [
+            ("type", np.int8, "Classification of the peak(let)"),
+            ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
+            ("straxen_type", np.int8, "Old straxen type of the peak(let)"),
+            ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
+            ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
         ]
-        dtype["som_peaklet_data"] = (
-            strax.peak_interval_dtype
-            + [("som_type", np.int8, "SOM type of the peak(let)")]
-            + [("loc_x_som", np.int16, "x location of the peak(let) in the SOM")]
-            + [("loc_y_som", np.int16, "y location of the peak(let) in the SOM")]
-        )
-
         return dtype
 
     def setup(self):
@@ -65,67 +55,33 @@ class PeakletClassificationSOM(PeakletClassification):
 
     def compute(self, peaklets):
         # Current classification
-        ptype = np.zeros(len(peaklets), dtype=np.int8)
+        peaklets_classifcation = super().compute(peaklets)
 
-        # Properties needed for classification:
-        rise_time = -peaklets["area_decile_from_midpoint"][:, 1]
-        n_channels = (peaklets["area_per_channel"] > 0).sum(axis=1)
-        n_top = self.n_top_pmts
-        area_top = peaklets["area_per_channel"][:, :n_top].sum(axis=1)
-        area_total = peaklets["area_per_channel"].sum(axis=1)
-        area_fraction_top = area_top / area_total
-
-        is_large_s1 = peaklets["area"] >= 100
-        is_large_s1 &= rise_time <= self.s1_max_rise_time_post100
-        is_large_s1 &= peaklets["tight_coincidence"] >= self.s1_min_coincidence
-
-        is_small_s1 = peaklets["area"] < 100
-        is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
-            peaklets["area"],
-            *self.s1_risetime_area_parameters,
-        )
-
-        is_small_s1 &= rise_time < self.upper_rise_time_aft_boundary(
-            area_fraction_top,
-            *self.s1_risetime_aft_parameters,
-            *self.s1_flatten_threshold_aft,
-        )
-
-        is_small_s1 &= peaklets["tight_coincidence"] >= self.s1_min_coincidence
-
-        ptype[is_large_s1 | is_small_s1] = 1
-
-        is_s2 = n_channels >= self.s2_min_pmts
-        is_s2[is_large_s1 | is_small_s1] = False
-        ptype[is_s2] = 2
+        peaklet_with_som = np.zeros(len(peaklets_classifcation), dtype=self.dtype)
+        strax.copy_to_buffer(peaklets_classifcation, peaklet_with_som, "_copy_peaklets_information")
+        peaklet_with_som["straxen_type"] = peaklets_classifcation["type"]
+        del peaklets_classifcation
 
         # SOM classification
         peaklets_w_type = peaklets.copy()
-        peaklets_w_type["type"] = ptype
-        mask_non_zero = peaklets_w_type["type"] != 0
-        peaklets_w_type = peaklets_w_type[mask_non_zero]
-        result = np.zeros(len(peaklets), dtype=self.dtype["peaklet_classification"])
-        som_info = np.zeros(len(peaklets), dtype=self.dtype["som_peaklet_data"])
+        peaklets_w_type["type"] = peaklet_with_som["type"]
+        _is_s1_or_s2 = peaklets_w_type["type"] != 0
+
+        peaklets_w_type = peaklets_w_type[_is_s1_or_s2]
+
         som_type, x_som, y_som = recall_populations(
             peaklets_w_type, self.som_weight_cube, self.som_img, self.som_norm_factors
         )
-
-        som_info["time"] = peaklets["time"]
-        som_info["length"] = peaklets["length"]
-        som_info["dt"] = peaklets["dt"]
-        som_info["som_type"][mask_non_zero] = som_type
-        som_info["loc_x_som"][mask_non_zero] = x_som
-        som_info["loc_y_som"][mask_non_zero] = y_som
+        peaklet_with_som["som_sub_type"][_is_s1_or_s2] = som_type
+        peaklet_with_som["loc_x_som"][_is_s1_or_s2] = x_som
+        peaklet_with_som["loc_y_som"][_is_s1_or_s2] = y_som
 
         strax_type = som_type_to_type(
             som_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
         )
-        result["time"] = peaklets["time"]
-        result["length"] = peaklets["length"]
-        result["dt"] = peaklets["dt"]
-        result["type"][mask_non_zero] = strax_type
+        peaklet_with_som["type"][_is_s1_or_s2] = strax_type
 
-        return dict(peaklet_classification=result, som_peaklet_data=som_info)
+        return peaklet_with_som
 
 
 def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
