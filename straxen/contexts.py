@@ -124,7 +124,14 @@ def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=Fa
         cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
     )
     del st._plugin_class_registry["peaklet_classification"]
-    st.register(straxen.PeakletClassificationSOM)
+    st.register(
+        (
+            straxen.PeakletClassificationSOM,
+            straxen.PeaksSOM,
+            straxen.PeakBasicsSOM,
+            straxen.EventBasicsSOM,
+        )
+    )
 
     return st
 
