@@ -1,5 +1,4 @@
 import numpy as np
-import numba
 import strax
 import straxen
 from .peak_ambience import _quick_assign
@@ -52,7 +51,10 @@ class PeakNearestTriggering(Events):
         return 10 * self.shadow_time_window_backward
 
     def compute(self, peaks):
-        result = self.compute_triggering(peaks, peaks)
+        argsort = np.argsort(peaks["center_time"], kind="mergesort")
+        _peaks = np.sort(peaks, order="center_time")
+        result = np.zeros(len(peaks), self.dtype)
+        _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
         return result
 
     def compute_triggering(self, peaks, current_peak):
@@ -62,64 +64,36 @@ class PeakNearestTriggering(Events):
 
         result = np.zeros(len(current_peak), self.dtype)
         straxen.EventBasics.set_nan_defaults(result)
-        for direction, reference in zip(["right", "left"], ["endtime", "time"]):
-            _result = result.copy()
-            _result[f"{direction}_dtime"] = self.shadow_time_window_backward
-            argsort = np.argsort(current_peak[reference], kind="mergesort")
-            _current_peak = np.sort(current_peak, order=reference)
-            # the calculation of the time difference seems weird,
-            # but it is following the functionality of strax.find_peak_groups and strax.find_peaks
-            # https://github.com/AxFoundation/strax/blob/21cc96e011b0e4099138979791f34e8b1addedb7/strax/processing/peak_building.py#L102
-            # record the time difference to the nearest previous peak
+        for direction in ["left", "right"]:
+            result[f"{direction}_dtime"] = self.shadow_time_window_backward
             if direction == "left":
-                roi_triggering["time"] = _current_peak[reference] - self.shadow_time_window_backward
-                roi_triggering["endtime"] = _current_peak[reference].copy()
-                split_peaks = strax.touching_windows(peaks[_is_triggering], roi_triggering)
-                indices = self.peaks_triggering_indices(
-                    direction, _current_peak["time"], peaks["endtime"][_is_triggering], split_peaks
+                roi_triggering["time"] = (
+                    current_peak["center_time"] - self.shadow_time_window_backward
                 )
-                _result[f"{direction}_dtime"] = np.where(
-                    indices != -1,
-                    _current_peak["time"] - peaks["endtime"][_is_triggering][indices],
+                roi_triggering["endtime"] = current_peak["center_time"].copy()
+                split_peaks = strax.touching_windows(peaks[_is_triggering], roi_triggering)
+                indices = np.clip(split_peaks[:, 1] - 1, 0, _is_triggering.sum() - 1)
+                result[f"{direction}_dtime"] = np.where(
+                    (split_peaks[:, 0] - split_peaks[:, 1] != 0) & (split_peaks[:, 1] != 0),
+                    current_peak["center_time"] - peaks["center_time"][_is_triggering][indices],
                     self.shadow_time_window_backward,
                 )
             elif direction == "right":
-                roi_triggering["time"] = _current_peak[reference].copy()
+                # looking for peaks right to the current peaks
+                roi_triggering["time"] = current_peak["center_time"].copy()
                 roi_triggering["endtime"] = (
-                    _current_peak[reference] + self.shadow_time_window_backward
+                    current_peak["center_time"] + self.shadow_time_window_backward
                 )
                 split_peaks = strax.touching_windows(peaks[_is_triggering], roi_triggering)
-                indices = self.peaks_triggering_indices(
-                    direction, _current_peak["endtime"], peaks["time"][_is_triggering], split_peaks
-                )
-                _result[f"{direction}_dtime"] = np.where(
-                    indices != -1,
-                    peaks["time"][_is_triggering][indices] - _current_peak["endtime"],
+                indices = np.clip(split_peaks[:, 0], 0, _is_triggering.sum() - 1)
+                result[f"{direction}_dtime"] = np.where(
+                    (split_peaks[:, 0] - split_peaks[:, 1] != 0)
+                    & (split_peaks[:, 0] != _is_triggering.sum()),
+                    peaks["center_time"][_is_triggering][indices] - current_peak["center_time"],
                     self.shadow_time_window_backward,
                 )
             for field in ["time", "endtime", "center_time", "type", "n_competing", "area"]:
-                _result[direction + "_" + field] = peaks[field][_is_triggering][indices]
-            # When reference is 'endtime', the current_peak[reference] is not sorted,
-            # so the _quick_assign will assign the _result to correct peaks.
-            # So direction must be first right then left.
-            _quick_assign(argsort, result, _result)
+                result[direction + "_" + field] = peaks[field][_is_triggering][indices]
         result["time"] = current_peak["time"]
         result["endtime"] = strax.endtime(current_peak)
         return result
-
-    @staticmethod
-    @numba.njit
-    def peaks_triggering_indices(direction, reference, triggering, touching_windows):
-        indices = np.ones_like(reference) * -1
-        for p_i in range(len(reference)):
-            if touching_windows[p_i, 1] - touching_windows[p_i, 0] == 0:
-                continue
-            if direction == "left":
-                indices[p_i] = touching_windows[p_i, 0] + np.argmax(
-                    triggering[touching_windows[p_i, 0] : touching_windows[p_i, 1]]
-                )
-            elif direction == "right":
-                indices[p_i] = touching_windows[p_i, 0] + np.argmin(
-                    triggering[touching_windows[p_i, 0] : touching_windows[p_i, 1]]
-                )
-        return indices
