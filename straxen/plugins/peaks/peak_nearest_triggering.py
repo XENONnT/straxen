@@ -76,7 +76,7 @@ class PeakNearestTriggering(Events):
                 roi_triggering["endtime"] = _current_peak[reference].copy()
                 split_peaks = strax.touching_windows(peaks[_is_triggering], roi_triggering)
                 indices = self.peaks_triggering_indices(
-                    _current_peak["time"], peaks["endtime"][_is_triggering], split_peaks
+                    direction, _current_peak["time"], peaks["endtime"][_is_triggering], split_peaks
                 )
                 _result[f"{direction}_dtime"] = np.where(
                     indices != -1,
@@ -90,7 +90,7 @@ class PeakNearestTriggering(Events):
                 )
                 split_peaks = strax.touching_windows(peaks[_is_triggering], roi_triggering)
                 indices = self.peaks_triggering_indices(
-                    _current_peak["endtime"], peaks["time"][_is_triggering], split_peaks
+                    direction, _current_peak["endtime"], peaks["time"][_is_triggering], split_peaks
                 )
                 _result[f"{direction}_dtime"] = np.where(
                     indices != -1,
@@ -109,12 +109,17 @@ class PeakNearestTriggering(Events):
 
     @staticmethod
     @numba.njit
-    def peaks_triggering_indices(reference, triggering, touching_windows):
+    def peaks_triggering_indices(direction, reference, triggering, touching_windows):
         indices = np.ones_like(reference) * -1
         for p_i in range(len(reference)):
             if touching_windows[p_i, 1] - touching_windows[p_i, 0] == 0:
                 continue
-            indices[p_i] = touching_windows[p_i, 0] + np.argmin(
-                reference[p_i] - triggering[touching_windows[p_i, 0] : touching_windows[p_i, 1]]
-            )
+            if direction == "left":
+                indices[p_i] = touching_windows[p_i, 0] + np.argmax(
+                    triggering[touching_windows[p_i, 0] : touching_windows[p_i, 1]]
+                )
+            elif direction == "right":
+                indices[p_i] = touching_windows[p_i, 0] + np.argmin(
+                    triggering[touching_windows[p_i, 0] : touching_windows[p_i, 1]]
+                )
         return indices
