@@ -116,6 +116,8 @@ class PeakNearestTriggering(Events):
             )
         result["time"] = current_peak["time"]
         result["endtime"] = strax.endtime(current_peak)
+        for direction in ["left", "right"]:
+            assert np.all(result[f"{direction}_dtime"] > 0), f"{direction}_dtime should be positive"
         return result
 
     @staticmethod
