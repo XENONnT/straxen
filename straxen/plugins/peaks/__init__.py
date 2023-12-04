@@ -42,3 +42,6 @@ from .peak_corrections import *
 
 from . import peaks_subtyping
 from .peaks_subtyping import *
+
+from . import peak_nearest_triggering
+from .peak_nearest_triggering import *
