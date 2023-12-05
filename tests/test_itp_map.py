@@ -81,8 +81,7 @@ class TestItpMaps(TestCase):
 
         # Test querying nonfinite values gives NaNs, not errors
         for itp_map in itp_maps:
-            map_at_random_point = itp_map([
-                [0, np.nan, 0], [0, 0, -140]])
+            map_at_random_point = itp_map([[0, np.nan, 0], [0, 0, -140]])
             # Shape is still correct
             assert map_at_random_point.shape == (2, 2)
             # First point gives NaN
