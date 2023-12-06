@@ -34,7 +34,7 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.2.3"
+    __version__ = "0.2.4"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
