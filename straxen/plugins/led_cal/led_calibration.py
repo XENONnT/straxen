@@ -34,7 +34,7 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.2.3"
+    __version__ = "0.2.4"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
@@ -47,7 +47,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     led_window = straxen.URLConfig(
-        default=(78, 116),
+        default=(78, 132),
         infer_type=False,
         help="Window (samples) where we expect the signal in LED calibration",
     )

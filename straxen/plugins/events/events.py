@@ -118,7 +118,7 @@ class Events(strax.OverlapWindowPlugin):
         # Take a large window for safety, events can have long tails
         return 10 * (self.left_event_extension + self.drift_time_max + self.right_event_extension)
 
-    def compute(self, peaks, start, end):
+    def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
         if self.exclude_s1_as_triggering_peaks:
@@ -127,6 +127,10 @@ class Events(strax.OverlapWindowPlugin):
             is_not_s1 = peaks["type"] != 1
             has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
             _is_triggering &= is_not_s1 | has_tc_large_enough
+        return _is_triggering
+
+    def compute(self, peaks, start, end):
+        _is_triggering = self._is_triggering(peaks)
 
         triggers = peaks[_is_triggering]
 
