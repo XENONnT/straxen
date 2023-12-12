@@ -2,6 +2,7 @@ from immutabledict import immutabledict
 import strax
 import straxen
 from straxen.common import pax_file
+from .plugins_1t.fake_daqreader import Fake1TDAQReader
 
 
 def get_x1t_context_config():
@@ -164,7 +165,7 @@ def fake_daq():
         ),
         **get_x1t_context_config(),
     )
-    st.register(straxen.Fake1TDAQReader)
+    st.register(Fake1TDAQReader)
     return st
 
 
