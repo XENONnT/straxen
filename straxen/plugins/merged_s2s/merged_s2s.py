@@ -70,8 +70,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
             "peaklet_classification"
         )
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
-        # The merged dtype is argument position dependent! It must be first classification then peaklet
-        # Otherwise strax will raise an error when checking for the returned dtype!
+        # The merged dtype is argument position dependent!
+        # It must be first classification then peaklet
+        # Otherwise strax will raise an error
+        # when checking for the returned dtype!
         merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
         return merged_s2s_dtype
 
