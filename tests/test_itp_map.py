@@ -1,4 +1,5 @@
 from unittest import TestCase, skipIf
+import numpy as np
 from straxen import utilix_is_configured, get_resource
 from straxen import InterpolatingMap, save_interpolation_formatted_map
 
@@ -77,3 +78,13 @@ class TestItpMaps(TestCase):
 
             self.assertAlmostEqual(map_at_random_point[1][0], 2.17815179, places=places)
             self.assertAlmostEqual(map_at_random_point[1][1], 9.47282782, places=places)
+
+        # Test querying nonfinite values gives NaNs, not errors
+        for itp_map in itp_maps:
+            map_at_random_point = itp_map([[0, np.nan, 0], [0, 0, -140]])
+            # Shape is still correct
+            assert map_at_random_point.shape == (2, 2)
+            # First point gives NaN
+            assert np.all(np.isnan(map_at_random_point[0]))
+            # Second point does not
+            assert not np.any(np.isnan(map_at_random_point[1]))
