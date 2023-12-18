@@ -21,7 +21,7 @@ class GpsSync(strax.OverlapWindowPlugin):
     """
 
     __version__ = "0.2.1"
-    depends_on = ("aqmon_hits", "event_info")
+    depends_on = ("aqmon_hits", "event_basics")
     provides = "gps_sync"
     data_kind = "events"
 
