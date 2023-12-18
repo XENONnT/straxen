@@ -37,24 +37,18 @@ class EventAreaPerChannel(strax.Plugin):
         # populating APC
         ptypes = ["s1", "s2", "alt_s1", "alt_s2"]
         for type_ in ptypes:
-            dtype += [
-                (
-                    (f"Area per channel for {infoline[type_]}", f"{type_}_area_per_channel"),
-                    pfields_["area_per_channel"][0],
-                )
-            ]
-            dtype += [
-                (
-                    (f"Length of the interval in samples for {infoline[type_]}", f"{type_}_length"),
-                    pfields_["length"][0],
-                )
-            ]
-            dtype += [
-                (
-                    (f"Width of one sample for {infoline[type_]} [ns]", f"{type_}_dt"),
-                    pfields_["dt"][0],
-                )
-            ]
+            dtype += [(
+                (f"Area per channel for {infoline[type_]}", f"{type_}_area_per_channel"),
+                pfields_["area_per_channel"][0],
+            )]
+            dtype += [(
+                (f"Length of the interval in samples for {infoline[type_]}", f"{type_}_length"),
+                pfields_["length"][0],
+            )]
+            dtype += [(
+                (f"Width of one sample for {infoline[type_]} [ns]", f"{type_}_dt"),
+                pfields_["dt"][0],
+            )]
         # populating S1 n channel properties
         n_channel_dtype = [
             (("Main S1 count of contributing PMTs", "s1_n_channels"), np.int16),

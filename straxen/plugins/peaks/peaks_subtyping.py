@@ -158,9 +158,9 @@ class PeaksSubtypes(strax.Plugin):
                         + self.after_s2_window_ext_fac * self.drift_time_max
                     )
                     s2_mask_tmp = s2_mask[whole_window_cond]
-                    small_s2s_a = s2s_a[whole_window_cond] < np.max([
-                        self.ls2_threshold, self.other_ls2_fac * max_val
-                    ])
+                    small_s2s_a = s2s_a[whole_window_cond] < np.max(
+                        [self.ls2_threshold, self.other_ls2_fac * max_val]
+                    )
                     not_pS2 = s2_mask_tmp != PeakSubtyping.pS2
                     within_dt_s2s_t = s2s_t[whole_window_cond] < max_time
                     s2_mask_tmp[~small_s2s_a & not_pS2 & within_dt_s2s_t] = PeakSubtyping.S1olS2
@@ -249,9 +249,9 @@ class PeaksSubtypes(strax.Plugin):
                             pt <= max_time + self.after_s2_window_ext_fac * self.drift_time_max
                         )
                         mask_tmp = dmask[whole_window_cond]
-                        small_pa = pa[whole_window_cond] < np.max([
-                            self.ls2_threshold, self.other_ls2_fac * max_val
-                        ])
+                        small_pa = pa[whole_window_cond] < np.max(
+                            [self.ls2_threshold, self.other_ls2_fac * max_val]
+                        )
                         within_dt_pt = pt[whole_window_cond] < max_time
                         mask_tmp[~small_pa & within_dt_pt] = PeakSubtyping.fakeS2_olS2
                         mask_tmp[small_pa & within_dt_pt] = PeakSubtyping.fakeS2_PH

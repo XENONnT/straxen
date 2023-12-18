@@ -129,9 +129,9 @@ class TestURLConfig(unittest.TestCase):
     def test_fsspec_protocol(self):
         with fsspec.open("memory://test_file.json", mode="w") as f:
             json.dump({"value": 999}, f)
-        self.st.set_config({
-            "test_config": "take://json://fsspec://memory://test_file.json?take=value"
-        })
+        self.st.set_config(
+            {"test_config": "take://json://fsspec://memory://test_file.json?take=value"}
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, 999)
 
@@ -329,9 +329,9 @@ class TestURLConfig(unittest.TestCase):
 
     def test_objects_to_dict(self):
         n = 3
-        self.st.set_config({
-            "test_config": f"objects-to-dict://object-list://{n}?key_attr=a&value_attr=b"
-        })
+        self.st.set_config(
+            {"test_config": f"objects-to-dict://object-list://{n}?key_attr=a&value_attr=b"}
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, {i: i + 1 for i in range(n)})
 
@@ -413,9 +413,9 @@ class TestURLConfig(unittest.TestCase):
     def test_pad_array(self):
         """Test that pad_array works as expected."""
 
-        self.st.set_config({
-            "test_config": "pad-array://json://[1,2,3]?pad_left=2&pad_right=3&pad_value=0"
-        })
+        self.st.set_config(
+            {"test_config": "pad-array://json://[1,2,3]?pad_left=2&pad_right=3&pad_value=0"}
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(len(p.test_config), 8)
         self.assertEqual(p.test_config[0], 0)
