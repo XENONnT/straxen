@@ -69,3 +69,6 @@ from .multi_scatter import *
 
 from . import event_basics_som
 from .event_basics_som import *
+
+from . import event_nearest_triggering
+from .event_nearest_triggering import *

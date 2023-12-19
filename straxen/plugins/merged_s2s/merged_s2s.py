@@ -16,7 +16,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.1.0"
+    __version__ = "1.0.2"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
@@ -54,6 +54,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ),
     )
 
+    sum_waveform_top_array = straxen.URLConfig(
+        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
+    )
+
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
@@ -70,8 +74,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
             "peaklet_classification"
         )
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
-        # The merged dtype is argument position dependent! It must be first classification then peaklet
-        # Otherwise strax will raise an error when checking for the returned dtype!
+        # The merged dtype is argument position dependent!
+        # It must be first classification then peaklet
+        # Otherwise strax will raise an error
+        # when checking for the returned dtype!
         merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
         return merged_s2s_dtype
 

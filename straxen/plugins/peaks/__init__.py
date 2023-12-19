@@ -48,3 +48,6 @@ from .peaks_som import *
 
 from . import peak_basics_som
 from .peak_basics_som import *
+
+from . import peak_nearest_triggering
+from .peak_nearest_triggering import *
