@@ -70,7 +70,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.to_pe = self.gain_model
 
     def infer_dtype(self):
-        return strax.unpack_dtype(self.deps["peaklets"].dtype_for("peaklets"))
+        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
+            "peaklet_classification"
+        )
+        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        # The merged dtype is argument position dependent!
+        # It must be first classification then peaklet
+        # Otherwise strax will raise an error
+        # when checking for the returned dtype!
+        merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
+        return merged_s2s_dtype
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
@@ -132,7 +141,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh = strax.sort_by_time(lh)
 
         # If sum_waveform_top_array is false, don't digitize the top array
-        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
+        n_top_pmts_if_digitize_top = self.n_top_pmts if "data_top" in self.dtype.names else -1
         strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
 
         strax.compute_widths(merged_s2s)
