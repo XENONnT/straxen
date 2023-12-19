@@ -34,11 +34,21 @@ class PeakletClassificationSOM(PeakletClassification):
         default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
     )
 
+    use_som_as_default = straxen.URLConfig(
+        default=True,
+        help=(
+            "Boolean to indicate whether to use SOM"
+            " or the straxen classifcation method for"
+            "peaklet classification"
+        ),
+    )
+
     def infer_dtype(self):
         dtype = strax.peak_interval_dtype + [
             ("type", np.int8, "Classification of the peak(let)"),
             ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
             ("straxen_type", np.int8, "Old straxen type of the peak(let)"),
+            ("som_type", np.int8, "SOM type of the peak(let)"),
             ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
             ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
         ]
@@ -79,7 +89,12 @@ class PeakletClassificationSOM(PeakletClassification):
         strax_type = som_type_to_type(
             som_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
         )
-        peaklet_with_som["type"][_is_s1_or_s2] = strax_type
+
+        peaklet_with_som["som_type"][_is_s1_or_s2] = strax_type
+        if self.use_som_as_default:
+            peaklet_with_som["type"][_is_s1_or_s2] = strax_type
+        else:
+            peaklet_with_som["type"] = peaklet_with_som["straxen_type"]
 
         return peaklet_with_som
 
@@ -254,3 +269,17 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
         quantiles[i] = cumsum_steps[1:] - cumsum_steps[:-1]
 
     return quantiles
+
+
+@export
+class PeakletSOMClass(PeakletClassificationSOM):
+    """Plugin which allows in addition to the straxen classification the SOM classification."""
+
+    child_plugin = True
+    __version__ = "0.0.1"
+
+    provides = "peaklet_classification_som"
+
+    def compute(self, peaklets):
+        peaklet_classifcation_som = super().compute(peaklets)
+        return peaklet_classifcation_som
