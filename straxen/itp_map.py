@@ -41,19 +41,21 @@ class InterpolateAndExtrapolate:
             self.n_dim = self.values.shape[-1]
 
     def __call__(self, points):
-        distances, indices = self.kdtree.query(points, self.neighbours_to_use)
+        points = np.asarray(points)
 
+        # kdtree doesn't grok NaNs
+        # Start with all Nans, then overwrite for the finite points
         result = np.ones(len(points)) * float("nan")
         if self.array_valued:
             result = np.repeat(result.reshape(-1, 1), self.n_dim, axis=1)
+        valid = np.all(np.isfinite(points), axis=-1)
 
-        # If one of the coordinates is NaN, the neighbour-query fails.
-        # If we don't filter these out, it would result in an IndexError
-        # as the kdtree returns an invalid index if it can't find neighbours.
-        valid = (distances < float("inf")).max(axis=-1)
+        # Get distances to neighbours_to_use nearest neighbours
+        distances, indices = self.kdtree.query(points[valid], self.neighbours_to_use)
 
-        values = self.values[indices[valid]]
-        weights = 1 / np.clip(distances[valid], 1e-6, float("inf"))
+        # Get values and weights for inverse distance weighted interpolation
+        values = self.values[indices]
+        weights = 1 / np.clip(distances, 1e-6, float("inf"))
         if self.array_valued:
             weights = np.repeat(weights, self.n_dim).reshape(values.shape)
 
