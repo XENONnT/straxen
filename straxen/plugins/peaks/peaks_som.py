@@ -48,7 +48,7 @@ class PeaksSOMClassification(strax.Plugin):
     depends_on = ("peak_basics", "peaklet_classification_som")
     __version__ = "0.0.1"
 
-    provides = "peak_som_classifcation"
+    provides = "peak_som_classification"
 
     def infer_dtype(self):
         dtype_peaklets = strax.time_fields + [

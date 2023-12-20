@@ -39,7 +39,7 @@ class EventSOMClassification(strax.Plugin):
     depends_on = ("event_basics", "peak_som_classifcation")
     __version__ = "0.0.1"
 
-    provides = "event_som_classifcation"
+    provides = "event_som_classification"
 
     def infer_dtype(self):
         dtype_peaklets = strax.time_fields + [
