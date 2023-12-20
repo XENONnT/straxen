@@ -54,13 +54,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ),
     )
 
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
-    )
-
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
+
+    sum_waveform_top_array = straxen.URLConfig(
+        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
+    )
 
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"

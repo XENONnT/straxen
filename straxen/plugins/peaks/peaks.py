@@ -68,5 +68,4 @@ class Peaks(strax.Plugin):
 
         result = np.zeros(len(peaks), self.dtype)
         strax.copy_to_buffer(peaks, result, "_copy_requested_peak_fields")
-
         return result
