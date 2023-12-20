@@ -1,9 +1,5 @@
-import numpy as np
-from immutabledict import immutabledict
-
 import strax
-import straxen
-
+import numpy as np
 from itertools import chain
 
 export, __all__ = strax.exporter()
