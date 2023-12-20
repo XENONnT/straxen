@@ -36,7 +36,7 @@ class EventSOMClassification(strax.Plugin):
     """Plugin which propagates S1 SOM infromation to events as long straxen.PeakletClassification is
     still used."""
 
-    depends_on = ("event_basics", "peak_som_classifcation")
+    depends_on = ("event_basics", "peak_som_classification")
     __version__ = "0.0.1"
 
     provides = "event_som_classification"
