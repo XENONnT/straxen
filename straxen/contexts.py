@@ -343,6 +343,7 @@ def xenonnt_simulation_offline(
     run_id: Optional[str] = None,
     global_version: Optional[str] = None,
     fax_config: Optional[str] = None,
+    **kwargs,
 ):
     """
     :param output_folder: strax_data folder
@@ -367,7 +368,9 @@ def xenonnt_simulation_offline(
 
     # General strax context, register common plugins
     st = strax.Context(
-        storage=strax.DataDirectory(output_folder), **straxen.contexts.xnt_common_opts
+        storage=strax.DataDirectory(output_folder),
+        **straxen.contexts.xnt_common_opts,
+        **kwargs,
     )
     # Register simulation configs required by WFSim plugins
     st.config.update(

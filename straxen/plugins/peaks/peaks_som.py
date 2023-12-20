@@ -27,9 +27,6 @@ class PeaksSOM(Peaks):
         merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
         return merged_s2s_dtype
 
-    def setup(self):
-        self.copy_function_name = "_copy_requested_peak_fields_som"
-
     def compute(self, peaklets, merged_s2s):
         result = super().compute(peaklets, merged_s2s)
 

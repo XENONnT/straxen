@@ -41,11 +41,6 @@ class Peaks(strax.Plugin):
         ),
     )
 
-    def setup(self):
-        # Need to add a name for copy function. If inherited plugin changes
-        # dtype wrong function is loaded from cache otherwise.
-        self.copy_function_name = "_copy_requested_peak_fields"
-
     def infer_dtype(self):
         return self.deps["peaklets"].dtype_for("peaklets")
 
@@ -72,5 +67,6 @@ class Peaks(strax.Plugin):
             ), "Peaks not disjoint"
 
         result = np.zeros(len(peaks), self.dtype)
-        strax.copy_to_buffer(peaks, result, self.copy_function_name)
+        strax.copy_to_buffer(peaks, result, "_copy_requested_peak_fields")
+
         return result
