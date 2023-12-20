@@ -53,7 +53,13 @@ class SetupContextNt(PluginTestCase):
 
     """
 
-    exclude_plugins = "events_gps_nv", "events_gps_mv", "gps_sync", "veto_intervals_gps_sync"
+    exclude_plugins = (
+        "events_gps_nv",
+        "events_gps_mv",
+        "gps_sync",
+        "veto_intervals_gps_sync",
+        "ref_mon_nv",
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
