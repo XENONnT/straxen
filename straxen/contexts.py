@@ -333,6 +333,7 @@ def xenonnt_led(**kwargs):
         straxen.nVETOPulseProcessing,
         straxen.nVETOHitlets,
         straxen.nVetoExtTimings,
+        straxen.nVeto_reflectivity,
     ])
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
