@@ -19,15 +19,12 @@ common_opts: Dict[str, Any] = dict(
         straxen.PulseProcessing,
         straxen.Peaklets,
         straxen.PeakletClassification,
-        straxen.PeakletSOMClass,
         straxen.MergedS2s,
         straxen.Peaks,
         straxen.PeakBasics,
-        straxen.PeaksSOMClassification,
         straxen.PeakProximity,
         straxen.Events,
         straxen.EventBasics,
-        straxen.EventSOMClassification,
         straxen.EventPositions,
         straxen.CorrectedAreas,
         straxen.EnergyEstimates,
@@ -94,7 +91,11 @@ xnt_simulation_config.update(
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
 xnt_common_opts.update({
-    "register": list(common_opts["register"]) + [],
+    "register": list(common_opts["register"]) + [
+        straxen.PeakletSOMClass,
+        straxen.PeaksSOMClassification,
+        straxen.EventSOMClassification,
+    ],
     "register_all": list(common_opts["register_all"]) + [
         straxen.plugins,
     ],
