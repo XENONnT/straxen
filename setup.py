@@ -20,7 +20,7 @@ with open("HISTORY.md") as file:
 
 setuptools.setup(
     name="straxen",
-    version="2.1.5",
+    version="2.1.6",
     description="Streaming analysis for XENON",
     author="Straxen contributors, the XENON collaboration",
     url="https://github.com/XENONnT/straxen",
