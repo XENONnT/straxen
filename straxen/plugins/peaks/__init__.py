@@ -43,5 +43,11 @@ from .peak_corrections import *
 from . import peaks_subtyping
 from .peaks_subtyping import *
 
+from . import peaks_som
+from .peaks_som import *
+
+from . import peak_basics_som
+from .peak_basics_som import *
+
 from . import peak_nearest_triggering
 from .peak_nearest_triggering import *
