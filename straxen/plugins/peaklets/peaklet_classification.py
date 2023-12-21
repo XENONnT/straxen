@@ -105,14 +105,11 @@ class PeakletClassification(strax.Plugin):
         is_s2[is_large_s1 | is_small_s1] = False
         ptype[is_s2] = 2
 
-        return dict(
-            type=ptype,
-            time=peaklets["time"],
-            dt=peaklets["dt"],
-            # Channel is added so the field order of the merger of
-            # peaklet_classification and peaklets matches that
-            # of peaklets.
-            # This way S2 merging works on arrays of the same dtype.
-            channel=-1,
-            length=peaklets["length"],
-        )
+        peaklets_classification = np.zeros(len(peaklets), dtype=self.dtype)
+        peaklets_classification["type"] = ptype
+        peaklets_classification["time"] = peaklets["time"]
+        peaklets_classification["dt"] = peaklets["dt"]
+        peaklets_classification["length"] = peaklets["length"]
+        peaklets_classification["channel"] = -1
+
+        return peaklets_classification

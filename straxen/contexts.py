@@ -91,7 +91,11 @@ xnt_simulation_config.update(
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
 xnt_common_opts.update({
-    "register": list(common_opts["register"]) + [],
+    "register": list(common_opts["register"]) + [
+        straxen.PeakletSOMClass,
+        straxen.PeaksSOMClassification,
+        straxen.EventSOMClassification,
+    ],
     "register_all": list(common_opts["register_all"]) + [
         straxen.plugins,
     ],
@@ -124,7 +128,14 @@ def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=Fa
         cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
     )
     del st._plugin_class_registry["peaklet_classification"]
-    st.register(straxen.PeakletClassificationSOM)
+    st.register(
+        (
+            straxen.PeakletClassificationSOM,
+            straxen.PeaksSOM,
+            straxen.PeakBasicsSOM,
+            straxen.EventBasicsSOM,
+        )
+    )
 
     return st
 
