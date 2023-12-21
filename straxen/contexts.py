@@ -218,7 +218,12 @@ def xenonnt_online(
     context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
 
     st = strax.Context(config=straxen.contexts.xnt_common_config, **context_options)
-    st.register([straxen.DAQReader, straxen.LEDCalibration, straxen.LEDAfterpulseProcessing])
+    st.register([
+        straxen.DAQReader,
+        straxen.LEDCalibration,
+        straxen.LEDAfterpulseProcessing,
+        straxen.nVeto_reflectivity,
+    ])
 
     if _auto_append_rucio_local:
         include_rucio_local, _rucio_local_path = find_rucio_local_path(
@@ -322,7 +327,6 @@ def xenonnt_led(**kwargs):
         straxen.nVETOPulseProcessing,
         straxen.nVETOHitlets,
         straxen.nVetoExtTimings,
-        straxen.nVeto_reflectivity,
     ])
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
