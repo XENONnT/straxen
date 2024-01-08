@@ -18,48 +18,38 @@ class PeakTopBottomParams(strax.Plugin):
         peak_basics_fields = self.deps["peak_basics"].dtype.fields
         self.arrs = ["top", "bot"]
         for arr_ in self.arrs:
-            dtype += [
+            dtype += [(
+                (f"Central time for {arr_} PMTs [ ns ]", f"center_time_{arr_}"),
+                peak_basics_fields["center_time"][0],
+            )]
+            dtype += [(
                 (
-                    (f"Central time for {arr_} PMTs [ ns ]", f"center_time_{arr_}"),
-                    peak_basics_fields["center_time"][0],
-                )
-            ]
-            dtype += [
-                (
-                    (
-                        f"Time between 10% and 50% area quantiles for {arr_} PMTs [ns]",
-                        f"rise_time_{arr_}",
-                    ),
-                    peak_basics_fields["rise_time"][0],
-                )
-            ]
-            dtype += [
-                (
-                    (
-                        f"Width (in ns) of the central 50% area of the peak for {arr_} PMTs",
-                        f"range_50p_area_{arr_}",
-                    ),
-                    peak_basics_fields["range_50p_area"][0],
-                )
-            ]
-            dtype += [
-                (
-                    (
-                        f"Width (in ns) of the central 90% area of the peak for {arr_} PMTs",
-                        f"range_90p_area_{arr_}",
-                    ),
-                    peak_basics_fields["range_90p_area"][0],
-                )
-            ]
-        dtype += [
-            (
-                (
-                    f"Difference between center times of top and bottom arrays [ ns ]",
-                    f"center_time_diff_top_bot",
+                    f"Time between 10% and 50% area quantiles for {arr_} PMTs [ns]",
+                    f"rise_time_{arr_}",
                 ),
-                peak_basics_fields[f"center_time"][0],
-            )
-        ]
+                peak_basics_fields["rise_time"][0],
+            )]
+            dtype += [(
+                (
+                    f"Width (in ns) of the central 50% area of the peak for {arr_} PMTs",
+                    f"range_50p_area_{arr_}",
+                ),
+                peak_basics_fields["range_50p_area"][0],
+            )]
+            dtype += [(
+                (
+                    f"Width (in ns) of the central 90% area of the peak for {arr_} PMTs",
+                    f"range_90p_area_{arr_}",
+                ),
+                peak_basics_fields["range_90p_area"][0],
+            )]
+        dtype += [(
+            (
+                f"Difference between center times of top and bottom arrays [ ns ]",
+                f"center_time_diff_top_bot",
+            ),
+            peak_basics_fields[f"center_time"][0],
+        )]
         dtype += strax.time_fields
         return dtype
 

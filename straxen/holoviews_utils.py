@@ -436,13 +436,11 @@ class nVETOEventDisplay:
         start_ns = start - (start // 10**9) * 10**9
         end = self.df_event_time.loc[ind, "endtime"]
         end_ns = end - start + start_ns
-        return "".join(
-            (
-                f"##Event {ind} from run {self.run_id}\n",
-                f"##Recorded at ({date[:10]} {date[10:]}) UTC ",
-                f"{start_ns} ns - {end_ns} ns",
-            )
-        )
+        return "".join((
+            f"##Event {ind} from run {self.run_id}\n",
+            f"##Recorded at ({date[:10]} {date[10:]}) UTC ",
+            f"{start_ns} ns - {end_ns} ns",
+        ))
 
 
 def plot_tpc_circle(radius):
