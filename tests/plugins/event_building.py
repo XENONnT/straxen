@@ -203,13 +203,11 @@ def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
     dummy_events["endtime"] = np.array([100, 205])
 
     # Prepare some dummy peaks
-    peaks_dtype = strax.merged_dtype(
-        (
-            st.get_single_plugin(run_id, "peak_basics").dtype,
-            st.get_single_plugin(run_id, "peak_proximity").dtype,
-            st.get_single_plugin(run_id, "peak_positions").dtype,
-        )
-    )
+    peaks_dtype = strax.merged_dtype((
+        st.get_single_plugin(run_id, "peak_basics").dtype,
+        st.get_single_plugin(run_id, "peak_proximity").dtype,
+        st.get_single_plugin(run_id, "peak_positions").dtype,
+    ))
 
     peaks_for_event_1 = np.zeros(5, dtype=peaks_dtype)
     peaks_for_event_1["time"] = np.arange(10, 105, 20)
