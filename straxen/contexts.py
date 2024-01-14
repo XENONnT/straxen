@@ -128,14 +128,12 @@ def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=Fa
         cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
     )
     del st._plugin_class_registry["peaklet_classification"]
-    st.register(
-        (
-            straxen.PeakletClassificationSOM,
-            straxen.PeaksSOM,
-            straxen.PeakBasicsSOM,
-            straxen.EventBasicsSOM,
-        )
-    )
+    st.register((
+        straxen.PeakletClassificationSOM,
+        straxen.PeaksSOM,
+        straxen.PeakBasicsSOM,
+        straxen.EventBasicsSOM,
+    ))
 
     return st
 
@@ -307,12 +305,14 @@ def xenonnt_online(
     # newer than 8796 are not affected. See:
     # https://github.com/XENONnT/straxen/pull/166 and
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:dsg:daq:sector_swap
-    st.set_context_config({
-        "apply_data_function": (
-            straxen.remap_old,
-            straxen.check_loading_allowed,
-        )
-    })
+    st.set_context_config(
+        {
+            "apply_data_function": (
+                straxen.remap_old,
+                straxen.check_loading_allowed,
+            )
+        }
+    )
     if _context_config_overwrite is not None:
         warnings.warn(
             f"_context_config_overwrite is deprecated, please pass to context as kwargs",

@@ -22,7 +22,7 @@ class S2ReconPosDiff(strax.Plugin):
 
     recon_alg_included = straxen.URLConfig(
         help="The list of all reconstruction algorithm considered.",
-        default=("_mlp", "_gcn", "_cnn"),
+        default=("_mlp", "_gcn"),
         infer_type=False,
     )
 
