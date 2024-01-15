@@ -740,7 +740,7 @@ def _make_event_title(event, run_id, width=1600):
 
     title = bokeh.models.Div(
         text=text,
-        styles={
+        style={
             "text-align": "left",
         },
         sizing_mode="scale_both",
