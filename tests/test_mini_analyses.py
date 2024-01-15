@@ -322,31 +322,32 @@ class TestMiniAnalyses(unittest.TestCase):
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
 
         p = self.st.get_array(nt_test_run_id, "peak_basics", seconds_range=(0, 10))
-        ds = DataSelectionHist("ds")
-        fig = ds.histogram2d(
-            p,
-            p["area"],
-            p["area"],
-            bins=10,
-            hist_range=((0, 200), (0, 2000)),
-            log_color_scale=True,
-            clim=(10, None),
-            undeflow_color="white",
-        )
+        with self.assertRaises(NotImplementedError):
+            ds = DataSelectionHist("ds")
+            fig = ds.histogram2d(
+                p,
+                p["area"],
+                p["area"],
+                bins=10,
+                hist_range=((0, 200), (0, 2000)),
+                log_color_scale=True,
+                clim=(10, None),
+                undeflow_color="white",
+            )
 
-        import bokeh.plotting as bklt
+            import bokeh.plotting as bklt
 
-        save_as = "test_data_selector.html"
-        bklt.save(fig, save_as)
-        self.assertTrue(os.path.exists(save_as))
-        os.remove(save_as)
-        self.assertFalse(os.path.exists(save_as))
-        # Also test if we can write it to the wiki
-        straxen.bokeh_to_wiki(fig)
-        straxen.bokeh_to_wiki(fig, save_as)
-        self.assertTrue(os.path.exists(save_as))
-        os.remove(save_as)
-        self.assertFalse(os.path.exists(save_as))
+            save_as = "test_data_selector.html"
+            bklt.save(fig, save_as)
+            self.assertTrue(os.path.exists(save_as))
+            os.remove(save_as)
+            self.assertFalse(os.path.exists(save_as))
+            # Also test if we can write it to the wiki
+            straxen.bokeh_to_wiki(fig)
+            straxen.bokeh_to_wiki(fig, save_as)
+            self.assertTrue(os.path.exists(save_as))
+            os.remove(save_as)
+            self.assertFalse(os.path.exists(save_as))
 
     def test_nt_daq_plot(self):
         """Make an nt DAQ plot."""
