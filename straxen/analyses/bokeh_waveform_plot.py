@@ -792,6 +792,12 @@ class DataSelectionHist:
         :param size: Edge size of the figure in pixel.
 
         """
+        raise NotImplementedError(
+            "This function does not work with"
+            " the latest bokeh version. If you are still using"
+            " this function please let us know in tech-support"
+            " by the 01.04.2024, else we reomve this function."
+        )
         self.name = name
         self.selection_index = None
         self.size = size
