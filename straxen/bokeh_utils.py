@@ -81,7 +81,7 @@ def _patches_x_y(peak, keep_amplitude_per_sample=False):
     """Creates x,y coordinates needed to draw peaks via bokeh.models.patches.
 
     :param peak: Peak for which we need the x/y samples
-    :param keep_amplitude_per_sample: If y-data should be in units of     "per sample" or "per ns".
+    :param keep_amplitude_per_sample: If y-data should be in units of "per sample" or "per ns".
     :return: Tuple of x, y
 
     """
@@ -158,8 +158,8 @@ def default_fig(width=400, height=400, title="", **kwargs):
 
     """
     fig = bklt.figure(
-        plot_width=width,
-        plot_height=height,
+        width=width,
+        height=height,
         sizing_mode="scale_both",
         aspect_ratio=width / height,
         title=title,

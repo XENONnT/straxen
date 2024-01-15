@@ -436,7 +436,7 @@ def plot_peak_detail(
 
     tt = straxen.bokeh_utils.peak_tool_tip(p_type)
     tt = [v for k, v in tt.items() if k not in ["time_static", "center_time", "endtime"]]
-    fig.add_tools(bokeh.models.HoverTool(names=[label], tooltips=tt))
+    fig.add_tools(bokeh.models.HoverTool(name=label, tooltips=tt))
 
     source = straxen.bokeh_utils.get_peaks_source(
         peak,
@@ -509,7 +509,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
 
         tt = straxen.bokeh_utils.peak_tool_tip(i)
         tt = [v for k, v in tt.items() if k != "time_dynamic"]
-        fig.add_tools(bokeh.models.HoverTool(names=[LEGENDS[i]], tooltips=tt))
+        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[i], tooltips=tt))
         fig.add_tools(bokeh.models.WheelZoomTool(dimensions="width", name="wheel"))
         fig.toolbar.active_scroll = [t for t in fig.tools if t.name == "wheel"][0]
 
@@ -614,7 +614,7 @@ def plot_pmt_array(
         legend_label=label,
         name=label + "_pmt_array",
     )
-    fig.add_tools(bokeh.models.HoverTool(names=[label + "_pmt_array"], tooltips=tool_tip))
+    fig.add_tools(bokeh.models.HoverTool(name=label + "_pmt_array", tooltips=tool_tip))
     fig.legend.location = "top_left"
     fig.legend.click_policy = "hide"
     fig.legend.orientation = "horizontal"
@@ -708,7 +708,7 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
     fig.add_tools(
         bokeh.models.HoverTool(
-            names=[label], tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
+            name=label, tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
         )
     )
     return fig, p
@@ -740,12 +740,11 @@ def _make_event_title(event, run_id, width=1600):
 
     title = bokeh.models.Div(
         text=text,
-        style={
+        styles={
             "text-align": "left",
         },
         sizing_mode="scale_both",
         width=width,
-        default_size=width,
         # orientation='vertical',
         width_policy="fit",
         margin=(0, 0, -30, 50),
