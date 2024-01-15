@@ -62,9 +62,10 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array="bottom"):
             hv.Dimension("area", label="Area", unit="PE"),
         ],
     )
-    pmts = pmts.to(
-        hv.Points, vdims=["area", "i"], group="PMTPattern", label=array.capitalize()
-    ).opts(
+    pmts = pmts.to(hv.Points, vdims=["area", "i"], group="PMTPattern", label=array.capitalize())
+
+    hv.opts.apply_groups(
+        pmts,
         plot=dict(color_index=2, tools=["hover"], show_grid=False),
         style=dict(size=17, cmap="plasma"),
     )
@@ -189,7 +190,10 @@ def _hvdisp_plot_records_2d(
             streams=[time_stream],
         ),
         threshold=0.1,
-    ).opts(
+    )
+
+    hv.opts.apply_groups(
+        shader,
         plot=dict(
             aspect=4,
             responsive="width",
@@ -199,7 +203,7 @@ def _hvdisp_plot_records_2d(
             default_tools=list(default_tools),
             fontsize={"labels": 12},
             show_grid=True,
-        )
+        ),
     )
 
     return shader, records, time_stream
@@ -366,10 +370,21 @@ def hvdisp_plot_peak_waveforms(
                 kdims=time_dim,
                 vdims=hv.Dimension("amplitude", label="Amplitude", unit="PE/ns"),
                 group="PeakSumWaveform",
-            ).opts(style=dict(color=color))
+            )
         )
 
-    return hv.Overlay(items=curves).opts(plot=dict(width=width))
+        hv.opts.apply_groups(
+            curves[-1],
+            style=dict(color=color),
+        )
+
+    overlay = hv.Overlay(items=curves)
+    hv.opts.apply_groups(
+        overlay,
+        plot=dict(width=width),
+    )
+
+    return overlay
 
 
 def _range_plot(f, full_time_range, t_reference, **kwargs):
