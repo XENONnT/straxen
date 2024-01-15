@@ -178,18 +178,21 @@ def event_display_interactive(
     else:
         upper_row = [fig_s1, fig_s2, fig_top]
 
-    upper_row = bokeh.layouts.Row(children=upper_row)
+    upper_row = bokeh.layouts.Row(
+        children=upper_row,
+        sizing_mode="scale_width",
+    )
 
     plots = bokeh.layouts.gridplot(
         children=[upper_row, waveform],
-        sizing_mode="scale_both",
+        sizing_mode="scale_width",
         ncols=1,
         merge_tools=True,
         toolbar_location="above",
     )
     event_display = bokeh.layouts.Column(
         children=[title, plots],
-        sizing_mode="scale_both",
+        sizing_mode="scale_width",
         max_width=1600,
     )
 
@@ -245,7 +248,9 @@ def event_display_interactive(
         # Set x-range of event plot:
         bokeh_set_x_range(waveform, straxen._BOKEH_X_RANGE, debug=False)
         event_display = panel.Column(
-            event_display, wf * records_in_window, sizing_mode="scale_width"
+            event_display,
+            wf * records_in_window,
+            sizing_mode="scale_width",
         )
 
     return event_display
@@ -743,7 +748,7 @@ def _make_event_title(event, run_id, width=1600):
         styles={
             "text-align": "left",
         },
-        sizing_mode="scale_both",
+        sizing_mode="scale_width",
         width=width,
         # orientation='vertical',
         width_policy="fit",

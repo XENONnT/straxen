@@ -160,8 +160,7 @@ def default_fig(width=400, height=400, title="", **kwargs):
     fig = bklt.figure(
         width=width,
         height=height,
-        sizing_mode="scale_both",
-        aspect_ratio=width / height,
+        sizing_mode="scale_width",
         title=title,
         tools="pan,box_zoom,reset,save",
         **kwargs,
