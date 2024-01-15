@@ -206,16 +206,3 @@ def xenon1t_led(**kwargs):
     st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
     st.register([straxen.RecordsFromPax, straxen.LEDCalibration])
     return st
-
-
-def xenon1t_simulation(output_folder="./strax_data"):
-    import wfsim
-
-    st = strax.Context(
-        storage=strax.DataDirectory(output_folder),
-        config=dict(fax_config="fax_config_1t.json", detector="XENON1T", **x1t_common_config),
-        **get_x1t_context_config(),
-    )
-    st.register(wfsim.RawRecordsFromFax1T)
-    st.deregister_plugins_with_missing_dependencies()
-    return st
