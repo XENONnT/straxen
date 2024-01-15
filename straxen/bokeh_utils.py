@@ -164,6 +164,6 @@ def default_fig(width=400, height=400, title="", **kwargs):
         aspect_ratio=width / height,
         title=title,
         tools="pan,box_zoom,reset,save",
-        **kwargs
+        **kwargs,
     )
     return fig
