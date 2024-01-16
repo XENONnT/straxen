@@ -228,7 +228,6 @@ class nVetoExtTimings(strax.Plugin):
         return pulse_dtype
 
     @staticmethod
-    @numba.jit(nopython=True)
     def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
         """Numpy access with fancy index returns copy, not view This for-loop is required to
         substitute in one by one."""
