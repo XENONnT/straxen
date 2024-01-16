@@ -1,3 +1,16 @@
+2.1.7 / 2024-01-16
+-------------------
+* remove cnn in s2_recon_pos_diff by @ZhenhaoLiangW in https://github.com/XENONnT/straxen/pull/1313
+* Update pymongo version by @dachengx in https://github.com/XENONnT/straxen/pull/1316
+* Use `straxen.EventBasics.set_nan_defaults` to set default values by @dachengx in https://github.com/XENONnT/straxen/pull/1317
+* Update to bokeh v3 and holoviews v1, drop py3.8 support by @dachengx in https://github.com/XENONnT/straxen/pull/1318
+
+New Contributors
+* @ZhenhaoLiangW made their first contribution in https://github.com/XENONnT/straxen/pull/1313
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.1.6...v2.1.7
+
+
 2.1.6 / 2023-12-21
 -------------------
 * Update bootstrax strax logging by @cfuselli in https://github.com/XENONnT/straxen/pull/1252
