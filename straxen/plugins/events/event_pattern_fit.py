@@ -147,12 +147,18 @@ class EventPatternFit(strax.Plugin):
             (
                 "alt_s1_top_2llh",
                 np.float32,
-                "Modified Poisson likelihood value for alt S1 with z from alt S1 and main S2, calculated from top array",
+                (
+                    "Modified Poisson likelihood value for alt S1 with z from alt S1 and main S2,"
+                    " calculated from top array"
+                ),
             ),
             (
                 "alt_s1_bottom_2llh",
                 np.float32,
-                "Modified Poisson likelihood value for lat S1 with z from alt S1 and main S2, calculated from bottom array",
+                (
+                    "Modified Poisson likelihood value for lat S1 with z from alt S1 and main S2,"
+                    " calculated from bottom array"
+                ),
             ),
             (
                 "s1_area_fraction_top_continuous_probability",
@@ -416,7 +422,9 @@ class EventPatternFit(strax.Plugin):
                 s1_pattern_top /= np.sum(
                     (s1_map_effs[:, : self.n_top_pmts])[:, self.pmtbool_top], axis=1
                 )[:, None]
-                s1_pattern_bottom = (1 - events[f"{prefix}s1_area_fraction_top"][cur_s1_bool]) * s1_area
+                s1_pattern_bottom = (
+                    1 - events[f"{prefix}s1_area_fraction_top"][cur_s1_bool]
+                ) * s1_area
                 s1_pattern_bottom = s1_pattern_bottom[:, None] * (
                     (s1_map_effs[:, self.n_top_pmts :])[:, self.pmtbool_bottom]
                 )
