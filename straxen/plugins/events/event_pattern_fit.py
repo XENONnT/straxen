@@ -108,7 +108,11 @@ class EventPatternFit(strax.Plugin):
 
     def infer_dtype(self):
         dtype = [
-            ("s2_2llh", np.float32, "Modified Poisson likelihood value for main S2 in the event"),
+            (
+                "s2_2llh",
+                np.float32,
+                "Modified Poisson likelihood value for main S2 in the event",
+            ),
             (
                 "s2_neural_2llh",
                 np.float32,
@@ -120,7 +124,11 @@ class EventPatternFit(strax.Plugin):
                 np.float32,
                 "Data-driven based likelihood value for alternative S2 in the event",
             ),
-            ("s1_2llh", np.float32, "Modified Poisson likelihood value for main S1"),
+            (
+                "s1_2llh",
+                np.float32,
+                "Modified Poisson likelihood value for main S1",
+            ),
             (
                 "s1_top_2llh",
                 np.float32,
