@@ -140,6 +140,21 @@ class EventPatternFit(strax.Plugin):
                 "Modified Poisson likelihood value for main S1, calculated from bottom array",
             ),
             (
+                "alt_s1_2llh",
+                np.float32,
+                "Modified Poisson likelihood value for alt S1 with z from alt S1 and main S2",
+            ),
+            (
+                "alt_s1_top_2llh",
+                np.float32,
+                "Modified Poisson likelihood value for alt S1 with z from alt S1 and main S2, calculated from top array",
+            ),
+            (
+                "alt_s1_bottom_2llh",
+                np.float32,
+                "Modified Poisson likelihood value for lat S1 with z from alt S1 and main S2, calculated from bottom array",
+            ),
+            (
                 "s1_area_fraction_top_continuous_probability",
                 np.float32,
                 "Continuous binomial test for S1 area fraction top",
@@ -193,11 +208,33 @@ class EventPatternFit(strax.Plugin):
                     np.float32,
                     (self.n_top_pmts,),
                 ),
-                (("Pattern main S2", "s2_pattern"), np.float32, (self.n_top_pmts,)),
-                (("Pattern alt S2", "alt_s2_pattern"), np.float32, (self.n_top_pmts,)),
-                (("Pattern for main S1", "s1_pattern"), np.float32, (self.n_tpc_pmts,)),
+                (
+                    ("Pattern main S2", "s2_pattern"),
+                    np.float32,
+                    (self.n_top_pmts,),
+                ),
+                (
+                    ("Pattern alt S2", "alt_s2_pattern"),
+                    np.float32,
+                    (self.n_top_pmts,),
+                ),
+                (
+                    ("Pattern for main S1", "s1_pattern"),
+                    np.float32,
+                    (self.n_tpc_pmts,),
+                ),
                 (
                     ("2LLH per channel for main S1", "s1_2llh_per_channel"),
+                    np.float32,
+                    (self.n_tpc_pmts,),
+                ),
+                (
+                    ("Pattern for alt S1", "alt_s1_pattern"),
+                    np.float32,
+                    (self.n_tpc_pmts,),
+                ),
+                (
+                    ("2LLH per channel for alt S1", "alt_s1_2llh_per_channel"),
                     np.float32,
                     (self.n_tpc_pmts,),
                 ),
@@ -343,103 +380,108 @@ class EventPatternFit(strax.Plugin):
         # - must exist (index != -1)
         # - must have total area larger minimal one
         # - must have positive AFT
-        x, y, z = events["x"], events["y"], events["z"]
-        cur_s1_bool = events["s1_area"] > self.s1_min_area_pattern_fit
-        cur_s1_bool &= events["s1_index"] != -1
-        cur_s1_bool &= events["s1_area_fraction_top"] >= 0
-        cur_s1_bool &= np.isfinite(x)
-        cur_s1_bool &= np.isfinite(y)
-        cur_s1_bool &= np.isfinite(z)
-        cur_s1_bool &= (x**2 + y**2) < self.max_r_pattern_fit**2
+        for prefix in ["", "alt_"]:
+            x, y = events["x"], events["y"]
+            if prefix == "alt_":
+                z = events["alt_s1_z"]
+            elif prefix == "":
+                z = events["z"]
+            cur_s1_bool = events[f"{prefix}s1_area"] > self.s1_min_area_pattern_fit
+            cur_s1_bool &= events[f"{prefix}s1_index"] != -1
+            cur_s1_bool &= events[f"{prefix}s1_area_fraction_top"] >= 0
+            cur_s1_bool &= np.isfinite(x)
+            cur_s1_bool &= np.isfinite(y)
+            cur_s1_bool &= np.isfinite(z)
+            cur_s1_bool &= (x**2 + y**2) < self.max_r_pattern_fit**2
 
-        # default value is nan, it will be ovewrite if the event satisfy the requirments
-        result["s1_2llh"][:] = np.nan
-        result["s1_top_2llh"][:] = np.nan
-        result["s1_bottom_2llh"][:] = np.nan
+            # default value is nan, it will be ovewrite if the event satisfy the requirments
+            result[f"{prefix}s1_2llh"][:] = np.nan
+            result[f"{prefix}s1_top_2llh"][:] = np.nan
+            result[f"{prefix}s1_bottom_2llh"][:] = np.nan
 
-        # Making expectation patterns [ in PE ]
-        if np.sum(cur_s1_bool):
-            s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
-            s1_area = events["s1_area"][cur_s1_bool]
-            s1_pattern = (
-                s1_area[:, None]
-                * (s1_map_effs[:, self.pmtbool])
-                / np.sum(s1_map_effs[:, self.pmtbool], axis=1)[:, None]
-            )
+            # Making expectation patterns [ in PE ]
+            if np.sum(cur_s1_bool):
+                s1_map_effs = self.s1_pattern_map(np.array([x, y, z]).T)[cur_s1_bool, :]
+                s1_area = events[f"{prefix}s1_area"][cur_s1_bool]
+                s1_pattern = (
+                    s1_area[:, None]
+                    * (s1_map_effs[:, self.pmtbool])
+                    / np.sum(s1_map_effs[:, self.pmtbool], axis=1)[:, None]
+                )
 
-            s1_pattern_top = events["s1_area_fraction_top"][cur_s1_bool] * s1_area
-            s1_pattern_top = s1_pattern_top[:, None] * (
-                (s1_map_effs[:, : self.n_top_pmts])[:, self.pmtbool_top]
-            )
-            s1_pattern_top /= np.sum(
-                (s1_map_effs[:, : self.n_top_pmts])[:, self.pmtbool_top], axis=1
-            )[:, None]
-            s1_pattern_bottom = (1 - events["s1_area_fraction_top"][cur_s1_bool]) * s1_area
-            s1_pattern_bottom = s1_pattern_bottom[:, None] * (
-                (s1_map_effs[:, self.n_top_pmts :])[:, self.pmtbool_bottom]
-            )
-            s1_pattern_bottom /= np.sum(
-                (s1_map_effs[:, self.n_top_pmts :])[:, self.pmtbool_bottom], axis=1
-            )[:, None]
+                s1_pattern_top = events[f"{prefix}s1_area_fraction_top"][cur_s1_bool] * s1_area
+                s1_pattern_top = s1_pattern_top[:, None] * (
+                    (s1_map_effs[:, : self.n_top_pmts])[:, self.pmtbool_top]
+                )
+                s1_pattern_top /= np.sum(
+                    (s1_map_effs[:, : self.n_top_pmts])[:, self.pmtbool_top], axis=1
+                )[:, None]
+                s1_pattern_bottom = (1 - events[f"{prefix}s1_area_fraction_top"][cur_s1_bool]) * s1_area
+                s1_pattern_bottom = s1_pattern_bottom[:, None] * (
+                    (s1_map_effs[:, self.n_top_pmts :])[:, self.pmtbool_bottom]
+                )
+                s1_pattern_bottom /= np.sum(
+                    (s1_map_effs[:, self.n_top_pmts :])[:, self.pmtbool_bottom], axis=1
+                )[:, None]
 
-            # Getting pattern from data
-            s1_area_per_channel_ = events["s1_area_per_channel"][cur_s1_bool, :]
-            s1_area_per_channel = s1_area_per_channel_[:, self.pmtbool]
-            s1_area_per_channel_top = (s1_area_per_channel_[:, : self.n_top_pmts])[
-                :, self.pmtbool_top
-            ]
-            s1_area_per_channel_bottom = (s1_area_per_channel_[:, self.n_top_pmts :])[
-                :, self.pmtbool_bottom
-            ]
+                # Getting pattern from data
+                s1_area_per_channel_ = events[f"{prefix}s1_area_per_channel"][cur_s1_bool, :]
+                s1_area_per_channel = s1_area_per_channel_[:, self.pmtbool]
+                s1_area_per_channel_top = (s1_area_per_channel_[:, : self.n_top_pmts])[
+                    :, self.pmtbool_top
+                ]
+                s1_area_per_channel_bottom = (s1_area_per_channel_[:, self.n_top_pmts :])[
+                    :, self.pmtbool_bottom
+                ]
 
-            # Top and bottom
-            arg1 = s1_pattern / self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
-            arg2 = (
-                s1_area_per_channel / self.mean_pe_photon,
-                s1_area_per_channel,
-                self.mean_pe_photon,
-            )
-            norm_llh_val = neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2)
-            result["s1_2llh"][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+                # Top and bottom
+                arg1 = s1_pattern / self.mean_pe_photon, s1_area_per_channel, self.mean_pe_photon
+                arg2 = (
+                    s1_area_per_channel / self.mean_pe_photon,
+                    s1_area_per_channel,
+                    self.mean_pe_photon,
+                )
+                norm_llh_val = neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2)
+                result[f"{prefix}s1_2llh"][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
 
-            # If needed to stire - store only top and bottom array, but not together
-            if self.store_per_channel:
-                # Storring pattern information
-                store_patterns = np.zeros((s1_pattern.shape[0], self.n_tpc_pmts))
-                store_patterns[:, self.pmtbool] = s1_pattern
-                result["s1_pattern"][cur_s1_bool] = store_patterns
-                # Storing actual LLH values
-                store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.n_tpc_pmts))
-                store_2LLH_ch[:, self.pmtbool] = norm_llh_val
-                result["s1_2llh_per_channel"][cur_s1_bool] = store_2LLH_ch
+                # If needed to stire - store only top and bottom array, but not together
+                if self.store_per_channel:
+                    # Storring pattern information
+                    store_patterns = np.zeros((s1_pattern.shape[0], self.n_tpc_pmts))
+                    store_patterns[:, self.pmtbool] = s1_pattern
+                    result[f"{prefix}s1_pattern"][cur_s1_bool] = store_patterns
+                    # Storing actual LLH values
+                    store_2LLH_ch = np.zeros((norm_llh_val.shape[0], self.n_tpc_pmts))
+                    store_2LLH_ch[:, self.pmtbool] = norm_llh_val
+                    result[f"{prefix}s1_2llh_per_channel"][cur_s1_bool] = store_2LLH_ch
 
-            # Top
-            arg1 = (
-                s1_pattern_top / self.mean_pe_photon,
-                s1_area_per_channel_top,
-                self.mean_pe_photon,
-            )
-            arg2 = (
-                s1_area_per_channel_top / self.mean_pe_photon,
-                s1_area_per_channel_top,
-                self.mean_pe_photon,
-            )
-            norm_llh_val = neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2)
-            result["s1_top_2llh"][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+                # Top
+                arg1 = (
+                    s1_pattern_top / self.mean_pe_photon,
+                    s1_area_per_channel_top,
+                    self.mean_pe_photon,
+                )
+                arg2 = (
+                    s1_area_per_channel_top / self.mean_pe_photon,
+                    s1_area_per_channel_top,
+                    self.mean_pe_photon,
+                )
+                norm_llh_val = neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2)
+                result[f"{prefix}s1_top_2llh"][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
 
-            # Bottom
-            arg1 = (
-                s1_pattern_bottom / self.mean_pe_photon,
-                s1_area_per_channel_bottom,
-                self.mean_pe_photon,
-            )
-            arg2 = (
-                s1_area_per_channel_bottom / self.mean_pe_photon,
-                s1_area_per_channel_bottom,
-                self.mean_pe_photon,
-            )
-            norm_llh_val = neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2)
-            result["s1_bottom_2llh"][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
+                # Bottom
+                arg1 = (
+                    s1_pattern_bottom / self.mean_pe_photon,
+                    s1_area_per_channel_bottom,
+                    self.mean_pe_photon,
+                )
+                arg2 = (
+                    s1_area_per_channel_bottom / self.mean_pe_photon,
+                    s1_area_per_channel_bottom,
+                    self.mean_pe_photon,
+                )
+                norm_llh_val = neg2llh_modpoisson(*arg1) - neg2llh_modpoisson(*arg2)
+                result[f"{prefix}s1_bottom_2llh"][cur_s1_bool] = np.sum(norm_llh_val, axis=1)
 
     def compute_s2_llhvalue(self, events, result):
         for t_ in ["s2", "alt_s2"]:
