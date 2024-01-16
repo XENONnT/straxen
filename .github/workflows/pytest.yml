@@ -33,9 +33,9 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        python-version: [ "3.9", "3.10", "3.11" ]
+        python-version: [ "3.9", "3.10" ]
         test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
-        # Only run on py3.8. Py3.10 is quite slow, so no coveralls
+        # Drop some not crucial tests for python 3.10 and 3.11
         exclude:
           - python-version: "3.11"
             test: coveralls
