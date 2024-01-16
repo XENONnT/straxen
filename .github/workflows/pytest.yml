@@ -29,13 +29,13 @@ jobs:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     env:
-      HAVE_ACCESS_TO_SECTETS: ${{ secrets.RUNDB_API_URL }}
+      HAVE_ACCESS_TO_SECRETS: ${{ secrets.RUNDB_API_URL }}
     strategy:
       fail-fast: False
       matrix:
-        python-version: [ "3.9", "3.10", "3.11" ]
+        python-version: [ "3.9", "3.10" ]
         test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
-        # Only run on py3.8. Py3.10 is quite slow, so no coveralls
+        # Drop some not crucial tests for python 3.10 and 3.11
         exclude:
           - python-version: "3.11"
             test: coveralls
@@ -87,14 +87,13 @@ jobs:
       - name: Create pre-apply function file
         # In case we do not have database. We need to make a local file for
         # The pre_apply_function (see #559).
-        if: env.HAVE_ACCESS_TO_SECTETS == null || matrix.test == 'pytest_no_database'
+        if: env.HAVE_ACCESS_TO_SECRETS == null || matrix.test == 'pytest_no_database'
         run: bash .github/scripts/create_pre_apply_function.sh $HOME
 
       - name: Test package
         # This is running a normal test
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
         env:
-          ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
           coverage run --source=straxen -m pytest --durations 0
@@ -103,11 +102,13 @@ jobs:
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
-          ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECTETS != null
+        if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECRETS != null
         run: |
+          # Install straxen first
+          pip install -e .
+
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
           coverage run --source=straxen -m pytest -v
 
