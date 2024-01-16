@@ -94,7 +94,6 @@ jobs:
         # This is running a normal test
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
         env:
-          ALLOW_WFSIM_TEST: 1
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
           coverage run --source=straxen -m pytest --durations 0
@@ -103,7 +102,6 @@ jobs:
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
-          ALLOW_WFSIM_TEST: 1
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECRETS != null
