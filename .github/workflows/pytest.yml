@@ -108,11 +108,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECRETS != null
         run: |
+          straxen-print_versions
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
           coverage run --source=straxen -m pytest -v
 
           # Test notebooks
-          straxen-print_versions
           coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
           coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/ScadaInterfaceExample.ipynb
 
