@@ -24,18 +24,14 @@ class EventAmbience(strax.Plugin):
     def infer_dtype(self):
         dtype = []
         for ambience in self.origin_dtype:
-            dtype.append(
-                (
-                    (f"Number of  {' '.join(ambience.split('_'))} main S1", f"s1_n_{ambience}"),
-                    np.int16,
-                )
-            )
-            dtype.append(
-                (
-                    (f"Number of  {' '.join(ambience.split('_'))} main S2", f"s2_n_{ambience}"),
-                    np.int16,
-                )
-            )
+            dtype.append((
+                (f"Number of  {' '.join(ambience.split('_'))} main S1", f"s1_n_{ambience}"),
+                np.int16,
+            ))
+            dtype.append((
+                (f"Number of  {' '.join(ambience.split('_'))} main S2", f"s2_n_{ambience}"),
+                np.int16,
+            ))
         dtype += strax.time_fields
         return dtype
 

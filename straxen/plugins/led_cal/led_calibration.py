@@ -7,7 +7,6 @@ if you want to complain please contact:
 from immutabledict import immutabledict
 import strax
 import straxen
-import numba
 import numpy as np
 
 # This makes sure shorthands for only the necessary functions
@@ -34,7 +33,7 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.2.3"
+    __version__ = "0.2.4"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
@@ -47,7 +46,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     led_window = straxen.URLConfig(
-        default=(78, 116),
+        default=(78, 132),
         infer_type=False,
         help="Window (samples) where we expect the signal in LED calibration",
     )
@@ -228,7 +227,6 @@ class nVetoExtTimings(strax.Plugin):
         return pulse_dtype
 
     @staticmethod
-    @numba.jit
     def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
         """Numpy access with fancy index returns copy, not view This for-loop is required to
         substitute in one by one."""

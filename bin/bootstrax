@@ -593,12 +593,14 @@ def infer_target(rd: dict) -> dict:
     diagnostic_modes = [
         "exttrig",
         "noise",
-        "nVeto_LASER_calibration",
         "mv_diffuserballs",
         "mv_fibres",
         "mv_darkrate",
     ]
     ap_modes = ["pmtap"]
+    nv_ref_mon = [
+        "nVeto_LASER_calibration",
+    ]
     mode = str(rd.get("mode"))
     detectors = list(rd.get("detectors"))  # type: ignore
 
@@ -610,6 +612,10 @@ def infer_target(rd: dict) -> dict:
     elif np.any([m in mode for m in ap_modes]):
         log.debug("afterpulse mode")
         targets = "afterpulses"
+        post_process = "raw_records"
+    elif np.any([m in mode for m in nv_ref_mon]):
+        log.debug("NV reflecitvity and diffuser ball mode")
+        targets = "ref_mon_nv"
         post_process = "raw_records"
     elif np.any([m in mode for m in diagnostic_modes]):
         log.debug("diagnostic-mode")
