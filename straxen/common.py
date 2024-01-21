@@ -130,7 +130,7 @@ def pmt_positions(xenon1t=False):
 _resource_cache: Dict[str, Any] = dict()
 
 # Formats for which the original file is text, not binary
-_text_formats = ["text", "csv", "json"]
+_text_formats = ["txt", "csv", "json"]
 
 
 @export
