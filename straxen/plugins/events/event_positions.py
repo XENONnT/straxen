@@ -87,50 +87,37 @@ class EventPositions(strax.Plugin):
         naive_pos = []
         fdc_pos = []
         for j in "r z".split():
-            naive_pos += [
-                (
-                    f"{j}_naive",
-                    np.float32,
-                    f"Main interaction {j}-position with observed position (cm)",
-                )
-            ]
-            fdc_pos += [
-                (
-                    f"{j}_field_distortion_correction",
-                    np.float32,
-                    f"Correction added to {j}_naive for field distortion (cm)",
-                )
-            ]
+            naive_pos += [(
+                f"{j}_naive",
+                np.float32,
+                f"Main interaction {j}-position with observed position (cm)",
+            )]
+            fdc_pos += [(
+                f"{j}_field_distortion_correction",
+                np.float32,
+                f"Correction added to {j}_naive for field distortion (cm)",
+            )]
             for s_i in [1, 2]:
-                naive_pos += [
+                naive_pos += [(
+                    f"alt_s{s_i}_{j}_naive",
+                    np.float32,
                     (
-                        f"alt_s{s_i}_{j}_naive",
-                        np.float32,
-                        (
-                            f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position"
-                            " with observed position (cm)"
-                        ),
-                    )
-                ]
-                fdc_pos += [
-                    (
-                        f"alt_s{s_i}_{j}_field_distortion_correction",
-                        np.float32,
-                        f"Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)",
-                    )
-                ]
+                        f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position"
+                        " with observed position (cm)"
+                    ),
+                )]
+                fdc_pos += [(
+                    f"alt_s{s_i}_{j}_field_distortion_correction",
+                    np.float32,
+                    f"Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)",
+                )]
         dtype += naive_pos + fdc_pos
         for s_i in [1, 2]:
-            dtype += [
-                (
-                    f"alt_s{s_i}_theta",
-                    np.float32,
-                    (
-                        f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position"
-                        " (radians)"
-                    ),
-                )
-            ]
+            dtype += [(
+                f"alt_s{s_i}_theta",
+                np.float32,
+                f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)",
+            )]
 
         dtype += [("theta", np.float32, f"Main interaction angular position (radians)")]
         return dtype + strax.time_fields

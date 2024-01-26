@@ -65,4 +65,7 @@ class Peaks(strax.Plugin):
             assert np.all(
                 peaks["time"][to_check][1:] >= strax.endtime(peaks)[to_check][:-1]
             ), "Peaks not disjoint"
-        return peaks
+
+        result = np.zeros(len(peaks), self.dtype)
+        strax.copy_to_buffer(peaks, result, "_copy_requested_peak_fields")
+        return result

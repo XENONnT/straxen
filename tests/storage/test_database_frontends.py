@@ -106,9 +106,9 @@ class TestRunDBFrontend(unittest.TestCase):
     @property
     def is_all_targets_stored(self) -> bool:
         """This should always be False as one of the targets (records) is not stored in mongo."""
-        return all([
-            all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids
-        ])
+        return all(
+            [all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids]
+        )
 
     def test_finding_runs(self):
         rdb = self.rundb_sf
@@ -196,16 +196,14 @@ class TestRunDBFrontend(unittest.TestCase):
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
-        rd["data"] = [
-            {
-                "host": "rucio-catalogue",
-                "location": "UC_DALI_USERDISK",
-                "status": "transferred",
-                "did": did,
-                "number": int(rucio_id),
-                "type": target,
-            }
-        ]
+        rd["data"] = [{
+            "host": "rucio-catalogue",
+            "location": "UC_DALI_USERDISK",
+            "status": "transferred",
+            "did": did,
+            "number": int(rucio_id),
+            "type": target,
+        }]
         self.database[self.collection_name].insert_one(rd)
 
         # Make sure we get the backend key using the _find option

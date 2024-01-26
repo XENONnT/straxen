@@ -194,9 +194,9 @@ class DAQReader(strax.Plugin):
 
     def _count_files_per_chunk(self, path_chunk_i):
         """Check that the files in the chunks have names consistent with the readout threads."""
-        counted_files = Counter([
-            self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)
-        ])
+        counted_files = Counter(
+            [self._partial_chunk_to_thread_name(p) for p in os.listdir(path_chunk_i)]
+        )
         for thread, n_counts in counted_files.items():
             if thread not in self.config["readout_threads"]:
                 raise ValueError(f"Bad data for {path_chunk_i}. Got {thread}")
@@ -391,13 +391,6 @@ class DAQReader(strax.Plugin):
             if r._mbs() > 0:
                 print(f"\t{r}")
         return result
-
-
-@export
-class Fake1TDAQReader(DAQReader):
-    provides = ("raw_records", "raw_records_diagnostic", "raw_records_aqmon")
-
-    data_kind = immutabledict(zip(provides, provides))
 
 
 @export

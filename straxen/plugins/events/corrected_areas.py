@@ -24,7 +24,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.1"
+    __version__ = "0.5.2"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -258,7 +258,8 @@ class CorrectedAreas(strax.Plugin):
             # apply SEG and EE correction
             cs2_top_wo_picorr = cs2_top_xycorr / seg_ee_corr
             cs2_bottom_wo_picorr = cs2_bottom_xycorr / seg_ee_corr
-            result[f"{peak_type}cs2_wo_picorr"] = cs2_top_wo_picorr + cs2_bottom_wo_picorr
+            cs2_wo_picorr = cs2_top_wo_picorr + cs2_bottom_wo_picorr
+            result[f"{peak_type}cs2_wo_picorr"] = cs2_wo_picorr
             result[f"{peak_type}cs2_area_fraction_top_wo_picorr"] = (
                 cs2_top_wo_picorr / result[f"{peak_type}cs2_wo_picorr"]
             )
@@ -267,7 +268,13 @@ class CorrectedAreas(strax.Plugin):
             # cS2 bottom should be corrected by photon ionization, but not cS2 top
             cs2_top_wo_elifecorr = cs2_top_wo_picorr
             cs2_bottom_wo_elifecorr = cs2_bottom_wo_picorr * self.cs2_bottom_top_ratio_correction
-            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+            cs2_wo_elifecorr = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+            # scale top and bottom to ensure total cS2 is conserved, since the time
+            # dependence of it has been already corrected by SEG correction
+            cs2_top_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
+            cs2_bottom_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
+            cs2_wo_elifecorr = cs2_wo_picorr
+            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_wo_elifecorr
             result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"] = (
                 cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
             )

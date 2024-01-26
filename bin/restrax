@@ -315,9 +315,9 @@ class ReStrax(daq_core.DataBases):
             self.log.info("No new work, looking for previously failed runs")
             # Look for work which we tried before (and has a restrax field)
             query.pop("restrax")
-            query.update({
-                "restrax.n_tries": {"$lt": self.max_tries + 1}, "restrax.state": {"$ne": "done"}
-            })
+            query.update(
+                {"restrax.n_tries": {"$lt": self.max_tries + 1}, "restrax.state": {"$ne": "done"}}
+            )
             run_doc = self.run_coll.find_one(query, **kw)
 
         if run_doc is not None:

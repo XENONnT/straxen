@@ -202,7 +202,7 @@ class SCADAInterface:
         if not time_selection_kwargs:
             time_selection_kwargs = {"full_range": True}
 
-        if np.all((run_id, self.context)):
+        if run_id is not None and self.context is not None:
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
