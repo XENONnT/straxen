@@ -26,14 +26,20 @@ class LEDAfterpulseProcessing(strax.Plugin):
         help="Number of PMTs in TPC",
     )
 
-    LED_window_left = straxen.URLConfig(
+    LED_hit_left_boundary = straxen.URLConfig(
         default=50,
         infer_type=False,
-        help="Left boundary of sample range for LED pulse integration",
+        help="Left boundary after which the first hit marks the position of the LED window",
     )
 
-    LED_window_right = straxen.URLConfig(
+    LED_hit_right_boundary = straxen.URLConfig(
         default=100,
+        infer_type=False,
+        help="Right boundary after which the LED hit will no longer be searched",
+    )
+
+    LED_window_width = straxen.URLConfig(
+        default=30,
         infer_type=False,
         help="Right boundary of sample range for LED pulse integration",
     )
@@ -103,8 +109,9 @@ class LEDAfterpulseProcessing(strax.Plugin):
         hits_ap = find_ap(
             hits,
             records,
-            LED_window_left=self.LED_window_left,
-            LED_window_right=self.LED_window_right,
+            LED_hit_left_boundary=self.LED_hit_left_boundary,
+            LED_hit_right_boundary=self.LED_hit_right_boundary,
+            LED_window_width=self.LED_window_width,
             hit_left_extension=self.hit_left_extension,
             hit_right_extension=self.hit_right_extension,
         )
@@ -117,7 +124,13 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
 @export
 def find_ap(
-    hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension
+    hits, 
+    records, 
+    LED_hit_left_boundary,
+    LED_hit_right_boundary,
+    LED_window_width, 
+    hit_left_extension, 
+    hit_right_extension
 ):
     buffer = np.zeros(len(hits), dtype=dtype_afterpulses())
 
@@ -129,8 +142,9 @@ def find_ap(
     res = _find_ap(
         hits_sorted,
         records,
-        LED_window_left,
-        LED_window_right,
+        LED_hit_left_boundary,
+        LED_hit_right_boundary,
+        LED_window_width,
         hit_left_extension,
         hit_right_extension,
         buffer=buffer,
@@ -142,8 +156,9 @@ def find_ap(
 def _find_ap(
     hits,
     records,
-    LED_window_left,
-    LED_window_right,
+    LED_hit_left_boundary,
+    LED_hit_right_boundary,
+    LED_window_width,
     hit_left_extension,
     hit_right_extension,
     buffer=None,
@@ -153,6 +168,7 @@ def _find_ap(
 
     is_LED = False
     t_LED = None
+    t_LED_hit = None
 
     prev_record_i = hits[0]["record_i"]
     record_data = records[prev_record_i]["data"]
@@ -173,31 +189,12 @@ def _find_ap(
 
         res = buffer[offset]
 
-        if h["left"] < LED_window_left:
-            # if hit is before LED window: discard
+        if h["left"] < LED_hit_left_boundary:
+            # if hit is before LED hit window: discard
             continue
-
-        if h["left"] < LED_window_right:
-            # hit is in LED window
-            if not is_LED:
-                # this is the first hit in the LED window
-                fill_hitpars(
-                    res,
-                    h,
-                    hit_left_extension,
-                    hit_right_extension,
-                    record_data,
-                    record_len,
-                    baseline_fpart,
-                )
-
-                # set the LED time in the current WF
-                t_LED = res["sample_10pc_area"]
-                is_LED = True
-
-                continue
-
-            # more hits in LED window: extend the first (merging all hits in the LED window)
+        
+        if (h["left"] < LED_hit_right_boundary) and not is_LED:
+            # this is the first hit in the LED hit window
             fill_hitpars(
                 res,
                 h,
@@ -206,17 +203,37 @@ def _find_ap(
                 record_data,
                 record_len,
                 baseline_fpart,
-                extend=True,
             )
 
+            t_LED_hit = res["sample_10pc_area"]
+            t_LED = res["sample_10pc_area"]
+            is_LED = True
+
+            continue
+        
+        if not is_LED:
+            # No hit found in the LED hit window: skip to next record
+            continue
+
+        if h["left"] < (t_LED_hit + LED_window_width):
+            # This hit is still inside the LED window: extend the LED hit
+            fill_hitpars(
+                res,
+                h,
+                hit_left_extension,
+                hit_right_extension,
+                record_data,
+                record_len,
+                baseline_fpart,
+                extend=True
+            )
+
+            # set the LED time in the current WF
             t_LED = res["sample_10pc_area"]
 
             continue
 
         # Here begins a new hit after the LED window
-        if (h["left"] >= LED_window_right) and not is_LED:
-            # no LED hit found: ignore and go to next hit (until new record begins)
-            continue
 
         # if a hit is completely inside the previous hit's right_extension,
         # then skip it (because it's already included in the previous hit)
