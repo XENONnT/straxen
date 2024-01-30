@@ -33,13 +33,13 @@ class LEDAfterpulseProcessing(strax.Plugin):
     )
 
     LED_hit_right_boundary = straxen.URLConfig(
-        default=100,
+        default=110,
         infer_type=False,
         help="Right boundary after which the LED hit will no longer be searched",
     )
 
     LED_window_width = straxen.URLConfig(
-        default=30,
+        default=20,
         infer_type=False,
         help="Right boundary of sample range for LED pulse integration",
     )
