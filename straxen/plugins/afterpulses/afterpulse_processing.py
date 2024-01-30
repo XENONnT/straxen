@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 @export
 class LEDAfterpulseProcessing(strax.Plugin):
-    __version__ = "0.5.1"
+    __version__ = "0.6.0"
     depends_on = "raw_records"
     data_kind = "afterpulses"
     provides = "afterpulses"
