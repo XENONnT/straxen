@@ -33,7 +33,7 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.2.4"
+    __version__ = "0.3.0"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
@@ -163,9 +163,10 @@ def _get_led_windows(hits, default_windows, led_hit_extension):
     last = -1
     for hit in hits:
         if hit["record_i"] == last:
-            continue
+            continue # If there are multiple hits in one record, ignore after the first
 
         left = hit["left"] + led_hit_extension[0]
+        # Limit the position of the window so it stays inside the record.
         if left < default_windows[0, 0]: left = default_windows[0, 0]
         elif left > 96: left = 96
 
