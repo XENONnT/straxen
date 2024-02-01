@@ -94,7 +94,7 @@ class LEDCalibration(strax.Plugin):
         temp = np.zeros(len(r), dtype=self.dtype)
         strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
         
-        led_windows = get_led_windows(r, self.led_window, self.led_hit_extension)
+        led_windows = get_led_windows(r, self.default_led_window, self.led_hit_extension)
 
         on, off = get_amplitude(r, led_windows, self.noise_window)
         temp["amplitude_led"] = on["amplitude"]
@@ -198,8 +198,8 @@ def get_amplitude(records, led_windows, noise_window):
         ons[i]["channel"] = record["channel"]
         offs[i]["channel"] = record["channel"]
 
-        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0]:led_windows[i, 1]+1])
-        offs[i]["amplitude"] = np.max(record["data"][noise_window[0]:noise_window[1]+1])
+        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0]:led_windows[i, 1]])
+        offs[i]["amplitude"] = np.max(record["data"][noise_window[0]:noise_window[1]])
 
     return ons, offs
 
@@ -221,7 +221,7 @@ def get_area(records, led_windows):
     for i, record in enumerate(records):
         area[i]["channel"] = record["channel"]
         for right in end_pos:
-            area[i]["area"] += np.sum(record["data"][led_windows[i, 0]:led_windows[i, 1]+right+1])
+            area[i]["area"] += np.sum(record["data"][led_windows[i, 0]:led_windows[i, 1]+right])
 
         area[i]["area"] /= float(len(end_pos))
 
