@@ -45,14 +45,22 @@ class LEDCalibration(strax.Plugin):
         default=(0, 40), infer_type=False, help="Window (samples) for baseline calculation."
     )
 
-    led_window = straxen.URLConfig(
+    default_led_window = straxen.URLConfig(
         default=(78, 132),
         infer_type=False,
-        help="Window (samples) where we expect the signal in LED calibration",
+        help="Default window (samples) to integrate and get he maximum amplitude of if no hit was found in the record.",
+    )
+
+    led_hit_extension = straxen.URLConfig(
+        default=(-10, 44),
+        infer_type=False,
+        help="The extension around the LED hit to integrate."
     )
 
     noise_window = straxen.URLConfig(
-        default=(10, 48), infer_type=False, help="Window (samples) to analysis the noise"
+        default=(10, 48), 
+        infer_type=False, 
+        help="Window (samples) to analyse the noise"
     )
 
     channel_list = straxen.URLConfig(
@@ -84,12 +92,14 @@ class LEDCalibration(strax.Plugin):
 
         temp = np.zeros(len(r), dtype=self.dtype)
         strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
+        
+        led_windows = get_led_windows(r, self.led_window, self.led_hit_extension)
 
-        on, off = get_amplitude(r, self.led_window, self.noise_window)
+        on, off = get_amplitude(r, led_windows, self.noise_window)
         temp["amplitude_led"] = on["amplitude"]
         temp["amplitude_noise"] = off["amplitude"]
 
-        area = get_area(r, self.led_window)
+        area = get_area(r, led_windows)
         temp["area"] = area["area"]
         return temp
 
@@ -126,44 +136,94 @@ def get_records(raw_records, baseline_window):
     return records
 
 
+def get_led_windows(records, default_window, led_hit_extension):
+    """ Searches for hits in the records, if a hit is found, returns an interval
+        around the hit given by led_hit_extension. If no hit is found in the
+        record, returns the default window.
+
+    :return (len(records), 2) array: Integration window for each record
+
+    """    
+    hits = strax.find_hits(records)
+    default_windows = np.tile(default_window, (len(records), 1))
+    return _get_led_windows(hits, default_windows, led_hit_extension)
+
+
+@numba.jit(nopython=True)
+def _get_led_windows(hits, default_windows, led_hit_extension):
+    """ Searches for hits in the records, if a hit is found, returns an interval
+        around the hit given by led_hit_extension. If no hit is found in the
+        record, returns the default window.
+
+    :return (len(records), 2) array: Integration window for each record
+
+    """    
+    windows = default_windows
+    # max_window = np.array([96, 150])
+    last = -1
+    for hit in hits:
+        if hit["record_i"] == last:
+            continue
+
+        left = hit["left"] + led_hit_extension[0]
+        if left < default_windows[0, 0]: left = default_windows[0, 0]
+        elif left > 96: left = 96
+
+        right = hit["left"] + led_hit_extension[1]
+        if right < default_windows[0, 1]: right = default_windows[0, 1]
+        elif right > 150: right = 150
+
+        windows[hit["record_i"]] = np.array([left, right])
+        last = hit["record_i"]
+        
+    return windows
+
+
 _on_off_dtype = np.dtype([("channel", "int16"), ("amplitude", "float32")])
 
 
-def get_amplitude(records, led_window, noise_window):
+@numba.jit(nopython=True)
+def get_amplitude(records, led_windows, noise_window):
     """Needed for the SPE computation.
 
     Take the maximum in two different regions, where there is the signal and where there is not.
 
     """
-    on = np.zeros((len(records)), dtype=_on_off_dtype)
-    off = np.zeros((len(records)), dtype=_on_off_dtype)
-    on["amplitude"] = np.max(records["data"][:, led_window[0] : led_window[1]], axis=1)
-    on["channel"] = records["channel"]
-    off["amplitude"] = np.max(records["data"][:, noise_window[0] : noise_window[1]], axis=1)
-    off["channel"] = records["channel"]
-    return on, off
+    ons = np.zeros(len(records), dtype=_on_off_dtype)
+    offs = np.zeros(len(records), dtype=_on_off_dtype)
+
+    for i, record in enumerate(records):
+        ons[i]["channel"] = record["channel"]
+        offs[i]["channel"] = record["channel"]
+
+        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0]:led_windows[i, 1]+1])
+        offs[i]["amplitude"] = np.max(record["data"][noise_window[0]:noise_window[1]+1])
+
+    return ons, offs
 
 
 _area_dtype = np.dtype([("channel", "int16"), ("area", "float32")])
 
 
-def get_area(records, led_window):
+@numba.jit(nopython=True)
+def get_area(records, led_windows):
     """Needed for the gain computation.
 
     Sum the data in the defined window to get the area. This is done in 6 integration window and it
     returns the average area.
 
     """
-    left = led_window[0]
-    end_pos = [led_window[1] + 2 * i for i in range(6)]
+    area = np.zeros(len(records), dtype=_area_dtype)
+    end_pos = [2 * i for i in range(6)]
 
-    Area = np.zeros((len(records)), dtype=_area_dtype)
-    for right in end_pos:
-        Area["area"] += records["data"][:, left:right].sum(axis=1)
-    Area["channel"] = records["channel"]
-    Area["area"] = Area["area"] / float(len(end_pos))
+    for i, record in enumerate(records):
+        area[i]["channel"] = record["channel"]
+        for right in end_pos:
+            area[i]["area"] += np.sum(record["data"][led_windows[i, 0]:led_windows[i, 1]+right+1])
 
-    return Area
+        area[i]["area"] /= float(len(end_pos))
+
+    return area
 
 
 @export
