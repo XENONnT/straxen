@@ -7,6 +7,7 @@ if you want to complain please contact:
 from immutabledict import immutabledict
 import strax
 import straxen
+import numba
 import numpy as np
 
 # This makes sure shorthands for only the necessary functions
