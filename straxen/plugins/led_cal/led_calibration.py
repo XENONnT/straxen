@@ -70,6 +70,30 @@ class LEDCalibration(strax.Plugin):
         help="List of PMTs. Defalt value: all the PMTs",
     )
 
+    hit_min_amplitude = straxen.URLConfig(
+        track=True,
+        infer_type=False,
+        default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
+        help=(
+            "Minimum hit amplitude in ADC counts above baseline. "
+            "Specify as a tuple of length n_tpc_pmts, or a number,"
+            'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
+            "hitfinder_thresholds.py"
+            'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
+            "calling cmt."
+        ),
+    )
+
+    hit_min_height_over_noise = straxen.URLConfig(
+        default=4,
+        infer_type=False,
+        help=(
+            "Minimum hit amplitude in numbers of baseline_rms above baseline."
+            "Actual threshold used is max(hit_min_amplitude, hit_min_"
+            "height_over_noise * baseline_rms)."
+        ),
+    )
+
     dtype = [
         ("area", np.float32, "Area averaged in integration windows"),
         ("amplitude_led", np.float32, "Amplitude in LED window"),
@@ -94,7 +118,13 @@ class LEDCalibration(strax.Plugin):
         temp = np.zeros(len(r), dtype=self.dtype)
         strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
         
-        led_windows = get_led_windows(r, self.default_led_window, self.led_hit_extension)
+        led_windows = get_led_windows(
+            r, 
+            self.default_led_window, 
+            self.led_hit_extension, 
+            self.hit_min_amplitude, 
+            self.hit_min_height_over_noise
+        )
 
         on, off = get_amplitude(r, led_windows, self.noise_window)
         temp["amplitude_led"] = on["amplitude"]
@@ -137,7 +167,7 @@ def get_records(raw_records, baseline_window):
     return records
 
 
-def get_led_windows(records, default_window, led_hit_extension):
+def get_led_windows(records, default_window, led_hit_extension, hit_min_amplitude, hit_min_height_over_noise):
     """ Searches for hits in the records, if a hit is found, returns an interval
         around the hit given by led_hit_extension. If no hit is found in the
         record, returns the default window.
@@ -145,7 +175,11 @@ def get_led_windows(records, default_window, led_hit_extension):
     :return (len(records), 2) array: Integration window for each record
 
     """    
-    hits = strax.find_hits(records)
+    hits = strax.find_hits(
+        records,
+        min_amplitude=hit_min_amplitude,
+        min_height_over_noise=hit_min_height_over_noise,
+    )
     default_windows = np.tile(default_window, (len(records), 1))
     return _get_led_windows(hits, default_windows, led_hit_extension)
 
