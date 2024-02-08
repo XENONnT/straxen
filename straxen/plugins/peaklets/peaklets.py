@@ -248,8 +248,21 @@ class Peaklets(strax.Plugin):
         hitlets = hits
         del hits
 
+        # Extend hits into hitlets and clip at chunk boundaries:
         hitlets["time"] -= (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
+        hitlets["time"] = np.clip(hitlets["time"], start, straxen.INFINITY_64BIT_SIGNED)
+
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
+        hitlet_endtime = strax.endtime(hitlets)
+        _hitlet_beyond_chunk = hitlet_endtime > end
+        if np.any(_hitlet_beyond_chunk):
+            samples_beyond_chunk = (end - hitlet_endtime[_hitlet_beyond_chunk]) // hitlets[
+                _hitlet_beyond_chunk
+            ]["dt"]
+            hitlets["length"][_hitlet_beyond_chunk] = (
+                hitlets["length"][_hitlet_beyond_chunk] - samples_beyond_chunk
+            )
+
         hitlets = strax.sort_by_time(hitlets)
         rlinks = strax.record_links(records)
 
