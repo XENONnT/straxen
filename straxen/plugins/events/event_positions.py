@@ -87,37 +87,47 @@ class EventPositions(strax.Plugin):
         naive_pos = []
         fdc_pos = []
         for j in "r z".split():
-            naive_pos += [(
-                f"{j}_naive",
-                np.float32,
-                f"Main interaction {j}-position with observed position (cm)",
-            )]
-            fdc_pos += [(
-                f"{j}_field_distortion_correction",
-                np.float32,
-                f"Correction added to {j}_naive for field distortion (cm)",
-            )]
+            naive_pos += [
+                (
+                    f"{j}_naive",
+                    np.float32,
+                    f"Main interaction {j}-position with observed position (cm)",
+                )
+            ]
+            fdc_pos += [
+                (
+                    f"{j}_field_distortion_correction",
+                    np.float32,
+                    f"Correction added to {j}_naive for field distortion (cm)",
+                )
+            ]
             for s_i in [1, 2]:
-                naive_pos += [(
-                    f"alt_s{s_i}_{j}_naive",
-                    np.float32,
+                naive_pos += [
                     (
-                        f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position"
-                        " with observed position (cm)"
-                    ),
-                )]
-                fdc_pos += [(
-                    f"alt_s{s_i}_{j}_field_distortion_correction",
-                    np.float32,
-                    f"Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)",
-                )]
+                        f"alt_s{s_i}_{j}_naive",
+                        np.float32,
+                        (
+                            f"Alternative S{s_i} interaction (rel. main S{3 - s_i}) {j}-position"
+                            " with observed position (cm)"
+                        ),
+                    )
+                ]
+                fdc_pos += [
+                    (
+                        f"alt_s{s_i}_{j}_field_distortion_correction",
+                        np.float32,
+                        f"Correction added to alt_s{s_i}_{j}_naive for field distortion (cm)",
+                    )
+                ]
         dtype += naive_pos + fdc_pos
         for s_i in [1, 2]:
-            dtype += [(
-                f"alt_s{s_i}_theta",
-                np.float32,
-                f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)",
-            )]
+            dtype += [
+                (
+                    f"alt_s{s_i}_theta",
+                    np.float32,
+                    f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)",
+                )
+            ]
 
         dtype += [("theta", np.float32, f"Main interaction angular position (radians)")]
         return dtype + strax.time_fields
@@ -155,17 +165,19 @@ class EventPositions(strax.Plugin):
 
             pre_field = "" if s_i == 0 else f"alt_s{s_i}_"
             post_field = "" if s_i == 0 else "_fdc"
-            result.update({
-                f"{pre_field}x{post_field}": orig_pos[:, 0] * scale,
-                f"{pre_field}y{post_field}": orig_pos[:, 1] * scale,
-                f"{pre_field}r{post_field}": r_cor,
-                f"{pre_field}r_naive": r_obs,
-                f"{pre_field}r_field_distortion_correction": delta_r,
-                f"{pre_field}theta": np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
-                f"{pre_field}z_naive": z_obs,
-                # using z_dv_corr (z_obs - z_dv_delta) in agreement with the dtype description
-                # the FDC for z (z_cor) is found to be not reliable (see #527)
-                f"{pre_field}z": z_obs - z_dv_delta,
-                f"{pre_field}z_dv_corr": z_obs - z_dv_delta,
-            })
+            result.update(
+                {
+                    f"{pre_field}x{post_field}": orig_pos[:, 0] * scale,
+                    f"{pre_field}y{post_field}": orig_pos[:, 1] * scale,
+                    f"{pre_field}r{post_field}": r_cor,
+                    f"{pre_field}r_naive": r_obs,
+                    f"{pre_field}r_field_distortion_correction": delta_r,
+                    f"{pre_field}theta": np.arctan2(orig_pos[:, 1], orig_pos[:, 0]),
+                    f"{pre_field}z_naive": z_obs,
+                    # using z_dv_corr (z_obs - z_dv_delta) in agreement with the dtype description
+                    # the FDC for z (z_cor) is found to be not reliable (see #527)
+                    f"{pre_field}z": z_obs - z_dv_delta,
+                    f"{pre_field}z_dv_corr": z_obs - z_dv_delta,
+                }
+            )
         return result
