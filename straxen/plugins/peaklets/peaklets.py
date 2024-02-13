@@ -249,19 +249,10 @@ class Peaklets(strax.Plugin):
         del hits
 
         # Extend hits into hitlets and clip at chunk boundaries:
+        hit_time = np.copy(hitlets["time"])
         hitlets["time"] -= (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
-        hitlets["time"] = np.clip(hitlets["time"], start, straxen.INFINITY_64BIT_SIGNED)
-
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
-        hitlet_endtime = strax.endtime(hitlets)
-        _hitlet_beyond_chunk = hitlet_endtime > end
-        if np.any(_hitlet_beyond_chunk):
-            samples_beyond_chunk = (end - hitlet_endtime[_hitlet_beyond_chunk]) // hitlets[
-                _hitlet_beyond_chunk
-            ]["dt"]
-            hitlets["length"][_hitlet_beyond_chunk] = (
-                hitlets["length"][_hitlet_beyond_chunk] - samples_beyond_chunk
-            )
+        self.clip_peaklet_times(hitlets, start, end)
 
         hitlets = strax.sort_by_time(hitlets)
         rlinks = strax.record_links(records)
@@ -316,17 +307,12 @@ class Peaklets(strax.Plugin):
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
-        hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
-        hit_max_times = (
-            hitlets["time"] + hitlet_time_shift
-        )  # add time shift again to get correct maximum
-        hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
-
         # Compute tight coincidence level.
         # Making this a separate plugin would
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
+        hit_max_times = hit_time + hitlets["dt"] * hit_max_sample(records, hitlets)
         hit_max_times_argsort = np.argsort(hit_max_times)
         sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]
