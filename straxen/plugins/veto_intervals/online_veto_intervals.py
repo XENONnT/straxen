@@ -1,9 +1,6 @@
-import typing
 import numpy as np
 import strax
 import straxen
-
-from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
 export, __all__ = strax.exporter()
 
