@@ -71,12 +71,12 @@ class OnlineVetoIntervals(strax.OverlapWindowPlugin):
         return dtype
 
     def compute(self, veto_intervals, start, end):
-        
+
         # Calculate the cumulative deadtime for the entire chunk
         cumulative_deadtime = self._data_to_ms_cumsum(veto_intervals)
 
         if veto_intervals.nbytes > self.online_max_bytes:
-            
+
             # Calculate fraction of the data that can be kept,
             # to reduce datasize. Randomly keep a fraction of the data
             new_len = int(len(veto_intervals) / veto_intervals.nbytes * self.online_max_bytes)
@@ -86,7 +86,7 @@ class OnlineVetoIntervals(strax.OverlapWindowPlugin):
             # Only keep the cumulative deadtime for the kept data indices
             cumulative_deadtime = cumulative_deadtime[np.sort(idx)]
 
-        result = np.zeros(len(veto_intervals), dtype=self.dtype)   
+        result = np.zeros(len(veto_intervals), dtype=self.dtype)
         result["veto_interval"] = veto_intervals["veto_interval"]
         result["veto_type"] = veto_intervals["veto_type"]
         result["cumulative_deadtime"] = cumulative_deadtime
@@ -105,8 +105,7 @@ class OnlineVetoIntervals(strax.OverlapWindowPlugin):
     def get_window_size(self):
         # Give a very wide window
         return self.max_veto_window
-    
+
     @staticmethod
     def _data_to_ms_cumsum(data):
-        return np.cumsum(data['veto_interval']) / 1e6
-
+        return np.cumsum(data["veto_interval"]) / 1e6
