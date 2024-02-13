@@ -29,7 +29,7 @@ class Events(strax.OverlapWindowPlugin):
     provides = "events"
     data_kind = "events"
 
-    save_when = strax.SaveWhen.NEVER
+    save_when = strax.SaveWhen.EXPLICIT
 
     dtype = [
         ("event_number", np.int64, "Event number in this dataset"),

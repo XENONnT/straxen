@@ -160,8 +160,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
         __rucio_local_path = "/project/lgrandi/rucio/"
         print(
             "You specified _auto_append_rucio_local=True and you are not on dali compute nodes, "
-            "so we will add the following rucio local path: ",
-            __rucio_local_path,
+            f"so we will add the following rucio local path: {__rucio_local_path}"
         )
 
     return _include_rucio_local, __rucio_local_path
