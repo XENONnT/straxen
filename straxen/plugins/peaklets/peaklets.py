@@ -249,7 +249,6 @@ class Peaklets(strax.Plugin):
         del hits
 
         # Extend hits into hitlets and clip at chunk boundaries:
-        hit_time = np.copy(hitlets["time"])
         hitlets["time"] -= (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
         self.clip_peaklet_times(hitlets, start, end)
@@ -312,7 +311,12 @@ class Peaklets(strax.Plugin):
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
-        hit_max_times = hit_time + hitlets["dt"] * hit_max_sample(records, hitlets)
+        hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
+        hit_max_times = (
+            hitlets["time"] + hitlet_time_shift
+        )  # add time shift again to get correct maximum
+        hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
+
         hit_max_times_argsort = np.argsort(hit_max_times)
         sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]
