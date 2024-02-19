@@ -3,5 +3,5 @@ git+https://github.com/AxFoundation/strax
 git+https://github.com/XENONnT/base_environment
 nbmake
 pytest-xdist
-xedocs==0.2.25
+xedocs==0.2.26
 ipython==8.12.1
