@@ -154,6 +154,8 @@ def get_records(raw_records, baseline_window):
             "<i4",
         ),
         (("Fragment number in the pulse", "record_i"), "<i2"),
+        (("Baseline in ADC counts. data = int(baseline) - data_orig", "baseline"), "f4"),
+        (("Baseline RMS in ADC counts. data = baseline - data_orig", "baseline_rms"), "f4"),
         (("Waveform data in raw ADC counts", "data"), "f4", (record_length,)),
     ]
 
@@ -163,7 +165,10 @@ def get_records(raw_records, baseline_window):
     mask = np.where((records["record_i"] == 0) & (records["length"] == 160))[0]
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
+    rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
     records["data"][:, :160] = -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
+    records["baseline"] = bl
+    records["baseline_rms"] = rms
     return records
 
 
