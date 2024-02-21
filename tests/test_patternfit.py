@@ -1,3 +1,4 @@
+import math
 from hypothesis import strategies, given, settings, example
 from straxen.plugins.events.event_pattern_fit import (
     binom_test,
@@ -14,7 +15,8 @@ import scipy.stats as sps
 @given(strategies.floats(0.0, 1.0), strategies.floats(0.01, 0.99), strategies.floats(2.0, 1000))
 def test_patternfit_stats(aftobs, aft, s1tot):
     s1top = aftobs * s1tot
-    assert (binom_test(s1top, s1tot, aft) >= 0) & (binom_test(s1top, s1tot, aft) <= 1)
+    r = binom_test(s1top, s1tot, aft)
+    assert (math.isclose(r, 0.0) | (r >= 0.0)) & math.isclose(r, 1.0) | (r <= 1.0)
 
 
 @settings(deadline=None)
