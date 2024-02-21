@@ -125,7 +125,8 @@ class EventPositions(strax.Plugin):
                 (
                     f"alt_s{s_i}_theta",
                     np.float32,
-                    f"Alternative S{s_i} (rel. main S{3 - s_i}) interaction angular position (radians)",
+                    f"Alternative S{s_i} (rel. main S{3 - s_i}) "
+                    "interaction angular position (radians)",
                 )
             ]
 

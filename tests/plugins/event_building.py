@@ -175,7 +175,8 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     self.st.set_config(
         {
             "se_gain": (
-                f"itp_dict://resource://{fake_file_name}?run_id=plugin.run_id&fmt=csv&itp_keys=ab,cd"
+                f"itp_dict://resource://{fake_file_name}"
+                "?run_id=plugin.run_id&fmt=csv&itp_keys=ab,cd"
             )
         }
     )
