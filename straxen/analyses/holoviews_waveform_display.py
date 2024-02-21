@@ -273,12 +273,14 @@ def _rectangle(time=0, channel=0, width=1.1, height=1):
     """
     width = width / 2
     height = height / 2
-    return np.array([
-        (time - width, channel - height),
-        (time + width, channel - height),
-        (time + width, channel + height),
-        (time - width, channel + height),
-    ])
+    return np.array(
+        [
+            (time - width, channel - height),
+            (time + width, channel - height),
+            (time + width, channel + height),
+            (time - width, channel + height),
+        ]
+    )
 
 
 def get_records_matrix_in_window(polys, x_range, time_slice=10):

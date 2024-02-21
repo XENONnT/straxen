@@ -90,17 +90,21 @@ xnt_simulation_config.update(
 # processing there are plugins for High Energy plugins. Therefore, do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts.update({
-    "register": list(common_opts["register"]) + [
-        straxen.PeakletSOMClass,
-        straxen.PeaksSOMClassification,
-        straxen.EventSOMClassification,
-    ],
-    "register_all": list(common_opts["register_all"]) + [
-        straxen.plugins,
-    ],
-    "use_per_run_defaults": False,
-})
+xnt_common_opts.update(
+    {
+        "register": list(common_opts["register"])
+        + [
+            straxen.PeakletSOMClass,
+            straxen.PeaksSOMClassification,
+            straxen.EventSOMClassification,
+        ],
+        "register_all": list(common_opts["register_all"])
+        + [
+            straxen.plugins,
+        ],
+        "use_per_run_defaults": False,
+    }
+)
 
 
 ##
@@ -128,12 +132,14 @@ def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=Fa
         cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
     )
     del st._plugin_class_registry["peaklet_classification"]
-    st.register((
-        straxen.PeakletClassificationSOM,
-        straxen.PeaksSOM,
-        straxen.PeakBasicsSOM,
-        straxen.EventBasicsSOM,
-    ))
+    st.register(
+        (
+            straxen.PeakletClassificationSOM,
+            straxen.PeaksSOM,
+            straxen.PeakBasicsSOM,
+            straxen.EventBasicsSOM,
+        )
+    )
 
     return st
 
@@ -226,12 +232,14 @@ def xenonnt_online(
     context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
 
     st = strax.Context(config=straxen.contexts.xnt_common_config, **context_options)
-    st.register([
-        straxen.DAQReader,
-        straxen.LEDCalibration,
-        straxen.LEDAfterpulseProcessing,
-        straxen.nVeto_reflectivity,
-    ])
+    st.register(
+        [
+            straxen.DAQReader,
+            straxen.LEDCalibration,
+            straxen.LEDAfterpulseProcessing,
+            straxen.nVeto_reflectivity,
+        ]
+    )
 
     if _auto_append_rucio_local:
         include_rucio_local, _rucio_local_path = find_rucio_local_path(
@@ -324,20 +332,24 @@ def xenonnt_online(
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
-    st.set_context_config({
-        "check_available": ("raw_records", "led_calibration"),
-        "free_options": list(xnt_common_config.keys()),
-    })
+    st.set_context_config(
+        {
+            "check_available": ("raw_records", "led_calibration"),
+            "free_options": list(xnt_common_config.keys()),
+        }
+    )
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
-    st.register([
-        straxen.DAQReader,
-        straxen.LEDCalibration,
-        straxen.nVETORecorder,
-        straxen.nVETOPulseProcessing,
-        straxen.nVETOHitlets,
-        straxen.nVetoExtTimings,
-    ])
+    st.register(
+        [
+            straxen.DAQReader,
+            straxen.LEDCalibration,
+            straxen.nVETORecorder,
+            straxen.nVETOPulseProcessing,
+            straxen.nVETOHitlets,
+            straxen.nVetoExtTimings,
+        ]
+    )
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
 
