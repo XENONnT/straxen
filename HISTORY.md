@@ -1,12 +1,14 @@
-2.2.1 / 2024-02-15
+2.2.1 / 2024-02-21
 -------------------
-## What's Changed
 * Loosen `save_when` of `Events` by @dachengx in https://github.com/XENONnT/straxen/pull/1327
 * Deprecate the usage of `XENONnT/ax_env` by @dachengx in https://github.com/XENONnT/straxen/pull/1329
 * `_text_formats` should include txt but not text by @dachengx in https://github.com/XENONnT/straxen/pull/1324
+* Fix numerical comparison error of `test_patternfit_stats` by @dachengx in https://github.com/XENONnT/straxen/pull/1334
+* Remove some packages requirements from `requirements-tests.txt` by @dachengx in https://github.com/XENONnT/straxen/pull/1337
+* Fixing hitlets boundary out of chunk by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1328
 
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.0...v2.2.1
 
-**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.0...v2.2.
 
 2.2.0 / 2024-01-16
 -------------------
