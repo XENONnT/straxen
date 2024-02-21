@@ -251,9 +251,10 @@ class Peaklets(strax.Plugin):
         # Extend hits into hitlets and clip at chunk boundaries:
         hitlets["time"] -= (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
-        self.clip_peaklet_times(hitlets, start, end)
 
         hitlets = strax.sort_by_time(hitlets)
+        hitlets_time = np.copy(hitlets["time"])
+        self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
         # If sum_waveform_top_array is false, don't digitize the top array
@@ -313,7 +314,7 @@ class Peaklets(strax.Plugin):
         #     possibly due to its currently primitive scheduling.
         hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
         hit_max_times = (
-            hitlets["time"] + hitlet_time_shift
+            hitlets_time + hitlet_time_shift
         )  # add time shift again to get correct maximum
         hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
 
