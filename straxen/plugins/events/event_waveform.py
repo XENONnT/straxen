@@ -33,22 +33,30 @@ class EventWaveform(strax.Plugin):
         # populating waveform samples
         ptypes = ["s1", "s2", "alt_s1", "alt_s2"]
         for type_ in ptypes:
-            dtype += [(
-                (f"Waveform for {infoline[type_]} [ PE / sample ]", f"{type_}_data"),
-                pfields_["data"][0],
-            )]
-            dtype += [(
-                (f"Top waveform for {infoline[type_]} [ PE / sample ]", f"{type_}_data_top"),
-                pfields_["data_top"][0],
-            )]
-            dtype += [(
-                (f"Length of the interval in samples for {infoline[type_]}", f"{type_}_length"),
-                pfields_["length"][0],
-            )]
-            dtype += [(
-                (f"Width of one sample for {infoline[type_]} [ns]", f"{type_}_dt"),
-                pfields_["dt"][0],
-            )]
+            dtype += [
+                (
+                    (f"Waveform for {infoline[type_]} [ PE / sample ]", f"{type_}_data"),
+                    pfields_["data"][0],
+                )
+            ]
+            dtype += [
+                (
+                    (f"Top waveform for {infoline[type_]} [ PE / sample ]", f"{type_}_data_top"),
+                    pfields_["data_top"][0],
+                )
+            ]
+            dtype += [
+                (
+                    (f"Length of the interval in samples for {infoline[type_]}", f"{type_}_length"),
+                    pfields_["length"][0],
+                )
+            ]
+            dtype += [
+                (
+                    (f"Width of one sample for {infoline[type_]} [ns]", f"{type_}_dt"),
+                    pfields_["dt"][0],
+                )
+            ]
         # populating S1 n channel properties
         dtype += [
             (("Main S1 count of contributing PMTs", "s1_n_channels"), np.int16),

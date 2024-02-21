@@ -148,11 +148,13 @@ class TestURLConfig(unittest.TestCase):
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_bodedga_get(self):
         """Just a didactic example."""
-        self.st.set_config({
-            "test_config": (
-                "take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value"
-            )
-        })
+        self.st.set_config(
+            {
+                "test_config": (
+                    "take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value"
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
@@ -194,16 +196,18 @@ class TestURLConfig(unittest.TestCase):
         else:
             raise ValueError
 
-        self.st.set_config({
-            "test_config": (
-                "itp_dict://"
-                "resource://"
-                f"{fake_file_name}"
-                "?run_id=plugin.run_id"
-                f"&fmt={dump_as}"
-                "&itp_keys=ab,cd"
-            )
-        })
+        self.st.set_config(
+            {
+                "test_config": (
+                    "itp_dict://"
+                    "resource://"
+                    f"{fake_file_name}"
+                    "?run_id=plugin.run_id"
+                    f"&fmt={dump_as}"
+                    "&itp_keys=ab,cd"
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertIsInstance(p.test_config, dict)
         assert np.isclose(p.test_config["ab"], ab_value, rtol=1e-3)
@@ -223,13 +227,15 @@ class TestURLConfig(unittest.TestCase):
         with open(fake_file_name, "w") as f:
             json.dump(original_dict, f)
 
-        self.st.set_config({
-            "test_config": (
-                f"rekey_dict://resource://{fake_file_name}?"
-                "fmt=json&replace_keys=a,b,c"
-                "&with_keys=anew,bnew,cnew"
-            )
-        })
+        self.st.set_config(
+            {
+                "test_config": (
+                    f"rekey_dict://resource://{fake_file_name}?"
+                    "fmt=json&replace_keys=a,b,c"
+                    "&with_keys=anew,bnew,cnew"
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, check_dict)
         temp_dir.cleanup()

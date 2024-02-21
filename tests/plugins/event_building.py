@@ -172,11 +172,14 @@ def test_corrected_areas(self: PluginTestCase, ab_value=20, cd_value=21):
     fake_file_name = os.path.join(temp_dir.name, "test_seg.csv")
     pd.DataFrame(fake_file).to_csv(fake_file_name)
 
-    self.st.set_config({
-        "se_gain": (
-            f"itp_dict://resource://{fake_file_name}?run_id=plugin.run_id&fmt=csv&itp_keys=ab,cd"
-        )
-    })
+    self.st.set_config(
+        {
+            "se_gain": (
+                f"itp_dict://resource://{fake_file_name}"
+                "?run_id=plugin.run_id&fmt=csv&itp_keys=ab,cd"
+            )
+        }
+    )
     # Try loading some new data with the interpolated dictionary
     _ = self.st.get_array(self.run_id, "corrected_areas")
     temp_dir.cleanup()
@@ -203,11 +206,13 @@ def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
     dummy_events["endtime"] = np.array([100, 205])
 
     # Prepare some dummy peaks
-    peaks_dtype = strax.merged_dtype((
-        st.get_single_plugin(run_id, "peak_basics").dtype,
-        st.get_single_plugin(run_id, "peak_proximity").dtype,
-        st.get_single_plugin(run_id, "peak_positions").dtype,
-    ))
+    peaks_dtype = strax.merged_dtype(
+        (
+            st.get_single_plugin(run_id, "peak_basics").dtype,
+            st.get_single_plugin(run_id, "peak_proximity").dtype,
+            st.get_single_plugin(run_id, "peak_positions").dtype,
+        )
+    )
 
     peaks_for_event_1 = np.zeros(5, dtype=peaks_dtype)
     peaks_for_event_1["time"] = np.arange(10, 105, 20)

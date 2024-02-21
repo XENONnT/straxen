@@ -82,10 +82,12 @@ class TestDAQReader(unittest.TestCase):
 
         """
         st = self.st.new_context()
-        st.set_config({
-            "safe_break_in_pulses": int(0.5e9),
-            "dummy_version": "test_insert_deadtime",
-        })
+        st.set_config(
+            {
+                "safe_break_in_pulses": int(0.5e9),
+                "dummy_version": "test_insert_deadtime",
+            }
+        )
 
         with self.assertWarns(ArtificialDeadtimeInserted):
             st.make(self.run_id, "raw_records")
@@ -101,10 +103,12 @@ class TestDAQReader(unittest.TestCase):
     def test_invalid_setting(self):
         """The safe break in pulses cannot be longer than the chunk size."""
         st = self.st.new_context()
-        st.set_config({
-            "safe_break_in_pulses": int(3600e9),
-            "dummy_version": "test_invalid_setting",
-        })
+        st.set_config(
+            {
+                "safe_break_in_pulses": int(3600e9),
+                "dummy_version": "test_invalid_setting",
+            }
+        )
         with self.assertRaises(ValueError):
             st.make(self.run_id, "raw_records")
 
@@ -157,15 +161,17 @@ class TestDAQReader(unittest.TestCase):
         """Update context with fields needed by the DAQ reader."""
         daq_config = run_doc["daq_config"]
         st.set_context_config(dict(forbid_creation_of=tuple()))
-        st.set_config({
-            "channel_map": dict(
-                # (Minimum channel, maximum channel)
-                # Channels must be listed in a ascending order!
-                tpc=(0, 1),
-                nveto=(1, 2),
-                aqmon=(ARTIFICIAL_DEADTIME_CHANNEL, ARTIFICIAL_DEADTIME_CHANNEL + 1),
-            )
-        })
+        st.set_config(
+            {
+                "channel_map": dict(
+                    # (Minimum channel, maximum channel)
+                    # Channels must be listed in a ascending order!
+                    tpc=(0, 1),
+                    nveto=(1, 2),
+                    aqmon=(ARTIFICIAL_DEADTIME_CHANNEL, ARTIFICIAL_DEADTIME_CHANNEL + 1),
+                )
+            }
+        )
         update_config = {
             "readout_threads": daq_config["processing_threads"],
             "record_length": daq_config["strax_fragment_payload_bytes"] // 2,
