@@ -68,7 +68,9 @@ def mini_analysis(
                 to_pe = context.config["gain_model"]
                 if isinstance(to_pe, str):
                     if "corrections_run_id" in kwargs:
-                        to_pe = straxen.URLConfig.evaluate_dry(to_pe, run_id=kwargs["corrections_run_id"])
+                        to_pe = straxen.URLConfig.evaluate_dry(
+                            to_pe, run_id=kwargs["corrections_run_id"]
+                        )
                     else:
                         to_pe = straxen.URLConfig.evaluate_dry(to_pe, run_id=run_id)
                 kwargs["to_pe"] = to_pe
