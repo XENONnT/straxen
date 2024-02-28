@@ -39,7 +39,8 @@ def mini_analysis(
             known_kwargs = (
                 "time_range seconds_range time_within time_selection "
                 "ignore_time_warning "
-                "selection_str t_reference to_pe config"
+                "selection_str t_reference to_pe config "
+                "corrections_run_id"
             ).split()
             for k in kwargs:
                 if k not in known_kwargs and k not in parameters:
@@ -66,7 +67,10 @@ def mini_analysis(
             if "to_pe" in parameters and "to_pe" not in kwargs:
                 to_pe = context.config["gain_model"]
                 if isinstance(to_pe, str):
-                    to_pe = straxen.URLConfig.evaluate_dry(to_pe, run_id=run_id)
+                    if "corrections_run_id" in kwargs:
+                        to_pe = straxen.URLConfig.evaluate_dry(to_pe, run_id=kwargs["corrections_run_id"])
+                    else:
+                        to_pe = straxen.URLConfig.evaluate_dry(to_pe, run_id=run_id)
                 kwargs["to_pe"] = to_pe
 
             # Prepare selection arguments
