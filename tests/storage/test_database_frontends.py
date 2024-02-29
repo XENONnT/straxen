@@ -196,14 +196,16 @@ class TestRunDBFrontend(unittest.TestCase):
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
-        rd["data"] = [{
-            "host": "rucio-catalogue",
-            "location": "UC_DALI_USERDISK",
-            "status": "transferred",
-            "did": did,
-            "number": int(rucio_id),
-            "type": target,
-        }]
+        rd["data"] = [
+            {
+                "host": "rucio-catalogue",
+                "location": "UC_DALI_USERDISK",
+                "status": "transferred",
+                "did": did,
+                "number": int(rucio_id),
+                "type": target,
+            }
+        ]
         self.database[self.collection_name].insert_one(rd)
 
         # Make sure we get the backend key using the _find option

@@ -131,11 +131,13 @@ class RunDB(strax.StorageFrontend):
             re.match(regex, self.hostname) for regex in self.hosts.values()
         ):
             self.backends.append(RucioLocalBackend(self.rucio_path))
-            self.available_query.append({
-                "host": "rucio-catalogue",
-                "location": "UC_DALI_USERDISK",
-                "status": "transferred",
-            })
+            self.available_query.append(
+                {
+                    "host": "rucio-catalogue",
+                    "location": "UC_DALI_USERDISK",
+                    "status": "transferred",
+                }
+            )
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key."""

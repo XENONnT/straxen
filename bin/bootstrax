@@ -761,11 +761,13 @@ def eb_can_process():
 
         if bootstrax_on_host:
             n_ebs_running += 1
-            running_eb = run_coll.find_one({
-                "bootstrax.state": "busy",
-                "bootstrax.host": f"eb{eb_i}.xenon.local",
-                "bootstrax.started_processing": {"$lt": now(-timeouts["eb3-5_max_busy_time"])},
-            })
+            running_eb = run_coll.find_one(
+                {
+                    "bootstrax.state": "busy",
+                    "bootstrax.host": f"eb{eb_i}.xenon.local",
+                    "bootstrax.started_processing": {"$lt": now(-timeouts["eb3-5_max_busy_time"])},
+                }
+            )
             if running_eb:
                 n_ebs_busy += 1
                 log.debug(f"eb{eb_i} is busy")
@@ -806,10 +808,12 @@ def infer_mode(rd):
         while data_rate == 0:
             # For runs that are still running, we should be able to get the
             # info from the aggregate status collection.
-            docs = ag_stat_coll.aggregate([
-                {"$match": {"number": rd["number"]}},
-                {"$group": {"_id": "$detector", "rate": {"$max": "$rate"}}},
-            ])
+            docs = ag_stat_coll.aggregate(
+                [
+                    {"$match": {"number": rd["number"]}},
+                    {"$group": {"_id": "$detector", "rate": {"$max": "$rate"}}},
+                ]
+            )
             data_rate = float(sum([d["rate"] for d in docs]))
             if data_rate > 0:
                 break

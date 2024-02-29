@@ -161,13 +161,15 @@ def clean_ceph():
         log.info(f"for cleaning ceph, go to {eb_can_clean_ceph}")
         return
 
-    rd = run_coll.find_one({
-        "bootstrax.state": "done",
-        "status": "transferred",
-        "start": {"$lt": now(-ajax_thresholds["remove_live_after"])},
-        "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
-        "data.type": "live",
-    })
+    rd = run_coll.find_one(
+        {
+            "bootstrax.state": "done",
+            "status": "transferred",
+            "start": {"$lt": now(-ajax_thresholds["remove_live_after"])},
+            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+            "data.type": "live",
+        }
+    )
     if rd is None:
         return
     else:
@@ -196,12 +198,14 @@ def clean_high_level_data():
 
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
-    rds = run_coll.find({
-        "bootstrax.state": "done",
-        "status": "transferred",
-        "start": {"$lt": now(-ajax_thresholds["remove_high_level_data"])},
-        "data.host": hostname,
-    })
+    rds = run_coll.find(
+        {
+            "bootstrax.state": "done",
+            "status": "transferred",
+            "start": {"$lt": now(-ajax_thresholds["remove_high_level_data"])},
+            "data.host": hostname,
+        }
+    )
     if not rds:
         # Great, we are clean
         return
@@ -241,13 +245,15 @@ def clean_non_latest():
     set_state("clean_non_latest")
     # We need to grep all the rundocs at once as simply doing one at the time (find_one)
     # might get stuck as the query may yield the same result the next time it is called.
-    rds = run_coll.find({
-        "bootstrax.state": "done",
-        "status": "transferred",
-        "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
-        "bootstrax.host": {"$ne": hostname},
-        "data.host": hostname,
-    })
+    rds = run_coll.find(
+        {
+            "bootstrax.state": "done",
+            "status": "transferred",
+            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+            "bootstrax.host": {"$ne": hostname},
+            "data.host": hostname,
+        }
+    )
     if not rds:
         # Great, we are clean
         return
@@ -337,14 +343,16 @@ def clean_old_hash():
                 f"clean_old_hash::\tLineage for run {run_id}, {data_type} is "
                 f"{current_st_hash}. Removing old hash: {lineage_hash} from {loc}."
             )
-            rd = run_coll.find_one({
-                "bootstrax.state": "done",
-                "status": "transferred",
-                "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
-                "data.type": data_type,
-                "data.host": hostname,
-                "number": int(run_id),
-            })
+            rd = run_coll.find_one(
+                {
+                    "bootstrax.state": "done",
+                    "status": "transferred",
+                    "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+                    "data.type": data_type,
+                    "data.host": hostname,
+                    "number": int(run_id),
+                }
+            )
             if "raw_records" in data_type:
                 raise ValueError(
                     f"You did some sloppy regex on the data-type, almost deleted {data_type}!"
@@ -377,12 +385,14 @@ def clean_abandoned(delete_live=False):
             # Make it iterable for the loop below
             rds = [rd]
     else:
-        rds = run_coll.find({
-            "bootstrax.state": "abandoned",
-            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
-            "data.location": "/live_data/xenonnt",
-            "data.host": "daq",
-        })
+        rds = run_coll.find(
+            {
+                "bootstrax.state": "abandoned",
+                "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+                "data.location": "/live_data/xenonnt",
+                "data.host": "daq",
+            }
+        )
 
     # Count the number of threads. Only allow one if we aks for user input.
     i = 0
@@ -417,17 +427,21 @@ def clean_database(delete_live=False):
     # time (find_one) might get stuck as the query may yield the same
     # result the next time it is called.
     if not delete_live:
-        rds = run_coll.find({
-            "bootstrax.state": "done",
-            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
-            "data.host": hostname,
-        })
+        rds = run_coll.find(
+            {
+                "bootstrax.state": "done",
+                "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+                "data.host": hostname,
+            }
+        )
     else:
-        rds = run_coll.find({
-            "bootstrax.state": "done",
-            "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
-            "data.host": "daq",
-        })
+        rds = run_coll.find(
+            {
+                "bootstrax.state": "done",
+                "bootstrax.time": {"$lt": now(-ajax_thresholds["wait_after_processing"])},
+                "data.host": "daq",
+            }
+        )
     if not rds:
         # Great, we are clean
         return

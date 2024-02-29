@@ -66,53 +66,65 @@ class PeakShadow(strax.OverlapWindowPlugin):
             [s1_time_shadow_dtype, s2_time_shadow_dtype, s2_position_shadow_dtype],
         ):
             type_str, tp_desc, _ = key.split("_")
-            dtype.append((
-                (
-                    f"previous large {type_str} casted largest {tp_desc} shadow [PE/ns]",
-                    f"shadow_{key}",
-                ),
-                np.float32,
-            ))
-            dtype.append((
+            dtype.append(
                 (
                     (
-                        f"time difference to the previous large {type_str} peak casting largest"
-                        f" {tp_desc} shadow [ns]"
-                    ),
-                    f"dt_{key}",
-                ),
-                np.int64,
-            ))
-            # Only previous S2 peaks have (x,y)
-            if "s2" in key:
-                dtype.append((
-                    (
-                        f"x of previous large s2 peak casting largest {tp_desc} shadow [cm]",
-                        f"x_{key}",
+                        f"previous large {type_str} casted largest {tp_desc} shadow [PE/ns]",
+                        f"shadow_{key}",
                     ),
                     np.float32,
-                ))
-                dtype.append((
+                )
+            )
+            dtype.append(
+                (
                     (
-                        f"y of previous large s2 peak casting largest {tp_desc} shadow [cm]",
-                        f"y_{key}",
-                    ),
-                    np.float32,
-                ))
-            # Only time shadow gives the nearest large peak
-            if "time" in key:
-                dtype.append((
-                    (
-                        f"time difference to the nearest previous large {type_str} [ns]",
-                        f"nearest_dt_{type_str}",
+                        (
+                            f"time difference to the previous large {type_str} peak casting largest"
+                            f" {tp_desc} shadow [ns]"
+                        ),
+                        f"dt_{key}",
                     ),
                     np.int64,
-                ))
+                )
+            )
+            # Only previous S2 peaks have (x,y)
+            if "s2" in key:
+                dtype.append(
+                    (
+                        (
+                            f"x of previous large s2 peak casting largest {tp_desc} shadow [cm]",
+                            f"x_{key}",
+                        ),
+                        np.float32,
+                    )
+                )
+                dtype.append(
+                    (
+                        (
+                            f"y of previous large s2 peak casting largest {tp_desc} shadow [cm]",
+                            f"y_{key}",
+                        ),
+                        np.float32,
+                    )
+                )
+            # Only time shadow gives the nearest large peak
+            if "time" in key:
+                dtype.append(
+                    (
+                        (
+                            f"time difference to the nearest previous large {type_str} [ns]",
+                            f"nearest_dt_{type_str}",
+                        ),
+                        np.int64,
+                    )
+                )
         # Also record the PDF of HalfCauchy when calculating S2 position shadow
-        s2_position_shadow_dtype.append((
-            ("PDF describing correlation to the previous large s2", "pdf_s2_position_shadow"),
-            np.float32,
-        ))
+        s2_position_shadow_dtype.append(
+            (
+                ("PDF describing correlation to the previous large s2", "pdf_s2_position_shadow"),
+                np.float32,
+            )
+        )
 
         dtype = (
             s1_time_shadow_dtype

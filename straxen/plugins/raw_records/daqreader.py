@@ -299,12 +299,14 @@ class DAQReader(strax.Plugin):
                         result = records[strax.endtime(records) <= break_time]
                         # Add the artificial deadtime until the break
                         result = strax.sort_by_time(
-                            np.concatenate([
-                                result,
-                                self._artificial_dead_time(
-                                    start=dead_time_start, end=break_time, dt=self.dt_max
-                                ),
-                            ])
+                            np.concatenate(
+                                [
+                                    result,
+                                    self._artificial_dead_time(
+                                        start=dead_time_start, end=break_time, dt=self.dt_max
+                                    ),
+                                ]
+                            )
                         )
         return result, break_time
 

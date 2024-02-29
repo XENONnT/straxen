@@ -53,10 +53,12 @@ def dataframe_to_wiki(df, float_digits=5, title="Awesome table", force_int: ty.T
     for _, row in df.iterrows():
         table += (
             "| "
-            + " | ".join([
-                str(int(x) if i in force_int else format_float(x))
-                for i, x in enumerate(row.values.tolist())
-            ])
+            + " | ".join(
+                [
+                    str(int(x) if i in force_int else format_float(x))
+                    for i, x in enumerate(row.values.tolist())
+                ]
+            )
             + " |\n"
         )
     return table
@@ -186,11 +188,13 @@ class TimeWidgets:
         self._time_zone_widget = self._create_time_zone_widget()
         self._created_widgets = True
 
-        return widgets.VBox([
-            widgets.HBox([self._time_zone_widget, widgets.HTML(value="ns:")]),
-            self._start_widget,
-            self._end_widget,
-        ])
+        return widgets.VBox(
+            [
+                widgets.HBox([self._time_zone_widget, widgets.HTML(value="ns:")]),
+                self._start_widget,
+                self._end_widget,
+            ]
+        )
 
     def get_start_end(self):
         """Returns start and end time of the specfied time interval in nano- seconds utc unix
